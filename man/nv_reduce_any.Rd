@@ -4,7 +4,7 @@
 \alias{nv_reduce_any}
 \title{Any Reduction}
 \usage{
-nv_reduce_any(operand, dims = NULL, drop = TRUE)
+nv_reduce_any(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -16,6 +16,10 @@ dimensions, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop reduced dimensions.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+Accepted for parity with base R generics; has no effect because
+boolean inputs cannot contain \code{NaN}.}
 }
 \value{
 \code{\link{arrayish}}\cr

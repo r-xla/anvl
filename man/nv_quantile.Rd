@@ -4,7 +4,13 @@
 \alias{nv_quantile}
 \title{Quantile}
 \usage{
-nv_quantile(operand, probs, dim = NULL, interpolation = "linear")
+nv_quantile(
+  operand,
+  probs,
+  dim = NULL,
+  interpolation = "linear",
+  nan_rm = FALSE
+)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -23,6 +29,15 @@ uses the last dimension.}
 \item{interpolation}{(\code{character(1)})\cr
 One of \code{"linear"} (default), \code{"lower"}, \code{"higher"}, \code{"nearest"},
 \code{"midpoint"}. See "Interpolation modes".}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates -- any slice containing \code{NaN} reduces
+to \code{NaN}. If \code{TRUE}, \code{NaN} values are skipped from the reduction;
+a slice that is entirely \code{NaN} reduces to the identity element of
+the operation (e.g. \code{0} for sum, \code{-Inf} for max), or to \code{NaN} when
+the operation is not well-defined on an empty input (e.g. mean,
+variance, quantile). Has no effect on integer or boolean inputs.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -65,6 +80,8 @@ x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_quantile(x, 0.5) # = nv_median(x)
 nv_quantile(x, array(c(0.25, 0.5, 0.75)))
 nv_quantile(x, 0.5, interpolation = "lower")
+nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)                # NaN
+nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE) # 3
 \dontshow{\}) # examplesIf}
 }
 \seealso{

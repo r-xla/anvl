@@ -4,7 +4,7 @@
 \alias{nv_sd}
 \title{Standard Deviation Reduction}
 \usage{
-nv_sd(operand, dims, drop = TRUE, correction = 1L)
+nv_sd(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -19,6 +19,9 @@ Whether to drop reduced dimensions.}
 
 \item{correction}{(\code{integer(1)})\cr
 Degrees of freedom correction. Default is \code{1} (Bessel's correction).}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+Forwarded to \code{\link[=nv_var]{nv_var()}}. See its documentation for details.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -4,7 +4,7 @@
 \alias{nv_reduce_min}
 \title{Min Reduction}
 \usage{
-nv_reduce_min(operand, dims = NULL, drop = TRUE)
+nv_reduce_min(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -16,6 +16,15 @@ dimensions, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop reduced dimensions.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates -- any slice containing \code{NaN} reduces
+to \code{NaN}. If \code{TRUE}, \code{NaN} values are skipped from the reduction;
+a slice that is entirely \code{NaN} reduces to the identity element of
+the operation (e.g. \code{0} for sum, \code{-Inf} for max), or to \code{NaN} when
+the operation is not well-defined on an empty input (e.g. mean,
+variance, quantile). Has no effect on integer or boolean inputs.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -31,6 +40,8 @@ Finds the minimum of array elements along the specified dimensions.
 x <- nv_matrix(1:6, nrow = 2)
 nv_reduce_min(x)            # all dims -> scalar
 nv_reduce_min(x, dims = 1L)
+nv_reduce_min(nv_array(c(1, NaN, 3)))                # NaN
+nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)  # 1
 \dontshow{\}) # examplesIf}
 }
 \seealso{

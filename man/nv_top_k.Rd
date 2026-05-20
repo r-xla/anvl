@@ -31,6 +31,15 @@ arrays (when \code{with_indices = TRUE}). Output shape matches \code{operand} wi
 \description{
 Returns the \code{k} largest values along a dimension, sorted in decreasing order.
 }
+\section{NaN handling}{
+
+\code{NaN} is treated as a value larger than any finite number by the XLA
+top-k kernel, so \code{NaN} entries will appear in the result before any finite
+value. This matches JAX's \code{jax.lax.top_k}. If you want to exclude \code{NaN}s,
+replace them with \code{-Inf} first via
+\code{nv_ifelse(nv_is_nan(x), nv_scalar_like(x, -Inf), x)}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))

@@ -32,6 +32,12 @@ array (for 1-D inputs).
 \description{
 Returns the indices that would sort the array along a dimension.
 }
+\section{NaN handling}{
+
+The positions assigned to \code{NaN} entries are XLA-backend-defined and differ
+from base R; see \code{\link[=nv_sort]{nv_sort()}} for details and a workaround pattern.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5))

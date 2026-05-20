@@ -5,7 +5,7 @@
 \alias{mean.AnvlArray}
 \title{Mean}
 \usage{
-nv_mean(operand, dims = NULL, drop = TRUE)
+nv_mean(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 
 \method{mean}{AnvlArray}(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
 }
@@ -20,10 +20,21 @@ dimensions, returning a scalar.}
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop reduced dimensions.}
 
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates -- any slice containing \code{NaN} reduces
+to \code{NaN}. If \code{TRUE}, \code{NaN} values are skipped from the reduction;
+a slice that is entirely \code{NaN} reduces to the identity element of
+the operation (e.g. \code{0} for sum, \code{-Inf} for max), or to \code{NaN} when
+the operation is not well-defined on an empty input (e.g. mean,
+variance, quantile). Has no effect on integer or boolean inputs.}
+
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
 
-\item{trim, na.rm}{Currently not supported.}
+\item{trim}{Currently not supported.}
+
+\item{na.rm}{Forwarded to \code{\link[=nv_mean]{nv_mean()}}'s \code{nan_rm} argument.}
 
 \item{...}{No additional arguments.}
 }
@@ -39,13 +50,16 @@ use \code{mean()}.
 }
 \details{
 Implemented as \code{nv_reduce_sum(operand, dims, drop) / n} where \code{n} is the
-product of the reduced dimension sizes.
+product of the reduced dimension sizes. When \code{nan_rm = TRUE}, \code{NaN} entries
+are dropped from both the sum and the count.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
 nv_mean(x)            # all dims -> scalar
 nv_mean(x, dims = 1L)
+nv_mean(nv_array(c(1, NaN, 3)))                # NaN
+nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)  # 2
 \dontshow{\}) # examplesIf}
 }
 \seealso{

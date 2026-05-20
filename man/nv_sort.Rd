@@ -33,6 +33,18 @@ Sorts an array along a dimension.
 
 You can also use \code{sort()} directly.
 }
+\section{NaN handling}{
+
+The position of \code{NaN} values in the sorted output is \strong{XLA-backend-defined
+and differs from base R's \code{sort()}}. Currently, \code{NaN} may appear anywhere
+in the output, not reliably at the end. This is a known limitation shared
+with JAX's \code{jax.lax.sort} / \code{jnp.sort} (see the JAX docs note on
+\code{jnp.partition}). If you need predictable handling, replace \code{NaN} with a
+sentinel beforehand, e.g.
+\code{nv_ifelse(nv_is_nan(x), nv_scalar_like(x, Inf), x)} to push them to the
+end, then drop them based on a count from \code{nv_reduce_sum(nv_is_nan(x))}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
