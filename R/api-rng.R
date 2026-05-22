@@ -3,19 +3,21 @@ nv_unif_rand <- function(
   initial_state,
   dtype = "f64"
 ) {
-  checkmate::assertChoice(dtype, c("f32", "f64"))
+  dtype <- assert_float_dtype(dtype)
   shape <- assert_shapevec(shape)
 
   # 1. Generate random bits (64)
   # 2. We use these as mantissa bits for float, where we set the exponent to 1.0
   # 3. Because we have an implicit leading 1, we get a number in [1, 2) -> need to shift to [0, 1)
 
+  ui_dtype <- UIntegerType(dtype$value)
+
   # generate random bits
   # use THREE_FRY as rng algorithm: JAX default
   rbits <- prim_rng_bit_generator(
     initial_state = initial_state,
     "THREE_FRY",
-    paste0("ui", sub("f(\\d+)", "\\1", dtype)),
+    ui_dtype,
     shape = shape
   )
 
@@ -27,7 +29,7 @@ nv_unif_rand <- function(
 
   one_bits <- nv_bitcast_convert(
     nv_fill_like(initial_state, 1.0, shape = integer(), dtype = dtype),
-    dtype = paste0("ui", sub("f(\\d+)", "\\1", dtype))
+    dtype = ui_dtype
   )
 
   # bitwise or -> exponent from 1.0 (float), mantissa is random
@@ -70,7 +72,7 @@ nv_runif <- function(
   lower = 0,
   upper = 1
 ) {
-  checkmate::assertChoice(dtype, c("f32", "f64"))
+  dtype <- assert_float_dtype(dtype)
   checkmate::assertNumeric(lower, len = 1, any.missing = FALSE, upper = upper)
   checkmate::assertNumeric(upper, len = 1, any.missing = FALSE, lower = lower)
   shape <- assert_shapevec(shape)
@@ -132,7 +134,7 @@ nv_runif <- function(
 #' result[[2]]
 #' @export
 nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
-  checkmate::assertChoice(dtype, c("f32", "f64"))
+  dtype <- assert_float_dtype(dtype)
   checkmate::assertNumeric(mu, len = 1, any.missing = FALSE)
   checkmate::assertNumeric(sigma, len = 1, any.missing = FALSE, lower = 0)
   shape <- assert_shapevec(shape)
@@ -215,6 +217,7 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
 #' result[[2]]
 #' @export
 nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
+  dtype <- as_dtype(dtype)
   checkmate::assert_int(n, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
   shape <- assert_shapevec(shape)
@@ -260,6 +263,7 @@ nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
 #' result[[2]]
 #' @export
 nv_rdunif <- function(shape, initial_state, n, dtype = "i32") {
+  dtype <- as_dtype(dtype)
   checkmate::assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)
   n_sample <- prod(shape)
