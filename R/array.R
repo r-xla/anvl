@@ -398,6 +398,22 @@ as_array.AnvlArray <- function(x, ...) {
   globals$backends[[x$backend]]$as_array(x)
 }
 
+#' @method as.array AnvlArray
+#' @export
+as.array.AnvlArray <- function(x, ...) {
+  as_array(x)
+}
+
+#' @method as.matrix AnvlArray
+#' @export
+as.matrix.AnvlArray <- function(x, ...) {
+  nd <- ndims(x)
+  if (nd != 2L) {
+    cli_abort("{.fn as.matrix} requires a 2-D array, but got a {nd}-D array.")
+  }
+  as_array(x)
+}
+
 #' @export
 as_raw.AnvlArray <- function(x, row_major = FALSE, ...) {
   globals$backends[[x$backend]]$as_raw(x, row_major)
