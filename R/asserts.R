@@ -27,6 +27,19 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   as.integer(x)
 }
 
+# Convert `x` to a DataType via `as_dtype()` and assert it is a floating-point
+# dtype (f32 or f64). Returns the converted DataType.
+assert_float_dtype <- function(x, arg = rlang::caller_arg(x)) {
+  dt <- as_dtype(x)
+  if (!inherits(dt, "FloatType")) {
+    cli_abort(c(
+      "{.arg {arg}} must be a floating-point dtype (f32 or f64).",
+      "x" = "Got {.val {as.character(dt)}}."
+    ))
+  }
+  dt
+}
+
 assert_linalg_matrix <- function(operand, arg, square = FALSE) {
   s <- shape(operand)
   if (length(s) != 2L) {
