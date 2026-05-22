@@ -460,6 +460,23 @@ describe("nv_var", {
       tolerance = 1e-5
     )
   })
+  it("reduces over all axes by default", {
+    vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
+    expect_equal(
+      nv_var(nv_array(vals)),
+      nv_scalar(var(vals)),
+      tolerance = 1e-5
+    )
+    expect_equal(
+      nv_var(nv_array(vals), dims = NULL),
+      nv_scalar(var(vals)),
+      tolerance = 1e-5
+    )
+  })
+  it("rejects out-of-range and duplicate dims", {
+    expect_error(nv_var(nv_array(c(1, 2, 3, 4)), dims = 5L))
+    expect_error(nv_var(nv_array(c(1, 2, 3, 4)), dims = c(1L, 1L)))
+  })
 })
 
 describe("nv_sd", {
@@ -467,6 +484,19 @@ describe("nv_sd", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
     expect_equal(
       nv_sd(nv_array(vals), dims = 1L),
+      nv_scalar(sd(vals)),
+      tolerance = 1e-5
+    )
+  })
+  it("reduces over all axes by default", {
+    vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
+    expect_equal(
+      nv_sd(nv_array(vals)),
+      nv_scalar(sd(vals)),
+      tolerance = 1e-5
+    )
+    expect_equal(
+      nv_sd(nv_array(vals), dims = NULL),
       nv_scalar(sd(vals)),
       tolerance = 1e-5
     )
@@ -496,6 +526,11 @@ describe("nv_squeeze", {
     expect_error(
       nv_squeeze(nv_array(1:6, shape = c(2, 3)), dims = 1L),
       "Cannot squeeze"
+    )
+  })
+  it("rejects duplicate dims", {
+    expect_error(
+      nv_squeeze(nv_array(1:6, shape = c(1, 6, 1)), dims = c(1L, 1L))
     )
   })
 })
@@ -628,6 +663,10 @@ describe("nv_diag", {
       diag(c(1, 2, 3)),
       tolerance = 1e-6
     )
+  })
+  it("rejects non-1-D inputs", {
+    expect_error(nv_diag(nv_matrix(1:6, nrow = 2)), "1-D array")
+    expect_error(nv_diag(nv_scalar(5)), "1-D array")
   })
 })
 
@@ -1080,6 +1119,10 @@ describe("nv_argmax / nv_argmin", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expect_equal(nv_argmax(m), prim_argmax(m, dim = 2L))
     expect_equal(nv_argmin(m), prim_argmin(m, dim = 2L))
+  })
+  it("errors on a 0-dimensional input", {
+    expect_error(nv_argmax(nv_scalar(3)), "0-dimensional")
+    expect_error(nv_argmin(nv_scalar(3)), "0-dimensional")
   })
 })
 

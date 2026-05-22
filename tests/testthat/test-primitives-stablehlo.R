@@ -177,6 +177,30 @@ test_that("prim_reduce_min drop = FALSE", {
   expect_equal(out, array(c(-1, 2), c(2, 1)))
 })
 
+test_that("named reductions reject a zero-size reduction axis", {
+  empty1 <- nv_array(numeric(0), shape = 0L, dtype = "f32")
+  empty1_bool <- nv_array(logical(0), shape = 0L, dtype = "bool")
+  expect_error(prim_reduce_sum(empty1, dims = 1L, drop = TRUE), "zero-size axis")
+  expect_error(prim_reduce_prod(empty1, dims = 1L, drop = TRUE), "zero-size axis")
+  expect_error(prim_reduce_max(empty1, dims = 1L, drop = TRUE), "zero-size axis")
+  expect_error(prim_reduce_min(empty1, dims = 1L, drop = TRUE), "zero-size axis")
+  expect_error(prim_reduce_any(empty1_bool, dims = 1L, drop = TRUE), "zero-size axis")
+  expect_error(prim_reduce_all(empty1_bool, dims = 1L, drop = TRUE), "zero-size axis")
+
+  empty2 <- nv_array(numeric(0), shape = c(2L, 0L), dtype = "f32")
+  expect_error(prim_reduce_sum(empty2, dims = 2L, drop = TRUE), "zero-size axis")
+  expect_error(prim_reduce_max(empty2, dims = 2L, drop = TRUE), "zero-size axis")
+  expect_error(prim_reduce_min(empty2, dims = 2L, drop = TRUE), "zero-size axis")
+  # Reducing a non-empty axis of a tensor that has a separate empty axis is fine
+  out <- as_array(prim_reduce_max(empty2, dims = 1L, drop = TRUE))
+  expect_equal(dim(out), 0L)
+  # Also fires inside jit.
+  expect_error(
+    jit(function(x) prim_reduce_sum(x, dims = 1L, drop = TRUE))(empty1),
+    "zero-size axis"
+  )
+})
+
 test_that("prim_reduce_any", {
   x <- array(c(TRUE, FALSE, TRUE, FALSE, FALSE, FALSE), c(2, 3))
   out <- as_array(prim_reduce_any(nv_array(x, dtype = "bool"), dims = 2L, drop = TRUE))

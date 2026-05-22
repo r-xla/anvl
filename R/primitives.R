@@ -31,7 +31,25 @@ make_unary_op <- function(stablehlo_infer) {
 }
 
 
+# Named reductions (sum/prod/max/min/any/all and the API functions built on
+# top of them like mean/var/sd) refuse to reduce over a size-0 axis. For
+# max/min, the HLO lowering would silently emit the +/-Inf init sentinel; for
+# sum/prod/any/all the identity (0/1/FALSE/TRUE) is well-defined but the
+# result is rarely what users want and easy to introduce by accident. We
+# reject uniformly at trace time. `prim_reduce` (user-supplied init) is
+# intentionally exempt.
+.check_nonempty_reduce_axes <- function(operand, dims) {
+  shp <- shape(operand)
+  if (any(shp[dims] == 0L)) {
+    cli_abort(c(
+      "Cannot reduce over a zero-size axis.",
+      x = "Operand has shape {xlamisc::shapevec_repr(shp)}; reduced dims {.val {dims}} include a zero-size axis."
+    ))
+  }
+}
+
 infer_reduce <- function(operand, dims, drop) {
+  .check_nonempty_reduce_axes(operand, dims)
   old_shape <- shape(operand)
   if (drop) {
     new_shape <- old_shape[-dims]
@@ -47,6 +65,7 @@ infer_reduce <- function(operand, dims, drop) {
 }
 
 infer_reduce_boolean <- function(operand, dims, drop) {
+  .check_nonempty_reduce_axes(operand, dims)
   old_shape <- shape(operand)
   if (drop) {
     new_shape <- old_shape[-dims]
