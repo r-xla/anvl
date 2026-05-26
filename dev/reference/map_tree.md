@@ -9,20 +9,20 @@ applying `.f` to each leaf, and reassembling with
 ## Usage
 
 ``` r
-map_tree(.f, .x, ...)
+map_tree(.x, .f, ...)
 ```
 
 ## Arguments
-
-- .f:
-
-  (`function`)  
-  Function to apply to each leaf of `.x`.
 
 - .x:
 
   (any)  
   A leaf or a (nested) list of leaves.
+
+- .f:
+
+  (`function`)  
+  Function to apply to each leaf of `.x`.
 
 - ...:
 
@@ -43,7 +43,7 @@ the result of `.f(leaf, ...)`.
 ## Examples
 
 ``` r
-map_tree(\(x) x + 1, list(a = 1, b = list(c = 2, d = 3)))
+map_tree(list(a = 1, b = list(c = 2, d = 3)), \(x) x + 1)
 #> $a
 #> [1] 2
 #> 
