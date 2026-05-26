@@ -30,23 +30,23 @@ test_that("(un)flatten lists", {
 describe("map_tree", {
   it("preserves structure and applies f to leaves", {
     # leaf input
-    expect_equal(map_tree(\(x) x + 1, 1), 2)
+    expect_equal(map_tree(1, \(x) x + 1), 2)
 
     # flat list
     expect_equal(
-      map_tree(\(x) x * 2, list(a = 1, b = 2)),
+      map_tree(list(a = 1, b = 2), \(x) x * 2),
       list(a = 2, b = 4)
     )
 
     # nested
     expect_equal(
-      map_tree(\(x) x + 1, list(a = 1, b = list(c = 2, d = 3))),
+      map_tree(list(a = 1, b = list(c = 2, d = 3)), \(x) x + 1),
       list(a = 2, b = list(c = 3, d = 4))
     )
 
     # extra args are forwarded to f
     expect_equal(
-      map_tree(`+`, list(a = 1, b = list(c = 2)), 10),
+      map_tree(list(a = 1, b = list(c = 2)), `+`, 10),
       list(a = 11, b = list(c = 12))
     )
   })
@@ -54,8 +54,8 @@ describe("map_tree", {
   it("reports the leaf path on error", {
     expect_snapshot(
       map_tree(
-        \(x) if (x == 2) cli::cli_abort("boom") else x,
-        list(a = 1, b = list(c = 2))
+        list(a = 1, b = list(c = 2)),
+        \(x) if (x == 2) cli::cli_abort("boom") else x
       ),
       error = TRUE
     )

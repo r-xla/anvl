@@ -30,7 +30,7 @@ x <- nv_array(1:4, dtype = "f32")
 await(x)
 
 # Await all leaves of a (possibly nested) list of arrays.
-map_tree(await, list(x, list(y = x)))
+map_tree(list(x, list(y = x)), await)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

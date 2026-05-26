@@ -377,18 +377,18 @@ reindex_tree.ListNode <- function(x, counter) {
 #' Apply a function to each leaf of a (possibly nested) list, preserving the
 #' tree structure. Equivalent to flattening `.x` with [flatten()], applying
 #' `.f` to each leaf, and reassembling with [unflatten()].
-#' @param .f (`function`)\cr
-#'   Function to apply to each leaf of `.x`.
 #' @param .x (any)\cr
 #'   A leaf or a (nested) list of leaves.
+#' @param .f (`function`)\cr
+#'   Function to apply to each leaf of `.x`.
 #' @param ... Additional arguments passed to `.f`.
 #' @return An object with the same nesting structure as `.x`, where each leaf
 #'   is the result of `.f(leaf, ...)`.
 #' @seealso [flatten()], [build_tree()], [unflatten()], [await()]
 #' @examples
-#' map_tree(\(x) x + 1, list(a = 1, b = list(c = 2, d = 3)))
+#' map_tree(list(a = 1, b = list(c = 2, d = 3)), \(x) x + 1)
 #' @export
-map_tree <- function(.f, .x, ...) {
+map_tree <- function(.x, .f, ...) {
   tree <- build_tree(.x)
   flat <- flatten(.x)
   result <- lapply(seq_along(flat), function(i) {
