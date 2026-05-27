@@ -35,4 +35,18 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
 
   # Register compare_proxy for waldo/testthat
   register_s3_method("waldo", "compare_proxy", "AnvlArray")
+
+  # Register `jit_roclet()`'s S3 methods on roxygen2's generics only if/when
+  # roxygen2 is loaded, so roxygen2 stays a build-time-only dependency and
+  # does not need to be in Imports or Suggests.
+  register_s3_method("roxygen2", "roxy_tag_parse", "roxy_tag_jit")
+  register_s3_method("roxygen2", "roxy_tag_rd", "roxy_tag_jit")
+  register_s3_method("roxygen2", "roclet_process", "roclet_jit")
+  register_s3_method("roxygen2", "roclet_output", "roclet_jit")
+  register_s3_method("roxygen2", "roclet_clean", "roclet_jit")
 }
+
+# Wrap functions tagged with `@jit` (see `jit_roclet()`). Runs at package
+# source time so the wrappers are byte-compiled along with the rest of the
+# package, instead of being rebuilt on every `.onLoad`.
+apply_jit_registry(.jit_registry)

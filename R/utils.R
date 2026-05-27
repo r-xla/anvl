@@ -3,6 +3,48 @@ dtype_from_buffer <- function(x) {
   as_dtype(d)
 }
 
+#' @title Apply a `@jit` registry
+#' @description
+#' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
+#' listed function in `envir` to
+#' `jit(f, backend = "auto", static = entry$static)`.
+#'
+#' Call this from the top level of your package's `R/zzz.R`, right next to
+#' `.onLoad`, so the wrappers are byte-compiled during package install
+#' instead of being rebuilt on every `.onLoad`:
+#'
+#' ```r
+#' anvl::apply_jit_registry(.jit_registry)
+#' ```
+#'
+#' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
+#' regenerated on every `devtools::document()`.
+#'
+#' @param registry (`list`)\cr
+#'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
+#'   `.jit_registry` object emitted by the roclet.
+#' @param envir (`environment`)\cr
+#'   Environment in which to look up and rebind functions. Defaults to
+#'   `parent.frame()`, which at top-level package source time is the package
+#'   namespace.
+#' @return Invisibly returns `envir`.
+#' @seealso [`jit_roclet()`], [`jit()`]
+#' @export
+apply_jit_registry <- function(registry, envir = parent.frame()) {
+  for (entry in registry) {
+    assign(
+      entry$name,
+      jit(
+        get(entry$name, envir = envir, inherits = FALSE),
+        backend = "auto",
+        static = entry$static
+      ),
+      envir = envir
+    )
+  }
+  invisible(envir)
+}
+
 hashvalues <- function(h) {
   val <- vector("list", numhash(h))
   idx <- 0

@@ -522,6 +522,7 @@ make_do_binary <- function(f) {
 #' y <- nv_array(c(4, 5, 6))
 #' x + y
 #' @export
+#' @jit
 nv_add <- make_do_binary(prim_add)
 
 #' @title Multiplication
