@@ -26,12 +26,22 @@ Same shape as \code{operand} with \code{dim} removed (or set to 1 if \code{drop 
 Returns the index of the maximum value along a dimension. Ties are broken
 by returning the smallest index.
 }
+\section{NaN handling}{
+
+The underlying XLA \code{argmax} kernel is comparison-based, so \code{NaN} entries
+are skipped (they compare false against everything) and the returned index
+refers to the largest non-\code{NaN} value. This matches base R's
+\code{which.max(c(1, NaN, 3))} and JAX's \code{jnp.argmax}. If every entry along the
+reduced axis is \code{NaN}, the result is the first index along that axis.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
   dim = 2L
 )
+nv_argmax(nv_array(c(1, NaN, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

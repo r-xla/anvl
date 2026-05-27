@@ -4,7 +4,7 @@
 \alias{nv_reduce_sum}
 \title{Sum Reduction}
 \usage{
-nv_reduce_sum(operand, dims = NULL, drop = TRUE)
+nv_reduce_sum(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -16,6 +16,12 @@ dimensions, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop reduced dimensions.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates.
+If \code{TRUE}, \code{NaN} values are either removed or replaced by the
+neutral element of the reduction.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -31,6 +37,8 @@ Sums array elements along the specified dimensions.
 x <- nv_matrix(1:6, nrow = 2)
 nv_reduce_sum(x)            # all dims -> scalar
 nv_reduce_sum(x, dims = 1L)
+nv_reduce_sum(nv_array(c(1, NaN, 3)))                # NaN
+nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)  # 4
 \dontshow{\}) # examplesIf}
 }
 \seealso{

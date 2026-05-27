@@ -538,8 +538,10 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
     zeros_like(true_value, ambiguous = TRUE)
   }
 
+  # Predicate is boolean -- its cotangent is zero a.e. Matches the JAX
+  # `select` transpose rule, which returns no contribution for `which`.
   list(
-    if (required[[1L]]) cli_abort("Predicate cannot be differentiated"),
+    if (required[[1L]]) zeros_like(pred, ambiguous = TRUE),
     if (required[[2L]]) prim_ifelse(pred, grad, zero),
     if (required[[3L]]) prim_ifelse(prim_not(pred), grad, zero)
   )

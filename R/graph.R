@@ -512,7 +512,7 @@ get_box_or_register_const <- function(desc, x) {
     desc$gval_to_box[[gval]] <- box
     return(box)
   }
-  if (test_scalar(x)) {
+  if (is_valid_r_lit(x)) {
     ambiguous <- !is.logical(x)
     gval <- GraphLiteral(LiteralArray(x, shape = integer(), ambiguous = ambiguous))
     box <- desc$gval_to_box[[gval]] <- GraphBox(gval, desc)

@@ -35,7 +35,6 @@ x
 # Select row 2
 x[2, ]
 
-x <- nv_matrix(1:12, nrow = 3)
 # Select rows 1 to 2, all columns
 x[1:2, ]
 \dontshow{\}) # examplesIf}

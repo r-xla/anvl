@@ -33,6 +33,11 @@ Sorts an array along a dimension.
 
 You can also use \code{sort()} directly.
 }
+\section{NaN handling}{
+
+The position of \code{NaN} values in the sorted output is **XLA-backend-defined.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))

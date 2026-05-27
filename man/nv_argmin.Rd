@@ -26,9 +26,17 @@ Same shape as \code{operand} with \code{dim} removed (or set to 1 if \code{drop 
 Returns the index of the minimum value along a dimension. Ties are broken
 by returning the smallest index.
 }
+\section{NaN handling}{
+
+Like \code{\link[=nv_argmax]{nv_argmax()}}, \code{NaN} entries are skipped by the comparison-based XLA
+kernel; the returned index refers to the smallest non-\code{NaN} value. This
+matches base R's \code{which.min(c(1, NaN, 3))} and JAX's \code{jnp.argmin}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
+nv_argmin(nv_array(c(2, NaN, 1, 3)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

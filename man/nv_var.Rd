@@ -4,7 +4,7 @@
 \alias{nv_var}
 \title{Variance Reduction}
 \usage{
-nv_var(operand, dims, drop = TRUE, correction = 1L)
+nv_var(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -19,6 +19,12 @@ Whether to drop reduced dimensions.}
 
 \item{correction}{(\code{integer(1)})\cr
 Degrees of freedom correction. Default is \code{1} (Bessel's correction).}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates.
+If \code{TRUE}, \code{NaN} values are either removed or replaced by the
+neutral element of the reduction.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -32,11 +38,13 @@ Computes the variance along the specified dimensions.
 \details{
 Uses Bessel's correction by default (\code{correction = 1}), matching R's \code{\link[=var]{var()}}.
 Set \code{correction = 0} for population variance.
+degrees-of-freedom count.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))
 nv_var(x, dims = 1L)
+nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

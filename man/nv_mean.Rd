@@ -5,7 +5,7 @@
 \alias{mean.AnvlArray}
 \title{Mean}
 \usage{
-nv_mean(operand, dims = NULL, drop = TRUE)
+nv_mean(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 
 \method{mean}{AnvlArray}(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
 }
@@ -20,10 +20,18 @@ dimensions, returning a scalar.}
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop reduced dimensions.}
 
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates.
+If \code{TRUE}, \code{NaN} values are either removed or replaced by the
+neutral element of the reduction.}
+
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
 
-\item{trim, na.rm}{Currently not supported.}
+\item{trim}{Currently not supported.}
+
+\item{na.rm}{Forwarded to \code{\link[=nv_mean]{nv_mean()}}'s \code{nan_rm} argument.}
 
 \item{...}{No additional arguments.}
 }
@@ -37,15 +45,13 @@ When \code{drop = FALSE}, the reduced dimensions are set to 1.
 Computes the arithmetic mean along the specified dimensions. You can also
 use \code{mean()}.
 }
-\details{
-Implemented as \code{nv_reduce_sum(operand, dims, drop) / n} where \code{n} is the
-product of the reduced dimension sizes.
-}
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
 nv_mean(x)            # all dims -> scalar
 nv_mean(x, dims = 1L)
+nv_mean(nv_array(c(1, NaN, 3)))
+nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

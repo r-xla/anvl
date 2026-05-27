@@ -90,18 +90,20 @@ Math.AnvlBox <- Math.AnvlArray
 
 #' @export
 Summary.AnvlArray <- function(x, ..., na.rm = FALSE) {
-  if (isTRUE(na.rm)) {
-    cli_abort("{.code na.rm = TRUE} is not supported: anvl arrays do not carry {.code NA}s.")
-  }
-  # Forward `...` so supported extras (e.g. `sum(x, dims = 1L)`) reach the
-  # underlying nv_reduce_* and unsupported ones error there as unused args.
+  # Forward `na.rm` to the underlying nv_reduce_*'s `nan_rm` arg and `...`
+  # for supported extras (e.g. `sum(x, dims = 1L)`); unsupported extras error
+  # there as unused args.
   switch(
     .Generic, # nolint
-    "max" = nv_reduce_max(x, ...),
-    "min" = nv_reduce_min(x, ...),
-    "range" = nv_concatenate(nv_reduce_min(x, ...), nv_reduce_max(x, ...)),
-    "prod" = nv_reduce_prod(x, ...),
-    "sum" = nv_reduce_sum(x, ...),
+    "max" = nv_reduce_max(x, ..., nan_rm = na.rm),
+    "min" = nv_reduce_min(x, ..., nan_rm = na.rm),
+    "range" = nv_concatenate(
+      nv_reduce_min(x, ..., nan_rm = na.rm),
+      nv_reduce_max(x, ..., nan_rm = na.rm)
+    ),
+    "prod" = nv_reduce_prod(x, ..., nan_rm = na.rm),
+    "sum" = nv_reduce_sum(x, ..., nan_rm = na.rm),
+    # no na.rm because we only support booleans which can't have NaNs
     "any" = nv_reduce_any(x, ...),
     "all" = nv_reduce_all(x, ...),
     cli_abort("invalid method: {(.Generic)}")
@@ -113,18 +115,16 @@ Summary.AnvlBox <- Summary.AnvlArray
 
 #' @rdname nv_mean
 #' @template param_x_operand
-#' @param trim,na.rm Currently not supported.
+#' @param trim Currently not supported.
+#' @param na.rm Forwarded to [nv_mean()]'s `nan_rm` argument.
 #' @param ... No additional arguments.
 #' @method mean AnvlArray
 #' @export
 mean.AnvlArray <- function(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE) {
-  if (isTRUE(na.rm)) {
-    cli_abort("{.code na.rm = TRUE} is not supported: anvl arrays do not carry {.code NA}s.")
-  }
   if (!identical(trim, 0)) {
     cli_abort("{.arg trim} is not supported by {.fn mean} for anvl arrays.")
   }
-  nv_mean(x, ..., dims = dims, drop = drop)
+  nv_mean(x, ..., dims = dims, drop = drop, nan_rm = na.rm)
 }
 
 #' @method mean AnvlBox
@@ -198,16 +198,13 @@ t.AnvlBox <- t.AnvlArray
 
 #' @rdname nv_median
 #' @template param_x_operand
-#' @param na.rm Currently not supported.
+#' @param na.rm Forwarded to [nv_median()]'s `nan_rm` argument.
 #' @param ... No additional arguments.
 #' @method median AnvlArray
 #' @export
 median.AnvlArray <- function(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear") {
-  if (isTRUE(na.rm)) {
-    cli_abort("{.code na.rm = TRUE} is not supported: anvl arrays do not carry {.code NA}s.")
-  }
   rlang::check_dots_empty()
-  nv_median(x, dim = dim, interpolation = interpolation)
+  nv_median(x, dim = dim, interpolation = interpolation, nan_rm = na.rm)
 }
 
 #' @method median AnvlBox
