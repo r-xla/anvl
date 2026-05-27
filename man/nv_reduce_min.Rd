@@ -30,12 +30,6 @@ When \code{drop = FALSE}, the reduced dimensions are set to 1.
 \description{
 Finds the minimum of array elements along the specified dimensions.
 }
-\section{NaN handling}{
-
-With \code{nan_rm = FALSE} (default), any \code{NaN} along the reduced axis
-propagates to the output. With \code{nan_rm = TRUE}, \code{NaN} values are skipped.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)

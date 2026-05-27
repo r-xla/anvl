@@ -44,14 +44,6 @@ flattened sequence iterates the last dim fastest, whereas base R uses
 column-major (Fortran) order. The two agree on 1-D inputs.
 }
 
-\section{NaN handling}{
-
-With \code{nan_rm = FALSE} (default), a \code{NaN} propagates forward: positions at
-or after the first \code{NaN} along \code{dim} are \code{NaN}. With \code{nan_rm = TRUE},
-\code{NaN} is treated as the identity element (\code{0} for sum, \code{1} for prod,
-\code{-Inf}/\code{+Inf} for max/min) and contributes nothing to the running value.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)

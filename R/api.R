@@ -1943,7 +1943,6 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 #' @template params_reduce
 #' @template return_reduce
 #' @template param_nan_rm
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -1969,7 +1968,6 @@ nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template return_reduce
 #' @template param_nan_rm
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -1998,7 +1996,6 @@ nv_mean <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template return_reduce
 #' @template param_nan_rm
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2023,9 +2020,6 @@ nv_reduce_prod <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template param_nan_rm
 #' @template return_reduce
-#' @section NaN handling:
-#' With `nan_rm = FALSE` (default), any `NaN` along the reduced axis
-#' propagates to the output. With `nan_rm = TRUE`, `NaN` values are skipped.
 #' @seealso [prim_reduce_max()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2047,7 +2041,6 @@ nv_reduce_max <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template param_nan_rm
 #' @template return_reduce
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [prim_reduce_min()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2127,11 +2120,6 @@ nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumsum
 #' @template section_nv_cum_relation
-#' @section NaN handling:
-#' With `nan_rm = FALSE` (default), a `NaN` propagates forward: positions at
-#' or after the first `NaN` along `dim` are `NaN`. With `nan_rm = TRUE`,
-#' `NaN` is treated as the identity element (`0` for sum, `1` for prod,
-#' `-Inf`/`+Inf` for max/min) and contributes nothing to the running value.
 #' @seealso [prim_cumsum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2162,7 +2150,6 @@ nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumprod
 #' @template section_nv_cum_relation
-#' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cumprod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2195,7 +2182,6 @@ nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' @templateVar cum_nv_name nv_cummax
 #' @template section_nv_cum_relation
 #' @template param_nan_rm_cum
-#' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cummax()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
@@ -2221,7 +2207,6 @@ nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 #' @templateVar cum_nv_name nv_cummin
 #' @template section_nv_cum_relation
 #' @template param_nan_rm_cum
-#' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cummin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
@@ -2375,7 +2360,6 @@ nv_is_infinite <- function(operand) {
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
 #' @template return_reduce
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_sd()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
@@ -2414,7 +2398,6 @@ nv_var <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) 
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
 #' @template return_reduce
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_var()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
@@ -2913,7 +2896,6 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #'   For scalar `probs`: same shape as `x` with `dim` removed. For
 #'   array `probs`: a **leading** dimension of size `length(probs)` is
 #'   prepended.
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_median()], [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -3024,7 +3006,6 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
 #'   Same shape as `operand` with `dim` removed.
-#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))

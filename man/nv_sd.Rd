@@ -37,12 +37,6 @@ Computes the standard deviation along the specified dimensions.
 Uses Bessel's correction by default (\code{correction = 1}), matching R's \code{\link[=sd]{sd()}}.
 Set \code{correction = 0} for population standard deviation.
 }
-\section{NaN handling}{
-
-With \code{nan_rm = FALSE} (default), any \code{NaN} along the reduced axis
-propagates to the output. With \code{nan_rm = TRUE}, \code{NaN} values are skipped.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))

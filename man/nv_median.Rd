@@ -44,12 +44,6 @@ values is returned, matching base R's \code{median()}.
 You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{AnvlBox}};
 extra arguments (e.g. \code{interpolation}) are forwarded via \code{...}.
 }
-\section{NaN handling}{
-
-With \code{nan_rm = FALSE} (default), any \code{NaN} along the reduced axis
-propagates to the output. With \code{nan_rm = TRUE}, \code{NaN} values are skipped.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
