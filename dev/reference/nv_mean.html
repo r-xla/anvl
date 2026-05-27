@@ -83,7 +83,7 @@ use <code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean(
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_mean</span><span class="op">(</span><span class="va">operand</span>, dims <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_mean</span><span class="op">(</span><span class="va">operand</span>, dims <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">TRUE</span>, nan_rm <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">x</span>, trim <span class="op">=</span> <span class="fl">0</span>, na.rm <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span>, dims <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
@@ -109,13 +109,23 @@ dimensions, returning a scalar.</p></dd>
 Whether to drop reduced dimensions.</p></dd>
 
 
+<dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+(default), <code>NaN</code> propagates. If <code>TRUE</code>, <code>NaN</code> values are skipped.</p></dd>
+
+
 <dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Same as <code>operand</code>; this is the name used by the base R S3 generic.</p></dd>
 
 
-<dt id="arg-trim-na-rm">trim, na.rm<a class="anchor" aria-label="anchor" href="#arg-trim-na-rm"></a></dt>
+<dt id="arg-trim">trim<a class="anchor" aria-label="anchor" href="#arg-trim"></a></dt>
 <dd><p>Currently not supported.</p></dd>
+
+
+<dt id="arg-na-rm">na.rm<a class="anchor" aria-label="anchor" href="#arg-na-rm"></a></dt>
+<dd><p>Forwarded to <code>nv_mean()</code>'s <code>nan_rm</code> argument.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
@@ -128,11 +138,6 @@ Same as <code>operand</code>; this is the name used by the base R S3 generic.</p
 Has the same data type as the input.
 When <code>drop = TRUE</code>, the reduced dimensions are removed.
 When <code>drop = FALSE</code>, the reduced dimensions are set to 1.</p>
-    </div>
-    <div class="section level2">
-    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Implemented as <code>nv_reduce_sum(operand, dims, drop) / n</code> where <code>n</code> is the
-product of the reduced dimension sizes.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -152,6 +157,14 @@ product of the reduced dimension sizes.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3.5000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5.5000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32?{3} ] </span>
+<span class="r-in"><span><span class="fu">nv_mean</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NaN</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  nan</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
+<span class="r-in"><span><span class="fu">nv_mean</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NaN</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, nan_rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

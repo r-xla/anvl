@@ -80,7 +80,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_reduce_min</span><span class="op">(</span><span class="va">operand</span>, dims <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_reduce_min</span><span class="op">(</span><span class="va">operand</span>, dims <span class="op">=</span> <span class="cn">NULL</span>, drop <span class="op">=</span> <span class="cn">TRUE</span>, nan_rm <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -101,6 +101,12 @@ dimensions, returning a scalar.</p></dd>
 <dt id="arg-drop">drop<a class="anchor" aria-label="anchor" href="#arg-drop"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 Whether to drop reduced dimensions.</p></dd>
+
+
+<dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+(default), <code>NaN</code> propagates. If <code>TRUE</code>, <code>NaN</code> values are skipped.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -128,6 +134,14 @@ When <code>drop = FALSE</code>, the reduced dimensions are set to 1.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3} ] </span>
+<span class="r-in"><span><span class="fu">nv_reduce_min</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NaN</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  nan</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
+<span class="r-in"><span><span class="fu">nv_reduce_min</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NaN</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, nan_rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

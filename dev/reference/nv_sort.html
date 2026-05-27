@@ -83,7 +83,7 @@ You can also use sort() directly."><meta property="og:image" content="https://r-
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">operand</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">operand</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span>, stable <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">x</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span>, dim <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
@@ -108,6 +108,15 @@ dimension.</p></dd>
 <dd><p>(<code>logical(1)</code>)<br> If <code>TRUE</code>, sort in decreasing order.</p></dd>
 
 
+<dt id="arg-stable">stable<a class="anchor" aria-label="anchor" href="#arg-stable"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code>, the sort is stable: equal values keep their original
+relative order along <code>dim</code>. Default <code>FALSE</code>. Stability is only
+observable for floats when <code>-0</code> / <code>+0</code> or <code>-NaN</code> / <code>+NaN</code> are mixed
+(they compare equal under the total order used here); for distinct
+values the result is identical either way.</p></dd>
+
+
 <dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Same as <code>operand</code>; this is the name used by the base R S3 generic.</p></dd>
@@ -123,10 +132,17 @@ Same as <code>operand</code>; this is the name used by the base R S3 generic.</p
 Same shape and data type as <code>operand</code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="nan-handling">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling"></a></h2>
+
+
+<p><code>NaN</code> values sort to the <strong>end</strong> (ascending) or <strong>beginning</strong>
+(descending), regardless of sign. <code>+0</code> and <code>-0</code> compare equal.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="prim_sort.html">prim_sort()</a></code> for the underlying primitive,
-<code><a href="nv_argsort.html">nv_argsort()</a></code> (where sort stability is observable),
-<code><a href="nv_top_k.html">nv_top_k()</a></code>, <code><a href="nv_median.html">nv_median()</a></code>, <code><a href="nv_argmax.html">nv_argmax()</a></code>, <code><a href="nv_argmin.html">nv_argmin()</a></code>.</p></div>
+<code><a href="nv_argsort.html">nv_argsort()</a></code>, <code><a href="nv_top_k.html">nv_top_k()</a></code>, <code><a href="nv_median.html">nv_median()</a></code>,
+<code><a href="nv_argmax.html">nv_argmax()</a></code>, <code><a href="nv_argmin.html">nv_argmin()</a></code>.</p></div>
     </div>
 
     <div class="section level2">

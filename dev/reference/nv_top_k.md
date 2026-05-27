@@ -42,6 +42,13 @@ nv_top_k(operand, k, dim = NULL, with_indices = FALSE)
 `with_indices = TRUE`). Output shape matches `operand` with `dim`
 resized to `k`; values are sorted decreasing along `dim`.
 
+## NaN handling
+
+`NaN` ranks larger than any finite value (so it appears first in the
+top-`k` output); `-NaN` ranks smaller. Unlike
+[`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md),
+the sign bit is not canonicalized.
+
 ## See also
 
 [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md)

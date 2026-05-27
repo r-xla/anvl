@@ -5,7 +5,7 @@ Cumulative sum, optionally along a single dimension.
 ## Usage
 
 ``` r
-nv_cumsum(operand, dim = NULL)
+nv_cumsum(operand, dim = NULL, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -21,6 +21,15 @@ nv_cumsum(operand, dim = NULL)
   Dimension along which to accumulate. If `NULL` (default), the input is
   first flattened to a 1-D array, like
   [`base::cumsum()`](https://rdrr.io/r/base/cumsum.html).
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates forward from its first occurrence. If
+  `TRUE`, `NaN` is treated as the identity element of the cumulative op
+  (`0` for sum, `1` for prod, `-Inf` / `+Inf` for max / min) and
+  contributes nothing to the running value.
 
 ## Value
 
@@ -59,4 +68,16 @@ nv_cumsum(x, dim = 1L)    # accumulate along rows
 #>   1  3  5
 #>   3  7 11
 #> [ CPUi32{2,3} ] 
+nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
+#> AnvlArray
+#>    1
+#>  nan
+#>  nan
+#> [ CPUf32{3} ] 
+nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
+#> AnvlArray
+#>  1
+#>  1
+#>  4
+#> [ CPUf32{3} ] 
 ```

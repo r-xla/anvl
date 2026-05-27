@@ -6,7 +6,7 @@ broken by returning the smallest index.
 ## Usage
 
 ``` r
-nv_argmax(operand, dim = NULL, drop = TRUE)
+nv_argmax(operand, dim = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -28,12 +28,24 @@ nv_argmax(operand, dim = NULL, drop = TRUE)
   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it is
   kept with size 1.
 
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
 dtype `i32`  
 Same shape as `operand` with `dim` removed (or set to 1 if
 `drop = FALSE`).
+
+## NaN handling
+
+With `nan_rm = FALSE` (default), if any entry along the reduced axis is
+`NaN`, the returned index points at the first such `NaN`. With
+`nan_rm = TRUE`, `NaN` entries are skipped.
 
 ## See also
 
@@ -54,4 +66,12 @@ nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
 #>  3
 #>  2
 #> [ CPUi32{2} ] 
+nv_argmax(nv_array(c(1, NaN, 3)))
+#> AnvlArray
+#>  2
+#> [ CPUi32{} ] 
+nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#> AnvlArray
+#>  3
+#> [ CPUi32{} ] 
 ```

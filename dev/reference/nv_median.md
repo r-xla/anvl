@@ -15,7 +15,7 @@ extra arguments (e.g. `interpolation`) are forwarded via `...`.
 ## Usage
 
 ``` r
-nv_median(operand, dim = NULL, interpolation = "linear")
+nv_median(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE)
 
 # S3 method for class 'AnvlArray'
 median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
@@ -42,6 +42,13 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
   `"midpoint"`.
 
+- nan_rm:
+
+  (`logical(1)`)  
+  Forwarded to
+  [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md).
+  See its documentation for details.
+
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
@@ -49,7 +56,7 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
 
 - na.rm:
 
-  Currently not supported.
+  Forwarded to `nv_median()`'s `nan_rm` argument.
 
 - ...:
 
@@ -88,5 +95,13 @@ nv_median(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
 median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")
 #> AnvlArray
 #>  2
+#> [ CPUf32{} ] 
+nv_median(nv_array(c(1, NaN, 3, 5)))
+#> AnvlArray
+#>  nan
+#> [ CPUf32{} ] 
+nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
+#> AnvlArray
+#>  3
 #> [ CPUf32{} ] 
 ```

@@ -5,7 +5,7 @@ Finds the minimum of array elements along the specified dimensions.
 ## Usage
 
 ``` r
-nv_reduce_min(operand, dims = NULL, drop = TRUE)
+nv_reduce_min(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -25,6 +25,12 @@ nv_reduce_min(operand, dims = NULL, drop = TRUE)
 
   (`logical(1)`)  
   Whether to drop reduced dimensions.
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
@@ -52,4 +58,12 @@ nv_reduce_min(x, dims = 1L)
 #>  3
 #>  5
 #> [ CPUi32{3} ] 
+nv_reduce_min(nv_array(c(1, NaN, 3)))
+#> AnvlArray
+#>  nan
+#> [ CPUf32{} ] 
+nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#> AnvlArray
+#>  1
+#> [ CPUf32{} ] 
 ```

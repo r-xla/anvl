@@ -42,6 +42,11 @@ array of the same shape (a valid empty permutation).
 `as_array(operand)[as_array(nv_argsort(operand))]` reproduces the sorted
 array (for 1-D inputs).
 
+## NaN handling
+
+`NaN` values sort to the **end** (ascending) or **beginning**
+(descending), regardless of sign. `+0` and `-0` compare equal.
+
 ## See also
 
 [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md),

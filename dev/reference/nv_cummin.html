@@ -80,7 +80,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="va">operand</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, with_indices <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="va">operand</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, with_indices <span class="op">=</span> <span class="cn">FALSE</span>, nan_rm <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -105,6 +105,15 @@ If <code>TRUE</code>, returns <code>list(values = ..., indices = ...)</code> whe
 is the 1-based index of the last occurrence of the running
 minimum at each position (dtype <code>i32</code>, matching torch).
 When <code>dim = NULL</code>, indices refer to the flattened input.</p></dd>
+
+
+<dt id="arg-nan-rm">nan_rm<a class="anchor" aria-label="anchor" href="#arg-nan-rm"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</code>
+(default), <code>NaN</code> propagates forward from its first occurrence. If
+<code>TRUE</code>, <code>NaN</code> is treated as the identity element of the cumulative
+op (<code>0</code> for sum, <code>1</code> for prod, <code>-Inf</code> / <code>+Inf</code> for max / min) and
+contributes nothing to the running value.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -157,6 +166,18 @@ column-major (Fortran) order. The two agree on 1-D inputs.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2 2 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,3} ] </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="cn">NaN</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>                <span class="co"># NaN propagates</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  nan</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  nan</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
+<span class="r-in"><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="cn">NaN</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span>, nan_rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># NaN skipped</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

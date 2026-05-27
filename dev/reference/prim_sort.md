@@ -66,7 +66,11 @@ Lowers to
 [`stablehlo::hlo_sort()`](https://r-xla.github.io/stablehlo/reference/hlo_sort.html)
 with a comparator that uses
 [`stablehlo::hlo_compare()`](https://r-xla.github.io/stablehlo/reference/hlo_compare.html)
-(`LT` for ascending, `GT` for descending) on the first operand.
+(`LT` for ascending, `GT` for descending) on the first operand. For
+float keys the comparator uses `compare_type = "TOTALORDER"` and
+canonicalizes `-0`/`+0` and `-NaN`/`+NaN` to their positive form before
+comparing, so all `NaN` values land at one end of the result regardless
+of sign. Integer keys use `SIGNED` / `UNSIGNED` as appropriate.
 
 ## See also
 

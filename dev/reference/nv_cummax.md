@@ -5,7 +5,7 @@ Running maximum, optionally along a single dimension.
 ## Usage
 
 ``` r
-nv_cummax(operand, dim = NULL, with_indices = FALSE)
+nv_cummax(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -30,6 +30,15 @@ nv_cummax(operand, dim = NULL, with_indices = FALSE)
   1-based index of the last occurrence of the running maximum at each
   position (dtype `i32`, matching torch). When `dim = NULL`, indices
   refer to the flattened input.
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates forward from its first occurrence. If
+  `TRUE`, `NaN` is treated as the identity element of the cumulative op
+  (`0` for sum, `1` for prod, `-Inf` / `+Inf` for max / min) and
+  contributes nothing to the running value.
 
 ## Value
 
@@ -82,4 +91,16 @@ nv_cummax(x, dim = 1L, with_indices = TRUE)
 #>  1 1 2
 #> [ CPUi32{2,3} ] 
 #> 
+nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
+#> AnvlArray
+#>    1
+#>  nan
+#>  nan
+#> [ CPUf32{3} ] 
+nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
+#> AnvlArray
+#>  1
+#>  1
+#>  3
+#> [ CPUf32{3} ] 
 ```

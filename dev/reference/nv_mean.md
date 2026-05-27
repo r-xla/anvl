@@ -6,7 +6,7 @@ also use [`mean()`](https://rdrr.io/r/base/mean.html).
 ## Usage
 
 ``` r
-nv_mean(operand, dims = NULL, drop = TRUE)
+nv_mean(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 
 # S3 method for class 'AnvlArray'
 mean(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
@@ -30,14 +30,24 @@ mean(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
   (`logical(1)`)  
   Whether to drop reduced dimensions.
 
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
+
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Same as `operand`; this is the name used by the base R S3 generic.
 
-- trim, na.rm:
+- trim:
 
   Currently not supported.
+
+- na.rm:
+
+  Forwarded to `nv_mean()`'s `nan_rm` argument.
 
 - ...:
 
@@ -49,11 +59,6 @@ mean(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
 Has the same data type as the input. When `drop = TRUE`, the reduced
 dimensions are removed. When `drop = FALSE`, the reduced dimensions are
 set to 1.
-
-## Details
-
-Implemented as `nv_reduce_sum(operand, dims, drop) / n` where `n` is the
-product of the reduced dimension sizes.
 
 ## See also
 
@@ -73,4 +78,12 @@ nv_mean(x, dims = 1L)
 #>  3.5000
 #>  5.5000
 #> [ CPUf32?{3} ] 
+nv_mean(nv_array(c(1, NaN, 3)))
+#> AnvlArray
+#>  nan
+#> [ CPUf32{} ] 
+nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#> AnvlArray
+#>  2
+#> [ CPUf32{} ] 
 ```

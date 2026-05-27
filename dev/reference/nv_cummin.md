@@ -5,7 +5,7 @@ Running minimum, optionally along a single dimension.
 ## Usage
 
 ``` r
-nv_cummin(operand, dim = NULL, with_indices = FALSE)
+nv_cummin(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -30,6 +30,15 @@ nv_cummin(operand, dim = NULL, with_indices = FALSE)
   1-based index of the last occurrence of the running minimum at each
   position (dtype `i32`, matching torch). When `dim = NULL`, indices
   refer to the flattened input.
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates forward from its first occurrence. If
+  `TRUE`, `NaN` is treated as the identity element of the cumulative op
+  (`0` for sum, `1` for prod, `-Inf` / `+Inf` for max / min) and
+  contributes nothing to the running value.
 
 ## Value
 
@@ -82,4 +91,16 @@ nv_cummin(x, dim = 1L, with_indices = TRUE)
 #>  2 2 1
 #> [ CPUi32{2,3} ] 
 #> 
+nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
+#> AnvlArray
+#>    3
+#>  nan
+#>  nan
+#> [ CPUf32{3} ] 
+nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
+#> AnvlArray
+#>  3
+#>  3
+#>  1
+#> [ CPUf32{3} ] 
 ```

@@ -5,7 +5,7 @@ Computes the standard deviation along the specified dimensions.
 ## Usage
 
 ``` r
-nv_sd(operand, dims, drop = TRUE, correction = 1L)
+nv_sd(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -30,6 +30,12 @@ nv_sd(operand, dims, drop = TRUE, correction = 1L)
 
   (`integer(1)`)  
   Degrees of freedom correction. Default is `1` (Bessel's correction).
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 

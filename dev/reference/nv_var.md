@@ -5,7 +5,7 @@ Computes the variance along the specified dimensions.
 ## Usage
 
 ``` r
-nv_var(operand, dims, drop = TRUE, correction = 1L)
+nv_var(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -30,6 +30,12 @@ nv_var(operand, dims, drop = TRUE, correction = 1L)
 
   (`integer(1)`)  
   Degrees of freedom correction. Default is `1` (Bessel's correction).
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
@@ -56,5 +62,9 @@ x <- nv_array(c(1, 2, 3, 4, 5))
 nv_var(x, dims = 1L)
 #> AnvlArray
 #>  2.5000
+#> [ CPUf32{} ] 
+nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
+#> AnvlArray
+#>  4
 #> [ CPUf32{} ] 
 ```

@@ -2,7 +2,7 @@
 
 Picks one or more elements along dimension `dim` of `operand`. Use this
 instead of `[` or `nv_subset` when the index to select is provided
-programatically.
+programmatically.
 
 ## Usage
 

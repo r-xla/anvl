@@ -5,7 +5,7 @@ Multiplies array elements along the specified dimensions.
 ## Usage
 
 ``` r
-nv_reduce_prod(operand, dims = NULL, drop = TRUE)
+nv_reduce_prod(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -25,6 +25,12 @@ nv_reduce_prod(operand, dims = NULL, drop = TRUE)
 
   (`logical(1)`)  
   Whether to drop reduced dimensions.
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
@@ -52,4 +58,12 @@ nv_reduce_prod(x, dims = 1L)
 #>  12
 #>  30
 #> [ CPUi32{3} ] 
+nv_reduce_prod(nv_array(c(2, NaN, 3)))
+#> AnvlArray
+#>  nan
+#> [ CPUf32{} ] 
+nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
+#> AnvlArray
+#>  6
+#> [ CPUf32{} ] 
 ```

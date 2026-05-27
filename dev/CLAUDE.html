@@ -86,11 +86,12 @@
 <li>
 <strong><code>prim_*</code> functions</strong> (e.g. <code><a href="reference/prim_fill.html">prim_fill()</a></code>, <code><a href="reference/prim_mul.html">prim_mul()</a></code>) – low-level primitives in <code>R/primitives.R</code>, exported directly under their <code>prim_&lt;name&gt;</code> R symbols. Calling a primitive records an operation into the computation graph during tracing (or executes it eagerly).</li>
 </ul><p>When adding new functionality, decide which layer it belongs to. Most new operations need both: a <code>prim_*</code> primitive with rules, and an <code>nv_*</code> wrapper with R-idiomatic semantics.</p>
+<p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>.</p>
 </div>
 <div class="section level2">
 <h2 id="supported-dtypes">Supported dtypes<a class="anchor" aria-label="anchor" href="#supported-dtypes"></a></h2>
-<p>Anvl currently does <strong>not</strong> support complex numbers — every primitive and API function works on real (and integer/logical) dtypes only. Linalg ops that conceptually produce complex outputs in the general case (e.g. non-symmetric eigendecomposition) are intentionally omitted; only the real-only variants (<code>prim_eigh</code> / <code>nv_eigh</code> for symmetric matrices) are exposed.</p>
-</div>
+<ul><li>there is currently no support for complex numbers.</li>
+</ul></div>
 <div class="section level2">
 <h2 id="primitive-system">Primitive System<a class="anchor" aria-label="anchor" href="#primitive-system"></a></h2>
 <p>Primitives are <code>JitPrimitive</code> callables constructed by <code><a href="reference/new_primitive.html">new_primitive()</a></code> (defined in <code>R/primitive.R</code>). The returned object is both callable (it wraps <code>fn</code> with <code><a href="reference/jit.html">jit()</a></code>) and carries an <code>AnvlPrimitive</code> metadata object via <code>attr(., "primitive")</code>. Primitives are stored as <code>prim_&lt;name&gt;</code> variables. <code><a href="reference/new_primitive.html">new_primitive()</a></code> lexically binds <code>self</code> (the <code>AnvlPrimitive</code>) into the body’s enclosing environment, so inside a primitive body you write <code>graph_desc_add(self, ...)</code> — never the primitive name as a string. Interpretation rules are accessed via <code>prim_&lt;name&gt;[["&lt;rule_type&gt;"]]</code>:</p>
