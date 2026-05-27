@@ -115,21 +115,21 @@ test_that("prim_fill", {
 test_that("prim_shift_left", {
   x <- nv_array(as.integer(c(1L, 2L, 3L, 8L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_left(x, y)))
+  out <- as.integer(prim_shift_left(x, y))
   expect_equal(out, as.integer(c(1L, 4L, 12L, 64L)))
 })
 
 test_that("prim_shift_right_logical", {
   x <- nv_array(as.integer(c(16L, 8L, 7L, 1L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 0L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_right_logical(x, y)))
+  out <- as.integer(prim_shift_right_logical(x, y))
   expect_equal(out, as.integer(c(16L, 4L, 1L, 1L)))
 })
 
 test_that("prim_shift_right_arithmetic", {
   x <- nv_array(as.integer(c(-8L, -1L, 8L, -17L)), dtype = "i32")
   y <- nv_array(as.integer(c(1L, 3L, 2L, 4L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_right_arithmetic(x, y)))
+  out <- as.integer(prim_shift_right_arithmetic(x, y))
   expect_equal(out, as.integer(c(-4L, -1L, 2L, -2L)))
 })
 

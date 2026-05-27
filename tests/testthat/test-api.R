@@ -611,32 +611,32 @@ describe("nv_cummax / nv_cummin nan_rm", {
     expect_true(all(is.nan(vals[2:3])))
     # Once NaN propagates, the index tiebreak in the reducer picks the
     # larger index, which for cumulative scans is the current position.
-    expect_equal(as.integer(as_array(out$indices)), c(1L, 2L, 3L))
+    expect_equal(as.integer(out$indices), c(1L, 2L, 3L))
   })
 })
 
 describe("nv_argmax / nv_argmin nan_rm", {
   it("propagates NaN by default (nan_rm = FALSE): returns the NaN's index", {
     x <- nv_array(c(1, NaN, 3))
-    expect_equal(as.integer(as_array(nv_argmax(x))), 2L)
-    expect_equal(as.integer(as_array(nv_argmin(x))), 2L)
+    expect_equal(as.integer(nv_argmax(x)), 2L)
+    expect_equal(as.integer(nv_argmin(x)), 2L)
   })
   it("skips NaN when nan_rm = TRUE", {
     x <- nv_array(c(1, NaN, 3))
-    expect_equal(as.integer(as_array(nv_argmax(x, nan_rm = TRUE))), 3L)
-    expect_equal(as.integer(as_array(nv_argmin(x, nan_rm = TRUE))), 1L)
+    expect_equal(as.integer(nv_argmax(x, nan_rm = TRUE)), 3L)
+    expect_equal(as.integer(nv_argmin(x, nan_rm = TRUE)), 1L)
   })
   it("returns first NaN when several NaNs exist", {
     x <- nv_array(c(1, NaN, 3, NaN, 5))
-    expect_equal(as.integer(as_array(nv_argmax(x))), 2L)
-    expect_equal(as.integer(as_array(nv_argmin(x))), 2L)
+    expect_equal(as.integer(nv_argmax(x)), 2L)
+    expect_equal(as.integer(nv_argmin(x)), 2L)
   })
   it("propagates per-slice along the reduced dim", {
     # row 1 has NaN at col 2, row 2 has no NaN
     m <- nv_matrix(c(1, NaN, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.integer(as_array(nv_argmax(m, dim = 2L))), c(2L, 2L))
+    expect_equal(as.integer(nv_argmax(m, dim = 2L)), c(2L, 2L))
     expect_equal(
-      as.integer(as_array(nv_argmax(m, dim = 2L, nan_rm = TRUE))),
+      as.integer(nv_argmax(m, dim = 2L, nan_rm = TRUE)),
       c(3L, 2L)
     )
   })
@@ -981,7 +981,7 @@ describe("nv_fill_like", {
     expect_equal(shape(out), shape(like))
     expect_equal(dtype(out), dtype(like))
     expect_equal(as.character(device(out)), as.character(device(like)))
-    expect_equal(as.integer(as_array(out)), rep(0L, 6L))
+    expect_equal(as.integer(out), rep(0L, 6L))
   })
 
   it("allows overriding the inherited attributes", {
@@ -1016,7 +1016,7 @@ describe("nv_seq_like", {
     expect_equal(dtype(out), dtype(like))
     expect_equal(as.character(device(out)), as.character(device(like)))
     expect_equal(shape(out), 5L)
-    expect_equal(as.integer(as_array(out)), c(1L, 2L, 3L, 4L, 5L))
+    expect_equal(as.integer(out), c(1L, 2L, 3L, 4L, 5L))
   })
 
   it("allows overriding the inherited attributes", {
