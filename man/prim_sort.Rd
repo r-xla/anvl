@@ -54,7 +54,11 @@ dimensions are preserved.
 
 Lowers to \code{\link[stablehlo:hlo_sort]{stablehlo::hlo_sort()}} with a comparator that uses
 \code{\link[stablehlo:hlo_compare]{stablehlo::hlo_compare()}} (\code{LT} for ascending, \code{GT} for descending) on
-the first operand.
+the first operand. For float keys the comparator uses
+\code{compare_type = "TOTALORDER"} and canonicalizes \code{-0}/\code{+0} and
+\code{-NaN}/\code{+NaN} to their positive form before comparing, so all \code{NaN}
+values land at one end of the result regardless of sign. Integer keys
+use \code{SIGNED} / \code{UNSIGNED} as appropriate.
 }
 
 \examples{

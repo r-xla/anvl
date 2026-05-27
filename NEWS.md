@@ -84,6 +84,14 @@
   `trim`.
 * Added support for `range` generic.
 
+### NaN handling
+
+* `NaN` handling across reductions, cumulative ops, sorting, and
+  `nv_argmax()` / `nv_argmin()` is now deterministic (previously
+  XLA-backend-defined in several cases). A new `nan_rm` argument
+  (default `FALSE`) skips `NaN` values, and the base-R generics
+  (`sum`, `max`, `mean`, `median`, …) forward `na.rm` to it.
+
 ## Other
 
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_reduce_max()`,

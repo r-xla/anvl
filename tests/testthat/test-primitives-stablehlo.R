@@ -115,21 +115,21 @@ test_that("prim_fill", {
 test_that("prim_shift_left", {
   x <- nv_array(as.integer(c(1L, 2L, 3L, 8L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_left(x, y)))
+  out <- as.integer(prim_shift_left(x, y))
   expect_equal(out, as.integer(c(1L, 4L, 12L, 64L)))
 })
 
 test_that("prim_shift_right_logical", {
   x <- nv_array(as.integer(c(16L, 8L, 7L, 1L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 0L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_right_logical(x, y)))
+  out <- as.integer(prim_shift_right_logical(x, y))
   expect_equal(out, as.integer(c(16L, 4L, 1L, 1L)))
 })
 
 test_that("prim_shift_right_arithmetic", {
   x <- nv_array(as.integer(c(-8L, -1L, 8L, -17L)), dtype = "i32")
   y <- nv_array(as.integer(c(1L, 3L, 2L, 4L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_right_arithmetic(x, y)))
+  out <- as.integer(prim_shift_right_arithmetic(x, y))
   expect_equal(out, as.integer(c(-4L, -1L, 2L, -2L)))
 })
 
@@ -779,6 +779,46 @@ describe("prim_sort", {
       out,
       list(nv_array(c(1, 2, 3, 4, 5)), nv_array(c(2L, 4L, 1L, 3L, 5L), dtype = "i64"))
     )
+  })
+
+  it("float ascending: all NaN values land at the end regardless of sign", {
+    out <- as.numeric(prim_sort(list(arr(c(NaN, 1, 2, -NaN))), dim = 1L)[[1L]])
+    expect_equal(out[1:2], c(1, 2))
+    expect_true(all(is.nan(out[3:4])))
+  })
+
+  it("float descending: NaN values land at the beginning", {
+    out <- as.numeric(
+      prim_sort(list(arr(c(1, NaN, 2, -NaN))), dim = 1L, descending = TRUE)[[1L]]
+    )
+    expect_true(all(is.nan(out[1:2])))
+    expect_equal(out[3:4], c(2, 1))
+  })
+
+  it("float ordering interleaves -Inf, finite, +Inf, NaN correctly", {
+    out <- as.numeric(
+      prim_sort(list(arr(c(-0, 1, -1, 0, NaN, Inf, -Inf))), dim = 1L)[[1L]]
+    )
+    # -Inf < -1 < {-0, +0} (tied) < 1 < +Inf < NaN
+    expect_equal(out[1:2], c(-Inf, -1))
+    expect_equal(out[3:4], c(0, 0))
+    expect_equal(out[5:6], c(1, Inf))
+    expect_true(is.nan(out[7]))
+  })
+
+  it("argsort puts NaN positions last under ascending sort", {
+    x <- arr(c(1, NaN, 2, -NaN))
+    idx <- nv_iota(dim = 1L, dtype = "i32", shape = 4L)
+    perm <- as.integer(prim_sort(list(x, idx), dim = 1L)[[2L]])
+    # values at perm[1:2] are non-NaN (positions of 1 and 2 = 1 and 3),
+    # perm[3:4] are the NaN positions in some order
+    expect_equal(perm[1:2], c(1L, 3L))
+    expect_setequal(perm[3:4], c(2L, 4L))
+  })
+
+  it("integer keys are unaffected by the float canonicalization path", {
+    x <- nv_array(c(3L, 1L, 4L, 1L, 5L))
+    expect_equal(prim_sort(list(x), dim = 1L)[[1L]], nv_array(c(1L, 1L, 3L, 4L, 5L)))
   })
 })
 

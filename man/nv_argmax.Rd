@@ -4,7 +4,7 @@
 \alias{nv_argmax}
 \title{Index of the Maximum}
 \usage{
-nv_argmax(operand, dim = NULL, drop = TRUE)
+nv_argmax(operand, dim = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -17,6 +17,10 @@ the last dimension.}
 \item{drop}{(\code{logical(1)})\cr
 If \code{TRUE} (default) the reduced dimension is removed; if \code{FALSE} it
 is kept with size 1.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
@@ -26,12 +30,21 @@ Same shape as \code{operand} with \code{dim} removed (or set to 1 if \code{drop 
 Returns the index of the maximum value along a dimension. Ties are broken
 by returning the smallest index.
 }
+\section{NaN handling}{
+
+With \code{nan_rm = FALSE} (default), if any entry along the reduced axis is
+\code{NaN}, the returned index points at the first such \code{NaN}. With
+\code{nan_rm = TRUE}, \code{NaN} entries are skipped.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
   dim = 2L
 )
+nv_argmax(nv_array(c(1, NaN, 3)))
+nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

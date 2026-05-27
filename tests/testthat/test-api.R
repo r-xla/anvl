@@ -433,6 +433,215 @@ describe("nv_is_infinite", {
   })
 })
 
+describe("nv_reduce_sum / nv_reduce_prod / nv_mean nan_rm", {
+  it("propagate NaN by default", {
+    x <- nv_array(c(1, NaN, 3, 5))
+    expect_true(is.nan(as_array(nv_reduce_sum(x))))
+    expect_true(is.nan(as_array(nv_reduce_prod(x))))
+    expect_true(is.nan(as_array(nv_mean(x))))
+  })
+  it("skip NaN when nan_rm = TRUE", {
+    v <- c(1, NaN, 3, 5)
+    x <- nv_array(v)
+    expect_equal(as.numeric(as_array(nv_reduce_sum(x, nan_rm = TRUE))), sum(v, na.rm = TRUE))
+    expect_equal(as.numeric(as_array(nv_reduce_prod(x, nan_rm = TRUE))), prod(v, na.rm = TRUE))
+    expect_equal(as.numeric(as_array(nv_mean(x, nan_rm = TRUE))), mean(v, na.rm = TRUE))
+  })
+  it("mean of all-NaN slice returns NaN", {
+    x <- nv_array(c(NaN, NaN))
+    expect_true(is.nan(as_array(nv_mean(x, nan_rm = TRUE))))
+  })
+  it("nan_rm forwards from base R generics (sum, prod, mean, range, max, min)", {
+    v <- c(1, NaN, 3, 5)
+    x <- nv_array(v)
+    expect_equal(as.numeric(as_array(sum(x, na.rm = TRUE))), sum(v, na.rm = TRUE))
+    expect_equal(as.numeric(as_array(prod(x, na.rm = TRUE))), prod(v, na.rm = TRUE))
+    expect_equal(as.numeric(as_array(mean(x, na.rm = TRUE))), mean(v, na.rm = TRUE))
+    expect_equal(as.numeric(as_array(max(x, na.rm = TRUE))), max(v, na.rm = TRUE))
+    expect_equal(as.numeric(as_array(min(x, na.rm = TRUE))), min(v, na.rm = TRUE))
+    expect_equal(as.numeric(as_array(range(x, na.rm = TRUE))), range(v, na.rm = TRUE))
+  })
+  it("base R generics propagate NaN by default", {
+    x <- nv_array(c(1, NaN, 3, 5))
+    expect_true(is.nan(as_array(sum(x))))
+    expect_true(is.nan(as_array(mean(x))))
+    expect_true(is.nan(as_array(max(x))))
+  })
+})
+
+describe("nv_var / nv_sd nan_rm", {
+  it("propagate NaN by default", {
+    x <- nv_array(c(1, NaN, 3, 5))
+    expect_true(is.nan(as_array(nv_var(x, dims = 1L))))
+    expect_true(is.nan(as_array(nv_sd(x, dims = 1L))))
+  })
+  it("skip NaN when nan_rm = TRUE (matches base R var/sd)", {
+    v <- c(1, NaN, 3, 5)
+    x <- nv_array(v)
+    expect_equal(as.numeric(as_array(nv_var(x, dims = 1L, nan_rm = TRUE))), var(v, na.rm = TRUE), tolerance = 1e-6)
+    expect_equal(as.numeric(as_array(nv_sd(x, dims = 1L, nan_rm = TRUE))), sd(v, na.rm = TRUE), tolerance = 1e-6)
+  })
+  it("respects correction argument", {
+    v <- c(1, NaN, 3, 5)
+    x <- nv_array(v)
+    expect_equal(
+      as.numeric(as_array(nv_var(x, dims = 1L, correction = 0L, nan_rm = TRUE))),
+      var(v, na.rm = TRUE) * 2 / 3, # 3 non-NaN values, switch n-1 -> n
+      tolerance = 1e-6
+    )
+  })
+  it("all-NaN slice returns NaN, not zero, at default correction = 1", {
+    # Regression: previously returned 0 because count - correction = -1
+    # and sum_sq / -1 = -0, which coerced to a non-NaN value.
+    expect_true(is.nan(as_array(nv_var(nv_array(c(NaN, NaN)), dims = 1L, nan_rm = TRUE))))
+    expect_true(is.nan(as_array(nv_sd(nv_array(c(NaN, NaN)), dims = 1L, nan_rm = TRUE))))
+    expect_true(is.nan(as_array(nv_var(nv_array(c(NaN, NaN, NaN)), dims = 1L, nan_rm = TRUE))))
+  })
+  it("count below correction returns NaN; count above is well-defined", {
+    # Single non-NaN value with default correction = 1 -> n - 1 = 0 -> NaN
+    expect_true(is.nan(as_array(nv_var(nv_array(c(1, NaN)), dims = 1L, nan_rm = TRUE))))
+    # Same input with correction = 0 -> population variance of a single
+    # value is 0, well-defined.
+    expect_equal(as.numeric(as_array(nv_var(nv_array(c(1, NaN)), dims = 1L, correction = 0L, nan_rm = TRUE))), 0)
+  })
+  it("per-slice masking: an all-NaN slice in a matrix yields NaN, others valid", {
+    m <- matrix(c(NaN, NaN, 1, 2, 3, 4), nrow = 2) # column 1 all-NaN
+    out <- as.numeric(as_array(nv_var(nv_array(m), dims = 1L, nan_rm = TRUE)))
+    expect_true(is.nan(out[1]))
+    expect_equal(out[2:3], c(0.5, 0.5))
+  })
+  it("single-value input with default correction (no NaN) returns NaN", {
+    # Matches base R: var(c(1)) is NA. (denom = 0 -> 0/0 = NaN, no change
+    # introduced by this commit -- regression check.)
+    expect_true(is.nan(as_array(nv_var(nv_array(1.0), dims = 1L))))
+    # With correction = 0, population variance of a single value is 0.
+    expect_equal(as.numeric(as_array(nv_var(nv_array(1.0), dims = 1L, correction = 0L))), 0)
+  })
+})
+
+describe("nv_reduce_max / nv_reduce_min nan_rm", {
+  it("propagates NaN by default (nan_rm = FALSE)", {
+    x <- nv_array(c(1, NaN, 3))
+    expect_true(is.nan(as_array(nv_reduce_max(x))))
+    expect_true(is.nan(as_array(nv_reduce_min(x))))
+  })
+  it("skips NaN when nan_rm = TRUE", {
+    x <- nv_array(c(1, NaN, 3))
+    expect_equal(as.numeric(as_array(nv_reduce_max(x, nan_rm = TRUE))), 3)
+    expect_equal(as.numeric(as_array(nv_reduce_min(x, nan_rm = TRUE))), 1)
+  })
+  it("all-NaN slice returns the identity element when nan_rm = TRUE", {
+    x <- nv_array(c(NaN, NaN))
+    expect_equal(as.numeric(as_array(nv_reduce_max(x, nan_rm = TRUE))), -Inf)
+    expect_equal(as.numeric(as_array(nv_reduce_min(x, nan_rm = TRUE))), Inf)
+  })
+  it("propagates per-slice along reduction dims", {
+    # column 1 has NaN, columns 2 and 3 do not
+    m <- nv_matrix(c(1, NaN, 3, 4, 5, 6), nrow = 2)
+    out_default <- as.numeric(as_array(nv_reduce_max(m, dims = 1L)))
+    expect_true(is.nan(out_default[1]))
+    expect_equal(out_default[2:3], c(4, 6))
+    expect_equal(
+      as.numeric(as_array(nv_reduce_max(m, dims = 1L, nan_rm = TRUE))),
+      c(1, 4, 6)
+    )
+  })
+  it("is a no-op for integer inputs", {
+    x <- nv_array(c(1L, 5L, 3L))
+    expect_equal(as_array(nv_reduce_max(x)), as_array(nv_reduce_max(x, nan_rm = TRUE)))
+    expect_equal(as_array(nv_reduce_min(x)), as_array(nv_reduce_min(x, nan_rm = TRUE)))
+  })
+})
+
+describe("nv_cumsum / nv_cumprod nan_rm", {
+  it("propagates NaN forward by default", {
+    x <- nv_array(c(1, NaN, 3))
+    out_sum <- as.numeric(as_array(nv_cumsum(x)))
+    expect_equal(out_sum[1], 1)
+    expect_true(all(is.nan(out_sum[2:3])))
+    out_prod <- as.numeric(as_array(nv_cumprod(nv_array(c(2, NaN, 3)))))
+    expect_equal(out_prod[1], 2)
+    expect_true(all(is.nan(out_prod[2:3])))
+  })
+  it("treats NaN as the identity element when nan_rm = TRUE", {
+    expect_equal(as.numeric(as_array(nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE))), c(1, 1, 4))
+    expect_equal(as.numeric(as_array(nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE))), c(2, 2, 6))
+  })
+  it("is a no-op for integer inputs", {
+    x <- nv_array(c(1L, 2L, 3L))
+    expect_equal(as_array(nv_cumsum(x)), as_array(nv_cumsum(x, nan_rm = TRUE)))
+    expect_equal(as_array(nv_cumprod(x)), as_array(nv_cumprod(x, nan_rm = TRUE)))
+  })
+})
+
+describe("nv_cummax / nv_cummin nan_rm", {
+  it("propagates NaN forward by default (matches base R)", {
+    out_max <- as.numeric(as_array(nv_cummax(nv_array(c(1, NaN, 3)))))
+    expect_equal(out_max[1], 1)
+    expect_true(all(is.nan(out_max[2:3])))
+    out_min <- as.numeric(as_array(nv_cummin(nv_array(c(3, NaN, 1)))))
+    expect_equal(out_min[1], 3)
+    expect_true(all(is.nan(out_min[2:3])))
+  })
+  it("propagates NaN from the FIRST NaN onwards regardless of later values", {
+    # Regression: previously a NaN restarted the cum after itself.
+    out <- as.numeric(as_array(nv_cummax(nv_array(c(1, 2, NaN, 0, 5)))))
+    expect_equal(out[1:2], c(1, 2))
+    expect_true(all(is.nan(out[3:5])))
+  })
+  it("skips NaN when nan_rm = TRUE", {
+    expect_equal(as.numeric(as_array(nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE))), c(1, 1, 3))
+    expect_equal(as.numeric(as_array(nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE))), c(3, 3, 1))
+    expect_equal(as.numeric(as_array(nv_cummax(nv_array(c(1, 2, NaN, 0, 5)), nan_rm = TRUE))), c(1, 2, 2, 2, 5))
+  })
+  it("all-NaN slice returns identity at every position when nan_rm = TRUE", {
+    x <- nv_array(c(NaN, NaN, NaN))
+    expect_equal(as.numeric(as_array(nv_cummax(x, nan_rm = TRUE))), c(-Inf, -Inf, -Inf))
+    expect_equal(as.numeric(as_array(nv_cummin(x, nan_rm = TRUE))), c(Inf, Inf, Inf))
+  })
+  it("is a no-op for integer inputs", {
+    x <- nv_array(c(3L, 1L, 4L))
+    expect_equal(as_array(nv_cummax(x)), as_array(nv_cummax(x, nan_rm = TRUE)))
+    expect_equal(as_array(nv_cummin(x)), as_array(nv_cummin(x, nan_rm = TRUE)))
+  })
+  it("with_indices returns NaN-propagated values and indices", {
+    out <- nv_cummax(nv_array(c(1, NaN, 3)), with_indices = TRUE)
+    vals <- as.numeric(as_array(out$values))
+    expect_equal(vals[1], 1)
+    expect_true(all(is.nan(vals[2:3])))
+    # Once NaN propagates, the index tiebreak in the reducer picks the
+    # larger index, which for cumulative scans is the current position.
+    expect_equal(as.integer(out$indices), c(1L, 2L, 3L))
+  })
+})
+
+describe("nv_argmax / nv_argmin nan_rm", {
+  it("propagates NaN by default (nan_rm = FALSE): returns the NaN's index", {
+    x <- nv_array(c(1, NaN, 3))
+    expect_equal(as.integer(nv_argmax(x)), 2L)
+    expect_equal(as.integer(nv_argmin(x)), 2L)
+  })
+  it("skips NaN when nan_rm = TRUE", {
+    x <- nv_array(c(1, NaN, 3))
+    expect_equal(as.integer(nv_argmax(x, nan_rm = TRUE)), 3L)
+    expect_equal(as.integer(nv_argmin(x, nan_rm = TRUE)), 1L)
+  })
+  it("returns first NaN when several NaNs exist", {
+    x <- nv_array(c(1, NaN, 3, NaN, 5))
+    expect_equal(as.integer(nv_argmax(x)), 2L)
+    expect_equal(as.integer(nv_argmin(x)), 2L)
+  })
+  it("propagates per-slice along the reduced dim", {
+    # row 1 has NaN at col 2, row 2 has no NaN
+    m <- nv_matrix(c(1, NaN, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(as.integer(nv_argmax(m, dim = 2L)), c(2L, 2L))
+    expect_equal(
+      as.integer(nv_argmax(m, dim = 2L, nan_rm = TRUE)),
+      c(3L, 2L)
+    )
+  })
+})
+
 describe("nv_var", {
   it("computes variance with Bessel's correction", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
@@ -772,7 +981,7 @@ describe("nv_fill_like", {
     expect_equal(shape(out), shape(like))
     expect_equal(dtype(out), dtype(like))
     expect_equal(as.character(device(out)), as.character(device(like)))
-    expect_equal(as.integer(as_array(out)), rep(0L, 6L))
+    expect_equal(as.integer(out), rep(0L, 6L))
   })
 
   it("allows overriding the inherited attributes", {
@@ -807,7 +1016,7 @@ describe("nv_seq_like", {
     expect_equal(dtype(out), dtype(like))
     expect_equal(as.character(device(out)), as.character(device(like)))
     expect_equal(shape(out), 5L)
-    expect_equal(as.integer(as_array(out)), c(1L, 2L, 3L, 4L, 5L))
+    expect_equal(as.integer(out), c(1L, 2L, 3L, 4L, 5L))
   })
 
   it("allows overriding the inherited attributes", {
@@ -933,6 +1142,73 @@ describe("nv_top_k", {
   })
 })
 
+describe("nv_median / nv_quantile NaN handling", {
+  it("propagates NaN regardless of NaN position", {
+    # All three should be NaN -- previously some returned non-NaN because
+    # XLA's sort placed NaN unpredictably and the lo/hi gather missed it.
+    expect_true(is.nan(as_array(nv_median(nv_array(c(1, NaN, 3, 5))))))
+    expect_true(is.nan(as_array(nv_median(nv_array(c(NaN, 1, 3, 5))))))
+    expect_true(is.nan(as_array(nv_median(nv_array(c(1, 3, 5, NaN))))))
+  })
+  it("propagates NaN in quantile for all probs and interpolations", {
+    x <- nv_array(c(1, NaN, 3, 5))
+    for (q in c(0, 0.25, 0.5, 0.75, 1)) {
+      expect_true(is.nan(as_array(nv_quantile(x, q))), info = paste("q =", q))
+    }
+    for (method in c("linear", "lower", "higher", "nearest", "midpoint")) {
+      expect_true(is.nan(as_array(nv_quantile(x, 0.5, interpolation = method))), info = paste("method =", method))
+    }
+  })
+  it("propagates NaN for array probs", {
+    out <- as.numeric(as_array(nv_quantile(nv_array(c(1, NaN, 3, 5)), array(c(0.25, 0.5, 0.75)))))
+    expect_true(all(is.nan(out)))
+  })
+  it("nan_rm = TRUE matches base R quantile", {
+    v <- c(1, NaN, 3, 5)
+    x <- nv_array(v)
+    for (q in c(0, 0.25, 0.5, 0.75, 1)) {
+      expect_equal(
+        as.numeric(as_array(nv_quantile(x, q, nan_rm = TRUE))),
+        unname(quantile(v, q, na.rm = TRUE)),
+        info = paste("q =", q),
+        tolerance = 1e-6
+      )
+    }
+  })
+  it("nan_rm = TRUE matches base R for all interpolations", {
+    # Use 4 valid values so q = 0.5 falls between two indices (h = 1.5)
+    v <- c(1, 2, 3, NaN, 5)
+    x <- nv_array(v)
+    expect_equal(
+      as.numeric(as_array(nv_quantile(x, 0.5, interpolation = "linear", nan_rm = TRUE))),
+      median(v, na.rm = TRUE)
+    )
+    expect_equal(as.numeric(as_array(nv_quantile(x, 0.5, interpolation = "lower", nan_rm = TRUE))), 2)
+    expect_equal(as.numeric(as_array(nv_quantile(x, 0.5, interpolation = "higher", nan_rm = TRUE))), 3)
+    expect_equal(as.numeric(as_array(nv_quantile(x, 0.5, interpolation = "midpoint", nan_rm = TRUE))), 2.5)
+  })
+  it("nan_rm = TRUE with array probs returns one quantile per prob", {
+    v <- c(1, NaN, 3, 5)
+    x <- nv_array(v)
+    expect_equal(
+      as.numeric(as_array(nv_quantile(x, array(c(0.25, 0.5, 0.75)), nan_rm = TRUE))),
+      unname(quantile(v, c(0.25, 0.5, 0.75), na.rm = TRUE)),
+      tolerance = 1e-6
+    )
+  })
+  it("all-NaN slice returns NaN with nan_rm = TRUE", {
+    expect_true(is.nan(as_array(nv_median(nv_array(c(NaN, NaN)), nan_rm = TRUE))))
+    expect_true(is.nan(as_array(nv_quantile(nv_array(c(NaN, NaN)), 0.5, nan_rm = TRUE))))
+  })
+  it("nv_median forwards nan_rm", {
+    expect_equal(as.numeric(as_array(nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE))), 3)
+  })
+  it("median() generic forwards na.rm", {
+    expect_equal(as.numeric(as_array(median(nv_array(c(1, NaN, 3, 5)), na.rm = TRUE))), 3)
+    expect_true(is.nan(as_array(median(nv_array(c(1, NaN, 3, 5))))))
+  })
+})
+
 describe("nv_median", {
   it("returns the middle element for odd length", {
     expect_equal(
@@ -969,11 +1245,6 @@ describe("nv_median", {
     # S3 method forwards `interpolation` via `...`
     expect_equal(as_array(median(x, interpolation = "lower")), as_array(nv_scalar(2)))
     expect_equal(as_array(median(x, interpolation = "higher")), as_array(nv_scalar(3)))
-  })
-
-  it("errors when na.rm = TRUE", {
-    x <- nv_array(c(1, 2, 3, 4))
-    expect_error(median(x, na.rm = TRUE), "na.rm = TRUE")
   })
 })
 
@@ -1064,11 +1335,6 @@ describe("nv_quantile", {
 })
 
 describe("mean()", {
-  it("errors when na.rm = TRUE", {
-    x <- nv_array(c(1, 2, 3, 4))
-    expect_error(mean(x, na.rm = TRUE), "na.rm = TRUE")
-  })
-
   it("errors when trim is non-zero", {
     x <- nv_array(c(1, 2, 3, 4))
     expect_error(mean(x, trim = 0.1), "trim")

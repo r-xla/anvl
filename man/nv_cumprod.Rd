@@ -4,7 +4,7 @@
 \alias{nv_cumprod}
 \title{Cumulative Product}
 \usage{
-nv_cumprod(operand, dim = NULL)
+nv_cumprod(operand, dim = NULL, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -13,6 +13,13 @@ Operand.}
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to accumulate. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cumsum]{base::cumprod()}}.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates forward from its first occurrence. If
+\code{TRUE}, \code{NaN} is treated as the identity element of the cumulative
+op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min) and
+contributes nothing to the running value.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -35,6 +42,8 @@ column-major (Fortran) order. The two agree on 1-D inputs.
 x <- nv_matrix(1:6, nrow = 2)
 nv_cumprod(x)              # row-major flatten, then accumulate
 nv_cumprod(x, dim = 1L)    # accumulate along rows
+nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
+nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -690,7 +690,7 @@ ConcreteArray <- function(data) {
 #' graph$outputs[[1]]$aval
 #' @export
 LiteralArray <- function(data, shape, dtype = default_dtype(data), ambiguous) {
-  if (!test_scalar(data) && !inherits(data, "AnvlArray")) {
+  if (!is_valid_r_lit(data) && !inherits(data, "AnvlArray")) {
     cli_abort("LiteralArrays expect scalars or AnvlArray")
   }
   if (inherits(data, "AnvlArray")) {

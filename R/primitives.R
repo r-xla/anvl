@@ -2608,7 +2608,11 @@ prim_while <- new_primitive(
 #' @section StableHLO:
 #' Lowers to [hlo_sort()] with a comparator that uses
 #' [hlo_compare()] (`LT` for ascending, `GT` for descending) on
-#' the first operand.
+#' the first operand. For float keys the comparator uses
+#' `compare_type = "TOTALORDER"` and canonicalizes `-0`/`+0` and
+#' `-NaN`/`+NaN` to their positive form before comparing, so all `NaN`
+#' values land at one end of the result regardless of sign. Integer keys
+#' use `SIGNED` / `UNSIGNED` as appropriate.
 #' @seealso [nv_sort()], [nv_argsort()], [nv_top_k()], [nv_median()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5))
