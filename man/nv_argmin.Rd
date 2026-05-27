@@ -20,8 +20,7 @@ is kept with size 1.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
-(default), \code{NaN} propagates.
-If \code{TRUE}, \code{NaN} values are removed.}
+(default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr

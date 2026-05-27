@@ -2123,7 +2123,7 @@ nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
 #' @template param_operand
 #' @templateVar cum_base_fn cumsum
 #' @template param_nv_cum_dim
-#' @template param_nan_rm
+#' @template param_nan_rm_cum
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumsum
 #' @template section_nv_cum_relation
@@ -2158,7 +2158,7 @@ nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' @template param_operand
 #' @templateVar cum_base_fn cumprod
 #' @template param_nv_cum_dim
-#' @template param_nan_rm
+#' @template param_nan_rm_cum
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumprod
 #' @template section_nv_cum_relation
@@ -2194,7 +2194,7 @@ nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummax
 #' @template section_nv_cum_relation
-#' @template param_nan_rm
+#' @template param_nan_rm_cum
 #' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cummax()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2220,7 +2220,7 @@ nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummin
 #' @template section_nv_cum_relation
-#' @template param_nan_rm
+#' @template param_nan_rm_cum
 #' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cummin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2671,7 +2671,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
 #' @description
 #' Picks one or more elements along dimension `dim` of `operand`.
 #' Use this instead of `[` or `nv_subset` when the index to select is provided
-#' programatically.
+#' programmatically.
 #' @template param_operand
 #' @param dim (`integer(1)`)\cr
 #'   Dimension to index into.
@@ -2748,14 +2748,20 @@ nv_select <- function(operand, dim, index) {
 #'   dimension.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, sort in decreasing order. Default `FALSE`.
+#' @param stable (`logical(1)`)\cr
+#'   If `TRUE`, the sort is stable: equal values keep their original
+#'   relative order along `dim`. Default `FALSE`. Stability is only
+#'   observable for floats when `-0` / `+0` or `-NaN` / `+NaN` are mixed
+#'   (they compare equal under the total order used here); for distinct
+#'   values the result is identical either way.
 #' @return [`arrayish`]\cr
 #'   Same shape and data type as `operand`.
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
 #' @seealso [prim_sort()] for the underlying primitive,
-#'   [nv_argsort()] (where sort stability is observable),
-#'   [nv_top_k()], [nv_median()], [nv_argmax()], [nv_argmin()].
+#'   [nv_argsort()], [nv_top_k()], [nv_median()],
+#'   [nv_argmax()], [nv_argmin()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' nv_sort(x)
@@ -2765,13 +2771,13 @@ nv_select <- function(operand, dim, index) {
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_sort(m, dim = 2L)
 #' @export
-nv_sort <- function(operand, dim = NULL, decreasing = FALSE) {
+nv_sort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
   operand <- as_anvl_array(operand)
   if (ndims(operand) == 0L) {
     cli_abort("Cannot sort a 0-dimensional array")
   }
   dim <- dim %||% ndims(operand)
-  prim_sort(list(operand), dim = as.integer(dim), descending = decreasing, is_stable = TRUE)[[1L]]
+  prim_sort(list(operand), dim = as.integer(dim), descending = decreasing, is_stable = stable)[[1L]]
 }
 
 #' @title Argsort
