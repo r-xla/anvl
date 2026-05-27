@@ -23,8 +23,7 @@ Whether to drop reduced dimensions.}
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 (default), \code{NaN} propagates.
-If \code{TRUE}, \code{NaN} values are either removed or replaced by the
-neutral element of the reduction.}
+If \code{TRUE}, \code{NaN} values are removed.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
@@ -45,6 +44,12 @@ When \code{drop = FALSE}, the reduced dimensions are set to 1.
 Computes the arithmetic mean along the specified dimensions. You can also
 use \code{mean()}.
 }
+\section{NaN handling}{
+
+With \code{nan_rm = FALSE} (default), any \code{NaN} along the reduced axis
+propagates to the output. With \code{nan_rm = TRUE}, \code{NaN} values are skipped.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)

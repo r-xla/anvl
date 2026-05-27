@@ -12,11 +12,11 @@ It provides JIT compilation (`jit()`, `xla()`) and automatic differentiation (`g
 
 When adding new functionality, decide which layer it belongs to. Most new operations need both: a `prim_*` primitive with rules, and an `nv_*` wrapper with R-idiomatic semantics.
 
-Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The wrappers add noise and the primitives already accept R scalars as scalar operands; reserve the explicit wrappers for cases where you genuinely need an `AnvlArray` (e.g. controlling dtype/device).
+Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`.
 
 ## Supported dtypes
 
-Anvl currently does **not** support complex numbers — every primitive and API function works on real (and integer/logical) dtypes only. Linalg ops that conceptually produce complex outputs in the general case (e.g. non-symmetric eigendecomposition) are intentionally omitted; only the real-only variants (`prim_eigh` / `nv_eigh` for symmetric matrices) are exposed.
+- there is currently no support for complex numbers.
 
 ## Primitive System
 

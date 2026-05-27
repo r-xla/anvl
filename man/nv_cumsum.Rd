@@ -4,7 +4,7 @@
 \alias{nv_cumsum}
 \title{Cumulative Sum}
 \usage{
-nv_cumsum(operand, dim = NULL)
+nv_cumsum(operand, dim = NULL, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -13,6 +13,11 @@ Operand.}
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to accumulate. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cumsum]{base::cumsum()}}.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates.
+If \code{TRUE}, \code{NaN} values are removed.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -30,11 +35,21 @@ flattened sequence iterates the last dim fastest, whereas base R uses
 column-major (Fortran) order. The two agree on 1-D inputs.
 }
 
+\section{NaN handling}{
+
+With \code{nan_rm = FALSE} (default), a \code{NaN} propagates forward: positions at
+or after the first \code{NaN} along \code{dim} are \code{NaN}. With \code{nan_rm = TRUE},
+\code{NaN} is treated as the identity element (\code{0} for sum, \code{1} for prod,
+\code{-Inf}/\code{+Inf} for max/min) and contributes nothing to the running value.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
 nv_cumsum(x)              # row-major flatten, then accumulate
 nv_cumsum(x, dim = 1L)    # accumulate along rows
+nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
+nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 \dontshow{\}) # examplesIf}
 }
 \seealso{

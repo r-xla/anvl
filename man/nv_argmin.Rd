@@ -4,7 +4,7 @@
 \alias{nv_argmin}
 \title{Index of the Minimum}
 \usage{
-nv_argmin(operand, dim = NULL, drop = TRUE)
+nv_argmin(operand, dim = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -17,6 +17,11 @@ the last dimension.}
 \item{drop}{(\code{logical(1)})\cr
 If \code{TRUE} (default) the reduced dimension is removed; if \code{FALSE} it
 is kept with size 1.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates.
+If \code{TRUE}, \code{NaN} values are removed.}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
@@ -28,15 +33,16 @@ by returning the smallest index.
 }
 \section{NaN handling}{
 
-Like \code{\link[=nv_argmax]{nv_argmax()}}, \code{NaN} entries are skipped by the comparison-based XLA
-kernel; the returned index refers to the smallest non-\code{NaN} value. This
-matches base R's \code{which.min(c(1, NaN, 3))} and JAX's \code{jnp.argmin}.
+With \code{nan_rm = FALSE} (default), if any entry along the reduced axis is
+\code{NaN}, the returned index points at the first such \code{NaN}. With
+\code{nan_rm = TRUE}, \code{NaN} entries are skipped.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 nv_argmin(nv_array(c(2, NaN, 1, 3)))
+nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

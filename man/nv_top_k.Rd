@@ -33,11 +33,9 @@ Returns the \code{k} largest values along a dimension, sorted in decreasing orde
 }
 \section{NaN handling}{
 
-\code{NaN} is treated as a value larger than any finite number by the XLA
-top-k kernel, so \code{NaN} entries will appear in the result before any finite
-value. This matches JAX's \code{jax.lax.top_k}. If you want to exclude \code{NaN}s,
-replace them with \code{-Inf} first via
-\code{nv_ifelse(nv_is_nan(x), nv_scalar_like(x, -Inf), x)}.
+\code{NaN} ranks larger than any finite value (so it appears first in the
+top-\code{k} output); \code{-NaN} ranks smaller. Unlike \code{\link[=nv_sort]{nv_sort()}}, the sign
+bit is not canonicalized.
 }
 
 \examples{

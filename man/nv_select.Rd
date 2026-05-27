@@ -13,39 +13,26 @@ Operand.}
 \item{dim}{(\code{integer(1)})\cr
 Dimension to index into.}
 
-\item{index}{(\code{\link{arrayish}} of integer type)\cr
-Positions to pick. See description for the three accepted shapes.}
+\item{index}{(\code{\link{arrayish}})\cr
+Scalar or 1D arrayish input (integer).}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same dtype as \code{operand}. Shape depends on \code{index} (see description).
+Same data type as \code{operand}. \code{dim} is dropped if \code{index} was scalar.
 }
 \description{
-Picks one or more elements along dimension \code{dim} of \code{operand}. The shape
-of \code{index} determines the behaviour:
-\itemize{
-\item \strong{scalar} (\code{integer(1)} or rank-0 arrayish): pick that one position
-from every slice; \code{dim} is dropped.
-\item \strong{1-D arrayish} (length \code{K}): pick the same \code{K} positions from every
-slice; output has size \code{K} along \code{dim}.
-\item \strong{same rank as \code{operand}} (per-slice gather): each non-\code{dim} position
-pulls its own element. Output has the shape of \code{index}; sizes on the
-non-\code{dim} axes must match \code{operand}'s.
-}
-
-Use this instead of \code{[} or \code{\link[=nv_subset]{nv_subset()}} when the index is computed
-programmatically.
+Picks one or more elements along dimension \code{dim} of \code{operand}.
+Use this instead of \code{[} or \code{nv_subset} when the index to select is provided
+programatically.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+m <- nv_matrix(1:6, nrow = 2)
 nv_select(m, dim = 2L, index = 2L)
+nv_select(m, dim = 1L, index = 1L)
 nv_select(m, dim = 2L, index = array(c(1L, 3L)))
-# per-slice gather: per-row argmax
-nv_select(m, dim = 2L, index = nv_argmax(m, dim = 2L, drop = FALSE))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_subset]{nv_subset()}} for general subsetting, \code{\link[=prim_static_slice]{prim_static_slice()}},
-\code{\link[=prim_gather]{prim_gather()}}.
+\code{\link[=nv_subset]{nv_subset()}} for general subsetting, \code{\link[=prim_static_slice]{prim_static_slice()}}.
 }

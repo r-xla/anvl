@@ -1943,19 +1943,20 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 #' @template params_reduce
 #' @template return_reduce
 #' @template param_nan_rm
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_reduce_sum(x)            # all dims -> scalar
 #' nv_reduce_sum(x, dims = 1L)
-#' nv_reduce_sum(nv_array(c(1, NaN, 3)))                # NaN
-#' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)  # 4
+#' nv_reduce_sum(nv_array(c(1, NaN, 3)))
+#' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
 nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   dims <- .resolve_reduce_dims(operand, dims)
   if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    operand <- nv_ifelse(nv_is_nan(operand), nv_scalar_like(operand, 0), operand)
+    operand <- nv_ifelse(nv_is_nan(operand), 0, operand)
   }
   prim_reduce_sum(operand, dims = dims, drop = drop)
 }
@@ -1968,6 +1969,7 @@ nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template return_reduce
 #' @template param_nan_rm
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -1996,6 +1998,7 @@ nv_mean <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template return_reduce
 #' @template param_nan_rm
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2020,6 +2023,9 @@ nv_reduce_prod <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template param_nan_rm
 #' @template return_reduce
+#' @section NaN handling:
+#' With `nan_rm = FALSE` (default), any `NaN` along the reduced axis
+#' propagates to the output. With `nan_rm = TRUE`, `NaN` values are skipped.
 #' @seealso [prim_reduce_max()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2041,6 +2047,7 @@ nv_reduce_max <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template params_reduce
 #' @template param_nan_rm
 #' @template return_reduce
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [prim_reduce_min()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -2116,20 +2123,31 @@ nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
 #' @template param_operand
 #' @templateVar cum_base_fn cumsum
 #' @template param_nv_cum_dim
+#' @template param_nan_rm
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumsum
 #' @template section_nv_cum_relation
+#' @section NaN handling:
+#' With `nan_rm = FALSE` (default), a `NaN` propagates forward: positions at
+#' or after the first `NaN` along `dim` are `NaN`. With `nan_rm = TRUE`,
+#' `NaN` is treated as the identity element (`0` for sum, `1` for prod,
+#' `-Inf`/`+Inf` for max/min) and contributes nothing to the running value.
 #' @seealso [prim_cumsum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_cumsum(x)              # row-major flatten, then accumulate
 #' nv_cumsum(x, dim = 1L)    # accumulate along rows
+#' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
+#' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 #' @export
-nv_cumsum <- function(operand, dim = NULL) {
+nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
+  }
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), 0, operand)
   }
   prim_cumsum(operand, dim = as.integer(dim))
 }
@@ -2140,20 +2158,27 @@ nv_cumsum <- function(operand, dim = NULL) {
 #' @template param_operand
 #' @templateVar cum_base_fn cumprod
 #' @template param_nv_cum_dim
+#' @template param_nan_rm
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumprod
 #' @template section_nv_cum_relation
+#' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cumprod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_cumprod(x)              # row-major flatten, then accumulate
 #' nv_cumprod(x, dim = 1L)    # accumulate along rows
+#' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
+#' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 #' @export
-nv_cumprod <- function(operand, dim = NULL) {
+nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
+  }
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), 1, operand)
   }
   prim_cumprod(operand, dim = as.integer(dim))
 }
@@ -2166,18 +2191,19 @@ nv_cumprod <- function(operand, dim = NULL) {
 #' @template param_nv_cum_dim
 #' @templateVar cum_extreme_name maximum
 #' @template param_nv_cum_with_indices
-#' @template param_nan_rm
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummax
 #' @template section_nv_cum_relation
+#' @template param_nan_rm
+#' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cummax()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummax(x)
 #' nv_cummax(x, dim = 1L)
 #' nv_cummax(x, dim = 1L, with_indices = TRUE)
-#' nv_cummax(nv_array(c(1, NaN, 3)))
-#' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
+#' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
 nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
   .nv_cum_extreme(operand, dim, with_indices, nan_rm, -Inf, prim_cummax)
@@ -2191,55 +2217,38 @@ nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 #' @template param_nv_cum_dim
 #' @templateVar cum_extreme_name minimum
 #' @template param_nv_cum_with_indices
-#' @template param_nan_rm
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummin
 #' @template section_nv_cum_relation
+#' @template param_nan_rm
+#' @inheritSection nv_cumsum NaN handling
 #' @seealso [prim_cummin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummin(x)
 #' nv_cummin(x, dim = 1L)
 #' nv_cummin(x, dim = 1L, with_indices = TRUE)
-#' nv_cummin(nv_array(c(3, NaN, 1)))
-#' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE)
+#' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
+#' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
 nv_cummin <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
   .nv_cum_extreme(operand, dim, with_indices, nan_rm, Inf, prim_cummin)
 }
 
-# Shared NaN-aware cumulative max/min. The PJRT cum-reduction kernel only
-# leaves NaN at the position where it occurs and reverts to the prior running
-# extreme afterwards, so we mask NaN to the identity element before running
-# the primitive. For nan_rm = FALSE we then re-stamp every position at or
-# after the first NaN with NaN, giving base-R-style propagation.
+# NaN propagation for the default `nan_rm = FALSE` path is now handled in
+# `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
+# sanitize NaN → identity for `nan_rm = TRUE`.
 .nv_cum_extreme <- function(operand, dim, with_indices, nan_rm, identity_val, prim_cum) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
   }
-  dim <- as.integer(dim)
-
-  if (!inherits(dtype(operand), "FloatType")) {
-    out <- prim_cum(operand, dim = dim)
-    if (with_indices) {
-      return(list(values = out[[1L]], indices = out[[2L]]))
-    }
-    return(out[[1L]])
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), identity_val, operand)
   }
-
-  is_nan <- nv_is_nan(operand)
-  sanitized <- nv_ifelse(is_nan, identity_val, operand)
-  out <- prim_cum(sanitized, dim = dim)
-  values <- out[[1L]]
-  indices <- out[[2L]]
-  if (!nan_rm) {
-    prefix_count <- prim_cumsum(nv_convert(is_nan, "i32"), dim = dim)
-    any_prior_nan <- prefix_count > 0L
-    values <- nv_ifelse(any_prior_nan, Na, values)
-  }
-  if (with_indices) list(values = values, indices = indices) else values
+  out <- prim_cum(operand, dim = as.integer(dim))
+  if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
 }
 
 # Higher order primitives
@@ -2360,13 +2369,13 @@ nv_is_infinite <- function(operand) {
 #' @details
 #' Uses Bessel's correction by default (`correction = 1`), matching R's [var()].
 #' Set `correction = 0` for population variance.
-#' degrees-of-freedom count.
 #' @template param_operand
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
 #' @template return_reduce
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_sd()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
@@ -2405,6 +2414,7 @@ nv_var <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) 
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
 #' @template return_reduce
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_var()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
@@ -2659,34 +2669,22 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
 
 #' @title Select Elements Along a Dimension
 #' @description
-#' Picks one or more elements along dimension `dim` of `operand`. The shape
-#' of `index` determines the behaviour:
-#'
-#' * **scalar** (`integer(1)` or rank-0 arrayish): pick that one position
-#'   from every slice; `dim` is dropped.
-#' * **1-D arrayish** (length `K`): pick the same `K` positions from every
-#'   slice; output has size `K` along `dim`.
-#' * **same rank as `operand`** (per-slice gather): each non-`dim` position
-#'   pulls its own element. Output has the shape of `index`; sizes on the
-#'   non-`dim` axes must match `operand`'s.
-#'
-#' Use this instead of `[` or [nv_subset()] when the index is computed
-#' programmatically.
+#' Picks one or more elements along dimension `dim` of `operand`.
+#' Use this instead of `[` or `nv_subset` when the index to select is provided
+#' programatically.
 #' @template param_operand
 #' @param dim (`integer(1)`)\cr
 #'   Dimension to index into.
-#' @param index ([`arrayish`] of integer type)\cr
-#'   Positions to pick. See description for the three accepted shapes.
+#' @param index ([`arrayish`])\cr
+#'   Scalar or 1D arrayish input (integer).
 #' @return [`arrayish`]\cr
-#'   Same dtype as `operand`. Shape depends on `index` (see description).
-#' @seealso [nv_subset()] for general subsetting, [prim_static_slice()],
-#'   [prim_gather()].
+#'   Same data type as `operand`. `dim` is dropped if `index` was scalar.
+#' @seealso [nv_subset()] for general subsetting, [prim_static_slice()].
 #' @examplesIf pjrt::plugins_downloaded()
-#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+#' m <- nv_matrix(1:6, nrow = 2)
 #' nv_select(m, dim = 2L, index = 2L)
+#' nv_select(m, dim = 1L, index = 1L)
 #' nv_select(m, dim = 2L, index = array(c(1L, 3L)))
-#' # per-slice gather: per-row argmax
-#' nv_select(m, dim = 2L, index = nv_argmax(m, dim = 2L, drop = FALSE))
 #' @export
 nv_select <- function(operand, dim, index) {
   operand <- as_anvl_array(operand)
@@ -2698,25 +2696,14 @@ nv_select <- function(operand, dim, index) {
   shp <- shape(operand)
   assert_int(dim, lower = 1L, upper = rank)
 
-  # Per-slice gather: when `index` is a dynamic arrayish that matches
-  # `operand`'s rank, each non-`dim` position pulls its own element from
-  # `operand` (numpy's take_along_axis semantics). Scalar and 1-D indices
-  # fall through to the uniform-index path via nv_subset.
-  if (is_arrayish(index) && !is.atomic(index) && rank > 1L) {
-    idx_av <- as_anvl_array(index)
-    if (ndims(idx_av) == rank) {
-      return(.gather_along_dim(operand, idx_av, dim, rank, shp))
-    }
-  }
-
   args <- rep(list(quote(expr = )), rank)
   args[[dim]] <- index
   do.call(nv_subset, c(list(operand), args))
 }
 
-# Per-slice gather for nv_select's same-rank-index case. `index` has the
-# same rank as `operand`, matching shape on every non-`dim` axis. Returns
-# shape `shape(index)`.
+# Per-slice gather along `dim`. `index` has the same rank as `operand`,
+# matching shape on every non-`dim` axis. Returns shape `shape(index)`.
+# Used internally by nv_quantile; not exposed as part of nv_select.
 .gather_along_dim <- function(operand, index, dim, rank, shp) {
   idx_shape <- shape(index)
   if (!identical(shp[-dim], idx_shape[-dim])) {
@@ -2764,7 +2751,8 @@ nv_select <- function(operand, dim, index) {
 #' @return [`arrayish`]\cr
 #'   Same shape and data type as `operand`.
 #' @section NaN handling:
-#' The position of `NaN` values in the sorted output is **XLA-backend-defined.
+#' `NaN` values sort to the **end** (ascending) or **beginning**
+#' (descending), regardless of sign. `+0` and `-0` compare equal.
 #' @seealso [prim_sort()] for the underlying primitive,
 #'   [nv_argsort()] (where sort stability is observable),
 #'   [nv_top_k()], [nv_median()], [nv_argmax()], [nv_argmin()].
@@ -2783,7 +2771,7 @@ nv_sort <- function(operand, dim = NULL, decreasing = FALSE) {
     cli_abort("Cannot sort a 0-dimensional array")
   }
   dim <- dim %||% ndims(operand)
-  prim_sort(list(operand), dim = as.integer(dim), descending = decreasing, is_stable = FALSE)[[1L]]
+  prim_sort(list(operand), dim = as.integer(dim), descending = decreasing, is_stable = TRUE)[[1L]]
 }
 
 #' @title Argsort
@@ -2838,11 +2826,9 @@ nv_argsort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) 
 #'   arrays (when `with_indices = TRUE`). Output shape matches `operand` with
 #'   `dim` resized to `k`; values are sorted decreasing along `dim`.
 #' @section NaN handling:
-#' `NaN` is treated as a value larger than any finite number by the XLA
-#' top-k kernel, so `NaN` entries will appear in the result before any finite
-#' value. This matches JAX's `jax.lax.top_k`. If you want to exclude `NaN`s,
-#' replace them with `-Inf` first via
-#' `nv_ifelse(nv_is_nan(x), nv_scalar_like(x, -Inf), x)`.
+#' `NaN` ranks larger than any finite value (so it appears first in the
+#' top-`k` output); `-NaN` ranks smaller. Unlike [nv_sort()], the sign
+#' bit is not canonicalized.
 #' @seealso [prim_top_k()] for the underlying primitive, [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -2921,6 +2907,7 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #'   For scalar `probs`: same shape as `x` with `dim` removed. For
 #'   array `probs`: a **leading** dimension of size `length(probs)` is
 #'   prepended.
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_median()], [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -2948,8 +2935,8 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
   K <- length(probs)
   probs <- as.numeric(probs)
   is_float <- inherits(dtype(operand), "FloatType")
-  shp_kd <- replace(shp, dim, 1L) # shp with size-1 at `dim` (keepdim)
-  shp_K <- replace(shp, dim, K) # shp with K along `dim` (the gather index shape)
+  shp_kd <- replace(shp, dim, 1L)
+  shp_K <- replace(shp, dim, K)
 
   # For float input, find NaN positions: nan_rm = TRUE sanitizes them to +Inf
   # so they sort to the end; nan_rm = FALSE uses them post-hoc to propagate.
@@ -2980,8 +2967,8 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
   hi_f <- nv_ceiling(h)
   frac <- h - lo_f
 
-  lo_val <- nv_select(sorted, dim = dim, index = nv_convert(lo_f + 1, "i32"))
-  hi_val <- nv_select(sorted, dim = dim, index = nv_convert(hi_f + 1, "i32"))
+  lo_val <- .gather_along_dim(sorted, nv_convert(lo_f + 1, "i32"), dim, rank, shp)
+  hi_val <- .gather_along_dim(sorted, nv_convert(hi_f + 1, "i32"), dim, rank, shp)
 
   out <- switch(
     interpolation,
@@ -3031,6 +3018,7 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
 #'   Same shape as `operand` with `dim` removed.
+#' @inheritSection nv_reduce_max NaN handling
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
@@ -3058,14 +3046,13 @@ nv_median <- function(operand, dim = NULL, interpolation = "linear", nan_rm = FA
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
 #'   is kept with size 1.
+#' @template param_nan_rm
 #' @return [`arrayish`] of dtype `i32`\cr
 #'   Same shape as `operand` with `dim` removed (or set to 1 if `drop = FALSE`).
 #' @section NaN handling:
-#' The underlying XLA `argmax` kernel is comparison-based, so `NaN` entries
-#' are skipped (they compare false against everything) and the returned index
-#' refers to the largest non-`NaN` value. This matches base R's
-#' `which.max(c(1, NaN, 3))` and JAX's `jnp.argmax`. If every entry along the
-#' reduced axis is `NaN`, the result is the first index along that axis.
+#' With `nan_rm = FALSE` (default), if any entry along the reduced axis is
+#' `NaN`, the returned index points at the first such `NaN`. With
+#' `nan_rm = TRUE`, `NaN` entries are skipped.
 #' @seealso [nv_argmin()], [nv_reduce_max()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
@@ -3073,10 +3060,12 @@ nv_median <- function(operand, dim = NULL, interpolation = "linear", nan_rm = FA
 #'   dim = 2L
 #' )
 #' nv_argmax(nv_array(c(1, NaN, 3)))
+#' nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_argmax <- function(operand, dim = NULL, drop = TRUE) {
+nv_argmax <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_argmax(operand, dim = as.integer(dim %||% ndims(operand)), drop = drop)
+  dim <- as.integer(dim %||% ndims(operand))
+  .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmax)
 }
 
 #' @title Index of the Minimum
@@ -3090,18 +3079,38 @@ nv_argmax <- function(operand, dim = NULL, drop = TRUE) {
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
 #'   is kept with size 1.
+#' @template param_nan_rm
 #' @return [`arrayish`] of dtype `i32`\cr
 #'   Same shape as `operand` with `dim` removed (or set to 1 if `drop = FALSE`).
-#' @section NaN handling:
-#' Like [nv_argmax()], `NaN` entries are skipped by the comparison-based XLA
-#' kernel; the returned index refers to the smallest non-`NaN` value. This
-#' matches base R's `which.min(c(1, NaN, 3))` and JAX's `jnp.argmin`.
+#' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)))
+#' nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 #' @export
-nv_argmin <- function(operand, dim = NULL, drop = TRUE) {
+nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_argmin(operand, dim = as.integer(dim %||% ndims(operand)), drop = drop)
+  dim <- as.integer(dim %||% ndims(operand))
+  .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmin)
+}
+
+# Shared NaN-aware argmax/argmin. The XLA arg-reduction kernels are
+# comparison-based and silently skip NaN, so `nan_rm = TRUE` is free — we
+# just call the primitive. For `nan_rm = FALSE` we want NaN to propagate,
+# mirroring `.nv_reduce_extreme`'s contract; there's no NaN in i32, so we
+# surface "a NaN was here" by returning the first NaN's index instead.
+#
+.nv_arg_extreme <- function(operand, dim, drop, nan_rm, prim_arg) {
+  result <- prim_arg(operand, dim = dim, drop = drop)
+  if (nan_rm || !inherits(dtype(operand), "FloatType")) {
+    return(result)
+  }
+  # argmax on the bool mask returns the index of the first TRUE (tie-break:
+  # smallest index) — exactly the first NaN's position — or 1 if no NaN
+  # exists. `any_nan` disambiguates those two cases.
+  nan_mask <- nv_is_nan(operand)
+  any_nan <- prim_reduce_any(nan_mask, dims = dim, drop = drop)
+  first_nan_idx <- prim_argmax(nan_mask, dim = dim, drop = drop)
+  nv_ifelse(any_nan, first_nan_idx, result)
 }

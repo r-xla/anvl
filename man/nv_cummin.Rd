@@ -24,8 +24,7 @@ When \code{dim = NULL}, indices refer to the flattened input.}
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 (default), \code{NaN} propagates.
-If \code{TRUE}, \code{NaN} values are either removed or replaced by the
-neutral element of the reduction.}
+If \code{TRUE}, \code{NaN} values are removed.}
 }
 \value{
 \code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
@@ -43,14 +42,22 @@ flattened sequence iterates the last dim fastest, whereas base R uses
 column-major (Fortran) order. The two agree on 1-D inputs.
 }
 
+\section{NaN handling}{
+
+With \code{nan_rm = FALSE} (default), a \code{NaN} propagates forward: positions at
+or after the first \code{NaN} along \code{dim} are \code{NaN}. With \code{nan_rm = TRUE},
+\code{NaN} is treated as the identity element (\code{0} for sum, \code{1} for prod,
+\code{-Inf}/\code{+Inf} for max/min) and contributes nothing to the running value.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummin(x)
 nv_cummin(x, dim = 1L)
 nv_cummin(x, dim = 1L, with_indices = TRUE)
-nv_cummin(nv_array(c(3, NaN, 1)))
-nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE)
+nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
+nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 \dontshow{\}) # examplesIf}
 }
 \seealso{

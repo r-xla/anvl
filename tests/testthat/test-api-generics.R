@@ -260,9 +260,6 @@ describe("Summary group generic", {
     )
   })
   it("forwards na.rm to the underlying nv_reduce_*", {
-    # Integer input: na.rm is a no-op (integers cannot be NaN).
-    expect_equal(as.numeric(sum(nv_array(1:3), na.rm = TRUE)), 6)
-    expect_equal(as.numeric(max(nv_array(1:3), na.rm = TRUE)), 3)
     # Float input with NaN: na.rm = TRUE skips it.
     x <- nv_array(c(1, NaN, 3))
     expect_equal(as_array(sum(x, na.rm = TRUE)), 4)

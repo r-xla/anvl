@@ -35,7 +35,8 @@ You can also use \code{sort()} directly.
 }
 \section{NaN handling}{
 
-The position of \code{NaN} values in the sorted output is **XLA-backend-defined.
+\code{NaN} values sort to the \strong{end} (ascending) or \strong{beginning}
+(descending), regardless of sign. \code{+0} and \code{-0} compare equal.
 }
 
 \examples{

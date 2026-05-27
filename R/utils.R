@@ -148,7 +148,8 @@ dtype2string <- function(dtype, ambiguous = FALSE) {
 }
 
 is_valid_r_lit <- function(x) {
-  length(x) == 1L && is.null(dim(x)) &&
+  length(x) == 1L &&
+    is.null(dim(x)) &&
     (is.numeric(x) || is.logical(x)) &&
     # Accept NaN/Inf but reject NA (NA has no obvious dtype).
     (is.nan(x) || !is.na(x))
