@@ -11,6 +11,8 @@ sometimes only briefly.
   only).
 - [**Data types**](#data-types) – using `f32` (the default) instead of
   `f64`.
+- [**BLAS / LAPACK**](#blas-lapack) – linking R against a fast LAPACK to
+  speed up linear algebra on CPU.
 - [**Compilation cost**](#compilation-cost) – padding inputs so more
   calls hit the same cache entry.
 - [**Asynchronous execution**](#asynchronous-execution) – how to keep
@@ -113,6 +115,21 @@ precision here. Speedups from using `f32` over `f64` also depend on the
 specific hardware. Commonly, `f32` is the default data type for
 floating-point operations in GPU-accelerated frameworks, so unless you
 have a specific reason, we recommend sticking with the defaults.
+
+## BLAS / LAPACK
+
+A handful of linear-algebra primitives –
+[`nv_svd()`](https://r-xla.github.io/anvl/dev/reference/nv_svd.md),
+[`nv_eigh()`](https://r-xla.github.io/anvl/dev/reference/nv_eigh.md),
+[`nv_qr()`](https://r-xla.github.io/anvl/dev/reference/nv_qr.md),
+[`nv_lu()`](https://r-xla.github.io/anvl/dev/reference/nv_lu.md) – use
+R’s BLAS / LAPACK on the CPU backend, so the performance of these
+operations is determined by how R was built.
+
+The default R install on many platforms ships with a reference BLAS /
+LAPACK that is single-threaded and considerably slower than tuned
+alternatives such as OpenBLAS, Intel MKL, or Apple’s Accelerate
+framework. The CUDA backend is unaffected.
 
 ## Compilation cost
 
