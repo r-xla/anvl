@@ -4,7 +4,13 @@
 \alias{stablehlo}
 \title{Lower a graph to StableHLO}
 \usage{
-stablehlo(graph, constants_as_inputs = TRUE, env = NULL, donate = character())
+stablehlo(
+  graph,
+  constants_as_inputs = TRUE,
+  env = NULL,
+  donate = character(),
+  platform = NULL
+)
 }
 \arguments{
 \item{graph}{(\code{\link{AnvlGraph}})\cr
@@ -24,6 +30,13 @@ Optional environment for reusing variable mappings across nested function loweri
 Names of the arguments whose buffers should be donated.
 Donated buffers can be aliased with outputs of the same type, enabling in-place
 operations.}
+
+\item{platform}{(\code{NULL} | \code{character(1)})\cr
+Target platform name (e.g. \code{"cpu"}, \code{"cuda"}). Stored on a process-wide
+global during the call so that platform-aware lowering rules (queried via
+\code{\link[=current_platform]{current_platform()}}) can branch on it. \code{NULL} (the default)
+leaves the current value untouched — recursive calls from higher-order
+primitives inherit the platform of the enclosing call.}
 }
 \value{
 A \code{list} of length 2:
@@ -51,5 +64,5 @@ stablehlo(graph)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}, \code{\link[=xla]{xla()}}
+\code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}, \code{\link[=xla]{xla()}}, \code{\link[=current_platform]{current_platform()}}
 }
