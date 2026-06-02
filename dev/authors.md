@@ -18,12 +18,12 @@
 Source:
 [`DESCRIPTION`](https://github.com/r-xla/anvl/blob/main/DESCRIPTION)
 
-Fischer S, Falbel D, Kalinowski T, German N (2026). *anvl: Framework for
-R code transformations*. R package version 0.2.0.9000,
-<https://r-xla.github.io/anvl/>.
+Fischer S, Falbel D, Kalinowski T, German N (2026). *anvl: Accelerated
+Array Computing and Automatic Differentiation*. R package version
+0.2.0.9000, <https://r-xla.github.io/anvl/>.
 
     @Manual{,
-      title = {anvl: Framework for R code transformations},
+      title = {anvl: Accelerated Array Computing and Automatic Differentiation},
       author = {Sebastian Fischer and Daniel Falbel and Tomasz Kalinowski and Nikolai German},
       year = {2026},
       note = {R package version 0.2.0.9000},
