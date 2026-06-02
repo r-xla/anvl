@@ -252,6 +252,11 @@ current_platform <- function() {
 local_platform <- function(platform, envir = parent.frame()) {
   old <- globals[["LOWERING_PLATFORM"]]
   globals[["LOWERING_PLATFORM"]] <- platform
-  withr::defer(globals[["LOWERING_PLATFORM"]] <- old, envir = envir)
+  withr::defer(
+    {
+      globals[["LOWERING_PLATFORM"]] <- old
+    },
+    envir = envir
+  )
   invisible(old)
 }

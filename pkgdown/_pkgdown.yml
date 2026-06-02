@@ -385,6 +385,8 @@ reference:
       - jit_eval
       - compile_xla
       - stablehlo
+      - current_platform
+      - local_platform
 
   - subtitle: Tree
     desc: Utilities for working with nested structures
