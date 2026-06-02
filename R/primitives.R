@@ -3391,8 +3391,9 @@ prim_lu <- new_primitive(
 #' (matching the underlying LAPACK / cuSOLVER output and avoiding an
 #' extra transpose).
 #'
-#' On the CUDA backend this primitive currently requires `m >= n` (cuSOLVER's
-#' `gesvd` restriction). The host (LAPACK) backend supports any shape.
+#' Supports any matrix shape on both the host (LAPACK `gesdd`) and CUDA
+#' (cuSOLVER `gesvd`) backends. cuSOLVER's `m >= n` requirement is handled
+#' transparently via a layout flip for wide matrices.
 #' @param operand ([`arrayish`])\cr
 #'   Matrix of data type floating-point with exactly 2 dimensions.
 #' @return Named `list` with elements `d` (length `k`), `u` (shape

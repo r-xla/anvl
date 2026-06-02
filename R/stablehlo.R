@@ -79,17 +79,32 @@ env_get <- function(env, gval) {
 #'   Names of the arguments whose buffers should be donated.
 #'   Donated buffers can be aliased with outputs of the same type, enabling in-place
 #'   operations.
+#' @param platform (`NULL` | `character(1)`)\cr
+#'   Target platform name (e.g. `"cpu"`, `"cuda"`). Stored on a process-wide
+#'   global during the call so that platform-aware lowering rules (queried via
+#'   [`current_platform()`]) can branch on it. `NULL` (the default)
+#'   leaves the current value untouched — recursive calls from higher-order
+#'   primitives inherit the platform of the enclosing call.
 #' @return A `list` of length 2:
 #'   - the [`stablehlo::Func`]
 #'   - The list of [`GraphValue`]s holding [`ConcreteArray`]s.
-#' @seealso [`trace_fn()`], [`jit()`], [`xla()`]
+#' @seealso [`trace_fn()`], [`jit()`], [`xla()`], [`current_platform()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2))
 #' graph <- trace_fn(function(y) y + x, list(y = nv_aval("f32", shape = c())))
 #' graph
 #' stablehlo(graph)
-stablehlo <- function(graph, constants_as_inputs = TRUE, env = NULL, donate = character()) {
+stablehlo <- function(
+  graph,
+  constants_as_inputs = TRUE,
+  env = NULL,
+  donate = character(),
+  platform = NULL
+) {
+  if (!is.null(platform)) {
+    local_platform(platform)
+  }
   # Node -> FuncValue
   env <- HloEnv(parent = env)
   func <- stablehlo::local_func(id = "main")
@@ -206,4 +221,37 @@ stablehlo <- function(graph, constants_as_inputs = TRUE, env = NULL, donate = ch
   constants <- graph$constants
 
   list(func, constants)
+}
+
+#' @title Current Lowering Target Platform
+#' @description
+#' Returns the target platform currently set by an enclosing [`stablehlo()`]
+#' call (e.g. `"cpu"`, `"cuda"`). Platform-aware lowering rules call this to
+#' branch on the target — e.g. SVD switches to a layout-flip variant when
+#' targeting CUDA with `m < n` because cuSOLVER's `gesvd` requires `m >= n`.
+#' Returns `NULL` outside of a lowering call.
+#'
+#' [`local_platform()`] sets the current platform for the duration of the
+#' calling scope, restoring the previous value via [`withr::defer()`] when the
+#' scope exits. Useful in tests and for manually exercising platform-aware
+#' lowering rules outside of a [`stablehlo()`] call.
+#' @param platform (`character(1)` | `NULL`)\cr
+#'   Target platform name (e.g. `"cpu"`, `"cuda"`), or `NULL` to clear it.
+#' @param envir (`environment`)\cr
+#'   Environment whose exit triggers restoration of the previous platform.
+#' @return `current_platform()` returns `NULL` or `character(1)`.
+#'   `local_platform()` invisibly returns the previous platform.
+#' @seealso [`stablehlo()`]
+#' @export
+current_platform <- function() {
+  globals[["LOWERING_PLATFORM"]]
+}
+
+#' @rdname current_platform
+#' @export
+local_platform <- function(platform, envir = parent.frame()) {
+  old <- globals[["LOWERING_PLATFORM"]]
+  globals[["LOWERING_PLATFORM"]] <- platform
+  withr::defer(globals[["LOWERING_PLATFORM"]] <- old, envir = envir)
+  invisible(old)
 }

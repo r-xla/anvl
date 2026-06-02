@@ -29,8 +29,9 @@ primitive returns them already transposed as \code{vt} of shape \verb{(k, n)}
 (matching the underlying LAPACK / cuSOLVER output and avoiding an
 extra transpose).
 
-On the CUDA backend this primitive currently requires \code{m >= n} (cuSOLVER's
-\code{gesvd} restriction). The host (LAPACK) backend supports any shape.
+Supports any matrix shape on both the host (LAPACK \code{gesdd}) and CUDA
+(cuSOLVER \code{gesvd}) backends. cuSOLVER's \code{m >= n} requirement is handled
+transparently via a layout flip for wide matrices.
 }
 \section{Implemented Rules}{
 
