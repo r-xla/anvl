@@ -507,6 +507,7 @@ nv_subset <- function(operand, ...) {
 #' x[1, ] <- nv_scalar(0L)
 #' x
 #' @export
+#' @jit
 nv_subset_assign <- function(operand, ..., value) {
   if (!is_arrayish(operand)) {
     cli_abort("Expected arrayish `operand`, but got {.cls {class(operand)[1]}}")
