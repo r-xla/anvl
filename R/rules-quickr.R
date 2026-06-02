@@ -163,7 +163,7 @@ quickr_alloc_full <- function(shape, value_expr) {
   }
 }
 
-quickr_emit_convert <- function(out_sym, operand_expr, shape_in, in_aval, out_aval) {
+quickr_emit_convert <- function(out_sym, operand_expr, shape_in, in_aval, out_aval, ctx = NULL) {
   shape_in <- as.integer(shape_in)
   rank <- length(shape_in)
   dt_out <- as.character(dtype(out_aval))
@@ -172,6 +172,14 @@ quickr_emit_convert <- function(out_sym, operand_expr, shape_in, in_aval, out_av
   # Ensure we fail early with a consistent "Unsupported dtype for quickr lowering"
   # error, and avoid duplicating dtype validation in each emitter branch.
   quickr_dtype_info(dt_out)
+
+  # quickr's r2f rejects `NaN` / `Inf` as scalar literals (its
+  # `is_scalar_atomic` check returns FALSE for them), so a literal-NaN
+  # convert like `as.double(NaN)` won't compile. Construct these values at
+  # runtime instead, from a non-literal zero — see `.quickr_emit_special_float`.
+  if (rank == 0L && .is_special_float_literal(operand_expr)) {
+    return(.quickr_emit_special_float(out_sym, operand_expr, dt_out, ctx))
+  }
 
   cast_expr <- function(expr) {
     if (dt_out == "f64") {
@@ -204,6 +212,35 @@ quickr_emit_convert <- function(out_sym, operand_expr, shape_in, in_aval, out_av
     return(quickr_emit_assign(out_sym, casted))
   }
   quickr_emit_assign(out_sym, rlang::call2("array", casted, dim = shape_in))
+}
+
+.is_special_float_literal <- function(x) {
+  is.numeric(x) && length(x) == 1L && (is.nan(x) || is.infinite(x))
+}
+
+# Emit two statements that bind `out_sym` to the runtime-computed NaN / ±Inf
+# value (`0/0`, `1/0`, `-1/0`) via a fresh zero temp. quickr rejects NaN/Inf
+# as scalar literals but compiles arithmetic on declared zero variables.
+# The zero temp must be a `new_tmp_sym()` from ctx so quickr's symbol
+# tracker recognizes it.
+.quickr_emit_special_float <- function(out_sym, val, dt_out, ctx) {
+  if (is.null(ctx) || is.null(ctx$new_tmp_sym)) {
+    cli_abort("Internal error: NaN/Inf scalar emit requires ctx$new_tmp_sym")
+  }
+  ctor <- quickr_dtype_info(dt_out)$ctor # "double" or similar
+  zero_sym <- ctx$new_tmp_sym()
+  numerator <- if (is.nan(val)) {
+    zero_sym
+  } else if (val > 0) {
+    1.0
+  } else {
+    -1.0
+  }
+  cast <- function(e) rlang::call2(if (ctor == "double") "as.double" else ctor, e)
+  list(
+    rlang::call2("<-", zero_sym, cast(0)),
+    rlang::call2("<-", out_sym, rlang::call2("/", numerator, zero_sym))
+  )
 }
 
 quickr_emit_truncating_i32 <- function(out_sym, operand_expr, shape_out) {
@@ -1531,7 +1568,7 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_convert(out_sym, inputs[[1L]], shape(operand_node$aval), operand_node$aval, out_aval)
+      quickr_emit_convert(out_sym, inputs[[1L]], shape(operand_node$aval), operand_node$aval, out_aval, ctx = ctx)
     }
   )
 

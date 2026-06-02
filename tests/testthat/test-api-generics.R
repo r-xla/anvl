@@ -259,9 +259,14 @@ describe("Summary group generic", {
       nv_array(c(3, 7, 11), dtype = "i32")
     )
   })
-  it("errors on na.rm = TRUE", {
-    expect_error(sum(nv_array(1:3), na.rm = TRUE), "na.rm = TRUE")
-    expect_error(max(nv_array(1:3), na.rm = TRUE), "na.rm = TRUE")
+  it("forwards na.rm to the underlying nv_reduce_*", {
+    # Float input with NaN: na.rm = TRUE skips it.
+    x <- nv_array(c(1, NaN, 3))
+    expect_equal(as_array(sum(x, na.rm = TRUE)), 4)
+    expect_equal(as_array(max(x, na.rm = TRUE)), 3)
+    # Without na.rm, NaN propagates.
+    expect_true(is.nan(as_array(sum(x))))
+    expect_true(is.nan(as_array(max(x))))
   })
   it("rejects unsupported args", {
     expect_error(sum(nv_array(1:3), foo = "bar"), "unused argument")

@@ -1961,37 +1961,50 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 #' @template param_operand
 #' @template params_reduce
 #' @template return_reduce
+#' @template param_nan_rm
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_reduce_sum(x)            # all dims -> scalar
 #' nv_reduce_sum(x, dims = 1L)
+#' nv_reduce_sum(nv_array(c(1, NaN, 3)))
+#' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE) {
+nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_reduce_sum(operand, dims = .resolve_reduce_dims(operand, dims), drop = drop)
+  dims <- .resolve_reduce_dims(operand, dims)
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), 0, operand)
+  }
+  prim_reduce_sum(operand, dims = dims, drop = drop)
 }
 
 #' @title Mean
 #' @description
 #' Computes the arithmetic mean along the specified dimensions. You can also
 #' use `mean()`.
-#' @details
-#' Implemented as `nv_reduce_sum(operand, dims, drop) / n` where `n` is the
-#' product of the reduced dimension sizes.
 #' @template param_operand
 #' @template params_reduce
 #' @template return_reduce
+#' @template param_nan_rm
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_mean(x)            # all dims -> scalar
 #' nv_mean(x, dims = 1L)
+#' nv_mean(nv_array(c(1, NaN, 3)))
+#' nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
 #' @jit static = c(2L, 3L)
-nv_mean <- function(operand, dims = NULL, drop = TRUE) {
+nv_mean <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   dims <- .resolve_reduce_dims(operand, dims)
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    is_nan <- nv_is_nan(operand)
+    total <- prim_reduce_sum(nv_ifelse(is_nan, 0, operand), dims = dims, drop = drop)
+    count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), dims = dims, drop = drop)
+    return(total / count)
+  }
   nelts <- prod(shape(operand)[dims])
   nv_reduce_sum(operand, dims, drop) / nelts
 }
@@ -2002,15 +2015,22 @@ nv_mean <- function(operand, dims = NULL, drop = TRUE) {
 #' @template param_operand
 #' @template params_reduce
 #' @template return_reduce
+#' @template param_nan_rm
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_reduce_prod(x)            # all dims -> scalar
 #' nv_reduce_prod(x, dims = 1L)
+#' nv_reduce_prod(nv_array(c(2, NaN, 3)))
+#' nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_prod <- function(operand, dims = NULL, drop = TRUE) {
+nv_reduce_prod <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_reduce_prod(operand, dims = .resolve_reduce_dims(operand, dims), drop = drop)
+  dims <- .resolve_reduce_dims(operand, dims)
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), 1, operand)
+  }
+  prim_reduce_prod(operand, dims = dims, drop = drop)
 }
 
 #' @title Max Reduction
@@ -2018,16 +2038,20 @@ nv_reduce_prod <- function(operand, dims = NULL, drop = TRUE) {
 #' Finds the maximum of array elements along the specified dimensions.
 #' @template param_operand
 #' @template params_reduce
+#' @template param_nan_rm
 #' @template return_reduce
 #' @seealso [prim_reduce_max()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_reduce_max(x)            # all dims -> scalar
 #' nv_reduce_max(x, dims = 1L)
+#' nv_reduce_max(nv_array(c(1, NaN, 3)))
+#' nv_reduce_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_max <- function(operand, dims = NULL, drop = TRUE) {
+nv_reduce_max <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_reduce_max(operand, dims = .resolve_reduce_dims(operand, dims), drop = drop)
+  dims <- .resolve_reduce_dims(operand, dims)
+  .nv_reduce_extreme(operand, dims, drop, nan_rm, -Inf, prim_reduce_max)
 }
 
 #' @title Min Reduction
@@ -2035,16 +2059,39 @@ nv_reduce_max <- function(operand, dims = NULL, drop = TRUE) {
 #' Finds the minimum of array elements along the specified dimensions.
 #' @template param_operand
 #' @template params_reduce
+#' @template param_nan_rm
 #' @template return_reduce
 #' @seealso [prim_reduce_min()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_reduce_min(x)            # all dims -> scalar
 #' nv_reduce_min(x, dims = 1L)
+#' nv_reduce_min(nv_array(c(1, NaN, 3)))
+#' nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_min <- function(operand, dims = NULL, drop = TRUE) {
+nv_reduce_min <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_reduce_min(operand, dims = .resolve_reduce_dims(operand, dims), drop = drop)
+  dims <- .resolve_reduce_dims(operand, dims)
+  .nv_reduce_extreme(operand, dims, drop, nan_rm, Inf, prim_reduce_min)
+}
+
+# Shared NaN-aware reduction for max/min. Unlike sum/prod (which lower to
+# arithmetic that propagates NaN), the min/max kernels are comparison-based
+# and silently drop NaN, so `nan_rm = FALSE` needs an explicit any-NaN mask
+# to re-inject NaN — no input substitution can coax the kernel into emitting
+# NaN on output.
+.nv_reduce_extreme <- function(operand, dims, drop, nan_rm, identity_val, prim_reduce) {
+  if (!inherits(dtype(operand), "FloatType")) {
+    return(prim_reduce(operand, dims = dims, drop = drop))
+  }
+  is_nan <- nv_is_nan(operand)
+  if (nan_rm) {
+    operand <- nv_ifelse(is_nan, identity_val, operand)
+    return(prim_reduce(operand, dims = dims, drop = drop))
+  }
+  any_nan <- prim_reduce_any(is_nan, dims = dims, drop = drop)
+  result <- prim_reduce(operand, dims = dims, drop = drop)
+  nv_ifelse(any_nan, NaN, result)
 }
 
 #' @title Any Reduction
@@ -2089,6 +2136,7 @@ nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
 #' @template param_operand
 #' @templateVar cum_base_fn cumsum
 #' @template param_nv_cum_dim
+#' @template param_nan_rm_cum
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumsum
 #' @template section_nv_cum_relation
@@ -2097,13 +2145,18 @@ nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_cumsum(x)              # row-major flatten, then accumulate
 #' nv_cumsum(x, dim = 1L)    # accumulate along rows
+#' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
+#' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 #' @export
 #' @jit static = c(2L)
-nv_cumsum <- function(operand, dim = NULL) {
+nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
+  }
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), 0, operand)
   }
   prim_cumsum(operand, dim = as.integer(dim))
 }
@@ -2114,6 +2167,7 @@ nv_cumsum <- function(operand, dim = NULL) {
 #' @template param_operand
 #' @templateVar cum_base_fn cumprod
 #' @template param_nv_cum_dim
+#' @template param_nan_rm_cum
 #' @template return_unary
 #' @templateVar cum_nv_name nv_cumprod
 #' @template section_nv_cum_relation
@@ -2122,13 +2176,18 @@ nv_cumsum <- function(operand, dim = NULL) {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_cumprod(x)              # row-major flatten, then accumulate
 #' nv_cumprod(x, dim = 1L)    # accumulate along rows
+#' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
+#' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 #' @export
 #' @jit static = c(2L)
-nv_cumprod <- function(operand, dim = NULL) {
+nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
+  }
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), 1, operand)
   }
   prim_cumprod(operand, dim = as.integer(dim))
 }
@@ -2144,22 +2203,19 @@ nv_cumprod <- function(operand, dim = NULL) {
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummax
 #' @template section_nv_cum_relation
+#' @template param_nan_rm_cum
 #' @seealso [prim_cummax()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummax(x)
 #' nv_cummax(x, dim = 1L)
 #' nv_cummax(x, dim = 1L, with_indices = TRUE)
+#' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
+#' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
 #' @jit static = c(2L, 3L)
-nv_cummax <- function(operand, dim = NULL, with_indices = FALSE) {
-  operand <- as_anvl_array(operand)
-  if (is.null(dim)) {
-    operand <- nv_reshape(operand, prod(shape(operand)))
-    dim <- 1L
-  }
-  out <- prim_cummax(operand, dim = as.integer(dim))
-  if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
+nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
+  .nv_cum_extreme(operand, dim, with_indices, nan_rm, -Inf, prim_cummax)
 }
 
 #' @title Cumulative Minimum
@@ -2173,21 +2229,34 @@ nv_cummax <- function(operand, dim = NULL, with_indices = FALSE) {
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummin
 #' @template section_nv_cum_relation
+#' @template param_nan_rm_cum
 #' @seealso [prim_cummin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummin(x)
 #' nv_cummin(x, dim = 1L)
 #' nv_cummin(x, dim = 1L, with_indices = TRUE)
+#' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
+#' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
 #' @jit static = c(2L, 3L)
-nv_cummin <- function(operand, dim = NULL, with_indices = FALSE) {
+nv_cummin <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
+  .nv_cum_extreme(operand, dim, with_indices, nan_rm, Inf, prim_cummin)
+}
+
+# NaN propagation for the default `nan_rm = FALSE` path is now handled in
+# `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
+# sanitize NaN → identity for `nan_rm = TRUE`.
+.nv_cum_extreme <- function(operand, dim, with_indices, nan_rm, identity_val, prim_cum) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
   }
-  out <- prim_cummin(operand, dim = as.integer(dim))
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    operand <- nv_ifelse(nv_is_nan(operand), identity_val, operand)
+  }
+  out <- prim_cum(operand, dim = as.integer(dim))
   if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
 }
 
@@ -2316,23 +2385,33 @@ nv_is_infinite <- function(operand) {
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
+#' @template param_nan_rm
 #' @template return_reduce
 #' @seealso [nv_sd()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
 #' nv_var(x, dims = 1L)
+#' nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
 #' @export
 #' @jit static = c(2L, 3L, 4L)
-nv_var <- function(operand, dims, drop = TRUE, correction = 1L) {
+nv_var <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   assert_int(correction)
-  nelts <- prod(shape(operand)[dims])
   mean_bc <- nv_broadcast_to(
-    nv_mean(operand, dims, drop = FALSE),
+    nv_mean(operand, dims, drop = FALSE, nan_rm = nan_rm),
     shape(operand)
   )
   diff <- operand - mean_bc
-  nv_reduce_sum(diff * diff, dims, drop) / (nelts - correction)
+  ssum <- nv_reduce_sum(diff * diff, dims, drop, nan_rm = nan_rm)
+  if (nan_rm && inherits(dtype(operand), "FloatType")) {
+    count <- nv_reduce_sum(nv_convert(!nv_is_nan(operand), "i32"), dims, drop)
+    # When count <= correction the divisor clamps to 0 and ssum is 0
+    # (single non-NaN point has zero deviation, all-NaN slice contributes
+    # nothing), so 0/0 = NaN propagates naturally — no explicit mask needed.
+    return(ssum / nv_max(0, count - correction))
+  }
+  nelts <- prod(shape(operand)[dims])
+  ssum / max(0L, nelts - correction)
 }
 
 #' @title Standard Deviation Reduction
@@ -2345,6 +2424,7 @@ nv_var <- function(operand, dims, drop = TRUE, correction = 1L) {
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
+#' @template param_nan_rm
 #' @template return_reduce
 #' @seealso [nv_var()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2352,9 +2432,9 @@ nv_var <- function(operand, dims, drop = TRUE, correction = 1L) {
 #' nv_sd(x, dims = 1L)
 #' @export
 #' @jit static = c(2L, 3L, 4L)
-nv_sd <- function(operand, dims, drop = TRUE, correction = 1L) {
+nv_sd <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  nv_sqrt(nv_var(operand, dims, drop, correction))
+  nv_sqrt(nv_var(operand, dims, drop, correction, nan_rm = nan_rm))
 }
 
 ## Array manipulation ----------------------------------------------------------
@@ -2610,7 +2690,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
 #' @description
 #' Picks one or more elements along dimension `dim` of `operand`.
 #' Use this instead of `[` or `nv_subset` when the index to select is provided
-#' programatically.
+#' programmatically.
 #' @template param_operand
 #' @param dim (`integer(1)`)\cr
 #'   Dimension to index into.
@@ -2640,6 +2720,41 @@ nv_select <- function(operand, dim, index) {
   do.call(nv_subset, c(list(operand), args))
 }
 
+# Per-slice gather along `dim`. `index` has the same rank as `operand`,
+# matching shape on every non-`dim` axis. Returns shape `shape(index)`.
+# Used internally by nv_quantile; not exposed as part of nv_select.
+.gather_along_dim <- function(operand, index, dim, rank, shp) {
+  idx_shape <- shape(index)
+  if (!identical(shp[-dim], idx_shape[-dim])) {
+    cli_abort(
+      "Per-slice {.arg index} must match {.arg operand}'s shape on every dimension except {.arg dim}"
+    )
+  }
+  axis_idx <- function(d) {
+    raw <- if (d == dim) {
+      nv_convert(index, "i32")
+    } else {
+      nv_iota_like(operand, dim = d, shape = idx_shape, dtype = "i32")
+    }
+    prim_reshape(raw, c(idx_shape, 1L))
+  }
+  start_indices <- do.call(
+    nv_concatenate,
+    c(lapply(seq_len(rank), axis_idx), list(dimension = rank + 1L))
+  )
+  prim_gather(
+    operand,
+    start_indices = start_indices,
+    slice_sizes = rep(1L, rank),
+    offset_dims = integer(0),
+    collapsed_slice_dims = seq_len(rank),
+    operand_batching_dims = integer(0),
+    start_indices_batching_dims = integer(0),
+    start_index_map = seq_len(rank),
+    index_vector_dim = rank + 1L
+  )
+}
+
 #' @title Sort
 #' @name nv_sort
 #' @description
@@ -2652,11 +2767,20 @@ nv_select <- function(operand, dim, index) {
 #'   dimension.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, sort in decreasing order. Default `FALSE`.
+#' @param stable (`logical(1)`)\cr
+#'   If `TRUE`, the sort is stable: equal values keep their original
+#'   relative order along `dim`. Default `FALSE`. Stability is only
+#'   observable for floats when `-0` / `+0` or `-NaN` / `+NaN` are mixed
+#'   (they compare equal under the total order used here); for distinct
+#'   values the result is identical either way.
 #' @return [`arrayish`]\cr
 #'   Same shape and data type as `operand`.
+#' @section NaN handling:
+#' `NaN` values sort to the **end** (ascending) or **beginning**
+#' (descending), regardless of sign. `+0` and `-0` compare equal.
 #' @seealso [prim_sort()] for the underlying primitive,
-#'   [nv_argsort()] (where sort stability is observable),
-#'   [nv_top_k()], [nv_median()], [nv_argmax()], [nv_argmin()].
+#'   [nv_argsort()], [nv_top_k()], [nv_median()],
+#'   [nv_argmax()], [nv_argmin()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' nv_sort(x)
@@ -2666,13 +2790,13 @@ nv_select <- function(operand, dim, index) {
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_sort(m, dim = 2L)
 #' @export
-nv_sort <- function(operand, dim = NULL, decreasing = FALSE) {
+nv_sort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
   operand <- as_anvl_array(operand)
   if (ndims(operand) == 0L) {
     cli_abort("Cannot sort a 0-dimensional array")
   }
   dim <- dim %||% ndims(operand)
-  prim_sort(list(operand), dim = as.integer(dim), descending = decreasing, is_stable = FALSE)[[1L]]
+  prim_sort(list(operand), dim = as.integer(dim), descending = decreasing, is_stable = stable)[[1L]]
 }
 
 #' @title Argsort
@@ -2693,6 +2817,7 @@ nv_sort <- function(operand, dim = NULL, decreasing = FALSE) {
 #'   array of the same shape (a valid empty permutation).
 #'   `as_array(operand)[as_array(nv_argsort(operand))]` reproduces the sorted
 #'   array (for 1-D inputs).
+#' @inheritSection nv_sort NaN handling
 #' @seealso [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5))
@@ -2726,6 +2851,10 @@ nv_argsort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) 
 #' @return [`arrayish`] (when `with_indices = FALSE`) or named list of two
 #'   arrays (when `with_indices = TRUE`). Output shape matches `operand` with
 #'   `dim` resized to `k`; values are sorted decreasing along `dim`.
+#' @section NaN handling:
+#' `NaN` ranks larger than any finite value (so it appears first in the
+#' top-`k` output); `-NaN` ranks smaller. Unlike [nv_sort()], the sign
+#' bit is not canonicalized.
 #' @seealso [prim_top_k()] for the underlying primitive, [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -2800,6 +2929,7 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #' @param interpolation (`character(1)`)\cr
 #'   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
 #'   `"midpoint"`. See "Interpolation modes".
+#' @template param_nan_rm
 #' @return [`arrayish`]\cr
 #'   For scalar `probs`: same shape as `x` with `dim` removed. For
 #'   array `probs`: a **leading** dimension of size `length(probs)` is
@@ -2810,9 +2940,11 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #' nv_quantile(x, 0.5) # = nv_median(x)
 #' nv_quantile(x, array(c(0.25, 0.5, 0.75)))
 #' nv_quantile(x, 0.5, interpolation = "lower")
+#' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)
+#' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
 #' @export
 #' @jit static = c(3L, 4L)
-nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear") {
+nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   rank <- ndims(operand)
   if (rank == 0L) {
@@ -2827,73 +2959,68 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear") {
   is_probs_array <- !is.null(dim(probs))
   dim <- as.integer(dim %||% rank)
   shp <- shape(operand)
-  n <- shp[dim]
   K <- length(probs)
   probs <- as.numeric(probs)
+  is_float <- inherits(dtype(operand), "FloatType")
+  shp_kd <- replace(shp, dim, 1L)
+  shp_K <- replace(shp, dim, K)
 
-  h <- (n - 1L) * probs
-  # Mirror probs's vector-vs-array shape onto the indices so nv_select
-  # picks the right drop/keep semantics.
-  mk_idx <- if (is_probs_array) array else identity
-  make_lo <- function() mk_idx(as.integer(floor(h)) + 1L)
-  make_hi <- function() mk_idx(as.integer(ceiling(h)) + 1L)
-  make_frac <- function() h - floor(h)
+  # For float input, find NaN positions: nan_rm = TRUE sanitizes them to +Inf
+  # so they sort to the end; nan_rm = FALSE uses them post-hoc to propagate.
+  if (is_float) {
+    nan_mask <- nv_is_nan(operand)
+    to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, operand) else operand
+    n_valid_kd <- if (nan_rm) {
+      prim_reduce_sum(nv_convert(!nan_mask, "i32"), dims = dim, drop = FALSE)
+    } else {
+      nv_broadcast_to(nv_array_like(operand, shp[dim], shape = integer()), shp_kd)
+    }
+  } else {
+    to_sort <- operand
+    n_valid_kd <- nv_broadcast_to(nv_array_like(operand, shp[dim], shape = integer()), shp_kd)
+  }
+  sorted <- prim_sort(list(to_sort), dim = dim)[[1L]]
 
-  sorted <- prim_sort(list(operand), dim = dim)[[1L]]
+  # Broadcast `(K,) probs` along `dim` and `(shp_kd,) n_valid_kd` across
+  # `dim` → both shaped `shp_K`, with K varying along `dim`.
+  probs_shape <- replace(rep(1L, rank), dim, K)
+  probs_b <- nv_broadcast_to(
+    prim_reshape(nv_array_like(sorted, probs, shape = K), probs_shape),
+    shp_K
+  )
+  n_valid_b <- nv_broadcast_to(n_valid_kd, shp_K)
+  h <- (n_valid_b - 1) * probs_b
+  lo_f <- nv_floor(h)
+  hi_f <- nv_ceiling(h)
+  frac <- h - lo_f
+
+  lo_val <- .gather_along_dim(sorted, nv_convert(lo_f + 1, "i32"), dim, rank, shp)
+  hi_val <- .gather_along_dim(sorted, nv_convert(hi_f + 1, "i32"), dim, rank, shp)
 
   out <- switch(
     interpolation,
-    "lower" = nv_select(sorted, dim, make_lo()),
-    "higher" = nv_select(sorted, dim, make_hi()),
-    "nearest" = {
-      frac <- make_frac()
-      nv_select(
-        sorted,
-        dim,
-        mk_idx(ifelse(
-          frac < 0.5,
-          as.integer(floor(h)) + 1L,
-          as.integer(ceiling(h)) + 1L
-        ))
-      )
-    },
-    "linear" = {
-      lo_vals <- nv_select(sorted, dim, make_lo())
-      hi_vals <- nv_select(sorted, dim, make_hi())
-      frac <- make_frac()
-      # anvl's elementwise ops only auto-broadcast scalars, so when probs
-      # is an array we explicitly broadcast frac (length K) onto the
-      # K-along-`dim` shape of lo_vals/hi_vals: reshape to a same-rank
-      # `[1, ..., K, ..., 1]` first so nv_broadcast_to's identity mapping
-      # expands the size-1 dims correctly.
-      f <- if (is_probs_array) {
-        align <- rep(1L, rank)
-        align[dim] <- length(frac)
-        nv_broadcast_to(
-          prim_reshape(
-            nv_array_like(sorted, frac, shape = length(frac)),
-            align
-          ),
-          shape(lo_vals)
-        )
-      } else {
-        frac
-      }
-      lo_vals * (1 - f) + hi_vals * f
-    },
-    "midpoint" = {
-      lo_vals <- nv_select(sorted, dim, make_lo())
-      hi_vals <- nv_select(sorted, dim, make_hi())
-      (lo_vals + hi_vals) / 2
-    }
+    "lower" = lo_val,
+    "higher" = hi_val,
+    "nearest" = nv_ifelse(frac < 0.5, lo_val, hi_val),
+    "linear" = lo_val * (1 - frac) + hi_val * frac,
+    "midpoint" = (lo_val + hi_val) / 2
   )
 
-  if (!is_probs_array) {
-    return(out)
+  # Propagate NaN: nan_rm = TRUE produces NaN only for all-NaN slices;
+  # nan_rm = FALSE produces NaN for any slice that contained a NaN (XLA's
+  # sort places NaN unpredictably, so we can't rely on the gather hitting it).
+  if (is_float) {
+    bad <- if (nan_rm) n_valid_kd == 0 else prim_reduce_any(nan_mask, dims = dim, drop = FALSE)
+    out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
   }
-  # Now we move the quantiles to the first dimension
-  perm <- c(dim, seq_len(rank)[-dim])
-  prim_transpose(out, permutation = perm)
+
+  # For scalar probs, drop the (now size-1) reduced dim. For array probs,
+  # move the K axis (currently at `dim`) to the front.
+  if (is_probs_array) {
+    prim_transpose(out, permutation = c(dim, seq_len(rank)[-dim]))
+  } else {
+    prim_reshape(out, shp[-dim])
+  }
 }
 
 
@@ -2914,6 +3041,8 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear") {
 #' @param interpolation (`character(1)`)\cr
 #'   Forwarded to [nv_quantile()]. One of `"linear"` (default), `"lower"`,
 #'   `"higher"`, `"nearest"`, `"midpoint"`.
+#' @param nan_rm (`logical(1)`)\cr
+#'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
 #'   Same shape as `operand` with `dim` removed.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
@@ -2925,10 +3054,12 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear") {
 #' )
 #' # forwards through the S3 generic via `...`
 #' median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")
+#' nv_median(nv_array(c(1, NaN, 3, 5)))
+#' nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
 #' @jit static = c(2L, 3L)
-nv_median <- function(operand, dim = NULL, interpolation = "linear") {
-  nv_quantile(operand, probs = 0.5, dim = dim, interpolation = interpolation)
+nv_median <- function(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
+  nv_quantile(operand, probs = 0.5, dim = dim, interpolation = interpolation, nan_rm = nan_rm)
 }
 
 #' @title Index of the Maximum
@@ -2942,18 +3073,26 @@ nv_median <- function(operand, dim = NULL, interpolation = "linear") {
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
 #'   is kept with size 1.
+#' @template param_nan_rm
 #' @return [`arrayish`] of dtype `i32`\cr
 #'   Same shape as `operand` with `dim` removed (or set to 1 if `drop = FALSE`).
+#' @section NaN handling:
+#' With `nan_rm = FALSE` (default), if any entry along the reduced axis is
+#' `NaN`, the returned index points at the first such `NaN`. With
+#' `nan_rm = TRUE`, `NaN` entries are skipped.
 #' @seealso [nv_argmin()], [nv_reduce_max()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
 #'   dim = 2L
 #' )
+#' nv_argmax(nv_array(c(1, NaN, 3)))
+#' nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_argmax <- function(operand, dim = NULL, drop = TRUE) {
+nv_argmax <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_argmax(operand, dim = as.integer(dim %||% ndims(operand)), drop = drop)
+  dim <- as.integer(dim %||% ndims(operand))
+  .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmax)
 }
 
 #' @title Index of the Minimum
@@ -2967,13 +3106,38 @@ nv_argmax <- function(operand, dim = NULL, drop = TRUE) {
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
 #'   is kept with size 1.
+#' @template param_nan_rm
 #' @return [`arrayish`] of dtype `i32`\cr
 #'   Same shape as `operand` with `dim` removed (or set to 1 if `drop = FALSE`).
+#' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
+#' nv_argmin(nv_array(c(2, NaN, 1, 3)))
+#' nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 #' @export
-nv_argmin <- function(operand, dim = NULL, drop = TRUE) {
+nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
-  prim_argmin(operand, dim = as.integer(dim %||% ndims(operand)), drop = drop)
+  dim <- as.integer(dim %||% ndims(operand))
+  .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmin)
+}
+
+# Shared NaN-aware argmax/argmin. The XLA arg-reduction kernels are
+# comparison-based and silently skip NaN, so `nan_rm = TRUE` is free — we
+# just call the primitive. For `nan_rm = FALSE` we want NaN to propagate,
+# mirroring `.nv_reduce_extreme`'s contract; there's no NaN in i32, so we
+# surface "a NaN was here" by returning the first NaN's index instead.
+#
+.nv_arg_extreme <- function(operand, dim, drop, nan_rm, prim_arg) {
+  result <- prim_arg(operand, dim = dim, drop = drop)
+  if (nan_rm || !inherits(dtype(operand), "FloatType")) {
+    return(result)
+  }
+  # argmax on the bool mask returns the index of the first TRUE (tie-break:
+  # smallest index) — exactly the first NaN's position — or 1 if no NaN
+  # exists. `any_nan` disambiguates those two cases.
+  nan_mask <- nv_is_nan(operand)
+  any_nan <- prim_reduce_any(nan_mask, dims = dim, drop = drop)
+  first_nan_idx <- prim_argmax(nan_mask, dim = dim, drop = drop)
+  nv_ifelse(any_nan, first_nan_idx, result)
 }

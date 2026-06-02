@@ -5,7 +5,7 @@
 \alias{median.AnvlArray}
 \title{Median}
 \usage{
-nv_median(operand, dim = NULL, interpolation = "linear")
+nv_median(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE)
 
 \method{median}{AnvlArray}(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
 }
@@ -21,10 +21,13 @@ uses the last dimension.}
 Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. One of \code{"linear"} (default), \code{"lower"},
 \code{"higher"}, \code{"nearest"}, \code{"midpoint"}.}
 
+\item{nan_rm}{(\code{logical(1)})\cr
+Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation for details.}
+
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
 
-\item{na.rm}{Currently not supported.}
+\item{na.rm}{Forwarded to \code{\link[=nv_median]{nv_median()}}'s \code{nan_rm} argument.}
 
 \item{...}{No additional arguments.}
 }
@@ -50,6 +53,8 @@ nv_median(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
 )
 # forwards through the S3 generic via `...`
 median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")
+nv_median(nv_array(c(1, NaN, 3, 5)))
+nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -392,7 +392,7 @@ test_that("nv_array_like inherits dtype, shape, ambiguous, device, backend from 
   expect_equal(shape(out), shape(like))
   expect_equal(ambiguous(out), ambiguous(like))
   expect_equal(backend(out), backend(like))
-  expect_equal(as.integer(as_array(out)), c(7L, 8L, 9L))
+  expect_equal(as.integer(out), c(7L, 8L, 9L))
 })
 
 test_that("nv_array_like respects explicit overrides", {
@@ -410,7 +410,7 @@ test_that("nv_scalar_like inherits dtype, ambiguous, device, backend from like",
   expect_equal(shape(out), integer())
   expect_equal(ambiguous(out), ambiguous(like))
   expect_equal(backend(out), backend(like))
-  expect_equal(as.integer(as_array(out)), 7L)
+  expect_equal(as.integer(out), 7L)
 })
 
 describe("as_anvl_array", {
@@ -465,7 +465,7 @@ describe("as_anvl_array", {
     f <- jit(function() as_anvl_array(1L) + 1L)
     out <- f()
     expect_s3_class(out, "AnvlArray")
-    expect_equal(as.integer(as_array(out)), 2L)
+    expect_equal(as.integer(out), 2L)
   })
 })
 
@@ -521,7 +521,7 @@ describe("as_anvl_arrays", {
       args[[1L]] + args[[2L]]
     })
     out <- f(nv_array(1:3))
-    expect_equal(as.integer(as_array(out)), 2:4)
+    expect_equal(as.integer(out), 2:4)
   })
 
   it("canonicalizes multiple traced inputs under jit()", {
@@ -530,7 +530,7 @@ describe("as_anvl_arrays", {
       args[[1L]] + args[[2L]]
     })
     out <- f(nv_array(1:3), nv_array(4:6))
-    expect_equal(as.integer(as_array(out)), c(5L, 7L, 9L))
+    expect_equal(as.integer(out), c(5L, 7L, 9L))
   })
 })
 

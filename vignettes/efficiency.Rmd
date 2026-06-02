@@ -21,6 +21,7 @@ Some of the topics are covered in more depth elsewhere, but here we gather every
 - [**Eager vs. JIT**](#eager-vs-jit) -- comparison of the two execution modes.
 - [**CUDA**](#cuda) -- running on a GPU instead of CPU (Linux x86 / WSL2 only).
 - [**Data types**](#data-types) -- using `f32` (the default) instead of `f64`.
+- [**BLAS / LAPACK**](#blas-lapack) -- linking R against a fast LAPACK to speed up linear algebra on CPU.
 - [**Compilation cost**](#compilation-cost) -- padding inputs so more calls hit the same cache entry.
 - [**Asynchronous execution**](#asynchronous-execution) -- how to keep the device (e.g. a GPU) busy while R prepares the next call.
 - [**Memory**](#memory) -- avoiding unnecessary copies via donation and jit-internal optimization.
@@ -78,6 +79,13 @@ Currently, we don't support other floating-point data types such as `f16` or `bf
 There is of course a trade-off between efficiency and precision here.
 Speedups from using `f32` over `f64` also depend on the specific hardware.
 Commonly, `f32` is the default data type for floating-point operations in GPU-accelerated frameworks, so unless you have a specific reason, we recommend sticking with the defaults.
+
+## BLAS / LAPACK
+
+A handful of linear-algebra primitives -- `nv_svd()`, `nv_eigh()`, `nv_qr()`, `nv_lu()` -- use R's BLAS / LAPACK on the CPU backend, so the performance of these operations is determined by how R was built.
+
+The default R install on many platforms ships with a reference BLAS / LAPACK that is single-threaded and considerably slower than tuned alternatives such as OpenBLAS, Intel MKL, or Apple's Accelerate framework.
+The CUDA backend is unaffected.
 
 ## Compilation cost
 

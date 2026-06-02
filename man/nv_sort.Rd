@@ -5,7 +5,7 @@
 \alias{sort.AnvlArray}
 \title{Sort}
 \usage{
-nv_sort(operand, dim = NULL, decreasing = FALSE)
+nv_sort(operand, dim = NULL, decreasing = FALSE, stable = FALSE)
 
 \method{sort}{AnvlArray}(x, decreasing = FALSE, ..., dim = NULL)
 }
@@ -18,6 +18,13 @@ Dimension along which to sort. If \code{NULL} (default), uses the last
 dimension.}
 
 \item{decreasing}{(\code{logical(1)})\cr If \code{TRUE}, sort in decreasing order.}
+
+\item{stable}{(\code{logical(1)})\cr
+If \code{TRUE}, the sort is stable: equal values keep their original
+relative order along \code{dim}. Default \code{FALSE}. Stability is only
+observable for floats when \code{-0} / \code{+0} or \code{-NaN} / \code{+NaN} are mixed
+(they compare equal under the total order used here); for distinct
+values the result is identical either way.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
@@ -33,6 +40,12 @@ Sorts an array along a dimension.
 
 You can also use \code{sort()} directly.
 }
+\section{NaN handling}{
+
+\code{NaN} values sort to the \strong{end} (ascending) or \strong{beginning}
+(descending), regardless of sign. \code{+0} and \code{-0} compare equal.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -46,6 +59,6 @@ nv_sort(m, dim = 2L)
 }
 \seealso{
 \code{\link[=prim_sort]{prim_sort()}} for the underlying primitive,
-\code{\link[=nv_argsort]{nv_argsort()}} (where sort stability is observable),
-\code{\link[=nv_top_k]{nv_top_k()}}, \code{\link[=nv_median]{nv_median()}}, \code{\link[=nv_argmax]{nv_argmax()}}, \code{\link[=nv_argmin]{nv_argmin()}}.
+\code{\link[=nv_argsort]{nv_argsort()}}, \code{\link[=nv_top_k]{nv_top_k()}}, \code{\link[=nv_median]{nv_median()}},
+\code{\link[=nv_argmax]{nv_argmax()}}, \code{\link[=nv_argmin]{nv_argmin()}}.
 }

@@ -83,6 +83,7 @@
   since anvl arrays do not carry `NA`s. `mean()` also rejects non-zero
   `trim`.
 * Added support for `range` generic.
+* Improved NaN handling across various primitives and API functions.
 
 ## Other
 

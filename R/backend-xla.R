@@ -163,7 +163,8 @@ compile_graph_xla <- function(graph, donate = character(), device) {
   graph <- inline_scalarish_constants(graph)
   graph <- remove_unused_constants(graph)
 
-  out <- stablehlo(graph, donate = donate)
+  platform_name <- if (is.character(device)) device else platform(device)
+  out <- stablehlo(graph, donate = donate, platform = platform_name)
   func <- out[[1L]]
   constants <- out[[2L]]
 

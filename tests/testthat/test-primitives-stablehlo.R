@@ -115,21 +115,21 @@ test_that("prim_fill", {
 test_that("prim_shift_left", {
   x <- nv_array(as.integer(c(1L, 2L, 3L, 8L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_left(x, y)))
+  out <- as.integer(prim_shift_left(x, y))
   expect_equal(out, as.integer(c(1L, 4L, 12L, 64L)))
 })
 
 test_that("prim_shift_right_logical", {
   x <- nv_array(as.integer(c(16L, 8L, 7L, 1L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 0L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_right_logical(x, y)))
+  out <- as.integer(prim_shift_right_logical(x, y))
   expect_equal(out, as.integer(c(16L, 4L, 1L, 1L)))
 })
 
 test_that("prim_shift_right_arithmetic", {
   x <- nv_array(as.integer(c(-8L, -1L, 8L, -17L)), dtype = "i32")
   y <- nv_array(as.integer(c(1L, 3L, 2L, 4L)), dtype = "i32")
-  out <- as.integer(as_array(prim_shift_right_arithmetic(x, y)))
+  out <- as.integer(prim_shift_right_arithmetic(x, y))
   expect_equal(out, as.integer(c(-4L, -1L, 2L, -2L)))
 })
 
@@ -593,13 +593,11 @@ describe("prim_lu", {
 })
 
 describe("prim_svd", {
-  it("decomposes a tall matrix", {
-    m <- 3L
-    n <- 2L
+  expect_thin_svd <- function(A) {
+    m <- nrow(A)
+    n <- ncol(A)
     k <- min(m, n)
-    A <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = m, dtype = "f64")
     out <- prim_svd(A)
-    # Returns `vt` (LAPACK form, shape (k, n)) — not `v` like base::svd().
     expect_named(out, c("d", "u", "vt"))
     d <- as_array(out$d)
     u <- as_array(out$u)
@@ -608,12 +606,24 @@ describe("prim_svd", {
     expect_equal(length(d), k)
     expect_equal(dim(vt), c(k, n))
     expect_equal(u %*% diag(d) %*% vt, as_array(A), tolerance = 1e-5)
-    # Documented: d non-negative and in descending order;
-    # u has orthonormal columns; vt has orthonormal rows.
     expect_true(all(d >= 0))
     expect_equal(d, sort(d, decreasing = TRUE))
     expect_equal(t(u) %*% u, diag(k), tolerance = 1e-5)
     expect_equal(vt %*% t(vt), diag(k), tolerance = 1e-5)
+  }
+
+  it("decomposes a tall matrix", {
+    # Returns `vt` (LAPACK form, shape (k, n)) — not `v` like base::svd().
+    A <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 3L, dtype = "f64")
+    expect_thin_svd(A)
+  })
+
+  # On CUDA this exercises the layout-flip path in prim_svd[["stablehlo"]]
+  # (transposed = TRUE + row-major operand / U / Vt layouts), which the
+  # cuSOLVER FFI handler resolves by swapping m / n and the U / Vt slots.
+  it("decomposes a wide matrix", {
+    A <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 2L, dtype = "f64")
+    expect_thin_svd(A)
   })
 
   it("rejects invalid inputs", {
@@ -779,6 +789,56 @@ describe("prim_sort", {
       out,
       list(nv_array(c(1, 2, 3, 4, 5)), nv_array(c(2L, 4L, 1L, 3L, 5L), dtype = "i64"))
     )
+  })
+
+  it("float ascending: all NaN values land at the end regardless of sign", {
+    out <- as.numeric(prim_sort(list(arr(c(NaN, 1, 2, -NaN))), dim = 1L)[[1L]])
+    expect_equal(out[1:2], c(1, 2))
+    expect_true(all(is.nan(out[3:4])))
+  })
+
+  it("float descending: NaN values land at the beginning", {
+    out <- as.numeric(
+      prim_sort(list(arr(c(1, NaN, 2, -NaN))), dim = 1L, descending = TRUE)[[1L]]
+    )
+    expect_true(all(is.nan(out[1:2])))
+    expect_equal(out[3:4], c(2, 1))
+  })
+
+  it("float ordering interleaves -Inf, finite, +Inf, NaN correctly", {
+    out <- as.numeric(
+      prim_sort(list(arr(c(-0, 1, -1, 0, NaN, Inf, -Inf))), dim = 1L)[[1L]]
+    )
+    # -Inf < -1 < {-0, +0} (tied) < 1 < +Inf < NaN
+    expect_equal(out[1:2], c(-Inf, -1))
+    expect_equal(out[3:4], c(0, 0))
+    expect_equal(out[5:6], c(1, Inf))
+    expect_true(is.nan(out[7]))
+  })
+
+  it("argsort puts NaN positions last under ascending sort", {
+    x <- arr(c(1, NaN, 2, -NaN))
+    idx <- nv_iota(dim = 1L, dtype = "i32", shape = 4L)
+    perm <- as.integer(prim_sort(list(x, idx), dim = 1L)[[2L]])
+    # values at perm[1:2] are non-NaN (positions of 1 and 2 = 1 and 3),
+    # perm[3:4] are the NaN positions in some order
+    expect_equal(perm[1:2], c(1L, 3L))
+    expect_setequal(perm[3:4], c(2L, 4L))
+  })
+
+  it("integer keys are unaffected by the float canonicalization path", {
+    x <- nv_array(c(3L, 1L, 4L, 1L, 5L))
+    expect_equal(prim_sort(list(x), dim = 1L)[[1L]], nv_array(c(1L, 1L, 3L, 4L, 5L)))
+  })
+
+  it("stable sort: signed zeros and NaNs canonicalize to equal keys, so argsort is 1:n", {
+    # -0/+0 collapse to +0, -NaN/+NaN collapse to +NaN, so within each group
+    # all keys compare equal under TOTALORDER. With is_stable = TRUE the input
+    # order must be preserved, giving indices 1:n (0s before NaNs).
+    x <- arr(c(-0, 0, 0, -0, -NaN, NaN, -NaN, NaN))
+    idx <- nv_iota(dim = 1L, dtype = "i32", shape = 8L)
+    perm <- as.integer(prim_sort(list(x, idx), dim = 1L, is_stable = TRUE)[[2L]])
+    expect_equal(perm, 1:8)
   })
 })
 

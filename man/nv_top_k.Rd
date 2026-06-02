@@ -31,6 +31,13 @@ arrays (when \code{with_indices = TRUE}). Output shape matches \code{operand} wi
 \description{
 Returns the \code{k} largest values along a dimension, sorted in decreasing order.
 }
+\section{NaN handling}{
+
+\code{NaN} ranks larger than any finite value (so it appears first in the
+top-\code{k} output); \code{-NaN} ranks smaller. Unlike \code{\link[=nv_sort]{nv_sort()}}, the sign
+bit is not canonicalized.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))

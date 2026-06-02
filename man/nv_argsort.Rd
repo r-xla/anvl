@@ -32,6 +32,12 @@ array (for 1-D inputs).
 \description{
 Returns the indices that would sort the array along a dimension.
 }
+\section{NaN handling}{
+
+\code{NaN} values sort to the \strong{end} (ascending) or \strong{beginning}
+(descending), regardless of sign. \code{+0} and \code{-0} compare equal.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5))
