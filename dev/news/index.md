@@ -144,17 +144,7 @@
   [`mean()`](https://rdrr.io/r/base/mean.html) also rejects non-zero
   `trim`.
 - Added support for `range` generic.
-
-#### NaN handling
-
-- `NaN` handling across reductions, cumulative ops, sorting, and
-  [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
-  /
-  [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
-  is now deterministic (previously XLA-backend-defined in several
-  cases). A new `nan_rm` argument (default `FALSE`) skips `NaN` values,
-  and the base-R generics (`sum`, `max`, `mean`, `median`, …) forward
-  `na.rm` to it.
+- Improved NaN handling across various primitives and API functions.
 
 ### Other
 

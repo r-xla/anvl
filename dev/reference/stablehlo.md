@@ -19,7 +19,13 @@ This is a low-level function; most users should use
 ## Usage
 
 ``` r
-stablehlo(graph, constants_as_inputs = TRUE, env = NULL, donate = character())
+stablehlo(
+  graph,
+  constants_as_inputs = TRUE,
+  env = NULL,
+  donate = character(),
+  platform = NULL
+)
 ```
 
 ## Arguments
@@ -52,6 +58,17 @@ stablehlo(graph, constants_as_inputs = TRUE, env = NULL, donate = character())
   buffers can be aliased with outputs of the same type, enabling
   in-place operations.
 
+- platform:
+
+  (`NULL` \| `character(1)`)  
+  Target platform name (e.g. `"cpu"`, `"cuda"`). Stored on a
+  process-wide global during the call so that platform-aware lowering
+  rules (queried via
+  [`current_platform()`](https://r-xla.github.io/anvl/dev/reference/current_platform.md))
+  can branch on it. `NULL` (the default) leaves the current value
+  untouched — recursive calls from higher-order primitives inherit the
+  platform of the enclosing call.
+
 ## Value
 
 A `list` of length 2:
@@ -68,7 +85,8 @@ A `list` of length 2:
 
 [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md),
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
-[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md)
+[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md),
+[`current_platform()`](https://r-xla.github.io/anvl/dev/reference/current_platform.md)
 
 ## Examples
 

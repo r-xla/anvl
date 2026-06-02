@@ -570,6 +570,9 @@ Internal data structures and functions
   : Trace, lower, and compile a function to an XLA executable
 - [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
   : Lower a graph to StableHLO
+- [`current_platform()`](https://r-xla.github.io/anvl/dev/reference/current_platform.md)
+  [`local_platform()`](https://r-xla.github.io/anvl/dev/reference/current_platform.md)
+  : Current Lowering Target Platform
 
 ### Tree
 

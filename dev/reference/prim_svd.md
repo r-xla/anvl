@@ -12,9 +12,9 @@ returns the right singular vectors as `v` of shape `(n, k)` (so that
 transposed as `vt` of shape `(k, n)` (matching the underlying LAPACK /
 cuSOLVER output and avoiding an extra transpose).
 
-On the CUDA backend this primitive currently requires `m >= n`
-(cuSOLVER's `gesvd` restriction). The host (LAPACK) backend supports any
-shape.
+Supports any matrix shape on both the host (LAPACK `gesdd`) and CUDA
+(cuSOLVER `gesvd`) backends. cuSOLVER's `m >= n` requirement is handled
+transparently via a layout flip for wide matrices.
 
 ## Usage
 

@@ -142,11 +142,7 @@
 <li>
 <code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean()</a></code> and <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code> now error when called with <code>na.rm = TRUE</code>, since anvl arrays do not carry <code>NA</code>s. <code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean()</a></code> also rejects non-zero <code>trim</code>.</li>
 <li>Added support for <code>range</code> generic.</li>
-</ul></div>
-<div class="section level4">
-<h4 id="nan-handling-development-version">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling-development-version"></a></h4>
-<ul><li>
-<code>NaN</code> handling across reductions, cumulative ops, sorting, and <code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> is now deterministic (previously XLA-backend-defined in several cases). A new <code>nan_rm</code> argument (default <code>FALSE</code>) skips <code>NaN</code> values, and the base-R generics (<code>sum</code>, <code>max</code>, <code>mean</code>, <code>median</code>, …) forward <code>na.rm</code> to it.</li>
+<li>Improved NaN handling across various primitives and API functions.</li>
 </ul></div>
 </div>
 <div class="section level3">

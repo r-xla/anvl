@@ -16,8 +16,9 @@ as v of shape (n, k) (so that a = u %*% diag(d) %*% t(v)), this
 primitive returns them already transposed as vt of shape (k, n)
 (matching the underlying LAPACK / cuSOLVER output and avoiding an
 extra transpose).
-On the CUDA backend this primitive currently requires m &amp;gt;= n (cuSOLVER's
-gesvd restriction). The host (LAPACK) backend supports any shape."><meta property="og:description" content="Computes the reduced (&quot;economy&quot;) singular value decomposition of a
+Supports any matrix shape on both the host (LAPACK gesdd) and CUDA
+(cuSOLVER gesvd) backends. cuSOLVER's m &amp;gt;= n requirement is handled
+transparently via a layout flip for wide matrices."><meta property="og:description" content="Computes the reduced (&quot;economy&quot;) singular value decomposition of a
 matrix operand of shape (m, n):
 $$A = u \, \mathrm{diag}(d) \, vt,$$
 where u has orthonormal columns, vt has orthonormal rows, and d
@@ -28,8 +29,9 @@ as v of shape (n, k) (so that a = u %*% diag(d) %*% t(v)), this
 primitive returns them already transposed as vt of shape (k, n)
 (matching the underlying LAPACK / cuSOLVER output and avoiding an
 extra transpose).
-On the CUDA backend this primitive currently requires m &amp;gt;= n (cuSOLVER's
-gesvd restriction). The host (LAPACK) backend supports any shape."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+Supports any matrix shape on both the host (LAPACK gesdd) and CUDA
+(cuSOLVER gesvd) backends. cuSOLVER's m &amp;gt;= n requirement is handled
+transparently via a layout flip for wide matrices."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -110,8 +112,9 @@ as <code>v</code> of shape <code>(n, k)</code> (so that <code>a = u %*% diag(d) 
 primitive returns them already transposed as <code>vt</code> of shape <code>(k, n)</code>
 (matching the underlying LAPACK / cuSOLVER output and avoiding an
 extra transpose).</p>
-<p>On the CUDA backend this primitive currently requires <code>m &gt;= n</code> (cuSOLVER's
-<code>gesvd</code> restriction). The host (LAPACK) backend supports any shape.</p>
+<p>Supports any matrix shape on both the host (LAPACK <code>gesdd</code>) and CUDA
+(cuSOLVER <code>gesvd</code>) backends. cuSOLVER's <code>m &gt;= n</code> requirement is handled
+transparently via a layout flip for wide matrices.</p>
     </div>
 
     <div class="section level2">
