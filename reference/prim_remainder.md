@@ -1,6 +1,9 @@
 # Primitive Remainder
 
-Element-wise remainder of division.
+Element-wise remainder. Result has sign of the divident, which differs
+from base R's `%%`, which is available via
+[`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md) and has
+sign of divisor.
 
 ## Usage
 
@@ -35,18 +38,15 @@ Lowers to
 
 ## See also
 
-[`nv_remainder()`](https://r-xla.github.io/anvl/reference/nv_remainder.md),
-`%%`
+[`nv_remainder()`](https://r-xla.github.io/anvl/reference/nv_remainder.md)
 
 ## Examples
 
 ``` r
-x <- nv_array(c(7, 10, 15))
-y <- nv_array(c(3, 4, 6))
-prim_remainder(x, y)
+prim_remainder(1, -3)
 #> AnvlArray
 #>  1
-#>  2
-#>  3
-#> [ CPUf32{3} ] 
+#> [ CPUf32?{} ] 
+1 %% -3
+#> [1] -2
 ```

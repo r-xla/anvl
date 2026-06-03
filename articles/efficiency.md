@@ -11,6 +11,8 @@ sometimes only briefly.
   only).
 - [**Data types**](#data-types) – using `f32` (the default) instead of
   `f64`.
+- [**BLAS / LAPACK**](#blas-lapack) – linking R against a fast LAPACK to
+  speed up linear algebra on CPU.
 - [**Compilation cost**](#compilation-cost) – padding inputs so more
   calls hit the same cache entry.
 - [**Asynchronous execution**](#asynchronous-execution) – how to keep
@@ -55,6 +57,7 @@ section of the installation vignette for setup; once that’s done, any
 `device = "cuda"`:
 
 ``` r
+
 library(anvl)
 x <- nv_array(1:8, dtype = "f32", device = "cuda")
 y <- nv_array(9:16, dtype = "f32", device = "cuda")
@@ -76,6 +79,31 @@ A few things to keep in mind when moving to GPU:
   operations on small arrays can actually be *slower* on GPU than on CPU
   because the per-call overhead dominates the actual work.
 
+### Writing GPU-friendly code
+
+GPUs get their speed from running thousands of operations in parallel,
+so they reward code that does a lot of work per call on large arrays. A
+few rules of thumb:
+
+- **Avoid R-level loops over array elements or rows.** Each iteration
+  launches a separate kernel with non-trivial overhead, and the kernels
+  run one after another instead of in parallel. Express the work as a
+  single vectorized operation on the whole array whenever possible
+  (e.g. `x * y` or `nv_reduce_sum(x)` instead of a `for` loop).
+- **Prefer batched operations.** Operations like
+  [`nv_matmul()`](https://r-xla.github.io/anvl/reference/nv_matmul.md)
+  accept a full batch of matrices at once. Stacking many small inputs
+  into one larger array and processing them in a single call is
+  typically much faster than calling the same operation many times. This
+  mirrors plain R, where vectorized code beats a `for` loop – except
+  that on a GPU the win comes from running the batch entries in parallel
+  rather than from avoiding interpreter overhead.
+- **Sometimes the algorithm itself has to be rewritten.** Inherently
+  sequential formulations – e.g. a running update that depends on the
+  previous step – can leave most of the GPU idle. Reformulating the
+  computation to expose parallelism can be dramatically faster, even
+  when the parallel version does more total work.
+
 ## Data types
 
 The data type of an `AnvlArray` (`f32`, `f64`, `i32`, `i64`, …) affects
@@ -87,6 +115,21 @@ precision here. Speedups from using `f32` over `f64` also depend on the
 specific hardware. Commonly, `f32` is the default data type for
 floating-point operations in GPU-accelerated frameworks, so unless you
 have a specific reason, we recommend sticking with the defaults.
+
+## BLAS / LAPACK
+
+A handful of linear-algebra primitives –
+[`nv_svd()`](https://r-xla.github.io/anvl/reference/nv_svd.md),
+[`nv_eigh()`](https://r-xla.github.io/anvl/reference/nv_eigh.md),
+[`nv_qr()`](https://r-xla.github.io/anvl/reference/nv_qr.md),
+[`nv_lu()`](https://r-xla.github.io/anvl/reference/nv_lu.md) – use R’s
+BLAS / LAPACK on the CPU backend, so the performance of these operations
+is determined by how R was built.
+
+The default R install on many platforms ships with a reference BLAS /
+LAPACK that is single-threaded and considerably slower than tuned
+alternatives such as OpenBLAS, Intel MKL, or Apple’s Accelerate
+framework. The CUDA backend is unaffected.
 
 ## Compilation cost
 
@@ -114,6 +157,7 @@ For example, suppose we want to sum a vector whose length varies between
 calls:
 
 ``` r
+
 sum_jit <- jit(function(x) {
   cat("compiling for length ", shape(x), "\n", sep = "")
   nv_reduce_sum(x, dims = 1L)
@@ -133,6 +177,7 @@ next multiple of 32 with zeros, all four calls share one compiled
 function:
 
 ``` r
+
 pad_to_multiple <- function(x, m) {
   n <- length(x)
   c(x, rep(0, ceiling(n / m) * m - n))
@@ -196,6 +241,7 @@ at this point. This is exactly the situation we want to be in, as we
 don’t want the GPU to idle.
 
 ``` r
+
 for (i in seq_len(n_steps)) {
   batch   <- prepare_batch(i)                # CPU-work
   weights <- step(batch$X, weights, batch$y) # GPU-work
@@ -206,6 +252,7 @@ One way to make this slower is to always print the result after each
 [`step()`](https://rdrr.io/r/stats/step.html):
 
 ``` r
+
 # Bad: blocks every step to print the loss.
 for (i in seq_len(n_steps)) {
   batch <- prepare_batch(i)                # CPU-work
@@ -239,6 +286,7 @@ pass its name to `donate` so XLA is free to reuse its memory for the
 output:
 
 ``` r
+
 update <- jit(function(x, delta) x + delta, donate = "x")
 
 x <- nv_array(c(1, 2, 3), dtype = "f32")

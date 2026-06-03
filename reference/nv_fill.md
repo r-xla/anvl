@@ -78,7 +78,7 @@ nv_fill(0, shape = c(2, 3))
 #>  0 0 0
 #>  0 0 0
 #> [ CPUf32{2,3} ] 
-x <- nv_array(matrix(1:6, nrow = 2))
+x <- nv_matrix(1:6, nrow = 2)
 nv_fill_like(x, 0)
 #> AnvlArray
 #>  0 0 0

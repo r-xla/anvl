@@ -84,8 +84,8 @@ prim_dynamic_update_slice(x, update, start)
 #> [ CPUi32{5} ] 
 
 # 2-D: write a 2x2 block into a 3x4 matrix
-x <- nv_array(matrix(0L, nrow = 3, ncol = 4))
-update <- nv_array(matrix(c(1L, 2L, 3L, 4L), nrow = 2, ncol = 2))
+x <- nv_fill(0L, shape = c(3, 4))
+update <- nv_matrix(c(1L, 2L, 3L, 4L), nrow = 2, ncol = 2)
 row_start <- nv_scalar(2L)
 col_start <- nv_scalar(3L)
 prim_dynamic_update_slice(x, update, row_start, col_start)

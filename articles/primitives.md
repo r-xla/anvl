@@ -1,15 +1,23 @@
 # Primitives Reference
 
-The table below shows all 72 primitives and which rules they implement.
+The table below shows all 99 primitives and which rules they implement.
 Note that a rule might be missing because it was just not added yet, or
 because it does not apply for a specific primitive.
 
 | Name                   | StableHLO | Quickr | Reverse |
 |:-----------------------|:---------:|:------:|:-------:|
 | abs                    |     ✓     |   ✓    |    ✓    |
+| acos                   |     ✓     |   ✗    |    ✓    |
+| acosh                  |     ✓     |   ✗    |    ✓    |
 | add                    |     ✓     |   ✓    |    ✓    |
 | and                    |     ✓     |   ✓    |    ✓    |
+| argmax                 |     ✓     |   ✗    |    ✓    |
+| argmin                 |     ✓     |   ✗    |    ✓    |
+| asin                   |     ✓     |   ✗    |    ✓    |
+| asinh                  |     ✓     |   ✗    |    ✓    |
+| atan                   |     ✓     |   ✗    |    ✓    |
 | atan2                  |     ✓     |   ✗    |    ✓    |
+| atanh                  |     ✓     |   ✗    |    ✓    |
 | bitcast_convert        |     ✓     |   ✗    |    ✓    |
 | broadcast_in_dim       |     ✓     |   ✓    |    ✓    |
 | cbrt                   |     ✓     |   ✗    |    ✓    |
@@ -18,12 +26,22 @@ because it does not apply for a specific primitive.
 | clamp                  |     ✓     |   ✗    |    ✓    |
 | concatenate            |     ✓     |   ✓    |    ✓    |
 | convert                |     ✓     |   ✓    |    ✓    |
+| cosh                   |     ✓     |   ✗    |    ✓    |
 | cosine                 |     ✓     |   ✓    |    ✓    |
+| cummax                 |     ✓     |   ✗    |    ✓    |
+| cummin                 |     ✓     |   ✗    |    ✓    |
+| cumprod                |     ✓     |   ✗    |    ✗    |
+| cumsum                 |     ✓     |   ✗    |    ✓    |
+| digamma                |     ✓     |   ✗    |    ✓    |
 | divide                 |     ✓     |   ✓    |    ✓    |
 | dot_general            |     ✓     |   ✓    |    ✓    |
 | dynamic_slice          |     ✓     |   ✓    |    ✓    |
 | dynamic_update_slice   |     ✓     |   ✓    |    ✓    |
+| eigh                   |     ✓     |   ✗    |    ✗    |
 | equal                  |     ✓     |   ✓    |    ✓    |
+| erf                    |     ✓     |   ✗    |    ✓    |
+| erf_inv                |     ✓     |   ✗    |    ✓    |
+| erfc                   |     ✓     |   ✗    |    ✓    |
 | exp                    |     ✓     |   ✓    |    ✓    |
 | expm1                  |     ✓     |   ✓    |    ✓    |
 | fill                   |     ✓     |   ✓    |    ✗    |
@@ -36,9 +54,11 @@ because it does not apply for a specific primitive.
 | is_finite              |     ✓     |   ✗    |    ✓    |
 | less                   |     ✓     |   ✓    |    ✓    |
 | less_equal             |     ✓     |   ✓    |    ✓    |
+| lgamma                 |     ✓     |   ✗    |    ✓    |
 | log                    |     ✓     |   ✓    |    ✓    |
 | log1p                  |     ✓     |   ✓    |    ✓    |
 | logistic               |     ✓     |   ✓    |    ✓    |
+| lu                     |     ✓     |   ✗    |    ✗    |
 | maximum                |     ✓     |   ✓    |    ✓    |
 | minimum                |     ✓     |   ✓    |    ✓    |
 | mul                    |     ✓     |   ✓    |    ✓    |
@@ -47,9 +67,12 @@ because it does not apply for a specific primitive.
 | not_equal              |     ✓     |   ✓    |    ✓    |
 | or                     |     ✓     |   ✓    |    ✓    |
 | pad                    |     ✓     |   ✓    |    ✓    |
+| polygamma              |     ✓     |   ✗    |    ✓    |
 | popcnt                 |     ✓     |   ✗    |    ✓    |
 | power                  |     ✓     |   ✓    |    ✓    |
 | print                  |     ✓     |   ✗    |    ✗    |
+| qr                     |     ✓     |   ✗    |    ✗    |
+| reduce                 |     ✓     |   ✗    |    ✗    |
 | reduce_all             |     ✓     |   ✓    |    ✓    |
 | reduce_any             |     ✓     |   ✓    |    ✓    |
 | reduce_max             |     ✓     |   ✓    |    ✓    |
@@ -69,11 +92,15 @@ because it does not apply for a specific primitive.
 | shift_right_logical    |     ✓     |   ✗    |    ✓    |
 | sign                   |     ✓     |   ✗    |    ✓    |
 | sine                   |     ✓     |   ✓    |    ✓    |
+| sinh                   |     ✓     |   ✗    |    ✓    |
+| sort                   |     ✓     |   ✗    |    ✓    |
 | sqrt                   |     ✓     |   ✓    |    ✓    |
 | static_slice           |     ✓     |   ✓    |    ✓    |
 | sub                    |     ✓     |   ✓    |    ✓    |
+| svd                    |     ✓     |   ✗    |    ✗    |
 | tan                    |     ✓     |   ✓    |    ✓    |
 | tanh                   |     ✓     |   ✓    |    ✓    |
+| top_k                  |     ✓     |   ✗    |    ✓    |
 | transpose              |     ✓     |   ✓    |    ✓    |
 | triangular_solve       |     ✓     |   ✗    |    ✓    |
 | while                  |     ✓     |   ✓    |    ✗    |

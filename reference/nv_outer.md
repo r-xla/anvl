@@ -5,12 +5,12 @@ Computes the outer product of two 1-D arrays.
 ## Usage
 
 ``` r
-nv_outer(x, y)
+nv_outer(lhs, rhs)
 ```
 
 ## Arguments
 
-- x, y:
+- lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   1-D arrays.
@@ -18,7 +18,7 @@ nv_outer(x, y)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-A 2-D array of shape `(length(x), length(y))`.
+A 2-D array of shape `(length(lhs), length(rhs))`.
 
 ## Examples
 

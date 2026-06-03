@@ -1,6 +1,8 @@
-# Remainder
+# Remainder (Truncating)
 
-Element-wise remainder of division. You can also use the `%%` operator.
+Element-wise remainder. This differs from base R's `%%`, use
+[`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md)/`%%`
+instead.
 
 ## Usage
 
@@ -26,6 +28,8 @@ Has the same shape and the promoted common data type of the inputs.
 
 ## See also
 
+[`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md) for the
+flooring remainder,
 [`prim_remainder()`](https://r-xla.github.io/anvl/reference/prim_remainder.md)
 for the underlying primitive.
 
@@ -34,7 +38,7 @@ for the underlying primitive.
 ``` r
 x <- nv_array(c(7, 8, 9))
 y <- nv_array(c(3, 3, 4))
-x %% y
+nv_remainder(x, y)
 #> AnvlArray
 #>  1
 #>  2

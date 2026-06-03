@@ -43,6 +43,7 @@ either adds or multiplies two inputs `x` and `y` depending on the value
 of `op`.
 
 ``` r
+
 library(anvl)
 f <- function(x, y, op) {
   if (op == "add") {
@@ -61,6 +62,7 @@ which takes in an `R` function and a list of `AbstractArray` inputs that
 specify the types of the inputs.
 
 ``` r
+
 aten <- nv_aval("f32", c())
 aten
 ```
@@ -68,6 +70,7 @@ aten
     ## AbstractArray(dtype=f32, shape=)
 
 ``` r
+
 graph <- trace_fn(f, list(x = aten, y = aten, op = "mul"))
 graph
 ```
@@ -145,18 +148,26 @@ be populated. The derivative rules are stored as functions under the
 on it reads a rule:
 
 ``` r
+
 prim_mul[["reverse"]]
 ```
 
-    ## function (inputs, outputs, grads, .required) 
+    ## $forward
+    ## NULL
+    ## 
+    ## $backward
+    ## function (inputs, outputs, grads, params, required) 
     ## {
     ##     lhs <- inputs[[1L]]
     ##     rhs <- inputs[[2L]]
     ##     grad <- grads[[1L]]
-    ##     list(if (.required[[1L]]) prim_mul(grad, rhs), if (.required[[2L]]) prim_mul(grad, 
+    ##     list(if (required[[1L]]) prim_mul(grad, rhs), if (required[[2L]]) prim_mul(grad, 
     ##         lhs))
     ## }
     ## <environment: namespace:anvl>
+    ## 
+    ## attr(,"class")
+    ## [1] "anvl_rule_reverse"
 
 The
 [`anvl::transform_gradient`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
@@ -168,6 +179,7 @@ argument, which specifies with respect to which arguments to compute the
 gradient.
 
 ``` r
+
 bwd_graph <- transform_gradient(graph, wrt = c("x", "y"))
 bwd_graph
 ```
@@ -199,12 +211,13 @@ Like for the gradient transformation, the rules of how to do this
 transformation are attached to each primitive.
 
 ``` r
+
 prim_mul[["stablehlo"]]
 ```
 
     ## function (lhs, rhs) 
     ## {
-    ##     list(stablehlo::hlo_multiply(lhs, rhs))
+    ##     list(hlo_multiply(lhs, rhs))
     ## }
     ## <environment: namespace:anvl>
 
@@ -216,6 +229,7 @@ object and will sequentially translate the `PrimitiveCall`s into
 StableHLO operations.
 
 ``` r
+
 func <- stablehlo(graph)[[1L]]
 func
 ```
@@ -228,6 +242,7 @@ func
 Now, we can compile the function via `pjrt_compile()`.
 
 ``` r
+
 hlo_str <- stablehlo::repr(func)
 program <- pjrt::pjrt_program(src = hlo_str, format = "mlir")
 exec <- pjrt::pjrt_compile(program)
@@ -238,6 +253,7 @@ arrays before passing them to the executable, which will output a
 `PJRTBuffer` that we can easily convert to an `AnvlArray`.
 
 ``` r
+
 x <- nv_scalar(3, "f32")
 y <- nv_scalar(4, "f32")
 out <- pjrt::pjrt_execute(exec, x$data, y$data)
@@ -249,6 +265,7 @@ out
     ## [ CPUf32{} ]
 
 ``` r
+
 nv_array(out)
 ```
 
@@ -272,6 +289,7 @@ example function, where we mark the non-array parameter `op` as
 at compile time.
 
 ``` r
+
 f_jit <-  jit(f, static = "op")
 f_jit(x, y, "add")
 ```
@@ -302,6 +320,7 @@ we can see by checking the size of the cache, which is already 1,
 because we have called it on `x` and `y` above.
 
 ``` r
+
 cache_size <- function(f) environment(f)$cache$size
 cache_size(f_jit)
 ```
@@ -312,6 +331,7 @@ After calling it with arrays of the same types and identical static
 argument values, the size of the cache remains 1:
 
 ``` r
+
 f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
 ```
 
@@ -320,6 +340,7 @@ f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
     ## [ CPUf32{} ]
 
 ``` r
+
 cache_size(f_jit)
 ```
 
@@ -329,6 +350,7 @@ When we execute the function with arrays of different `dtype` or
 `shape`, the function will be recompiled:
 
 ``` r
+
 f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
 ```
 
@@ -337,6 +359,7 @@ f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
     ## [ CPUi32{} ]
 
 ``` r
+
 cache_size(f_jit)
 ```
 
@@ -346,6 +369,7 @@ Also, if we provide different values for static arguments, the function
 will be recompiled:
 
 ``` r
+
 f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
 ```
 
@@ -354,6 +378,7 @@ f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
     ## [ CPUf32{} ]
 
 ``` r
+
 cache_size(f_jit)
 ```
 
@@ -367,6 +392,7 @@ returns a function that will lazily create the graph and transform it,
 once the inputs are provided.
 
 ``` r
+
 g <- gradient(f, wrt = c("x", "y"))
 ```
 
@@ -374,6 +400,7 @@ To actually compute the gradient, we wrap it in
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md):
 
 ``` r
+
 g_jit <- jit(g, static = "op")
 g_jit(x, y, "add")
 ```
@@ -391,6 +418,7 @@ g_jit(x, y, "add")
 We can also use `g` inside another function:
 
 ``` r
+
 h <- function(x, y) {
   z <- nv_add(x, y)
   g(z, x, "mul")
@@ -423,6 +451,7 @@ where `trace_fn` internally converts the `AnvlArray`s `x` and `y` into
 their abstract representation.
 
 ``` r
+
 h_graph <- trace_fn(h, list(x = x, y = y))
 h_graph
 ```
@@ -452,6 +481,7 @@ compiled.
 Constants are handled specially in {anvl}. Consider the program below:
 
 ``` r
+
 y <- nv_array(rnorm(1000000L))
 graph <- trace_fn(function(x) {
   x + y + 1
@@ -477,6 +507,7 @@ Here, `y` is a closed-over constant and it is included in the
 `$constants` field of the graph, just like the literal `1`.
 
 ``` r
+
 graph$constants
 ```
 
@@ -492,6 +523,7 @@ inefficient. However, if we didn’t inline small scalars, the compiler
 would be unable to do constant folding.
 
 ``` r
+
 out <- stablehlo(graph)
 out[[1L]]
 ```
@@ -513,6 +545,7 @@ out[[1L]]
     ## }
 
 ``` r
+
 out[[2L]]
 ```
 
@@ -525,6 +558,7 @@ the gradient of the function w.r.t. `x` does not depend on the captured
 `y`:
 
 ``` r
+
 f <- function(x) {
 x + y
 }
@@ -562,6 +596,7 @@ complicated. Some things that are important to be aware of:
     `device = device_arg("dev")` needs to be specified:
 
     ``` r
+
     f <- jit(\(dev) nv_scalar(1, device = dev), backend = "auto", device = device_arg("dev"))
     f(nv_device("cpu", "xla"))
     ```
@@ -601,6 +636,7 @@ always keep two versions os an {anvl} function:
 With our implementation, the following is possible:
 
 ``` r
+
 library(anvl)
 prim_add(nv_scalar(1), nv_scalar(2))
 ```
@@ -610,6 +646,7 @@ prim_add(nv_scalar(1), nv_scalar(2))
     ## [ CPUf32{} ]
 
 ``` r
+
 times_2 <- jit(function(x) {
   nv_mul(x, 2)
 })
@@ -626,6 +663,7 @@ times_2(nv_scalar(2))
     ## [ CPUf32{} ]
 
 ``` r
+
 times_4(nv_scalar(2))
 ```
 
@@ -636,6 +674,7 @@ times_4(nv_scalar(2))
 Otherwise, we would need the following:
 
 ``` r
+
 times_2_r <- function(x) {
   nv_mul(x, 2)
 }

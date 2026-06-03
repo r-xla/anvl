@@ -26,6 +26,7 @@ object is a contingency table, so we first expand it into individual
 observations.
 
 ``` r
+
 library(anvl)
 set.seed(42)
 
@@ -55,6 +56,7 @@ features:
 - **Age**: Child or Adult - encoded with Child as the reference category
 
 ``` r
+
 summary(titanic)
 ```
 
@@ -69,6 +71,7 @@ The general survival rate was 32.30%.
 Now we convert the data to `AnvlArray`s.
 
 ``` r
+
 X_tensor <- nv_array(X, dtype = "f32")
 y_tensor <- nv_array(y, dtype = "f32", shape = c(n, 1L))
 ```
@@ -79,6 +82,7 @@ The logistic regression model consists of computing the linear
 combination of features and then applying the logistic function.
 
 ``` r
+
 predict_proba <- function(X, beta, alpha) {
   logits <- X %*% beta + alpha
   nv_logistic(logits)
@@ -95,6 +99,7 @@ logarithm of probabilities close to 0 or 1. We’ll add a small epsilon to
 avoid taking the log of exactly 0.
 
 ``` r
+
 binary_cross_entropy <- function(y_true, y_pred) {
   eps <- 1e-7
   y_pred_clipped <- nv_clamp(eps, y_pred, 1 - eps)
@@ -106,6 +111,7 @@ binary_cross_entropy <- function(y_true, y_pred) {
 We combine the prediction and loss computation into a single function.
 
 ``` r
+
 model_loss <- function(X, y, beta, alpha) {
   y_pred <- predict_proba(X, beta, alpha)
   binary_cross_entropy(y, y_pred)
@@ -116,6 +122,7 @@ Using {anvl}’s automatic differentiation, we can obtain the gradients of
 the loss with respect to the model parameters.
 
 ``` r
+
 model_loss_grad <- gradient(model_loss, wrt = c("beta", "alpha"))
 ```
 
@@ -128,6 +135,7 @@ is more efficient than repeatedly calling a JIT-compiled function from
 R, especially for small models.
 
 ``` r
+
 fit_logreg <- jit(function(X, y, beta, alpha, n_epochs, lr) {
   output <- nv_while(
     list(beta = beta, alpha = alpha, epoch = nv_scalar(0L)),
@@ -149,6 +157,7 @@ We initialize the parameters and train the model with a single function
 call.
 
 ``` r
+
 beta_init <- nv_array(rnorm(p), dtype = "f32", shape = c(p, 1L))
 alpha_init <- nv_scalar(0, dtype = "f32")
 
@@ -180,6 +189,7 @@ Let’s verify our implementation by comparing with R’s built-in
 [`glm()`](https://rdrr.io/r/stats/glm.html).
 
 ``` r
+
 glm_fit <- glm(y ~ X, family = binomial)
 ```
 

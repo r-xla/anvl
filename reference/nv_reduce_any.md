@@ -6,7 +6,7 @@ any element is `TRUE`.
 ## Usage
 
 ``` r
-nv_reduce_any(operand, dims, drop = TRUE)
+nv_reduce_any(operand, dims = NULL, drop = TRUE)
 ```
 
 ## Arguments
@@ -18,8 +18,9 @@ nv_reduce_any(operand, dims, drop = TRUE)
 
 - dims:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reduce.
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
+  Dimensions to reduce. If `NULL` (default), reduces over all
+  dimensions, returning a scalar.
 
 - drop:
 
@@ -40,7 +41,11 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-x <- nv_array(matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2))
+x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
+nv_reduce_any(x)            # all dims -> scalar
+#> AnvlArray
+#>  1
+#> [ CPUbool{} ] 
 nv_reduce_any(x, dims = 1L)
 #> AnvlArray
 #>  1

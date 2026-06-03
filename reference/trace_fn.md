@@ -16,8 +16,7 @@ trace_fn(
   f,
   args = NULL,
   desc = NULL,
-  toplevel = FALSE,
-  lit_to_array = FALSE,
+  mode = NULL,
   args_flat = NULL,
   in_tree = NULL
 )
@@ -45,19 +44,19 @@ trace_fn(
   Optional descriptor. When `NULL` (default), a new descriptor is
   created.
 
-- toplevel:
+- mode:
 
-  (`logical(1)`)  
-  If `TRUE`, concrete
-  [`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
-  inputs are treated as unknown (traced) values. If `FALSE` (default),
-  they are treated as known constants.
+  (`character(1)`)  
+  How to handle the inputs. Options are:
 
-- lit_to_array:
+  - `"toplevel"`: Used for jit(). Default.
 
-  (`logical(1)`)  
-  Whether to convert literal inputs to arrays. Used internally by
-  higher-order primitives such as `nv_if` and `nv_while`.
+  - `"subgraph"`: Use for tracing subgraphs in higher-order primitives
+    like
+    [`prim_while()`](https://r-xla.github.io/anvl/reference/prim_while.md).
+
+  - `"inline"`: Use for transformations like jit, where the graph is
+    later inlined into the parent graph.
 
 - args_flat:
 
@@ -87,8 +86,7 @@ compilation.
 
 ``` r
 graph <- trace_fn(function(x, y) x + y,
-  args = list(x = nv_array(1, dtype = "f32"), y = nv_array(2, dtype = "f32"))
-)
+  args = list(x = nv_array(1, dtype = "f32"), y = nv_array(2, dtype = "f32")))
 graph
 #> <AnvlGraph>
 #>   Inputs:

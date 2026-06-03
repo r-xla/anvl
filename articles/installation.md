@@ -15,18 +15,21 @@ compiler).
 You can install the latest release from GitHub
 
 ``` r
+
 pak::pak("r-xla/anvl@*release")
 ```
 
 You can install the latest release from r-universe (prebuilt binary).
 
 ``` r
+
 install.packages("anvl",repos = c("https://cloud.r-project.org", "https://r-xla.r-universe.dev"))
 ```
 
 To confirm that your CPU installation is working, run:
 
 ``` r
+
 library(anvl)
 nv_scalar(1, device = "cpu")
 ```
@@ -34,6 +37,7 @@ nv_scalar(1, device = "cpu")
 The development version can be installed via:
 
 ``` r
+
 pak::pak("r-xla/anvl")
 ```
 
@@ -47,8 +51,8 @@ package, which only requires a compatible driver to be installed. You
 can install it from GitHub or r-universe:
 
 ``` r
+
 pak::pak("mlverse/cudatoolkit/cuda12.8")
-``````r
 install.packages("cuda12.8", repos = "https://mlverse.r-universe.dev")
 ```
 
@@ -64,6 +68,7 @@ To trouble-shoot the CUDA installation, run the following in a new R
 session for maximum debug output.
 
 ``` r
+
 Sys.setenv(PJRT_DEBUG = "1", TF_CPP_MIN_LOG_LEVEL = "0")
 anvl::nv_scalar(1, device = "cuda")
 ```
@@ -99,6 +104,7 @@ You can verify that the GPU is visible inside the container by running
 `nvidia-smi`, or from R:
 
 ``` r
+
 anvl::nv_scalar(1, device = "cuda")
 ```
 

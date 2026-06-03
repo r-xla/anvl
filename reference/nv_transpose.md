@@ -6,18 +6,18 @@ Permutes the dimensions of an array. You can also use
 ## Usage
 
 ``` r
-nv_transpose(x, permutation = NULL)
+nv_transpose(operand, permutation = NULL)
 
-# S3 method for class 'AnvlBox'
+# S3 method for class 'AnvlArray'
 t(x)
 ```
 
 ## Arguments
 
-- x:
+- operand:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Array to transpose.
+  Operand.
 
 - permutation:
 
@@ -25,10 +25,16 @@ t(x)
   New ordering of dimensions. If `NULL` (default), reverses the
   dimensions.
 
+- x:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Same as `operand`; this is the name used by the base R S3 generic.
+
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type as `x` and shape `nv_shape(x)[permutation]`.
+Has the same data type as `operand` and shape
+`nv_shape(operand)[permutation]`.
 
 ## See also
 
@@ -38,7 +44,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-x <- nv_array(matrix(1:6, nrow = 2))
+x <- nv_matrix(1:6, nrow = 2)
 t(x)
 #> AnvlArray
 #>  1 2

@@ -50,7 +50,7 @@ array are restored from the serialized data.
 ## Examples
 
 ``` r
-x <- nv_array(array(1:6, dim = c(2, 3)))
+x <- nv_matrix(1:6, nrow = 2)
 x
 #> AnvlArray
 #>  1 3 5

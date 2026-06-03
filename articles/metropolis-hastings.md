@@ -8,9 +8,9 @@ rejecting them based on the density ratio.
 
 ## The Banana Distribution
 
-We sample from a “banana-shaped” distribution (Haario, Saksman, and
-Tamminen 1999). This 2-dimensional distribution consists of two Gaussian
-densities, where the second is dependent on the first:
+We sample from a “banana-shaped” distribution (Haario et al. 1999). This
+2-dimensional distribution consists of two Gaussian densities, where the
+second is dependent on the first:
 
 \\p(\theta_1, \theta_2) = \underbrace{\frac{1}{\sqrt{200\pi}}
 \exp\\\left(-\frac{\theta_1^2}{200}\right)}\_{p(\theta_1)} \\\cdot\\
@@ -24,6 +24,7 @@ will use later to verify the correctness of our implementation. We set
 the hyperparameter \\b\\ to 0.01.
 
 ``` r
+
 library(anvl)
 b_param <- 0.01
 ```
@@ -58,6 +59,7 @@ We implement this in {anvl} and convert the parameter to an `f64` array
 for maximal precision.
 
 ``` r
+
 b_t <- nv_scalar(b_param, dtype = "f64")
 
 log_density <- function(theta, b) {
@@ -77,6 +79,7 @@ There are a few things to note in the code below:
 3.  the RNG state is passed around explicitly.
 
 ``` r
+
 mh_step <- function(theta, rng_state, b, proposal_sd) {
   rng_out <- nv_rnorm(shape(theta), rng_state, dtype = "f64")
   rng_state <- rng_out[[1L]]
@@ -102,6 +105,7 @@ keeping every nth sample. We implement this loop via
 below, avoiding R loop overhead.
 
 ``` r
+
 mh_sample <- jit(function(theta, rng_state, b, proposal_sd, thin) {
   result <- nv_while(
     init = list(theta = theta, rng_state = rng_state, i = nv_scalar(0L)),
@@ -119,6 +123,7 @@ We specify the required parameters and run the sampler. Again, note that
 we are passing around the RNG state explicitly.
 
 ``` r
+
 n_samples <- 20000L
 n_warmup <- 5000L
 thin <- nv_scalar(200L)
@@ -146,7 +151,7 @@ for (i in seq_len(n_samples)) {
   thetas[[i]] <- theta
 }
 
-samples <- do.call(rbind, lapply(thetas, function(x) as.vector(as_array(x))))
+samples <- do.call(rbind, lapply(thetas, function(x) as.vector(x)))
 colnames(samples) <- c("theta1", "theta2")
 ```
 
@@ -190,5 +195,5 @@ Haario, Heikki, Eero Saksman, and Johanna Tamminen. 1999. “Adaptive
 Proposal Distribution for Random Walk Metropolis Algorithm.”
 *Computational Statistics* 14 (3): 375–95.
 
-Hastings, W Keith. 1970. “Monte Carlo Sampling Methods Using Markov
-Chains and Their Applications.”
+Hastings, W Keith. 1970. *Monte Carlo Sampling Methods Using Markov
+Chains and Their Applications*.

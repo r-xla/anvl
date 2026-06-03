@@ -5,7 +5,7 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Changelog"><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Changelog"><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,17 +39,19 @@
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-developers"><li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
-    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Extending the API</a></li>
-    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
-    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
-  </ul></li>
-<li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
     <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
+  </ul></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-developers"><li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
+    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
+    <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
+    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -68,9 +70,93 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/r-xla/anvl/blob/v0.2.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/r-xla/anvl/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="anvl-030">anvl 0.3.0<a class="anchor" aria-label="anchor" href="#anvl-030"></a></h2>
+<div class="section level3">
+<h3 id="breaking-changes-0-3-0">Breaking Changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h3>
+<ul><li>Renamed user-facing API functions to match base R names: <code>nv_sine()</code> -&gt; <code><a href="../reference/nv_sin.html">nv_sin()</a></code>, <code>nv_cosine()</code> -&gt; <code><a href="../reference/nv_cos.html">nv_cos()</a></code>, <code>nv_ceil()</code> -&gt; <code><a href="../reference/nv_ceiling.html">nv_ceiling()</a></code>, <code>nv_cholesky()</code> -&gt; <code><a href="../reference/nv_chol.html">nv_chol()</a></code>. The corresponding primitives were renamed in step: <code>prim_sine()</code> -&gt; <code><a href="../reference/prim_sin.html">prim_sin()</a></code>, <code>prim_cosine()</code> -&gt; <code><a href="../reference/prim_cos.html">prim_cos()</a></code>, <code>prim_cholesky()</code> -&gt; <code><a href="../reference/prim_chol.html">prim_chol()</a></code>.</li>
+<li>
+<code>nv_reduce_mean()</code> was renamed to <code><a href="../reference/nv_mean.html">nv_mean()</a></code>.</li>
+<li>
+<code><a href="../reference/nv_solve.html">nv_solve()</a></code> no longer requires <code>a</code> to be symmetric positive-definite as it uses LU instead of Cholesky decomposition. Because of this, it is no longer differentiable, as the reverse rule for LU is not implemented yet.</li>
+<li>
+<code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> now default to <code>lower = FALSE</code> (upper-triangular factor), matching base R’s <code><a href="https://rdrr.io/r/base/chol.html" class="external-link">chol()</a></code>. Previously defaulted to <code>lower = TRUE</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-0-3-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0"></a></h3>
+<div class="section level4">
+<h4 id="linear-algebra-0-3-0">Linear algebra<a class="anchor" aria-label="anchor" href="#linear-algebra-0-3-0"></a></h4>
+<ul><li>New matrix-decomposition primitives and corresponding <code>nv_*()</code> functions: <code>qr</code>, <code>lu</code>, <code>svd</code>, <code>eigh</code>. None of them implement a reverse rule yet.</li>
+<li>New API functions:
+<ul><li>
+<code><a href="../reference/nv_triangular_solve.html">nv_triangular_solve()</a></code> (wraps the already-existing <code><a href="../reference/prim_triangular_solve.html">prim_triangular_solve()</a></code>).</li>
+<li>
+<code><a href="../reference/nv_det.html">nv_det()</a></code> and <code><a href="../reference/nv_determinant.html">nv_determinant()</a></code>. The latter can also be called via the <code><a href="https://rdrr.io/r/base/det.html" class="external-link">determinant()</a></code> generic.</li>
+<li>
+<code><a href="../reference/nv_inv.html">nv_inv()</a></code>, which can also be called via <code>solve(operand)</code> (missing second argument).</li>
+</ul></li>
+<li>
+<code>qr</code>, <code>chol</code>, and <code>solve</code> from base R now dispatch to <code><a href="../reference/nv_qr.html">nv_qr()</a></code>, <code><a href="../reference/nv_chol.html">nv_chol()</a></code>, and <code><a href="../reference/nv_solve.html">nv_solve()</a></code> on <code>AnvlArray</code> / <code>AnvlBox</code> inputs.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="element-wise-math-0-3-0">Element-wise math<a class="anchor" aria-label="anchor" href="#element-wise-math-0-3-0"></a></h4>
+<ul><li>New unary primitives and corresponding <code>nv_*()</code> functions: <code>acos</code>, <code>acosh</code>, <code>asin</code>, <code>asinh</code>, <code>atan</code>, <code>atanh</code>, <code>cosh</code>, <code>sinh</code>, <code>digamma</code>, <code>lgamma</code>, <code>polygamma</code>, <code>erf</code>, <code>erf_inv</code>, <code>erfc</code>.</li>
+<li>New API functions <code><a href="../reference/nv_mod.html">nv_mod()</a></code> (flooring remainder) and <code><a href="../reference/nv_trunc.html">nv_trunc()</a></code> (truncation toward zero).</li>
+</ul></div>
+<div class="section level4">
+<h4 id="cumulative-reductions-0-3-0">Cumulative reductions<a class="anchor" aria-label="anchor" href="#cumulative-reductions-0-3-0"></a></h4>
+<ul><li>New primitives and corresponding <code>nv_*()</code> functions: <code>cumsum</code>, <code>cumprod</code>, <code>cummax</code>, <code>cummin</code>. <code><a href="../reference/prim_cumprod.html">prim_cumprod()</a></code> does not yet have a reverse rule.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="sorting-and-searching-0-3-0">Sorting and searching<a class="anchor" aria-label="anchor" href="#sorting-and-searching-0-3-0"></a></h4>
+<ul><li>New primitives <code><a href="../reference/prim_sort.html">prim_sort()</a></code>, <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>, <code><a href="../reference/prim_argmax.html">prim_argmax()</a></code>, <code><a href="../reference/prim_argmin.html">prim_argmin()</a></code>.</li>
+<li>New API functions:
+<ul><li>
+<code><a href="../reference/nv_sort.html">nv_sort()</a></code> / <code><a href="../reference/nv_argsort.html">nv_argsort()</a></code> – sort along a dimension, or return the permutation that does.</li>
+<li>
+<code><a href="../reference/nv_top_k.html">nv_top_k()</a></code> – the <code>k</code> largest values along a dimension.</li>
+<li>
+<code><a href="../reference/nv_median.html">nv_median()</a></code> / <code><a href="../reference/nv_quantile.html">nv_quantile()</a></code> – median / quantiles along a dimension. <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code> dispatches to <code><a href="../reference/nv_median.html">nv_median()</a></code>.</li>
+<li>
+<code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> – index of the maximum / minimum along a dimension (ties broken by smallest index).</li>
+<li>
+<code><a href="../reference/nv_select.html">nv_select()</a></code> – select a slice along a dimension by index.</li>
+</ul></li>
+</ul></div>
+<div class="section level4">
+<h4 id="array-construction--shape-0-3-0">Array construction / shape<a class="anchor" aria-label="anchor" href="#array-construction--shape-0-3-0"></a></h4>
+<ul><li>
+<code><a href="../reference/AnvlArray.html">nv_array()</a></code> gained a <code>byrow</code> argument that fills the array from an R object in row-major order, mirroring <code>matrix(byrow = TRUE)</code> (<a href="https://github.com/r-xla/anvl/issues/165" class="external-link">#165</a>).</li>
+<li>New <code>nv_matrix(data, nrow, ncol, ...)</code> which works like R’s <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>.</li>
+<li>New API functions <code><a href="../reference/nv_bind.html">nv_rbind()</a></code> and <code><a href="../reference/nv_bind.html">nv_cbind()</a></code> and corresponding <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code> / <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind()</a></code> generics.</li>
+<li>New API function <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> for flattening to 1-D.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="misc-0-3-0">Misc<a class="anchor" aria-label="anchor" href="#misc-0-3-0"></a></h4>
+<ul><li>New <code>AnvlArray</code> -&gt; R <code>vector</code> converters: <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code>, <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code>, <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code>, <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code>, <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>.</li>
+<li>New function <code><a href="../reference/await.html">await()</a></code> that blocks until the underlying computation has finished.</li>
+<li>New tree utilities <code><a href="../reference/map_tree.html">map_tree()</a></code> and <code><a href="../reference/pmap_tree.html">pmap_tree()</a></code> for applying functions leaf-wise over (possibly nested) lists.</li>
+<li>Added support for <code>range</code> generic.</li>
+<li>Improved NaN handling across various primitives and API functions.</li>
+</ul></div>
+</div>
+<div class="section level3">
+<h3 id="other-0-3-0">Other<a class="anchor" aria-label="anchor" href="#other-0-3-0"></a></h3>
+<ul><li>
+<code><a href="../reference/nv_reduce_sum.html">nv_reduce_sum()</a></code>, <code><a href="../reference/nv_reduce_prod.html">nv_reduce_prod()</a></code>, <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code>, <code><a href="../reference/nv_reduce_min.html">nv_reduce_min()</a></code>, <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code>, <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code> and <code><a href="../reference/nv_mean.html">nv_mean()</a></code> now default <code>dims = NULL</code>, which reduces over all dimensions and returns a scalar. Previously, <code>dims</code> was required.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-0-3-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-3-0"></a></h3>
+<ul><li>The overloaded <code>%%</code> operator now calls the new <code><a href="../reference/nv_mod.html">nv_mod()</a></code> to be consistent with base R.</li>
+<li>The reverse rule for <code><a href="../reference/prim_reduce_prod.html">prim_reduce_prod()</a></code> no longer produces <code>NaN</code> / <code>Inf</code> gradients when the input contains zeros.</li>
+<li>The CI now actually runs the torch-comparison tests.</li>
+<li>
+<code><a href="../reference/nv_runif.html">nv_runif()</a></code> not properly respects the <code>lower</code> argument.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="anvl-020">anvl 0.2.0<a class="anchor" aria-label="anchor" href="#anvl-020"></a></h2>
 <div class="section level3">
@@ -103,7 +189,7 @@
 <li>
 <code><a href="../reference/nv_solve.html">nv_solve()</a></code> to solve a system of linear equations.</li>
 <li>
-<code><a href="../reference/nv_cholesky.html">nv_cholesky()</a></code> to compute the Cholesky decomposition of a matrix.</li>
+<code>nv_cholesky()</code> to compute the Cholesky decomposition of a matrix.</li>
 <li>
 <code><a href="../reference/nv_device.html">nv_device()</a></code> constructs a backend-specific device object (e.g. <code>nv_device("cpu")</code>) that can be passed as <code>device</code> to array constructors like <code><a href="../reference/nv_fill.html">nv_fill()</a></code> or <code><a href="../reference/nv_iota.html">nv_iota()</a></code>.</li>
 <li>

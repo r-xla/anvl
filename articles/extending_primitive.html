@@ -18,8 +18,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Adding a Primitive">
 </head>
@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,21 +61,23 @@
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
 </li>
-<li class="active nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-developers">
-<li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
-    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Extending the API</a></li>
-    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
-    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
-  </ul>
-</li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
 <li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
     <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
+  </ul>
+</li>
+<li class="active nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-developers">
+<li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
+    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
+    <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
+    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
   </ul>
 </li>
       </ul>
@@ -107,7 +109,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Adding a Primitive</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.2.0/vignettes/extending_primitive.Rmd" class="external-link"><code>vignettes/extending_primitive.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/extending_primitive.Rmd" class="external-link"><code>vignettes/extending_primitive.Rmd</code></a></small>
       <div class="d-none name"><code>extending_primitive.Rmd</code></div>
     </div>
 
@@ -157,8 +159,14 @@ e.g. via a second, dynamic Fortran backend.</p>
 <li>
 <p>It cannot be expressed or can only expressed inefficiently:</p>
 <p><span class="math inline">\(\rightarrow\)</span> You can implement a
-stableHLO custom call, see the custom print operation in <a href="https://github.com/r-xla/pjrt" class="external-link">pjrt</a>. This is currently not
-well documented, so you need to dig into the source code.</p>
+stableHLO custom call, see the custom print operation in <a href="https://github.com/r-xla/pjrt" class="external-link">pjrt</a>. The {pjrt} package has a
+dedicated <a href="https://r-xla.github.io/pjrt/dev/articles/ffi.html" class="external-link">“Adding Custom
+Calls”</a> tutorial. This mechanism is used, for example, to implement
+some of the linear algebra primitives such as SVD: on CPU these call
+into LAPACK, and on GPU they use NVIDIA’s cuSOLVER library. In the
+future it will also be possible to call into user-provided custom CUDA
+kernels, but there is no infrastructure for this yet – currently we only
+call into predefined kernels shipped with the CUDA toolkit.</p>
 </li>
 </ol>
 </li>
@@ -352,10 +360,11 @@ you do not have to worry about that here.</p>
 <div class="section level3">
 <h3 id="step-3-add-the-reverse-rule">Step 3: Add the Reverse Rule<a class="anchor" aria-label="anchor" href="#step-3-add-the-reverse-rule"></a>
 </h3>
-<p>If the operation should support automatic differentiation, add a
-reverse rule. The idea here is the following, where we assume the input
-<code>operand</code> has shape <code>(s_1, ..., s_n)</code>, which means
-that the output (and therefore it’s gradient) has shape
+<p>If the operation should support automatic differentiation, attach a
+reverse rule built with <code><a href="../reference/rule_reverse.html">rule_reverse()</a></code>. The idea here is
+the following, where we assume the input <code>operand</code> has shape
+<code>(s_1, ..., s_n)</code>, which means that the output (and therefore
+it’s gradient) has shape
 <code>(s_1, ..., s_{dim-1}, s_dim * times, s_{dim+1}, ..., s_n)</code>.</p>
 <ol style="list-style-type: decimal">
 <li>Reshape the gradient to
@@ -364,13 +373,15 @@ that the output (and therefore it’s gradient) has shape
 <code>times</code> dimension.</li>
 </ol>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">prim_repeat_along</span><span class="op">[[</span><span class="st">"reverse"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">outputs</span>, <span class="va">grads</span>, <span class="va">dim</span>, <span class="va">times</span>, <span class="va">.required</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="va">.required</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> <span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="va">prim_repeat_along</span><span class="op">[[</span><span class="st">"reverse"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rule_reverse.html">rule_reverse</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">inputs</span>, <span class="va">outputs</span>, <span class="va">grads</span>, <span class="va">params</span>, <span class="va">required</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="va">required</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="cn">NULL</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span></span>
 <span>  <span class="va">grad</span> <span class="op">&lt;-</span> <span class="va">grads</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
 <span>  <span class="va">operand</span> <span class="op">&lt;-</span> <span class="va">inputs</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
+<span>  <span class="va">dim</span> <span class="op">&lt;-</span> <span class="va">params</span><span class="op">$</span><span class="va">dim</span></span>
+<span>  <span class="va">times</span> <span class="op">&lt;-</span> <span class="va">params</span><span class="op">$</span><span class="va">times</span></span>
 <span></span>
 <span>  <span class="va">old_shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span></span>
 <span>  <span class="va">grad_shape</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">grad</span><span class="op">)</span></span>
@@ -382,8 +393,8 @@ that the output (and therefore it’s gradient) has shape
 <span>  <span class="va">grad_reshaped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_reshape.html">prim_reshape</a></span><span class="op">(</span><span class="va">grad</span>, <span class="va">new_shape</span><span class="op">)</span></span>
 <span>  <span class="va">grad_summed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prim_reduce_sum.html">prim_reduce_sum</a></span><span class="op">(</span><span class="va">grad_reshaped</span>, dims <span class="op">=</span> <span class="va">dim</span>, drop <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">grad_summed</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>The reverse rule receives:</p>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>The wrapped backward receives:</p>
 <ul>
 <li>
 <code>inputs</code>: Input <code>GraphValue</code>s from the forward
@@ -394,14 +405,48 @@ forward pass</li>
 <li>
 <code>grads</code>: Gradients flowing back from downstream (one per
 output)</li>
-<li>Static parameters by name (here: <code>dim</code>,
-<code>times</code>)</li>
 <li>
-<code>.required</code>: Logical vector indicating which input
+<code>params</code>: Named list of the call’s static parameters
+(here: <code>params$dim</code>, <code>params$times</code>)</li>
+<li>
+<code>required</code>: Logical vector indicating which input
 gradients are needed</li>
 </ul>
 <p>It returns a list with one gradient per input (or <code>NULL</code>
 if not required).</p>
+<p>Note that the reverse rule will only be called if at least one input
+gradient is required, so this can be assumed.</p>
+<div class="section level4">
+<h4 id="optional-alternative-forward-rule">Optional: alternative-forward rule<a class="anchor" aria-label="anchor" href="#optional-alternative-forward-rule"></a>
+</h4>
+<p>For most primitives the backward-only form above is enough. If the
+gradient computation can be made significantly more efficient by running
+an alternative forward pass that exposes intermediate values for reuse,
+use the alternative-forward form:
+<code>rule_reverse(forward = ...)</code>. The forward hook receives
+<code>(inputs, params)</code>, emits whatever forward primitives it
+likes via the normal <code>prim_*</code> callables, and returns a list
+with the primal outputs and a <code>backward</code> closure.
+Intermediates flow from forward to backward via R’s lexical scoping:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>prim_<span class="sc">&lt;</span>name<span class="sc">&gt;</span>[[<span class="st">"reverse"</span>]] <span class="ot">&lt;-</span> <span class="fu">rule_reverse</span>(<span class="at">forward =</span> <span class="cf">function</span>(inputs, params) {</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  x <span class="ot">&lt;-</span> inputs[[<span class="dv">1</span><span class="dt">L</span>]]</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>  y <span class="ot">&lt;-</span> <span class="fu">prim_some_op</span>(x)        <span class="co"># forward emit 1</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>  z <span class="ot">&lt;-</span> <span class="fu">prim_other_op</span>(x, y)    <span class="co"># forward emit 2; both `x` and `y` captured</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>  <span class="fu">list</span>(</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="at">outputs  =</span> <span class="fu">list</span>(z),       <span class="co"># one box per original call output</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    <span class="at">backward =</span> <span class="cf">function</span>(inputs, outputs, grads, params, required) {</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>      <span class="co"># `x` is also available via `inputs`; what lexical capture buys us is</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>      <span class="co"># access to intermediates like `y` that the framework doesn't pass in.</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>      ...</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>    }</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>  )</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>})</span></code></pre></div>
+<p>The <code>backward</code> closure shares the same signature as the
+backward-only form. Intermediates that aren’t passed in (like
+<code>y</code> above) flow in via lexical capture. The forward must
+return one output box per original call output, with matching
+shape/dtype.</p>
+</div>
 <div class="section level4">
 <h4 id="optional-a-quickr-rule">Optional: a quickr rule<a class="anchor" aria-label="anchor" href="#optional-a-quickr-rule"></a>
 </h4>
@@ -420,7 +465,7 @@ you skip it, the primitive will still work on the xla backend.</p>
 <p><code><a href="../reference/new_primitive.html">new_primitive()</a></code> returns the callable directly and also
 registers the primitive in the internal registry used by the graph
 machinery, so no separate registration step is needed:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_repeat_along</span></span>
 <span><span class="co">#&gt; function (operand, times, dim) </span></span>
 <span><span class="co">#&gt; {</span></span>
@@ -451,7 +496,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     do.call(jit_fns[[be]], args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x5620b69b2548&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x55ef72ff70f0&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"backend")</span></span>
@@ -466,7 +511,7 @@ machinery, so no separate registration step is needed:</p>
 An example is <code>prim_add</code> vs <code>nv_add</code>, where the
 latter calls into the former after optionally broadcasting (scalar)
 inputs:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  3</span></span>
@@ -480,7 +525,7 @@ inputs:</p>
 not too low-level (for it to be generally useful), so we can just
 reassign the <code>prim_*</code> function to an <code>nv_*</code>
 function:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_repeat_along</span> <span class="op">&lt;-</span> <span class="va">prim_repeat_along</span></span></code></pre></div>
 <p>Note that in the <code>nv_*</code> wrapper function, you can only
 access certain properties of the input arrayish values via:</p>
@@ -501,7 +546,7 @@ property.</p>
 </h3>
 <p>You can now use the primitive, both eagerly and inside a larger
 JIT-compiled function:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># Eager call -- works because prim_repeat_along is itself jit-compiled.</span></span>
 <span><span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, dim <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
@@ -518,7 +563,7 @@ JIT-compiled function:</p>
 <span><span class="co">#&gt;  3 3</span></span>
 <span><span class="co">#&gt; [ CPUf32{3,2} ]</span></span></code></pre></div>
 <p>And compute gradients through it.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">repeated</span> <span class="op">&lt;-</span> <span class="fu">prim_repeat_along</span><span class="op">(</span><span class="va">x</span>, times <span class="op">=</span> <span class="fl">2L</span>, dim <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">repeated</span><span class="op">)</span></span>

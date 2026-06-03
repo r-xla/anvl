@@ -38,7 +38,7 @@ List of arrays, all with the same shape.
 ## Examples
 
 ``` r
-x <- nv_array(matrix(1:6, nrow = 2))
+x <- nv_matrix(1:6, nrow = 2)
 y <- nv_array(c(10, 20, 30))
 nv_broadcast_arrays(x, y)
 #> [[1]]

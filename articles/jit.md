@@ -9,6 +9,7 @@ Started](https://r-xla.github.io/anvl/articles/anvl.md) vignette first.
 We will use the simple `linear` function as the running example.
 
 ``` r
+
 library(anvl)
 set.seed(42)
 
@@ -20,6 +21,7 @@ linear <- function(x, w, b) nv_add(nv_mul(x, w), b)
 In pseudo-R, `jit(f)` returns roughly this closure:
 
 ``` r
+
 jit <- function(f, static = character()) {
   cache <- hashtab()
   function(...) {
@@ -56,6 +58,7 @@ are skipped. We can observe this directly by inspecting the size of the
 cache held inside the jitted function:
 
 ``` r
+
 cache_size <- function(f) environment(f)$cache$size
 
 linear_jit <- jit(linear)
@@ -117,6 +120,7 @@ input is just a shape/dtype placeholder during tracing, so a check like
 probability vector – only works if `p` is static.
 
 ``` r
+
 linear_maybe <- function(x, w, b, use_bias) {
   if (use_bias) linear(x, w, b) else x * w
 }
@@ -172,6 +176,7 @@ will use it to show what’s happening under the hood. Below, we trace
 `linear` with a length-3 vector for `x` and scalars for `w` and `b`:
 
 ``` r
+
 f32_scalar <- nv_aval("f32", integer())
 f32_scalar
 #> AbstractArray(dtype=f32, shape=)
@@ -232,6 +237,7 @@ all the primitive calls encountered will be recorded in the graph. Here
 we apply the `linear` function `n` times.
 
 ``` r
+
 linear_repeated <- function(x, w, b, n) {
   for (i in seq_len(n)) x <- linear(x, w, b)
   x
@@ -271,6 +277,7 @@ time. One common scenario is where the branch depends on a static input
 flag:
 
 ``` r
+
 linear_maybe <- function(x, w, b, use_bias) {
   if (use_bias) linear(x, w, b) else x * w
 }
@@ -299,6 +306,7 @@ that does not influence the cache key, such as a value from the
 enclosing environment:
 
 ``` r
+
 threshold <- 0.5
 h <- function(x) {
   if (threshold > 0.5) x * 2 else x + 1
@@ -332,6 +340,7 @@ their value at trace time is read once and baked into the graph.
 Here we close over a default bias instead of taking it as an argument:
 
 ``` r
+
 default_b <- 5
 linear_default_b <- function(x, w) linear(x, w, default_b)
 trace_fn(linear_default_b, args = list(x = f32_scalar, w = f32_scalar))
@@ -361,6 +370,7 @@ A common R pattern for stateful objects is to wrap them in an
 environment, since environments give you reference semantics:
 
 ``` r
+
 new_model <- function(beta) {
   e <- new.env()
   e$beta <- beta
@@ -379,6 +389,7 @@ wrapping `grad_step` with
 function on two levels:
 
 ``` r
+
 model <- new_model(nv_array(c(0, 0, 0), dtype = "f32"))
 grad_step_jit <- jit(model$grad_step)
 g <- nv_array(c(1, 1, 1), dtype = "f32")
@@ -430,6 +441,7 @@ and any state updates have to happen at the call site, not inside the
 function:
 
 ``` r
+
 grad_step <- jit(function(beta, beta_grad, lr) beta - beta_grad * lr)
 
 beta <- nv_array(c(0, 0, 0), dtype = "f32")
@@ -461,6 +473,7 @@ XLA that an input will not be used after the call, so it is free to
 reuse the input array’s memory for an output.
 
 ``` r
+
 step <- jit(function(w, g) w - 0.1 * g, donate = "w")
 
 w <- nv_array(c(1, 2, 3), dtype = "f32")
@@ -480,6 +493,7 @@ The caller must not reuse an array that was donated to a function,
 otherwise an error is thrown:
 
 ``` r
+
 w_old <- nv_array(c(1, 2, 3), dtype = "f32")
 w_new <- step(w_old, g)
 w_old     # the old buffer has been donated
@@ -512,6 +526,7 @@ See the documentation of the `device` arg in
 information.
 
 ``` r
+
 add <- jit(function(x, y) x + y)
 add_cpu <- jit(function(x, y) x + y, device = "cpu")
 

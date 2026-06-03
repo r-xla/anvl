@@ -5,19 +5,13 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Transform a graph to its gradient — transform_gradient"><meta name="description" content='Low-level graph transformation that appends the reverse pass to a
-traced AnvlGraph. The function f represented by graph must return a single
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Transform a graph to its gradient — transform_gradient"><meta name="description" content="Low-level graph transformation that transforms a graph into its gradient.
+The function f represented by graph must return a single
 float scalar. The resulting graph computes the gradients of that scalar with respect
-to the inputs specified by wrt.
-The reverse rules are stored in $rules[["reverse"]] of the primitives.
-This is the building block used by gradient() and value_and_gradient(); prefer
-those higher-level wrappers unless you need to operate on graphs directly.'><meta property="og:description" content='Low-level graph transformation that appends the reverse pass to a
-traced AnvlGraph. The function f represented by graph must return a single
+to the inputs specified by wrt."><meta property="og:description" content="Low-level graph transformation that transforms a graph into its gradient.
+The function f represented by graph must return a single
 float scalar. The resulting graph computes the gradients of that scalar with respect
-to the inputs specified by wrt.
-The reverse rules are stored in $rules[["reverse"]] of the primitives.
-This is the building block used by gradient() and value_and_gradient(); prefer
-those higher-level wrappers unless you need to operate on graphs directly.'><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+to the inputs specified by wrt."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -25,7 +19,7 @@ those higher-level wrappers unless you need to operate on graphs directly.'><met
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,17 +45,19 @@ those higher-level wrappers unless you need to operate on graphs directly.'><met
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-developers"><li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
-    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Extending the API</a></li>
-    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
-    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
-  </ul></li>
-<li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples"><li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
     <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
+  </ul></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-developers"><li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
+    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
+    <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
+    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
   </ul></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
@@ -80,18 +76,15 @@ those higher-level wrappers unless you need to operate on graphs directly.'><met
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Transform a graph to its gradient</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.2.0/R/reverse.R" class="external-link"><code>R/reverse.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/reverse.R" class="external-link"><code>R/reverse.R</code></a></small>
       <div class="d-none name"><code>transform_gradient.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Low-level graph transformation that appends the reverse pass to a
-traced <code><a href="AnvlGraph.html">AnvlGraph</a></code>. The function <code>f</code> represented by <code>graph</code> must return a single
+    <p>Low-level graph transformation that transforms a graph into its gradient.
+The function <code>f</code> represented by <code>graph</code> must return a single
 float scalar. The resulting graph computes the gradients of that scalar with respect
 to the inputs specified by <code>wrt</code>.</p>
-<p>The reverse rules are stored in <code>$rules[["reverse"]]</code> of the primitives.</p>
-<p>This is the building block used by <code><a href="gradient.html">gradient()</a></code> and <code><a href="value_and_gradient.html">value_and_gradient()</a></code>; prefer
-those higher-level wrappers unless you need to operate on graphs directly.</p>
     </div>
 
     <div class="section level2">
@@ -118,8 +111,17 @@ Names of the graph inputs to differentiate with respect to.</p></dd>
     <p>An <code><a href="AnvlGraph.html">AnvlGraph</a></code> whose outputs are the requested gradients.</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>To support alternative forward passes for more efficient backward passes, we
+replay and possibly rewrite the graph into a new descriptor.
+Afterwards, we traverse it backwards and call the gradient rules where necessary.</p>
+<p>See <code><a href="rule_reverse.html">rule_reverse()</a></code> for more information.</p>
+<p>This is the building block used by <code><a href="gradient.html">gradient()</a></code> and <code><a href="value_and_gradient.html">value_and_gradient()</a></code>; prefer
+those higher-level wrappers unless you need to operate on graphs directly.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="gradient.html">gradient()</a></code>, <code><a href="value_and_gradient.html">value_and_gradient()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="gradient.html">gradient()</a></code>, <code><a href="value_and_gradient.html">value_and_gradient()</a></code>, <code><a href="rule_reverse.html">rule_reverse()</a></code></p></div>
     </div>
 
     <div class="section level2">

@@ -8,6 +8,7 @@ are adding an `f32` to an `f64`, where the former is promoted to the
 latter’s type, because it’s more expressive.
 
 ``` r
+
 library(anvl)
 jit(nv_add)(
   nv_scalar(1.0, dtype = "f32"),
@@ -30,12 +31,14 @@ two values: the common dtype and a flag indicating whether the result is
 ambiguous, which we will cover later.
 
 ``` r
+
 common_dtype("f64", "f32")$dtype
 ```
 
     ## <f64>
 
 ``` r
+
 common_dtype("i64", "f32")$dtype
 ```
 
@@ -57,7 +60,7 @@ A table with the promotion rules is below.
 | f32  | f32  | f32 | f32 | f32 | f32 | f32  | f32  | f32  | f32  | f32 | f64 |
 | f64  | f64  | f64 | f64 | f64 | f64 | f64  | f64  | f64  | f64  | f64 | f64 |
 
-Type promotion rules (row × column)
+Type promotion rules (row × column) {.table}
 
 ## Literals as Ambiguous Types
 
@@ -71,6 +74,7 @@ follows:
 - [`logical()`](https://rdrr.io/r/base/logical.html) -\> `i1` (bool)
 
 ``` r
+
 jit(\() list(1L, 1.0, TRUE))()
 ```
 
@@ -98,6 +102,7 @@ although we would promote to an `f64` if both were known. If both types
 are ambiguous, the result is generally the same as if both were known.
 
 ``` r
+
 common_dtype("f32", "f64", FALSE, TRUE)
 ```
 
@@ -108,6 +113,7 @@ common_dtype("f32", "f64", FALSE, TRUE)
     ## [1] FALSE
 
 ``` r
+
 common_dtype("f32", "f64", TRUE, TRUE)
 ```
 
@@ -118,6 +124,7 @@ common_dtype("f32", "f64", TRUE, TRUE)
     ## [1] TRUE
 
 ``` r
+
 common_dtype("f32", "f64", FALSE, FALSE)
 ```
 
@@ -152,7 +159,7 @@ rows are ambiguous and the columns are known.
 | f32  | f32  | f32 | f32 | f32 | f32 | f32 | f32  | f32  | f32  | f32 | f64 |
 | f64  | f64  | f64 | f64 | f64 | f64 | f64 | f64  | f64  | f64  | f32 | f64 |
 
-Promotion rules: ambiguous (row) × known (column)
+Promotion rules: ambiguous (row) × known (column) {.table}
 
 ## Creating Tensors with Different Ambiguity
 
@@ -163,6 +170,7 @@ create **non-ambiguous** arrays by default. You can explicitly control
 ambiguity using the `ambiguous` parameter:
 
 ``` r
+
 s1 <- nv_scalar(1.0)
 ambiguous(s1)
 ```
@@ -170,6 +178,7 @@ ambiguous(s1)
     ## [1] FALSE
 
 ``` r
+
 s2 <- nv_scalar(1.0, ambiguous = TRUE)
 ambiguous(s2)
 ```
@@ -177,6 +186,7 @@ ambiguous(s2)
     ## [1] TRUE
 
 ``` r
+
 t1 <- nv_array(c(1.0, 2.0, 3.0))
 ambiguous(t1)
 ```
@@ -184,6 +194,7 @@ ambiguous(t1)
     ## [1] FALSE
 
 ``` r
+
 t2 <- nv_array(c(1.0, 2.0, 3.0), ambiguous = TRUE)
 ambiguous(t2)
 ```
@@ -196,6 +207,7 @@ Ambiguity is propagated through operations. Consider the following
 example:
 
 ``` r
+
 f <- jit(function(x, y) {
   z <- x + 1L
   z * y

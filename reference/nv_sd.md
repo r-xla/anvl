@@ -5,7 +5,7 @@ Computes the standard deviation along the specified dimensions.
 ## Usage
 
 ``` r
-nv_sd(operand, dims, drop = TRUE, correction = 1L)
+nv_sd(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -17,8 +17,9 @@ nv_sd(operand, dims, drop = TRUE, correction = 1L)
 
 - dims:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reduce.
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
+  Dimensions to reduce. If `NULL` (default), reduces over all
+  dimensions, returning a scalar.
 
 - drop:
 
@@ -29,6 +30,12 @@ nv_sd(operand, dims, drop = TRUE, correction = 1L)
 
   (`integer(1)`)  
   Degrees of freedom correction. Default is `1` (Bessel's correction).
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
@@ -46,7 +53,7 @@ population standard deviation.
 ## See also
 
 [`nv_var()`](https://r-xla.github.io/anvl/reference/nv_var.md),
-[`nv_reduce_mean()`](https://r-xla.github.io/anvl/reference/nv_reduce_mean.md)
+[`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md)
 
 ## Examples
 

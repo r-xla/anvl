@@ -22,6 +22,7 @@ Below, we create a 0-dimensional array (i.e., a scalar) that holds a
 16-bit integer living on the CPU.
 
 ``` r
+
 library(anvl)
 set.seed(42)
 nv_array(1L, dtype = "i16", device = "cpu", shape = integer())
@@ -37,6 +38,7 @@ a shorthand to skip specifying the shape and omit specifying the device,
 as CPU is the default.
 
 ``` r
+
 x <- nv_scalar(1L, dtype = "i16")
 x
 ```
@@ -51,6 +53,7 @@ data type, it will default to `"f32"` for R doubles, `"i32"` for
 integers, and `"bool"` for logicals.
 
 ``` r
+
 y <- nv_array(1:6, shape = c(2, 3))
 y
 ```
@@ -63,18 +66,21 @@ y
 You can extract the object’s properties using getter methods.
 
 ``` r
+
 dtype(y)
 ```
 
     ## <i32>
 
 ``` r
+
 shape(y) # or dim()
 ```
 
     ## [1] 2 3
 
 ``` r
+
 device(y)
 ```
 
@@ -84,6 +90,7 @@ device(y)
 later) never modified in-place.
 
 ``` r
+
 y2 <- y
 y2[1, 1] <- 99L
 y2[1, 1]
@@ -94,6 +101,7 @@ y2[1, 1]
     ## [ CPUi32{} ]
 
 ``` r
+
 y[1, 1]
 ```
 
@@ -103,15 +111,9 @@ y[1, 1]
 
 Note that such subset assignment always copies – unlike plain R, where
 `y[i] <- val` can be done in place when `y` has only one reference. This
-only applies to *eager* execution; inside a
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md)-compiled
-function (covered in the [Just In Time
-Compilation](#just-in-time-compilation) section below) the XLA compiler
-can fuse the update with surrounding operations and elide the copy
-entirely. See the [Eager-mode subset-assignment always
-copies](https://r-xla.github.io/anvl/articles/efficiency.html#eager-mode-subset-assignment-always-copies)
-section of the efficiency vignette for the implications and how to work
-around it.
+only applies to *eager* execution. Inside a jit-compiled function
+(covered later), the compiler can optimize reallocations away, similar
+to R’s copy-on-write.
 
 The [`as_array()`](https://r-xla.github.io/anvl/reference/as_array.md)
 function allows to convert `AnvlArray`s back to R objects, which
@@ -119,6 +121,7 @@ involves copying the data. Note that for 0-dimensional arrays, the
 result is an R vector of length 1, as R arrays cannot have 0 dimensions.
 
 ``` r
+
 as_array(y)
 ```
 
@@ -134,6 +137,7 @@ format – a simple, cross-framework standard also used by e.g. PyTorch
 and JAX:
 
 ``` r
+
 path <- tempfile(fileext = ".safetensors")
 nv_save(list(x = x, y = y), path)
 
@@ -163,6 +167,7 @@ transform arrays:
     primitives and either add convenience or higher-level functionality.
 
 ``` r
+
 prim_add(y, y)
 ```
 
@@ -172,6 +177,7 @@ prim_add(y, y)
     ## [ CPUi32{2,3} ]
 
 ``` r
+
 prim_add(y, x)
 ```
 
@@ -180,6 +186,7 @@ prim_add(y, x)
     ## ✖ Got tensor<2x3xi32> and tensor<i16>.
 
 ``` r
+
 nv_add(y, x)
 ```
 
@@ -194,6 +201,7 @@ We could have also used the overloaded `%*%` and `+` operators, but
 chose the underlying `nv_*` function for clarity.
 
 ``` r
+
 linear_model_r <- function(X, beta, alpha) {
   y0 <- nv_matmul(X, beta)
   nv_add(y0, alpha)
@@ -204,6 +212,7 @@ We simulate some training data from a univariate linear model and
 randomly initialize some parameters that we’ll fit later.
 
 ``` r
+
 X <- matrix(rnorm(100), ncol = 1)
 beta_true <- rnorm(1)
 alpha_true <- rnorm(1)
@@ -214,6 +223,7 @@ plot(X, y)
 ![](anvl_files/figure-html/unnamed-chunk-10-1.png)
 
 ``` r
+
 X <- nv_array(X, dtype = "f32")
 y <- nv_array(y, dtype = "f32")
 
@@ -249,6 +259,7 @@ we defined earlier. The output is a function with the same signature
 that produces the same results:
 
 ``` r
+
 linear_model <- jit(linear_model_r)
 y_hat1 <- linear_model(X[1:2, ], beta, alpha)
 all(y_hat0 == y_hat1)
@@ -283,6 +294,7 @@ yourself. This applies to both `nv_*` calls and your own
 functions:
 
 ``` r
+
 nv_add(1, array(2:3))
 ```
 
@@ -302,7 +314,7 @@ for the full rules.
 
 Note that we only auto-convert `double`/`integer`/`logical`s that are
 
-1.  vectors of length 1[¹](#fn1)
+1.  vectors of length 1[^1]
 2.  arbitrary arrays or matrices
 
 Besides `AnvlArray`s, jit-compiled functions can also take plain R
@@ -316,6 +328,7 @@ reduction is configurable – `reduction = "mean"` returns a scalar loss,
 `"sum"` returns the un-normalized total:
 
 ``` r
+
 mse <- jit(function(y_hat, y, reduction) {
   se <- (y_hat - y)^2.0
   if (reduction == "mean") {
@@ -333,6 +346,7 @@ mse(linear_model(X, beta, alpha), y, reduction = "mean")
     ## [ CPUf32{} ]
 
 ``` r
+
 mse(linear_model(X, beta, alpha), y, reduction = "sum")
 ```
 
@@ -347,6 +361,7 @@ this happens, the inner function is not compiled and executed separately
 `mse` into a jitted `model_loss`:
 
 ``` r
+
 model_loss <- jit(function(X, beta, alpha, y) {
   y_hat <- linear_model(X, beta, alpha)
   mse(y_hat, y, reduction = "mean")
@@ -385,6 +400,7 @@ returns a named list of gradients – one entry per argument listed in
 `wrt`:
 
 ``` r
+
 model_loss_grad <- jit(gradient(
   model_loss,
   wrt = c("beta", "alpha")
@@ -410,6 +426,7 @@ both accepts and returns – this shows that inputs and outputs of a
 function can be (nested) lists of `AnvlArray`s, not just bare arrays:
 
 ``` r
+
 update_weights <- jit(function(X, weights, y, lr) {
   grads <- model_loss_grad(X, weights$beta, weights$alpha, y)
   list(
@@ -422,6 +439,7 @@ update_weights <- jit(function(X, weights, y, lr) {
 This already allows us to fit the linear model.
 
 ``` r
+
 weights <- list(beta = beta, alpha = alpha)
 lr <- 0.1
 for (i in 1:100) {
@@ -473,6 +491,7 @@ functional. The function takes in:
     returns a new state.
 
 ``` r
+
 train_while <- jit(function(X, beta, alpha, y, n_steps, lr) {
   nv_while(
     list(beta = beta, alpha = alpha, i = 0),
@@ -511,9 +530,7 @@ The same approach works analogously for `if`-statements, where the
 [`nv_if()`](https://r-xla.github.io/anvl/reference/nv_if.md) is
 available.
 
-------------------------------------------------------------------------
-
-1.  Since R has no distinct scalar type, converting general vectors
+[^1]: Since R has no distinct scalar type, converting general vectors
     would be inconsistent: a length-1 vector would become a 0D
     `AnvlArray` (scalar), but a length-2 vector a 1D array of shape
     `(2)`.

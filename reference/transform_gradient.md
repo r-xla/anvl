@@ -1,18 +1,9 @@
 # Transform a graph to its gradient
 
-Low-level graph transformation that appends the reverse pass to a traced
-[`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md). The
-function `f` represented by `graph` must return a single float scalar.
-The resulting graph computes the gradients of that scalar with respect
-to the inputs specified by `wrt`.
-
-The reverse rules are stored in `$rules[["reverse"]]` of the primitives.
-
-This is the building block used by
-[`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md) and
-[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/value_and_gradient.md);
-prefer those higher-level wrappers unless you need to operate on graphs
-directly.
+Low-level graph transformation that transforms a graph into its
+gradient. The function `f` represented by `graph` must return a single
+float scalar. The resulting graph computes the gradients of that scalar
+with respect to the inputs specified by `wrt`.
 
 ## Usage
 
@@ -37,10 +28,28 @@ transform_gradient(graph, wrt)
 An [`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md)
 whose outputs are the requested gradients.
 
+## Details
+
+To support alternative forward passes for more efficient backward
+passes, we replay and possibly rewrite the graph into a new descriptor.
+Afterwards, we traverse it backwards and call the gradient rules where
+necessary.
+
+See
+[`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
+for more information.
+
+This is the building block used by
+[`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md) and
+[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/value_and_gradient.md);
+prefer those higher-level wrappers unless you need to operate on graphs
+directly.
+
 ## See also
 
 [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md),
-[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/value_and_gradient.md)
+[`value_and_gradient()`](https://r-xla.github.io/anvl/reference/value_and_gradient.md),
+[`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
 
 ## Examples
 

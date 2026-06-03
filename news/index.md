@@ -1,5 +1,165 @@
 # Changelog
 
+## anvl 0.3.0
+
+### Breaking Changes
+
+- Renamed user-facing API functions to match base R names: `nv_sine()`
+  -\> [`nv_sin()`](https://r-xla.github.io/anvl/reference/nv_sin.md),
+  `nv_cosine()` -\>
+  [`nv_cos()`](https://r-xla.github.io/anvl/reference/nv_cos.md),
+  `nv_ceil()` -\>
+  [`nv_ceiling()`](https://r-xla.github.io/anvl/reference/nv_ceiling.md),
+  `nv_cholesky()` -\>
+  [`nv_chol()`](https://r-xla.github.io/anvl/reference/nv_chol.md). The
+  corresponding primitives were renamed in step: `prim_sine()` -\>
+  [`prim_sin()`](https://r-xla.github.io/anvl/reference/prim_sin.md),
+  `prim_cosine()` -\>
+  [`prim_cos()`](https://r-xla.github.io/anvl/reference/prim_cos.md),
+  `prim_cholesky()` -\>
+  [`prim_chol()`](https://r-xla.github.io/anvl/reference/prim_chol.md).
+- `nv_reduce_mean()` was renamed to
+  [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md).
+- [`nv_solve()`](https://r-xla.github.io/anvl/reference/nv_solve.md) no
+  longer requires `a` to be symmetric positive-definite as it uses LU
+  instead of Cholesky decomposition. Because of this, it is no longer
+  differentiable, as the reverse rule for LU is not implemented yet.
+- [`nv_chol()`](https://r-xla.github.io/anvl/reference/nv_chol.md) /
+  [`prim_chol()`](https://r-xla.github.io/anvl/reference/prim_chol.md)
+  now default to `lower = FALSE` (upper-triangular factor), matching
+  base R’s [`chol()`](https://rdrr.io/r/base/chol.html). Previously
+  defaulted to `lower = TRUE`.
+
+### New Features
+
+#### Linear algebra
+
+- New matrix-decomposition primitives and corresponding `nv_*()`
+  functions: `qr`, `lu`, `svd`, `eigh`. None of them implement a reverse
+  rule yet.
+- New API functions:
+  - [`nv_triangular_solve()`](https://r-xla.github.io/anvl/reference/nv_triangular_solve.md)
+    (wraps the already-existing
+    [`prim_triangular_solve()`](https://r-xla.github.io/anvl/reference/prim_triangular_solve.md)).
+  - [`nv_det()`](https://r-xla.github.io/anvl/reference/nv_det.md) and
+    [`nv_determinant()`](https://r-xla.github.io/anvl/reference/nv_determinant.md).
+    The latter can also be called via the
+    [`determinant()`](https://rdrr.io/r/base/det.html) generic.
+  - [`nv_inv()`](https://r-xla.github.io/anvl/reference/nv_inv.md),
+    which can also be called via `solve(operand)` (missing second
+    argument).
+- `qr`, `chol`, and `solve` from base R now dispatch to
+  [`nv_qr()`](https://r-xla.github.io/anvl/reference/nv_qr.md),
+  [`nv_chol()`](https://r-xla.github.io/anvl/reference/nv_chol.md), and
+  [`nv_solve()`](https://r-xla.github.io/anvl/reference/nv_solve.md) on
+  `AnvlArray` / `AnvlBox` inputs.
+
+#### Element-wise math
+
+- New unary primitives and corresponding `nv_*()` functions: `acos`,
+  `acosh`, `asin`, `asinh`, `atan`, `atanh`, `cosh`, `sinh`, `digamma`,
+  `lgamma`, `polygamma`, `erf`, `erf_inv`, `erfc`.
+- New API functions
+  [`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md)
+  (flooring remainder) and
+  [`nv_trunc()`](https://r-xla.github.io/anvl/reference/nv_trunc.md)
+  (truncation toward zero).
+
+#### Cumulative reductions
+
+- New primitives and corresponding `nv_*()` functions: `cumsum`,
+  `cumprod`, `cummax`, `cummin`.
+  [`prim_cumprod()`](https://r-xla.github.io/anvl/reference/prim_cumprod.md)
+  does not yet have a reverse rule.
+
+#### Sorting and searching
+
+- New primitives
+  [`prim_sort()`](https://r-xla.github.io/anvl/reference/prim_sort.md),
+  [`prim_top_k()`](https://r-xla.github.io/anvl/reference/prim_top_k.md),
+  [`prim_reduce()`](https://r-xla.github.io/anvl/reference/prim_reduce.md),
+  [`prim_argmax()`](https://r-xla.github.io/anvl/reference/prim_argmax.md),
+  [`prim_argmin()`](https://r-xla.github.io/anvl/reference/prim_argmin.md).
+- New API functions:
+  - [`nv_sort()`](https://r-xla.github.io/anvl/reference/nv_sort.md) /
+    [`nv_argsort()`](https://r-xla.github.io/anvl/reference/nv_argsort.md)
+    – sort along a dimension, or return the permutation that does.
+  - [`nv_top_k()`](https://r-xla.github.io/anvl/reference/nv_top_k.md) –
+    the `k` largest values along a dimension.
+  - [`nv_median()`](https://r-xla.github.io/anvl/reference/nv_median.md)
+    /
+    [`nv_quantile()`](https://r-xla.github.io/anvl/reference/nv_quantile.md)
+    – median / quantiles along a dimension.
+    [`median()`](https://rdrr.io/r/stats/median.html) dispatches to
+    [`nv_median()`](https://r-xla.github.io/anvl/reference/nv_median.md).
+  - [`nv_argmax()`](https://r-xla.github.io/anvl/reference/nv_argmax.md)
+    /
+    [`nv_argmin()`](https://r-xla.github.io/anvl/reference/nv_argmin.md)
+    – index of the maximum / minimum along a dimension (ties broken by
+    smallest index).
+  - [`nv_select()`](https://r-xla.github.io/anvl/reference/nv_select.md)
+    – select a slice along a dimension by index.
+
+#### Array construction / shape
+
+- [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  gained a `byrow` argument that fills the array from an R object in
+  row-major order, mirroring `matrix(byrow = TRUE)`
+  ([\#165](https://github.com/r-xla/anvl/issues/165)).
+- New `nv_matrix(data, nrow, ncol, ...)` which works like R’s
+  [`matrix()`](https://rdrr.io/r/base/matrix.html).
+- New API functions
+  [`nv_rbind()`](https://r-xla.github.io/anvl/reference/nv_bind.md) and
+  [`nv_cbind()`](https://r-xla.github.io/anvl/reference/nv_bind.md) and
+  corresponding [`rbind()`](https://rdrr.io/r/base/cbind.html) /
+  [`cbind()`](https://rdrr.io/r/base/cbind.html) generics.
+- New API function
+  [`nv_flatten()`](https://r-xla.github.io/anvl/reference/nv_flatten.md)
+  for flattening to 1-D.
+
+#### Misc
+
+- New `AnvlArray` -\> R `vector` converters:
+  [`as.numeric()`](https://rdrr.io/r/base/numeric.html),
+  [`as.double()`](https://rdrr.io/r/base/double.html),
+  [`as.integer()`](https://rdrr.io/r/base/integer.html),
+  [`as.logical()`](https://rdrr.io/r/base/logical.html),
+  [`as.vector()`](https://rdrr.io/r/base/vector.html).
+- New function
+  [`await()`](https://r-xla.github.io/anvl/reference/await.md) that
+  blocks until the underlying computation has finished.
+- New tree utilities
+  [`map_tree()`](https://r-xla.github.io/anvl/reference/map_tree.md) and
+  [`pmap_tree()`](https://r-xla.github.io/anvl/reference/pmap_tree.md)
+  for applying functions leaf-wise over (possibly nested) lists.
+- Added support for `range` generic.
+- Improved NaN handling across various primitives and API functions.
+
+### Other
+
+- [`nv_reduce_sum()`](https://r-xla.github.io/anvl/reference/nv_reduce_sum.md),
+  [`nv_reduce_prod()`](https://r-xla.github.io/anvl/reference/nv_reduce_prod.md),
+  [`nv_reduce_max()`](https://r-xla.github.io/anvl/reference/nv_reduce_max.md),
+  [`nv_reduce_min()`](https://r-xla.github.io/anvl/reference/nv_reduce_min.md),
+  [`nv_reduce_any()`](https://r-xla.github.io/anvl/reference/nv_reduce_any.md),
+  [`nv_reduce_all()`](https://r-xla.github.io/anvl/reference/nv_reduce_all.md)
+  and [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md)
+  now default `dims = NULL`, which reduces over all dimensions and
+  returns a scalar. Previously, `dims` was required.
+
+### Bug Fixes
+
+- The overloaded `%%` operator now calls the new
+  [`nv_mod()`](https://r-xla.github.io/anvl/reference/nv_mod.md) to be
+  consistent with base R.
+- The reverse rule for
+  [`prim_reduce_prod()`](https://r-xla.github.io/anvl/reference/prim_reduce_prod.md)
+  no longer produces `NaN` / `Inf` gradients when the input contains
+  zeros.
+- The CI now actually runs the torch-comparison tests.
+- [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md) not
+  properly respects the `lower` argument.
+
 ## anvl 0.2.0
 
 ### Breaking Changes
@@ -50,8 +210,7 @@
     create an identity matrix.
   - [`nv_solve()`](https://r-xla.github.io/anvl/reference/nv_solve.md)
     to solve a system of linear equations.
-  - [`nv_cholesky()`](https://r-xla.github.io/anvl/reference/nv_cholesky.md)
-    to compute the Cholesky decomposition of a matrix.
+  - `nv_cholesky()` to compute the Cholesky decomposition of a matrix.
   - [`nv_device()`](https://r-xla.github.io/anvl/reference/nv_device.md)
     constructs a backend-specific device object
     (e.g. `nv_device("cpu")`) that can be passed as `device` to array

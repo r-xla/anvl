@@ -5,7 +5,7 @@ Computes the variance along the specified dimensions.
 ## Usage
 
 ``` r
-nv_var(operand, dims, drop = TRUE, correction = 1L)
+nv_var(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -17,8 +17,9 @@ nv_var(operand, dims, drop = TRUE, correction = 1L)
 
 - dims:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reduce.
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
+  Dimensions to reduce. If `NULL` (default), reduces over all
+  dimensions, returning a scalar.
 
 - drop:
 
@@ -29,6 +30,12 @@ nv_var(operand, dims, drop = TRUE, correction = 1L)
 
   (`integer(1)`)  
   Degrees of freedom correction. Default is `1` (Bessel's correction).
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
 
 ## Value
 
@@ -46,7 +53,7 @@ population variance.
 ## See also
 
 [`nv_sd()`](https://r-xla.github.io/anvl/reference/nv_sd.md),
-[`nv_reduce_mean()`](https://r-xla.github.io/anvl/reference/nv_reduce_mean.md)
+[`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md)
 
 ## Examples
 
@@ -55,5 +62,9 @@ x <- nv_array(c(1, 2, 3, 4, 5))
 nv_var(x, dims = 1L)
 #> AnvlArray
 #>  2.5000
+#> [ CPUf32{} ] 
+nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
+#> AnvlArray
+#>  4
 #> [ CPUf32{} ] 
 ```

@@ -1,0 +1,83 @@
+# Cumulative Sum
+
+Cumulative sum, optionally along a single dimension.
+
+## Usage
+
+``` r
+nv_cumsum(operand, dim = NULL, nan_rm = FALSE)
+```
+
+## Arguments
+
+- operand:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Operand.
+
+- dim:
+
+  (`integer(1)` \| `NULL`)  
+  Dimension along which to accumulate. If `NULL` (default), the input is
+  first flattened to a 1-D array, like
+  [`base::cumsum()`](https://rdrr.io/r/base/cumsum.html).
+
+- nan_rm:
+
+  (`logical(1)`)  
+  How to handle `NaN` values in floating-point inputs. If `FALSE`
+  (default), `NaN` propagates forward from its first occurrence. If
+  `TRUE`, `NaN` is treated as the identity element of the cumulative op
+  (`0` for sum, `1` for prod, `-Inf` / `+Inf` for max / min) and
+  contributes nothing to the running value.
+
+## Value
+
+[`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
+Has the same shape and data type as the input.
+
+## Relation to base R
+
+Both `nv_cumsum()` (with `dim = NULL`) and
+[`base::cumsum()`](https://rdrr.io/r/base/cumsum.html) flatten a
+multi-dimensional input to 1-D before accumulating, but the flatten
+order differs: anvl arrays are row-major (C order), so the flattened
+sequence iterates the last dim fastest, whereas base R uses column-major
+(Fortran) order. The two agree on 1-D inputs.
+
+## See also
+
+[`prim_cumsum()`](https://r-xla.github.io/anvl/reference/prim_cumsum.md)
+for the underlying primitive.
+
+## Examples
+
+``` r
+x <- nv_matrix(1:6, nrow = 2)
+nv_cumsum(x)              # row-major flatten, then accumulate
+#> AnvlArray
+#>   1
+#>   4
+#>   9
+#>  11
+#>  15
+#>  21
+#> [ CPUi32{6} ] 
+nv_cumsum(x, dim = 1L)    # accumulate along rows
+#> AnvlArray
+#>   1  3  5
+#>   3  7 11
+#> [ CPUi32{2,3} ] 
+nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
+#> AnvlArray
+#>    1
+#>  nan
+#>  nan
+#> [ CPUf32{3} ] 
+nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
+#> AnvlArray
+#>  1
+#>  1
+#>  4
+#> [ CPUf32{3} ] 
+```

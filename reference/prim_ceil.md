@@ -36,7 +36,7 @@ Lowers to
 
 ## See also
 
-[`nv_ceil()`](https://r-xla.github.io/anvl/reference/nv_ceil.md),
+[`nv_ceiling()`](https://r-xla.github.io/anvl/reference/nv_ceiling.md),
 [`ceiling()`](https://rdrr.io/r/base/Round.html)
 
 ## Examples

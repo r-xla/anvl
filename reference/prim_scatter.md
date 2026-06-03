@@ -153,7 +153,7 @@ Lowers to
 ``` r
 # Scatter values 10 and 30 into positions 1 and 3 of a zero vector
 input <- nv_array(c(0, 0, 0, 0, 0))
-indices <- nv_array(matrix(c(1L, 3L), ncol = 1))
+indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))
 prim_scatter(
   input, indices, updates,

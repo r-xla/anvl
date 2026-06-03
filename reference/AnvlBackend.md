@@ -16,7 +16,8 @@ AnvlBackend(
   device,
   new_device,
   print_data,
-  jit
+  jit,
+  await_data
 )
 ```
 
@@ -82,6 +83,13 @@ AnvlBackend(
 
   (`function`)  
   Creates a JIT-compiled function implementation.
+
+- await_data:
+
+  (`function`)  
+  Blocks until the array's underlying data is ready. Called by
+  [`await()`](https://r-xla.github.io/anvl/reference/await.md) for
+  `AnvlArray`s; a no-op for backends without async execution.
 
 ## Value
 

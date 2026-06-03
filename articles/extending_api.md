@@ -52,6 +52,7 @@ Consider the naive implementation of reshaping, which will fail when
 called on an R vector:
 
 ``` r
+
 library(anvl)
 # operand: dynamic, shape: static
 nv_reshape_naive <- function(operand, shape) {
@@ -78,6 +79,7 @@ no-op case, we return a static R object instead of (as intended) an
 `AnvlArray`.
 
 ``` r
+
 # operand: dynamic, dtype: static
 nv_convert_naive <- function(operand, dtype) {
   if (is.null(dtype)) {
@@ -101,6 +103,11 @@ already canonicalize their inputs, so if you are only wrapping
 primitives (or other `nv_<op>` functions that already canonicalize), you
 might not have to do this yourself.
 
+When a function takes multiple arrayish inputs, normalize them in a
+single `as_anvl_arrays(...)` call covering all of them, so R
+literals/arrays adopt the device of their AnvlArray siblings instead of
+landing on the default device.
+
 ## Arbitrary Devices
 
 In order to ensure that your function works with inputs from arbitrary
@@ -108,6 +115,7 @@ devices, you need to be careful when creating new constants within your
 function. Let’s say you are creating your function and working on GPU:
 
 ``` r
+
 nv_add_one_naive <- function(operand) {
   operand <- as_anvl_array(operand)
   operand + nv_fill(1L, shape(operand), device = "cuda")
@@ -126,6 +134,7 @@ One way to achieve this is to simply pass the input’s device to
 [`nv_fill()`](https://r-xla.github.io/anvl/reference/nv_fill.md):
 
 ``` r
+
 nv_add_one1 <- function(operand) {
   operand <- as_anvl_array(operand)
   operand + nv_fill(1L, shape(operand), device = device(operand))
@@ -138,6 +147,7 @@ defaults for their arguments. In this case, the created array will
 assume the data type, shape and device from the input operand.
 
 ``` r
+
 nv_add_one2 <- function(operand) {
   operand + nv_fill_like(operand, 1L)
 }
@@ -161,6 +171,7 @@ point of view, it will just be a constant within the compiled program
 and not a dynamic input.
 
 ``` r
+
 nv_rbernoulli <- function(initial_state, p) {
   initial_state <- as_anvl_array(initial_state)
   stopifnot((p >= 0) && (p <= 1))

@@ -60,8 +60,8 @@ Lowers to
 ## Examples
 
 ``` r
-x <- nv_array(matrix(1:6, nrow = 2))
-y <- nv_array(matrix(1:6, nrow = 3))
+x <- nv_matrix(1:6, nrow = 2)
+y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,
   contracting_dims = list(2L, 1L),
   batching_dims = list(integer(0), integer(0))

@@ -58,7 +58,7 @@ as the reducer.
 ## Examples
 
 ``` r
-x <- nv_array(matrix(1:6, nrow = 2))
+x <- nv_matrix(1:6, nrow = 2)
 prim_reduce_max(x, dims = 1L)
 #> AnvlArray
 #>  2

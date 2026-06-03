@@ -6,13 +6,10 @@ array. You can also use the `[<-` operator.
 ## Usage
 
 ``` r
-# S3 method for class 'AnvlBox'
-x[...] <- value
-
 # S3 method for class 'AnvlArray'
 x[...] <- value
 
-nv_subset_assign(x, ..., value)
+nv_subset_assign(operand, ..., value)
 ```
 
 ## Arguments
@@ -20,7 +17,7 @@ nv_subset_assign(x, ..., value)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Array to update.
+  Same as `operand`; this is the name used by the base R S3 generic.
 
 - ...:
 
@@ -34,10 +31,15 @@ nv_subset_assign(x, ..., value)
   Replacement values. Scalars are broadcast to the subset shape.
   Non-scalar values must match the subset shape.
 
+- operand:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Operand.
+
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-A new array with the same shape as `x` and the subset replaced.
+A new array with the same shape as `operand` and the subset replaced.
 
 ## See also
 
@@ -48,7 +50,7 @@ for a comprehensive guide.
 ## Examples
 
 ``` r
-x <- nv_array(matrix(1:12, nrow = 3))
+x <- nv_matrix(1:12, nrow = 3)
 # Set row 1 to zeros
 x[1, ] <- nv_scalar(0L)
 x

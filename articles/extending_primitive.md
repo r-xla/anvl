@@ -44,8 +44,16 @@ are various scenarios:
 
         \\\rightarrow\\ You can implement a stableHLO custom call, see
         the custom print operation in
-        [pjrt](https://github.com/r-xla/pjrt). This is currently not
-        well documented, so you need to dig into the source code.
+        [pjrt](https://github.com/r-xla/pjrt). The {pjrt} package has a
+        dedicated [“Adding Custom
+        Calls”](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
+        tutorial. This mechanism is used, for example, to implement some
+        of the linear algebra primitives such as SVD: on CPU these call
+        into LAPACK, and on GPU they use NVIDIA’s cuSOLVER library. In
+        the future it will also be possible to call into user-provided
+        custom CUDA kernels, but there is no infrastructure for this yet
+        – currently we only call into predefined kernels shipped with
+        the CUDA toolkit.
 
 ## Adding a Primitive: Practical Example
 
@@ -71,6 +79,7 @@ The returned callable becomes the primitive and is bound to a
 `prim_<name>` R symbol.
 
 ``` r
+
 library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
@@ -169,6 +178,7 @@ array inputs – every argument is static. Two things change in this case:
 For example, the real definition of `prim_fill` looks like this:
 
 ``` r
+
 prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, ambiguous = FALSE, device = NULL) {
@@ -203,6 +213,7 @@ Used together with the corresponding stablehlo inference function, the
 primitive definition collapses to a one-liner:
 
 ``` r
+
 prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
 prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
@@ -221,6 +232,7 @@ operations, which is used in the
 lowering pass. We implement `repeat_along` using concatenation:
 
 ``` r
+
 prim_repeat_along[["stablehlo"]] <- function(operand, times, dim) {
   operands <- rep(list(operand), times)
   list(rlang::exec(stablehlo::hlo_concatenate, !!!operands, dimension = dim - 1L))
@@ -246,10 +258,12 @@ indexing, so you do not have to worry about that here.
 
 ### Step 3: Add the Reverse Rule
 
-If the operation should support automatic differentiation, add a reverse
-rule. The idea here is the following, where we assume the input
-`operand` has shape `(s_1, ..., s_n)`, which means that the output (and
-therefore it’s gradient) has shape
+If the operation should support automatic differentiation, attach a
+reverse rule built with
+[`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md).
+The idea here is the following, where we assume the input `operand` has
+shape `(s_1, ..., s_n)`, which means that the output (and therefore it’s
+gradient) has shape
 `(s_1, ..., s_{dim-1}, s_dim * times, s_{dim+1}, ..., s_n)`.
 
 1.  Reshape the gradient to
@@ -257,13 +271,16 @@ therefore it’s gradient) has shape
 2.  Sum over the `times` dimension and drop the `times` dimension.
 
 ``` r
-prim_repeat_along[["reverse"]] <- function(inputs, outputs, grads, dim, times, .required) {
-  if (!.required[[1L]]) {
+
+prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+  if (!required[[1L]]) {
     return(list(NULL))
   }
 
   grad <- grads[[1L]]
   operand <- inputs[[1L]]
+  dim <- params$dim
+  times <- params$times
 
   old_shape <- shape(operand)
   grad_shape <- shape(grad)
@@ -275,20 +292,55 @@ prim_repeat_along[["reverse"]] <- function(inputs, outputs, grads, dim, times, .
   grad_reshaped <- prim_reshape(grad, new_shape)
   grad_summed <- prim_reduce_sum(grad_reshaped, dims = dim, drop = TRUE)
   list(grad_summed)
-}
+})
 ```
 
-The reverse rule receives:
+The wrapped backward receives:
 
 - `inputs`: Input `GraphValue`s from the forward pass
 - `outputs`: Output `GraphValue`s from the forward pass
 - `grads`: Gradients flowing back from downstream (one per output)
-- Static parameters by name (here: `dim`, `times`)
-- `.required`: Logical vector indicating which input gradients are
-  needed
+- `params`: Named list of the call’s static parameters (here:
+  `params$dim`, `params$times`)
+- `required`: Logical vector indicating which input gradients are needed
 
 It returns a list with one gradient per input (or `NULL` if not
 required).
+
+Note that the reverse rule will only be called if at least one input
+gradient is required, so this can be assumed.
+
+#### Optional: alternative-forward rule
+
+For most primitives the backward-only form above is enough. If the
+gradient computation can be made significantly more efficient by running
+an alternative forward pass that exposes intermediate values for reuse,
+use the alternative-forward form: `rule_reverse(forward = ...)`. The
+forward hook receives `(inputs, params)`, emits whatever forward
+primitives it likes via the normal `prim_*` callables, and returns a
+list with the primal outputs and a `backward` closure. Intermediates
+flow from forward to backward via R’s lexical scoping:
+
+``` r
+prim_<name>[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
+  x <- inputs[[1L]]
+  y <- prim_some_op(x)        # forward emit 1
+  z <- prim_other_op(x, y)    # forward emit 2; both `x` and `y` captured
+  list(
+    outputs  = list(z),       # one box per original call output
+    backward = function(inputs, outputs, grads, params, required) {
+      # `x` is also available via `inputs`; what lexical capture buys us is
+      # access to intermediates like `y` that the framework doesn't pass in.
+      ...
+    }
+  )
+})
+```
+
+The `backward` closure shares the same signature as the backward-only
+form. Intermediates that aren’t passed in (like `y` above) flow in via
+lexical capture. The forward must return one output box per original
+call output, with matching shape/dtype.
 
 #### Optional: a quickr rule
 
@@ -307,6 +359,7 @@ internal registry used by the graph machinery, so no separate
 registration step is needed:
 
 ``` r
+
 prim_repeat_along
 #> function (operand, times, dim) 
 #> {
@@ -337,7 +390,7 @@ prim_repeat_along
 #>     }
 #>     do.call(jit_fns[[be]], args)
 #> }
-#> <environment: 0x5620b69b2548>
+#> <environment: 0x55ef72ff70f0>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")
@@ -353,6 +406,7 @@ example is `prim_add` vs `nv_add`, where the latter calls into the
 former after optionally broadcasting (scalar) inputs:
 
 ``` r
+
 nv_add(1L, nv_array(2:3))
 #> AnvlArray
 #>  3
@@ -369,6 +423,7 @@ too low-level (for it to be generally useful), so we can just reassign
 the `prim_*` function to an `nv_*` function:
 
 ``` r
+
 nv_repeat_along <- prim_repeat_along
 ```
 
@@ -393,6 +448,7 @@ You can now use the primitive, both eagerly and inside a larger
 JIT-compiled function:
 
 ``` r
+
 x <- nv_array(c(1, 2, 3), shape = c(3, 1))
 # Eager call -- works because prim_repeat_along is itself jit-compiled.
 prim_repeat_along(x, times = 2L, dim = 2L)
@@ -413,6 +469,7 @@ jit(function(x) prim_repeat_along(x, times = 2L, dim = 2L))(x)
 And compute gradients through it.
 
 ``` r
+
 f <- function(x) {
   repeated <- prim_repeat_along(x, times = 2L, dim = 2L)
   sum(repeated)

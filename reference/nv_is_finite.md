@@ -7,7 +7,7 @@ Element-wise check if values are finite (not `Inf`, `-Inf`, or `NaN`).
 ``` r
 nv_is_finite(operand)
 
-# S3 method for class 'AnvlBox'
+# S3 method for class 'AnvlArray'
 is.finite(x)
 ```
 
@@ -21,7 +21,7 @@ is.finite(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Same as `operand`; this is the name used by the base R S3 generic.
 
 ## Value
 

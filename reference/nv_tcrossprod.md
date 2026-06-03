@@ -1,32 +1,37 @@
 # Transpose Cross Product (Matrix)
 
-Computes `x %*% t(y)`. If `y` is missing, computes `x %*% t(x)`.
+Computes `lhs %*% t(rhs)`. If `rhs` is missing, computes
+`lhs %*% t(lhs)`.
 
 ## Usage
 
 ``` r
-nv_tcrossprod(x, y = NULL)
+nv_tcrossprod(lhs, rhs = NULL)
 
-# S3 method for class 'AnvlBox'
+# S3 method for class 'AnvlArray'
 tcrossprod(x, y = NULL, ...)
 ```
 
 ## Arguments
 
-- x:
+- lhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   An array with at least 2 dimensions.
 
-- y:
+- rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) \|
   `NULL`)  
-  Optional second array. If `NULL`, uses `x`.
+  Optional second array. If `NULL`, uses `lhs`.
+
+- x, y:
+
+  Same as `lhs` and `rhs`; the names used by the base R S3 generic.
 
 - ...:
 
-  Unused.
+  No additional arguments.
 
 ## Value
 
@@ -40,7 +45,7 @@ tcrossprod(x, y = NULL, ...)
 ## Examples
 
 ``` r
-x <- nv_array(matrix(1:6, nrow = 2), dtype = "f32")
+x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
 nv_tcrossprod(x)
 #> AnvlArray
 #>  35 44

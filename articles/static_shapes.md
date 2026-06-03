@@ -45,6 +45,7 @@ that in plain R we would write as `sum(x[x > 0])`, `max(x[x > 0])`, and
 so on:
 
 ``` r
+
 library(anvl)
 x <- nv_array(c(-2, 1, 3, -4, 2, -1, 5), dtype = "f32")
 ```
@@ -57,6 +58,7 @@ Because adding `0` does nothing, the masked-out positions don’t
 contribute to the total:
 
 ``` r
+
 sum_positive <- jit(function(x) {
   nv_reduce_sum(nv_ifelse(x > 0, x, nv_fill_like(x, 0)), dims = 1L)
 })
@@ -90,6 +92,7 @@ compute it inside
 boolean mask, and then divide separately:
 
 ``` r
+
 mean_positive <- jit(function(x) {
   mask <- x > 0
   total <- nv_reduce_sum(nv_ifelse(mask, x, 0), dims = 1L)
@@ -115,6 +118,7 @@ The static shape restriction also prevents calls of the form
 For example, you might want to replace all values `< 1` with 1:
 
 ``` r
+
 nv_ifelse(x < 1, 1, x)
 #> AnvlArray
 #>  1

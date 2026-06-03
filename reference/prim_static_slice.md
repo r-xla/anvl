@@ -92,7 +92,7 @@ prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
 #> [ CPUi32{5} ] 
 
 # 2-D: extract a submatrix (rows 1-2, columns 2-3)
-x <- nv_array(matrix(1:12, nrow = 3, ncol = 4))
+x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 prim_static_slice(x,
   start_indices = c(1L, 2L),
   limit_indices = c(3L, 4L),

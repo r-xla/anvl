@@ -90,7 +90,7 @@ nv_iota(dim = 1L, dtype = "i32", shape = 5L)
 #>  4
 #>  5
 #> [ CPUi32{5} ] 
-x <- nv_array(matrix(0L, nrow = 2, ncol = 3))
+x <- nv_fill(0L, shape = c(2, 3))
 nv_iota_like(x, dim = 1L)
 #> AnvlArray
 #>  1 1 1

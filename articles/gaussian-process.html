@@ -18,8 +18,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Gaussian Process">
 </head>
@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -61,21 +61,23 @@
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
 </li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-developers">
-<li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
-    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Extending the API</a></li>
-    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
-    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
-  </ul>
-</li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
 <li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
     <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
+  </ul>
+</li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-developers">
+<li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
+    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
+    <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
+    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
   </ul>
 </li>
       </ul>
@@ -107,7 +109,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Gaussian Process</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.2.0/vignettes/gaussian-process.Rmd" class="external-link"><code>vignettes/gaussian-process.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/gaussian-process.Rmd" class="external-link"><code>vignettes/gaussian-process.Rmd</code></a></small>
       <div class="d-none name"><code>gaussian-process.Rmd</code></div>
     </div>
 
@@ -242,11 +244,25 @@ localized bump:</p>
 <span><span class="va">X_test</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">6</span>, <span class="fl">6</span>, length.out <span class="op">=</span> <span class="va">n_test</span><span class="op">)</span></span></code></pre></div>
 <p><img src="gaussian-process_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="700"></p>
 <p>The <code>predict_gp</code> function implements the posterior
-predictive formulas using <code>nv_solve</code> to solve the linear
-systems involving <span class="math inline">\(\mathbf{K}_y\)</span>
-rather than explicitly inverting the kernel matrix.</p>
+predictive formulas by Cholesky- factorizing <span class="math inline">\(\mathbf{K}_y = \mathbf{L} \mathbf{L}^\top\)</span>
+and applying <code>nv_triangular_solve</code> twice (a forward solve
+against <span class="math inline">\(\mathbf{L}\)</span> and a back solve
+against <span class="math inline">\(\mathbf{L}^\top\)</span>), rather
+than explicitly inverting the kernel matrix.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">predict_gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">kernel</span>, <span class="va">X_train</span>, <span class="va">y_train</span>, <span class="va">X_test</span>, <span class="va">lengthscale</span>, <span class="va">signal_var</span>, <span class="va">noise_var</span><span class="op">)</span> <span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="va">chol_solve</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">L</span>, <span class="va">b</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># solves K_y x = b where K_y = L L^T (L lower triangular)</span></span>
+<span>  <span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_triangular_solve.html">nv_triangular_solve</a></span><span class="op">(</span><span class="va">L</span>, <span class="va">b</span>,</span>
+<span>    left_side <span class="op">=</span> <span class="cn">TRUE</span>, lower <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    unit_diagonal <span class="op">=</span> <span class="cn">FALSE</span>, transpose_a <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/nv_triangular_solve.html">nv_triangular_solve</a></span><span class="op">(</span><span class="va">L</span>, <span class="va">y</span>,</span>
+<span>    left_side <span class="op">=</span> <span class="cn">TRUE</span>, lower <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    unit_diagonal <span class="op">=</span> <span class="cn">FALSE</span>, transpose_a <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="va">predict_gp</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">kernel</span>, <span class="va">X_train</span>, <span class="va">y_train</span>, <span class="va">X_test</span>, <span class="va">lengthscale</span>, <span class="va">signal_var</span>, <span class="va">noise_var</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">X_train</span><span class="op">)</span><span class="op">[</span><span class="fl">1L</span><span class="op">]</span></span>
 <span></span>
 <span>  <span class="va">K</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/kernel.html" class="external-link">kernel</a></span><span class="op">(</span><span class="va">X_train</span>, <span class="va">X_train</span>, <span class="va">lengthscale</span>, <span class="va">signal_var</span><span class="op">)</span></span>
@@ -255,12 +271,14 @@ rather than explicitly inverting the kernel matrix.</p>
 <span>  <span class="va">K_s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/kernel.html" class="external-link">kernel</a></span><span class="op">(</span><span class="va">X_test</span>, <span class="va">X_train</span>, <span class="va">lengthscale</span>, <span class="va">signal_var</span><span class="op">)</span></span>
 <span>  <span class="va">K_ss</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/kernel.html" class="external-link">kernel</a></span><span class="op">(</span><span class="va">X_test</span>, <span class="va">X_test</span>, <span class="va">lengthscale</span>, <span class="va">signal_var</span><span class="op">)</span></span>
 <span></span>
+<span>  <span class="va">L</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_chol.html">nv_chol</a></span><span class="op">(</span><span class="va">K_y</span>, lower <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
 <span>  <span class="co"># Predictive mean: K_s %*% K_y^{-1} %*% y</span></span>
-<span>  <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_solve.html">nv_solve</a></span><span class="op">(</span><span class="va">K_y</span>, <span class="va">y_train</span><span class="op">)</span></span>
+<span>  <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu">chol_solve</span><span class="op">(</span><span class="va">L</span>, <span class="va">y_train</span><span class="op">)</span></span>
 <span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">K_s</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">alpha</span></span>
 <span></span>
 <span>  <span class="co"># Predictive covariance: K_ss - K_s %*% K_y^{-1} %*% K_s^T</span></span>
-<span>  <span class="va">v</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_solve.html">nv_solve</a></span><span class="op">(</span><span class="va">K_y</span>, <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">K_s</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">v</span> <span class="op">&lt;-</span> <span class="fu">chol_solve</span><span class="op">(</span><span class="va">L</span>, <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="va">K_s</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">cov</span> <span class="op">&lt;-</span> <span class="va">K_ss</span> <span class="op">-</span> <span class="va">K_s</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">v</span></span>
 <span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">mu</span>, cov <span class="op">=</span> <span class="va">cov</span><span class="op">)</span></span>
@@ -268,9 +286,9 @@ rather than explicitly inverting the kernel matrix.</p>
 <p>We apply this with <span class="math inline">\(\ell = 0.5\)</span>,
 <span class="math inline">\(\sigma_f^2 = 2\)</span>, and <span class="math inline">\(\sigma^2 = 0.04\)</span>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">X_t</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">X_train</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">y_t</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">y_train</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">X_test_t</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">X_test</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">X_t</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="va">X_train</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">y_t</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="va">y_train</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">X_test_t</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="va">X_test</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu">predict_gp</span><span class="op">(</span></span>
 <span>  <span class="va">rbf_kernel_matrix</span>, <span class="va">X_t</span>, <span class="va">y_t</span>, <span class="va">X_test_t</span>,</span>
@@ -331,10 +349,17 @@ out the constant term because we don’t need it for optimization.</p>
 <span>  <span class="va">eye</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_eye.html">nv_eye</a></span><span class="op">(</span><span class="va">n</span>, dtype <span class="op">=</span> <span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">K</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">K_y</span> <span class="op">&lt;-</span> <span class="va">K</span> <span class="op">+</span> <span class="va">noise_var</span> <span class="op">*</span> <span class="va">eye</span></span>
 <span></span>
-<span>  <span class="va">L</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_cholesky.html">nv_cholesky</a></span><span class="op">(</span><span class="va">K_y</span>, lower <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="va">L</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_chol.html">nv_chol</a></span><span class="op">(</span><span class="va">K_y</span>, lower <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
-<span>  <span class="co"># alpha = K_y^{-1} y</span></span>
-<span>  <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_solve.html">nv_solve</a></span><span class="op">(</span><span class="va">K_y</span>, <span class="va">y</span><span class="op">)</span></span>
+<span>  <span class="co"># alpha = K_y^{-1} y, computed via L L^T x = y</span></span>
+<span>  <span class="va">z</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_triangular_solve.html">nv_triangular_solve</a></span><span class="op">(</span><span class="va">L</span>, <span class="va">y</span>,</span>
+<span>    left_side <span class="op">=</span> <span class="cn">TRUE</span>, lower <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    unit_diagonal <span class="op">=</span> <span class="cn">FALSE</span>, transpose_a <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span>  <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_triangular_solve.html">nv_triangular_solve</a></span><span class="op">(</span><span class="va">L</span>, <span class="va">z</span>,</span>
+<span>    left_side <span class="op">=</span> <span class="cn">TRUE</span>, lower <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>    unit_diagonal <span class="op">=</span> <span class="cn">FALSE</span>, transpose_a <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  <span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># Data fit term: 0.5 * y^T %*% alpha</span></span>
 <span>  <span class="va">data_fit</span> <span class="op">&lt;-</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="va">alpha</span>, dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>

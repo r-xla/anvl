@@ -18,8 +18,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Efficiency">
 </head>
@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.2.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -62,20 +62,22 @@
   </ul>
 </li>
 <li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-developers">
-<li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
-    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Extending the API</a></li>
-    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
-    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
-  </ul>
-</li>
-<li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-examples" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Examples</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-examples">
 <li><a class="dropdown-item" href="../articles/logistic-regression.html">Logistic Regression</a></li>
     <li><a class="dropdown-item" href="../articles/metropolis-hastings.html">Metropolis Hastings</a></li>
     <li><a class="dropdown-item" href="../articles/gaussian-process.html">Gaussian Process</a></li>
+  </ul>
+</li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-developers" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Developers</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-developers">
+<li><h6 class="dropdown-header" data-toc-skip>Extending</h6></li>
+    <li><a class="dropdown-item" href="../articles/extending_primitive.html">Adding a Primitive</a></li>
+    <li><a class="dropdown-item" href="../articles/extending_api.html">Adding an API Function</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Other</h6></li>
+    <li><a class="dropdown-item" href="../articles/internals.html">Internals</a></li>
+    <li><a class="dropdown-item" href="../articles/primitives.html">Available Primitives</a></li>
   </ul>
 </li>
       </ul>
@@ -107,7 +109,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Efficiency</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.2.0/vignettes/efficiency.Rmd" class="external-link"><code>vignettes/efficiency.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/efficiency.Rmd" class="external-link"><code>vignettes/efficiency.Rmd</code></a></small>
       <div class="d-none name"><code>efficiency.Rmd</code></div>
     </div>
 
@@ -127,6 +129,9 @@ of CPU (Linux x86 / WSL2 only).</li>
 <li>
 <a href="#data-types"><strong>Data types</strong></a> – using
 <code>f32</code> (the default) instead of <code>f64</code>.</li>
+<li>
+<a href="#blas-lapack"><strong>BLAS / LAPACK</strong></a> – linking
+R against a fast LAPACK to speed up linear algebra on CPU.</li>
 <li>
 <a href="#compilation-cost"><strong>Compilation cost</strong></a> –
 padding inputs so more calls hit the same cache entry.</li>
@@ -191,6 +196,37 @@ call.</strong> Small operations on small arrays can actually be
 <em>slower</em> on GPU than on CPU because the per-call overhead
 dominates the actual work.</li>
 </ul>
+<div class="section level3">
+<h3 id="writing-gpu-friendly-code">Writing GPU-friendly code<a class="anchor" aria-label="anchor" href="#writing-gpu-friendly-code"></a>
+</h3>
+<p>GPUs get their speed from running thousands of operations in
+parallel, so they reward code that does a lot of work per call on large
+arrays. A few rules of thumb:</p>
+<ul>
+<li>
+<strong>Avoid R-level loops over array elements or rows.</strong>
+Each iteration launches a separate kernel with non-trivial overhead, and
+the kernels run one after another instead of in parallel. Express the
+work as a single vectorized operation on the whole array whenever
+possible (e.g. <code>x * y</code> or <code>nv_reduce_sum(x)</code>
+instead of a <code>for</code> loop).</li>
+<li>
+<strong>Prefer batched operations.</strong> Operations like
+<code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> accept a full batch of matrices at once.
+Stacking many small inputs into one larger array and processing them in
+a single call is typically much faster than calling the same operation
+many times. This mirrors plain R, where vectorized code beats a
+<code>for</code> loop – except that on a GPU the win comes from running
+the batch entries in parallel rather than from avoiding interpreter
+overhead.</li>
+<li>
+<strong>Sometimes the algorithm itself has to be rewritten.</strong>
+Inherently sequential formulations – e.g. a running update that depends
+on the previous step – can leave most of the GPU idle. Reformulating the
+computation to expose parallelism can be dramatically faster, even when
+the parallel version does more total work.</li>
+</ul>
+</div>
 </div>
 <div class="section level2">
 <h2 id="data-types">Data types<a class="anchor" aria-label="anchor" href="#data-types"></a>
@@ -207,6 +243,18 @@ precision here. Speedups from using <code>f32</code> over
 <code>f32</code> is the default data type for floating-point operations
 in GPU-accelerated frameworks, so unless you have a specific reason, we
 recommend sticking with the defaults.</p>
+</div>
+<div class="section level2">
+<h2 id="blas-lapack">BLAS / LAPACK<a class="anchor" aria-label="anchor" href="#blas-lapack"></a>
+</h2>
+<p>A handful of linear-algebra primitives – <code><a href="../reference/nv_svd.html">nv_svd()</a></code>,
+<code><a href="../reference/nv_eigh.html">nv_eigh()</a></code>, <code><a href="../reference/nv_qr.html">nv_qr()</a></code>, <code><a href="../reference/nv_lu.html">nv_lu()</a></code> – use
+R’s BLAS / LAPACK on the CPU backend, so the performance of these
+operations is determined by how R was built.</p>
+<p>The default R install on many platforms ships with a reference BLAS /
+LAPACK that is single-threaded and considerably slower than tuned
+alternatives such as OpenBLAS, Intel MKL, or Apple’s Accelerate
+framework. The CUDA backend is unaffected.</p>
 </div>
 <div class="section level2">
 <h2 id="compilation-cost">Compilation cost<a class="anchor" aria-label="anchor" href="#compilation-cost"></a>

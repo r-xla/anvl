@@ -8,7 +8,7 @@ also use [`is.infinite()`](https://rdrr.io/r/base/is.finite.html).
 ``` r
 nv_is_infinite(operand)
 
-# S3 method for class 'AnvlBox'
+# S3 method for class 'AnvlArray'
 is.infinite(x)
 ```
 
@@ -22,7 +22,7 @@ is.infinite(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Same as `operand`; this is the name used by the base R S3 generic.
 
 ## Value
 

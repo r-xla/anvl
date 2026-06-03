@@ -58,7 +58,7 @@ nv_eye(3L)
 #>  0 1 0
 #>  0 0 1
 #> [ CPUf32{3,3} ] 
-x <- nv_array(matrix(0, nrow = 3, ncol = 3), dtype = "f64")
+x <- nv_fill(0, shape = c(3, 3), dtype = "f64")
 nv_eye_like(x, 3L)
 #> AnvlArray
 #>  1 0 0

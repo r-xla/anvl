@@ -142,8 +142,8 @@ Lowers to
 
 ``` r
 # Gather rows 1 and 3 from a 3x3 matrix
-operand <- nv_array(matrix(1:9, nrow = 3))
-indices <- nv_array(matrix(c(1L, 3L), ncol = 1))
+operand <- nv_matrix(1:9, nrow = 3)
+indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(
   operand, indices,
   slice_sizes = c(1L, 3L),

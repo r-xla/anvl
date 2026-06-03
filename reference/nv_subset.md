@@ -8,13 +8,10 @@ elements along a dimension.
 ## Usage
 
 ``` r
-# S3 method for class 'AnvlBox'
-x[...]
-
 # S3 method for class 'AnvlArray'
 x[...]
 
-nv_subset(x, ...)
+nv_subset(operand, ...)
 ```
 
 ## Arguments
@@ -22,7 +19,7 @@ nv_subset(x, ...)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Array to subset.
+  Same as `operand`; this is the name used by the base R S3 generic.
 
 - ...:
 
@@ -30,6 +27,11 @@ nv_subset(x, ...)
   select all elements. See
   [`vignette("subsetting")`](https://r-xla.github.io/anvl/articles/subsetting.md)
   for details.
+
+- operand:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
+  Operand.
 
 ## Value
 
@@ -45,7 +47,13 @@ for a comprehensive guide.
 ## Examples
 
 ``` r
-x <- nv_array(matrix(1:12, nrow = 3))
+x <- nv_matrix(1:12, nrow = 3)
+x
+#> AnvlArray
+#>   1  4  7 10
+#>   2  5  8 11
+#>   3  6  9 12
+#> [ CPUi32{3,4} ] 
 # Select row 2
 x[2, ]
 #> AnvlArray
@@ -55,7 +63,6 @@ x[2, ]
 #>  11
 #> [ CPUi32{4} ] 
 
-x <- nv_array(matrix(1:12, nrow = 3))
 # Select rows 1 to 2, all columns
 x[1:2, ]
 #> AnvlArray

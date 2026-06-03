@@ -57,7 +57,7 @@ as the reducer.
 ## Examples
 
 ``` r
-x <- nv_array(matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2))
+x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
 prim_reduce_all(x, dims = 1L)
 #> AnvlArray
 #>  0

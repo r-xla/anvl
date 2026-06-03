@@ -25,8 +25,10 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 - b:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Right-hand side array. Must have the same data type, rank, and batch
-  dimensions as `a`.
+  Right-hand side. Same data type and rank as `a` (rank \>= 2), with
+  matching leading batch dimensions. The size of `a`'s last two (square)
+  dimensions must equal `b`'s second-to-last dimension when
+  `left_side = TRUE`, or `b`'s last dimension when `left_side = FALSE`.
 
 - left_side:
 
@@ -47,8 +49,8 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 
 - transpose_a:
 
-  (`character(1)`)  
-  One of `"NO_TRANSPOSE"`, `"TRANSPOSE"`, or `"ADJOINT"`.
+  (`logical(1)`)  
+  If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
 
 ## Value
 
@@ -81,11 +83,11 @@ University Computing Laboratory.
 
 ``` r
 # Solve L %*% x = b where L is lower triangular
-L <- nv_array(matrix(c(2, 0, 1, 3), nrow = 2), dtype = "f32")
-b <- nv_array(matrix(c(4, 3), nrow = 2), dtype = "f32")
+L <- nv_matrix(c(2, 0, 1, 3), nrow = 2, dtype = "f32")
+b <- nv_matrix(c(4, 3), nrow = 2, dtype = "f32")
 prim_triangular_solve(L, b,
   left_side = TRUE, lower = TRUE,
-  unit_diagonal = FALSE, transpose_a = "NO_TRANSPOSE"
+  unit_diagonal = FALSE, transpose_a = FALSE
 )
 #> AnvlArray
 #>  2
