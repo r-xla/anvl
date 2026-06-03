@@ -159,6 +159,34 @@ AnvlBackendQuickr <- function() {
         class = "AnvlArray"
       )
     },
+    new_empty = function(dtype, shape, device, ambiguous) {
+      if (!is.null(device)) {
+        if (is.character(device) && (device != "quickr")) {
+          cli_abort("Unsupported device {.val {device}} for 'quickr' backend")
+        } else if (!inherits(device, "QuickrDevice")) {
+          cli_abort("Invalid device of class {.cls {class(device)}} for 'quickr' backend")
+        }
+      }
+      if (!is_dtype(dtype)) {
+        dtype <- as_dtype(dtype)
+      }
+      storage_mode <- switch(
+        substr(as.character(dtype), 1L, 1L),
+        "f" = "double",
+        "i" = ,
+        "u" = "integer",
+        "b" = "logical",
+        "double"
+      )
+      data <- vector(storage_mode, prod(shape))
+      if (length(shape) >= 1L) {
+        dim(data) <- shape
+      }
+      structure(
+        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "quickr"),
+        class = "AnvlArray"
+      )
+    },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
     ambiguous = function(x) x$ambiguous,

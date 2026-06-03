@@ -1,7 +1,16 @@
 #' @include backend.R
 NULL
 
-jit_call_xla <- function(exec, out_node, consts_flat, args_flat, is_static_flat, ambiguous_out = NULL, device) {
+jit_call_xla <- function(
+  exec,
+  out_node,
+  consts_flat,
+  args_flat,
+  is_static_flat,
+  ambiguous_out = NULL,
+  device,
+  phantom_specs = list()
+) {
   args_unwrapped <- lapply(args_flat[!is_static_flat], \(a) {
     if (is_valid_r_lit(a)) {
       pjrt_scalar(a, device = device)
@@ -13,11 +22,20 @@ jit_call_xla <- function(exec, out_node, consts_flat, args_flat, is_static_flat,
     }
   })
 
+  # Phantom donated buffers for outputs that XLA was told to alias onto
+  # extra-appended inputs. pjrt::pjrt_execute migrates the RAWSXP
+  # keepalive from each phantom XPtr to its aliased output XPtr, so the
+  # output's host bytes end up owned by R's GC.
+  phantom_bufs <- lapply(phantom_specs, function(spec) {
+    pjrt::pjrt_empty(dtype = spec$dtype, shape = spec$shape, device = device)
+  })
+
   out_vals <- rlang::exec(
     pjrt::pjrt_execute,
     exec,
     !!!consts_flat,
     !!!args_unwrapped,
+    !!!phantom_bufs,
     simplify = FALSE
   )
   jit_wrap_outputs(out_vals, out_node, ambiguous_out, "xla")
@@ -55,7 +73,8 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
         prep$args_flat,
         prep$is_static_flat,
         cache_hit[[4]], # ambiguity
-        cache_hit[[5]] # device
+        cache_hit[[5]], # device
+        cache_hit[[6]] # phantom_specs
       ))
     }
 
@@ -87,12 +106,20 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
       prep$args_flat,
       prep$is_static_flat,
       compiled$ambiguous_out,
-      compiled$device
+      compiled$device,
+      compiled$phantom_specs
     )
 
     cache$set(
       cache_key,
-      list(compiled$exec, compiled$out_tree, compiled$const_arrays, compiled$ambiguous_out, compiled$device)
+      list(
+        compiled$exec,
+        compiled$out_tree,
+        compiled$const_arrays,
+        compiled$ambiguous_out,
+        compiled$device,
+        compiled$phantom_specs
+      )
     )
 
     return(out)
@@ -164,9 +191,15 @@ compile_graph_xla <- function(graph, donate = character(), device) {
   graph <- remove_unused_constants(graph)
 
   platform_name <- if (is.character(device)) device else platform(device)
-  out <- stablehlo(graph, donate = donate, platform = platform_name)
+  out <- stablehlo(
+    graph,
+    donate = donate,
+    donate_unaliased_outputs = TRUE,
+    platform = platform_name
+  )
   func <- out[[1L]]
   constants <- out[[2L]]
+  phantom_specs <- out[[3L]]
 
   const_arrays <- lapply(constants, \(const) {
     if (!is_concrete_tensor(const$aval)) {
@@ -199,7 +232,8 @@ compile_graph_xla <- function(graph, donate = character(), device) {
     out_tree = out_tree,
     const_arrays = const_arrays,
     ambiguous_out = ambiguous_out,
-    device = device(exec)
+    device = device(exec),
+    phantom_specs = phantom_specs
   )
 }
 
@@ -250,6 +284,7 @@ xla <- function(f, args, donate = character(), device = NULL) {
   out_tree <- compiled$out_tree
   const_arrays <- compiled$const_arrays
   ambiguous_out <- compiled$ambiguous_out
+  phantom_specs <- compiled$phantom_specs
 
   f_xla <- function() {
     prep <- jit_prepare_call(match.call(), parent.frame(), static = character(), device = device, backend = "xla")
@@ -262,11 +297,15 @@ xla <- function(f, args, donate = character(), device = NULL) {
         pjrt::copy_buffer(a$data, device)
       }
     })
+    phantom_bufs <- lapply(phantom_specs, function(spec) {
+      pjrt::pjrt_empty(dtype = spec$dtype, shape = spec$shape, device = device)
+    })
     out_vals <- rlang::exec(
       pjrt::pjrt_execute,
       exec,
       !!!const_arrays,
       !!!args_unwrapped,
+      !!!phantom_bufs,
       simplify = FALSE
     )
     jit_wrap_outputs(out_vals, out_tree, ambiguous_out, "xla")
@@ -312,6 +351,13 @@ AnvlBackendXla <- function() {
   backend <- AnvlBackend(
     new_data = function(data, dtype, shape, device, ambiguous) {
       buf <- pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+      structure(
+        list(data = buf, ambiguous = ambiguous, backend = "xla"),
+        class = "AnvlArray"
+      )
+    },
+    new_empty = function(dtype, shape, device, ambiguous) {
+      buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device)
       structure(
         list(data = buf, ambiguous = ambiguous, backend = "xla"),
         class = "AnvlArray"

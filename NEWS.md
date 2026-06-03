@@ -2,6 +2,16 @@
 
 ## Breaking Changes
 
+* `nv_empty()` / `nv_empty_like()` return arrays with unspecified
+  contents (no longer zero-initialized).
+
+## New Features
+
+* On CPU, jitted XLA functions now back every non-aliased output with
+  an R-owned RAWSXP. anvl appends a phantom donated input per
+  unaliased output during lowering, allocates `pjrt::pjrt_empty()`
+  buffers at execute time, and `pjrt` migrates the keepalive onto the
+  output XPtr. The output's host bytes are then managed by R's GC.
 * Renamed user-facing API functions to match base R names:
   `nv_sine()` -> `nv_sin()`, `nv_cosine()` -> `nv_cos()`,
   `nv_ceil()` -> `nv_ceiling()`, `nv_cholesky()` -> `nv_chol()`.

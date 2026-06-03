@@ -62,7 +62,8 @@ compile_graph_pjrt <- function(graph) {
       args_nv,
       rep(FALSE, length(args_nv)),
       compiled$ambiguous_out,
-      device = compiled$device
+      device = compiled$device,
+      phantom_specs = compiled$phantom_specs
     )
     as_r(out_nv)
   }

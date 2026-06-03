@@ -1516,7 +1516,8 @@ describe("cross-device eager (check_eager)", {
     check_eager(function(like) nv_eye_like(like, 3L), vec_f)
     check_eager(function(like) nv_array_like(like, c(7L, 8L, 9L)), vec_i)
     check_eager(function(like) nv_scalar_like(like, 7L), vec_i)
-    check_eager(function(like) nv_empty_like(like, shape = c(2, 2)), vec_f)
+    # nv_empty allocates uninitialized memory; only check device forwarding.
+    check_eager(function(like) nv_empty_like(like, shape = c(2, 2)), vec_f, check_values = FALSE)
   })
 
   it("sorting / searching", {

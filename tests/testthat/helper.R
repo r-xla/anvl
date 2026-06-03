@@ -8,7 +8,7 @@
 #
 # `static` is forwarded to `jit()` and names the arguments that the jitted
 # compilation should capture as compile-time constants.
-check_eager <- function(fn, ..., static = character(), tolerance = 1e-6) {
+check_eager <- function(fn, ..., static = character(), tolerance = 1e-6, check_values = TRUE) {
   dev_eager <- nv_device("cpu:1", "xla")
   dev_jit <- nv_device("cpu:0", "xla")
   args <- list(...)
@@ -61,7 +61,9 @@ check_eager <- function(fn, ..., static = character(), tolerance = 1e-6) {
   )
   check_on_device(out_eager, dev_eager)
   check_on_device(out_jit, dev_jit)
-  testthat::expect_equal(to_r(out_eager), to_r(out_jit), tolerance = tolerance)
+  if (check_values) {
+    testthat::expect_equal(to_r(out_eager), to_r(out_jit), tolerance = tolerance)
+  }
 }
 
 is_cuda <- function() {
