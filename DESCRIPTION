@@ -1,6 +1,6 @@
 Package: anvl
 Title: Accelerated Array Computing and Automatic Differentiation
-Version: 0.2.0.9000
+Version: 0.3.0
 Authors@R: c(
     person("Sebastian", "Fischer", , "seb.fischer@tutamail.com", role = c("cre", "aut"),
            comment = c(ORCID = "https://orcid.org/0000-0002-9609-3197")),
@@ -26,22 +26,19 @@ Imports:
     checkmate,
     cli,
     methods,
-    pjrt (>= 0.3.0),
+    pjrt (>= 0.4.0),
     rlang,
     safetensors (>= 0.2.0),
-    stablehlo (>= 0.2.0.9000),
+    stablehlo (>= 0.3.0),
     tengen (>= 0.2.0),
     withr,
-    xlamisc (>= 0.2.0)
+    xlamisc (>= 0.3.0)
 Suggests:
     knitr,
     quarto,
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
-Remotes:
-    r-xla/stablehlo,
-    r-xla/pjrt
 Additional_repositories:
     https://r-xla.r-universe.dev
 VignetteBuilder:
