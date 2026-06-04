@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.2.0.9000</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.3.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -75,8 +75,11 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="anvl-030">anvl 0.3.0<a class="anchor" aria-label="anchor" href="#anvl-030"></a></h2>
 <div class="section level3">
-<h3 id="breaking-changes-development-version">Breaking Changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
+<h3 id="breaking-changes-0-3-0">Breaking Changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h3>
 <ul><li>Renamed user-facing API functions to match base R names: <code>nv_sine()</code> -&gt; <code><a href="../reference/nv_sin.html">nv_sin()</a></code>, <code>nv_cosine()</code> -&gt; <code><a href="../reference/nv_cos.html">nv_cos()</a></code>, <code>nv_ceil()</code> -&gt; <code><a href="../reference/nv_ceiling.html">nv_ceiling()</a></code>, <code>nv_cholesky()</code> -&gt; <code><a href="../reference/nv_chol.html">nv_chol()</a></code>. The corresponding primitives were renamed in step: <code>prim_sine()</code> -&gt; <code><a href="../reference/prim_sin.html">prim_sin()</a></code>, <code>prim_cosine()</code> -&gt; <code><a href="../reference/prim_cos.html">prim_cos()</a></code>, <code>prim_cholesky()</code> -&gt; <code><a href="../reference/prim_chol.html">prim_chol()</a></code>.</li>
 <li>
 <code>nv_reduce_mean()</code> was renamed to <code><a href="../reference/nv_mean.html">nv_mean()</a></code>.</li>
@@ -86,9 +89,9 @@
 <code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> now default to <code>lower = FALSE</code> (upper-triangular factor), matching base R’s <code><a href="https://rdrr.io/r/base/chol.html" class="external-link">chol()</a></code>. Previously defaulted to <code>lower = TRUE</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="new-features-development-version">New Features<a class="anchor" aria-label="anchor" href="#new-features-development-version"></a></h3>
+<h3 id="new-features-0-3-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0"></a></h3>
 <div class="section level4">
-<h4 id="linear-algebra-development-version">Linear algebra<a class="anchor" aria-label="anchor" href="#linear-algebra-development-version"></a></h4>
+<h4 id="linear-algebra-0-3-0">Linear algebra<a class="anchor" aria-label="anchor" href="#linear-algebra-0-3-0"></a></h4>
 <ul><li>New matrix-decomposition primitives and corresponding <code>nv_*()</code> functions: <code>qr</code>, <code>lu</code>, <code>svd</code>, <code>eigh</code>. None of them implement a reverse rule yet.</li>
 <li>New API functions:
 <ul><li>
@@ -102,16 +105,16 @@
 <code>qr</code>, <code>chol</code>, and <code>solve</code> from base R now dispatch to <code><a href="../reference/nv_qr.html">nv_qr()</a></code>, <code><a href="../reference/nv_chol.html">nv_chol()</a></code>, and <code><a href="../reference/nv_solve.html">nv_solve()</a></code> on <code>AnvlArray</code> / <code>AnvlBox</code> inputs.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="element-wise-math-development-version">Element-wise math<a class="anchor" aria-label="anchor" href="#element-wise-math-development-version"></a></h4>
+<h4 id="element-wise-math-0-3-0">Element-wise math<a class="anchor" aria-label="anchor" href="#element-wise-math-0-3-0"></a></h4>
 <ul><li>New unary primitives and corresponding <code>nv_*()</code> functions: <code>acos</code>, <code>acosh</code>, <code>asin</code>, <code>asinh</code>, <code>atan</code>, <code>atanh</code>, <code>cosh</code>, <code>sinh</code>, <code>digamma</code>, <code>lgamma</code>, <code>polygamma</code>, <code>erf</code>, <code>erf_inv</code>, <code>erfc</code>.</li>
 <li>New API functions <code><a href="../reference/nv_mod.html">nv_mod()</a></code> (flooring remainder) and <code><a href="../reference/nv_trunc.html">nv_trunc()</a></code> (truncation toward zero).</li>
 </ul></div>
 <div class="section level4">
-<h4 id="cumulative-reductions-development-version">Cumulative reductions<a class="anchor" aria-label="anchor" href="#cumulative-reductions-development-version"></a></h4>
+<h4 id="cumulative-reductions-0-3-0">Cumulative reductions<a class="anchor" aria-label="anchor" href="#cumulative-reductions-0-3-0"></a></h4>
 <ul><li>New primitives and corresponding <code>nv_*()</code> functions: <code>cumsum</code>, <code>cumprod</code>, <code>cummax</code>, <code>cummin</code>. <code><a href="../reference/prim_cumprod.html">prim_cumprod()</a></code> does not yet have a reverse rule.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="sorting-and-searching-development-version">Sorting and searching<a class="anchor" aria-label="anchor" href="#sorting-and-searching-development-version"></a></h4>
+<h4 id="sorting-and-searching-0-3-0">Sorting and searching<a class="anchor" aria-label="anchor" href="#sorting-and-searching-0-3-0"></a></h4>
 <ul><li>New primitives <code><a href="../reference/prim_sort.html">prim_sort()</a></code>, <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>, <code><a href="../reference/prim_argmax.html">prim_argmax()</a></code>, <code><a href="../reference/prim_argmin.html">prim_argmin()</a></code>.</li>
 <li>New API functions:
 <ul><li>
@@ -127,7 +130,7 @@
 </ul></li>
 </ul></div>
 <div class="section level4">
-<h4 id="array-construction--shape-development-version">Array construction / shape<a class="anchor" aria-label="anchor" href="#array-construction--shape-development-version"></a></h4>
+<h4 id="array-construction--shape-0-3-0">Array construction / shape<a class="anchor" aria-label="anchor" href="#array-construction--shape-0-3-0"></a></h4>
 <ul><li>
 <code><a href="../reference/AnvlArray.html">nv_array()</a></code> gained a <code>byrow</code> argument that fills the array from an R object in row-major order, mirroring <code>matrix(byrow = TRUE)</code> (<a href="https://github.com/r-xla/anvl/issues/165" class="external-link">#165</a>).</li>
 <li>New <code>nv_matrix(data, nrow, ncol, ...)</code> which works like R’s <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>.</li>
@@ -135,31 +138,26 @@
 <li>New API function <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> for flattening to 1-D.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="misc-development-version">Misc<a class="anchor" aria-label="anchor" href="#misc-development-version"></a></h4>
+<h4 id="misc-0-3-0">Misc<a class="anchor" aria-label="anchor" href="#misc-0-3-0"></a></h4>
 <ul><li>New <code>AnvlArray</code> -&gt; R <code>vector</code> converters: <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code>, <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code>, <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code>, <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code>, <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>.</li>
 <li>New function <code><a href="../reference/await.html">await()</a></code> that blocks until the underlying computation has finished.</li>
 <li>New tree utilities <code><a href="../reference/map_tree.html">map_tree()</a></code> and <code><a href="../reference/pmap_tree.html">pmap_tree()</a></code> for applying functions leaf-wise over (possibly nested) lists.</li>
-<li>
-<code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean()</a></code> and <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code> now error when called with <code>na.rm = TRUE</code>, since anvl arrays do not carry <code>NA</code>s. <code><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean()</a></code> also rejects non-zero <code>trim</code>.</li>
 <li>Added support for <code>range</code> generic.</li>
 <li>Improved NaN handling across various primitives and API functions.</li>
 </ul></div>
 </div>
 <div class="section level3">
-<h3 id="other-development-version">Other<a class="anchor" aria-label="anchor" href="#other-development-version"></a></h3>
+<h3 id="other-0-3-0">Other<a class="anchor" aria-label="anchor" href="#other-0-3-0"></a></h3>
 <ul><li>
 <code><a href="../reference/nv_reduce_sum.html">nv_reduce_sum()</a></code>, <code><a href="../reference/nv_reduce_prod.html">nv_reduce_prod()</a></code>, <code><a href="../reference/nv_reduce_max.html">nv_reduce_max()</a></code>, <code><a href="../reference/nv_reduce_min.html">nv_reduce_min()</a></code>, <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code>, <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code> and <code><a href="../reference/nv_mean.html">nv_mean()</a></code> now default <code>dims = NULL</code>, which reduces over all dimensions and returns a scalar. Previously, <code>dims</code> was required.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-development-version">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<h3 id="bug-fixes-0-3-0">Bug Fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-3-0"></a></h3>
 <ul><li>The overloaded <code>%%</code> operator now calls the new <code><a href="../reference/nv_mod.html">nv_mod()</a></code> to be consistent with base R.</li>
 <li>The reverse rule for <code><a href="../reference/prim_reduce_prod.html">prim_reduce_prod()</a></code> no longer produces <code>NaN</code> / <code>Inf</code> gradients when the input contains zeros.</li>
 <li>The CI now actually runs the torch-comparison tests.</li>
 <li>
 <code><a href="../reference/nv_runif.html">nv_runif()</a></code> not properly respects the <code>lower</code> argument.</li>
-<li>The overloaded <code>%%</code> operator now calls the new <code><a href="../reference/nv_mod.html">nv_mod()</a></code> to be consistent with base R.</li>
-<li>The reverse rule for <code><a href="../reference/prim_reduce_prod.html">prim_reduce_prod()</a></code> no longer produces <code>NaN</code>/<code>Inf</code> gradients when the input contains zeros.</li>
-<li>The CI now actually runs the torch-comparison tests</li>
 </ul></div>
 </div>
     <div class="section level2">

@@ -2,6 +2,8 @@
 
 ## anvl (development version)
 
+## anvl 0.3.0
+
 ### Breaking Changes
 
 - Renamed user-facing API functions to match base R names: `nv_sine()`
@@ -138,11 +140,6 @@
   and
   [`pmap_tree()`](https://r-xla.github.io/anvl/dev/reference/pmap_tree.md)
   for applying functions leaf-wise over (possibly nested) lists.
-- [`mean()`](https://rdrr.io/r/base/mean.html) and
-  [`median()`](https://rdrr.io/r/stats/median.html) now error when
-  called with `na.rm = TRUE`, since anvl arrays do not carry `NA`s.
-  [`mean()`](https://rdrr.io/r/base/mean.html) also rejects non-zero
-  `trim`.
 - Added support for `range` generic.
 - Improved NaN handling across various primitives and API functions.
 
@@ -171,14 +168,6 @@
 - The CI now actually runs the torch-comparison tests.
 - [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
   not properly respects the `lower` argument.
-- The overloaded `%%` operator now calls the new
-  [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md) to
-  be consistent with base R.
-- The reverse rule for
-  [`prim_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_prod.md)
-  no longer produces `NaN`/`Inf` gradients when the input contains
-  zeros.
-- The CI now actually runs the torch-comparison tests
 
 ## anvl 0.2.0
 
