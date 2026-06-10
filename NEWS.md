@@ -1,5 +1,7 @@
 # anvl (development version)
 
+# anvl 0.3.0
+
 ## Breaking Changes
 
 * Renamed user-facing API functions to match base R names:
@@ -79,10 +81,8 @@
   has finished.
 * New tree utilities `map_tree()` and `pmap_tree()` for applying
   functions leaf-wise over (possibly nested) lists.
-* `mean()` and `median()` now error when called with `na.rm = TRUE`,
-  since anvl arrays do not carry `NA`s. `mean()` also rejects non-zero
-  `trim`.
 * Added support for `range` generic.
+* Improved NaN handling across various primitives and API functions.
 
 ## Other
 
@@ -99,12 +99,6 @@
   `NaN` / `Inf` gradients when the input contains zeros.
 * The CI now actually runs the torch-comparison tests.
 * `nv_runif()` not properly respects the `lower` argument.
-* The overloaded `%%` operator now calls the new `nv_mod()` to be consistent
-  with base R.
-* The reverse rule for `prim_reduce_prod()` no longer produces `NaN`/`Inf`
-  gradients when the input contains zeros.
-* The CI now actually runs the torch-comparison tests
-
 
 # anvl 0.2.0
 

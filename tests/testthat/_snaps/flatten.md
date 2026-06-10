@@ -1,8 +1,8 @@
 # map_tree / reports the leaf path on error
 
     Code
-      map_tree(function(x) if (x == 2) cli::cli_abort("boom") else x, list(a = 1, b = list(
-        c = 2)))
+      map_tree(list(a = 1, b = list(c = 2)), function(x) if (x == 2) cli::cli_abort(
+        "boom") else x)
     Condition
       Error:
       ! Error applying `.f` to leaf at `b$c`.

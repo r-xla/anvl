@@ -43,7 +43,7 @@ anvl makes numerical R code run fast on CPUs and GPUs, and computes
 gradients of your functions automatically. It aspires to be for R what
 JAX is for Python.
 
-There are three ideas:
+There are three core ideas:
 
 - **Compilation.** {anvl} converts R functions into an optimized program
   via XLA – the same compiler that powers JAX and TensorFlow. Due to the
@@ -54,8 +54,10 @@ There are three ideas:
   reverse-mode automatic differentiation via `gradient()`, which returns
   the derivative of a function as another R function.
 - **Hardware portability.** The same code runs on CPU or GPU.
-- **Extensible.** The package is written almost entirely in R; new
-  primitives and transformations can be added without leaving R.
+
+Moreover, the package is designed to be extensible. As the package is
+written in R, new primitives and transformations can be added without
+needing a lower-level language.
 
 ## Usage
 

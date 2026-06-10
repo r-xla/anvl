@@ -44,7 +44,7 @@ describe("gather_clamp_indices", {
       start_index_map = 1L,
       index_vector_dim = 2L # implicit
     )
-    expect_equal(as.integer(as_array(result)), c(8L, 8L, 5L))
+    expect_equal(as.integer(result), c(8L, 8L, 5L))
   })
 
   it("clamps indices below 1 to 1 (implicit index vector)", {
@@ -56,7 +56,7 @@ describe("gather_clamp_indices", {
       start_index_map = 1L,
       index_vector_dim = 2L
     )
-    expect_equal(as.integer(as_array(result)), c(1L, 1L, 3L))
+    expect_equal(as.integer(result), c(1L, 1L, 3L))
   })
 
   it("leaves valid indices unchanged (implicit index vector)", {
@@ -68,7 +68,7 @@ describe("gather_clamp_indices", {
       start_index_map = 1L,
       index_vector_dim = 2L
     )
-    expect_equal(as.integer(as_array(result)), c(1L, 5L, 8L))
+    expect_equal(as.integer(result), c(1L, 5L, 8L))
   })
 
   it("clamps with explicit index vector dim (multiple coordinates)", {
@@ -83,7 +83,7 @@ describe("gather_clamp_indices", {
       start_index_map = c(1L, 2L),
       index_vector_dim = 1L
     )
-    expect_equal(as.integer(as_array(result)), c(4L, 6L))
+    expect_equal(as.integer(result), c(4L, 6L))
   })
 
   it("clamps batch of indices with explicit index vector dim and reverse start_index_map", {

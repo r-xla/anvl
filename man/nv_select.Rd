@@ -23,7 +23,7 @@ Same data type as \code{operand}. \code{dim} is dropped if \code{index} was scal
 \description{
 Picks one or more elements along dimension \code{dim} of \code{operand}.
 Use this instead of \code{[} or \code{nv_subset} when the index to select is provided
-programatically.
+programmatically.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

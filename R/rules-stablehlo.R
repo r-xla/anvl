@@ -220,12 +220,28 @@ prim_cumprod[["stablehlo"]] <- function(operand, dim) {
   init_i <- hlo_scalar(0L, dtype = "i32", func = operand$func)
 
   cmp <- if (is_max) prim_gt else prim_lt
-  # Pick the side with the strictly better value; on ties, the larger index
-  # wins (last-occurrence tiebreak, matching torch). The op is associative
-  # + commutative.
-  reductor <- function(lv, li, rv, ri) {
-    lhs_wins <- prim_or(cmp(lv, rv), prim_and(prim_eq(lv, rv), prim_gt(li, ri)))
-    list(nv_ifelse(lhs_wins, lv, rv), nv_ifelse(lhs_wins, li, ri))
+  is_float <- inherits(operand$value_type$type$dtype, "FloatType")
+  # Strict comparison: ties fall through to rhs, which has the larger index
+  # (li < ri — reductor is associative but not assumed commutative, same as
+  # in .stablehlo_arg_extreme), giving last-occurrence tiebreak matching torch.
+  #
+  # For float inputs the reducer is NaN-propagating: if either side is NaN,
+  # the result is NaN. Without this, XLA's comparison-based max/min gives
+  # `max(state, NaN) = NaN` then `max(NaN, next) = next`, which makes the
+  # running extreme restart after every NaN — useless for users.
+  reductor <- if (is_float) {
+    function(lv, li, rv, ri) {
+      either_nan <- prim_or(prim_ne(lv, lv), prim_ne(rv, rv))
+      lhs_wins <- cmp(lv, rv)
+      out_v <- nv_ifelse(either_nan, NaN, nv_ifelse(lhs_wins, lv, rv))
+      out_i <- nv_ifelse(lhs_wins, li, ri)
+      list(out_v, out_i)
+    }
+  } else {
+    function(lv, li, rv, ri) {
+      lhs_wins <- cmp(lv, rv)
+      list(nv_ifelse(lhs_wins, lv, rv), nv_ifelse(lhs_wins, li, ri))
+    }
   }
   body <- .r_reductor_to_hlo_func(
     reductor,
@@ -633,30 +649,61 @@ prim_while[["stablehlo"]] <- function(..., cond_graph, body_graph, .env) {
 
 prim_sort[["stablehlo"]] <- function(..., dim, descending, is_stable) {
   ops <- list(...)
-  cmp <- if (descending) `>` else `<`
-  # Comparator takes 2*N scalars (one pair per operand) but only ranks by
-  # the first key pair; the remaining operands ride along.
-  comparator <- function(...) {
-    args <- list(...)
-    cmp(args[[1L]], args[[2L]])
-  }
-  dummy_args <- unlist(
-    lapply(ops, function(op) {
-      dt <- op$value_type$type$dtype
-      list(
-        nv_aval(dtype = dt, shape = integer()),
-        nv_aval(dtype = dt, shape = integer())
-      )
-    }),
-    recursive = FALSE
-  )
-  cmp_func <- .r_reductor_to_hlo_func(comparator, dummy_args)
   hlo_sort(
     ...,
     dimension = dim - 1L,
     is_stable = is_stable,
-    comparator = cmp_func
+    comparator = .build_sort_comparator(ops, descending)
   )
+}
+
+# Builds the HLO comparator function consumed by hlo_sort. For float keys we
+# use `compare_type = "TOTALORDER"` so NaN bit-patterns sort to the ends
+# (vs. IEEE FLOAT, where NaN comparisons return false and positions are
+# undefined). We canonicalize -0/+0 → +0 and -NaN/+NaN → +NaN before
+# comparing so stable sort treats IEEE-equal values as equal — this keeps
+# all NaNs at one end and stops -0/+0 from being silently reordered.
+# Mirrors JAX _sort_lt_comparator, _canonicalize_float_for_sort).
+.build_sort_comparator <- function(ops, descending) {
+  key_dtype <- ops[[1L]]$value_type$type$dtype
+  key_is_float <- inherits(key_dtype, "FloatType")
+  direction <- if (descending) "GT" else "LT"
+
+  cmp_func <- stablehlo::local_func("")
+  # Declare 2 scalar inputs per operand: a_<i>, b_<i>. We keep references to
+  # the first pair only; subsequent inputs are declared (to match the arity
+  # hlo_sort expects) but ignored.
+  a <- NULL
+  b <- NULL
+  for (i in seq_along(ops)) {
+    dt <- as.character(ops[[i]]$value_type$type$dtype)
+    ai <- hlo_input(paste0("a_", i), dt)
+    bi <- hlo_input(paste0("b_", i), dt)
+    if (i == 1L) {
+      a <- ai
+      b <- bi
+    }
+  }
+
+  if (key_is_float) {
+    a <- .canonicalize_float_for_sort(a, key_dtype)
+    b <- .canonicalize_float_for_sort(b, key_dtype)
+    result <- hlo_compare(a, b, comparison_direction = direction, compare_type = "TOTALORDER")
+  } else {
+    ct <- if (inherits(key_dtype, "IntegerType")) "SIGNED" else "UNSIGNED"
+    result <- hlo_compare(a, b, comparison_direction = direction, compare_type = ct)
+  }
+  hlo_return(result)
+}
+
+# Collapse -0 → +0 and -NaN → +NaN on a scalar float. See the comment on
+# `.build_sort_comparator` above for why we do this.
+.canonicalize_float_for_sort <- function(x, dtype) {
+  zero <- hlo_scalar(0, dtype = dtype, func = x$func)
+  canonical_nan <- hlo_scalar(NaN, dtype = dtype, func = x$func)
+  is_zero <- hlo_compare(x, zero, comparison_direction = "EQ", compare_type = "FLOAT")
+  is_nan <- hlo_compare(x, x, comparison_direction = "NE", compare_type = "FLOAT")
+  hlo_select(is_nan, canonical_nan, hlo_select(is_zero, zero, x))
 }
 
 prim_top_k[["stablehlo"]] <- function(operand, k) {
@@ -942,17 +989,54 @@ prim_svd[["stablehlo"]] <- function(operand) {
   s_type <- vt(dtype = dt, shape = k)
   vt_type <- vt(dtype = dt, shape = c(k, n))
 
-  # The "svd" custom call returns (U, S, Vt) positionally. We re-order
-  # to (d, u, vt) to match R's order for SVD
-  out <- hlo_custom_call(
-    operand,
-    call_target_name = "svd",
-    api_version = 4L,
-    has_side_effect = FALSE,
-    output_types = list(u_type, s_type, vt_type),
-    operand_layouts = col_major_layouts(2L),
-    result_layouts = col_major_layouts(2L, 1L, 2L)
-  )
+  # cuSOLVER's gesvd requires m >= n. When m < n on CUDA we mirror JAX's
+  # layout-flip trick: declare operand / U / Vt as row-major instead of
+  # column-major and tell the FFI handler `transposed = TRUE`. The
+  # col-major (m, n) buffer is bit-identical to a row-major (n, m) view of
+  # A^T, so cuSOLVER (with m and n swapped) computes A^T = V S U^T and
+  # writes its U / Vt outputs straight into the original Vt / U slots —
+  # also bit-identical under the col-major <-> row-major reinterpretation.
+  # No explicit transpose. The CUDA handler always reads a `transposed`
+  # attribute, so we emit it (with both values) whenever targeting CUDA;
+  # other platforms (host LAPACK gesdd handles any shape) take the plain
+  # path with no backend_config.
+  on_cuda <- identical(current_platform(), "cuda")
+  transposed <- on_cuda && m < n
+
+  if (on_cuda) {
+    backend_config <- stablehlo::CustomOpBackendConfig(list(
+      stablehlo::BoolAttr(name = "transposed", value = transposed)
+    ))
+    if (transposed) {
+      row_major_2 <- c(1L, 0L)
+      row_major_1 <- 0L
+      operand_layouts <- list(row_major_2)
+      result_layouts <- list(row_major_2, row_major_1, row_major_2)
+    } else {
+      operand_layouts <- col_major_layouts(2L)
+      result_layouts <- col_major_layouts(2L, 1L, 2L)
+    }
+    out <- hlo_custom_call(
+      operand,
+      call_target_name = "svd",
+      api_version = 4L,
+      has_side_effect = FALSE,
+      backend_config = backend_config,
+      output_types = list(u_type, s_type, vt_type),
+      operand_layouts = operand_layouts,
+      result_layouts = result_layouts
+    )
+  } else {
+    out <- hlo_custom_call(
+      operand,
+      call_target_name = "svd",
+      api_version = 4L,
+      has_side_effect = FALSE,
+      output_types = list(u_type, s_type, vt_type),
+      operand_layouts = col_major_layouts(2L),
+      result_layouts = col_major_layouts(2L, 1L, 2L)
+    )
+  }
   list(out[[2L]], out[[1L]], out[[3L]])
 }
 

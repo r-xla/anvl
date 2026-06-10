@@ -4,7 +4,7 @@
 \alias{nv_cummax}
 \title{Cumulative Maximum}
 \usage{
-nv_cummax(operand, dim = NULL, with_indices = FALSE)
+nv_cummax(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -20,6 +20,13 @@ If \code{TRUE}, returns \code{list(values = ..., indices = ...)} where \code{ind
 is the 1-based index of the last occurrence of the running
 maximum at each position (dtype \code{i32}, matching torch).
 When \code{dim = NULL}, indices refer to the flattened input.}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates forward from its first occurrence. If
+\code{TRUE}, \code{NaN} is treated as the identity element of the cumulative
+op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min) and
+contributes nothing to the running value.}
 }
 \value{
 \code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
@@ -43,6 +50,8 @@ x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummax(x)
 nv_cummax(x, dim = 1L)
 nv_cummax(x, dim = 1L, with_indices = TRUE)
+nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
+nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 \dontshow{\}) # examplesIf}
 }
 \seealso{

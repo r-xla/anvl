@@ -4,14 +4,14 @@
 \alias{map_tree}
 \title{Map Over a Tree}
 \usage{
-map_tree(.f, .x, ...)
+map_tree(.x, .f, ...)
 }
 \arguments{
-\item{.f}{(\code{function})\cr
-Function to apply to each leaf of \code{.x}.}
-
 \item{.x}{(any)\cr
 A leaf or a (nested) list of leaves.}
+
+\item{.f}{(\code{function})\cr
+Function to apply to each leaf of \code{.x}.}
 
 \item{...}{Additional arguments passed to \code{.f}.}
 }
@@ -25,7 +25,7 @@ tree structure. Equivalent to flattening \code{.x} with \code{\link[=flatten]{fl
 \code{.f} to each leaf, and reassembling with \code{\link[=unflatten]{unflatten()}}.
 }
 \examples{
-map_tree(\(x) x + 1, list(a = 1, b = list(c = 2, d = 3)))
+map_tree(list(a = 1, b = list(c = 2, d = 3)), \(x) x + 1)
 }
 \seealso{
 \code{\link[=flatten]{flatten()}}, \code{\link[=build_tree]{build_tree()}}, \code{\link[=unflatten]{unflatten()}}, \code{\link[=await]{await()}}
