@@ -619,26 +619,29 @@ test_that("quickr pipeline matches PJRT: broadcast + iota slice assignments comp
   expect_quickr_matches_pjrt_fn(fn, templates, list(run))
 })
 
-test_that("quickr pipeline matches PJRT: zero-length dims (reverse/concatenate/dynamic_slice)", {
+test_that("quickr pipeline matches PJRT: zero-length dims (reverse/concatenate/boolean reductions)", {
   skip_if_no_quickr_or_pjrt()
 
   # This exercises:
   # - 0-extent *inputs* (compile-time interface)
   # - dynamic_slice with 0 slice sizes (0-extent intermediates)
-  # - reverse/concatenate on 0-extent arrays.
-  # Named reductions over a zero-size axis are rejected at trace time, so
-  # they are tested separately rather than along this pipeline.
+  # - reverse/concatenate/reduce_any/reduce_all on 0-extent arrays.
   zero_dim_ops <- function(X, empty_cols, empty_rows) {
     one <- nv_scalar(1L, dtype = "i32")
     ds_empty_cols <- prim_dynamic_slice(X, one, one, slice_sizes = c(2L, 0L))
     ds_empty_rows <- prim_dynamic_slice(X, one, one, slice_sizes = c(0L, 3L))
 
+    prim_cols <- nv_reverse(empty_cols, dims = 2L) > 0L
+
     list(
       ds_empty_cols = ds_empty_cols,
       ds_empty_rows = ds_empty_rows,
-      rev_cols = nv_reverse(empty_cols, dims = 2L),
       cat_rows = nv_concatenate(empty_rows, X, dimension = 1L),
-      cat_cols = nv_concatenate(X, empty_cols, dimension = 2L)
+      cat_cols = nv_concatenate(X, empty_cols, dimension = 2L),
+      any_cols = nv_reduce_any(prim_cols, dims = 2L, drop = TRUE),
+      all_cols = nv_reduce_all(prim_cols, dims = 2L, drop = TRUE),
+      any_rows = nv_reduce_any(empty_rows > 0L, dims = 1L, drop = TRUE),
+      all_rows = nv_reduce_all(empty_rows > 0L, dims = 1L, drop = TRUE)
     )
   }
 
@@ -659,6 +662,51 @@ test_that("quickr pipeline matches PJRT: zero-length dims (reverse/concatenate/d
 
   expect_equal(pjrt$cat_rows, X)
   expect_equal(pjrt$cat_cols, X)
+  expect_equal(as.logical(pjrt$any_cols), rep.int(FALSE, 2L))
+  expect_equal(as.logical(pjrt$all_cols), rep.int(TRUE, 2L))
+  expect_equal(as.logical(pjrt$any_rows), rep.int(FALSE, 3L))
+  expect_equal(as.logical(pjrt$all_rows), rep.int(TRUE, 3L))
+})
+
+test_that("quickr pipeline matches PJRT: zero-length dims for numeric sum/prod reductions", {
+  skip_if_no_quickr_or_pjrt()
+
+  reduce_empty_numeric <- function(v_empty, empty_cols, empty_rows) {
+    list(
+      sum_v = nv_reduce_sum(v_empty, dims = 1L, drop = TRUE),
+      prod_v_keep = nv_reduce_prod(v_empty, dims = 1L, drop = FALSE),
+      sum_cols = nv_reduce_sum(empty_cols, dims = 2L, drop = TRUE),
+      prod_cols = nv_reduce_prod(empty_cols, dims = 2L, drop = TRUE),
+      sum_rows = nv_reduce_sum(empty_rows, dims = 1L, drop = TRUE),
+      prod_rows = nv_reduce_prod(empty_rows, dims = 1L, drop = TRUE),
+      sum_full = nv_reduce_sum(empty_cols, dims = c(1L, 2L), drop = TRUE),
+      prod_full = nv_reduce_prod(empty_cols, dims = c(1L, 2L), drop = TRUE)
+    )
+  }
+
+  v_empty <- integer()
+  empty_cols <- matrix(integer(), nrow = 2L, ncol = 0L)
+  empty_rows <- matrix(integer(), nrow = 0L, ncol = 3L)
+  graph <- trace_fn(
+    reduce_empty_numeric,
+    list(
+      v_empty = nv_array(rep(0L, 0L), shape = 0L, dtype = "i32"),
+      empty_cols = nv_matrix(0L, nrow = 2L, ncol = 0L, dtype = "i32"),
+      empty_rows = nv_matrix(0L, nrow = 0L, ncol = 3L, dtype = "i32")
+    )
+  )
+
+  out_pjrt <- quickr_eval_graph_pjrt(graph, v_empty, empty_cols, empty_rows)
+  expect_identical(out_pjrt$sum_v, 0L)
+  expect_identical(out_pjrt$prod_v_keep, array(1L, dim = 1L))
+  expect_identical(out_pjrt$sum_cols, array(c(0L, 0L), dim = 2L))
+  expect_identical(out_pjrt$prod_cols, array(c(1L, 1L), dim = 2L))
+  expect_identical(out_pjrt$sum_rows, array(c(0L, 0L, 0L), dim = 3L))
+  expect_identical(out_pjrt$prod_rows, array(c(1L, 1L, 1L), dim = 3L))
+  expect_identical(out_pjrt$sum_full, 0L)
+  expect_identical(out_pjrt$prod_full, 1L)
+
+  expect_quickr_matches_pjrt(graph, v_empty, empty_cols, empty_rows)
 })
 
 test_that("quickr pipeline matches PJRT: reduction branch coverage", {

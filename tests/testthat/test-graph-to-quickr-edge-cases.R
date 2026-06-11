@@ -108,17 +108,12 @@ test_that("graph_to_quickr_function rejects broadcast_in_dim ranks > 5", {
   expect_error(graph_to_quickr_function(graph), "broadcast_in_dim: only arrays up to rank 5", fixed = FALSE)
 })
 
-test_that("reductions over empty dimensions are rejected before quickr lowering", {
+test_that("graph_to_quickr_function rejects reductions over empty dimensions", {
   skip_if_no_quickr()
 
-  # Named reductions reject a zero-size reduction axis at trace time, so an
-  # empty-dimension reduction never reaches the quickr lowering at all.
   templ <- list(x = nv_aval("f64", c(2L, 0L)))
-  expect_error(
-    trace_fn(function(x) prim_reduce_max(x, dims = 2L, drop = TRUE), templ),
-    "zero-size axis",
-    fixed = FALSE
-  )
+  graph <- trace_fn(function(x) prim_reduce_max(x, dims = 2L, drop = TRUE), templ)
+  expect_error(graph_to_quickr_function(graph), "empty dimensions", fixed = FALSE)
 })
 
 test_that("graph_to_quickr_function rejects unsupported reduce_sum variants", {
