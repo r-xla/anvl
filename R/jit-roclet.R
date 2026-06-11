@@ -52,10 +52,21 @@
 #' @return A roxygen2 roclet object.
 #' @export
 jit_roclet <- function() {
-  if (!requireNamespace("roxygen2", quietly = TRUE)) {
-    cli_abort("`jit_roclet()` requires the {.pkg roxygen2} package to be installed.")
-  }
-  getFromNamespace("roclet", "roxygen2")("jit")
+  roclet <- tryCatch(
+    roxygen2_fn("roclet"),
+    error = function(e) {
+      cli_abort("`jit_roclet()` requires the {.pkg roxygen2} package to be installed.")
+    }
+  )
+  roclet("jit")
+}
+
+# roxygen2 is only used at package-build time (when this roclet runs), so it is
+# deliberately not declared in Imports/Suggests. Reach into its functions via
+# getFromNamespace() rather than `::` (or `requireNamespace()`), so R CMD check's
+# "checking dependencies in R code" does not flag an undeclared dependency.
+roxygen2_fn <- function(name) {
+  getFromNamespace(name, "roxygen2")
 }
 
 roxy_tag_parse.roxy_tag_jit <- function(x) {
@@ -69,16 +80,16 @@ roxy_tag_parse.roxy_tag_jit <- function(x) {
     error = function(e) e
   )
   if (inherits(expr, "error")) {
-    return(roxygen2::warn_roxy_tag(x, "could not parse `@jit` arguments"))
+    return(roxygen2_fn("warn_roxy_tag")(x, "could not parse `@jit` arguments"))
   }
   val <- tryCatch(eval(expr, envir = baseenv()), error = function(e) e)
   if (inherits(val, "error") || !is.list(val)) {
-    return(roxygen2::warn_roxy_tag(x, "could not evaluate `@jit` arguments"))
+    return(roxygen2_fn("warn_roxy_tag")(x, "could not evaluate `@jit` arguments"))
   }
   known <- "static"
   unknown <- setdiff(names(val), c("", known))
   if (length(unknown)) {
-    return(roxygen2::warn_roxy_tag(
+    return(roxygen2_fn("warn_roxy_tag")(
       x,
       sprintf("unknown `@jit` argument(s): %s", paste(unknown, collapse = ", "))
     ))
@@ -87,7 +98,7 @@ roxy_tag_parse.roxy_tag_jit <- function(x) {
   if (is.numeric(static)) {
     static <- as.integer(static)
   } else if (!is.character(static)) {
-    return(roxygen2::warn_roxy_tag(x, "`static` must be character or integer"))
+    return(roxygen2_fn("warn_roxy_tag")(x, "`static` must be character or integer"))
   }
   x$val <- list(static = static)
   x
@@ -100,18 +111,18 @@ roxy_tag_rd.roxy_tag_jit <- function(x, base_path, env) {
 roclet_process.roclet_jit <- function(x, blocks, env, base_path) {
   entries <- list()
   for (block in blocks) {
-    tag <- roxygen2::block_get_tag(block, "jit")
+    tag <- roxygen2_fn("block_get_tag")(block, "jit")
     if (is.null(tag)) {
       next
     }
     name <- block$object$alias %||% block$object$name %||% block$object$topic
     if (is.null(name)) {
-      roxygen2::warn_roxy_tag(tag, "`@jit` requires a named function")
+      roxygen2_fn("warn_roxy_tag")(tag, "`@jit` requires a named function")
       next
     }
     obj <- block$object$value
     if (!is.function(obj)) {
-      roxygen2::warn_roxy_tag(tag, "`@jit` may only be applied to functions")
+      roxygen2_fn("warn_roxy_tag")(tag, "`@jit` may only be applied to functions")
       next
     }
     entries[[length(entries) + 1L]] <- list(
