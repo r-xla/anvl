@@ -17,6 +17,11 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       PJRT_PLATFORM: cpu
+      # Allow pjrt to download the CPU plugin non-interactively when building
+      # vignettes during `R CMD check` (the dev pjrt no longer auto-downloads
+      # in non-interactive sessions). The other check jobs provision the plugin
+      # via custom actions; this job uses the stock r-lib action.
+      PJRT_INSTALL: "1"
 
     steps:
       - uses: actions/checkout@v5
