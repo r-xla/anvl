@@ -5,7 +5,7 @@ Computes the standard deviation along the specified dimensions.
 ## Usage
 
 ``` r
-nv_sd(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_sd(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -59,6 +59,10 @@ population standard deviation.
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4, 5))
+nv_sd(x)              # all dims -> scalar
+#> AnvlArray
+#>  1.5811
+#> [ CPUf32{} ] 
 nv_sd(x, dims = 1L)
 #> AnvlArray
 #>  1.5811

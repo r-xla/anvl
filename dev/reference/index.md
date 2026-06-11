@@ -817,4 +817,4 @@ Low-level primitive operations (prim\_\* functions)
 
 - [`anvl`](https://r-xla.github.io/anvl/dev/reference/anvl-package.md)
   [`anvl-package`](https://r-xla.github.io/anvl/dev/reference/anvl-package.md)
-  : anvl: Framework for R code transformations
+  : anvl: Accelerated Array Computing and Automatic Differentiation

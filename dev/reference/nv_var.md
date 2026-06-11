@@ -5,7 +5,7 @@ Computes the variance along the specified dimensions.
 ## Usage
 
 ``` r
-nv_var(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_var(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -59,6 +59,10 @@ population variance.
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4, 5))
+nv_var(x)             # all dims -> scalar
+#> AnvlArray
+#>  2.5000
+#> [ CPUf32{} ] 
 nv_var(x, dims = 1L)
 #> AnvlArray
 #>  2.5000
