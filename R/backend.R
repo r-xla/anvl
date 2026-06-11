@@ -6,7 +6,10 @@
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
 #' @param shape (`function`)\cr Extracts the shape from an AnvlArray.
 #' @param ambiguous (`function`)\cr Extracts the ambiguous flag from an AnvlArray.
-#' @param as_array (`function`)\cr Converts an AnvlArray to an R array.
+#' @param as_array (`function(x, check)`)\cr Converts an AnvlArray to an R
+#'   array. The `check` flag is forwarded from [`as_array()`]; backends may use
+#'   it to abort when materialization would lose information (e.g. ui64 values
+#'   wrapping through `bit64::integer64`). See [`pjrt::as_array.PJRTBuffer()`].
 #' @param as_raw (`function`)\cr Converts an AnvlArray to raw bytes.
 #' @param platform (`function`)\cr Returns the platform name (e.g. `"cpu"`).
 #' @param device (`function`)\cr Returns the device object for an AnvlArray.
@@ -141,7 +144,7 @@ register_backend(
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
     ambiguous = function(x) x$ambiguous,
-    as_array = function(x) x$data,
+    as_array = function(x, check) x$data,
     as_raw = function(x, row_major) cli_abort("as_raw not supported for plain backend"),
     platform = function(x) "cpu",
     device = function(x) PlainDeviceCpu(),
