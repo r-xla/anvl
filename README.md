@@ -55,7 +55,7 @@ There are three core ideas:
   the derivative of a function as another R function.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
-Moreover, the package is designed by be extensible. As the package is
+Moreover, the package is designed to be extensible. As the package is
 written in R, new primitives and transformations can be added without
 needing a lower-level language.
 
