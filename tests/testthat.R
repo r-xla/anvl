@@ -10,4 +10,9 @@ library(testthat)
 library(anvl)
 library(stablehlo)
 
-test_check("anvl")
+# Nearly all tests require a PJRT plugin, which has to be downloaded over the
+# network. That is not possible on CRAN, so the suite is opt-in: set
+# `ANVL_TEST=1` to run it (CI does this). When unset, no tests run.
+if (Sys.getenv("ANVL_TEST", unset = "0") == "1") {
+  test_check("anvl")
+}

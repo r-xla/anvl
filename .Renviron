@@ -1,0 +1,9 @@
+# Developer convenience for working in this repo. Excluded from the package
+# build via .Rbuildignore, so it never affects CRAN or users.
+#
+# Run the (network-dependent) test suite locally; the suite is opt-in via
+# ANVL_TEST so that it is skipped on CRAN (see tests/testthat.R).
+ANVL_TEST=1
+# Allow the plugin to be downloaded without prompting (e.g. during a
+# non-interactive `R CMD check`) when it is not cached yet.
+PJRT_INSTALL=1

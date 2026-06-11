@@ -17,6 +17,8 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       PJRT_PLATFORM: cpu
+      # Opt in to the test suite (skipped by default, e.g. on CRAN).
+      ANVL_TEST: "1"
       # Allow pjrt to download the CPU plugin non-interactively when building
       # vignettes during `R CMD check` (the dev pjrt no longer auto-downloads
       # in non-interactive sessions). The other check jobs provision the plugin
