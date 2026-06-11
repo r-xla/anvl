@@ -488,6 +488,74 @@ nv_subset <- function(operand, ...) {
   out
 }
 
+# Jitted core of `nv_subset_assign()`. The entry point parses the NSE `...`
+# subscripts (which jit cannot trace) and materialises the scatter indices; the
+# array work -- dtype promotion, value broadcast, and the scatter itself -- is
+# fused into a single program here. `scatter_indices` is passed in as a traced
+# input (never reconstructed from the static params), so distinct index *values*
+# reuse one compiled program; only distinct subset *patterns* recompile.
+subset_scatter_core <- jit(
+  function(
+    operand,
+    value,
+    scatter_indices,
+    update_window_dims,
+    inserted_window_dims,
+    scatter_dims_to_operand_dims,
+    index_vector_dim,
+    indices_are_sorted,
+    unique_indices,
+    update_shape
+  ) {
+    if (dtype_abstract(operand) != dtype_abstract(value)) {
+      dt_operand <- dtype_abstract(operand)
+      dt_value <- dtype_abstract(value)
+      if (!promotable_to(dt_value, dt_operand)) {
+        cli_abort(
+          "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_operand)}"
+        )
+      }
+      value <- nv_convert(value, dtype = dt_operand)
+    }
+
+    if (!ndims_abstract(value)) {
+      value <- nv_broadcast_to(value, update_shape)
+    } else {
+      value_shape <- shape_abstract(value)
+      if (!identical(value_shape, update_shape)) {
+        cli_abort(c(
+          "Update shape does not match subset shape.",
+          x = "Got {shape2string(value_shape)} and {shape2string(update_shape)}"
+        ))
+      }
+    }
+
+    prim_scatter(
+      input = operand,
+      scatter_indices = scatter_indices,
+      update = value,
+      update_window_dims = update_window_dims,
+      inserted_window_dims = inserted_window_dims,
+      input_batching_dims = integer(),
+      scatter_indices_batching_dims = integer(),
+      scatter_dims_to_operand_dims = scatter_dims_to_operand_dims,
+      index_vector_dim = index_vector_dim,
+      indices_are_sorted = indices_are_sorted,
+      unique_indices = unique_indices
+    )
+  },
+  backend = "auto",
+  static = c(
+    "update_window_dims",
+    "inserted_window_dims",
+    "scatter_dims_to_operand_dims",
+    "index_vector_dim",
+    "indices_are_sorted",
+    "unique_indices",
+    "update_shape"
+  )
+)
+
 #' @title Update Subset
 #' @description
 #' Updates elements of an array at specified positions, returning a new array.
@@ -507,7 +575,9 @@ nv_subset <- function(operand, ...) {
 #' x[1, ] <- nv_scalar(0L)
 #' x
 #' @export
-#' @jit
+# Not `@jit`-tagged: the `...` subscripts are captured via NSE (`enquos()`),
+# which jit's argument handling cannot trace. The parsing stays here (eager) and
+# the array work is delegated to the jitted [subset_scatter_core()].
 nv_subset_assign <- function(operand, ..., value) {
   if (!is_arrayish(operand)) {
     cli_abort("Expected arrayish `operand`, but got {.cls {class(operand)[1]}}")
@@ -518,16 +588,6 @@ nv_subset_assign <- function(operand, ..., value) {
   aligned <- as_anvl_arrays(operand, value)
   operand <- aligned[[1L]]
   value <- aligned[[2L]]
-  if (dtype_abstract(operand) != dtype_abstract(value)) {
-    dt_operand <- dtype_abstract(operand)
-    dt_value <- dtype_abstract(value)
-    if (!promotable_to(dt_value, dt_operand)) {
-      cli_abort(
-        "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_operand)}"
-      )
-    }
-    value <- nv_convert(value, dtype = dt_operand)
-  }
 
   lhs_shape <- shape_abstract(operand)
   # because we do NSE to determine `:`-calls
@@ -536,29 +596,16 @@ nv_subset_assign <- function(operand, ..., value) {
   subsets <- parse_subset_specs(quos, lhs_shape)
   params <- subset_specs_to_scatter(subsets, like = operand)
 
-  if (!ndims_abstract(value)) {
-    value <- nv_broadcast_to(value, params$update_shape)
-  } else {
-    value_shape <- shape_abstract(value)
-    if (!identical(value_shape, params$update_shape)) {
-      cli_abort(c(
-        "Update shape does not match subset shape.",
-        x = "Got {shape2string(value_shape)} and {shape2string(params$update_shape)}"
-      ))
-    }
-  }
-
-  prim_scatter(
-    input = operand,
+  subset_scatter_core(
+    operand = operand,
+    value = value,
     scatter_indices = params$scatter_indices,
-    update = value,
     update_window_dims = params$update_window_dims,
     inserted_window_dims = params$inserted_window_dims,
-    input_batching_dims = integer(),
-    scatter_indices_batching_dims = integer(),
     scatter_dims_to_operand_dims = params$scatter_dims_to_operand_dims,
     index_vector_dim = params$index_vector_dim,
     indices_are_sorted = params$indices_are_sorted,
-    unique_indices = params$unique_indices
+    unique_indices = params$unique_indices,
+    update_shape = params$update_shape
   )
 }

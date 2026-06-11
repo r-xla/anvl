@@ -1995,7 +1995,7 @@ nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_mean(nv_array(c(1, NaN, 3)))
 #' nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-#' @jit static = c(2L, 3L)
+#' @jit static = c(2L, 3L, 4L)
 nv_mean <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   dims <- .resolve_reduce_dims(operand, dims)
@@ -2148,7 +2148,7 @@ nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
 #' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 #' @export
-#' @jit static = c(2L)
+#' @jit static = c(2L, 3L)
 nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
@@ -2179,7 +2179,7 @@ nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 #' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 #' @export
-#' @jit static = c(2L)
+#' @jit static = c(2L, 3L)
 nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
@@ -2213,7 +2213,7 @@ nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
-#' @jit static = c(2L, 3L)
+#' @jit static = c(2L, 3L, 4L)
 nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
   .nv_cum_extreme(operand, dim, with_indices, nan_rm, -Inf, prim_cummax)
 }
@@ -2239,7 +2239,7 @@ nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 #' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
 #' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
-#' @jit static = c(2L, 3L)
+#' @jit static = c(2L, 3L, 4L)
 nv_cummin <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
   .nv_cum_extreme(operand, dim, with_indices, nan_rm, Inf, prim_cummin)
 }
@@ -2393,7 +2393,7 @@ nv_is_infinite <- function(operand) {
 #' nv_var(x, dims = 1L)
 #' nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
 #' @export
-#' @jit static = c(2L, 3L, 4L)
+#' @jit static = c(2L, 3L, 4L, 5L)
 nv_var <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   assert_int(correction)
@@ -2431,7 +2431,7 @@ nv_var <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) 
 #' x <- nv_array(c(1, 2, 3, 4, 5))
 #' nv_sd(x, dims = 1L)
 #' @export
-#' @jit static = c(2L, 3L, 4L)
+#' @jit static = c(2L, 3L, 4L, 5L)
 nv_sd <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   nv_sqrt(nv_var(operand, dims, drop, correction, nan_rm = nan_rm))
@@ -2943,7 +2943,7 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
 #' @export
-#' @jit static = c(3L, 4L)
+#' @jit static = c(2L, 3L, 4L, 5L)
 nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   rank <- ndims(operand)
@@ -3057,7 +3057,7 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
 #' nv_median(nv_array(c(1, NaN, 3, 5)))
 #' nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
-#' @jit static = c(2L, 3L)
+#' @jit static = c(2L, 3L, 4L)
 nv_median <- function(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
   nv_quantile(operand, probs = 0.5, dim = dim, interpolation = interpolation, nan_rm = nan_rm)
 }

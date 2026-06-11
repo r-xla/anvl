@@ -48,6 +48,10 @@ new_counter <- function() {
 #' flatten(list(1:3, "hello"))
 #' @export
 flatten <- function(x) {
+  # NULL is an empty node: it contributes no leaves (see build_tree()).
+  if (is.null(x)) {
+    return(list())
+  }
   UseMethod("flatten")
 }
 
@@ -86,6 +90,12 @@ flatten.default <- function(x) {
 #' unflatten(tree, flat)
 #' @export
 build_tree <- function(x, counter = NULL) {
+  # NULL becomes an empty node: no leaf index is allocated (the counter is
+  # left untouched), so it contributes nothing to the flat list while still
+  # recording its position in the tree.
+  if (is.null(x)) {
+    return(NullNode())
+  }
   UseMethod("build_tree")
 }
 
@@ -163,6 +173,10 @@ build_tree.MarkedArgs <- function(x, counter = NULL) {
 #' unflatten(tree, list(10, 20, 30))
 #' @export
 unflatten <- function(node, x) {
+  # An empty node restores NULL without consuming a flat element.
+  if (inherits(node, "NullNode")) {
+    return(NULL)
+  }
   UseMethod("unflatten")
 }
 
@@ -178,6 +192,14 @@ unflatten.ListNode <- function(node, x) {
 
 LeafNode <- function(i) {
   structure(list(i = i), class = c("LeafNode", "Node"))
+}
+
+# An empty node, used to represent NULL: it holds no leaf and contributes
+# nothing to the flat list, but is preserved in the tree (and therefore in the
+# jit cache key) so NULL arguments round-trip through unflatten(). Mirrors how
+# JAX treats `None` as an empty pytree node.
+NullNode <- function() {
+  structure(list(), class = c("NullNode", "Node"))
 }
 
 ListNode <- function(nodes, names) {
@@ -209,7 +231,11 @@ format.ListNode <- function(x, ...) {
   if (length(x$nodes) == 0L) {
     return("list()")
   }
-  child_strs <- vapply(x$nodes, format, character(1L), ...)
+  child_strs <- vapply(
+    x$nodes,
+    function(n) if (inherits(n, "NullNode")) "NULL" else format(n, ...),
+    character(1L)
+  )
   parts <- if (is.null(x$names)) {
     child_strs
   } else {
@@ -246,6 +272,9 @@ print.ListNode <- function(x, ...) {
 #' tree_size(build_tree(list(1)))
 #' @export
 tree_size <- function(x) {
+  if (inherits(x, "NullNode")) {
+    return(0L)
+  }
   UseMethod("tree_size")
 }
 
@@ -279,6 +308,10 @@ tree_size.MarkedListNode <- function(x) {
 #' @seealso [build_tree()], [flatten()]
 #' @export
 tree_path <- function(node, i, prefix = "") {
+  # An empty node holds no leaf, so it can never be the target.
+  if (inherits(node, "NullNode")) {
+    return(NULL)
+  }
   UseMethod("tree_path")
 }
 
@@ -356,6 +389,10 @@ filter_list_node <- function(tree, names) {
 #' @return A new `Node` with updated leaf indices.
 #' @export
 reindex_tree <- function(x, counter) {
+  # An empty node has no leaf index to reassign.
+  if (inherits(x, "NullNode")) {
+    return(NullNode())
+  }
   UseMethod("reindex_tree")
 }
 
@@ -495,6 +532,10 @@ tree_diff_impl <- function(a, b, prefix) {
   # as `a` -- UseMethod() only dispatches on `a`.
   if (!identical(class(a), class(b))) {
     return(list(prefix = prefix, a = a, b = b))
+  }
+  # Two empty nodes are structurally identical.
+  if (inherits(a, "NullNode")) {
+    return(NULL)
   }
   UseMethod("tree_diff_impl")
 }
