@@ -35,6 +35,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -119,7 +120,10 @@ underlying data (<code>PJRTBuffer</code> for <code>"xla"</code> backend, <code><
 
 
 <dt id="arg-as-array">as_array<a class="anchor" aria-label="anchor" href="#arg-as-array"></a></dt>
-<dd><p>(<code>function</code>)<br> Converts an AnvlArray to an R array.</p></dd>
+<dd><p>(<code>function(x, check)</code>)<br> Converts an AnvlArray to an R
+array. The <code>check</code> flag is forwarded from <code><a href="as_array.html">as_array()</a></code>; backends may use
+it to abort when materialization would lose information (e.g. ui64 values
+wrapping through <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>). See <code><a href="https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html" class="external-link">pjrt::as_array.PJRTBuffer()</a></code>.</p></dd>
 
 
 <dt id="arg-as-raw">as_raw<a class="anchor" aria-label="anchor" href="#arg-as-raw"></a></dt>

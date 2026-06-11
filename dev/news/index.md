@@ -124,6 +124,19 @@
   [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
   for flattening to 1-D.
 
+#### NA scanning
+
+- [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),
+  and the [`as.integer()`](https://rdrr.io/r/base/integer.html) /
+  [`as.double()`](https://rdrr.io/r/base/double.html) /
+  [`as.logical()`](https://rdrr.io/r/base/logical.html) /
+  [`as.vector()`](https://rdrr.io/r/base/vector.html) methods for
+  `AnvlArray` gained a `check` argument that opts into scanning for `NA`
+  values during host -\> device and device -\> host transfers. See the
+  “Gotchas” vignette.
+
 #### Misc
 
 - New `AnvlArray` -\> R `vector` converters:

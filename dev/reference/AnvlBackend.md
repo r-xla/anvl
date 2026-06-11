@@ -49,8 +49,15 @@ AnvlBackend(
 
 - as_array:
 
-  (`function`)  
-  Converts an AnvlArray to an R array.
+  (`function(x, check)`)  
+  Converts an AnvlArray to an R array. The `check` flag is forwarded
+  from
+  [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md);
+  backends may use it to abort when materialization would lose
+  information (e.g. ui64 values wrapping through
+  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)).
+  See
+  [`pjrt::as_array.PJRTBuffer()`](https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html).
 
 - as_raw:
 

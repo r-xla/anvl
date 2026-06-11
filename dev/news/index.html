@@ -35,6 +35,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -136,6 +137,11 @@
 <li>New <code>nv_matrix(data, nrow, ncol, ...)</code> which works like R’s <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>.</li>
 <li>New API functions <code><a href="../reference/nv_bind.html">nv_rbind()</a></code> and <code><a href="../reference/nv_bind.html">nv_cbind()</a></code> and corresponding <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code> / <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind()</a></code> generics.</li>
 <li>New API function <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> for flattening to 1-D.</li>
+</ul></div>
+<div class="section level4">
+<h4 id="na-scanning-0-3-0">NA scanning<a class="anchor" aria-label="anchor" href="#na-scanning-0-3-0"></a></h4>
+<ul><li>
+<code><a href="../reference/AnvlArray.html">nv_array()</a></code>, <code><a href="../reference/AnvlArray.html">nv_scalar()</a></code>, <code><a href="../reference/as_array.html">as_array()</a></code>, and the <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code> / <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code> / <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code> / <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> methods for <code>AnvlArray</code> gained a <code>check</code> argument that opts into scanning for <code>NA</code> values during host -&gt; device and device -&gt; host transfers. See the “Gotchas” vignette.</li>
 </ul></div>
 <div class="section level4">
 <h4 id="misc-0-3-0">Misc<a class="anchor" aria-label="anchor" href="#misc-0-3-0"></a></h4>

@@ -37,6 +37,7 @@ Its type is determined by a data type and a shape."><meta property="og:image" co
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -90,10 +91,18 @@ Its type is determined by a data type and a shape.</p>
 <span>  shape <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  backend <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  byrow <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  byrow <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  check <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_scalar</span><span class="op">(</span><span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, ambiguous <span class="op">=</span> <span class="cn">NULL</span>, backend <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">nv_scalar</span><span class="op">(</span></span>
+<span>  <span class="va">data</span>,</span>
+<span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  backend <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  check <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_matrix</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
@@ -187,6 +196,15 @@ dimensions, fill the array in row-major order rather than the
 default column-major order, mirroring <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">base::matrix()</a></code>'s <code>byrow</code>.
 Only allowed when <code>data</code> is an R object — passing an existing
 <code>AnvlArray</code> together with <code>byrow = TRUE</code> is an error.</p></dd>
+
+
+<dt id="arg-check">check<a class="anchor" aria-label="anchor" href="#arg-check"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code>, error when <code>data</code> contains any <code>NA</code> values. XLA has no
+representation for missing values, so they are otherwise silently
+coerced to the closest available value of the target dtype (e.g. <code>NaN</code>
+for floats, the bit pattern <code>-2147483648</code> for <code>i32</code>, <code>TRUE</code> for
+<code>bool</code>). Defaults to <code>FALSE</code>. See the "Gotchas" vignette.</p></dd>
 
 
 <dt id="arg-nrow">nrow<a class="anchor" aria-label="anchor" href="#arg-nrow"></a></dt>
