@@ -48,10 +48,6 @@ new_counter <- function() {
 #' flatten(list(1:3, "hello"))
 #' @export
 flatten <- function(x) {
-  # NULL is an empty node: it contributes no leaves (see build_tree()).
-  if (is.null(x)) {
-    return(list())
-  }
   UseMethod("flatten")
 }
 
@@ -59,6 +55,12 @@ flatten <- function(x) {
 flatten.list <- function(x) {
   out <- lapply(unname(x), flatten)
   Reduce(c, out)
+}
+
+# NULL is an empty node: it contributes no leaves (see build_tree.NULL()).
+#' @export
+flatten.NULL <- function(x) {
+  list()
 }
 
 #' @export
@@ -90,12 +92,6 @@ flatten.default <- function(x) {
 #' unflatten(tree, flat)
 #' @export
 build_tree <- function(x, counter = NULL) {
-  # NULL becomes an empty node: no leaf index is allocated (the counter is
-  # left untouched), so it contributes nothing to the flat list while still
-  # recording its position in the tree.
-  if (is.null(x)) {
-    return(NullNode())
-  }
   UseMethod("build_tree")
 }
 
@@ -109,6 +105,14 @@ build_tree.list <- function(x, counter = NULL) {
     out,
     names(x)
   )
+}
+
+# NULL becomes an empty node: no leaf index is allocated (the counter is left
+# untouched), so it contributes nothing to the flat list while still recording
+# its position in the tree.
+#' @export
+build_tree.NULL <- function(x, counter = NULL) {
+  NullNode()
 }
 
 #' @export
@@ -173,16 +177,18 @@ build_tree.MarkedArgs <- function(x, counter = NULL) {
 #' unflatten(tree, list(10, 20, 30))
 #' @export
 unflatten <- function(node, x) {
-  # An empty node restores NULL without consuming a flat element.
-  if (inherits(node, "NullNode")) {
-    return(NULL)
-  }
   UseMethod("unflatten")
 }
 
 #' @export
 unflatten.LeafNode <- function(node, x) {
   x[[node$i]]
+}
+
+# An empty node restores NULL without consuming a flat element.
+#' @export
+unflatten.NullNode <- function(node, x) {
+  NULL
 }
 
 #' @export
@@ -227,15 +233,14 @@ MarkedListNode <- function(nodes, names, marked) {
 format.LeafNode <- function(x, ...) "*"
 
 #' @export
+format.NullNode <- function(x, ...) "NULL"
+
+#' @export
 format.ListNode <- function(x, ...) {
   if (length(x$nodes) == 0L) {
     return("list()")
   }
-  child_strs <- vapply(
-    x$nodes,
-    function(n) if (inherits(n, "NullNode")) "NULL" else format(n, ...),
-    character(1L)
-  )
+  child_strs <- vapply(x$nodes, format, character(1L), ...)
   parts <- if (is.null(x$names)) {
     child_strs
   } else {
@@ -257,6 +262,12 @@ print.ListNode <- function(x, ...) {
   invisible(x)
 }
 
+#' @export
+print.NullNode <- function(x, ...) {
+  cat(format(x, ...), "\n", sep = "")
+  invisible(x)
+}
+
 #' @title Tree Size
 #' @description
 #' Counts the number of leaf nodes in a tree. This equals the length of the
@@ -272,15 +283,17 @@ print.ListNode <- function(x, ...) {
 #' tree_size(build_tree(list(1)))
 #' @export
 tree_size <- function(x) {
-  if (inherits(x, "NullNode")) {
-    return(0L)
-  }
   UseMethod("tree_size")
 }
 
 #' @export
 tree_size.LeafNode <- function(x) {
   1L
+}
+
+#' @export
+tree_size.NullNode <- function(x) {
+  0L
 }
 
 #' @export
@@ -308,16 +321,18 @@ tree_size.MarkedListNode <- function(x) {
 #' @seealso [build_tree()], [flatten()]
 #' @export
 tree_path <- function(node, i, prefix = "") {
-  # An empty node holds no leaf, so it can never be the target.
-  if (inherits(node, "NullNode")) {
-    return(NULL)
-  }
   UseMethod("tree_path")
 }
 
 #' @export
 tree_path.LeafNode <- function(node, i, prefix = "") {
   prefix
+}
+
+# An empty node holds no leaf, so it can never be the target.
+#' @export
+tree_path.NullNode <- function(node, i, prefix = "") {
+  NULL
 }
 
 #' @export
@@ -389,11 +404,13 @@ filter_list_node <- function(tree, names) {
 #' @return A new `Node` with updated leaf indices.
 #' @export
 reindex_tree <- function(x, counter) {
-  # An empty node has no leaf index to reassign.
-  if (inherits(x, "NullNode")) {
-    return(NullNode())
-  }
   UseMethod("reindex_tree")
+}
+
+# An empty node has no leaf index to reassign.
+#' @export
+reindex_tree.NullNode <- function(x, counter) {
+  NullNode()
 }
 
 #' @export
@@ -533,11 +550,13 @@ tree_diff_impl <- function(a, b, prefix) {
   if (!identical(class(a), class(b))) {
     return(list(prefix = prefix, a = a, b = b))
   }
-  # Two empty nodes are structurally identical.
-  if (inherits(a, "NullNode")) {
-    return(NULL)
-  }
   UseMethod("tree_diff_impl")
+}
+
+# Two empty nodes are structurally identical.
+#' @export
+tree_diff_impl.NullNode <- function(a, b, prefix) {
+  NULL
 }
 
 #' @export
