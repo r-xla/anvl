@@ -1889,6 +1889,12 @@ nv_eigh <- prim_eigh
 #' @export
 nv_diag <- function(operand) {
   operand <- as_anvl_array(operand)
+  if (ndims(operand) != 1L) {
+    cli_abort(c(
+      "{.arg operand} must be a 1-D array.",
+      x = "Got shape {xlamisc::shapevec_repr(shape(operand))}."
+    ))
+  }
   n <- shape(operand)[1L]
   zeros <- nv_fill_like(operand, 0, shape = c(n, n))
   idx <- prim_reshape(nv_iota_like(operand, dim = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
@@ -2363,12 +2369,14 @@ nv_is_infinite <- function(operand) {
 #' @seealso [nv_sd()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
+#' nv_var(x)             # all dims -> scalar
 #' nv_var(x, dims = 1L)
 #' nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
 #' @export
-nv_var <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) {
+nv_var <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   assert_int(correction)
+  dims <- .resolve_reduce_dims(operand, dims)
   mean_bc <- nv_broadcast_to(
     nv_mean(operand, dims, drop = FALSE, nan_rm = nan_rm),
     shape(operand)
@@ -2401,10 +2409,10 @@ nv_var <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) 
 #' @seealso [nv_var()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
+#' nv_sd(x)              # all dims -> scalar
 #' nv_sd(x, dims = 1L)
 #' @export
-nv_sd <- function(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
+nv_sd <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   nv_sqrt(nv_var(operand, dims, drop, correction, nan_rm = nan_rm))
 }
 
@@ -2429,7 +2437,7 @@ nv_squeeze <- function(operand, dims = NULL) {
   if (is.null(dims)) {
     new_shape <- shp[shp != 1L]
   } else {
-    assert_integerish(dims, lower = 1L, upper = length(shp))
+    assert_integerish(dims, lower = 1L, upper = length(shp), unique = TRUE, any.missing = FALSE)
     for (d in dims) {
       if (shp[d] != 1L) {
         cli_abort("Cannot squeeze dimension {d} with size {shp[d]} (must be 1)")
