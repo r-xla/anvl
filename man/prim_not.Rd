@@ -29,7 +29,7 @@ Element-wise logical NOT.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_not]{stablehlo::hlo_not()}}.
+Lowers to \code{\link[stablehlo:hlo_not]{hlo_not()}}.
 }
 
 \examples{

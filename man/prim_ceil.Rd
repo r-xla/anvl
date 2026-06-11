@@ -29,7 +29,7 @@ Element-wise ceiling.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_ceil]{stablehlo::hlo_ceil()}}.
+Lowers to \code{\link[stablehlo:hlo_ceil]{hlo_ceil()}}.
 }
 
 \examples{

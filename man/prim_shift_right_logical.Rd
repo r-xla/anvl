@@ -29,7 +29,7 @@ Element-wise logical right bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_right_logical]{stablehlo::hlo_shift_right_logical()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_right_logical]{hlo_shift_right_logical()}}.
 }
 
 \examples{

@@ -16,7 +16,7 @@ RNG state (\code{ui64[2]}).}
 \item{n}{(\code{integer(1)})\cr
 Number of categories (samples integers \code{1} to \code{n}).}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 }
 \value{
@@ -36,10 +36,10 @@ result[[2]]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-Other rng: 
-\code{\link{nv_rbinom}()},
-\code{\link{nv_rng_state}()},
-\code{\link{nv_rnorm}()},
-\code{\link{nv_runif}()}
+Other rng:
+\code{\link[=nv_rbinom]{nv_rbinom()}},
+\code{\link[=nv_rng_state]{nv_rng_state()}},
+\code{\link[=nv_rnorm]{nv_rnorm()}},
+\code{\link[=nv_runif]{nv_runif()}}
 }
 \concept{rng}

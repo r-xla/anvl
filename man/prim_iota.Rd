@@ -10,7 +10,7 @@ prim_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 \item{dim}{(\code{integer(1)})\cr
 Dimension along which values increase (1-indexed).}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 
 \item{shape}{(\code{integer()})\cr
@@ -44,7 +44,7 @@ Creates an array with values increasing along the specified dimension.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_iota]{stablehlo::hlo_iota()}}.
+Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}.
 }
 
 \examples{

@@ -32,7 +32,7 @@ Output position \code{j} along \code{dim} equals the sum of input positions \cod
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce_window]{stablehlo::hlo_reduce_window()}} with \code{\link[stablehlo:hlo_add]{stablehlo::hlo_add()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} with \code{\link[stablehlo:hlo_add]{hlo_add()}} as the reducer.
 }
 
 \examples{

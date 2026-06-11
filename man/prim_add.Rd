@@ -30,7 +30,7 @@ Adds two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_add]{stablehlo::hlo_add()}}.
+Lowers to \code{\link[stablehlo:hlo_add]{hlo_add()}}.
 }
 
 \examples{

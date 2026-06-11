@@ -38,7 +38,7 @@ Performs logical OR along the specified dimensions.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{stablehlo::hlo_reduce()}} with \code{\link[stablehlo:hlo_or]{stablehlo::hlo_or()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_or]{hlo_or()}} as the reducer.
 }
 
 \examples{

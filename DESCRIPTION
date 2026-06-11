@@ -43,7 +43,6 @@ VignetteBuilder:
 Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
-RoxygenNote: 7.3.3
 Collate:
     'aaa.R'
     'array.R'
@@ -82,3 +81,4 @@ Collate:
     'serialize.R'
     'stablehlo.R'
     'zzz.R'
+Config/roxygen2/version: 8.0.0

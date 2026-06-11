@@ -28,7 +28,7 @@ Element-wise digamma function (logarithmic derivative of the gamma function).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_digamma]{stablehlo::hlo_digamma()}}.
+Lowers to \code{\link[stablehlo:hlo_digamma]{hlo_digamma()}}.
 }
 
 \examples{

@@ -13,7 +13,7 @@ Scalar value to fill the array with.}
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 
 \item{ambiguous}{(\code{logical(1)})\cr
@@ -45,7 +45,7 @@ efficiently represented in the compiled program, while the latter uses
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_constant]{stablehlo::hlo_tensor()}}.
+Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
 }
 
 \examples{

@@ -40,7 +40,7 @@ dimensions and batching.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dot_general]{stablehlo::hlo_dot_general()}}.
+Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}.
 }
 
 \examples{

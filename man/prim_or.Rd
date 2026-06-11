@@ -30,7 +30,7 @@ Element-wise logical OR.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_or]{stablehlo::hlo_or()}}.
+Lowers to \code{\link[stablehlo:hlo_or]{hlo_or()}}.
 }
 
 \examples{

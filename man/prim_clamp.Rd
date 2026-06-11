@@ -35,7 +35,7 @@ i.e. \code{max(min_val, min(operand, max_val))}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_clamp]{stablehlo::hlo_clamp()}}.
+Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}.
 }
 
 \examples{

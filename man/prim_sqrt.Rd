@@ -29,7 +29,7 @@ Element-wise square root.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sqrt]{stablehlo::hlo_sqrt()}}.
+Lowers to \code{\link[stablehlo:hlo_sqrt]{hlo_sqrt()}}.
 }
 
 \examples{

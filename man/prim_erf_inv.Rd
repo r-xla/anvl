@@ -28,7 +28,7 @@ Element-wise inverse error function (the inverse of \code{erf} on \verb{(-1, 1)}
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_erf_inv]{stablehlo::hlo_erf_inv()}}.
+Lowers to \code{\link[stablehlo:hlo_erf_inv]{hlo_erf_inv()}}.
 }
 
 \examples{

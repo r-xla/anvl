@@ -28,7 +28,7 @@ Element-wise inverse cosine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_acos]{stablehlo::hlo_acos()}}.
+Lowers to \code{\link[stablehlo:hlo_acos]{hlo_acos()}}.
 }
 
 \examples{

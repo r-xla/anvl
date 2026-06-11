@@ -28,7 +28,7 @@ Element-wise inverse hyperbolic cosine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_acosh]{stablehlo::hlo_acosh()}}.
+Lowers to \code{\link[stablehlo:hlo_acosh]{hlo_acosh()}}.
 }
 
 \examples{

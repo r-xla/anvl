@@ -35,7 +35,7 @@ For each element, returns the corresponding element from \code{true_value} where
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_select]{stablehlo::hlo_select()}}.
+Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}.
 }
 
 \examples{

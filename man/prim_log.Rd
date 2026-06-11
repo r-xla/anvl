@@ -29,7 +29,7 @@ Element-wise natural logarithm.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_log]{stablehlo::hlo_log()}}.
+Lowers to \code{\link[stablehlo:hlo_log]{hlo_log()}}.
 }
 
 \examples{

@@ -39,7 +39,7 @@ Multiplies array elements along the specified dimensions.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{stablehlo::hlo_reduce()}} with \code{\link[stablehlo:hlo_multiply]{stablehlo::hlo_multiply()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}} as the reducer.
 }
 
 \examples{

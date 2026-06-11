@@ -29,7 +29,7 @@ Element-wise exponential.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_exponential]{stablehlo::hlo_exponential()}}.
+Lowers to \code{\link[stablehlo:hlo_exponential]{hlo_exponential()}}.
 }
 
 \examples{

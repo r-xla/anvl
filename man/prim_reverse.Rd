@@ -32,7 +32,7 @@ Reverses the order of elements along specified dimensions.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reverse]{stablehlo::hlo_reverse()}}.
+Lowers to \code{\link[stablehlo:hlo_reverse]{hlo_reverse()}}.
 }
 
 \examples{

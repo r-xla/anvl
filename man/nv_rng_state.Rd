@@ -27,10 +27,10 @@ state
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-Other rng: 
-\code{\link{nv_rbinom}()},
-\code{\link{nv_rdunif}()},
-\code{\link{nv_rnorm}()},
-\code{\link{nv_runif}()}
+Other rng:
+\code{\link[=nv_rbinom]{nv_rbinom()}},
+\code{\link[=nv_rdunif]{nv_rdunif()}},
+\code{\link[=nv_rnorm]{nv_rnorm()}},
+\code{\link[=nv_runif]{nv_runif()}}
 }
 \concept{rng}

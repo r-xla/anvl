@@ -67,7 +67,7 @@ nv_empty_like(
 \item{data}{(any)\cr
 \code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
 The default (\code{NULL}) uses the current backend's default dtype:
 \code{f32} for numeric data on \code{"xla"}, \code{f64} for numeric data on \code{"quickr"},

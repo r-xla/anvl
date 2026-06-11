@@ -30,7 +30,7 @@ Element-wise logical AND.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_and]{stablehlo::hlo_and()}}.
+Lowers to \code{\link[stablehlo:hlo_and]{hlo_and()}}.
 }
 
 \examples{

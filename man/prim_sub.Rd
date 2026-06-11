@@ -30,7 +30,7 @@ Subtracts two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_subtract]{stablehlo::hlo_subtract()}}.
+Lowers to \code{\link[stablehlo:hlo_subtract]{hlo_subtract()}}.
 }
 
 \examples{

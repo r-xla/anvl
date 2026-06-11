@@ -39,7 +39,7 @@ Sums array elements along the specified dimensions.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{stablehlo::hlo_reduce()}} with \code{\link[stablehlo:hlo_add]{stablehlo::hlo_add()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_add]{hlo_add()}} as the reducer.
 }
 
 \examples{

@@ -31,7 +31,7 @@ Amount of padding to add between elements in each dimension.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as \code{operand}.
-For the output shape see the underlying stablehlo documentation (\code{\link[stablehlo:hlo_pad]{stablehlo::hlo_pad()}}).
+For the output shape see the underlying stablehlo documentation (\code{\link[stablehlo:hlo_pad]{hlo_pad()}}).
 It is ambiguous if the input is ambiguous.
 }
 \description{
@@ -48,7 +48,7 @@ Pads an array with a given padding value.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_pad]{stablehlo::hlo_pad()}}.
+Lowers to \code{\link[stablehlo:hlo_pad]{hlo_pad()}}.
 }
 
 \examples{

@@ -28,7 +28,7 @@ Element-wise inverse tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_atan]{stablehlo::hlo_atan()}}.
+Lowers to \code{\link[stablehlo:hlo_atan]{hlo_atan()}}.
 }
 
 \examples{

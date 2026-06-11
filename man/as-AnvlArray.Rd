@@ -23,7 +23,7 @@ Array to coerce.}
 \item{...}{Unused.}
 
 \item{mode}{(\code{character(1)})\cr
-For \code{as.vector()} only. See \code{\link[base:vector]{base::as.vector()}}. Defaults to \code{"any"},
+For \code{as.vector()} only. See \code{\link[base:as.vector]{base::as.vector()}}. Defaults to \code{"any"},
 meaning the natural R type for the array's dtype.}
 }
 \value{
