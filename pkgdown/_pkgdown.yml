@@ -307,6 +307,8 @@ reference:
     desc: Code transformations
     contents:
       - jit
+      - jit_roclet
+      - apply_jit_registry
       - gradient
       - value_and_gradient
 
