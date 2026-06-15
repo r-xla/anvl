@@ -57,6 +57,12 @@ flatten.list <- function(x) {
   Reduce(c, out)
 }
 
+# NULL is an empty node: it contributes no leaves (see build_tree.NULL()).
+#' @export
+flatten.NULL <- function(x) {
+  list()
+}
+
 #' @export
 flatten.default <- function(x) {
   list(x)
@@ -99,6 +105,14 @@ build_tree.list <- function(x, counter = NULL) {
     out,
     names(x)
   )
+}
+
+# NULL becomes an empty node: no leaf index is allocated (the counter is left
+# untouched), so it contributes nothing to the flat list while still recording
+# its position in the tree.
+#' @export
+build_tree.NULL <- function(x, counter = NULL) {
+  NullNode()
 }
 
 #' @export
@@ -171,6 +185,12 @@ unflatten.LeafNode <- function(node, x) {
   x[[node$i]]
 }
 
+# An empty node restores NULL without consuming a flat element.
+#' @export
+unflatten.NullNode <- function(node, x) {
+  NULL
+}
+
 #' @export
 unflatten.ListNode <- function(node, x) {
   stats::setNames(lapply(node$nodes, unflatten, x = x), node$names)
@@ -178,6 +198,14 @@ unflatten.ListNode <- function(node, x) {
 
 LeafNode <- function(i) {
   structure(list(i = i), class = c("LeafNode", "Node"))
+}
+
+# An empty node, used to represent NULL: it holds no leaf and contributes
+# nothing to the flat list, but is preserved in the tree (and therefore in the
+# jit cache key) so NULL arguments round-trip through unflatten(). Mirrors how
+# JAX treats `None` as an empty pytree node.
+NullNode <- function() {
+  structure(list(), class = c("NullNode", "Node"))
 }
 
 ListNode <- function(nodes, names) {
@@ -203,6 +231,9 @@ MarkedListNode <- function(nodes, names, marked) {
 
 #' @export
 format.LeafNode <- function(x, ...) "*"
+
+#' @export
+format.NullNode <- function(x, ...) "NULL"
 
 #' @export
 format.ListNode <- function(x, ...) {
@@ -231,6 +262,12 @@ print.ListNode <- function(x, ...) {
   invisible(x)
 }
 
+#' @export
+print.NullNode <- function(x, ...) {
+  cat(format(x, ...), "\n", sep = "")
+  invisible(x)
+}
+
 #' @title Tree Size
 #' @description
 #' Counts the number of leaf nodes in a tree. This equals the length of the
@@ -252,6 +289,11 @@ tree_size <- function(x) {
 #' @export
 tree_size.LeafNode <- function(x) {
   1L
+}
+
+#' @export
+tree_size.NullNode <- function(x) {
+  0L
 }
 
 #' @export
@@ -285,6 +327,12 @@ tree_path <- function(node, i, prefix = "") {
 #' @export
 tree_path.LeafNode <- function(node, i, prefix = "") {
   prefix
+}
+
+# An empty node holds no leaf, so it can never be the target.
+#' @export
+tree_path.NullNode <- function(node, i, prefix = "") {
+  NULL
 }
 
 #' @export
@@ -357,6 +405,12 @@ filter_list_node <- function(tree, names) {
 #' @export
 reindex_tree <- function(x, counter) {
   UseMethod("reindex_tree")
+}
+
+# An empty node has no leaf index to reassign.
+#' @export
+reindex_tree.NullNode <- function(x, counter) {
+  NullNode()
 }
 
 #' @export
@@ -497,6 +551,12 @@ tree_diff_impl <- function(a, b, prefix) {
     return(list(prefix = prefix, a = a, b = b))
   }
   UseMethod("tree_diff_impl")
+}
+
+# Two empty nodes are structurally identical.
+#' @export
+tree_diff_impl.NullNode <- function(a, b, prefix) {
+  NULL
 }
 
 #' @export
