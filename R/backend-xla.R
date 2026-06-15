@@ -320,7 +320,7 @@ AnvlBackendXla <- function() {
     dtype = function(x) tengen::dtype(x$data),
     shape = function(x) tengen::shape(x$data),
     ambiguous = function(x) x$ambiguous,
-    as_array = function(x) tengen::as_array(x$data),
+    as_array = function(x, check) tengen::as_array(x$data, check = check),
     as_raw = function(x, row_major) tengen::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),
     device = function(x) device(x$data),

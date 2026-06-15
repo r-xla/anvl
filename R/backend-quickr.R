@@ -162,7 +162,7 @@ AnvlBackendQuickr <- function() {
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
     ambiguous = function(x) x$ambiguous,
-    as_array = function(x) x$data,
+    as_array = function(x, check) x$data,
     as_raw = function(x, row_major) as.raw(x$data),
     platform = function(x) "cpu",
     device = function(x) quickr_device("cpu"),

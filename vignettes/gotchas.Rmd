@@ -1,0 +1,159 @@
+---
+title: "Gotchas"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Gotchas}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+This vignette lists various things to be aware of, specifically in relation to base R.
+
+```{r, include = FALSE}
+library(anvl)
+```
+
+## Row-major vs column-major ordering
+
+R stores matrices and arrays in *column-major* order, while {anvl} (following XLA) uses *row-major* order.
+For most operations, this is an internal implementation detail that does not change the semantics.
+However, for reshaping operations such as `nv_flatten()` there is a difference.
+
+Consider the 2x2 matrix below:
+
+```{r}
+m <- matrix(1:4, nrow = 2)
+m
+```
+
+In base R, `as.vector()` flattens it column-by-column, so we get `1, 2, 3, 4`:
+
+```{r}
+as.vector(m)
+```
+
+In {anvl}, reshaping to a length-4 vector traverses the data row-by-row, so we get `1, 3, 2, 4`:
+
+```{r}
+nv_flatten(m)
+```
+
+If you need column-major flattening in {anvl}, transpose first:
+
+```{r}
+nv_flatten(t(m))
+```
+
+## No recycling
+
+Base R *recycles* the shorter operand when two vectors of different lengths are combined elementwise:
+
+```{r}
+c(1, 2, 3, 4) + c(1, 2)
+```
+
+{anvl} only auto-broadcasts *scalars* (operands with shape `integer()`).
+Adding a scalar to an array works as you would expect:
+
+```{r}
+nv_array(1:4) + 10L
+```
+
+But combining two non-scalar arrays of different shapes errors, even when one shape is a "tile" of the other:
+
+```{r, error = TRUE}
+nv_array(1:4) + nv_array(1:2)
+```
+
+When two non-scalar arrays differ only by size-1 dimensions (numpy-style broadcasting, e.g. shape `(2, 3)` and `(1, 3)`), use `nv_broadcast_arrays()` to align them explicitly first:
+
+```{r}
+a <- nv_matrix(1:6, nrow = 2)
+shape(a)
+b <- nv_matrix(c(10, 20, 30), nrow = 1)
+shape(b)
+xs <- nv_broadcast_arrays(a, b)
+lapply(xs, shape)
+xs[[1]] + xs[[2]]
+```
+
+Note that even `nv_broadcast_arrays()` cannot replicate R's recycling for shapes like `(4)` and `(2)` -- the shapes must be broadcast-compatible in the numpy sense.
+
+## No `NA`s
+
+R has a dedicated missing-value marker (`NA`) for every atomic type.
+{anvl} arrays do not -- there is no representation of "missing" at the XLA level, only `NaN` for floating point numbers.
+When you convert R values containing `NA` into an `AnvlArray`, the `NA`s are silently turned into `NaN`s.
+
+```{r}
+nv_array(NA_real_)
+```
+
+```{r}
+nv_array(c(1, NA, 3))
+```
+
+Round-tripping back to R is not guaranteed to produce `NA`, but can also yield `NaN`:
+
+```{r}
+as_array(nv_array(c(1, NA, 3)))
+```
+
+For other data types, the situation is even worse, especially for integers, where R uses the smallest possible value to represent missingness:
+
+```{r}
+nv_scalar(NA_integer_)
+```
+
+However, when you convert it back, you get a missing value again:
+
+```{r}
+as.integer(nv_scalar(NA_integer_))
+```
+
+When creating logicals, `NA` will be interpreted as `TRUE`:
+
+```{r}
+nv_scalar(NA)
+as.logical(nv_scalar(NA))
+```
+
+In order to avoid these pitfals, array creators such as `nv_array()` have a `check` argument to prevent the above problems.
+It is `FALSE` by default, because it needs to scan the complete data.
+
+```{r, error = TRUE}
+nv_array(c(1, NA, 3), check = TRUE)
+```
+
+The same flag is available for converters like `as_array()`:
+
+```{r, error = TRUE}
+as_array(nv_scalar(NA_integer_), check = TRUE)
+```
+
+## No unsigned integers
+
+R's `integer` type is signed 32-bit (range `-2147483648` to `2147483647`).
+{anvl} also exposes unsigned integer dtypes (`ui8`, `ui16`, `ui32`, `ui64`) backed by XLA, but R has no native counterpart.
+For values that fit into R's signed integer range, the round-trip works as expected:
+
+```{r}
+as_array(nv_array(c(0L, 200L, 255L), dtype = "ui8"))
+```
+
+Because `ui32` does not fit into R's native integer type, it will be converted to `bit64::integer64` data type:
+
+
+```{r}
+big <- nv_array(2147483647L, dtype = "ui32") + 1L
+as_array(big)
+```
+
+However, for `ui64`, we also convert to `integer64`, which does not cover the whole range, so overflow is possible, but can be detected via the `check` flag:
+
+```{r, error = TRUE}
+big <- nv_array(0L, dtype = "ui64") - 1L
+big
+as_array(big)
+as_array(big, check = TRUE)
+```

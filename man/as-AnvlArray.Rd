@@ -8,17 +8,20 @@
 \alias{as.vector.AnvlArray}
 \title{Coerce AnvlArray to an R Vector}
 \usage{
-\method{as.double}{AnvlArray}(x, ...)
+\method{as.double}{AnvlArray}(x, check = FALSE, ...)
 
-\method{as.integer}{AnvlArray}(x, ...)
+\method{as.integer}{AnvlArray}(x, check = FALSE, ...)
 
-\method{as.logical}{AnvlArray}(x, ...)
+\method{as.logical}{AnvlArray}(x, check = FALSE, ...)
 
 \method{as.vector}{AnvlArray}(x, mode = "any")
 }
 \arguments{
 \item{x}{(\code{\link{AnvlArray}})\cr
 Array to coerce.}
+
+\item{check}{(\code{logical(1)})\cr
+Forwarded to \code{\link[=as_array]{as_array()}}; see there for details.}
 
 \item{...}{Unused.}
 

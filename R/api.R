@@ -101,7 +101,7 @@ nv_broadcast_scalars <- function(...) {
 
   target_shape <- non_scalar_shapes[[1L]]
   if (!all(vapply(non_scalar_shapes, identical, logical(1L), target_shape))) {
-    shapes <- paste0(sapply(shapes, shape2string), sep = ", ")
+    shapes <- paste0(sapply(shapes, shape2string), collapse = ", ")
     cli_abort(
       "All non-scalar arrays must have the same shape, but got {shapes}. Use {.fn nv_broadcast_arrays} for general broadcasting." # nolint
     )

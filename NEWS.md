@@ -1,5 +1,9 @@
 # anvl (development version)
 
+* `NULL` is now treated as an empty node when flattening and unflattening trees.
+  It contributes no leaves but is preserved structurally, so functions with
+  optional arguments (e.g. `function(x, y = NULL)`) round-trip correctly.
+
 # anvl 0.3.0
 
 ## Breaking Changes
@@ -72,6 +76,14 @@
 * New API functions `nv_rbind()` and `nv_cbind()` and corresponding
   `rbind()` / `cbind()` generics.
 * New API function `nv_flatten()` for flattening to 1-D.
+
+### NA scanning
+
+* `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
+  `as.double()` / `as.logical()` / `as.vector()` methods for
+  `AnvlArray` gained a `check` argument that opts into scanning for
+  `NA` values during host -> device and device -> host transfers. See
+  the "Gotchas" vignette.
 
 ### Misc
 

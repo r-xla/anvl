@@ -39,6 +39,8 @@ navbar:
         href: articles/random-numbers.html
       - text: Type Promotion
         href: articles/type-promotion.html
+      - text: Gotchas
+        href: articles/gotchas.html
       - text: Efficiency
         href: articles/efficiency.html
       - text: FAQ
