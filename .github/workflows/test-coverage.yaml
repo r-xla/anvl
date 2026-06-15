@@ -13,8 +13,6 @@ jobs:
     uses: r-xla/actions/.github/workflows/test-coverage.yaml@main
     with:
       extra-repositories: 'https://r-xla.r-universe.dev https://t-kalinowski.r-universe.dev'
-      # The test suite is opt-in (skipped by default, e.g. on CRAN) and the
-      # plugin download must not prompt in non-interactive CI.
       env-vars: |
         ANVL_TEST=1
         PJRT_INSTALL=1
