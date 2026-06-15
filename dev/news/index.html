@@ -76,7 +76,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
-</div>
+<ul><li>
+<code>NULL</code> is now treated as an empty node when flattening and unflattening trees. It contributes no leaves but is preserved structurally, so functions with optional arguments (e.g. <code>function(x, y = NULL)</code>) round-trip correctly.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="anvl-030">anvl 0.3.0<a class="anchor" aria-label="anchor" href="#anvl-030"></a></h2>
 <div class="section level3">
