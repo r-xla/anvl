@@ -27,6 +27,40 @@ test_that("(un)flatten lists", {
   )
 })
 
+test_that("NULL is an empty node (no leaves, round-trips)", {
+  # NULL contributes no leaves to the flat list...
+  expect_equal(flatten(NULL), list())
+  expect_equal(flatten(list(a = 1, b = NULL, c = 2)), list(1, 2))
+
+  # ...but is preserved in the tree and restored by unflatten.
+  x <- list(a = 1, b = NULL, c = 2)
+  tree <- build_tree(x)
+  expect_equal(tree_size(tree), 2L)
+  expect_equal(unflatten(tree, flatten(x)), x)
+
+  # nested NULL
+  y <- list(p = list(1, NULL), q = NULL)
+  expect_equal(flatten(y), list(1))
+  expect_equal(unflatten(build_tree(y), flatten(y)), y)
+
+  # top-level NULL
+  expect_equal(unflatten(build_tree(NULL), flatten(NULL)), NULL)
+})
+
+test_that("NULL position is captured structurally (distinct trees)", {
+  # f(x, NULL) and f(NULL, x) must not collapse to the same structure,
+  # otherwise the jit cache could not tell them apart.
+  expect_false(identical(
+    build_tree(list(1, NULL)),
+    build_tree(list(NULL, 1))
+  ))
+  # but two structurally identical NULL-bearing trees match
+  expect_true(identical(
+    build_tree(list(a = 1, b = NULL)),
+    build_tree(list(a = 1, b = NULL))
+  ))
+})
+
 describe("map_tree", {
   it("preserves structure and applies f to leaves", {
     # leaf input

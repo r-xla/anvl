@@ -1,5 +1,9 @@
 # anvl (development version)
 
+* `NULL` is now treated as an empty node when flattening and unflattening trees.
+  It contributes no leaves but is preserved structurally, so functions with
+  optional arguments (e.g. `function(x, y = NULL)`) round-trip correctly.
+
 # anvl 0.3.0
 
 ## Breaking Changes
