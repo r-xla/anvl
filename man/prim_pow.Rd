@@ -30,7 +30,7 @@ Raises lhs to the power of rhs element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_power]{stablehlo::hlo_power()}}.
+Lowers to \code{\link[stablehlo:hlo_power]{hlo_power()}}.
 }
 
 \examples{

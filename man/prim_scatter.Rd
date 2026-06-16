@@ -114,7 +114,7 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_scatter]{stablehlo::hlo_scatter()}}.
+Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}.
 }
 
 \examples{

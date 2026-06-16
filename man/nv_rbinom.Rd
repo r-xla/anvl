@@ -19,7 +19,7 @@ Number of trials.}
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 }
 \value{
@@ -39,10 +39,10 @@ result[[2]]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-Other rng: 
-\code{\link{nv_rdunif}()},
-\code{\link{nv_rng_state}()},
-\code{\link{nv_rnorm}()},
-\code{\link{nv_runif}()}
+Other rng:
+\code{\link[=nv_rdunif]{nv_rdunif()}},
+\code{\link[=nv_rng_state]{nv_rng_state()}},
+\code{\link[=nv_rnorm]{nv_rnorm()}},
+\code{\link[=nv_runif]{nv_runif()}}
 }
 \concept{rng}

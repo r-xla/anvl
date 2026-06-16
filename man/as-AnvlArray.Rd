@@ -8,11 +8,11 @@
 \alias{as.vector.AnvlArray}
 \title{Coerce AnvlArray to an R Vector}
 \usage{
-\method{as.double}{AnvlArray}(x, ...)
+\method{as.double}{AnvlArray}(x, check = FALSE, ...)
 
-\method{as.integer}{AnvlArray}(x, ...)
+\method{as.integer}{AnvlArray}(x, check = FALSE, ...)
 
-\method{as.logical}{AnvlArray}(x, ...)
+\method{as.logical}{AnvlArray}(x, check = FALSE, ...)
 
 \method{as.vector}{AnvlArray}(x, mode = "any")
 }
@@ -20,10 +20,13 @@
 \item{x}{(\code{\link{AnvlArray}})\cr
 Array to coerce.}
 
+\item{check}{(\code{logical(1)})\cr
+Forwarded to \code{\link[=as_array]{as_array()}}; see there for details.}
+
 \item{...}{Unused.}
 
 \item{mode}{(\code{character(1)})\cr
-For \code{as.vector()} only. See \code{\link[base:vector]{base::as.vector()}}. Defaults to \code{"any"},
+For \code{as.vector()} only. See \code{\link[base:as.vector]{base::as.vector()}}. Defaults to \code{"any"},
 meaning the natural R type for the array's dtype.}
 }
 \value{

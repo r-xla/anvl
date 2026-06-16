@@ -38,7 +38,7 @@ For other dimensions, transpose so the target dimension is last, call
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_top_k]{stablehlo::hlo_top_k()}}.
+Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}.
 }
 
 \examples{

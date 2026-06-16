@@ -13,7 +13,7 @@ Shape.}
 \item{initial_state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 
 \item{mu}{(\code{\link{arrayish}})\cr
@@ -43,10 +43,10 @@ result[[2]]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-Other rng: 
-\code{\link{nv_rbinom}()},
-\code{\link{nv_rdunif}()},
-\code{\link{nv_rng_state}()},
-\code{\link{nv_runif}()}
+Other rng:
+\code{\link[=nv_rbinom]{nv_rbinom()}},
+\code{\link[=nv_rdunif]{nv_rdunif()}},
+\code{\link[=nv_rng_state]{nv_rng_state()}},
+\code{\link[=nv_runif]{nv_runif()}}
 }
 \concept{rng}

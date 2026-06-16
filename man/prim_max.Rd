@@ -30,7 +30,7 @@ Element-wise maximum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_maximum]{stablehlo::hlo_maximum()}}.
+Lowers to \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}}.
 }
 
 \examples{

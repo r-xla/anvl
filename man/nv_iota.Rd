@@ -21,7 +21,7 @@ nv_iota_like(
 \item{dim}{(\code{integer(1)})\cr
 Dimension along which values increase.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 
 \item{shape}{(\code{integer()})\cr

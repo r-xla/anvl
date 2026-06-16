@@ -20,7 +20,7 @@ nv_cbind(...)
 \item{...}{(\code{\link{arrayish}})\cr
 Arrays to combine. Inputs are promoted to a common data type.}
 
-\item{deparse.level}{Ignored. Kept for compatibility with \code{\link[base:cbind]{base::rbind()}}
+\item{deparse.level}{Ignored. Kept for compatibility with \code{\link[base:rbind]{base::rbind()}}
 and \code{\link[base:cbind]{base::cbind()}}.}
 }
 \value{
@@ -39,7 +39,7 @@ Each input is then handled according to its rank:
 }
 }
 \section{Differences from base R}{
-\code{\link[base:cbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[=array]{array()}} of rank > 2
+\code{\link[base:rbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[=array]{array()}} of rank > 2
 flatten the trailing dimensions into the column axis (so a \code{c(2, 3, 4)}
 array becomes a \verb{2 x 12} matrix). \code{nv_rbind} and \code{nv_cbind} instead
 preserve all non-stacked dimensions: combining two \code{c(2, 3, 4)} arrays

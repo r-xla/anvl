@@ -1,6 +1,6 @@
 Package: anvl
 Title: Accelerated Array Computing and Automatic Differentiation
-Version: 0.2.0.9000
+Version: 0.3.0.9000
 Authors@R: c(
     person("Sebastian", "Fischer", , "seb.fischer@tutamail.com", role = c("cre", "aut"),
            comment = c(ORCID = "https://orcid.org/0000-0002-9609-3197")),
@@ -26,30 +26,26 @@ Imports:
     checkmate,
     cli,
     methods,
-    pjrt (>= 0.3.0),
+    pjrt (>= 0.4.0),
     rlang,
     safetensors (>= 0.2.0),
-    stablehlo (>= 0.2.0.9000),
+    stablehlo (>= 0.3.0),
     tengen (>= 0.2.0),
     withr,
-    xlamisc (>= 0.2.0)
+    xlamisc (>= 0.3.0)
 Suggests:
     knitr,
     quarto,
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
-Remotes:
-    r-xla/stablehlo,
-    r-xla/pjrt
 Additional_repositories:
     https://r-xla.r-universe.dev
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
 Collate:
     'aaa.R'
     'array.R'
@@ -77,6 +73,8 @@ Collate:
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
+    'jit-registry.R'
+    'jit-roclet.R'
     'promotion.R'
     'quickr.R'
     'reexports.R'
@@ -86,3 +84,4 @@ Collate:
     'serialize.R'
     'stablehlo.R'
     'zzz.R'
+Config/roxygen2/version: 8.0.0

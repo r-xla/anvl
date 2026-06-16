@@ -39,7 +39,7 @@ Otherwise, no state is maintained between iterations.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_while]{stablehlo::hlo_while()}}.
+Lowers to \code{\link[stablehlo:hlo_while]{hlo_while()}}.
 }
 
 \examples{

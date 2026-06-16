@@ -221,25 +221,31 @@ prim_cumprod[["stablehlo"]] <- function(operand, dim) {
 
   cmp <- if (is_max) prim_gt else prim_lt
   is_float <- inherits(operand$value_type$type$dtype, "FloatType")
-  # Strict comparison: ties fall through to rhs, which has the larger index
-  # (li < ri — reductor is associative but not assumed commutative, same as
-  # in .stablehlo_arg_extreme), giving last-occurrence tiebreak matching torch.
+  # Last-occurrence tiebreak: on equal values pick the larger index. XLA's
+  # reduce_window is associative but applied in an implementation-defined order
+  # (and is not commutative), so we cannot assume the rhs holds the larger
+  # index -- on CUDA the accumulator index can exceed the incoming one. We
+  # therefore break ties explicitly on `li > ri` (same fix as
+  # .stablehlo_arg_extreme, mirrored for last-occurrence).
   #
   # For float inputs the reducer is NaN-propagating: if either side is NaN,
   # the result is NaN. Without this, XLA's comparison-based max/min gives
   # `max(state, NaN) = NaN` then `max(NaN, next) = next`, which makes the
   # running extreme restart after every NaN — useless for users.
+  lhs_wins_fn <- function(lv, li, rv, ri) {
+    nv_or(cmp(lv, rv), nv_and(prim_eq(lv, rv), prim_gt(li, ri)))
+  }
   reductor <- if (is_float) {
     function(lv, li, rv, ri) {
       either_nan <- prim_or(prim_ne(lv, lv), prim_ne(rv, rv))
-      lhs_wins <- cmp(lv, rv)
+      lhs_wins <- lhs_wins_fn(lv, li, rv, ri)
       out_v <- nv_ifelse(either_nan, NaN, nv_ifelse(lhs_wins, lv, rv))
       out_i <- nv_ifelse(lhs_wins, li, ri)
       list(out_v, out_i)
     }
   } else {
     function(lv, li, rv, ri) {
-      lhs_wins <- cmp(lv, rv)
+      lhs_wins <- lhs_wins_fn(lv, li, rv, ri)
       list(nv_ifelse(lhs_wins, lv, rv), nv_ifelse(lhs_wins, li, ri))
     }
   }
@@ -306,12 +312,14 @@ prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
   init_i <- hlo_scalar(0L, dtype = "i32", func = operand$func)
 
-  # Reductor: pick lhs unless rhs is strictly better.
-  # For ties, we pick li (which we know is < ri, although reductor is applied in random order and
-  # thus assumed to be associative, it does not have to be commutative)
+  # Reductor: pick lhs unless rhs is strictly better. On a tie, pick the
+  # smaller index. XLA's reduce is associative but may be applied in any order
+  # (and is not commutative), so we cannot assume li < ri -- on CUDA the
+  # accumulator index can exceed the incoming index. We therefore break ties
+  # explicitly on `ri < li` rather than relying on argument order.
   cmp <- if (direction == "GT") prim_gt else prim_lt
   reductor <- function(lv, li, rv, ri) {
-    rhs_better <- cmp(rv, lv)
+    rhs_better <- nv_or(cmp(rv, lv), nv_and(prim_eq(rv, lv), prim_lt(ri, li)))
     list(nv_ifelse(rhs_better, rv, lv), nv_ifelse(rhs_better, ri, li))
   }
   body <- .r_reductor_to_hlo_func(

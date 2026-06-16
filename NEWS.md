@@ -1,5 +1,11 @@
 # anvl (development version)
 
+* `NULL` is now treated as an empty node when flattening and unflattening trees.
+  It contributes no leaves but is preserved structurally, so functions with
+  optional arguments (e.g. `function(x, y = NULL)`) round-trip correctly.
+
+# anvl 0.3.0
+
 ## Breaking Changes
 
 * `nv_empty()` / `nv_empty_like()` return arrays with unspecified
@@ -81,6 +87,14 @@
   `rbind()` / `cbind()` generics.
 * New API function `nv_flatten()` for flattening to 1-D.
 
+### NA scanning
+
+* `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
+  `as.double()` / `as.logical()` / `as.vector()` methods for
+  `AnvlArray` gained a `check` argument that opts into scanning for
+  `NA` values during host -> device and device -> host transfers. See
+  the "Gotchas" vignette.
+
 ### Misc
 
 * New `AnvlArray` -> R `vector` converters: `as.numeric()`,
@@ -89,9 +103,6 @@
   has finished.
 * New tree utilities `map_tree()` and `pmap_tree()` for applying
   functions leaf-wise over (possibly nested) lists.
-* `mean()` and `median()` now error when called with `na.rm = TRUE`,
-  since anvl arrays do not carry `NA`s. `mean()` also rejects non-zero
-  `trim`.
 * Added support for `range` generic.
 * Improved NaN handling across various primitives and API functions.
 
@@ -110,12 +121,6 @@
   `NaN` / `Inf` gradients when the input contains zeros.
 * The CI now actually runs the torch-comparison tests.
 * `nv_runif()` not properly respects the `lower` argument.
-* The overloaded `%%` operator now calls the new `nv_mod()` to be consistent
-  with base R.
-* The reverse rule for `prim_reduce_prod()` no longer produces `NaN`/`Inf`
-  gradients when the input contains zeros.
-* The CI now actually runs the torch-comparison tests
-
 
 # anvl 0.2.0
 

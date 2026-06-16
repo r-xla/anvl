@@ -32,7 +32,7 @@ shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
 
 \section{StableHLO}{
 
-Lowers to a \code{"geqrf"} + \code{"orgqr"} \code{\link[stablehlo:hlo_custom_call]{stablehlo::hlo_custom_call()}} pair
+Lowers to a \code{"geqrf"} + \code{"orgqr"} \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} pair
 (backed by LAPACK on CPU and cuSOLVER on CUDA) + postprocessing.
 }
 

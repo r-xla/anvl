@@ -106,7 +106,7 @@ the effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_gather]{stablehlo::hlo_gather()}}.
+Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}.
 }
 
 \examples{

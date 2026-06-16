@@ -38,7 +38,7 @@ Dimensions before the last two are batch dimensions.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cholesky]{stablehlo::hlo_cholesky()}}.
+Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}.
 }
 
 \examples{

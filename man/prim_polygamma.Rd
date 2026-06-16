@@ -31,7 +31,7 @@ typically holds non-negative integer values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_polygamma]{stablehlo::hlo_polygamma()}}.
+Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}.
 }
 
 \examples{

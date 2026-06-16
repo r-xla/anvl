@@ -28,7 +28,7 @@ Element-wise reciprocal square root.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_rsqrt]{stablehlo::hlo_rsqrt()}}.
+Lowers to \code{\link[stablehlo:hlo_rsqrt]{hlo_rsqrt()}}.
 }
 
 \examples{

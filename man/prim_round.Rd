@@ -32,8 +32,8 @@ Rounds the elements of an array to the nearest integer.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_round_nearest_even]{stablehlo::hlo_round_nearest_even()}} or
-\code{\link[stablehlo:hlo_round_nearest_afz]{stablehlo::hlo_round_nearest_afz()}} depending on the \code{method} parameter.
+Lowers to \code{\link[stablehlo:hlo_round_nearest_even]{hlo_round_nearest_even()}} or
+\code{\link[stablehlo:hlo_round_nearest_afz]{hlo_round_nearest_afz()}} depending on the \code{method} parameter.
 }
 
 \examples{

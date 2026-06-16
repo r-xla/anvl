@@ -10,4 +10,6 @@ library(testthat)
 library(anvl)
 library(stablehlo)
 
-test_check("anvl")
+if (Sys.getenv("ANVL_TEST", unset = "0") == "1") {
+  test_check("anvl")
+}

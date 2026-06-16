@@ -28,7 +28,7 @@ Element-wise sign.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sign]{stablehlo::hlo_sign()}}.
+Lowers to \code{\link[stablehlo:hlo_sign]{hlo_sign()}}.
 }
 
 \examples{

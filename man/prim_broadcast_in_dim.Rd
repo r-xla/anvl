@@ -37,7 +37,7 @@ Broadcasts an array to a new shape by replicating the data along new or size-1 d
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_broadcast_in_dim]{stablehlo::hlo_broadcast_in_dim()}}.
+Lowers to \code{\link[stablehlo:hlo_broadcast_in_dim]{hlo_broadcast_in_dim()}}.
 }
 
 \examples{

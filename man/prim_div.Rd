@@ -30,7 +30,7 @@ Divides two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_divide]{stablehlo::hlo_divide()}}.
+Lowers to \code{\link[stablehlo:hlo_divide]{hlo_divide()}}.
 }
 
 \examples{

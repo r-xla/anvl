@@ -35,7 +35,7 @@ Concatenates arrays along a dimension.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_concatenate]{stablehlo::hlo_concatenate()}}.
+Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}.
 }
 
 \examples{

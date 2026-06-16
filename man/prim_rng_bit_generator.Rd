@@ -18,7 +18,7 @@ RNG state (\code{ui64[2]}).}
 \item{rng_algorithm}{(\code{character(1)})\cr
 RNG algorithm name. Default is \code{"THREE_FRY"}.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the generated random values.}
 
 \item{shape}{(\code{integer()})\cr
@@ -43,7 +43,7 @@ the updated RNG state together with the generated values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_rng_bit_generator]{stablehlo::hlo_rng_bit_generator()}}.
+Lowers to \code{\link[stablehlo:hlo_rng_bit_generator]{hlo_rng_bit_generator()}}.
 }
 
 \examples{

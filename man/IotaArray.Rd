@@ -33,8 +33,8 @@ Inherits from \code{\link{AbstractArray}}.
 
 When lowering to stableHLO, these become \code{iota} operations that generate the integer sequence
 so they do not need to actually hold the data in the executable, similar to \code{ALTREP}s in R.
-It lowers to \code{\link[stablehlo:hlo_iota]{stablehlo::hlo_iota()}}, optionally shifting the starting value via
-\code{\link[stablehlo:hlo_add]{stablehlo::hlo_add()}}.
+It lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}, optionally shifting the starting value via
+\code{\link[stablehlo:hlo_add]{hlo_add()}}.
 }
 
 \examples{

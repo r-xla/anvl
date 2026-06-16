@@ -39,6 +39,8 @@ navbar:
         href: articles/random-numbers.html
       - text: Type Promotion
         href: articles/type-promotion.html
+      - text: Gotchas
+        href: articles/gotchas.html
       - text: Efficiency
         href: articles/efficiency.html
       - text: FAQ
@@ -378,6 +380,8 @@ reference:
   - subtitle: Transformations
     contents:
       - xla
+      - jit_roclet
+      - apply_jit_registry
       - trace_fn
       - transform_gradient
       - rule_reverse

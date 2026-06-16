@@ -30,7 +30,7 @@ Element-wise minimum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_minimum]{stablehlo::hlo_minimum()}}.
+Lowers to \code{\link[stablehlo:hlo_minimum]{hlo_minimum()}}.
 }
 
 \examples{

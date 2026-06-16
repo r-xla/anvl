@@ -39,7 +39,7 @@ Finds the maximum of array elements along the specified dimensions.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{stablehlo::hlo_reduce()}} with \code{\link[stablehlo:hlo_maximum]{stablehlo::hlo_maximum()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}} as the reducer.
 }
 
 \examples{

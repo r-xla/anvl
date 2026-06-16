@@ -29,7 +29,7 @@ Element-wise exp(x) - 1, more accurate for small x.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_exponential_minus_one]{stablehlo::hlo_exponential_minus_one()}}.
+Lowers to \code{\link[stablehlo:hlo_exponential_minus_one]{hlo_exponential_minus_one()}}.
 }
 
 \examples{

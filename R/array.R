@@ -50,6 +50,12 @@
 #'   default column-major order, mirroring [`base::matrix()`]'s `byrow`.
 #'   Only allowed when `data` is an R object — passing an existing
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
+#' @param check (`logical(1)`)\cr
+#'   If `TRUE`, error when `data` contains any `NA` values. XLA has no
+#'   representation for missing values, so they are otherwise silently
+#'   coerced to the closest available value of the target dtype (e.g. `NaN`
+#'   for floats, the bit pattern `-2147483648` for `i32`, `TRUE` for
+#'   `bool`). Defaults to `FALSE`. See the "Gotchas" vignette.
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
@@ -92,8 +98,25 @@ NULL
 
 #' @rdname AnvlArray
 #' @export
-nv_array <- function(data, dtype = NULL, device = NULL, shape = NULL, ambiguous = NULL, backend = NULL, byrow = FALSE) {
+nv_array <- function(
+  data,
+  dtype = NULL,
+  device = NULL,
+  shape = NULL,
+  ambiguous = NULL,
+  backend = NULL,
+  byrow = FALSE,
+  check = FALSE
+) {
   assert_flag(byrow)
+  assert_flag(check)
+  if (check && !is_anvl_array(data) && anyNA(data)) {
+    n_na <- sum(is.na(data))
+    cli_abort(c(
+      "Input {.arg data} contains {n_na} {.val NA} value{?s}, which {?has/have} no representation at the XLA level.",
+      i = "Replace or drop missing values before transferring, or set {.code check = FALSE} to skip this check."
+    ))
+  }
   if (is_anvl_array(data)) {
     if (byrow) {
       cli_abort("{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.")
@@ -263,8 +286,16 @@ unwrap_if_array <- function(x) {
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar <- function(data, dtype = NULL, device = NULL, ambiguous = NULL, backend = NULL) {
-  nv_array(data, dtype = dtype, device = device, shape = integer(), ambiguous = ambiguous, backend = backend)
+nv_scalar <- function(data, dtype = NULL, device = NULL, ambiguous = NULL, backend = NULL, check = FALSE) {
+  nv_array(
+    data,
+    dtype = dtype,
+    device = device,
+    shape = integer(),
+    ambiguous = ambiguous,
+    backend = backend,
+    check = check
+  )
 }
 
 infer_matrix_dim <- function(n, other, given) {
@@ -390,9 +421,19 @@ shape.AnvlArray <- function(x, ...) {
   globals$backends[[x$backend]]$shape(x)
 }
 
+#' @rdname as_array
+#' @param check (`logical(1)`)\cr
+#'   If `TRUE`, sanity-check the materialized R vector against losing
+#'   information across the device-to-host boundary, and abort if any
+#'   problematic value is detected. Forwarded to the backend; for the
+#'   `xla` backend the relevant cases are `i32`/`i64` values colliding
+#'   with the `NA` bit pattern and `ui64` values `>= 2^63` wrapping
+#'   through `bit64::integer64`. See [`pjrt::as_array.PJRTBuffer()`] for
+#'   the full list. Defaults to `FALSE`. See the "Gotchas" vignette.
 #' @export
-as_array.AnvlArray <- function(x, ...) {
-  globals$backends[[x$backend]]$as_array(x)
+as_array.AnvlArray <- function(x, check = FALSE, ...) {
+  assert_flag(check)
+  globals$backends[[x$backend]]$as_array(x, check = check)
 }
 
 #' @method as.array AnvlArray
@@ -440,6 +481,8 @@ await.AnvlArray <- function(x, ...) {
 #' @param mode (`character(1)`)\cr
 #'   For `as.vector()` only. See [base::as.vector()]. Defaults to `"any"`,
 #'   meaning the natural R type for the array's dtype.
+#' @param check (`logical(1)`)\cr
+#'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
 #' @return An R vector of the corresponding type (`double`, `integer`, or `logical`).
 #' @examplesIf pjrt::plugins_downloaded()
@@ -454,33 +497,33 @@ NULL
 #' @rdname as-AnvlArray
 #' @method as.double AnvlArray
 #' @export
-as.double.AnvlArray <- function(x, ...) {
+as.double.AnvlArray <- function(x, check = FALSE, ...) {
   dt <- dtype(x)
   if (!(inherits(dt, "FloatType") || inherits(dt, "IntegerType") || inherits(dt, "UIntegerType"))) {
     cli_abort("{.fn as.double} requires a float or integer dtype, but got {.val {as.character(dt)}}.")
   }
-  as.double(as_array(x))
+  as.double(as_array(x, check = check))
 }
 
 #' @rdname as-AnvlArray
 #' @method as.integer AnvlArray
 #' @export
-as.integer.AnvlArray <- function(x, ...) {
+as.integer.AnvlArray <- function(x, check = FALSE, ...) {
   dt <- dtype(x)
   if (!(inherits(dt, "IntegerType") || inherits(dt, "UIntegerType"))) {
     cli_abort("{.fn as.integer} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
   }
-  as.integer(as_array(x))
+  as.integer(as_array(x, check = check))
 }
 
 #' @rdname as-AnvlArray
 #' @method as.logical AnvlArray
 #' @export
-as.logical.AnvlArray <- function(x, ...) {
+as.logical.AnvlArray <- function(x, check = FALSE, ...) {
   if (!inherits(dtype(x), "BooleanType")) {
     cli_abort("{.fn as.logical} requires a {.val bool} dtype, but got {.val {as.character(dtype(x))}}.")
   }
-  as.logical(as_array(x))
+  as.logical(as_array(x, check = check))
 }
 
 #' @rdname as-AnvlArray

@@ -4,7 +4,7 @@
 \alias{nv_var}
 \title{Variance Reduction}
 \usage{
-nv_var(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_var(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -40,6 +40,7 @@ Set \code{correction = 0} for population variance.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))
+nv_var(x)             # all dims -> scalar
 nv_var(x, dims = 1L)
 nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
 \dontshow{\}) # examplesIf}

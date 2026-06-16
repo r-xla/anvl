@@ -30,7 +30,10 @@ underlying data (\code{PJRTBuffer} for \code{"xla"} backend, \code{array()} for 
 
 \item{ambiguous}{(\code{function})\cr Extracts the ambiguous flag from an AnvlArray.}
 
-\item{as_array}{(\code{function})\cr Converts an AnvlArray to an R array.}
+\item{as_array}{(\verb{function(x, check)})\cr Converts an AnvlArray to an R
+array. The \code{check} flag is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
+it to abort when materialization would lose information (e.g. ui64 values
+wrapping through \code{bit64::integer64}). See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}}.}
 
 \item{as_raw}{(\code{function})\cr Converts an AnvlArray to raw bytes.}
 

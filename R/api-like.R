@@ -47,6 +47,7 @@ nv_scalar_like <- function(like, data, dtype = NULL, device = NULL, ambiguous = 
 
 #' @rdname AnvlArray
 #' @export
+#' @jit static 2:5
 nv_empty_like <- function(like, dtype = NULL, shape = NULL, device = NULL, ambiguous = NULL) {
   do.call(nv_empty, like_defaults(like, dtype = dtype, shape = shape, device = device, ambiguous = ambiguous))
 }
@@ -77,6 +78,7 @@ nv_iota_like <- function(like, dim, shape = NULL, start = 1L, dtype = NULL, ambi
 
 #' @rdname nv_seq
 #' @export
+#' @jit static 2:7
 nv_seq_like <- function(like, start, end, steps = NULL, dtype = NULL, ambiguous = NULL, device = NULL) {
   do.call(
     nv_seq,
@@ -89,6 +91,7 @@ nv_seq_like <- function(like, start, end, steps = NULL, dtype = NULL, ambiguous 
 
 #' @rdname nv_eye
 #' @export
+#' @jit static 2:4
 nv_eye_like <- function(like, n, dtype = NULL, device = NULL) {
   do.call(nv_eye, c(list(n = n), like_defaults(like, dtype = dtype, device = device)))
 }

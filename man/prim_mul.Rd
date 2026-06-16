@@ -30,7 +30,7 @@ Multiplies two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_multiply]{stablehlo::hlo_multiply()}}.
+Lowers to \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}}.
 }
 
 \examples{

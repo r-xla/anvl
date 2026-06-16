@@ -30,7 +30,7 @@ Element-wise less than comparison.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_compare]{stablehlo::hlo_compare()}} with \code{comparison_direction = "LT"}.
+Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparison_direction = "LT"}.
 }
 
 \examples{

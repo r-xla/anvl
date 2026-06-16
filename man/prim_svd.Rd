@@ -42,7 +42,7 @@ transparently via a layout flip for wide matrices.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_custom_call]{stablehlo::hlo_custom_call()}} with target \code{"svd"}.
+Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} with target \code{"svd"}.
 }
 
 \examples{

@@ -4,7 +4,7 @@
 \alias{nv_sd}
 \title{Standard Deviation Reduction}
 \usage{
-nv_sd(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_sd(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -40,6 +40,7 @@ Set \code{correction = 0} for population standard deviation.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))
+nv_sd(x)              # all dims -> scalar
 nv_sd(x, dims = 1L)
 \dontshow{\}) # examplesIf}
 }

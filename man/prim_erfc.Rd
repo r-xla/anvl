@@ -28,7 +28,7 @@ Element-wise complementary error function \code{erfc(x) = 1 - erf(x)}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_erfc]{stablehlo::hlo_erfc()}}.
+Lowers to \code{\link[stablehlo:hlo_erfc]{hlo_erfc()}}.
 }
 
 \examples{
