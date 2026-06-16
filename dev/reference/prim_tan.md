@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_tan()`](https://r-xla.github.io/stablehlo/reference/hlo_tan.html).
+[`hlo_tan()`](https://r-xla.github.io/stablehlo/reference/hlo_tan.html).
 
 ## See also
 

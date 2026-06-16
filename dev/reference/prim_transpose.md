@@ -40,7 +40,7 @@ ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_transpose()`](https://r-xla.github.io/stablehlo/reference/hlo_transpose.html).
+[`hlo_transpose()`](https://r-xla.github.io/stablehlo/reference/hlo_transpose.html).
 
 ## See also
 

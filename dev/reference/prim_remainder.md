@@ -34,7 +34,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_remainder()`](https://r-xla.github.io/stablehlo/reference/hlo_remainder.html).
+[`hlo_remainder()`](https://r-xla.github.io/stablehlo/reference/hlo_remainder.html).
 
 ## See also
 

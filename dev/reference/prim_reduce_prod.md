@@ -46,9 +46,9 @@ ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
 with
-[`stablehlo::hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html)
+[`hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html)
 as the reducer.
 
 ## See also

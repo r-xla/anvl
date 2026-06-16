@@ -31,7 +31,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_lgamma()`](https://r-xla.github.io/stablehlo/reference/hlo_lgamma.html).
+[`hlo_lgamma()`](https://r-xla.github.io/stablehlo/reference/hlo_lgamma.html).
 
 ## See also
 

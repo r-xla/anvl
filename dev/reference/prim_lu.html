@@ -133,9 +133,9 @@ that <code>(P %*% A)[i, ]</code> equals <code>A[permutation[i], ]</code>.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to a <code>"lu"</code> <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html" class="external-link">stablehlo::hlo_custom_call()</a></code> (backed by LAPACK on
+<p>Lowers to a <code>"lu"</code> <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html" class="external-link">hlo_custom_call()</a></code> (backed by LAPACK on
 CPU and cuSOLVER on CUDA) for <code>LU</code> and <code>pivots</code>, followed by a
-<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_while.html" class="external-link">stablehlo::hlo_while()</a></code> loop that converts <code>pivots</code> to <code>permutation</code>
+<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_while.html" class="external-link">hlo_while()</a></code> loop that converts <code>pivots</code> to <code>permutation</code>
 in-graph.</p>
     </div>
     <div class="section level2">

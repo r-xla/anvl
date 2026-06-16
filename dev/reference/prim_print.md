@@ -28,7 +28,7 @@ Returns `operand` as-is.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html).
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html).
 
 ## See also
 

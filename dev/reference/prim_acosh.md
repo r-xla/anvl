@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_acosh()`](https://r-xla.github.io/stablehlo/reference/hlo_acosh.html).
+[`hlo_acosh()`](https://r-xla.github.io/stablehlo/reference/hlo_acosh.html).
 
 ## See also
 

@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_popcnt()`](https://r-xla.github.io/stablehlo/reference/hlo_popcnt.html).
+[`hlo_popcnt()`](https://r-xla.github.io/stablehlo/reference/hlo_popcnt.html).
 
 ## See also
 

@@ -27,7 +27,7 @@ prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 - ambiguous:
@@ -60,7 +60,7 @@ Has the given `shape` and `dtype`.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
+[`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
 
 ## See also
 

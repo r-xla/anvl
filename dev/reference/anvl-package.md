@@ -37,6 +37,9 @@ Useful links:
 
 Authors:
 
+- Sebastian Fischer <seb.fischer@tutamail.com>
+  ([ORCID](https://orcid.org/0000-0002-9609-3197))
+
 - Daniel Falbel <daniel@posit.co>
   ([ORCID](https://orcid.org/0009-0006-0143-2392))
 

@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_exponential()`](https://r-xla.github.io/stablehlo/reference/hlo_exponential.html).
+[`hlo_exponential()`](https://r-xla.github.io/stablehlo/reference/hlo_exponential.html).
 
 ## See also
 

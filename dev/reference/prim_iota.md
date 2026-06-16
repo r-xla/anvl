@@ -18,7 +18,7 @@ prim_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 - shape:
@@ -61,7 +61,7 @@ Has the given `dtype` and `shape`.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html).
+[`hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html).
 
 ## See also
 

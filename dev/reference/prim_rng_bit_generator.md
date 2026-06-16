@@ -29,7 +29,7 @@ prim_rng_bit_generator(
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type of the generated random values.
 
 - shape:
@@ -53,7 +53,7 @@ the given `dtype` and `shape`.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_rng_bit_generator()`](https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html).
+[`hlo_rng_bit_generator()`](https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html).
 
 ## See also
 

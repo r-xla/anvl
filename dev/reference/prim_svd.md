@@ -41,7 +41,7 @@ Named `list` with elements `d` (length `k`), `u` (shape `(m, k)`), and
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
 with target `"svd"`.
 
 ## See also

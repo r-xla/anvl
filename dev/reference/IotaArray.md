@@ -53,9 +53,9 @@ IotaArray(shape, dtype, dimension, start = 1L, ambiguous = FALSE)
 When lowering to stableHLO, these become `iota` operations that generate
 the integer sequence so they do not need to actually hold the data in
 the executable, similar to `ALTREP`s in R. It lowers to
-[`stablehlo::hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html),
+[`hlo_iota()`](https://r-xla.github.io/stablehlo/reference/hlo_iota.html),
 optionally shifting the starting value via
-[`stablehlo::hlo_add()`](https://r-xla.github.io/stablehlo/reference/hlo_add.html).
+[`hlo_add()`](https://r-xla.github.io/stablehlo/reference/hlo_add.html).
 
 ## Examples
 

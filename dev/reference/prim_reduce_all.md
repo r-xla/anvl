@@ -45,9 +45,9 @@ Boolean array. Never ambiguous. When `drop = TRUE`, the shape is that of
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
 with
-[`stablehlo::hlo_and()`](https://r-xla.github.io/stablehlo/reference/hlo_and.html)
+[`hlo_and()`](https://r-xla.github.io/stablehlo/reference/hlo_and.html)
 as the reducer.
 
 ## See also

@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_log()`](https://r-xla.github.io/stablehlo/reference/hlo_log.html).
+[`hlo_log()`](https://r-xla.github.io/stablehlo/reference/hlo_log.html).
 
 ## See also
 

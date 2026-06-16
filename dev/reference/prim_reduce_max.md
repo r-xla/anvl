@@ -46,9 +46,9 @@ ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
 with
-[`stablehlo::hlo_maximum()`](https://r-xla.github.io/stablehlo/reference/hlo_maximum.html)
+[`hlo_maximum()`](https://r-xla.github.io/stablehlo/reference/hlo_maximum.html)
 as the reducer.
 
 ## See also

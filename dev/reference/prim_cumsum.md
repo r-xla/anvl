@@ -36,9 +36,9 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
+[`hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
 with
-[`stablehlo::hlo_add()`](https://r-xla.github.io/stablehlo/reference/hlo_add.html)
+[`hlo_add()`](https://r-xla.github.io/stablehlo/reference/hlo_add.html)
 as the reducer.
 
 ## See also

@@ -18,7 +18,7 @@ prim_convert(operand, dtype, ambiguous = FALSE)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Target data type.
 
 - ambiguous:
@@ -47,7 +47,7 @@ controlled by the `ambiguous` parameter.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_convert()`](https://r-xla.github.io/stablehlo/reference/hlo_convert.html).
+[`hlo_convert()`](https://r-xla.github.io/stablehlo/reference/hlo_convert.html).
 
 ## See also
 

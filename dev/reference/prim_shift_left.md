@@ -31,7 +31,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_shift_left()`](https://r-xla.github.io/stablehlo/reference/hlo_shift_left.html).
+[`hlo_shift_left()`](https://r-xla.github.io/stablehlo/reference/hlo_shift_left.html).
 
 ## See also
 

@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_cosine()`](https://r-xla.github.io/stablehlo/reference/hlo_cosine.html).
+[`hlo_cosine()`](https://r-xla.github.io/stablehlo/reference/hlo_cosine.html).
 
 ## See also
 

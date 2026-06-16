@@ -40,7 +40,7 @@ ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_concatenate()`](https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html).
+[`hlo_concatenate()`](https://r-xla.github.io/stablehlo/reference/hlo_concatenate.html).
 
 ## See also
 

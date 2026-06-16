@@ -45,7 +45,7 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_broadcast_in_dim()`](https://r-xla.github.io/stablehlo/reference/hlo_broadcast_in_dim.html).
+[`hlo_broadcast_in_dim()`](https://r-xla.github.io/stablehlo/reference/hlo_broadcast_in_dim.html).
 
 ## See also
 

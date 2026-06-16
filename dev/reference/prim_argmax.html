@@ -124,7 +124,7 @@ Same shape as <code>operand</code> with <code>dim</code> removed (or set to 1 if
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to a variadic <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce.html" class="external-link">stablehlo::hlo_reduce()</a></code> over <code>(values, indices)</code>
+<p>Lowers to a variadic <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce.html" class="external-link">hlo_reduce()</a></code> over <code>(values, indices)</code>
 with a (value &gt; value | (value == value &amp; idx &lt; idx)) selector.</p>
     </div>
     <div class="section level2">

@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_erf_inv()`](https://r-xla.github.io/stablehlo/reference/hlo_erf_inv.html).
+[`hlo_erf_inv()`](https://r-xla.github.io/stablehlo/reference/hlo_erf_inv.html).
 
 ## See also
 

@@ -154,8 +154,8 @@ corresponding input.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_sort.html" class="external-link">stablehlo::hlo_sort()</a></code> with a comparator that uses
-<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_compare.html" class="external-link">stablehlo::hlo_compare()</a></code> (<code>LT</code> for ascending, <code>GT</code> for descending) on
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_sort.html" class="external-link">hlo_sort()</a></code> with a comparator that uses
+<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_compare.html" class="external-link">hlo_compare()</a></code> (<code>LT</code> for ascending, <code>GT</code> for descending) on
 the first operand. For float keys the comparator uses
 <code>compare_type = "TOTALORDER"</code> and canonicalizes <code>-0</code>/<code>+0</code> and
 <code>-NaN</code>/<code>+NaN</code> to their positive form before comparing, so all <code>NaN</code>

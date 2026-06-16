@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_atan()`](https://r-xla.github.io/stablehlo/reference/hlo_atan.html).
+[`hlo_atan()`](https://r-xla.github.io/stablehlo/reference/hlo_atan.html).
 
 ## See also
 

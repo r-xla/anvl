@@ -41,7 +41,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_clamp()`](https://r-xla.github.io/stablehlo/reference/hlo_clamp.html).
+[`hlo_clamp()`](https://r-xla.github.io/stablehlo/reference/hlo_clamp.html).
 
 ## See also
 

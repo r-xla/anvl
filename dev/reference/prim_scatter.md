@@ -139,7 +139,7 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_scatter()`](https://r-xla.github.io/stablehlo/reference/hlo_scatter.html).
+[`hlo_scatter()`](https://r-xla.github.io/stablehlo/reference/hlo_scatter.html).
 
 ## See also
 

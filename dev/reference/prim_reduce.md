@@ -61,7 +61,7 @@ underlying mathematical function (like `+`) is associative.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
 with `reductor` as the body.
 
 ## See also

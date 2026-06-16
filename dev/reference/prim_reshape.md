@@ -39,7 +39,7 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html).
+[`hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html).
 
 ## See also
 

@@ -383,7 +383,7 @@ x <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
 x[, 3] <- nv_array(c(1.5, 2.5, 3.5))
 ```
 
-    ## Error in `nv_subset_assign()`:
+    ## Error:
     ## ! Value type f32 is not promotable to left-hand side type i32
 
 ``` r

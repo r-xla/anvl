@@ -30,7 +30,7 @@ if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_is_finite()`](https://r-xla.github.io/stablehlo/reference/hlo_is_finite.html).
+[`hlo_is_finite()`](https://r-xla.github.io/stablehlo/reference/hlo_is_finite.html).
 
 ## See also
 

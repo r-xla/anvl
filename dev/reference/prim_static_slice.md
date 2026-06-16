@@ -57,7 +57,7 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html).
+[`hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html).
 
 ## See also
 

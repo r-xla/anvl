@@ -23,7 +23,7 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 - device:

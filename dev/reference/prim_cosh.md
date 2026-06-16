@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_cosh()`](https://r-xla.github.io/stablehlo/reference/hlo_cosh.html).
+[`hlo_cosh()`](https://r-xla.github.io/stablehlo/reference/hlo_cosh.html).
 
 ## See also
 

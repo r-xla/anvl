@@ -31,7 +31,7 @@ have the same data type as `operand`.
 ## StableHLO
 
 Lowers to a `"geqrf"` + `"orgqr"`
-[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
 pair (backed by LAPACK on CPU and cuSOLVER on CUDA) + postprocessing.
 
 ## See also

@@ -33,7 +33,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_divide()`](https://r-xla.github.io/stablehlo/reference/hlo_divide.html).
+[`hlo_divide()`](https://r-xla.github.io/stablehlo/reference/hlo_divide.html).
 
 ## See also
 

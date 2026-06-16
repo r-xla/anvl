@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_sqrt()`](https://r-xla.github.io/stablehlo/reference/hlo_sqrt.html).
+[`hlo_sqrt()`](https://r-xla.github.io/stablehlo/reference/hlo_sqrt.html).
 
 ## See also
 

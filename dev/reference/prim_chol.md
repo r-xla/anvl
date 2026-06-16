@@ -43,7 +43,7 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html).
+[`hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html).
 
 ## References
 

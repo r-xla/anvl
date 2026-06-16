@@ -38,10 +38,10 @@ was exchanged with row `pivots[i]` during elimination step `i`); and
 ## StableHLO
 
 Lowers to a `"lu"`
-[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
 (backed by LAPACK on CPU and cuSOLVER on CUDA) for `LU` and `pivots`,
 followed by a
-[`stablehlo::hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html)
+[`hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html)
 loop that converts `pivots` to `permutation` in-graph.
 
 ## See also

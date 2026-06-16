@@ -40,7 +40,7 @@ An output is ambiguous if it is ambiguous in both branches.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_if()`](https://r-xla.github.io/stablehlo/reference/hlo_if.html).
+[`hlo_if()`](https://r-xla.github.io/stablehlo/reference/hlo_if.html).
 
 ## See also
 

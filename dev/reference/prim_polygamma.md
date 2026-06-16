@@ -32,7 +32,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_polygamma()`](https://r-xla.github.io/stablehlo/reference/hlo_polygamma.html).
+[`hlo_polygamma()`](https://r-xla.github.io/stablehlo/reference/hlo_polygamma.html).
 
 ## See also
 

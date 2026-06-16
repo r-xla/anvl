@@ -37,7 +37,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reverse()`](https://r-xla.github.io/stablehlo/reference/hlo_reverse.html).
+[`hlo_reverse()`](https://r-xla.github.io/stablehlo/reference/hlo_reverse.html).
 
 ## See also
 

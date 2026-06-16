@@ -67,7 +67,7 @@ Has the same shape and data type as `b`. It is ambiguous if both `a` and
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_triangular_solve()`](https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html).
+[`hlo_triangular_solve()`](https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html).
 
 ## References
 

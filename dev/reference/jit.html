@@ -175,6 +175,23 @@ the device. Note that this is only necessary with the <code>"auto"</code> backen
 When using a concrete backend, you can just specify the device via a static argument.</p>
     </div>
     <div class="section level2">
+    <h2 id="jitting-in-a-package">Jitting in a Package<a class="anchor" aria-label="anchor" href="#jitting-in-a-package"></a></h2>
+
+
+<p>To <code>jit()</code> a function defined in an R package, prefer the <code>@jit</code> roxygen
+tag over a top-level <code>jit()</code> call:</p>
+<p></p><div class="sourceCode r"><pre><code><span><span class="co">#' @export</span></span>
+<span><span class="co">#' @jit static = c("flag")</span></span>
+<span><span class="va">my_fun</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">flag</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="va">flag</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1</span> <span class="kw">else</span> <span class="va">x</span> <span class="op">*</span> <span class="fl">2</span></span></code></pre><p></p></div>
+<p>This delegates the wrapping to <code><a href="jit_roclet.html">jit_roclet()</a></code>, which records the
+tagged functions in <code>R/jit-registry.R</code>. The wrapping itself happens at
+package build time via <code><a href="apply_jit_registry.html">apply_jit_registry()</a></code> in <code>R/zzz.R</code>, so the
+resulting <code>JitFunction</code> is byte-compiled with the rest of the package
+instead of being rebuilt on every <code>.onLoad</code>.</p>
+<p>See <code><a href="jit_roclet.html">jit_roclet()</a></code> for the one-time setup of the roclet in your
+package.</p>
+    </div>
+    <div class="section level2">
     <h2 id="xla-jit-arguments">XLA JIT arguments<a class="anchor" aria-label="anchor" href="#xla-jit-arguments"></a></h2>
 
 
@@ -195,7 +212,8 @@ would only get stripped again.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="xla.html">xla()</a></code> for ahead-of-time compilation, <code><a href="jit_eval.html">jit_eval()</a></code> for evaluating an expression once.</p></div>
+    <div class="dont-index"><p><code><a href="xla.html">xla()</a></code> for ahead-of-time compilation, <code><a href="jit_eval.html">jit_eval()</a></code> for evaluating an expression once,
+<code><a href="jit_roclet.html">jit_roclet()</a></code> for the <code>@jit</code> tag used inside R packages.</p></div>
     </div>
 
     <div class="section level2">

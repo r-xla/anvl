@@ -129,7 +129,7 @@ start position may differ from the requested one.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_gather()`](https://r-xla.github.io/stablehlo/reference/hlo_gather.html).
+[`hlo_gather()`](https://r-xla.github.io/stablehlo/reference/hlo_gather.html).
 
 ## See also
 

@@ -127,8 +127,8 @@ See the <code><a href="../articles/type-promotion.html">vignette("type-promotion
 
 <p>When lowering to stableHLO, these become <code>iota</code> operations that generate the integer sequence
 so they do not need to actually hold the data in the executable, similar to <code>ALTREP</code>s in R.
-It lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_iota.html" class="external-link">stablehlo::hlo_iota()</a></code>, optionally shifting the starting value via
-<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_add.html" class="external-link">stablehlo::hlo_add()</a></code>.</p>
+It lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_iota.html" class="external-link">hlo_iota()</a></code>, optionally shifting the starting value via
+<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_add.html" class="external-link">hlo_add()</a></code>.</p>
     </div>
 
     <div class="section level2">

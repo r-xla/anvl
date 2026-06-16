@@ -32,7 +32,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_minimum()`](https://r-xla.github.io/stablehlo/reference/hlo_minimum.html).
+[`hlo_minimum()`](https://r-xla.github.io/stablehlo/reference/hlo_minimum.html).
 
 ## See also
 

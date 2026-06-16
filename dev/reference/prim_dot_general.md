@@ -50,7 +50,7 @@ The output shape is the batch dimensions followed by the remaining
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_dot_general()`](https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html).
+[`hlo_dot_general()`](https://r-xla.github.io/stablehlo/reference/hlo_dot_general.html).
 
 ## See also
 

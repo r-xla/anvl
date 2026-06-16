@@ -24,7 +24,7 @@ nv_rnorm(shape, initial_state, dtype = "f32", mu = 0, sigma = 1)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 - mu:

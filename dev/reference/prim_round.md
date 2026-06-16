@@ -36,9 +36,9 @@ is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_round_nearest_even()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_even.html)
+[`hlo_round_nearest_even()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_even.html)
 or
-[`stablehlo::hlo_round_nearest_afz()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_afz.html)
+[`hlo_round_nearest_afz()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_afz.html)
 depending on the `method` parameter.
 
 ## See also

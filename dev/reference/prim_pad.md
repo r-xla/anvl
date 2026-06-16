@@ -47,7 +47,7 @@ prim_pad(
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as `operand`. For the output shape see the
 underlying stablehlo documentation
-([`stablehlo::hlo_pad()`](https://r-xla.github.io/stablehlo/reference/hlo_pad.html)).
+([`hlo_pad()`](https://r-xla.github.io/stablehlo/reference/hlo_pad.html)).
 It is ambiguous if the input is ambiguous.
 
 ## Implemented Rules
@@ -61,7 +61,7 @@ It is ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_pad()`](https://r-xla.github.io/stablehlo/reference/hlo_pad.html).
+[`hlo_pad()`](https://r-xla.github.io/stablehlo/reference/hlo_pad.html).
 
 ## Examples
 

@@ -47,7 +47,7 @@ lower index first.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_top_k()`](https://r-xla.github.io/stablehlo/reference/hlo_top_k.html).
+[`hlo_top_k()`](https://r-xla.github.io/stablehlo/reference/hlo_top_k.html).
 
 ## See also
 

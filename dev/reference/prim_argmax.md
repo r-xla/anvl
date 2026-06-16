@@ -43,7 +43,7 @@ Same shape as `operand` with `dim` removed (or set to 1 if
 ## StableHLO
 
 Lowers to a variadic
-[`stablehlo::hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
 over `(values, indices)` with a (value \> value \| (value == value & idx
 \< idx)) selector.
 

@@ -80,7 +80,7 @@ nv_empty_like(
 - dtype:
 
   (`NULL` \| `character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a
   [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
   The default (`NULL`) uses the current backend's default dtype: `f32`

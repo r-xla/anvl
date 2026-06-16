@@ -33,7 +33,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_and()`](https://r-xla.github.io/stablehlo/reference/hlo_and.html).
+[`hlo_and()`](https://r-xla.github.io/stablehlo/reference/hlo_and.html).
 
 ## See also
 

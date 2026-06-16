@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_cbrt()`](https://r-xla.github.io/stablehlo/reference/hlo_cbrt.html).
+[`hlo_cbrt()`](https://r-xla.github.io/stablehlo/reference/hlo_cbrt.html).
 
 ## See also
 

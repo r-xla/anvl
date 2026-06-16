@@ -41,7 +41,7 @@ The running maximum (same dtype as `operand`) and the running argmax
 ## StableHLO
 
 Lowers to a variadic
-[`stablehlo::hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
+[`hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
 over `(values, iota)`.
 
 ## See also

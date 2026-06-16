@@ -60,7 +60,7 @@ effective start position may differ from the requested one.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_dynamic_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_slice.html).
+[`hlo_dynamic_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_dynamic_slice.html).
 
 ## See also
 

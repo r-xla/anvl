@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_ceil()`](https://r-xla.github.io/stablehlo/reference/hlo_ceil.html).
+[`hlo_ceil()`](https://r-xla.github.io/stablehlo/reference/hlo_ceil.html).
 
 ## See also
 

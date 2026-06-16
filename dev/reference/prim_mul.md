@@ -32,7 +32,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html).
+[`hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html).
 
 ## See also
 

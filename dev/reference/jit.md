@@ -106,6 +106,27 @@ where `<argname>` is the name of the argument specifying the device.
 Note that this is only necessary with the `"auto"` backend. When using a
 concrete backend, you can just specify the device via a static argument.
 
+## Jitting in a Package
+
+To `jit()` a function defined in an R package, prefer the `@jit` roxygen
+tag over a top-level `jit()` call:
+
+    #' @export
+    #' @jit static = c("flag")
+    my_fun <- function(x, flag) if (flag) x + 1 else x * 2
+
+This delegates the wrapping to
+[`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md),
+which records the tagged functions in `R/jit-registry.R`. The wrapping
+itself happens at package build time via
+[`apply_jit_registry()`](https://r-xla.github.io/anvl/dev/reference/apply_jit_registry.md)
+in `R/zzz.R`, so the resulting `JitFunction` is byte-compiled with the
+rest of the package instead of being rebuilt on every `.onLoad`.
+
+See
+[`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
+for the one-time setup of the roclet in your package.
+
 ## XLA JIT arguments
 
 - `donate` ([`character()`](https://rdrr.io/r/base/character.html),
@@ -128,7 +149,9 @@ concrete backend, you can just specify the device via a static argument.
 [`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) for
 ahead-of-time compilation,
 [`jit_eval()`](https://r-xla.github.io/anvl/dev/reference/jit_eval.md)
-for evaluating an expression once.
+for evaluating an expression once,
+[`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
+for the `@jit` tag used inside R packages.
 
 ## Examples
 

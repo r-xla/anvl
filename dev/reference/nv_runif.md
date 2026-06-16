@@ -24,7 +24,7 @@ nv_runif(shape, initial_state, dtype = "f32", lower = 0, upper = 1)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 - lower, upper:

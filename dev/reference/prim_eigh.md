@@ -33,7 +33,7 @@ Named `list` with elements `values` (length `n`) and `vectors` (shape
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
 with target `"eigh"`.
 
 ## See also

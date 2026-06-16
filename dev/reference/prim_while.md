@@ -43,7 +43,7 @@ after the loop terminates.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html).
+[`hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html).
 
 ## See also
 
