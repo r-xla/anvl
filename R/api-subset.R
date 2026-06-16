@@ -507,9 +507,9 @@ subset_scatter_core <- jit(
     unique_indices,
     update_shape
   ) {
-    if (dtype_abstract(operand) != dtype_abstract(value)) {
-      dt_operand <- dtype_abstract(operand)
-      dt_value <- dtype_abstract(value)
+    if (dtype(operand) != dtype(value)) {
+      dt_operand <- dtype(operand)
+      dt_value <- dtype(value)
       if (!promotable_to(dt_value, dt_operand)) {
         cli_abort(
           "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_operand)}"
@@ -518,10 +518,10 @@ subset_scatter_core <- jit(
       value <- nv_convert(value, dtype = dt_operand)
     }
 
-    if (!ndims_abstract(value)) {
+    if (!ndims(value)) {
       value <- nv_broadcast_to(value, update_shape)
     } else {
-      value_shape <- shape_abstract(value)
+      value_shape <- shape(value)
       if (!identical(value_shape, update_shape)) {
         cli_abort(c(
           "Update shape does not match subset shape.",
