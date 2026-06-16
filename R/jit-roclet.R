@@ -45,6 +45,9 @@
 #' - `#' @jit` — no static arguments.
 #' - `#' @jit static = c("a", "b")` — names of formals to treat as static.
 #' - `#' @jit static = c(1L, 2L)` — positions of formals to treat as static.
+#' - `#' @jit static = 2:5` — the value is evaluated as R, so ranges and any
+#'   other expression yielding a character/integer vector are allowed.
+#' - `#' @jit static 2:5` — terse form; the `=` may be omitted.
 #'
 #' Anything other than a `static = ...` argument is rejected.
 #'
@@ -74,6 +77,11 @@ roxy_tag_parse.roxy_tag_jit <- function(x) {
   if (!nzchar(raw)) {
     x$val <- list(static = character())
     return(x)
+  }
+  # Allow the terse `static <expr>` form (no `=`) as sugar for
+  # `static = <expr>`, e.g. `@jit static 2:5`.
+  if (grepl("^static\\s", raw) && !grepl("^static\\s*=", raw)) {
+    raw <- sub("^static\\s+", "static = ", raw)
   }
   expr <- tryCatch(
     parse(text = paste0("list(", raw, ")"))[[1L]],

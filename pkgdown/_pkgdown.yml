@@ -309,8 +309,6 @@ reference:
     desc: Code transformations
     contents:
       - jit
-      - jit_roclet
-      - apply_jit_registry
       - gradient
       - value_and_gradient
 
@@ -382,6 +380,8 @@ reference:
   - subtitle: Transformations
     contents:
       - xla
+      - jit_roclet
+      - apply_jit_registry
       - trace_fn
       - transform_gradient
       - rule_reverse

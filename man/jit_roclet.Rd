@@ -55,6 +55,9 @@ install, and then re-enable it. Subsequent runs work as normal.
 \item \verb{#' @jit} — no static arguments.
 \item \verb{#' @jit static = c("a", "b")} — names of formals to treat as static.
 \item \verb{#' @jit static = c(1L, 2L)} — positions of formals to treat as static.
+\item \verb{#' @jit static = 2:5} — the value is evaluated as R, so ranges and any
+other expression yielding a character/integer vector are allowed.
+\item \verb{#' @jit static 2:5} — terse form; the \code{=} may be omitted.
 }
 
 Anything other than a \code{static = ...} argument is rejected.
