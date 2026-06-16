@@ -1,5 +1,6 @@
 ^stablehlo\.Rproj$
 ^\.Rproj\.user$
+^\.Renviron$
 ^compile_commands\.json$
 ^\.cache$
 ^stablehlo.*$

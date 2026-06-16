@@ -28,7 +28,7 @@ Element-wise hyperbolic cosine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cosh]{stablehlo::hlo_cosh()}}.
+Lowers to \code{\link[stablehlo:hlo_cosh]{hlo_cosh()}}.
 }
 
 \examples{

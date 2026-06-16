@@ -13,7 +13,7 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 \item{n}{(\code{integer(1)})\cr
 Size of the identity matrix.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 
 \item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr

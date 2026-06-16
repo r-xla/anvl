@@ -31,7 +31,7 @@ Output position \code{j} along \code{dim} equals the product of input positions 
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce_window]{stablehlo::hlo_reduce_window()}} with \code{\link[stablehlo:hlo_multiply]{stablehlo::hlo_multiply()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} with \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}} as the reducer.
 }
 
 \examples{

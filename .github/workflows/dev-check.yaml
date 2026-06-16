@@ -17,6 +17,8 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       PJRT_PLATFORM: cpu
+      ANVL_TEST: "1"
+      PJRT_INSTALL: "1"
 
     steps:
       - uses: actions/checkout@v5

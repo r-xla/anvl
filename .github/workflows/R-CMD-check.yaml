@@ -39,6 +39,8 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       PJRT_PLATFORM: ${{ matrix.config.platform }}
+      ANVL_TEST: "1"
+      PJRT_INSTALL: "1"
 
     steps:
       - name: Setup
@@ -72,6 +74,8 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       PJRT_PLATFORM: cuda
+      ANVL_TEST: "1"
+      PJRT_INSTALL: "1"
 
     steps:
       - uses: actions/checkout@v5

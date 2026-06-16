@@ -29,7 +29,7 @@ Element-wise tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tan]{stablehlo::hlo_tan()}}.
+Lowers to \code{\link[stablehlo:hlo_tan]{hlo_tan()}}.
 }
 
 \examples{

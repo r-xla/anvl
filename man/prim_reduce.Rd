@@ -54,7 +54,7 @@ function (like \code{+}) is associative.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{stablehlo::hlo_reduce()}} with \code{reductor} as the body.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{reductor} as the body.
 }
 
 \examples{

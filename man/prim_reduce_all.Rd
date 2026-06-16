@@ -38,7 +38,7 @@ Performs logical AND along the specified dimensions.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{stablehlo::hlo_reduce()}} with \code{\link[stablehlo:hlo_and]{stablehlo::hlo_and()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_and]{hlo_and()}} as the reducer.
 }
 
 \examples{

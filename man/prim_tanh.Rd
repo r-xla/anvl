@@ -29,7 +29,7 @@ Element-wise hyperbolic tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tanh]{stablehlo::hlo_tanh()}}.
+Lowers to \code{\link[stablehlo:hlo_tanh]{hlo_tanh()}}.
 }
 
 \examples{

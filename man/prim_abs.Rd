@@ -29,7 +29,7 @@ Element-wise absolute value.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_abs]{stablehlo::hlo_abs()}}.
+Lowers to \code{\link[stablehlo:hlo_abs]{hlo_abs()}}.
 }
 
 \examples{

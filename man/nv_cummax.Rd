@@ -12,7 +12,7 @@ Operand.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to accumulate. If \code{NULL} (default), the input
-is first flattened to a 1-D array, like \code{\link[base:cumsum]{base::cummax()}}.}
+is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}}.}
 
 \item{with_indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns the running-maximum array.
@@ -37,7 +37,7 @@ Running maximum, optionally along a single dimension.
 }
 \section{Relation to base R}{
 
-Both \code{nv_cummax()} (with \code{dim = NULL}) and \code{\link[base:cumsum]{base::cummax()}}
+Both \code{nv_cummax()} (with \code{dim = NULL}) and \code{\link[base:cummax]{base::cummax()}}
 flatten a multi-dimensional input to 1-D before accumulating, but the
 flatten order differs: anvl arrays are row-major (C order), so the
 flattened sequence iterates the last dim fastest, whereas base R uses

@@ -33,7 +33,7 @@ Permutes the dimensions of an array.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_transpose]{stablehlo::hlo_transpose()}}.
+Lowers to \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}}.
 }
 
 \examples{

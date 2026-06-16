@@ -29,7 +29,7 @@ is \code{sign * exp(modulus)} (with \code{logarithm = TRUE}) or
 }
 \description{
 Computes the determinant of a square matrix in the modulus / sign
-decomposition matching base R's \code{\link[base:det]{base::determinant()}}. For the plain
+decomposition matching base R's \code{\link[base:determinant]{base::determinant()}}. For the plain
 scalar determinant, use \code{\link[=nv_det]{nv_det()}}.
 }
 \details{

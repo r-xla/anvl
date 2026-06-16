@@ -36,7 +36,7 @@ indices output is the largest \code{i} in \code{1:j} with
 
 \section{StableHLO}{
 
-Lowers to a variadic \code{\link[stablehlo:hlo_reduce_window]{stablehlo::hlo_reduce_window()}} over \verb{(values, iota)}.
+Lowers to a variadic \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} over \verb{(values, iota)}.
 }
 
 \examples{

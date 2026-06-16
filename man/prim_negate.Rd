@@ -29,7 +29,7 @@ Negates an array element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_negate]{stablehlo::hlo_negate()}}.
+Lowers to \code{\link[stablehlo:hlo_negate]{hlo_negate()}}.
 }
 
 \examples{

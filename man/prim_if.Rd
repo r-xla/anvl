@@ -34,7 +34,7 @@ evaluates only the selected branch.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_if]{stablehlo::hlo_if()}}.
+Lowers to \code{\link[stablehlo:hlo_if]{hlo_if()}}.
 }
 
 \examples{

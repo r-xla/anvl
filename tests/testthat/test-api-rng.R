@@ -62,30 +62,6 @@ test_that("nv_rbinom", {
   expect_equal(shape(out3[[2]]), c(3L, 3L))
 })
 
-test_that("nv_runif works the same across devices (eager)", {
-  state <- nv_rng_state(42L)
-  check_eager(
-    function(state) nv_runif(c(2, 3), state, dtype = "f32", lower = -1, upper = 1),
-    state
-  )
-})
-
-test_that("nv_rnorm works the same across devices (eager)", {
-  state <- nv_rng_state(42L)
-  check_eager(
-    function(state) nv_rnorm(c(2, 3), state, dtype = "f32", mu = 1, sigma = 2),
-    state
-  )
-})
-
-test_that("nv_rbinom works the same across devices (eager)", {
-  state <- nv_rng_state(42L)
-  check_eager(
-    function(state) nv_rbinom(c(2, 3), state, n = 4L, prob = 0.3, dtype = "i32"),
-    state
-  )
-})
-
 test_that("nv_rdunif", {
   # statistical validity checks are in inst/random
 
@@ -103,14 +79,6 @@ test_that("nv_rdunif", {
   # Test 2D output shape
   out3 <- nv_rdunif(n = 4L, shape = c(2L, 3L), initial_state = nv_array(c(1, 2), dtype = "ui64"))
   expect_equal(shape(out3[[2]]), c(2L, 3L))
-})
-
-test_that("nv_rdunif works the same across devices (eager)", {
-  state <- nv_rng_state(42L)
-  check_eager(
-    function(state) nv_rdunif(10L, state, n = 6L),
-    state
-  )
 })
 
 test_that("nv_rng_state works the same across devices (eager)", {

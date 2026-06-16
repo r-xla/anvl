@@ -29,7 +29,7 @@ Element-wise floor.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_floor]{stablehlo::hlo_floor()}}.
+Lowers to \code{\link[stablehlo:hlo_floor]{hlo_floor()}}.
 }
 
 \examples{

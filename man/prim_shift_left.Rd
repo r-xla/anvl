@@ -29,7 +29,7 @@ Element-wise left bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_left]{stablehlo::hlo_shift_left()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_left]{hlo_shift_left()}}.
 }
 
 \examples{

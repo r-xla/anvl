@@ -36,7 +36,7 @@ information was available. See the \code{vignette("type-promotion")} for more de
 \section{Lowering}{
 
 \code{LiteralArray}s become constants inlined into the stableHLO program.
-I.e., they lower to \code{\link[stablehlo:hlo_constant]{stablehlo::hlo_tensor()}}.
+I.e., they lower to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
 }
 
 \examples{

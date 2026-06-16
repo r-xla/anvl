@@ -163,6 +163,7 @@ nv_promote_to_common <- function(...) {
 #' y <- nv_array(c(10, 20, 30))
 #' nv_broadcast_arrays(x, y)
 #' @export
+#' @jit
 nv_broadcast_arrays <- function(...) {
   args <- as_anvl_arrays(...)
   shape <- Reduce(broadcast_shapes, lapply(args, shape))
@@ -287,6 +288,7 @@ nv_flatten <- function(operand) {
 #' y <- nv_array(c(4, 5, 6))
 #' nv_concatenate(x, y)
 #' @export
+#' @jit static "dimension"
 nv_concatenate <- function(..., dimension = NULL) {
   args <- do.call(nv_promote_to_common, list(...))
   shapes <- lapply(args, shape)
@@ -417,6 +419,7 @@ bind_reshape <- function(arg, stack_dim, target_shape) {
 
 #' @rdname nv_bind
 #' @export
+#' @jit
 nv_rbind <- function(...) {
   args <- as_anvl_arrays(...)
   target_shape <- bind_target_shape(args, stack_dim = 1L, fn_name = "nv_rbind")
@@ -426,6 +429,7 @@ nv_rbind <- function(...) {
 
 #' @rdname nv_bind
 #' @export
+#' @jit
 nv_cbind <- function(...) {
   args <- as_anvl_arrays(...)
   target_shape <- bind_target_shape(args, stack_dim = 2L, fn_name = "nv_cbind")
@@ -490,6 +494,7 @@ nv_print <- prim_print
 #' # scalar branches are broadcast and promoted to a common dtype
 #' nv_ifelse(pred, nv_scalar(1L), nv_scalar(0.5))
 #' @export
+#' @jit
 nv_ifelse <- function(pred, true_value, false_value) {
   # Canonicalize all three inputs together so an R literal `true_value` /
   # `false_value` inherits the device of `pred` (and vice versa). Doing the
@@ -710,6 +715,7 @@ nv_remainder <- make_do_binary(prim_remainder)
 #' nv_mod(x, y)
 #' as.vector(x) %% as.vector(y)
 #' @export
+#' @jit
 nv_mod <- function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
@@ -986,6 +992,7 @@ nv_ceiling <- prim_ceil
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' trunc(x)
 #' @export
+#' @jit
 nv_trunc <- function(operand) {
   operand <- as_anvl_array(operand)
   nv_mul(nv_sign(operand), nv_floor(nv_abs(operand)))
@@ -1207,6 +1214,7 @@ nv_lgamma <- prim_lgamma
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' nv_polygamma(1, x) # trigamma
 #' @export
+#' @jit static 1L
 nv_polygamma <- function(n, x) {
   args <- nv_promote_to_common(n, x)
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
@@ -1288,6 +1296,7 @@ nv_popcnt <- prim_popcnt
 #' x <- nv_array(c(-1, 0.5, 2))
 #' nv_clamp(nv_scalar(0), x, nv_scalar(1))
 #' @export
+#' @jit
 nv_clamp <- function(min_val, operand, max_val) {
   args <- as_anvl_arrays(min_val, operand, max_val)
   min_val <- args[[1L]]
@@ -1371,6 +1380,7 @@ nv_iota <- prim_iota
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
+#' @jit static 1:6
 nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, device = NULL) {
   if (is.null(steps)) {
     dtype <- dtype %||% "i32"
@@ -1461,6 +1471,7 @@ nv_round <- prim_round
 #' y <- nv_matrix(1:6, nrow = 3)
 #' x %*% y
 #' @export
+#' @jit
 nv_matmul <- function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
   lhs <- args[[1L]]
@@ -1531,6 +1542,7 @@ nv_chol <- prim_chol
 #' b <- nv_matrix(c(1, 2), nrow = 2, dtype = "f64")
 #' nv_solve(a, b)
 #' @export
+#' @jit
 nv_solve <- function(a, b) {
   args <- as_anvl_arrays(a, b)
   a <- args[[1L]]
@@ -1605,6 +1617,7 @@ nv_solve <- function(a, b) {
 #' b <- nv_matrix(c(4, 3), nrow = 2, dtype = "f32")
 #' nv_triangular_solve(L, b)
 #' @export
+#' @jit static 3:6
 nv_triangular_solve <- function(
   a,
   b,
@@ -1686,6 +1699,7 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_det(a)
 #' @export
+#' @jit
 nv_det <- function(operand) {
   d <- nv_determinant(operand, logarithm = FALSE)
   prim_mul(d$sign, d$modulus)
@@ -1721,6 +1735,7 @@ nv_det <- function(operand) {
 #' nv_determinant(a)
 #' nv_determinant(a, logarithm = FALSE)
 #' @export
+#' @jit static 2L
 nv_determinant <- function(operand, logarithm = TRUE) {
   operand <- as_anvl_array(operand)
   # Adopted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
@@ -1777,6 +1792,7 @@ nv_determinant <- function(operand, logarithm = TRUE) {
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_inv(a)
 #' @export
+#' @jit
 nv_inv <- function(operand) {
   operand <- as_anvl_array(operand)
   shp <- shape(operand)
@@ -1825,6 +1841,7 @@ nv_qr <- prim_qr
 #' x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_lu(x)
 #' @export
+#' @jit
 nv_lu <- function(operand) {
   operand <- as_anvl_array(operand)
   out <- prim_lu(operand)
@@ -1887,6 +1904,7 @@ nv_eigh <- prim_eigh
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_diag(nv_array(c(1, 2, 3)))
 #' @export
+#' @jit
 nv_diag <- function(operand) {
   operand <- as_anvl_array(operand)
   if (ndims(operand) != 1L) {
@@ -1934,6 +1952,7 @@ nv_diag <- function(operand) {
 #' x <- nv_fill(0, shape = c(3, 3), dtype = "f64")
 #' nv_eye_like(x, 3L)
 #' @export
+#' @jit static 1:3
 nv_eye <- function(n, dtype = "f32", device = NULL) {
   nv_diag(nv_fill(1, n, dtype = dtype, device = device))
 }
@@ -1982,6 +2001,7 @@ nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_mean(nv_array(c(1, NaN, 3)))
 #' nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_mean <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   dims <- .resolve_reduce_dims(operand, dims)
@@ -2134,6 +2154,7 @@ nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
 #' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 #' @export
+#' @jit static 2:3
 nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
@@ -2164,6 +2185,7 @@ nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 #' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 #' @export
+#' @jit static 2:3
 nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   if (is.null(dim)) {
@@ -2197,6 +2219,7 @@ nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
+#' @jit static 2:4
 nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
   .nv_cum_extreme(operand, dim, with_indices, nan_rm, -Inf, prim_cummax)
 }
@@ -2222,6 +2245,7 @@ nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 #' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
 #' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
+#' @jit static 2:4
 nv_cummin <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
   .nv_cum_extreme(operand, dim, with_indices, nan_rm, Inf, prim_cummin)
 }
@@ -2301,6 +2325,7 @@ nv_while <- prim_while
 #' x <- nv_array(c(1, 2, 4, 8))
 #' nv_log2(x)
 #' @export
+#' @jit
 nv_log2 <- function(operand) {
   operand <- as_anvl_array(operand)
   nv_log(operand) / log(2)
@@ -2316,6 +2341,7 @@ nv_log2 <- function(operand) {
 #' x <- nv_array(c(1, 10, 100, 1000))
 #' nv_log10(x)
 #' @export
+#' @jit
 nv_log10 <- function(operand) {
   operand <- as_anvl_array(operand)
   nv_log(operand) / log(10)
@@ -2331,6 +2357,7 @@ nv_log10 <- function(operand) {
 #' x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 #' nv_is_nan(x)
 #' @export
+#' @jit
 nv_is_nan <- function(operand) {
   operand <- as_anvl_array(operand)
   operand != operand
@@ -2373,6 +2400,7 @@ nv_is_infinite <- function(operand) {
 #' nv_var(x, dims = 1L)
 #' nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
 #' @export
+#' @jit static 2:5
 nv_var <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   assert_int(correction)
@@ -2412,6 +2440,7 @@ nv_var <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = 
 #' nv_sd(x)              # all dims -> scalar
 #' nv_sd(x, dims = 1L)
 #' @export
+#' @jit static 2:5
 nv_sd <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   nv_sqrt(nv_var(operand, dims, drop, correction, nan_rm = nan_rm))
 }
@@ -2486,6 +2515,7 @@ nv_unsqueeze <- function(operand, dim) {
 #' y <- nv_array(c(4, 5))
 #' nv_outer(x, y)
 #' @export
+#' @jit
 nv_outer <- function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
   lhs <- args[[1L]]
@@ -2513,6 +2543,7 @@ nv_outer <- function(lhs, rhs) {
 #' x <- nv_array(1:9, shape = c(3, 3))
 #' nv_extract_diag(x)
 #' @export
+#' @jit
 nv_extract_diag <- function(operand) {
   operand <- as_anvl_array(operand)
   if (ndims(operand) != 2L) {
@@ -2546,6 +2577,7 @@ nv_extract_diag <- function(operand) {
 #' x <- nv_array(c(1, 0, 0, 0, 2, 0, 0, 0, 3), shape = c(3, 3))
 #' nv_trace(x)
 #' @export
+#' @jit
 nv_trace <- function(operand) {
   operand <- as_anvl_array(operand)
   diag_vals <- nv_extract_diag(operand)
@@ -2567,6 +2599,7 @@ nv_trace <- function(operand) {
 #' x <- nv_fill(1, c(3, 3))
 #' nv_tril(x)
 #' @export
+#' @jit static 2L
 nv_tril <- function(operand, diagonal = 0L) {
   operand <- as_anvl_array(operand)
   if (ndims(operand) != 2L) {
@@ -2594,6 +2627,7 @@ nv_tril <- function(operand, diagonal = 0L) {
 #' x <- nv_fill(1, c(3, 3))
 #' nv_triu(x)
 #' @export
+#' @jit static 2L
 nv_triu <- function(operand, diagonal = 0L) {
   operand <- as_anvl_array(operand)
   if (ndims(operand) != 2L) {
@@ -2619,6 +2653,7 @@ nv_triu <- function(operand, diagonal = 0L) {
 #' x <- nv_matrix(1:6, nrow = 3, dtype = "f32")
 #' nv_crossprod(x)
 #' @export
+#' @jit
 nv_crossprod <- function(lhs, rhs = NULL) {
   if (is.null(rhs)) {
     lhs <- as_anvl_array(lhs)
@@ -2644,6 +2679,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
 #' x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
 #' nv_tcrossprod(x)
 #' @export
+#' @jit
 nv_tcrossprod <- function(lhs, rhs = NULL) {
   if (is.null(rhs)) {
     lhs <- as_anvl_array(lhs)
@@ -2795,6 +2831,7 @@ nv_sort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' nv_argsort(x)
 #' @export
+#' @jit static 2:4
 nv_argsort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
   operand <- as_anvl_array(operand)
   if (ndims(operand) == 0L) {
@@ -2835,6 +2872,7 @@ nv_argsort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) 
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_top_k(m, k = 2L, dim = 2L)
 #' @export
+#' @jit static 2:4
 nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
   operand <- as_anvl_array(operand)
   rank <- ndims(operand)
@@ -2913,6 +2951,7 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
 #' @export
+#' @jit static 2:5
 nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
   operand <- as_anvl_array(operand)
   rank <- ndims(operand)
@@ -3026,6 +3065,7 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
 #' nv_median(nv_array(c(1, NaN, 3, 5)))
 #' nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_median <- function(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
   nv_quantile(operand, probs = 0.5, dim = dim, interpolation = interpolation, nan_rm = nan_rm)
 }

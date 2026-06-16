@@ -29,7 +29,7 @@ Element-wise arithmetic right bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_right_arithmetic]{stablehlo::hlo_shift_right_arithmetic()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_right_arithmetic]{hlo_shift_right_arithmetic()}}.
 }
 
 \examples{

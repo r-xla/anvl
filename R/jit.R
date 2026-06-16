@@ -60,10 +60,30 @@
 #' the device. Note that this is only necessary with the `"auto"` backend.
 #' When using a concrete backend, you can just specify the device via a static argument.
 #'
+#' @section Jitting in a Package:
+#' To `jit()` a function defined in an R package, prefer the `@jit` roxygen
+#' tag over a top-level `jit()` call:
+#'
+#' ```r
+#' #' @export
+#' #' @jit static = c("flag")
+#' my_fun <- function(x, flag) if (flag) x + 1 else x * 2
+#' ```
+#'
+#' This delegates the wrapping to [`jit_roclet()`], which records the
+#' tagged functions in `R/jit-registry.R`. The wrapping itself happens at
+#' package build time via [`apply_jit_registry()`] in `R/zzz.R`, so the
+#' resulting `JitFunction` is byte-compiled with the rest of the package
+#' instead of being rebuilt on every `.onLoad`.
+#'
+#' See [`jit_roclet()`] for the one-time setup of the roclet in your
+#' package.
+#'
 #' @return A `JitFunction` (a `function` with the same formals as `f`).
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
-#' @seealso [`xla()`] for ahead-of-time compilation, [`jit_eval()`] for evaluating an expression once.
+#' @seealso [`xla()`] for ahead-of-time compilation, [`jit_eval()`] for evaluating an expression once,
+#'   [`jit_roclet()`] for the `@jit` tag used inside R packages.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- jit(function(x, y) x + y)

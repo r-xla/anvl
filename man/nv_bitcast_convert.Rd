@@ -10,7 +10,7 @@ nv_bitcast_convert(operand, dtype)
 \item{operand}{(\code{\link{arrayish}})\cr
 Operand.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Target data type.}
 }
 \value{

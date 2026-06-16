@@ -36,7 +36,7 @@ are broken by returning the smallest index.
 
 \section{StableHLO}{
 
-Lowers to a variadic \code{\link[stablehlo:hlo_reduce]{stablehlo::hlo_reduce()}} over \verb{(values, indices)}
+Lowers to a variadic \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} over \verb{(values, indices)}
 with a (value > value | (value == value & idx < idx)) selector.
 }
 

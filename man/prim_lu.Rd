@@ -37,9 +37,9 @@ permutation vector).
 
 \section{StableHLO}{
 
-Lowers to a \code{"lu"} \code{\link[stablehlo:hlo_custom_call]{stablehlo::hlo_custom_call()}} (backed by LAPACK on
+Lowers to a \code{"lu"} \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} (backed by LAPACK on
 CPU and cuSOLVER on CUDA) for \code{LU} and \code{pivots}, followed by a
-\code{\link[stablehlo:hlo_while]{stablehlo::hlo_while()}} loop that converts \code{pivots} to \code{permutation}
+\code{\link[stablehlo:hlo_while]{hlo_while()}} loop that converts \code{pivots} to \code{permutation}
 in-graph.
 }
 

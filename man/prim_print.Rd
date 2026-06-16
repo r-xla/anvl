@@ -27,7 +27,7 @@ input unchanged. This is useful for debugging JIT-compiled code.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_custom_call]{stablehlo::hlo_custom_call()}}.
+Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}}.
 }
 
 \examples{

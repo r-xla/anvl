@@ -41,7 +41,7 @@ while dynamic update slice writes a block into an array.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{stablehlo::hlo_dynamic_update_slice()}}.
+Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}.
 }
 
 \section{Out Of Bounds Behavior}{

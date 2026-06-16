@@ -65,6 +65,7 @@ nv_unif_rand <- function(
 #' result <- nv_runif(c(2, 3), state)
 #' result[[2]]
 #' @export
+#' @jit static c(1L, 3L, 4L, 5L)
 nv_runif <- function(
   shape,
   initial_state,
@@ -133,6 +134,7 @@ nv_runif <- function(
 #' result <- nv_rnorm(c(2, 3), state)
 #' result[[2]]
 #' @export
+#' @jit static c(1L, 3L, 4L, 5L)
 nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
   dtype <- assert_float_dtype(dtype)
   checkmate::assertNumeric(mu, len = 1, any.missing = FALSE)
@@ -216,6 +218,7 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
 #' result <- nv_rbinom(c(2, 3), state)
 #' result[[2]]
 #' @export
+#' @jit static c(1L, 3L, 4L, 5L)
 nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
   dtype <- as_dtype(dtype)
   checkmate::assert_int(n, lower = 1)
@@ -262,6 +265,7 @@ nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
 #' result <- nv_rdunif(6, state, n = 6L)
 #' result[[2]]
 #' @export
+#' @jit static c(1L, 3L, 4L)
 nv_rdunif <- function(shape, initial_state, n, dtype = "i32") {
   dtype <- as_dtype(dtype)
   checkmate::assert_int(n, lower = 1)

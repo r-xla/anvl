@@ -6,7 +6,7 @@
 \alias{anvl-package}
 \title{anvl: Accelerated Array Computing and Automatic Differentiation}
 \description{
-\if{html}{\figure{logo.png}{options: style='float: right' alt='logo' width='120'}}
+\if{html}{\figure{logo.svg}{options: style='float: right' alt='logo' width='120'}}
 
 Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
 }
@@ -37,6 +37,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Sebastian Fischer \email{seb.fischer@tutamail.com} (\href{https://orcid.org/0000-0002-9609-3197}{ORCID})
   \item Daniel Falbel \email{daniel@posit.co} (\href{https://orcid.org/0009-0006-0143-2392}{ORCID})
   \item Tomasz Kalinowski \email{tomasz@posit.co}
   \item Nikolai German \email{niko.german@gmail.com} (\href{https://orcid.org/0009-0001-7394-8367}{ORCID})

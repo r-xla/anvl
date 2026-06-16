@@ -10,7 +10,7 @@ prim_convert(operand, dtype, ambiguous = FALSE)
 \item{operand}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Target data type.}
 
 \item{ambiguous}{(\code{logical(1)})\cr
@@ -37,7 +37,7 @@ Converts the elements of an array to a different data type.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_convert]{stablehlo::hlo_convert()}}.
+Lowers to \code{\link[stablehlo:hlo_convert]{hlo_convert()}}.
 }
 
 \examples{

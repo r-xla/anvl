@@ -30,7 +30,7 @@ Element-wise equality comparison.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_compare]{stablehlo::hlo_compare()}} with \code{comparison_direction = "EQ"}.
+Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparison_direction = "EQ"}.
 }
 
 \examples{

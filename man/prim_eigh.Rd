@@ -33,7 +33,7 @@ order match \code{\link[base:eigen]{base::eigen()}}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_custom_call]{stablehlo::hlo_custom_call()}} with target \code{"eigh"}.
+Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} with target \code{"eigh"}.
 }
 
 \examples{

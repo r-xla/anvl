@@ -46,7 +46,7 @@ computed at runtime (e.g. depends on array values).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_slice]{stablehlo::hlo_slice()}}.
+Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}.
 }
 
 \examples{

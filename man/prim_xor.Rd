@@ -30,7 +30,7 @@ Element-wise logical XOR.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_xor]{stablehlo::hlo_xor()}}.
+Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}.
 }
 
 \examples{
