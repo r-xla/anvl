@@ -73,8 +73,9 @@
 #' # A scalar array.
 #' nv_scalar(3.14)
 #'
-#' # A 0x3 array
-#' nv_empty("f32", shape = c(0L, 3L))
+#' # An uninitialized 2x3 array (contents are unspecified). Useful as a
+#' # placeholder for outputs of jitted functions when donating buffers.
+#' nv_empty("f32", shape = c(2L, 3L))
 #'
 #' # --- Extractors ---
 #' x <- nv_array(1:6, shape = c(2L, 3L))
@@ -373,18 +374,18 @@ nv_matrix <- function(
 
 #' @rdname AnvlArray
 #' @export
-nv_empty <- function(dtype, shape, device = NULL, ambiguous = FALSE) {
+nv_empty <- function(dtype, shape, device = NULL, ambiguous = FALSE, backend = NULL) {
   shape <- as.integer(shape)
-  storage_mode <- switch(
-    substr(as.character(if (is_dtype(dtype)) dtype else as_dtype(dtype)), 1L, 1L),
-    "f" = "double",
-    "i" = ,
-    "u" = "integer",
-    "b" = "logical",
-    "double"
+  if (is.null(backend) && is_device(device)) {
+    backend <- backend(device)
+  }
+  backend <- backend %||% default_backend()
+  globals$backends[[backend]]$new_empty(
+    dtype = dtype,
+    shape = shape,
+    device = device,
+    ambiguous = ambiguous
   )
-  data <- array(vector(storage_mode, prod(shape)), dim = shape)
-  nv_array(data, dtype = dtype, device = device, shape = shape, ambiguous = ambiguous)
 }
 
 #' @rdname AbstractArray

@@ -79,15 +79,25 @@ env_get <- function(env, gval) {
 #'   Names of the arguments whose buffers should be donated.
 #'   Donated buffers can be aliased with outputs of the same type, enabling in-place
 #'   operations.
+#' @param donate_unaliased_outputs (`logical(1)`)\cr
+#'   If `TRUE` and the current target platform is `"cpu"`, append a
+#'   phantom donated input for every output that isn't already aliased
+#'   to a user-`donate`d input.
+#'   This is needed internally so R keeps track of the CPU buffers memory in order
+#'   to know when to garbage collect.
 #' @param platform (`NULL` | `character(1)`)\cr
 #'   Target platform name (e.g. `"cpu"`, `"cuda"`). Stored on a process-wide
 #'   global during the call so that platform-aware lowering rules (queried via
 #'   [`current_platform()`]) can branch on it. `NULL` (the default)
 #'   leaves the current value untouched — recursive calls from higher-order
 #'   primitives inherit the platform of the enclosing call.
-#' @return A `list` of length 2:
+#' @return A `list` of length 3:
 #'   - the [`stablehlo::Func`]
 #'   - The list of [`GraphValue`]s holding [`ConcreteArray`]s.
+#'   - A list of phantom-output specs, one per phantom donated input
+#'     appended when `donate_unaliased_outputs = TRUE`. Each entry is a
+#'     `list(dtype, shape)` describing the buffer the executor must
+#'     allocate. Empty when no phantoms were added.
 #' @seealso [`trace_fn()`], [`jit()`], [`xla()`], [`current_platform()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -100,6 +110,7 @@ stablehlo <- function(
   constants_as_inputs = TRUE,
   env = NULL,
   donate = character(),
+  donate_unaliased_outputs = FALSE,
   platform = NULL
 ) {
   if (!is.null(platform)) {
@@ -166,6 +177,32 @@ stablehlo <- function(
     env_add(env, node, fval)
   }
 
+  # For each output that isn't already aliased to a user-donated input,
+  # append a phantom FuncInput that carries tf.aliasing_output = j. XLA
+  # reuses the phantom parameter's storage for output j; the executor
+  # allocates a fresh pjrt_empty() for each phantom so the output ends up
+  # written into R-owned memory (gated on CPU because the trick only
+  # gives us a host-visible RAWSXP on CPU). The phantom never appears in
+  # the body — it exists purely as donated output storage.
+  phantom_specs <- list()
+  if (donate_unaliased_outputs && identical(current_platform(), "cpu")) {
+    for (j in seq_along(out_types)) {
+      if ((j - 1L) %in% aliased_outputs) {
+        next
+      }
+      out_vt <- out_types[[j]]
+      id <- stablehlo::ValueId()
+      fi <- stablehlo::FuncInput(id, out_vt, alias = j - 1L)
+      func$inputs <- stablehlo::FuncInputs(c(func$inputs, list(fi)))
+      aliased_outputs <- c(aliased_outputs, j - 1L)
+      out_aval <- graph$outputs[[j]]$aval
+      phantom_specs[[length(phantom_specs) + 1L]] <- list(
+        dtype = out_aval$dtype,
+        shape = out_aval$shape$dims
+      )
+    }
+  }
+
   if (!constants_as_inputs) {
     for (const in graph$constants) {
       if (is.null(env_get(env, const))) {
@@ -220,7 +257,7 @@ stablehlo <- function(
 
   constants <- graph$constants
 
-  list(func, constants)
+  list(func, constants, phantom_specs)
 }
 
 #' @title Current Lowering Target Platform

@@ -3,6 +3,8 @@
 #' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
 #' This should be a `structure()` with at least a `$data` field that contains the actual
 #' underlying data (`PJRTBuffer` for `"xla"` backend, `array()` for `"quickr"` backend).
+#' @param new_empty (`function`)\cr Constructs an AnvlArray of the given
+#' `dtype` and `shape` with unspecified contents. Called by [`nv_empty()`].
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
 #' @param shape (`function`)\cr Extracts the shape from an AnvlArray.
 #' @param ambiguous (`function`)\cr Extracts the ambiguous flag from an AnvlArray.
@@ -25,6 +27,7 @@
 #' @export
 AnvlBackend <- function(
   new_data,
+  new_empty,
   dtype,
   shape,
   ambiguous,
@@ -40,6 +43,7 @@ AnvlBackend <- function(
   structure(
     list(
       new_data = new_data,
+      new_empty = new_empty,
       dtype = dtype,
       shape = shape,
       ambiguous = ambiguous,
@@ -136,6 +140,24 @@ register_backend(
         "b" = as.logical(data),
         as.double(data)
       )
+      structure(
+        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "plain"),
+        class = "AnvlArray"
+      )
+    },
+    new_empty = function(dtype, shape, device, ambiguous) {
+      if (!is_dtype(dtype)) {
+        dtype <- as_dtype(dtype)
+      }
+      storage_mode <- switch(
+        substr(as.character(dtype), 1L, 1L),
+        "f" = "double",
+        "i" = ,
+        "u" = "integer",
+        "b" = "logical",
+        "double"
+      )
+      data <- array(vector(storage_mode, prod(shape)), dim = shape)
       structure(
         list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "plain"),
         class = "AnvlArray"

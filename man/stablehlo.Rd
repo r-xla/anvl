@@ -9,6 +9,7 @@ stablehlo(
   constants_as_inputs = TRUE,
   env = NULL,
   donate = character(),
+  donate_unaliased_outputs = FALSE,
   platform = NULL
 )
 }
@@ -31,6 +32,13 @@ Names of the arguments whose buffers should be donated.
 Donated buffers can be aliased with outputs of the same type, enabling in-place
 operations.}
 
+\item{donate_unaliased_outputs}{(\code{logical(1)})\cr
+If \code{TRUE} and the current target platform is \code{"cpu"}, append a
+phantom donated input for every output that isn't already aliased
+to a user-\code{donate}d input.
+This is needed internally so R keeps track of the CPU buffers memory in order
+to know when to garbage collect.}
+
 \item{platform}{(\code{NULL} | \code{character(1)})\cr
 Target platform name (e.g. \code{"cpu"}, \code{"cuda"}). Stored on a process-wide
 global during the call so that platform-aware lowering rules (queried via
@@ -39,10 +47,14 @@ leaves the current value untouched — recursive calls from higher-order
 primitives inherit the platform of the enclosing call.}
 }
 \value{
-A \code{list} of length 2:
+A \code{list} of length 3:
 \itemize{
 \item the \code{\link[stablehlo:Func]{stablehlo::Func}}
 \item The list of \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s.
+\item A list of phantom-output specs, one per phantom donated input
+appended when \code{donate_unaliased_outputs = TRUE}. Each entry is a
+\code{list(dtype, shape)} describing the buffer the executor must
+allocate. Empty when no phantoms were added.
 }
 }
 \description{
