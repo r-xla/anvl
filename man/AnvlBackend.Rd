@@ -6,6 +6,7 @@
 \usage{
 AnvlBackend(
   new_data,
+  new_empty,
   dtype,
   shape,
   ambiguous,
@@ -23,6 +24,9 @@ AnvlBackend(
 \item{new_data}{(\code{function})\cr Constructs an AnvlArray from R data.
 This should be a \code{structure()} with at least a \verb{$data} field that contains the actual
 underlying data (\code{PJRTBuffer} for \code{"xla"} backend, \code{array()} for \code{"quickr"} backend).}
+
+\item{new_empty}{(\code{function})\cr Constructs an AnvlArray of the given
+\code{dtype} and \code{shape} with unspecified contents. Called by \code{\link[=nv_empty]{nv_empty()}}.}
 
 \item{dtype}{(\code{function})\cr Extracts the dtype from an AnvlArray.}
 

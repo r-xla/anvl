@@ -175,8 +175,9 @@ nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 # A scalar array.
 nv_scalar(3.14)
 
-# A 0x3 array
-nv_empty("f32", shape = c(0L, 3L))
+# An uninitialized 2x3 array (contents are unspecified). Useful as a
+# placeholder for outputs of jitted functions when donating buffers.
+nv_empty("f32", shape = c(2L, 3L))
 
 # --- Extractors ---
 x <- nv_array(1:6, shape = c(2L, 3L))
