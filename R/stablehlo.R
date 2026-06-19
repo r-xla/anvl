@@ -186,7 +186,7 @@ stablehlo <- function(
   # the body — it exists purely as donated output storage.
   phantom_specs <- list()
   if (donate_unaliased_outputs && identical(current_platform(), "cpu")) {
-    for (j in seq(0, length(out_types) - 1)) {
+    for (j in seq_along(out_types)) {
       if ((j - 1L) %in% aliased_outputs) {
         next
       }
