@@ -26,6 +26,7 @@ jit_call_xla <- function(
   # extra-appended inputs. pjrt::pjrt_execute migrates the RAWSXP
   # keepalive from each phantom XPtr to its aliased output XPtr, so the
   # output's host bytes end up owned by R's GC.
+  # We onlu use this on CPU, on CUDA phantom_specs is empty
   phantom_bufs <- lapply(phantom_specs, function(spec) {
     pjrt::pjrt_empty(dtype = spec$dtype, shape = spec$shape, device = device)
   })

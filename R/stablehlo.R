@@ -82,12 +82,9 @@ env_get <- function(env, gval) {
 #' @param donate_unaliased_outputs (`logical(1)`)\cr
 #'   If `TRUE` and the current target platform is `"cpu"`, append a
 #'   phantom donated input for every output that isn't already aliased
-#'   to a user-`donate`d input. Each phantom carries
-#'   `tf.aliasing_output = j` so XLA reuses the phantom's host buffer as
-#'   the storage for output `j`. The caller (anvl's XLA backend) supplies
-#'   an `pjrt::pjrt_empty()` buffer for each phantom at execute time, and
-#'   `pjrt` migrates the RAWSXP keepalive onto the output XPtr so the
-#'   output's bytes are managed by R's GC. Defaults to `FALSE`.
+#'   to a user-`donate`d input.
+#'   This is needed internally so R keeps track of the CPU buffers memory in order
+#'   to know when to garbage collect.
 #' @param platform (`NULL` | `character(1)`)\cr
 #'   Target platform name (e.g. `"cpu"`, `"cuda"`). Stored on a process-wide
 #'   global during the call so that platform-aware lowering rules (queried via
@@ -189,7 +186,7 @@ stablehlo <- function(
   # the body — it exists purely as donated output storage.
   phantom_specs <- list()
   if (donate_unaliased_outputs && identical(current_platform(), "cpu")) {
-    for (j in seq_along(out_types)) {
+    for (j in seq(0, length(out_types) - 1)) {
       if ((j - 1L) %in% aliased_outputs) {
         next
       }

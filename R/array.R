@@ -374,9 +374,13 @@ nv_matrix <- function(
 
 #' @rdname AnvlArray
 #' @export
-nv_empty <- function(dtype, shape, device = NULL, ambiguous = FALSE) {
+nv_empty <- function(dtype, shape, device = NULL, ambiguous = FALSE, backend = NULL) {
   shape <- as.integer(shape)
-  globals$backends[[default_backend()]]$new_empty(
+  if (is.null(backend) && is_device(device)) {
+    backend <- backend(device)
+  }
+  backend <- backend %||% default_backend()
+  globals$backends[[backend]]$new_empty(
     dtype = dtype,
     shape = shape,
     device = device,

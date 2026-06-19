@@ -29,3 +29,62 @@ test_that("xla: basic test", {
   result <- f_compiled(nv_scalar(1, dtype = "f32"), nv_scalar(2, dtype = "f32"))
   expect_equal(result, nv_scalar(3, dtype = "f32"))
 })
+
+describe("CPU output donation", {
+  it("appends a phantom input per non-aliased output on CPU", {
+    skip_if(!is_cpu())
+    graph <- trace_fn(
+      function(x) x + 1,
+      list(x = nv_aval("f32", shape = c(4L)))
+    )
+    out <- stablehlo(
+      graph,
+      donate_unaliased_outputs = TRUE,
+      platform = "cpu"
+    )
+    phantom_specs <- out[[3L]]
+    expect_length(phantom_specs, 1L)
+    expect_equal(phantom_specs[[1L]]$shape, 4L)
+    expect_equal(as.character(phantom_specs[[1L]]$dtype), "f32")
+  })
+
+  it("skips phantoms on non-CPU platforms even with donate_unaliased_outputs", {
+    graph <- trace_fn(
+      function(x) x + 1,
+      list(x = nv_aval("f32", shape = c(4L)))
+    )
+    out <- stablehlo(
+      graph,
+      donate_unaliased_outputs = TRUE,
+      platform = "cuda"
+    )
+    expect_length(out[[3L]], 0L)
+  })
+
+  it("skips phantoms on CPU when donate_unaliased_outputs = FALSE", {
+    skip_if(!is_cpu())
+    graph <- trace_fn(
+      function(x) x + 1,
+      list(x = nv_aval("f32", shape = c(4L)))
+    )
+    out <- stablehlo(graph, platform = "cpu")
+    expect_length(out[[3L]], 0L)
+  })
+
+  it("does not add a phantom for a user-donated input (output already aliased)", {
+    skip_if(!is_cpu())
+    graph <- trace_fn(
+      function(x) x * 2,
+      list(x = nv_aval("f32", shape = c(4L)))
+    )
+    out <- stablehlo(
+      graph,
+      donate = "x",
+      donate_unaliased_outputs = TRUE,
+      platform = "cpu"
+    )
+    # Output 0 is aliased to user input 0 (after constants), so no phantom
+    # is needed.
+    expect_length(out[[3L]], 0L)
+  })
+})

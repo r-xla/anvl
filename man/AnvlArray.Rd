@@ -42,7 +42,7 @@ nv_matrix(
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, ambiguous = FALSE)
+nv_empty(dtype, shape, device = NULL, ambiguous = FALSE, backend = NULL)
 
 nv_array_like(
   like,
