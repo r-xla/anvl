@@ -39,6 +39,8 @@ Suggests:
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
+Remotes:
+    r-xla/pjrt
 Additional_repositories:
     https://r-xla.r-universe.dev
 VignetteBuilder:
