@@ -7,6 +7,7 @@ Create a backend
 ``` r
 AnvlBackend(
   new_data,
+  new_empty,
   dtype,
   shape,
   ambiguous,
@@ -31,6 +32,13 @@ AnvlBackend(
   `$data` field that contains the actual underlying data (`PJRTBuffer`
   for `"xla"` backend, [`array()`](https://rdrr.io/r/base/array.html)
   for `"quickr"` backend).
+
+- new_empty:
+
+  (`function`)  
+  Constructs an AnvlArray of the given `dtype` and `shape` with
+  unspecified contents. Called by
+  [`nv_empty()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md).
 
 - dtype:
 

@@ -115,7 +115,7 @@ Its type is determined by a data type and a shape.</p>
 <span>  byrow <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_empty</span><span class="op">(</span><span class="va">dtype</span>, <span class="va">shape</span>, device <span class="op">=</span> <span class="cn">NULL</span>, ambiguous <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu">nv_empty</span><span class="op">(</span><span class="va">dtype</span>, <span class="va">shape</span>, device <span class="op">=</span> <span class="cn">NULL</span>, ambiguous <span class="op">=</span> <span class="cn">FALSE</span>, backend <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_array_like</span><span class="op">(</span></span>
 <span>  <span class="va">like</span>,</span>
@@ -293,10 +293,13 @@ Serialize/deserialize arrays to/from raw vectors.</p></li>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3.1400</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># A 0x3 array</span></span></span>
-<span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified). Useful as a</span></span></span>
+<span class="r-in"><span><span class="co"># placeholder for outputs of jitted functions when donating buffers.</span></span></span>
+<span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{0,3} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -3.0135e+09 -3.0136e+09 -3.0136e+09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0946e-41  3.0946e-41  3.0946e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>
 <span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu">nv_array</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>

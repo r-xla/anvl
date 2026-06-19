@@ -24,6 +24,7 @@ stablehlo(
   constants_as_inputs = TRUE,
   env = NULL,
   donate = character(),
+  donate_unaliased_outputs = FALSE,
   platform = NULL
 )
 ```
@@ -58,6 +59,14 @@ stablehlo(
   buffers can be aliased with outputs of the same type, enabling
   in-place operations.
 
+- donate_unaliased_outputs:
+
+  (`logical(1)`)  
+  If `TRUE` and the current target platform is `"cpu"`, append a phantom
+  donated input for every output that isn't already aliased to a
+  user-`donate`d input. This is needed internally so R keeps track of
+  the CPU buffers memory in order to know when to garbage collect.
+
 - platform:
 
   (`NULL` \| `character(1)`)  
@@ -71,7 +80,7 @@ stablehlo(
 
 ## Value
 
-A `list` of length 2:
+A `list` of length 3:
 
 - the
   [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)
@@ -80,6 +89,11 @@ A `list` of length 2:
   [`GraphValue`](https://r-xla.github.io/anvl/dev/reference/GraphValue.md)s
   holding
   [`ConcreteArray`](https://r-xla.github.io/anvl/dev/reference/ConcreteArray.md)s.
+
+- A list of phantom-output specs, one per phantom donated input appended
+  when `donate_unaliased_outputs = TRUE`. Each entry is a
+  `list(dtype, shape)` describing the buffer the executor must allocate.
+  Empty when no phantoms were added.
 
 ## See also
 
@@ -118,5 +132,8 @@ stablehlo(graph)
 #> [[2]][[1]]
 #> GraphValue(ConcreteArray(f32, (2))) 
 #> 
+#> 
+#> [[3]]
+#> list()
 #> 
 ```

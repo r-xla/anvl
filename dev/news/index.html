@@ -76,14 +76,33 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
-<ul><li>
-<code>NULL</code> is now treated as an empty node when flattening and unflattening trees. It contributes no leaves but is preserved structurally, so functions with optional arguments (e.g. <code>function(x, y = NULL)</code>) round-trip correctly.</li>
+<div class="section level3">
+<h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
+<ul><li><p><code><a href="../reference/AnvlArray.html">nv_array()</a></code>, <code><a href="../reference/AnvlArray.html">nv_scalar()</a></code>, <code><a href="../reference/as_array.html">as_array()</a></code>, and the <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code> / <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code> / <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code> / <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> methods for <code>AnvlArray</code> gained a <code>check</code> argument that opts into scanning for <code>NA</code> values during host -&gt; device and device -&gt; host transfers. See the “Gotchas” vignette.</p></li>
+<li><p><code><a href="../reference/nv_var.html">nv_var()</a></code> and <code><a href="../reference/nv_sd.html">nv_sd()</a></code> now default to <code>dims = NULL</code>, which reduces over all dimensions and returns a scalar, consistent with the other reductions.</p></li>
 </ul></div>
+<div class="section level3">
+<h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>
+<ul><li>Most <code>nv_*()</code> API functions are now JIT-compiled internally (via a new <code>@jit</code> roxygen roclet), speeding up eager-mode execution.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li><p><code>NULL</code> is now treated as an empty node when flattening and unflattening trees. It contributes no leaves but is preserved structurally, so functions with optional arguments (e.g. <code>function(x, y = NULL)</code>) round-trip correctly.</p></li>
+<li><p><code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> and <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> now break ties order-independently, so they return the same result on GPU as on CPU (<a href="https://github.com/r-xla/anvl/issues/368" class="external-link">#368</a>). <code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> prefer the smallest index; <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> prefer the last occurrence.</p></li>
+<li><p><code><a href="../reference/nv_diag.html">nv_diag()</a></code> now errors on non-1-D input instead of silently producing an incorrect result.</p></li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.3.0" id="anvl-030">anvl 0.3.0<a class="anchor" aria-label="anchor" href="#anvl-030"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-0-3-0">Breaking Changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-3-0"></a></h3>
-<ul><li>Renamed user-facing API functions to match base R names: <code>nv_sine()</code> -&gt; <code><a href="../reference/nv_sin.html">nv_sin()</a></code>, <code>nv_cosine()</code> -&gt; <code><a href="../reference/nv_cos.html">nv_cos()</a></code>, <code>nv_ceil()</code> -&gt; <code><a href="../reference/nv_ceiling.html">nv_ceiling()</a></code>, <code>nv_cholesky()</code> -&gt; <code><a href="../reference/nv_chol.html">nv_chol()</a></code>. The corresponding primitives were renamed in step: <code>prim_sine()</code> -&gt; <code><a href="../reference/prim_sin.html">prim_sin()</a></code>, <code>prim_cosine()</code> -&gt; <code><a href="../reference/prim_cos.html">prim_cos()</a></code>, <code>prim_cholesky()</code> -&gt; <code><a href="../reference/prim_chol.html">prim_chol()</a></code>.</li>
+<ul><li>
+<code><a href="../reference/AnvlArray.html">nv_empty()</a></code> / <code><a href="../reference/AnvlArray.html">nv_empty_like()</a></code> return arrays with unspecified contents (no longer zero-initialized).</li>
+</ul></div>
+<div class="section level3">
+<h3 id="new-features-0-3-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0"></a></h3>
+<ul><li>On CPU, jitted XLA functions now back every non-aliased output with an R-owned RAWSXP. anvl appends a phantom donated input per unaliased output during lowering, allocates <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_buffer.html" class="external-link">pjrt::pjrt_empty()</a></code> buffers at execute time, and <code>pjrt</code> migrates the keepalive onto the output XPtr. The output’s host bytes are then managed by R’s GC.</li>
+<li>Renamed user-facing API functions to match base R names: <code>nv_sine()</code> -&gt; <code><a href="../reference/nv_sin.html">nv_sin()</a></code>, <code>nv_cosine()</code> -&gt; <code><a href="../reference/nv_cos.html">nv_cos()</a></code>, <code>nv_ceil()</code> -&gt; <code><a href="../reference/nv_ceiling.html">nv_ceiling()</a></code>, <code>nv_cholesky()</code> -&gt; <code><a href="../reference/nv_chol.html">nv_chol()</a></code>. The corresponding primitives were renamed in step: <code>prim_sine()</code> -&gt; <code><a href="../reference/prim_sin.html">prim_sin()</a></code>, <code>prim_cosine()</code> -&gt; <code><a href="../reference/prim_cos.html">prim_cos()</a></code>, <code>prim_cholesky()</code> -&gt; <code><a href="../reference/prim_chol.html">prim_chol()</a></code>.</li>
 <li>
 <code>nv_reduce_mean()</code> was renamed to <code><a href="../reference/nv_mean.html">nv_mean()</a></code>.</li>
 <li>
@@ -92,7 +111,7 @@
 <code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> now default to <code>lower = FALSE</code> (upper-triangular factor), matching base R’s <code><a href="https://rdrr.io/r/base/chol.html" class="external-link">chol()</a></code>. Previously defaulted to <code>lower = TRUE</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="new-features-0-3-0">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0"></a></h3>
+<h3 id="new-features-0-3-0-1">New Features<a class="anchor" aria-label="anchor" href="#new-features-0-3-0-1"></a></h3>
 <div class="section level4">
 <h4 id="linear-algebra-0-3-0">Linear algebra<a class="anchor" aria-label="anchor" href="#linear-algebra-0-3-0"></a></h4>
 <ul><li>New matrix-decomposition primitives and corresponding <code>nv_*()</code> functions: <code>qr</code>, <code>lu</code>, <code>svd</code>, <code>eigh</code>. None of them implement a reverse rule yet.</li>
@@ -139,11 +158,6 @@
 <li>New <code>nv_matrix(data, nrow, ncol, ...)</code> which works like R’s <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>.</li>
 <li>New API functions <code><a href="../reference/nv_bind.html">nv_rbind()</a></code> and <code><a href="../reference/nv_bind.html">nv_cbind()</a></code> and corresponding <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind()</a></code> / <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind()</a></code> generics.</li>
 <li>New API function <code><a href="../reference/nv_flatten.html">nv_flatten()</a></code> for flattening to 1-D.</li>
-</ul></div>
-<div class="section level4">
-<h4 id="na-scanning-0-3-0">NA scanning<a class="anchor" aria-label="anchor" href="#na-scanning-0-3-0"></a></h4>
-<ul><li>
-<code><a href="../reference/AnvlArray.html">nv_array()</a></code>, <code><a href="../reference/AnvlArray.html">nv_scalar()</a></code>, <code><a href="../reference/as_array.html">as_array()</a></code>, and the <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code> / <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code> / <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code> / <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> methods for <code>AnvlArray</code> gained a <code>check</code> argument that opts into scanning for <code>NA</code> values during host -&gt; device and device -&gt; host transfers. See the “Gotchas” vignette.</li>
 </ul></div>
 <div class="section level4">
 <h4 id="misc-0-3-0">Misc<a class="anchor" aria-label="anchor" href="#misc-0-3-0"></a></h4>

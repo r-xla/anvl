@@ -2,15 +2,75 @@
 
 ## anvl (development version)
 
+### Features
+
+- [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),
+  and the [`as.integer()`](https://rdrr.io/r/base/integer.html) /
+  [`as.double()`](https://rdrr.io/r/base/double.html) /
+  [`as.logical()`](https://rdrr.io/r/base/logical.html) /
+  [`as.vector()`](https://rdrr.io/r/base/vector.html) methods for
+  `AnvlArray` gained a `check` argument that opts into scanning for `NA`
+  values during host -\> device and device -\> host transfers. See the
+  “Gotchas” vignette.
+
+- [`nv_var()`](https://r-xla.github.io/anvl/dev/reference/nv_var.md) and
+  [`nv_sd()`](https://r-xla.github.io/anvl/dev/reference/nv_sd.md) now
+  default to `dims = NULL`, which reduces over all dimensions and
+  returns a scalar, consistent with the other reductions.
+
+### Performance
+
+- Most `nv_*()` API functions are now JIT-compiled internally (via a new
+  `@jit` roxygen roclet), speeding up eager-mode execution.
+
+### Bug fixes
+
 - `NULL` is now treated as an empty node when flattening and
   unflattening trees. It contributes no leaves but is preserved
   structurally, so functions with optional arguments
   (e.g. `function(x, y = NULL)`) round-trip correctly.
 
+- [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
+  /
+  [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
+  and
+  [`nv_cummax()`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
+  /
+  [`nv_cummin()`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
+  now break ties order-independently, so they return the same result on
+  GPU as on CPU ([\#368](https://github.com/r-xla/anvl/issues/368)).
+  [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
+  /
+  [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
+  prefer the smallest index;
+  [`nv_cummax()`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
+  /
+  [`nv_cummin()`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
+  prefer the last occurrence.
+
+- [`nv_diag()`](https://r-xla.github.io/anvl/dev/reference/nv_diag.md)
+  now errors on non-1-D input instead of silently producing an incorrect
+  result.
+
 ## anvl 0.3.0
 
 ### Breaking Changes
 
+- [`nv_empty()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  /
+  [`nv_empty_like()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  return arrays with unspecified contents (no longer zero-initialized).
+
+### New Features
+
+- On CPU, jitted XLA functions now back every non-aliased output with an
+  R-owned RAWSXP. anvl appends a phantom donated input per unaliased
+  output during lowering, allocates
+  [`pjrt::pjrt_empty()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html)
+  buffers at execute time, and `pjrt` migrates the keepalive onto the
+  output XPtr. The output’s host bytes are then managed by R’s GC.
 - Renamed user-facing API functions to match base R names: `nv_sine()`
   -\>
   [`nv_sin()`](https://r-xla.github.io/anvl/dev/reference/nv_sin.md),
@@ -128,19 +188,6 @@
 - New API function
   [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
   for flattening to 1-D.
-
-#### NA scanning
-
-- [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
-  [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
-  [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),
-  and the [`as.integer()`](https://rdrr.io/r/base/integer.html) /
-  [`as.double()`](https://rdrr.io/r/base/double.html) /
-  [`as.logical()`](https://rdrr.io/r/base/logical.html) /
-  [`as.vector()`](https://rdrr.io/r/base/vector.html) methods for
-  `AnvlArray` gained a `check` argument that opts into scanning for `NA`
-  values during host -\> device and device -\> host transfers. See the
-  “Gotchas” vignette.
 
 #### Misc
 

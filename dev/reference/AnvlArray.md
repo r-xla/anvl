@@ -37,7 +37,7 @@ nv_matrix(
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, ambiguous = FALSE)
+nv_empty(dtype, shape, device = NULL, ambiguous = FALSE, backend = NULL)
 
 nv_array_like(
   like,
@@ -243,10 +243,13 @@ nv_scalar(3.14)
 #>  3.1400
 #> [ CPUf32{} ] 
 
-# A 0x3 array
-nv_empty("f32", shape = c(0L, 3L))
+# An uninitialized 2x3 array (contents are unspecified). Useful as a
+# placeholder for outputs of jitted functions when donating buffers.
+nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#> [ CPUf32{0,3} ] 
+#>  -3.0135e+09 -3.0136e+09 -3.0136e+09
+#>   3.0946e-41  3.0946e-41  3.0946e-41
+#> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
 x <- nv_array(1:6, shape = c(2L, 3L))

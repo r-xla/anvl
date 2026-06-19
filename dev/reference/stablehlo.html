@@ -101,6 +101,7 @@ XLA executable with <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_c
 <span>  constants_as_inputs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  env <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  donate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  donate_unaliased_outputs <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  platform <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -135,6 +136,15 @@ Donated buffers can be aliased with outputs of the same type, enabling in-place
 operations.</p></dd>
 
 
+<dt id="arg-donate-unaliased-outputs">donate_unaliased_outputs<a class="anchor" aria-label="anchor" href="#arg-donate-unaliased-outputs"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+If <code>TRUE</code> and the current target platform is <code>"cpu"</code>, append a
+phantom donated input for every output that isn't already aliased
+to a user-<code>donate</code>d input.
+This is needed internally so R keeps track of the CPU buffers memory in order
+to know when to garbage collect.</p></dd>
+
+
 <dt id="arg-platform">platform<a class="anchor" aria-label="anchor" href="#arg-platform"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
 Target platform name (e.g. <code>"cpu"</code>, <code>"cuda"</code>). Stored on a process-wide
@@ -146,8 +156,12 @@ primitives inherit the platform of the enclosing call.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A <code>list</code> of length 2:</p><ul><li><p>the <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code></p></li>
+    <p>A <code>list</code> of length 3:</p><ul><li><p>the <code><a href="https://r-xla.github.io/stablehlo/reference/Func.html" class="external-link">stablehlo::Func</a></code></p></li>
 <li><p>The list of <code><a href="GraphValue.html">GraphValue</a></code>s holding <code><a href="ConcreteArray.html">ConcreteArray</a></code>s.</p></li>
+<li><p>A list of phantom-output specs, one per phantom donated input
+appended when <code>donate_unaliased_outputs = TRUE</code>. Each entry is a
+<code>list(dtype, shape)</code> describing the buffer the executor must
+allocate. Empty when no phantoms were added.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -183,6 +197,9 @@ primitives inherit the platform of the enclosing call.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]][[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> GraphValue(ConcreteArray(f32, (2))) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [[3]]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> list()</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>
