@@ -1464,6 +1464,10 @@ nv_round <- prim_round
 #' @param lhs,rhs ([`arrayish`])\cr
 #'   Arrays with at least 2 dimensions.
 #'   Operands are [promoted to a common data type][nv_promote_to_common()].
+#' @param precision (`character(1)`)\cr
+#'   Controls the trade-off between speed and numerical accuracy of the
+#'   operation. One of `"highest"` (default), `"high"` or `"default"`.
+#'   See [prim_dot_general()] for details.
 #' @return [`arrayish`]
 #' @seealso [prim_dot_general()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1471,8 +1475,8 @@ nv_round <- prim_round
 #' y <- nv_matrix(1:6, nrow = 3)
 #' x %*% y
 #' @export
-#' @jit
-nv_matmul <- function(lhs, rhs) {
+#' @jit static "precision"
+nv_matmul <- function(lhs, rhs, precision = "highest") {
   args <- nv_promote_to_common(lhs, rhs)
   lhs <- args[[1L]]
   rhs <- args[[2L]]
@@ -1487,7 +1491,8 @@ nv_matmul <- function(lhs, rhs) {
     lhs,
     rhs,
     contracting_dims = list(ndims(lhs), ndims(rhs) - 1L),
-    batching_dims = list(seq_len(nbatch), seq_len(nbatch))
+    batching_dims = list(seq_len(nbatch), seq_len(nbatch)),
+    precision = precision
   )
 }
 

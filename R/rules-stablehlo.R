@@ -36,10 +36,16 @@ prim_broadcast_in_dim[["stablehlo"]] <- function(operand, shape, broadcast_dimen
   list(hlo_broadcast_in_dim(operand, broadcast_dimensions - 1L, shape))
 }
 
-prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_dims, batching_dims) {
+prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_dims, batching_dims, precision) {
   contracting_dims <- lapply(contracting_dims, \(x) x - 1L)
   batching_dims <- lapply(batching_dims, \(x) x - 1L)
-  list(hlo_dot_general(lhs, rhs, contracting_dims, batching_dims))
+  list(hlo_dot_general(
+    lhs,
+    rhs,
+    contracting_dims,
+    batching_dims,
+    precision_config = toupper(precision)
+  ))
 }
 
 prim_transpose[["stablehlo"]] <- function(operand, permutation) {

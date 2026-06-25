@@ -1008,6 +1008,79 @@ describe("prim_reduce", {
   })
 })
 
+test_that("prim_dot_general precision", {
+  A <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, ncol = 3, dtype = "f32")
+  B <- nv_matrix(c(6, 5, 4, 3, 2, 1), nrow = 3, ncol = 2, dtype = "f32")
+  ref <- as_array(A) %*% as_array(B)
+
+  for (prec in c("default", "high", "highest")) {
+    out <- jit(function(a, b) {
+      prim_dot_general(
+        a,
+        b,
+        contracting_dims = list(2L, 1L),
+        batching_dims = list(integer(), integer()),
+        precision = prec
+      )
+    })(A, B)
+    expect_equal(as_array(out), ref, tolerance = 1e-4)
+  }
+
+  # the chosen precision is lowered into the StableHLO IR (uppercased)
+  g <- trace_fn(
+    function(a, b) {
+      prim_dot_general(
+        a,
+        b,
+        contracting_dims = list(2L, 1L),
+        batching_dims = list(integer(), integer()),
+        precision = "high"
+      )
+    },
+    list(nv_aval("f32", shape = c(2, 3)), nv_aval("f32", shape = c(3, 2)))
+  )
+  expect_match(repr(stablehlo(g)[[1L]]), "precision = [HIGH, HIGH]", fixed = TRUE)
+
+  # the default precision is "highest"
+  g_default <- trace_fn(
+    function(a, b) {
+      prim_dot_general(
+        a,
+        b,
+        contracting_dims = list(2L, 1L),
+        batching_dims = list(integer(), integer())
+      )
+    },
+    list(nv_aval("f32", shape = c(2, 3)), nv_aval("f32", shape = c(3, 2)))
+  )
+  expect_match(repr(stablehlo(g_default)[[1L]]), "precision = [HIGHEST, HIGHEST]", fixed = TRUE)
+
+  # invalid precision is rejected
+  expect_error(
+    prim_dot_general(
+      A,
+      B,
+      contracting_dims = list(2L, 1L),
+      batching_dims = list(integer(), integer()),
+      precision = "bogus"
+    ),
+    "should be one of"
+  )
+})
+
+test_that("nv_matmul exposes precision and defaults to highest", {
+  A <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, ncol = 3, dtype = "f32")
+  B <- nv_matrix(c(6, 5, 4, 3, 2, 1), nrow = 3, ncol = 2, dtype = "f32")
+  ref <- as_array(A) %*% as_array(B)
+  expect_equal(as_array(nv_matmul(A, B, precision = "high")), ref, tolerance = 1e-4)
+
+  g <- trace_fn(
+    function(a, b) nv_matmul(a, b),
+    list(nv_aval("f32", shape = c(2, 3)), nv_aval("f32", shape = c(3, 2)))
+  )
+  expect_match(repr(stablehlo(g)[[1L]]), "precision = [HIGHEST, HIGHEST]", fixed = TRUE)
+})
+
 # we don't want to include torch in Suggests just for the tests, as it's a relatively
 # heavy dependency
 # We have a CI job that installs torch, so it's at least tested once

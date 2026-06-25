@@ -269,6 +269,10 @@ prim_broadcast_in_dim <- new_primitive(
 #' @param batching_dims (`list(integer(), integer())`)\cr
 #'   A list of two integer vectors specifying which dimensions of `lhs` and
 #'   `rhs` are batch dimensions. These must have matching sizes.
+#' @param precision (`character(1)`)\cr
+#'   Controls the trade-off between speed and numerical accuracy of the
+#'   operation. One of `"highest"` (default), `"high"` or `"default"`.
+#'   Only the StableHLO backend honors this; it is ignored by the quickr backend.
 #' @return [`arrayish`]\cr
 #'   The output shape is the batch dimensions followed by the remaining
 #'   (non-contracted, non-batched) dimensions of `lhs`, then `rhs`.
@@ -287,8 +291,9 @@ prim_broadcast_in_dim <- new_primitive(
 #' @export
 prim_dot_general <- new_primitive(
   "dot_general",
-  function(lhs, rhs, contracting_dims, batching_dims) {
-    infer_fn <- function(lhs, rhs, contracting_dims, batching_dims) {
+  function(lhs, rhs, contracting_dims, batching_dims, precision = "highest") {
+    precision <- match.arg(precision, c("default", "high", "highest"))
+    infer_fn <- function(lhs, rhs, contracting_dims, batching_dims, precision) {
       ddn <- stablehlo::DotDimensionNumbers(
         contracting_dims = lapply(contracting_dims, \(x) x - 1L),
         batching_dims = lapply(batching_dims, \(x) x - 1L)
@@ -299,11 +304,15 @@ prim_dot_general <- new_primitive(
     graph_desc_add(
       self,
       list(lhs = lhs, rhs = rhs),
-      list(contracting_dims = contracting_dims, batching_dims = batching_dims),
+      list(
+        contracting_dims = contracting_dims,
+        batching_dims = batching_dims,
+        precision = precision
+      ),
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = 3:4
+  static = 3:5
 )
 
 #' @title Primitive Transpose

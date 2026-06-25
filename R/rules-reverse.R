@@ -365,6 +365,7 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 
   contracting_dims <- params$contracting_dims
   batching_dims <- params$batching_dims
+  precision <- params$precision
 
   # batching dimensions
   bd_lhs <- batching_dims[[1L]]
@@ -407,7 +408,8 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
         grad,
         rhs,
         contracting_dims = list(d_rhs_out, rd_rhs),
-        batching_dims = list(bd_out, bd_rhs)
+        batching_dims = list(bd_out, bd_rhs),
+        precision = precision
       )
       prim_transpose(grad_lhs, perm_lhs)
     },
@@ -416,7 +418,8 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
         grad,
         lhs,
         contracting_dims = list(d_lhs_out, rd_lhs),
-        batching_dims = list(bd_out, bd_lhs)
+        batching_dims = list(bd_out, bd_lhs),
+        precision = precision
       )
       prim_transpose(grad_rhs, perm_rhs)
     }

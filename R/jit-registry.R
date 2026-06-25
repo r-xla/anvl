@@ -14,7 +14,7 @@
   list(name = "nv_polygamma", static = 1L),
   list(name = "nv_clamp", static = character(0)),
   list(name = "nv_seq", static = 1:6),
-  list(name = "nv_matmul", static = character(0)),
+  list(name = "nv_matmul", static = "precision"),
   list(name = "nv_solve", static = character(0)),
   list(name = "nv_triangular_solve", static = 3:6),
   list(name = "nv_det", static = character(0)),

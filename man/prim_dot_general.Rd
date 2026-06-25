@@ -4,7 +4,13 @@
 \alias{prim_dot_general}
 \title{Primitive Dot General}
 \usage{
-prim_dot_general(lhs, rhs, contracting_dims, batching_dims)
+prim_dot_general(
+  lhs,
+  rhs,
+  contracting_dims,
+  batching_dims,
+  precision = "highest"
+)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
@@ -19,6 +25,11 @@ A list of two integer vectors specifying which dimensions of \code{lhs} and
 \item{batching_dims}{(\code{list(integer(), integer())})\cr
 A list of two integer vectors specifying which dimensions of \code{lhs} and
 \code{rhs} are batch dimensions. These must have matching sizes.}
+
+\item{precision}{(\code{character(1)})\cr
+Controls the trade-off between speed and numerical accuracy of the
+operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
+Only the StableHLO backend honors this; it is ignored by the quickr backend.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -4,12 +4,17 @@
 \alias{nv_matmul}
 \title{Matrix Multiplication}
 \usage{
-nv_matmul(lhs, rhs)
+nv_matmul(lhs, rhs, precision = "highest")
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
 Arrays with at least 2 dimensions.
 Operands are \link[=nv_promote_to_common]{promoted to a common data type}.}
+
+\item{precision}{(\code{character(1)})\cr
+Controls the trade-off between speed and numerical accuracy of the
+operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
+See \code{\link[=prim_dot_general]{prim_dot_general()}} for details.}
 }
 \value{
 \code{\link{arrayish}}
