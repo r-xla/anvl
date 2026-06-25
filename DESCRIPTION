@@ -29,7 +29,7 @@ Imports:
     pjrt (>= 0.4.0),
     rlang,
     safetensors (>= 0.2.0),
-    stablehlo (>= 0.3.0.901),
+    stablehlo (>= 0.3.0),
     tengen (>= 0.2.0),
     withr,
     xlamisc (>= 0.3.0)
