@@ -368,27 +368,46 @@ xla <- function(f, args, donate = character(), device = NULL) {
 #' @export
 AnvlBackendXla <- function() {
   backend <- AnvlBackend(
+    # The dtype/shape/device of a PJRT buffer are immutable, so we resolve them
+    # once here and cache them on the AnvlArray (as the plain/quickr backends
+    # already do for dtype/shape). This turns the per-call dtype()/shape()/
+    # device() reads on the hot dispatch path into plain field accesses instead
+    # of repeated S3-dispatch -> C++/pjrt calls.
     new_data = function(data, dtype, shape, device, ambiguous) {
       buf <- pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
       structure(
-        list(data = buf, ambiguous = ambiguous, backend = "xla"),
+        list(
+          data = buf,
+          dtype = tengen::dtype(buf),
+          shape = tengen::shape(buf),
+          device = device(buf),
+          ambiguous = ambiguous,
+          backend = "xla"
+        ),
         class = "AnvlArray"
       )
     },
     new_empty = function(dtype, shape, device, ambiguous) {
       buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device)
       structure(
-        list(data = buf, ambiguous = ambiguous, backend = "xla"),
+        list(
+          data = buf,
+          dtype = tengen::dtype(buf),
+          shape = tengen::shape(buf),
+          device = device(buf),
+          ambiguous = ambiguous,
+          backend = "xla"
+        ),
         class = "AnvlArray"
       )
     },
-    dtype = function(x) tengen::dtype(x$data),
-    shape = function(x) tengen::shape(x$data),
+    dtype = function(x) x$dtype,
+    shape = function(x) x$shape,
     ambiguous = function(x) x$ambiguous,
     as_array = function(x, check) tengen::as_array(x$data, check = check),
     as_raw = function(x, row_major) tengen::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),
-    device = function(x) device(x$data),
+    device = function(x) x$device,
     new_device = function(x) pjrt::pjrt_device(x),
     print_data = function(x, footer) print(x$data, header = FALSE, footer = footer),
     jit = function(f, static, cache, donate = character(), device = NULL) {
