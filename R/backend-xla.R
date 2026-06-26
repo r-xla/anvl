@@ -9,16 +9,21 @@ jit_call_xla <- function(
   is_static_flat,
   ambiguous_out = NULL,
   device,
-  phantom_specs = list()
+  phantom_specs = list(),
+  copy_to_device = TRUE
 ) {
   args_unwrapped <- lapply(args_flat[!is_static_flat], \(a) {
     if (is_valid_r_lit(a)) {
       pjrt_scalar(a, device = device)
     } else if (is_valid_r_array(a)) {
       pjrt_buffer(a, device = device)
-    } else {
+    } else if (copy_to_device) {
       # no-op if already on correct device
       pjrt::copy_buffer(a$data, device)
+    } else {
+      # No device move was requested, so `jit_prepare_call()` already verified
+      # the input lives on `device`; skip the copy_buffer device round-trip.
+      a$data
     }
   })
 
@@ -37,7 +42,10 @@ jit_call_xla <- function(
     !!!consts_flat,
     !!!args_unwrapped,
     !!!phantom_bufs,
-    simplify = FALSE
+    simplify = FALSE,
+    # Trusted hot path: anvl assembled the buffers and validated devices in
+    # jit_prepare_call(), so skip pjrt_execute()'s argument re-validation.
+    check = FALSE
   )
   jit_wrap_outputs(out_vals, out_node, ambiguous_out, "xla")
 }
@@ -59,6 +67,11 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
     prep <- jit_prepare_call(match.call(), parent.frame(), static, device = device, backend = "xla")
     avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
 
+    # Inputs only need a copy_buffer when a target device was requested; with
+    # `device = NULL` (eager primitive dispatch) jit_prepare_call already
+    # verified every input lives on the inferred device.
+    copy_to_device <- !is.null(device)
+
     # prep$device is either
     # - device compatible with all inputs
     # - specified device
@@ -75,7 +88,8 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
         prep$is_static_flat,
         cache_hit[[4]], # ambiguity
         cache_hit[[5]], # device
-        cache_hit[[6]] # phantom_specs
+        cache_hit[[6]], # phantom_specs
+        copy_to_device = copy_to_device
       ))
     }
 
@@ -108,7 +122,8 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
       prep$is_static_flat,
       compiled$ambiguous_out,
       compiled$device,
-      compiled$phantom_specs
+      compiled$phantom_specs,
+      copy_to_device = copy_to_device
     )
 
     cache$set(
@@ -307,7 +322,10 @@ xla <- function(f, args, donate = character(), device = NULL) {
       !!!const_arrays,
       !!!args_unwrapped,
       !!!phantom_bufs,
-      simplify = FALSE
+      simplify = FALSE,
+      # Trusted hot path: inputs were assembled and validated above, so skip
+      # pjrt_execute()'s argument re-validation.
+      check = FALSE
     )
     jit_wrap_outputs(out_vals, out_tree, ambiguous_out, "xla")
   }
