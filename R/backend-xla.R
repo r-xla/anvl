@@ -50,16 +50,71 @@ jit_call_xla <- function(
   jit_wrap_outputs(out_vals, out_node, ambiguous_out, "xla")
 }
 
+# Build the native-dispatch compile callback for a jitted function. Invoked by
+# pjrt's dispatcher only on a cache miss; it runs the normal trace+compile path
+# on the evaluated `args` and returns the artifacts the dispatcher needs to
+# execute and to let anvl wrap the outputs.
+jit_xla_compile_cb <- function(f, static, donate) {
+  function(args) {
+    prep <- jit_prepare_args(args, static, device = NULL, backend = "xla")
+    avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
+    args_flat_nv <- prep$args_flat[!prep$is_static_flat & vapply(prep$args_flat, is_anvl_array, logical(1))]
+    arg_devices <- lapply(args_flat_nv, tengen::device)
+    compiled <- compile_xla(
+      f,
+      args_flat = avals_in,
+      in_tree = prep$in_tree,
+      donate = donate,
+      device = NULL,
+      arg_devices = arg_devices
+    )
+    phantom_specs <- lapply(compiled$phantom_specs, function(spec) {
+      list(dtype = as.character(spec$dtype), shape = as.integer(spec$shape))
+    })
+    list(
+      exec = compiled$exec,
+      const_arrays = lapply(compiled$const_arrays, function(b) b),
+      phantom_specs = phantom_specs,
+      client = pjrt::pjrt_client(as.character(pjrt::platform(compiled$device))),
+      device = compiled$device,
+      out_tree = compiled$out_tree,
+      ambiguous_out = compiled$ambiguous_out
+    )
+  }
+}
+
 # device: NULL | PJRTDdevice | AnvlDeviceArg;
 jit_xla_impl <- function(f, static, cache, donate, device) {
   if (!is.null(device) && !is_device_arg(device)) {
     device <- nv_device(device, "xla")
   }
+
+  # Native eager-dispatch fast path: only when no target device is requested
+  # (device = NULL), i.e. plain primitive dispatch. pjrt's dispatcher owns the
+  # executable cache for this path; the R cache below still serves the
+  # device/device_arg slow path. Calls the dispatcher can't handle (non-xla
+  # leaves, multi-device, etc.) return the sentinel and fall through to R.
+  dispatcher <- if (is.null(device)) {
+    pjrt::pjrt_dispatcher(cache$capacity, jit_xla_compile_cb(f, static, donate))
+  } else {
+    NULL
+  }
+  sentinel <- pjrt::pjrt_dispatch_sentinel()
+
   function() {
     if (currently_tracing()) {
       args <- as.list(match.call())[-1L]
       args <- lapply(args, eval, envir = parent.frame())
       return(do.call(f, args))
+    }
+    if (!is.null(dispatcher)) {
+      args <- as.list(match.call())[-1L]
+      args <- lapply(args, eval, envir = parent.frame())
+      res <- pjrt::pjrt_dispatch(dispatcher, args)
+      if (!identical(res, sentinel)) {
+        return(jit_wrap_outputs(res$buffers, res$out_tree, res$ambiguous_out, "xla"))
+      }
+      # Not handled natively -- fall through to the R path below (re-preps args).
     }
     # - With specified device, inputs will be moved to it
     # - Otherwise checks that there are no conflicting devices

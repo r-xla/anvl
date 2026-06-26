@@ -276,9 +276,16 @@ jit_auto_detect_backend <- function(args_flat) {
 }
 
 jit_prepare_call <- function(call, eval_env, static, device = NULL, backend) {
-  assert_choice(backend, c("xla", "quickr"))
   args <- as.list(call)[-1L]
   args <- lapply(args, eval, envir = eval_env)
+  jit_prepare_args(args, static, device = device, backend = backend)
+}
+
+# The structure-and-validation half of jit_prepare_call, operating on an
+# already-evaluated argument list (so the native dispatcher's compile callback,
+# which receives evaluated args, can reuse it).
+jit_prepare_args <- function(args, static, device = NULL, backend) {
+  assert_choice(backend, c("xla", "quickr"))
 
   # Fast path for a flat argument list -- no nested bare-list or NULL pytree
   # nodes, the common case for primitive calls. build_tree()/flatten() would

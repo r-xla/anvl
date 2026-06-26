@@ -206,7 +206,16 @@ is_valid_r <- function(x) {
 }
 
 cache_size <- function(f) {
-  environment(f)$cache$size
+  env <- environment(f)
+  # Total compiled executables cached. The xla eager path caches in a native
+  # pjrt dispatcher; calls it can't handle (e.g. a static device arg) fall back
+  # to the R-side LRU cache. A given signature lands in exactly one of them, so
+  # the total is their sum.
+  n <- env$cache$size %||% 0L
+  if (!is.null(env$dispatcher)) {
+    n <- n + pjrt::pjrt_dispatch_size(env$dispatcher)
+  }
+  n
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
