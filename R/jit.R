@@ -280,11 +280,23 @@ jit_prepare_call <- function(call, eval_env, static, device = NULL, backend) {
   args <- as.list(call)[-1L]
   args <- lapply(args, eval, envir = eval_env)
 
-  in_tree <- build_tree(mark_some(args, static))
-  args_flat <- flatten(args)
-  is_static_flat <- in_tree$marked
-  in_tree$marked <- NULL
-  class(in_tree) <- c("ListNode", "Node")
+  # Fast path for a flat argument list -- no nested bare-list or NULL pytree
+  # nodes, the common case for primitive calls. build_tree()/flatten() would
+  # recursively walk the args to produce exactly these three values; building
+  # them directly avoids that overhead on the hot dispatch path. Leaves
+  # (AnvlArrays, atomics, ...) are either non-lists or classed objects, so the
+  # structural-node test is `is.null() || (is.list() && !is.object())`.
+  if (length(args) > 0L && !any(vapply(args, function(a) is.null(a) || (is.list(a) && !is.object(a)), logical(1)))) {
+    args_flat <- unname(args)
+    is_static_flat <- rlang::names2(args) %in% static
+    in_tree <- ListNode(lapply(seq_along(args), LeafNode), names(args))
+  } else {
+    in_tree <- build_tree(mark_some(args, static))
+    args_flat <- flatten(args)
+    is_static_flat <- in_tree$marked
+    in_tree$marked <- NULL
+    class(in_tree) <- c("ListNode", "Node")
+  }
 
   # Resolve device: device_arg() → extract from args, string/device → nv_device(),
   # NULL → infer from inputs, then fall back to PJRT_PLATFORM default.
