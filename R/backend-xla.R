@@ -65,18 +65,17 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
     # - Otherwise checks that there are no conflicting devices
     # - it detects which device will be used (either select or inferred)
     prep <- jit_prepare_call(match.call(), parent.frame(), static, device = device, backend = "xla")
-    avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
 
     # Inputs only need a copy_buffer when a target device was requested; with
     # `device = NULL` (eager primitive dispatch) jit_prepare_call already
     # verified every input lives on the inferred device.
     copy_to_device <- !is.null(device)
 
-    # prep$device is either
-    # - device compatible with all inputs
-    # - specified device
-    # - NULL (device unknown from inputs)
-    cache_key <- list(prep$in_tree, avals_in, prep$device)
+    # Probe the executable cache with a cheap input-signature key built straight
+    # from the cached array metadata, BEFORE constructing the abstract values. On
+    # a hit we skip to_avals() entirely; avals are only needed to compile on a
+    # miss. prep$device is the compatible/specified/NULL device.
+    cache_key <- list(prep$in_tree, jit_key_leaves(prep$args_flat, prep$is_static_flat), prep$device)
     cache_hit <- cache$get(cache_key)
 
     if (!is.null(cache_hit)) {
@@ -92,6 +91,9 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
         copy_to_device = copy_to_device
       ))
     }
+
+    # Cache miss: now build the abstract values needed to trace and compile.
+    avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
 
     args_flat_nv <- prep$args_flat[!prep$is_static_flat & vapply(prep$args_flat, is_anvl_array, logical(1))]
 

@@ -348,6 +348,33 @@ to_avals <- function(args_flat, is_static_flat) {
   )
 }
 
+# Cheap executable-cache key material for a call's input signature. It encodes
+# exactly the fields that distinguish a compilation -- per dynamic leaf the
+# (dtype, shape, ambiguity), and for static leaves the value itself -- mirroring
+# to_avals(), but as plain lists read straight from the cached array metadata
+# instead of constructing nv_aval objects. This lets the dispatch probe the
+# cache before building the (more expensive) abstract values, so a cache hit
+# avoids to_avals() entirely; the avals are only needed to compile on a miss.
+jit_key_leaves <- function(args_flat, is_static_flat) {
+  .mapply(
+    function(x, is_static) {
+      if (is_static) {
+        x
+      } else if (is_anvl_array(x)) {
+        list(x$dtype, x$shape, x$ambiguous)
+      } else if (is_valid_r_lit(x)) {
+        list(default_dtype(x), integer(), TRUE)
+      } else if (is_valid_r_array(x)) {
+        list(default_dtype(x), as.integer(dim(x)), TRUE)
+      } else {
+        cli_abort("internal error: invalid input type for jit: {.cls {class(x)[1L]}}")
+      }
+    },
+    list(args_flat, is_static_flat),
+    NULL
+  )
+}
+
 # Check whether an input to jit is valid (w.r.t. information available before tracing)
 # We don't convert yet as the concrete device is only known after tracing (respecting found constant's device)
 # in_tree and i are only used for good error messages
