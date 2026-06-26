@@ -108,18 +108,22 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
       return(do.call(f, args))
     }
     if (!is.null(dispatcher)) {
+      # Evaluate the args once; reuse them on the fallback so argument
+      # expressions with side effects are not evaluated twice.
       args <- as.list(match.call())[-1L]
       args <- lapply(args, eval, envir = parent.frame())
       res <- pjrt::pjrt_dispatch(dispatcher, args)
       if (!identical(res, sentinel)) {
         return(jit_wrap_outputs(res$buffers, res$out_tree, res$ambiguous_out, "xla"))
       }
-      # Not handled natively -- fall through to the R path below (re-preps args).
+      # Not handled natively -- fall back to the R path, reusing the evaluated args.
+      prep <- jit_prepare_args(args, static, device = device, backend = "xla")
+    } else {
+      # - With specified device, inputs will be moved to it
+      # - Otherwise checks that there are no conflicting devices
+      # - it detects which device will be used (either select or inferred)
+      prep <- jit_prepare_call(match.call(), parent.frame(), static, device = device, backend = "xla")
     }
-    # - With specified device, inputs will be moved to it
-    # - Otherwise checks that there are no conflicting devices
-    # - it detects which device will be used (either select or inferred)
-    prep <- jit_prepare_call(match.call(), parent.frame(), static, device = device, backend = "xla")
 
     # Inputs only need a copy_buffer when a target device was requested; with
     # `device = NULL` (eager primitive dispatch) jit_prepare_call already
