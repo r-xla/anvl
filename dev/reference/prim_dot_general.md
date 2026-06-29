@@ -6,7 +6,13 @@ dimensions and batching.
 ## Usage
 
 ``` r
-prim_dot_general(lhs, rhs, contracting_dims, batching_dims)
+prim_dot_general(
+  lhs,
+  rhs,
+  contracting_dims,
+  batching_dims,
+  precision = "highest"
+)
 ```
 
 ## Arguments
@@ -32,6 +38,14 @@ prim_dot_general(lhs, rhs, contracting_dims, batching_dims)
   (`list(integer(), integer())`)  
   A list of two integer vectors specifying which dimensions of `lhs` and
   `rhs` are batch dimensions. These must have matching sizes.
+
+- precision:
+
+  (`character(1)`)  
+  Controls the trade-off between speed and numerical accuracy of the
+  operation. One of `"highest"` (default), `"high"` or `"default"`. Only
+  the StableHLO backend honors this; it is ignored by the quickr
+  backend.
 
 ## Value
 

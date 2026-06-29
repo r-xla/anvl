@@ -7,7 +7,7 @@ than 2 dimensions.
 ## Usage
 
 ``` r
-nv_matmul(lhs, rhs)
+nv_matmul(lhs, rhs, precision = "highest")
 ```
 
 ## Arguments
@@ -18,6 +18,14 @@ nv_matmul(lhs, rhs)
   Arrays with at least 2 dimensions. Operands are [promoted to a common
   data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
+
+- precision:
+
+  (`character(1)`)  
+  Controls the trade-off between speed and numerical accuracy of the
+  operation. One of `"highest"` (default), `"high"` or `"default"`. See
+  [`prim_dot_general()`](https://r-xla.github.io/anvl/dev/reference/prim_dot_general.md)
+  for details.
 
 ## Value
 
