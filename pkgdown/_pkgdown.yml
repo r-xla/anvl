@@ -205,6 +205,7 @@ reference:
       - nv_erf
       - nv_erfc
       - nv_erf_inv
+      - nv_dnorm
       - nv_digamma
       - nv_lgamma
       - nv_polygamma

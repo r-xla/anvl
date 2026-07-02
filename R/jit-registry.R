@@ -33,6 +33,7 @@
   list(name = "nv_atan2", static = character(0)),
   list(name = "nv_trunc", static = character(0)),
   list(name = "nv_polygamma", static = 1L),
+  list(name = "nv_dnorm", static = "log"),
   list(name = "nv_clamp", static = character(0)),
   list(name = "nv_seq", static = 1:6),
   list(name = "nv_matmul", static = "precision"),
