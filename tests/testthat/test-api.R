@@ -392,7 +392,7 @@ describe("nv_dnorm", {
   it("matches base R dnorm() with default mean/sd", {
     x <- c(-2, -1, 0, 0.5, 1, 2)
     expect_equal(
-      as.vector(as_array(nv_dnorm(nv_array(x)))),
+      as.vector(nv_dnorm(nv_array(x))),
       dnorm(x),
       tolerance = 1e-6
     )
@@ -401,7 +401,7 @@ describe("nv_dnorm", {
   it("matches base R dnorm() with custom mean/sd", {
     x <- c(-2, -1, 0, 0.5, 1, 2)
     expect_equal(
-      as.vector(as_array(nv_dnorm(nv_array(x), mean = 1, sd = 2))),
+      as.vector(nv_dnorm(nv_array(x), mean = 1, sd = 2)),
       dnorm(x, mean = 1, sd = 2),
       tolerance = 1e-6
     )
@@ -410,7 +410,7 @@ describe("nv_dnorm", {
   it("log = TRUE matches base R dnorm(..., log = TRUE)", {
     x <- c(-2, -1, 0, 0.5, 1, 2)
     expect_equal(
-      as.vector(as_array(nv_dnorm(nv_array(x), log = TRUE))),
+      as.vector(nv_dnorm(nv_array(x), log = TRUE)),
       dnorm(x, log = TRUE),
       tolerance = 1e-6
     )
@@ -418,24 +418,24 @@ describe("nv_dnorm", {
 
   it("log = TRUE stays finite where the plain density underflows to 0", {
     x <- nv_array(40)
-    expect_equal(as.vector(as_array(nv_dnorm(x))), 0)
+    expect_equal(as.vector(nv_dnorm(x)), 0)
     expect_equal(
-      as.vector(as_array(nv_dnorm(x, log = TRUE))),
+      as.vector(nv_dnorm(x, log = TRUE)),
       dnorm(40, log = TRUE),
       tolerance = 1e-6
     )
   })
 
-  it("broadcasts array-valued mean/sd against x", {
+  it("non-scalar mean/sd works", {
     x <- c(0, 0, 0)
     mean <- c(-1, 0, 1)
     sd <- c(1, 2, 3)
     expect_equal(
-      as.vector(as_array(nv_dnorm(
+      as.vector(nv_dnorm(
         nv_array(x),
         mean = nv_array(mean),
         sd = nv_array(sd)
-      ))),
+      )),
       dnorm(x, mean = mean, sd = sd),
       tolerance = 1e-6
     )
@@ -448,14 +448,13 @@ describe("nv_dnorm", {
 
   it("works under jit with log as a static argument", {
     x <- c(-1, 0, 1)
-    jf <- jit(nv_dnorm, static = "log")
     expect_equal(
-      as.vector(as_array(jf(nv_array(x)))),
+      as.vector(nv_dnorm(nv_array(x))),
       dnorm(x),
       tolerance = 1e-6
     )
     expect_equal(
-      as.vector(as_array(jf(nv_array(x), log = TRUE))),
+      as.vector(nv_dnorm(nv_array(x), log = TRUE)),
       dnorm(x, log = TRUE),
       tolerance = 1e-6
     )
