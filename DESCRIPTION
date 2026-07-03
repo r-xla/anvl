@@ -51,6 +51,7 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
 Collate:
     'aaa.R'
+    'api-distributions.R'
     'array.R'
     'device.R'
     'backend.R'
