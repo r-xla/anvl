@@ -46,7 +46,9 @@ jit_quickr_impl <- function(f, static, cache, unwrap) {
     args_flat_nv <- prep$args_flat[!prep$is_static_flat & vapply(prep$args_flat, is_anvl_array, logical(1))]
     arg_devices <- lapply(args_flat_nv, tengen::device)
 
-    cache_key <- list(prep$in_tree, avals_in)
+    # Key the in_tree by its canonical repr string: the tree is an external
+    # pointer rebuilt per call, which hashtab would compare by address.
+    cache_key <- list(pjrt::tree_repr(prep$in_tree), avals_in)
     r_args_flat <- lapply(prep$args_flat, function(a) {
       if (is_anvl_array(a)) as_array(a) else a
     })

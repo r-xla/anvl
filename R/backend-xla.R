@@ -137,8 +137,14 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
     # Probe the executable cache with a cheap input-signature key built straight
     # from the cached array metadata, BEFORE constructing the abstract values. On
     # a hit we skip to_avals() entirely; avals are only needed to compile on a
-    # miss. prep$device is the compatible/specified/NULL device.
-    cache_key <- list(prep$in_tree, jit_key_leaves(prep$args_flat, prep$is_static_flat), prep$device)
+    # miss. prep$device is the compatible/specified/NULL device. The in_tree is
+    # keyed by its canonical repr string: the tree itself is an external pointer
+    # rebuilt per call, which hashtab would compare by address (never a hit).
+    cache_key <- list(
+      pjrt::tree_repr(prep$in_tree),
+      jit_key_leaves(prep$args_flat, prep$is_static_flat),
+      prep$device
+    )
     cache_hit <- cache$get(cache_key)
 
     if (!is.null(cache_hit)) {

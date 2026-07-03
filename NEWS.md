@@ -1,6 +1,20 @@
 # anvl (development version)
 
+## Breaking changes
+
+* The pytree module moved to pjrt, which owns the native `PJRTNode` tree
+  type used by its eager-dispatch cache. `flatten()`, `build_tree()`,
+  `unflatten()`, `tree_size()`, `tree_path()`, `map_tree()`, and
+  `pmap_tree()` are re-exported from pjrt and keep working; trees are now
+  opaque native handles instead of R lists. `filter_list_node()` and
+  `reindex_tree()` were removed (superseded by `pjrt::filter_by_names()`
+  and `pjrt::tree_concat()`).
+
 ## Features
+
+* Jitted functions with static arguments now cache in pjrt's native
+  dispatcher instead of falling back to the R-side cache, removing the
+  per-call R overhead for static-arg jits.
 
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for

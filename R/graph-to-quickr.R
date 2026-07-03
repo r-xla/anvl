@@ -24,7 +24,7 @@ quickr_restore_leaf <- function(value, info) {
 }
 
 quickr_restore_output_flat <- function(value, out_tree, out_infos) {
-  if (inherits(out_tree, "LeafNode") && length(out_infos) == 1L) {
+  if (pjrt::tree_kind(out_tree) == "leaf" && length(out_infos) == 1L) {
     return(list(quickr_restore_leaf(value, out_infos[[1L]])))
   }
 
@@ -45,9 +45,10 @@ quickr_restore_output <- function(value, out_tree, out_infos) {
 
 graph_to_quickr_prepare <- function(graph) {
   in_tree <- graph$in_tree
-  needs_flatten <- inherits(in_tree, "ListNode") && any(vapply(in_tree$nodes, inherits, logical(1L), "ListNode"))
+  needs_flatten <- pjrt::tree_kind(in_tree) == "list" &&
+    any(pjrt::child_kinds(in_tree) == "list")
 
-  needs_output_wrapper <- !(inherits(graph$out_tree, "LeafNode") && length(graph$outputs) == 1L)
+  needs_output_wrapper <- !(pjrt::tree_kind(graph$out_tree) == "leaf" && length(graph$outputs) == 1L)
   out_infos <- lapply(graph$outputs, function(node) {
     list(
       dtype = as.character(dtype(node)),
@@ -160,7 +161,8 @@ graph_to_quickr_make_wrapper <- function(
   wrapper <- function() {}
   if (isTRUE(use_in_tree_formals)) {
     in_tree <- graph$in_tree
-    top_names <- in_tree$names %||% rep("", length(in_tree$nodes))
+    top_names <- pjrt::tree_names(in_tree) %||%
+      rep("", length(pjrt::child_sizes(in_tree)))
     top_names <- vapply(
       top_names,
       function(x) {

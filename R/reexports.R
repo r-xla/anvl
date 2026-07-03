@@ -247,3 +247,35 @@ NULL
 #' @importFrom pjrt await
 #' @export
 pjrt::await
+
+# The pytree module lives in pjrt (which owns the native Node type used by its
+# eager-dispatch cache); anvl re-exports the user-facing names and uses the
+# rest of the API via pjrt:: internally.
+
+#' @importFrom pjrt flatten
+#' @export
+pjrt::flatten
+
+#' @importFrom pjrt build_tree
+#' @export
+pjrt::build_tree
+
+#' @importFrom pjrt unflatten
+#' @export
+pjrt::unflatten
+
+#' @importFrom pjrt tree_size
+#' @export
+pjrt::tree_size
+
+#' @importFrom pjrt tree_path
+#' @export
+pjrt::tree_path
+
+#' @importFrom pjrt map_tree
+#' @export
+pjrt::map_tree
+
+#' @importFrom pjrt pmap_tree
+#' @export
+pjrt::pmap_tree
