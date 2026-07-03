@@ -312,7 +312,16 @@ test_that("prim_sinh", {
 })
 
 test_that("prim_digamma", {
-  expect_jit_torch_unary(prim_digamma, torch::torch_digamma, c(2, 3), gen = sampler_unif(0.5, 5))
+  # XLA's and torch's float32 digamma approximations disagree by more than the
+  # default 1e-6 relative tolerance over this domain (digamma is steep near the
+  # low end), so use a looser tolerance for this special function.
+  expect_jit_torch_unary(
+    prim_digamma,
+    torch::torch_digamma,
+    c(2, 3),
+    gen = sampler_unif(0.5, 5),
+    tolerance = 1e-4
+  )
 })
 
 test_that("prim_lgamma", {
