@@ -118,7 +118,12 @@ stablehlo <- function(
   }
   # Node -> FuncValue
   env <- HloEnv(parent = env)
-  func <- stablehlo::local_func(id = "main")
+  # A top-level lowering starts a fresh build ("main" resets stablehlo's
+  # SSA-id counter). A closure/region lowering (constants_as_inputs = FALSE,
+  # e.g. a scatter update computation or a while body) runs inside an
+  # enclosing build and must share its counter -- resetting it would hand out
+  # value ids that collide with the enclosing func's (redefined SSA values).
+  func <- stablehlo::local_func(id = if (constants_as_inputs) "main" else "")
   inps <- if (constants_as_inputs) c(graph$constants, graph$inputs) else graph$inputs
 
   gnode_to_fval <- function(gnode) {
@@ -135,7 +140,7 @@ stablehlo <- function(
     # Constants are never donated, inputs may be
     c(
       rep(FALSE, length(graph$constants)),
-      flat_mask_from_names(graph$in_tree, donate)
+      pjrt::mask_from_names(graph$in_tree, donate)
     )
   } else {
     rep(FALSE, length(inps))

@@ -291,7 +291,7 @@ prim_cummin[["stablehlo"]] <- function(operand, dim) {
 }
 
 prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph, .env) {
-  red_func <- stablehlo(reductor_graph)[[1L]]
+  red_func <- stablehlo(reductor_graph, constants_as_inputs = FALSE, env = .env)[[1L]]
   out <- hlo_reduce(
     inputs = list(operand),
     init_values = list(init),
