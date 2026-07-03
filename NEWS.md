@@ -16,6 +16,13 @@
   dispatcher instead of falling back to the R-side cache, removing the
   per-call R overhead for static-arg jits.
 
+* All jit calls now cache and dispatch through pjrt's native dispatcher --
+  including calls with bare R literal/array inputs, `jit(device = )` /
+  `device_arg()` device moves, all-static calls, and the quickr backend
+  (whose compiled closures the dispatcher invokes directly). The R-side
+  fallback caches and `jit_call_xla()` are gone; `cache_size()` reports the
+  native cache alone.
+
 * The launch overhead of calling a jitted function dropped by roughly 3x:
   outputs are wrapped from the dispatcher's natively-read metadata instead
   of per-output S3 dtype()/shape()/device() reads, the `jit(backend =

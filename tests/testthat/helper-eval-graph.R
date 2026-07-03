@@ -1,3 +1,24 @@
+# Execute a compile_xla() result on xla AnvlArray inputs (test-only stand-in
+# for the retired jit_call_xla(); production execution goes through pjrt's
+# native dispatcher).
+exec_compiled_xla_for_test <- function(compiled, args_nv) {
+  args_unwrapped <- lapply(args_nv, function(a) {
+    pjrt::copy_buffer(a$data, compiled$device)
+  })
+  phantom_bufs <- lapply(compiled$phantom_specs, function(spec) {
+    pjrt::pjrt_empty(dtype = spec$dtype, shape = spec$shape, device = compiled$device)
+  })
+  out_vals <- rlang::exec(
+    pjrt::pjrt_execute,
+    compiled$exec,
+    !!!compiled$const_arrays,
+    !!!args_unwrapped,
+    !!!phantom_bufs,
+    simplify = FALSE
+  )
+  jit_wrap_outputs(out_vals, compiled$out_tree, compiled$ambiguous_out, "xla")
+}
+
 compile_graph_pjrt <- function(graph) {
   testthat::skip_if_not_installed("pjrt")
   testthat::skip_if_not_installed("stablehlo")
@@ -55,16 +76,7 @@ compile_graph_pjrt <- function(graph) {
       input_nodes
     )
 
-    out_nv <- jit_call_xla(
-      compiled$exec,
-      compiled$out_tree,
-      compiled$const_arrays,
-      args_nv,
-      rep(FALSE, length(args_nv)),
-      compiled$ambiguous_out,
-      device = compiled$device,
-      phantom_specs = compiled$phantom_specs
-    )
+    out_nv <- exec_compiled_xla_for_test(compiled, args_nv)
     as_r(out_nv)
   }
 }

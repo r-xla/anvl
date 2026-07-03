@@ -206,7 +206,7 @@ test_that("a static xla jit caches in the native dispatcher, not the R cache", {
   expect_equal(as.numeric(as_array(r2)), 6)
   expect_equal(as.numeric(as_array(r3)), 4)
   expect_equal(pjrt::pjrt_dispatch_size(env$dispatcher), 2L) # native cache used
-  expect_equal(env$cache$size, 0L) # nothing fell back
+  expect_null(env$cache) # there is no R-side cache anymore
 })
 
 test_that("static accepts integer positions", {

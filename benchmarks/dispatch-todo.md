@@ -73,10 +73,15 @@ via frame bindings would change missing()/default behavior inside traced
 functions). No further reasonable reduction without the TODO 6 native call
 shell.
 
-Next arc (Part C of the static-dispatch spec, agreed direction): fold the
-quickr backend into the pjrt dispatcher as a second execute-variant (PJRT
-exec vs compiled R closure — hard-coding the two options is acceptable) and
-retire the R fallback caches entirely.
+Part C landed (same day): the dispatcher is the single cache/dispatch path
+for both backends. Bare R literal/array inputs are classified + uploaded
+natively (an `f(x, 3)` call: ~40 us vs the former full-R fallback), device
+moves (`jit(device=)` / `device_arg`) copy natively per entry, all-static
+calls dispatch natively, and quickr executes its compiled closure straight
+from the native cache (~56 us launch). The xla/quickr R caches,
+`jit_call_xla`, `jit_key_leaves`, and `jit_prepare_call` are deleted; the
+sentinel survives only for infer-policy device conflicts, where anvl re-runs
+validation purely to raise the canonical error.
 
 ## TODO 0 — commit the backend-detection fix (immediate)
 

@@ -32,27 +32,15 @@ print.QuickrDevice <- function(x, ...) {
   invisible(x)
 }
 
-jit_quickr_impl <- function(f, static, cache, unwrap) {
-  # One call on already-evaluated args (the fast entry used by jit_auto's
-  # wrapper via the "jit_run_args" attribute; see jit_xla_impl).
-  run <- function(args) {
+# The native-dispatch compile callback: traces and quickr-compiles on a cache
+# miss and hands the dispatcher the compiled R closure. Also the error path
+# for inputs the dispatcher cannot classify (see jit_xla_compile_cb).
+jit_quickr_compile_cb <- function(f, static, unwrap) {
+  function(args) {
     prep <- jit_prepare_args(args, static, backend = "quickr")
     avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
-
     args_flat_nv <- prep$args_flat[!prep$is_static_flat & vapply(prep$args_flat, is_anvl_array, logical(1))]
     arg_devices <- lapply(args_flat_nv, tengen::device)
-
-    # Key the in_tree by its canonical repr string: the tree is an external
-    # pointer rebuilt per call, which hashtab would compare by address.
-    cache_key <- list(pjrt::tree_repr(prep$in_tree), avals_in)
-    r_args_flat <- lapply(prep$args_flat, function(a) {
-      if (is_anvl_array(a)) as_array(a) else a
-    })
-    cache_hit <- cache$get(cache_key)
-    if (!is.null(cache_hit)) {
-      return(cache_hit(r_args_flat))
-    }
-
     compiled <- compile_quickr(
       f,
       args_flat = avals_in,
@@ -61,8 +49,33 @@ jit_quickr_impl <- function(f, static, cache, unwrap) {
       unwrap = unwrap,
       flat = TRUE
     )
-    cache$set(cache_key, compiled$fun)
-    compiled$fun(r_args_flat)
+    list(r_fun = compiled$fun)
+  }
+}
+
+jit_quickr_impl <- function(f, static, cache_size, unwrap) {
+  # pjrt's native dispatcher owns the cache; entries hold the quickr-compiled
+  # R closure (engine = "closure"), which is called on the flat leaves --
+  # R-array-backed AnvlArrays contribute their $data, everything else passes
+  # through (the closure's wrapper checks and drops the static slots).
+  dispatcher <- pjrt::pjrt_dispatcher(
+    cache_size,
+    jit_quickr_compile_cb(f, static, unwrap),
+    static = static,
+    engine = "closure"
+  )
+  sentinel <- pjrt::pjrt_dispatch_sentinel()
+  dispatch <- pjrt::pjrt_dispatch
+
+  run <- function(args) {
+    res <- dispatch(dispatcher, args)
+    if (!identical(res, sentinel)) {
+      return(res$value)
+    }
+    jit_prepare_args(args, static, backend = "quickr")
+    cli_abort(
+      "Internal error: native dispatch refused a call that passed validation."
+    )
   }
 
   fn <- function() {
@@ -211,9 +224,9 @@ AnvlBackendQuickr <- function() {
       print(x$data)
       cat(footer, "\n")
     },
-    jit = function(f, static, cache, unwrap = FALSE, device = NULL) {
+    jit = function(f, static, cache_size, unwrap = FALSE, device = NULL) {
       assert_flag(unwrap)
-      jit_quickr_impl(f, static, cache, unwrap)
+      jit_quickr_impl(f, static, cache_size, unwrap)
     },
     await_data = function(x) invisible(NULL)
   )

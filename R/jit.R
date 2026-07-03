@@ -140,11 +140,10 @@ jit <- function(
 }
 
 jit_with_backend <- function(f, static, cache_size, backend, ...) {
-  cache <- xlamisc::LRUCache$new(cache_size)
   assert_backend(backend)
   assert_subset(static, formalArgs2(f))
 
-  f_jit <- globals$backends[[backend]]$jit(f, static, cache, ...)
+  f_jit <- globals$backends[[backend]]$jit(f, static, cache_size, ...)
   # setting formals() rebuilds the function, so pick up the fast entry first
   run <- attr(f_jit, "jit_run_args")
   formals(f_jit) <- formals2(f)
@@ -309,15 +308,11 @@ jit_auto_detect_backend <- function(args, static = character()) {
   if (is.na(found)) default_backend() else found
 }
 
-jit_prepare_call <- function(call, eval_env, static, device = NULL, backend) {
-  args <- as.list(call)[-1L]
-  args <- lapply(args, eval, envir = eval_env)
-  jit_prepare_args(args, static, device = device, backend = backend)
-}
 
-# The structure-and-validation half of jit_prepare_call, operating on an
-# already-evaluated argument list (so the native dispatcher's compile callback,
-# which receives evaluated args, can reuse it).
+# Validate an (already-evaluated) argument list and prepare the flat leaves /
+# tree / static mask / device the compile path needs. Called on the native
+# dispatcher's miss path -- and, standalone, to reproduce the canonical
+# validation errors when the dispatcher refuses a call.
 jit_prepare_args <- function(args, static, device = NULL, backend) {
   assert_choice(backend, c("xla", "quickr"))
 
@@ -387,32 +382,6 @@ to_avals <- function(args_flat, is_static_flat) {
   )
 }
 
-# Cheap executable-cache key material for a call's input signature. It encodes
-# exactly the fields that distinguish a compilation -- per dynamic leaf the
-# (dtype, shape, ambiguity), and for static leaves the value itself -- mirroring
-# to_avals(), but as plain lists read straight from the cached array metadata
-# instead of constructing nv_aval objects. This lets the dispatch probe the
-# cache before building the (more expensive) abstract values, so a cache hit
-# avoids to_avals() entirely; the avals are only needed to compile on a miss.
-jit_key_leaves <- function(args_flat, is_static_flat) {
-  .mapply(
-    function(x, is_static) {
-      if (is_static) {
-        x
-      } else if (is_anvl_array(x)) {
-        list(x$dtype, x$shape, x$ambiguous)
-      } else if (is_valid_r_lit(x)) {
-        list(default_dtype(x), integer(), TRUE)
-      } else if (is_valid_r_array(x)) {
-        list(default_dtype(x), as.integer(dim(x)), TRUE)
-      } else {
-        cli_abort("internal error: invalid input type for jit: {.cls {class(x)[1L]}}")
-      }
-    },
-    list(args_flat, is_static_flat),
-    NULL
-  )
-}
 
 # Check whether an input to jit is valid (w.r.t. information available before tracing)
 # We don't convert yet as the concrete device is only known after tracing (respecting found constant's device)
