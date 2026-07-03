@@ -43,4 +43,9 @@ Authors:
   \item Nikolai German \email{niko.german@gmail.com} (\href{https://orcid.org/0009-0001-7394-8367}{ORCID})
 }
 
+Other contributors:
+\itemize{
+  \item Louis Aslett \email{louis.aslett@durham.ac.uk} (\href{https://orcid.org/0000-0003-2211-233X}{ORCID}) [contributor]
+}
+
 }
