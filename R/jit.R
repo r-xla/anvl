@@ -231,7 +231,7 @@ jit_auto <- function(f, static, cache_size, device = NULL, device_argname = NULL
       dev_val <- args[[device_argname]]
       if (is.character(dev_val)) default_backend() else backend(dev_val)
     } else {
-      jit_auto_detect_backend(flatten(args[!names(args) %in% static]))
+      jit_auto_detect_backend(args, static)
     }
     if (is.null(jit_fns[[be]])) {
       jit_fns[[be]] <<- do.call(
@@ -255,24 +255,39 @@ jit_auto <- function(f, static, cache_size, device = NULL, device_argname = NULL
   wrapper
 }
 
-jit_auto_detect_backend <- function(args_flat) {
-  backends <- vapply(
-    args_flat,
-    function(x) if (is_anvl_array(x)) backend(x) else NA_character_,
-    character(1)
-  )
-  found <- setdiff(unique(backends), c(NA_character_, "plain"))
-  if (length(found) > 1L) {
-    cli_abort(c(
-      "Cannot auto-detect backend: inputs use multiple backends.",
-      i = "Found backends: {.val {found}}",
-      i = "Pass {.code backend =} to {.fn jit} or convert inputs to a common backend."
-    ))
+# Determine the backend from a call's (already evaluated) arguments: the single
+# non-"plain" backend among the AnvlArray leaves, or default_backend() if none.
+# A direct short-circuiting scan that reads `$backend` as a field -- this is on
+# the hot eager-dispatch path, so it avoids flatten()/vapply()/unique()/`%in%`.
+jit_auto_detect_backend <- function(args, static = character()) {
+  found <- NA_character_
+  scan <- function(x) {
+    if (is_anvl_array(x)) {
+      b <- x$backend
+      if (!identical(b, "plain")) {
+        if (is.na(found)) {
+          found <<- b
+        } else if (!identical(found, b)) {
+          cli_abort(c(
+            "Cannot auto-detect backend: inputs use multiple backends.",
+            i = "Found backends: {.val {c(found, b)}}",
+            i = "Pass {.code backend =} to {.fn jit} or convert inputs to a common backend."
+          ))
+        }
+      }
+    } else if (is.list(x) && !is.object(x)) {
+      for (el in x) scan(el)
+    }
   }
-  if (length(found) == 1L) {
-    return(found)
+  if (length(static) == 0L) {
+    for (a in args) scan(a)
+  } else {
+    nm <- rlang::names2(args)
+    for (i in seq_along(args)) {
+      if (!(nm[[i]] %in% static)) scan(args[[i]])
+    }
   }
-  default_backend()
+  if (is.na(found)) default_backend() else found
 }
 
 jit_prepare_call <- function(call, eval_env, static, device = NULL, backend) {
