@@ -252,6 +252,8 @@ Mathematical and trigonometric functions
   Complementary Error Function
 - [`nv_erf_inv()`](https://r-xla.github.io/anvl/dev/reference/nv_erf_inv.md)
   : Inverse Error Function
+- [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_dnorm.md)
+  : Normal Density
 - [`nv_digamma()`](https://r-xla.github.io/anvl/dev/reference/nv_digamma.md)
   : Digamma
 - [`nv_lgamma()`](https://r-xla.github.io/anvl/dev/reference/nv_lgamma.md)

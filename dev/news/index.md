@@ -4,6 +4,11 @@
 
 ### Features
 
+- New
+  [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_dnorm.md)
+  computes the normal distribution’s probability density function (or,
+  with `log = TRUE`, its log-density).
+
 - [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),

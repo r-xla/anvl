@@ -13,6 +13,9 @@
 - **Nikolai German**. Author.
   [](https://orcid.org/https://orcid.org/0009-0001-7394-8367)
 
+- **Louis Aslett**. Contributor.
+  [](https://orcid.org/https://orcid.org/0000-0003-2211-233X)
+
 ## Citation
 
 Source:

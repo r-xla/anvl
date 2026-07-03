@@ -247,8 +247,9 @@ nv_scalar(3.14)
 # placeholder for outputs of jitted functions when donating buffers.
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  0 0 0
-#>  0 0 0
+#> 1e+45 *
+#>  1.4013 1.4013 1.4013
+#>  1.4013 1.4013 0.0000
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

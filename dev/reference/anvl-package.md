@@ -47,3 +47,8 @@ Authors:
 
 - Nikolai German <niko.german@gmail.com>
   ([ORCID](https://orcid.org/0009-0001-7394-8367))
+
+Other contributors:
+
+- Louis Aslett <louis.aslett@durham.ac.uk>
+  ([ORCID](https://orcid.org/0000-0003-2211-233X)) \[contributor\]
