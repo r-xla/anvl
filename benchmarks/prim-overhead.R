@@ -48,13 +48,30 @@ cat("device:", device_name, "\n")
 cat("bench:", as.character(packageVersion("bench")), "\n")
 cat("pjrt :", as.character(packageVersion("pjrt")), "\n\n")
 
-# Pull the compiled executable + phantom specs that anvl cached for prim_add(x, y).
-# This lets us drive pjrt::pjrt_execute directly, bypassing anvl's R dispatch.
-get_cached_exec <- function() {
-  jitted <- environment(prim_add)$jit_fns[["xla"]]
-  cache <- environment(jitted)$cache
-  key <- cache$keys_mru_to_lru()[[1L]]
-  cache$get(key) # list(exec, out_tree, const_arrays, ambiguous_out, device, phantom_specs)
+# Compile prim_add's program for the given inputs the same way the dispatcher's
+# miss callback does. (The executable itself now lives in pjrt's native
+# dispatcher cache, which is opaque to R -- so we compile an identical twin to
+# drive pjrt::pjrt_execute directly, bypassing anvl's dispatch.)
+get_cached_exec <- function(x, y) {
+  f <- environment(prim_add)$f
+  prep <- jit_prepare_args(list(lhs = x, rhs = y), character(), device = NULL, backend = "xla")
+  avals <- to_avals(prep$args_flat, prep$is_static_flat)
+  compiled <- compile_xla(
+    f,
+    args_flat = avals,
+    in_tree = prep$in_tree,
+    donate = character(),
+    device = NULL,
+    arg_devices = list(tengen::device(x), tengen::device(y))
+  )
+  list(
+    compiled$exec,
+    compiled$out_tree,
+    compiled$const_arrays,
+    compiled$ambiguous_out,
+    compiled$device,
+    compiled$phantom_specs
+  )
 }
 
 sizes <- c(1L, 100L, 1e4L, 1e6L)
@@ -72,7 +89,7 @@ results <- lapply(sizes, function(n) {
   # compilation cost leaks into the measurement.
   await(prim_add(x, y))
 
-  cached <- get_cached_exec()
+  cached <- get_cached_exec(x, y)
   exec <- cached[[1L]]
   consts <- cached[[3L]]
   pdevice <- cached[[5L]]
