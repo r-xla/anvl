@@ -145,9 +145,12 @@ jit_with_backend <- function(f, static, cache_size, backend, ...) {
   assert_subset(static, formalArgs2(f))
 
   f_jit <- globals$backends[[backend]]$jit(f, static, cache, ...)
+  # setting formals() rebuilds the function, so pick up the fast entry first
+  run <- attr(f_jit, "jit_run_args")
   formals(f_jit) <- formals2(f)
   class(f_jit) <- "JitFunction"
   attr(f_jit, "backend") <- backend
+  attr(f_jit, "jit_run_args") <- run
   f_jit
 }
 
@@ -210,8 +213,9 @@ jit_auto <- function(f, static, cache_size, device = NULL, device_argname = NULL
   if (is_device(device)) {
     cli_abort("Internal error: jit_auto called with a concrete device; backend should have been pinned.")
   }
-  # Lazily create per-backend jit functions
+  # Lazily create per-backend jit functions (+ their evaluated-args fast entry)
   jit_fns <- list()
+  jit_runs <- list()
   dots <- list(...)
   if (!is.null(device_argname)) {
     assert_subset(device_argname, formalArgs2(f))
@@ -233,21 +237,32 @@ jit_auto <- function(f, static, cache_size, device = NULL, device_argname = NULL
     } else {
       jit_auto_detect_backend(args, static)
     }
-    if (is.null(jit_fns[[be]])) {
-      jit_fns[[be]] <<- do.call(
-        jit_with_backend,
-        c(
-          list(f = f, static = static, cache_size = cache_size, backend = be),
-          if (!is.null(device_argname)) {
-            list(device = device_arg(device_argname))
-          } else if (!is.null(device)) {
-            list(device = device)
-          },
-          dots
+    run <- jit_runs[[be]]
+    if (is.null(run)) {
+      if (is.null(jit_fns[[be]])) {
+        jit_fns[[be]] <<- do.call(
+          jit_with_backend,
+          c(
+            list(f = f, static = static, cache_size = cache_size, backend = be),
+            if (!is.null(device_argname)) {
+              list(device = device_arg(device_argname))
+            } else if (!is.null(device)) {
+              list(device = device)
+            },
+            dots
+          )
         )
-      )
+      }
+      run <- attr(jit_fns[[be]], "jit_run_args")
+      if (is.null(run)) {
+        # backend without a fast entry: call the JitFunction the generic way
+        run <- function(args) do.call(jit_fns[[be]], args)
+      }
+      jit_runs[[be]] <<- run
     }
-    do.call(jit_fns[[be]], args)
+    # The args are already evaluated; the fast entry skips the inner
+    # closure's match.call() + eval() re-capture (and do.call()).
+    run(args)
   }
   formals(wrapper) <- formals2(f)
   class(wrapper) <- "JitFunction"

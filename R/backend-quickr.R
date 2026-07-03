@@ -33,14 +33,10 @@ print.QuickrDevice <- function(x, ...) {
 }
 
 jit_quickr_impl <- function(f, static, cache, unwrap) {
-  function() {
-    # calling a jitted function within another jitted function --> re-trace the original closure
-    if (currently_tracing()) {
-      args <- as.list(match.call())[-1L]
-      args <- lapply(args, eval, envir = parent.frame())
-      return(do.call(f, args))
-    }
-    prep <- jit_prepare_call(match.call(), parent.frame(), static, backend = "quickr")
+  # One call on already-evaluated args (the fast entry used by jit_auto's
+  # wrapper via the "jit_run_args" attribute; see jit_xla_impl).
+  run <- function(args) {
+    prep <- jit_prepare_args(args, static, backend = "quickr")
     avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
 
     args_flat_nv <- prep$args_flat[!prep$is_static_flat & vapply(prep$args_flat, is_anvl_array, logical(1))]
@@ -68,6 +64,20 @@ jit_quickr_impl <- function(f, static, cache, unwrap) {
     cache$set(cache_key, compiled$fun)
     compiled$fun(r_args_flat)
   }
+
+  fn <- function() {
+    # calling a jitted function within another jitted function --> re-trace the original closure
+    if (currently_tracing()) {
+      args <- as.list(match.call())[-1L]
+      args <- lapply(args, eval, envir = parent.frame())
+      return(do.call(f, args))
+    }
+    args <- as.list(match.call())[-1L]
+    args <- lapply(args, eval, envir = parent.frame())
+    run(args)
+  }
+  attr(fn, "jit_run_args") <- run
+  fn
 }
 
 compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap = FALSE, flat = FALSE) {

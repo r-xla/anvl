@@ -702,7 +702,8 @@ maybe_restore_previous_desc <- function(desc = NULL) {
 }
 
 currently_tracing <- function() {
-  !is.null(.current_descriptor(silent = TRUE))
+  # read the global directly: this runs on every jitted call (hot path)
+  !is.null(globals[["CURRENT_DESCRIPTOR"]])
 }
 
 maybe_previous_descriptor <- function() {

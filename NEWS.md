@@ -16,6 +16,13 @@
   dispatcher instead of falling back to the R-side cache, removing the
   per-call R overhead for static-arg jits.
 
+* The launch overhead of calling a jitted function dropped by roughly 3x:
+  outputs are wrapped from the dispatcher's natively-read metadata instead
+  of per-output S3 dtype()/shape()/device() reads, the `jit(backend =
+  "auto")` wrapper calls the backend's evaluated-args fast entry instead of
+  re-capturing the arguments via match.call(), and several per-call
+  lookups were hoisted out of the hot path.
+
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for
   `AnvlArray` gained a `check` argument that opts into scanning for

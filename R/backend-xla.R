@@ -103,36 +103,29 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
   } else {
     NULL
   }
+  # Hoisted out of the per-call path: `::` resolves via getExportedValue on
+  # every evaluation, which costs ~1us per lookup.
   sentinel <- pjrt::pjrt_dispatch_sentinel()
+  dispatch <- pjrt::pjrt_dispatch
 
-  function() {
-    if (currently_tracing()) {
-      args <- as.list(match.call())[-1L]
-      args <- lapply(args, eval, envir = parent.frame())
-      return(do.call(f, args))
-    }
+  # Inputs only need a copy_buffer when a target device was requested; with
+  # `device = NULL` (eager primitive dispatch) jit_prepare_args already
+  # verified every input lives on the inferred device.
+  copy_to_device <- !is.null(device)
+
+  # One call on already-evaluated args. This is the fast entry: jit_auto's
+  # wrapper (which has already captured and evaluated the arguments) calls it
+  # directly via the "jit_run_args" attribute, skipping the inner closure's
+  # match.call() + eval() re-capture.
+  run <- function(args) {
     if (!is.null(dispatcher)) {
-      # Evaluate the args once; reuse them on the fallback so argument
-      # expressions with side effects are not evaluated twice.
-      args <- as.list(match.call())[-1L]
-      args <- lapply(args, eval, envir = parent.frame())
-      res <- pjrt::pjrt_dispatch(dispatcher, args)
+      res <- dispatch(dispatcher, args)
       if (!identical(res, sentinel)) {
-        return(jit_wrap_outputs(res$buffers, res$out_tree, res$ambiguous_out, "xla"))
+        return(jit_wrap_outputs_native(res))
       }
-      # Not handled natively -- fall back to the R path, reusing the evaluated args.
-      prep <- jit_prepare_args(args, static, device = device, backend = "xla")
-    } else {
-      # - With specified device, inputs will be moved to it
-      # - Otherwise checks that there are no conflicting devices
-      # - it detects which device will be used (either select or inferred)
-      prep <- jit_prepare_call(match.call(), parent.frame(), static, device = device, backend = "xla")
+      # Not handled natively -- fall back to the R path, reusing the args.
     }
-
-    # Inputs only need a copy_buffer when a target device was requested; with
-    # `device = NULL` (eager primitive dispatch) jit_prepare_call already
-    # verified every input lives on the inferred device.
-    copy_to_device <- !is.null(device)
+    prep <- jit_prepare_args(args, static, device = device, backend = "xla")
 
     # Probe the executable cache with a cheap input-signature key built straight
     # from the cached array metadata, BEFORE constructing the abstract values. On
@@ -211,7 +204,60 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
 
     return(out)
   }
+
+  fn <- function() {
+    if (currently_tracing()) {
+      args <- as.list(match.call())[-1L]
+      args <- lapply(args, eval, envir = parent.frame())
+      return(do.call(f, args))
+    }
+    # Evaluate the args once; `run()` reuses them on the native path and the
+    # fallback alike, so argument expressions with side effects are not
+    # evaluated twice.
+    args <- as.list(match.call())[-1L]
+    args <- lapply(args, eval, envir = parent.frame())
+    run(args)
+  }
+  attr(fn, "jit_run_args") <- run
+  fn
 }
+
+# Build xla AnvlArrays straight from the native dispatcher's result: the
+# dispatcher already read each output's dtype/shape off the buffer and holds
+# the shared device object, so wrapping is a table lookup plus structure() --
+# no per-output S3 dtype()/shape()/device() round-trips (formerly ~half the
+# cost of a cache-hit call).
+jit_wrap_outputs_native <- function(res) {
+  bufs <- res$buffers
+  dtypes <- res$out_dtypes
+  shapes <- res$out_shapes
+  dev <- res$device
+  amb <- res$ambiguous_out
+  has_amb <- !is.null(amb)
+  out_flat <- vector("list", length(bufs))
+  for (i in seq_along(out_flat)) {
+    s <- dtypes[[i]]
+    dt <- the_xla_dtypes[[s]]
+    if (is.null(dt)) {
+      dt <- tengen::as_dtype(s)
+      the_xla_dtypes[[s]] <- dt
+    }
+    a <- list(
+      data = bufs[[i]],
+      dtype = dt,
+      shape = shapes[[i]],
+      device = dev,
+      ambiguous = if (has_amb) amb[[i]] else FALSE,
+      backend = "xla"
+    )
+    class(a) <- "AnvlArray"
+    out_flat[[i]] <- a
+  }
+  unflatten(res$out_tree, out_flat)
+}
+
+# dtype-string -> tengen DataType, memoised (the objects are immutable).
+the_xla_dtypes <- new.env(parent = emptyenv())
 
 #' @title Trace, lower, and compile a function to an XLA executable
 #' @description

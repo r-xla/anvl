@@ -48,6 +48,36 @@ single biggest item (~34%) — now fixed but not committed.
 
 ---
 
+## Update 2026-07-03 (second pass): TODO 0–3 DONE; at the R floor
+
+Measured with `benchmarks/jit-donate-overhead.R` (donation => no phantom
+alloc; min over 15x2000 iters; linux/ARM sandbox): raw pjrt_execute floor
+~4.5–5 us; a donated jitted call ~16–25 us total (was ~73 us before this
+pass); phantom alloc adds ~3–5 us when not donating (the R memory-management
+model requires it for unaliased outputs — JAX does not pay this). prim_add
+via the auto backend: ~51 us (was ~99 us).
+
+What landed: dispatcher returns per-output dtype/shape (cached per entry) +
+device so anvl wraps outputs without S3 reads (TODO 1); jit_auto calls the
+backend's evaluated-args fast entry ("jit_run_args" attribute), eliminating
+the wrapper/inner double match.call + eval (TODO 2); pjrt_dispatch is bound
+directly to the native entry, `::` lookups hoisted, currently_tracing reads
+the global directly (TODO 3); natively, buffer dtype/dims/device and
+executable addressable-devices are cached, removing per-call PJRT C-API
+calls from dispatch and execute.
+
+Remaining per call (donated, profiled): ~40% native dispatch+enqueue, ~20%
+output wrap (list alloc + native unflatten), ~30% R argument capture
+(match.call/as.list/lapply-eval — bound by R calling semantics; capturing
+via frame bindings would change missing()/default behavior inside traced
+functions). No further reasonable reduction without the TODO 6 native call
+shell.
+
+Next arc (Part C of the static-dispatch spec, agreed direction): fold the
+quickr backend into the pjrt dispatcher as a second execute-variant (PJRT
+exec vs compiled R closure — hard-coding the two options is acceptable) and
+retire the R fallback caches entirely.
+
 ## TODO 0 — commit the backend-detection fix (immediate)
 
 `R/jit.R`: `jit_auto_detect_backend(args, static)` is rewritten (direct scan) and
