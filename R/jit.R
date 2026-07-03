@@ -276,11 +276,15 @@ jit_auto_detect_backend <- function(args, static = character()) {
         }
       }
     } else if (is.list(x) && !is.object(x)) {
-      for (el in x) scan(el)
+      for (el in x) {
+        scan(el)
+      }
     }
   }
   if (length(static) == 0L) {
-    for (a in args) scan(a)
+    for (a in args) {
+      scan(a)
+    }
   } else {
     nm <- rlang::names2(args)
     for (i in seq_along(args)) {
