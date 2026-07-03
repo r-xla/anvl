@@ -95,7 +95,11 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
   # device/device_arg slow path. Calls the dispatcher can't handle (non-xla
   # leaves, multi-device, etc.) return the sentinel and fall through to R.
   dispatcher <- if (is.null(device)) {
-    pjrt::pjrt_dispatcher(cache$capacity, jit_xla_compile_cb(f, static, donate))
+    pjrt::pjrt_dispatcher(
+      cache$capacity,
+      jit_xla_compile_cb(f, static, donate),
+      static = static
+    )
   } else {
     NULL
   }
