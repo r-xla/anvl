@@ -592,6 +592,7 @@ match_args_to_formals <- function(f, args) {
 #'   Flattened arguments. Must be accompanied by `in_tree`.
 #' @param in_tree (`Node`)\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
+#' @template param_optimize
 #' @return An [`AnvlGraph`] containing the traced operations.
 #' @seealso [`stablehlo()`] to lower the graph, [`jit()`] / [`xla()`] for end-to-end
 #'   compilation.
@@ -606,7 +607,8 @@ trace_fn <- function(
   desc = NULL,
   mode = NULL,
   args_flat = NULL,
-  in_tree = NULL
+  in_tree = NULL,
+  optimize = FALSE
 ) {
   if (is.null(mode) && !currently_tracing()) {
     mode <- "toplevel"
@@ -659,7 +661,7 @@ trace_fn <- function(
   }
 
   graph <- descriptor_to_graph(desc)
-  return(graph)
+  optimize_graph(graph, optimize)
 }
 
 is_graph_node <- function(x) {
