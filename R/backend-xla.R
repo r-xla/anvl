@@ -162,17 +162,22 @@ compile_xla <- function(
   arg_devices = list()
 ) {
   desc <- local_descriptor()
-  # jit() / xla() always run the full set of graph optimization passes.
   graph <- trace_fn(
     f,
     desc = desc,
     args_flat = args_flat,
     in_tree = in_tree,
-    mode = "toplevel",
-    optimize = TRUE
+    mode = "toplevel"
   )
 
+  # Validate backends on the raw traced graph, before the optimization passes
+  # below run: `inline_scalarish_constants()` inlines and drops scalar
+  # constants, which would otherwise hide a closed-over constant from a foreign
+  # backend and let `check_single_backend()` pass incorrectly.
   check_single_backend(graph, arg_devices, expected = "xla")
+
+  # jit() / xla() always run the full set of graph optimization passes.
+  graph <- optimize_graph(graph, optimize = TRUE)
 
   # if device is NULL, all devices from args_flat and the traced devices must be the same.
   # If device is specified, then we use the requested device.
