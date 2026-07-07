@@ -7,7 +7,8 @@
   (default) runs none, and a character vector (e.g.
   `c("inline_scalars", "remove_unused_constants")`) selects a subset. `jit()`
   and `xla()` always trace with all passes enabled.
-
+* New `nv_dnorm()` computes the normal distribution's probability density
+  function (or, with `log = TRUE`, its log-density).
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for
   `AnvlArray` gained a `check` argument that opts into scanning for

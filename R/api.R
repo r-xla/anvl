@@ -527,6 +527,7 @@ make_do_binary <- function(f) {
 #' y <- nv_array(c(4, 5, 6))
 #' x + y
 #' @export
+#' @jit
 nv_add <- make_do_binary(prim_add)
 
 #' @title Multiplication
@@ -540,6 +541,7 @@ nv_add <- make_do_binary(prim_add)
 #' y <- nv_array(c(4, 5, 6))
 #' x * y
 #' @export
+#' @jit
 nv_mul <- make_do_binary(prim_mul)
 
 #' @title Subtraction
@@ -553,6 +555,7 @@ nv_mul <- make_do_binary(prim_mul)
 #' y <- nv_array(c(1, 2, 3))
 #' x - y
 #' @export
+#' @jit
 nv_sub <- make_do_binary(prim_sub)
 
 #' @title Division
@@ -566,6 +569,7 @@ nv_sub <- make_do_binary(prim_sub)
 #' y <- nv_array(c(2, 5, 10))
 #' x / y
 #' @export
+#' @jit
 nv_div <- make_do_binary(prim_div)
 
 #' @title Power
@@ -579,6 +583,7 @@ nv_div <- make_do_binary(prim_div)
 #' y <- nv_array(c(3, 2, 1))
 #' x ^ y
 #' @export
+#' @jit
 nv_pow <- make_do_binary(prim_pow)
 
 #' @title Equal
@@ -592,6 +597,7 @@ nv_pow <- make_do_binary(prim_pow)
 #' y <- nv_array(c(1, 3, 2))
 #' x == y
 #' @export
+#' @jit
 nv_eq <- make_do_binary(prim_eq)
 
 #' @title Not Equal
@@ -605,6 +611,7 @@ nv_eq <- make_do_binary(prim_eq)
 #' y <- nv_array(c(1, 3, 2))
 #' x != y
 #' @export
+#' @jit
 nv_ne <- make_do_binary(prim_ne)
 
 #' @title Greater Than
@@ -618,6 +625,7 @@ nv_ne <- make_do_binary(prim_ne)
 #' y <- nv_array(c(3, 2, 1))
 #' x > y
 #' @export
+#' @jit
 nv_gt <- make_do_binary(prim_gt)
 
 #' @title Greater Than or Equal
@@ -631,6 +639,7 @@ nv_gt <- make_do_binary(prim_gt)
 #' y <- nv_array(c(3, 2, 1))
 #' x >= y
 #' @export
+#' @jit
 nv_ge <- make_do_binary(prim_ge)
 
 #' @title Less Than
@@ -644,6 +653,7 @@ nv_ge <- make_do_binary(prim_ge)
 #' y <- nv_array(c(3, 2, 1))
 #' x < y
 #' @export
+#' @jit
 nv_lt <- make_do_binary(prim_lt)
 
 #' @title Less Than or Equal
@@ -657,6 +667,7 @@ nv_lt <- make_do_binary(prim_lt)
 #' y <- nv_array(c(3, 2, 1))
 #' x <= y
 #' @export
+#' @jit
 nv_le <- make_do_binary(prim_le)
 
 #' @title Maximum
@@ -670,6 +681,7 @@ nv_le <- make_do_binary(prim_le)
 #' y <- nv_array(c(4, 2, 6))
 #' nv_max(x, y)
 #' @export
+#' @jit
 nv_max <- make_do_binary(prim_max)
 
 #' @title Minimum
@@ -683,6 +695,7 @@ nv_max <- make_do_binary(prim_max)
 #' y <- nv_array(c(4, 2, 6))
 #' nv_min(x, y)
 #' @export
+#' @jit
 nv_min <- make_do_binary(prim_min)
 
 #' @title Remainder (Truncating)
@@ -698,6 +711,7 @@ nv_min <- make_do_binary(prim_min)
 #' y <- nv_array(c(3, 3, 4))
 #' nv_remainder(x, y)
 #' @export
+#' @jit
 nv_remainder <- make_do_binary(prim_remainder)
 
 #' @title Modulo (Flooring Remainder)
@@ -735,6 +749,7 @@ nv_mod <- function(lhs, rhs) {
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' x & y
 #' @export
+#' @jit
 nv_and <- make_do_binary(prim_and)
 
 #' @title Logical Or
@@ -748,6 +763,7 @@ nv_and <- make_do_binary(prim_and)
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' x | y
 #' @export
+#' @jit
 nv_or <- make_do_binary(prim_or)
 
 #' @title Logical Xor
@@ -761,6 +777,7 @@ nv_or <- make_do_binary(prim_or)
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' nv_xor(x, y)
 #' @export
+#' @jit
 nv_xor <- make_do_binary(prim_xor)
 
 #' @title Shift Left
@@ -774,6 +791,7 @@ nv_xor <- make_do_binary(prim_xor)
 #' y <- nv_array(c(1L, 2L, 1L))
 #' nv_shift_left(x, y)
 #' @export
+#' @jit
 nv_shift_left <- make_do_binary(prim_shift_left)
 
 #' @title Logical Shift Right
@@ -787,6 +805,7 @@ nv_shift_left <- make_do_binary(prim_shift_left)
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_logical(x, y)
 #' @export
+#' @jit
 nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 
 #' @title Arithmetic Shift Right
@@ -800,6 +819,7 @@ nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_arithmetic(x, y)
 #' @export
+#' @jit
 nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 
 #' @title Arctangent 2
@@ -814,6 +834,7 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' x <- nv_array(c(0, 1, 0))
 #' nv_atan2(y, x)
 #' @export
+#' @jit
 nv_atan2 <- make_do_binary(prim_atan2)
 
 
