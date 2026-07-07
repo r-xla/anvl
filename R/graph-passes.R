@@ -130,3 +130,32 @@ inline_scalarish_constants <- function(graph, map = NULL) {
   )]
   new_graph
 }
+
+graph_optimization_passes <- list(
+  inline_scalars = inline_scalarish_constants,
+  remove_unused_constants = remove_unused_constants
+)
+
+resolve_optimization_passes <- function(optimize) {
+  passes <- names(graph_optimization_passes)
+  if (is.logical(optimize)) {
+    assert_flag(optimize)
+    return(if (optimize) passes else character())
+  }
+  assert_character(optimize, any.missing = FALSE)
+  invalid <- setdiff(optimize, passes)
+  if (length(invalid)) {
+    cli_abort(c(
+      "Unknown optimization pass{?es}: {.val {invalid}}.",
+      i = "Available passes: {.val {passes}}."
+    ))
+  }
+  intersect(passes, optimize)
+}
+
+optimize_graph <- function(graph, optimize = TRUE) {
+  for (name in resolve_optimization_passes(optimize)) {
+    graph <- graph_optimization_passes[[name]](graph)
+  }
+  graph
+}

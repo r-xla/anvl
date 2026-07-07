@@ -10,7 +10,8 @@ trace_fn(
   desc = NULL,
   mode = NULL,
   args_flat = NULL,
-  in_tree = NULL
+  in_tree = NULL,
+  optimize = FALSE
 )
 }
 \arguments{
@@ -39,6 +40,17 @@ Flattened arguments. Must be accompanied by \code{in_tree}.}
 
 \item{in_tree}{(\code{Node})\cr
 Tree structure describing how \code{args_flat} maps back to \code{f}'s arguments.}
+
+\item{optimize}{(\code{logical(1)} | \code{character()})\cr
+Which graph optimization passes to run on the traced graph before returning
+it. \code{TRUE} runs all passes, \code{FALSE} (default) runs none, and a character
+vector selects a subset by name. The available passes are:
+\itemize{
+\item \code{"inline_scalars"}: replace scalar-shaped constants with inline literals.
+\item \code{"remove_unused_constants"}: drop constants not referenced by the graph.
+}
+
+\code{\link[=jit]{jit()}} and \code{\link[=xla]{xla()}} always trace with all passes enabled.}
 }
 \value{
 An \code{\link{AnvlGraph}} containing the traced operations.

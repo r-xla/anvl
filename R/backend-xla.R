@@ -153,9 +153,24 @@ jit_xla_impl <- function(f, static, cache, donate, device) {
 #'   - `const_arrays`: Constants needed at execution time.
 #'   - `ambiguous_out`: Logical vector indicating which outputs are ambiguous (`NULL` if none are).
 #' @keywords internal
-compile_xla <- function(f, args_flat, in_tree, donate = character(), device = NULL, arg_devices = list()) {
+compile_xla <- function(
+  f,
+  args_flat,
+  in_tree,
+  donate = character(),
+  device = NULL,
+  arg_devices = list()
+) {
   desc <- local_descriptor()
-  graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, mode = "toplevel")
+  # jit() / xla() always run the full set of graph optimization passes.
+  graph <- trace_fn(
+    f,
+    desc = desc,
+    args_flat = args_flat,
+    in_tree = in_tree,
+    mode = "toplevel",
+    optimize = TRUE
+  )
 
   check_single_backend(graph, arg_devices, expected = "xla")
 
@@ -188,9 +203,6 @@ compile_xla <- function(f, args_flat, in_tree, donate = character(), device = NU
 }
 
 compile_graph_xla <- function(graph, donate = character(), device) {
-  graph <- inline_scalarish_constants(graph)
-  graph <- remove_unused_constants(graph)
-
   platform_name <- if (is.character(device)) device else platform(device)
   out <- stablehlo(
     graph,
