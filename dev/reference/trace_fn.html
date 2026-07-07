@@ -96,7 +96,8 @@ an <code><a href="AnvlGraph.html">AnvlGraph</a></code>.</p>
 <span>  desc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  in_tree <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  in_tree <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  optimize <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -138,6 +139,15 @@ Flattened arguments. Must be accompanied by <code>in_tree</code>.</p></dd>
 <dt id="arg-in-tree">in_tree<a class="anchor" aria-label="anchor" href="#arg-in-tree"></a></dt>
 <dd><p>(<code>Node</code>)<br>
 Tree structure describing how <code>args_flat</code> maps back to <code>f</code>'s arguments.</p></dd>
+
+
+<dt id="arg-optimize">optimize<a class="anchor" aria-label="anchor" href="#arg-optimize"></a></dt>
+<dd><p>(<code>logical(1)</code> | <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>)<br>
+Which graph optimization passes to run on the traced graph before returning
+it. <code>TRUE</code> runs all passes, <code>FALSE</code> (default) runs none, and a character
+vector selects a subset by name. The available passes are:</p><ul><li><p><code>"inline_scalars"</code>: replace scalar-shaped constants with inline literals.</p></li>
+<li><p><code>"remove_unused_constants"</code>: drop constants not referenced by the graph.</p></li>
+</ul><p><code><a href="jit.html">jit()</a></code> and <code><a href="xla.html">xla()</a></code> always trace with all passes enabled.</p></dd>
 
 </dl></div>
     <div class="section level2">
