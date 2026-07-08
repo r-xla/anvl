@@ -207,7 +207,13 @@ GraphDescriptor <- function(
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
-  env$calls <- calls
+  # `calls` accumulates one entry per traced primitive. A fastqueue gives
+  # amortised-O(1) append; growing an R list here (`env$calls[[n]] <- x` or
+  # `c(env$calls, x)`) is copy-on-modify and would make tracing O(n^2).
+  env$calls <- fastmap::fastqueue()
+  if (length(calls)) {
+    env$calls$madd(.list = calls)
+  }
   env$data_to_gval <- tensor_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
   env$constants <- constants
@@ -259,7 +265,7 @@ is_graph_descriptor <- function(x) {
 
 descriptor_to_graph <- function(descriptor) {
   graph <- AnvlGraph(
-    calls = descriptor$calls,
+    calls = descriptor$calls$as_list(),
     in_tree = descriptor$in_tree,
     out_tree = descriptor$out_tree,
     inputs = descriptor$inputs,
@@ -805,7 +811,7 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   )
   gvals_out <- lapply(ats_out, GraphValue)
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
-  desc$calls <- c(desc$calls, list(call))
+  desc$calls$add(call)
   lapply(gvals_out, register_gval, desc = desc)
 }
 
@@ -821,7 +827,9 @@ inline_graph_into_desc <- function(desc, graph) {
   # registered via `maybe_box_arrayish`) still need to be propagated up.
   register_consts(desc, graph$constants)
 
-  desc$calls <- c(desc$calls, graph$calls)
+  if (length(graph$calls)) {
+    desc$calls$madd(.list = graph$calls)
+  }
 
   gvals_out_flat <- graph$outputs
   boxes_out_flat <- lapply(gvals_out_flat, GraphBox, desc)
