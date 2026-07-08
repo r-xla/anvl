@@ -86,6 +86,7 @@
 <div class="section level3">
 <h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>
 <ul><li>Most <code>nv_*()</code> API functions are now JIT-compiled internally (via a new <code>@jit</code> roxygen roclet), speeding up eager-mode execution.</li>
+<li>Tracing now accumulates primitive calls in a <code><a href="https://r-lib.github.io/fastmap/reference/fastqueue.html" class="external-link">fastmap::fastqueue</a></code> (amortised-O(1) append) instead of an R list grown with <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> (copy-on-modify, O(n^2)). Tracing large unrolled graphs is substantially faster, e.g. ~1.36x for an 8000-op chain, with the gain growing with graph size.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
@@ -283,7 +284,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>
