@@ -24,6 +24,10 @@
 * Most `nv_*()` API functions are now JIT-compiled internally (via a new
   `@jit` roxygen roclet), speeding up eager-mode execution.
 
+* StableHLO lowering forwards the trace-time output types to the `hlo_*`
+  builders (via an `output_types` argument passed to the lowering rules), so
+  stablehlo skips redundant type inference when lowering the graph.
+
 ## Bug fixes
 
 * `NULL` is now treated as an empty node when flattening and unflattening trees.
