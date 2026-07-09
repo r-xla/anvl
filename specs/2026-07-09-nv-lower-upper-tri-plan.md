@@ -153,9 +153,6 @@ assert_tri_args <- function(shape, diagonal) {
 #' mirroring base R's `lower.tri()`. Use [nv_tril()] to zero out the other
 #' triangle of an existing array instead.
 #' @template param_shape
-#' @param like ([`AnvlArray`])\cr
-#'   Existing array whose attributes are used as defaults
-#'   (only for `nv_lower_tri_like()`).
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
 #'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
@@ -180,9 +177,6 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #' mirroring base R's `upper.tri()`. Use [nv_triu()] to zero out the other
 #' triangle of an existing array instead.
 #' @template param_shape
-#' @param like ([`AnvlArray`])\cr
-#'   Existing array whose attributes are used as defaults
-#'   (only for `nv_upper_tri_like()`).
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
 #'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to
@@ -348,9 +342,19 @@ nv_upper_tri_like <- function(like, diagonal = 1L, shape = NULL, device = NULL) 
 
 `like_defaults` is deliberately **not** given `dtype`, so the mask stays `bool`.
 
-- [ ] **Step 4: Add `_like` examples to the parent roxygen blocks**
+- [ ] **Step 4: Document the `like` parameter and add `_like` examples to the parent roxygen blocks**
 
-Because the `_like` functions share their parent's `.Rd` via `@rdname`, their examples belong in the parent roxygen in `R/api.R`. Extend `nv_lower_tri`'s `@examplesIf` block to:
+Because the `_like` functions share their parent's `.Rd` via `@rdname`, the `like` argument now appears in that `.Rd`'s usage section. It must be documented there, or `R CMD check` emits "Documented arguments not in \usage" / "Undocumented arguments". Its examples belong there too.
+
+In `R/api.R`, add a `@param like` tag to `nv_lower_tri`'s roxygen block, directly after `@template param_shape`:
+
+```r
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_lower_tri_like()`).
+```
+
+and extend its `@examplesIf` block to:
 
 ```r
 #' @examplesIf pjrt::plugins_downloaded()
@@ -360,7 +364,7 @@ Because the `_like` functions share their parent's `.Rd` via `@rdname`, their ex
 #' nv_lower_tri_like(x)
 ```
 
-and `nv_upper_tri`'s to:
+Do the same for `nv_upper_tri`, with `nv_upper_tri_like()` named in the `@param like` text and:
 
 ```r
 #' @examplesIf pjrt::plugins_downloaded()
@@ -369,6 +373,14 @@ and `nv_upper_tri`'s to:
 #' x <- nv_fill(0, shape = c(3, 3))
 #' nv_upper_tri_like(x)
 ```
+
+Verify with:
+
+```bash
+Rscript -e 'tools::checkDocFiles(dir = ".")'
+```
+
+Expected: no output about `nv_lower_tri` or `nv_upper_tri`.
 
 - [ ] **Step 5: Regenerate docs**
 
