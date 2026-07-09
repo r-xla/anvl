@@ -912,38 +912,12 @@ describe("nv_lower_tri / nv_upper_tri", {
     expect_error(nv_lower_tri(c(3, 3), diagonal = "a"))
     expect_error(nv_upper_tri(c(3, 3), diagonal = "a"))
   })
-})
-
-describe("nv_lower_tri_like", {
-  it("inherits shape from like", {
-    x <- nv_fill(0, c(4, 2))
+  it("the _like variants inherit shape from like and stay bool", {
+    x <- nv_fill(0, c(4, 2), dtype = "f64")
     expect_equal(as_array(nv_lower_tri_like(x)), lower.tri(matrix(0, 4, 2)))
-  })
-  it("returns bool even when like is a float array", {
-    x <- nv_fill(0, c(3, 3), dtype = "f64")
-    expect_equal(dtype(nv_lower_tri_like(x)), as_dtype("bool"))
-  })
-  it("shape overrides like", {
-    x <- nv_fill(0, c(3, 3))
-    expect_equal(shape(nv_lower_tri_like(x, shape = c(2, 2))), c(2L, 2L))
-  })
-  it("forwards diagonal", {
-    x <- nv_fill(0, c(3, 3))
-    expect_equal(
-      as_array(nv_lower_tri_like(x, diagonal = 0L)),
-      lower.tri(matrix(0, 3, 3), diag = TRUE)
-    )
-  })
-})
-
-describe("nv_upper_tri_like", {
-  it("inherits shape from like", {
-    x <- nv_fill(0, c(4, 2))
     expect_equal(as_array(nv_upper_tri_like(x)), upper.tri(matrix(0, 4, 2)))
-  })
-  it("returns bool even when like is a float array", {
-    x <- nv_fill(0, c(3, 3), dtype = "f64")
-    expect_equal(dtype(nv_upper_tri_like(x)), as_dtype("bool"))
+    expect_equal(dtype(nv_lower_tri_like(x)), as_dtype("bool"))
+    expect_equal(shape(nv_lower_tri_like(x, shape = c(2, 2))), c(2L, 2L))
   })
 })
 
