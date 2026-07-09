@@ -645,29 +645,17 @@ trace_fn <- function(
   inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  # Inference errors are rewritten (attributed to `prim_<name>`, 0-based indices
-  # converted to 1-based) in ONE place -- the outermost trace -- rather than in
-  # a per-primitive tryCatch inside graph_desc_add(). The handler lives only in
-  # `mode == "toplevel"` for three connected reasons:
-  #
-  #  * "toplevel" *is* the outermost trace: it is the only mode without a parent
-  #    descriptor, and subgraph/inline traces always have one (enforced by the
-  #    invariant checks above). So there is exactly one such handler per trace
-  #    tree, with every nested trace running inside it.
-  #  * The handler mutates the condition and re-signals it. Installing it at
-  #    every nesting level would rewrite the same error once per level as it
-  #    propagates outward, applying `to_one_based()` repeatedly and corrupting
-  #    the indices. One handler => exactly one rewrite.
-  #  * Coverage is still complete: nothing between a failing primitive and here
-  #    catches the error, and graph_desc_add() stashes the in-flight primitive
-  #    in `globals$INFER_PRIMITIVE`, so a subgraph error (e.g. inside a prim_if
-  #    branch) is still attributed correctly at any nesting depth.
+  # Rewrite inference errors (attribute to `prim_<name>`, convert indices to
+  # 1-based) in one handler at the outermost trace only. Nested traces propagate
+  # up to it and `INFER_PRIMITIVE` names the culprit; a handler per level would
+  # re-apply `to_one_based()` at each level and corrupt the indices.
   if (mode == "toplevel") {
     globals[["INFER_PRIMITIVE"]] <- NULL
     output <- tryCatch(
       do.call(f_flat, inputs_flat),
       error = function(e) {
         prim <- globals[["INFER_PRIMITIVE"]]
+        globals[["INFER_PRIMITIVE"]] <- NULL
         if (!is.null(prim)) {
           e$call <- print_call_repr(prim)
           e <- stablehlo::to_one_based(e)
