@@ -116,11 +116,16 @@ Everything routes through it:
 - `R/rules-reverse.R` deletes `tril_mask` and `triu_mask`; `triangular_mask()`
   and the `prim_chol` reverse rule call `tri_mask(c(n, n), 0L, lower)` instead.
 
-`tri_mask` is written in terms of `prim_*` rather than `nv_*` on purpose. Every
-existing reverse rule stays on `prim_*`, and `nv_lower_tri` will carry a `@jit`
-annotation; having gradient rules call it would pull jit-registry dispatch into
-reverse-mode tracing. The unexported helper gives one definition of the mask
-without that coupling.
+`tri_mask` exists so the reverse rules never have to call `nv_lower_tri`, which
+carries a `@jit static 1:3` annotation and with it a static-shape contract that
+does not belong inside gradient tracing. The unexported helper gives one
+definition of the mask without that coupling.
+
+Note that this is narrower than "the helper avoids `nv_*` entirely". `tri_mask`'s
+`>=`, `<=`, and `-` dispatch through `Ops.AnvlArray` to `nv_ge`, `nv_le`, and
+`nv_sub`, which are themselves jit-registered. That is pre-existing and harmless:
+the `triu_mask` it replaces already wrote `rows <= cols`, and the surrounding
+reverse rules already call `nv_matmul`.
 
 Public behaviour of `nv_tril` / `nv_triu` is unchanged. `nv_lu` (`R/api.R:1882`,
 `:1895`), their only internal caller, is untouched.
