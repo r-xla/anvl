@@ -645,10 +645,23 @@ trace_fn <- function(
   inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  # A single top-level handler rewrites inference errors (attributing them to
-  # `prim_<name>` and converting 0-based indices), replacing the per-primitive
-  # tryCatch in graph_desc_add. Nested (subgraph/inline) traces propagate up to
-  # this outermost handler, and `INFER_PRIMITIVE` identifies the failing call.
+  # Inference errors are rewritten (attributed to `prim_<name>`, 0-based indices
+  # converted to 1-based) in ONE place -- the outermost trace -- rather than in
+  # a per-primitive tryCatch inside graph_desc_add(). The handler lives only in
+  # `mode == "toplevel"` for three connected reasons:
+  #
+  #  * "toplevel" *is* the outermost trace: it is the only mode without a parent
+  #    descriptor, and subgraph/inline traces always have one (enforced by the
+  #    invariant checks above). So there is exactly one such handler per trace
+  #    tree, with every nested trace running inside it.
+  #  * The handler mutates the condition and re-signals it. Installing it at
+  #    every nesting level would rewrite the same error once per level as it
+  #    propagates outward, applying `to_one_based()` repeatedly and corrupting
+  #    the indices. One handler => exactly one rewrite.
+  #  * Coverage is still complete: nothing between a failing primitive and here
+  #    catches the error, and graph_desc_add() stashes the in-flight primitive
+  #    in `globals$INFER_PRIMITIVE`, so a subgraph error (e.g. inside a prim_if
+  #    branch) is still attributed correctly at any nesting depth.
   if (mode == "toplevel") {
     globals[["INFER_PRIMITIVE"]] <- NULL
     output <- tryCatch(
