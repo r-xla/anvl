@@ -649,7 +649,10 @@ trace_fn <- function(
         globals[["INFER_PRIMITIVE"]] <- NULL
         if (!is.null(prim)) {
           e$call <- print_call_repr(prim)
-          e <- stablehlo::to_one_based(e)
+          # only stablehlo errors carry 0-based indices to convert
+          if (inherits(e, "ErrorStablehlo")) {
+            e <- stablehlo::to_one_based(e)
+          }
         }
         rlang::cnd_signal(e)
       }
