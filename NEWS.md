@@ -23,6 +23,7 @@
 
 * Most `nv_*()` API functions are now JIT-compiled internally (via a new
   `@jit` roxygen roclet), speeding up eager-mode execution.
+* Tracing (`trace_fn()`) performance has been improved.
 * Tracing now accumulates primitive calls in a `fastmap::fastqueue`
   (amortised-O(1) append) instead of an R list grown with `c()`
   (copy-on-modify, O(n^2)). Tracing large unrolled graphs is
