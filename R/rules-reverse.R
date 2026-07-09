@@ -1243,27 +1243,13 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   )
 })
 
-# Helper: create a lower triangular mask for an n x n matrix (includes diagonal)
-tril_mask <- function(n, dt) {
-  rows <- prim_iota(dim = 1L, dtype = "i32", shape = c(n, n), start = 0L)
-  cols <- prim_iota(dim = 2L, dtype = "i32", shape = c(n, n), start = 0L)
-  prim_ge(rows, cols)
-}
-
-# Helper: create an upper triangular mask for an n x n matrix (includes diagonal)
-triu_mask <- function(n, dt) {
-  rows <- prim_iota(dim = 1L, dtype = "i32", shape = c(n, n), start = 0L)
-  cols <- prim_iota(dim = 2L, dtype = "i32", shape = c(n, n), start = 0L)
-  rows <= cols
-}
-
 diag_mask <- function(n) {
   prim_iota(dim = 1L, dtype = "i32", shape = c(n, n), start = 0L) ==
     prim_iota(dim = 2L, dtype = "i32", shape = c(n, n), start = 0L)
 }
 
-triangular_mask <- function(n, dt, lower, unit_diagonal) {
-  mask <- if (lower) tril_mask(n, dt) else triu_mask(n, dt)
+triangular_mask <- function(n, lower, unit_diagonal) {
+  mask <- tri_mask(c(n, n), 0L, lower = lower)
   if (unit_diagonal) {
     prim_ifelse(diag_mask(n), prim_fill(FALSE, dtype = "bool", shape = c(n, n)), mask)
   } else {
@@ -1300,7 +1286,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
     eye <- prim_convert(diag_mask(n), dtype = dtype(x))
     one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
     x <- prim_div(x, prim_add(one, eye))
-    prim_ifelse(tril_mask(n, dtype(x)), x, zeros_like(x))
+    prim_ifelse(tri_mask(c(n, n), 0L, lower = TRUE), x, zeros_like(x))
   }
 
   # The stablehlo lowering already zeros out the non-triangular part of L,
@@ -1373,7 +1359,7 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
     grad_a <- if (required[[1L]]) {
       raw <- prim_negate(nv_matmul(grad_b, t(x)))
       n <- shape(a)[length(shape(a))]
-      mask <- triangular_mask(n, dtype(a), lower, unit_diagonal)
+      mask <- triangular_mask(n, lower, unit_diagonal)
       if (transpose_a) {
         raw <- t(raw)
       }
@@ -1394,7 +1380,7 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
     grad_a <- if (required[[1L]]) {
       raw <- prim_negate(nv_matmul(t(x), grad_b))
       n <- shape(a)[length(shape(a))]
-      mask <- triangular_mask(n, dtype(a), lower, unit_diagonal)
+      mask <- triangular_mask(n, lower, unit_diagonal)
       if (transpose_a) {
         raw <- t(raw)
       }
