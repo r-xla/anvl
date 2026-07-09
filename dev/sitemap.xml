@@ -152,6 +152,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_log1p.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_log2.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_logistic.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_lt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_lu.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_matmul.html</loc></url>
@@ -223,6 +224,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_trunc.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_unserialize.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_var.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_while.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_xor.html</loc></url>

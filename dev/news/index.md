@@ -4,6 +4,23 @@
 
 ### Features
 
+- New
+  [`nv_lower_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
+  and
+  [`nv_upper_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md)
+  (with
+  [`nv_lower_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
+  /
+  [`nv_upper_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md))
+  return a boolean triangular mask for a given shape, mirroring base R’s
+  [`lower.tri()`](https://rdrr.io/r/base/lower.tri.html) /
+  [`upper.tri()`](https://rdrr.io/r/base/lower.tri.html). As in base R,
+  the main diagonal is excluded by default; pass `diagonal = 0L` to
+  include it. Use
+  [`nv_tril()`](https://r-xla.github.io/anvl/dev/reference/nv_tril.md) /
+  [`nv_triu()`](https://r-xla.github.io/anvl/dev/reference/nv_triu.md)
+  to zero out a triangle of an existing array.
+
 - [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
   gained an `optimize` argument controlling which graph optimization
   passes run on the traced graph. `TRUE` runs all passes, `FALSE`

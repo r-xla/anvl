@@ -490,6 +490,12 @@ Linear algebra operations
   Lower Triangular Matrix
 - [`nv_triu()`](https://r-xla.github.io/anvl/dev/reference/nv_triu.md) :
   Upper Triangular Matrix
+- [`nv_lower_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
+  [`nv_lower_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
+  : Lower Triangular Mask
+- [`nv_upper_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md)
+  [`nv_upper_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md)
+  : Upper Triangular Mask
 
 ### Logical and Bitwise Operations
 

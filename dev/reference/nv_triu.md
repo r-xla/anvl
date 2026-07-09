@@ -29,7 +29,8 @@ Has the same shape and data type as `operand`.
 
 ## See also
 
-[`nv_tril()`](https://r-xla.github.io/anvl/dev/reference/nv_tril.md)
+[`nv_tril()`](https://r-xla.github.io/anvl/dev/reference/nv_tril.md),
+[`nv_upper_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md)
 
 ## Examples
 
