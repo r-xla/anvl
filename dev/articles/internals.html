@@ -325,9 +325,9 @@ the {pjrt} package.</p>
 transformation are attached to each primitive.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prim_mul</span><span class="op">[[</span><span class="st">"stablehlo"</span><span class="op">]</span><span class="op">]</span></span></code></pre></div>
-<pre><code><span><span class="co">## function (lhs, rhs) </span></span>
+<pre><code><span><span class="co">## function (lhs, rhs, output_types) </span></span>
 <span><span class="co">## {</span></span>
-<span><span class="co">##     list(hlo_multiply(lhs, rhs))</span></span>
+<span><span class="co">##     list(hlo_multiply(lhs, rhs, output_types = output_types))</span></span>
 <span><span class="co">## }</span></span>
 <span><span class="co">## &lt;environment: namespace:anvl&gt;</span></span></code></pre>
 <p>The <code><a href="../reference/stablehlo.html">anvl::stablehlo</a></code> function will create a

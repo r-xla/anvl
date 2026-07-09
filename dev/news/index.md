@@ -38,12 +38,18 @@
 
 - Most `nv_*()` API functions are now JIT-compiled internally (via a new
   `@jit` roxygen roclet), speeding up eager-mode execution.
+
 - Tracing now accumulates primitive calls in a
   [`fastmap::fastqueue`](https://r-lib.github.io/fastmap/reference/fastqueue.html)
   (amortised-O(1) append) instead of an R list grown with
   [`c()`](https://rdrr.io/r/base/c.html) (copy-on-modify, O(n^2)).
   Tracing large unrolled graphs is substantially faster, e.g. ~1.36x for
   an 8000-op chain, with the gain growing with graph size.
+
+- StableHLO lowering forwards the trace-time output types to the `hlo_*`
+  builders (via an `output_types` argument passed to the lowering
+  rules), so stablehlo skips redundant type inference when lowering the
+  graph.
 
 ### Bug fixes
 

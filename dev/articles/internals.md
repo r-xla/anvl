@@ -215,9 +215,9 @@ transformation are attached to each primitive.
 prim_mul[["stablehlo"]]
 ```
 
-    ## function (lhs, rhs) 
+    ## function (lhs, rhs, output_types) 
     ## {
-    ##     list(hlo_multiply(lhs, rhs))
+    ##     list(hlo_multiply(lhs, rhs, output_types = output_types))
     ## }
     ## <environment: namespace:anvl>
 
