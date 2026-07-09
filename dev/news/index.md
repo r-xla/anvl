@@ -39,6 +39,10 @@
 - Most `nv_*()` API functions are now JIT-compiled internally (via a new
   `@jit` roxygen roclet), speeding up eager-mode execution.
 
+- Tracing
+  ([`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md))
+  performance has been improved.
+
 - Tracing now accumulates primitive calls in a
   [`fastmap::fastqueue`](https://r-lib.github.io/fastmap/reference/fastqueue.html)
   (amortised-O(1) append) instead of an R list grown with
