@@ -2634,9 +2634,6 @@ assert_tri_args <- function(shape, diagonal) {
 #' mirroring base R's `lower.tri()`. Use [nv_tril()] to zero out the other
 #' triangle of an existing array instead.
 #' @template param_shape
-#' @param like ([`AnvlArray`])\cr
-#'   Existing array whose attributes are used as defaults
-#'   (only for `nv_lower_tri_like()`).
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
 #'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
@@ -2661,9 +2658,6 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #' mirroring base R's `upper.tri()`. Use [nv_triu()] to zero out the other
 #' triangle of an existing array instead.
 #' @template param_shape
-#' @param like ([`AnvlArray`])\cr
-#'   Existing array whose attributes are used as defaults
-#'   (only for `nv_upper_tri_like()`).
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
 #'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to

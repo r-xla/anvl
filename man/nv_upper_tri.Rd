@@ -17,10 +17,6 @@ include it, matching \code{upper.tri(diag = TRUE)}.}
 
 \item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr
 Device for data to live on.}
-
-\item{like}{(\code{\link{AnvlArray}})\cr
-Existing array whose attributes are used as defaults
-(only for \code{nv_upper_tri_like()}).}
 }
 \value{
 \code{\link{arrayish}}\cr
