@@ -9,9 +9,7 @@
 #' @return (`GraphValue`)
 #' @export
 GraphValue <- function(aval) {
-  # Hot-path constructor called once per traced output: no input validation
-  # (all callers are internal and pass an `AbstractArray`). Uses an environment
-  # for reference semantics + identity-based hashtab keying.
+  # hot-path constructor: no input validation
   env <- new.env(parent = emptyenv())
   env$aval <- aval
 
@@ -26,7 +24,7 @@ GraphValue <- function(aval) {
 #' @return (`GraphLiteral`)
 #' @export
 GraphLiteral <- function(aval) {
-  # Hot-path constructor: no input validation (internal callers only).
+  # hot-path constructor: no input validation
   env <- new.env(parent = emptyenv())
   env$aval <- aval
 
@@ -92,9 +90,7 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
-  # Hot-path constructor (one per traced primitive): the per-element
-  # `assert_list(..., types = ...)` checks alone cost ~33 us/call, so we trust
-  # the internal callers instead of validating.
+  # hot-path constructor: no input validation
   structure(
     list(
       primitive = primitive,
@@ -298,8 +294,7 @@ descriptor_to_graph <- function(descriptor) {
 #' @seealso [AnvlBox], [trace_fn()], [jit()]
 #' @export
 GraphBox <- function(gnode, desc) {
-  # Hot-path constructor (one per boxed value during tracing): internal callers
-  # always pass a GraphNode + GraphDescriptor, so we skip validation.
+  # hot-path constructor: no input validation
   structure(
     list(gnode = gnode, desc = desc),
     class = c("GraphBox", "AnvlBox")
@@ -645,10 +640,6 @@ trace_fn <- function(
   inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  # Rewrite inference errors (attribute to `prim_<name>`, convert indices to
-  # 1-based) in one handler at the outermost trace only. Nested traces propagate
-  # up to it and `INFER_PRIMITIVE` names the culprit; a handler per level would
-  # re-apply `to_one_based()` at each level and corrupt the indices.
   if (mode == "toplevel") {
     globals[["INFER_PRIMITIVE"]] <- NULL
     output <- tryCatch(
@@ -807,11 +798,6 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   boxes_in <- lapply(args, maybe_box_arrayish)
   gnodes_in <- unname(lapply(boxes_in, \(box) box$gnode))
   avals_in <- lapply(boxes_in, \(box) box$gnode$aval)
-  # Record which primitive is inferring so trace_fn's single top-level handler
-  # can attribute an inference error to `prim_<name>` and convert 0-based
-  # indices -- far cheaper than establishing a tryCatch on every call. The stash
-  # stays set only while `infer_fn` runs (cleared on success), so a later
-  # non-inference error is not misattributed.
   globals[["INFER_PRIMITIVE"]] <- primitive
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["INFER_PRIMITIVE"]] <- NULL
