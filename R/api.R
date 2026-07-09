@@ -2610,6 +2610,82 @@ nv_trace <- function(operand) {
   nv_reduce_sum(diag_vals, dims = 1L, drop = TRUE)
 }
 
+# Boolean triangular mask for a 2-D `shape`. `diagonal` must already be a
+# scalar integer; `lower` selects the lower (TRUE) or upper (FALSE) triangle.
+tri_mask <- function(shape, diagonal, lower, device = NULL) {
+  rows <- prim_iota(dim = 1L, dtype = "i32", shape = shape, start = 1L, device = device)
+  cols <- prim_iota(dim = 2L, dtype = "i32", shape = shape, start = 1L, device = device)
+  if (lower) rows >= cols - diagonal else rows <= cols - diagonal
+}
+
+assert_tri_args <- function(shape, diagonal) {
+  if (length(shape) != 2L) {
+    cli_abort("{.arg shape} must have length 2, not {length(shape)}.")
+  }
+  if (any(shape < 0L)) {
+    cli_abort("{.arg shape} must not contain negative extents.")
+  }
+  assert_int(diagonal)
+}
+
+#' @title Lower Triangular Mask
+#' @description
+#' Returns a boolean matrix that is `TRUE` on and below the given diagonal,
+#' mirroring base R's `lower.tri()`. Use [nv_tril()] to zero out the other
+#' triangle of an existing array instead.
+#' @template param_shape
+#' @param diagonal (`integer(1)`)\cr
+#'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
+#'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
+#'   include it, matching `lower.tri(diag = TRUE)`.
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_lower_tri_like()`).
+#' @template param_device
+#' @return [`arrayish`]\cr
+#'   Has the given `shape` and dtype `bool`.
+#' @seealso [nv_upper_tri()], [nv_tril()], [prim_iota()] for the underlying primitive.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_lower_tri(c(3, 3))
+#' nv_lower_tri(c(3, 3), diagonal = 0L)
+#' x <- nv_fill(0, shape = c(3, 3))
+#' nv_lower_tri_like(x)
+#' @export
+#' @jit static 1:3
+nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
+  assert_tri_args(shape, diagonal)
+  tri_mask(shape, as.integer(diagonal), lower = TRUE, device = device)
+}
+
+#' @title Upper Triangular Mask
+#' @description
+#' Returns a boolean matrix that is `TRUE` on and above the given diagonal,
+#' mirroring base R's `upper.tri()`. Use [nv_triu()] to zero out the other
+#' triangle of an existing array instead.
+#' @template param_shape
+#' @param diagonal (`integer(1)`)\cr
+#'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
+#'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to
+#'   include it, matching `upper.tri(diag = TRUE)`.
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_upper_tri_like()`).
+#' @template param_device
+#' @return [`arrayish`]\cr
+#'   Has the given `shape` and dtype `bool`.
+#' @seealso [nv_lower_tri()], [nv_triu()], [prim_iota()] for the underlying primitive.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_upper_tri(c(3, 3))
+#' nv_upper_tri(c(3, 3), diagonal = 0L)
+#' x <- nv_fill(0, shape = c(3, 3))
+#' nv_upper_tri_like(x)
+#' @export
+#' @jit static 1:3
+nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
+  assert_tri_args(shape, diagonal)
+  tri_mask(shape, as.integer(diagonal), lower = FALSE, device = device)
+}
+
 #' @title Lower Triangular Matrix
 #' @description
 #' Returns the lower triangular part of a 2-D array, setting elements above
@@ -2620,7 +2696,7 @@ nv_trace <- function(operand) {
 #'   include diagonals above, negative values exclude diagonals below.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `operand`.
-#' @seealso [nv_triu()]
+#' @seealso [nv_triu()], [nv_lower_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_fill(1, c(3, 3))
 #' nv_tril(x)
@@ -2631,11 +2707,7 @@ nv_tril <- function(operand, diagonal = 0L) {
   if (ndims(operand) != 2L) {
     cli_abort("operand must be a 2-D array")
   }
-  assert_int(diagonal)
-  rows <- nv_iota_like(operand, dim = 1L, dtype = "i32")
-  cols <- nv_iota_like(operand, dim = 2L, dtype = "i32")
-  mask <- rows >= cols - as.integer(diagonal)
-  nv_ifelse(mask, operand, nv_fill_like(operand, 0))
+  nv_ifelse(nv_lower_tri_like(operand, diagonal), operand, nv_fill_like(operand, 0))
 }
 
 #' @title Upper Triangular Matrix
@@ -2648,7 +2720,7 @@ nv_tril <- function(operand, diagonal = 0L) {
 #'   exclude diagonals above, negative values include diagonals below.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `operand`.
-#' @seealso [nv_tril()]
+#' @seealso [nv_tril()], [nv_upper_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_fill(1, c(3, 3))
 #' nv_triu(x)
@@ -2659,11 +2731,7 @@ nv_triu <- function(operand, diagonal = 0L) {
   if (ndims(operand) != 2L) {
     cli_abort("operand must be a 2-D array")
   }
-  assert_int(diagonal)
-  rows <- nv_iota_like(operand, dim = 1L, dtype = "i32")
-  cols <- nv_iota_like(operand, dim = 2L, dtype = "i32")
-  mask <- rows <= cols - as.integer(diagonal)
-  nv_ifelse(mask, operand, nv_fill_like(operand, 0))
+  nv_ifelse(nv_upper_tri_like(operand, diagonal), operand, nv_fill_like(operand, 0))
 }
 
 #' @title Cross Product (Matrix)
