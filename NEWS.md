@@ -29,6 +29,10 @@
   substantially faster, e.g. ~1.36x for an 8000-op chain, with the gain
   growing with graph size.
 
+* StableHLO lowering forwards the trace-time output types to the `hlo_*`
+  builders (via an `output_types` argument passed to the lowering rules), so
+  stablehlo skips redundant type inference when lowering the graph.
+
 ## Bug fixes
 
 * `NULL` is now treated as an empty node when flattening and unflattening trees.
