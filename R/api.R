@@ -2638,6 +2638,9 @@ assert_tri_args <- function(shape, diagonal) {
 #'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
 #'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
 #'   include it, matching `lower.tri(diag = TRUE)`.
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_lower_tri_like()`).
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and dtype `bool`.
@@ -2645,6 +2648,8 @@ assert_tri_args <- function(shape, diagonal) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_lower_tri(c(3, 3))
 #' nv_lower_tri(c(3, 3), diagonal = 0L)
+#' x <- nv_fill(0, shape = c(3, 3))
+#' nv_lower_tri_like(x)
 #' @export
 #' @jit static 1:3
 nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
@@ -2662,6 +2667,9 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
 #'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to
 #'   include it, matching `upper.tri(diag = TRUE)`.
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_upper_tri_like()`).
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and dtype `bool`.
@@ -2669,6 +2677,8 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_upper_tri(c(3, 3))
 #' nv_upper_tri(c(3, 3), diagonal = 0L)
+#' x <- nv_fill(0, shape = c(3, 3))
+#' nv_upper_tri_like(x)
 #' @export
 #' @jit static 1:3
 nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
