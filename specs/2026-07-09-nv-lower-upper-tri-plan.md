@@ -108,13 +108,13 @@ describe("nv_upper_tri", {
 describe("nv_lower_tri with quickr backend", {
   it("works on the quickr backend", {
     skip_if_no_quickr()
-    x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
-    expect_equal(as_array(nv_lower_tri_like(x)), lower.tri(matrix(0, 3, 3)))
+    local_backend("quickr")
+    expect_equal(as_array(nv_lower_tri(c(3, 3))), lower.tri(matrix(0, 3, 3)))
   })
 })
 ```
 
-Note: the quickr test uses `nv_lower_tri_like`, which does not exist until Task 2. Comment out that final `describe` block for now and uncomment it in Task 2. (It is written here so the two `_like` tests stay next to their siblings.)
+`local_backend()` is the anvl-sanctioned way to exercise a different backend (see CLAUDE.md); `nv_lower_tri` takes a shape rather than an array, so there is no operand to carry the backend.
 
 - [ ] **Step 2: Run tests to verify they fail**
 
@@ -167,8 +167,6 @@ assert_tri_args <- function(shape, diagonal) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_lower_tri(c(3, 3))
 #' nv_lower_tri(c(3, 3), diagonal = 0L)
-#' x <- nv_fill(0, shape = c(3, 3))
-#' nv_lower_tri_like(x)
 #' @export
 #' @jit static 1:3
 nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
@@ -196,8 +194,6 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_upper_tri(c(3, 3))
 #' nv_upper_tri(c(3, 3), diagonal = 0L)
-#' x <- nv_fill(0, shape = c(3, 3))
-#' nv_upper_tri_like(x)
 #' @export
 #' @jit static 1:3
 nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
@@ -205,8 +201,6 @@ nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
   tri_mask(shape, as.integer(diagonal), lower = FALSE, device = device)
 }
 ```
-
-The `@examplesIf` block references `nv_lower_tri_like` / `nv_upper_tri_like`, which arrive in Task 2. Examples are not run by `devtools::test()`, only by `devtools::check()`, so this is safe until Task 2 lands. Do not run `devtools::check()` before Task 2.
 
 - [ ] **Step 4: Add the two constructors to pkgdown**
 
@@ -246,7 +240,7 @@ grep -E 'nv_(lower|upper)_tri' NAMESPACE R/jit-registry.R
 Rscript -e 'devtools::load_all(quiet = TRUE); testthat::test_local(filter = "^api$")'
 ```
 
-Expected: PASS. The quickr `describe` block is still commented out.
+Expected: PASS (the quickr test skips if quickr is unavailable).
 
 - [ ] **Step 7: Format and lint**
 
@@ -281,7 +275,7 @@ git commit -m "feat(api): add nv_lower_tri() and nv_upper_tri()"
 
 - [ ] **Step 1: Write the failing tests**
 
-Uncomment the `describe("nv_lower_tri with quickr backend", ...)` block added in Task 1. Then add, directly after it:
+Add, directly after the `describe("nv_lower_tri with quickr backend", ...)` block from Task 1:
 
 ```r
 describe("nv_lower_tri_like", {
@@ -354,7 +348,29 @@ nv_upper_tri_like <- function(like, diagonal = 1L, shape = NULL, device = NULL) 
 
 `like_defaults` is deliberately **not** given `dtype`, so the mask stays `bool`.
 
-- [ ] **Step 4: Regenerate docs**
+- [ ] **Step 4: Add `_like` examples to the parent roxygen blocks**
+
+Because the `_like` functions share their parent's `.Rd` via `@rdname`, their examples belong in the parent roxygen in `R/api.R`. Extend `nv_lower_tri`'s `@examplesIf` block to:
+
+```r
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_lower_tri(c(3, 3))
+#' nv_lower_tri(c(3, 3), diagonal = 0L)
+#' x <- nv_fill(0, shape = c(3, 3))
+#' nv_lower_tri_like(x)
+```
+
+and `nv_upper_tri`'s to:
+
+```r
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_upper_tri(c(3, 3))
+#' nv_upper_tri(c(3, 3), diagonal = 0L)
+#' x <- nv_fill(0, shape = c(3, 3))
+#' nv_upper_tri_like(x)
+```
+
+- [ ] **Step 5: Regenerate docs**
 
 ```bash
 Rscript -e 'devtools::document()'
@@ -362,7 +378,7 @@ Rscript -e 'devtools::document()'
 
 Expected: `NAMESPACE` gains `export(nv_lower_tri_like)` / `export(nv_upper_tri_like)`; `R/jit-registry.R` gains `list(name = "nv_lower_tri_like", static = 2:4)` and the `_upper_` twin; both `_like` functions appear as usage lines in the existing `man/nv_lower_tri.Rd` / `man/nv_upper_tri.Rd`.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [ ] **Step 6: Run tests to verify they pass**
 
 ```bash
 Rscript -e 'devtools::load_all(quiet = TRUE); testthat::test_local(filter = "^api$")'
@@ -370,12 +386,12 @@ Rscript -e 'devtools::load_all(quiet = TRUE); testthat::test_local(filter = "^ap
 
 Expected: PASS, including the quickr block (or skipped if quickr is unavailable).
 
-- [ ] **Step 6: Format, lint, commit**
+- [ ] **Step 7: Format, lint, commit**
 
 ```bash
 make format
 jarl check .
-git add R/api-like.R tests/testthat/test-api.R NAMESPACE R/jit-registry.R man/nv_lower_tri.Rd man/nv_upper_tri.Rd
+git add R/api.R R/api-like.R tests/testthat/test-api.R NAMESPACE R/jit-registry.R man/nv_lower_tri.Rd man/nv_upper_tri.Rd
 git commit -m "feat(api): add nv_lower_tri_like() and nv_upper_tri_like()"
 ```
 
@@ -499,10 +515,11 @@ git commit -m "refactor(api): build nv_tril()/nv_triu() on the triangular masks"
 **Files:**
 - Modify: `R/rules-reverse.R:1246-1272` (delete `tril_mask` / `triu_mask`, rewrite `triangular_mask`)
 - Modify: `R/rules-reverse.R:1303` (the `phi()` closure inside the `prim_chol` reverse rule)
+- Modify: `R/rules-reverse.R:1376` and `R/rules-reverse.R:1397` (the two `triangular_mask` call sites)
 
 **Interfaces:**
 - Consumes: `tri_mask(shape, diagonal, lower, device = NULL)` from Task 1. It is unexported and lives in the same package namespace, so call it directly — anvl's CLAUDE.md forbids `:::` for the package's own objects.
-- Produces: no public change. `triangular_mask(n, dt, lower, unit_diagonal)` and `diag_mask(n)` keep their signatures and behaviour.
+- Produces: `triangular_mask(n, lower, unit_diagonal)` — the unused `dt` parameter is **removed**. `diag_mask(n)` is unchanged. Both are unexported; nothing outside the package can break.
 
 Why `tri_mask` and not `nv_lower_tri`: every reverse rule stays on `prim_*`, and `nv_lower_tri` carries a `@jit` tag, so calling it here would pull jit-registry dispatch into reverse-mode tracing. `tri_mask` is the shared definition without that coupling.
 
@@ -556,7 +573,7 @@ diag_mask <- function(n) {
     prim_iota(dim = 2L, dtype = "i32", shape = c(n, n), start = 0L)
 }
 
-triangular_mask <- function(n, dt, lower, unit_diagonal) {
+triangular_mask <- function(n, lower, unit_diagonal) {
   mask <- tri_mask(c(n, n), 0L, lower = lower)
   if (unit_diagonal) {
     prim_ifelse(diag_mask(n), prim_fill(FALSE, dtype = "bool", shape = c(n, n)), mask)
@@ -566,7 +583,9 @@ triangular_mask <- function(n, dt, lower, unit_diagonal) {
 }
 ```
 
-`diagonal = 0L` reproduces the old helpers exactly: `tril_mask` was `rows >= cols` and `triu_mask` was `rows <= cols`, both of which include the main diagonal. `triangular_mask`'s `dt` parameter is now unused too, but it stays — it is part of the signature the two reverse rules call, and removing it is out of scope.
+`diagonal = 0L` reproduces the old helpers exactly: `tril_mask` was `rows >= cols` and `triu_mask` was `rows <= cols`, both of which include the main diagonal.
+
+`triangular_mask`'s `dt` parameter is **removed**: it is unused, and anvl's CLAUDE.md forbids carrying unneeded baggage. Both of its call sites pass `dtype(a)` into that slot today and must be updated in Step 3b.
 
 `tri_mask` uses `start = 1L` where the deleted helpers used `start = 0L`. This is immaterial: both operands shift by the same constant and only their relative order is compared.
 
@@ -584,13 +603,28 @@ Replace with:
     prim_ifelse(tri_mask(c(n, n), 0L, lower = TRUE), x, zeros_like(x))
 ```
 
-- [ ] **Step 4: Verify no `tril_mask` / `triu_mask` references remain**
+- [ ] **Step 3b: Update the two `triangular_mask` call sites for the dropped `dt`**
+
+`R/rules-reverse.R:1376` and `R/rules-reverse.R:1397` are identical lines inside the `prim_triangular_solve` reverse rule:
+
+```r
+      mask <- triangular_mask(n, dtype(a), lower, unit_diagonal)
+```
+
+Replace **both** with:
+
+```r
+      mask <- triangular_mask(n, lower, unit_diagonal)
+```
+
+- [ ] **Step 4: Verify no stale references remain**
 
 ```bash
 grep -rn 'tril_mask\|triu_mask' R/ tests/
+grep -rn 'triangular_mask(n, dtype' R/
 ```
 
-Expected: no output (exit status 1).
+Expected: no output from either (exit status 1).
 
 - [ ] **Step 5: Run the gradient tests to verify they still pass**
 
@@ -651,8 +685,6 @@ Rscript -e 'devtools::test()'
 Expected: PASS, 0 failures. Report the exact failure count; do not claim success without reading the output.
 
 - [ ] **Step 3: Run the full check, including examples**
-
-Task 1's examples reference the `_like` functions from Task 2, so this is the first point at which `devtools::check()` is meaningful.
 
 ```bash
 Rscript -e 'devtools::check(document = FALSE, args = c("--no-manual", "--no-build-vignettes"))'
