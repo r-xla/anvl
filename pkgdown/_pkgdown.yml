@@ -261,6 +261,8 @@ reference:
       - nv_extract_diag
       - nv_tril
       - nv_triu
+      - nv_lower_tri
+      - nv_upper_tri
 
   - subtitle: Logical and Bitwise Operations
     desc: Logical and bitwise operations on arrays

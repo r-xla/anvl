@@ -871,6 +871,66 @@ describe("nv_diag", {
   })
 })
 
+describe("nv_lower_tri", {
+  it("matches base R lower.tri() by default", {
+    expect_equal(as_array(nv_lower_tri(c(3, 3))), lower.tri(matrix(0, 3, 3)))
+  })
+  it("diagonal = 0L matches lower.tri(diag = TRUE)", {
+    expect_equal(
+      as_array(nv_lower_tri(c(3, 3), diagonal = 0L)),
+      lower.tri(matrix(0, 3, 3), diag = TRUE)
+    )
+  })
+  it("supports offsets base R's logical diag cannot express", {
+    expected <- outer(1:4, 1:4, function(i, j) i >= j - 2L)
+    expect_equal(as_array(nv_lower_tri(c(4, 4), diagonal = 2L)), expected)
+  })
+  it("supports rectangular shapes", {
+    expect_equal(as_array(nv_lower_tri(c(2, 5))), lower.tri(matrix(0, 2, 5)))
+    expect_equal(as_array(nv_lower_tri(c(5, 2))), lower.tri(matrix(0, 5, 2)))
+  })
+  it("returns bool", {
+    expect_equal(dtype(nv_lower_tri(c(3, 3))), as_dtype("bool"))
+  })
+  it("rejects a shape that is not 2-D", {
+    expect_error(nv_lower_tri(3), "must have length 2")
+  })
+  it("rejects a non-integer diagonal", {
+    expect_error(nv_lower_tri(c(3, 3), diagonal = "a"))
+  })
+})
+
+describe("nv_upper_tri", {
+  it("matches base R upper.tri() by default", {
+    expect_equal(as_array(nv_upper_tri(c(3, 3))), upper.tri(matrix(0, 3, 3)))
+  })
+  it("diagonal = 0L matches upper.tri(diag = TRUE)", {
+    expect_equal(
+      as_array(nv_upper_tri(c(3, 3), diagonal = 0L)),
+      upper.tri(matrix(0, 3, 3), diag = TRUE)
+    )
+  })
+  it("supports offsets base R's logical diag cannot express", {
+    expected <- outer(1:4, 1:4, function(i, j) i <= j - 2L)
+    expect_equal(as_array(nv_upper_tri(c(4, 4), diagonal = 2L)), expected)
+  })
+  it("supports rectangular shapes", {
+    expect_equal(as_array(nv_upper_tri(c(2, 5))), upper.tri(matrix(0, 2, 5)))
+    expect_equal(as_array(nv_upper_tri(c(5, 2))), upper.tri(matrix(0, 5, 2)))
+  })
+  it("returns bool", {
+    expect_equal(dtype(nv_upper_tri(c(3, 3))), as_dtype("bool"))
+  })
+})
+
+describe("nv_lower_tri with quickr backend", {
+  it("works on the quickr backend", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    expect_equal(as_array(nv_lower_tri(c(3, 3))), lower.tri(matrix(0, 3, 3)))
+  })
+})
+
 describe("nv_tril", {
   it("returns lower triangular part", {
     result <- nv_tril(nv_fill(1, c(3, 3)))

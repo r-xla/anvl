@@ -4,6 +4,7 @@
 # `jit(f, backend = "auto", static = <static>)`. See R/jit-roclet.R.
 
 .jit_registry <- list(
+  list(name = "nv_dnorm", static = "log"),
   list(name = "nv_broadcast_arrays", static = character(0)),
   list(name = "nv_concatenate", static = "dimension"),
   list(name = "nv_rbind", static = character(0)),
@@ -33,7 +34,6 @@
   list(name = "nv_atan2", static = character(0)),
   list(name = "nv_trunc", static = character(0)),
   list(name = "nv_polygamma", static = 1L),
-  list(name = "nv_dnorm", static = "log"),
   list(name = "nv_clamp", static = character(0)),
   list(name = "nv_seq", static = 1:6),
   list(name = "nv_matmul", static = "precision"),
@@ -58,6 +58,8 @@
   list(name = "nv_outer", static = character(0)),
   list(name = "nv_extract_diag", static = character(0)),
   list(name = "nv_trace", static = character(0)),
+  list(name = "nv_lower_tri", static = 1:3),
+  list(name = "nv_upper_tri", static = 1:3),
   list(name = "nv_tril", static = 2L),
   list(name = "nv_triu", static = 2L),
   list(name = "nv_crossprod", static = character(0)),
