@@ -9,9 +9,9 @@
 #' @return (`GraphValue`)
 #' @export
 GraphValue <- function(aval) {
-  checkmate::assert_class(aval, "AbstractArray")
-
-  # Use an environment for reference semantics (mutable)
+  # Hot-path constructor called once per traced output: no input validation
+  # (all callers are internal and pass an `AbstractArray`). Uses an environment
+  # for reference semantics + identity-based hashtab keying.
   env <- new.env(parent = emptyenv())
   env$aval <- aval
 
@@ -26,9 +26,7 @@ GraphValue <- function(aval) {
 #' @return (`GraphLiteral`)
 #' @export
 GraphLiteral <- function(aval) {
-  checkmate::assert_class(aval, "LiteralArray")
-
-  # Use an environment for reference semantics (mutable)
+  # Hot-path constructor: no input validation (internal callers only).
   env <- new.env(parent = emptyenv())
   env$aval <- aval
 
@@ -94,11 +92,9 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
-  checkmate::assert_class(primitive, "AnvlPrimitive")
-  checkmate::assert_list(inputs, types = c("GraphValue", "GraphLiteral"))
-  checkmate::assert_list(params)
-  checkmate::assert_list(outputs, c("GraphValue", "GraphLiteral"))
-
+  # Hot-path constructor (one per traced primitive): the per-element
+  # `assert_list(..., types = ...)` checks alone cost ~33 us/call, so we trust
+  # the internal callers instead of validating.
   structure(
     list(
       primitive = primitive,
@@ -302,11 +298,8 @@ descriptor_to_graph <- function(descriptor) {
 #' @seealso [AnvlBox], [trace_fn()], [jit()]
 #' @export
 GraphBox <- function(gnode, desc) {
-  if (!is_graph_node(gnode)) {
-    cli_abort("gnode must be a GraphValue or GraphLiteral")
-  }
-  checkmate::assert_class(desc, "GraphDescriptor")
-
+  # Hot-path constructor (one per boxed value during tracing): internal callers
+  # always pass a GraphNode + GraphDescriptor, so we skip validation.
   structure(
     list(gnode = gnode, desc = desc),
     class = c("GraphBox", "AnvlBox")
@@ -652,7 +645,26 @@ trace_fn <- function(
   inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  output <- do.call(f_flat, inputs_flat)
+  # A single top-level handler rewrites inference errors (attributing them to
+  # `prim_<name>` and converting 0-based indices), replacing the per-primitive
+  # tryCatch in graph_desc_add. Nested (subgraph/inline) traces propagate up to
+  # this outermost handler, and `INFER_PRIMITIVE` identifies the failing call.
+  if (mode == "toplevel") {
+    globals[["INFER_PRIMITIVE"]] <- NULL
+    output <- tryCatch(
+      do.call(f_flat, inputs_flat),
+      error = function(e) {
+        prim <- globals[["INFER_PRIMITIVE"]]
+        if (!is.null(prim)) {
+          e$call <- print_call_repr(prim)
+          e <- stablehlo::to_one_based(e)
+        }
+        rlang::cnd_signal(e)
+      }
+    )
+  } else {
+    output <- do.call(f_flat, inputs_flat)
+  }
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -668,10 +680,6 @@ trace_fn <- function(
 
   graph <- descriptor_to_graph(desc)
   optimize_graph(graph, optimize)
-}
-
-is_graph_node <- function(x) {
-  is_graph_value(x) || is_graph_literal(x)
 }
 
 is_graph_value <- function(x) {
@@ -794,21 +802,18 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
-  checkmate::assert_class(primitive, "AnvlPrimitive")
 
   boxes_in <- lapply(args, maybe_box_arrayish)
   gnodes_in <- unname(lapply(boxes_in, \(box) box$gnode))
   avals_in <- lapply(boxes_in, \(box) box$gnode$aval)
-  ats_out <- tryCatch(
-    {
-      rlang::exec(infer_fn, !!!c(avals_in, params))
-    },
-    error = function(e) {
-      e$call <- print_call_repr(primitive)
-      e <- stablehlo::to_one_based(e)
-      rlang::cnd_signal(e)
-    }
-  )
+  # Record which primitive is inferring so trace_fn's single top-level handler
+  # can attribute an inference error to `prim_<name>` and convert 0-based
+  # indices -- far cheaper than establishing a tryCatch on every call. The stash
+  # stays set only while `infer_fn` runs (cleared on success), so a later
+  # non-inference error is not misattributed.
+  globals[["INFER_PRIMITIVE"]] <- primitive
+  ats_out <- do.call(infer_fn, c(avals_in, params))
+  globals[["INFER_PRIMITIVE"]] <- NULL
   gvals_out <- lapply(ats_out, GraphValue)
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
   desc$calls$add(call)
