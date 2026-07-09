@@ -342,14 +342,12 @@ format.GraphBox <- function(x, ...) {
   sprintf("GraphBox(%s)", format(x$gnode))
 }
 
-maybe_box_arrayish <- function(x) {
-  current_desc <- .current_descriptor()
+maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
-    if (identical(x$desc, current_desc)) {
+    if (identical(x$desc, desc)) {
       return(x)
     }
-    gval <- x$gnode
-    return(get_box_or_register_const(current_desc, gval))
+    return(get_box_or_register_const(desc, x$gnode))
   }
   if (is_valid_r_array(x)) {
     # Materialize R arrays as plain-backend AnvlArrays so they can be
@@ -357,7 +355,7 @@ maybe_box_arrayish <- function(x) {
     x <- nv_array(x, ambiguous = !is.logical(x))
   }
   if (is_anvl_array(x) || is_valid_r_lit(x)) {
-    return(get_box_or_register_const(current_desc, x))
+    return(get_box_or_register_const(desc, x))
   }
   cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
 }
@@ -471,12 +469,7 @@ register_gvals <- function(desc, gvals) {
 }
 
 register_gval <- function(desc, x) {
-  if (!is_graph_descriptor(desc)) {
-    cli_abort("Internal error: trying to register a gval in a non-graph descriptor")
-  }
-  if (!is_graph_value(x)) {
-    cli_abort("Internal error: trying to register an invalid gval")
-  }
+  # hot path (one call per traced output): no input validation
   box <- desc$gval_to_box[[x]]
   if (!is.null(box)) {
     return(box)
@@ -488,9 +481,6 @@ register_gval <- function(desc, x) {
 
 # Returns a Box
 get_box_or_register_const <- function(desc, x) {
-  if (!is_graph_descriptor(desc)) {
-    cli_abort("Internal error: trying to register a constant in a non-graph descriptor")
-  }
   if (is_anvl_array(x)) {
     if (backend(x) != "plain") {
       desc$devices <- c(desc$devices, device(x))
@@ -798,9 +788,17 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
     primitive <- attr(primitive, "primitive")
   }
 
-  boxes_in <- lapply(args, maybe_box_arrayish)
-  gnodes_in <- unname(lapply(boxes_in, \(box) box$gnode))
-  avals_in <- lapply(boxes_in, \(box) box$gnode$aval)
+  # Box each input and pull out its gnode + aval in one pass (`gnodes_in`
+  # unnamed for the PrimitiveCall; `avals_in` keeps arg names for infer_fn).
+  n_in <- length(args)
+  gnodes_in <- vector("list", n_in)
+  avals_in <- vector("list", n_in)
+  for (i in seq_len(n_in)) {
+    gnode <- maybe_box_arrayish(args[[i]], desc)$gnode
+    gnodes_in[[i]] <- gnode
+    avals_in[[i]] <- gnode$aval
+  }
+  names(avals_in) <- names(args)
   globals[["INFER_PRIMITIVE"]] <- primitive
   ats_out <- do.call(infer_fn, c(avals_in, params))
   globals[["INFER_PRIMITIVE"]] <- NULL
