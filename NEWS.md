@@ -2,6 +2,11 @@
 
 ## Features
 
+* New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /
+  `nv_upper_tri_like()`) return a boolean triangular mask for a given shape,
+  mirroring base R's `lower.tri()` / `upper.tri()`. As in base R, the main
+  diagonal is excluded by default; pass `diagonal = 0L` to include it. Use
+  `nv_tril()` / `nv_triu()` to zero out a triangle of an existing array.
 * `trace_fn()` gained an `optimize` argument controlling which graph
   optimization passes run on the traced graph. `TRUE` runs all passes, `FALSE`
   (default) runs none, and a character vector (e.g.
