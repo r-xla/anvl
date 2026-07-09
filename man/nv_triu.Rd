@@ -29,5 +29,5 @@ nv_triu(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_tril]{nv_tril()}}
+\code{\link[=nv_tril]{nv_tril()}}, \code{\link[=nv_upper_tri]{nv_upper_tri()}}
 }

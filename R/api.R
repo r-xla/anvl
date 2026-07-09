@@ -2696,7 +2696,7 @@ nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
 #'   include diagonals above, negative values exclude diagonals below.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `operand`.
-#' @seealso [nv_triu()]
+#' @seealso [nv_triu()], [nv_lower_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_fill(1, c(3, 3))
 #' nv_tril(x)
@@ -2707,11 +2707,7 @@ nv_tril <- function(operand, diagonal = 0L) {
   if (ndims(operand) != 2L) {
     cli_abort("operand must be a 2-D array")
   }
-  assert_int(diagonal)
-  rows <- nv_iota_like(operand, dim = 1L, dtype = "i32")
-  cols <- nv_iota_like(operand, dim = 2L, dtype = "i32")
-  mask <- rows >= cols - as.integer(diagonal)
-  nv_ifelse(mask, operand, nv_fill_like(operand, 0))
+  nv_ifelse(nv_lower_tri_like(operand, diagonal), operand, nv_fill_like(operand, 0))
 }
 
 #' @title Upper Triangular Matrix
@@ -2724,7 +2720,7 @@ nv_tril <- function(operand, diagonal = 0L) {
 #'   exclude diagonals above, negative values include diagonals below.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `operand`.
-#' @seealso [nv_tril()]
+#' @seealso [nv_tril()], [nv_upper_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_fill(1, c(3, 3))
 #' nv_triu(x)
@@ -2735,11 +2731,7 @@ nv_triu <- function(operand, diagonal = 0L) {
   if (ndims(operand) != 2L) {
     cli_abort("operand must be a 2-D array")
   }
-  assert_int(diagonal)
-  rows <- nv_iota_like(operand, dim = 1L, dtype = "i32")
-  cols <- nv_iota_like(operand, dim = 2L, dtype = "i32")
-  mask <- rows <= cols - as.integer(diagonal)
-  nv_ifelse(mask, operand, nv_fill_like(operand, 0))
+  nv_ifelse(nv_upper_tri_like(operand, diagonal), operand, nv_fill_like(operand, 0))
 }
 
 #' @title Cross Product (Matrix)
