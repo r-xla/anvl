@@ -465,3 +465,88 @@ describe("prim_argmax / prim_argmin", {
     .argmax_argmin_compare(c(5L, 2L, 8L, 1L, 8L), "i32", dim_anvl = 1L)
   })
 })
+
+describe("prim_convolution", {
+  # nv_conv{1,2,3}d share torch's NC(D)HW layout, so compare directly against
+  # nnf_conv{1,2,3}d. Inputs are randomized per run (the harness owns the
+  # randomness -- no seed).
+  conv_cmp <- function(x, w, nv_fun, torch_fun, tol = 1e-4, ...) {
+    dots <- list(...)
+    f <- jit(function(a, b) do.call(nv_fun, c(list(a, b), dots)))
+    got <- as_array(f(nv_array(x, dtype = "f32"), nv_array(w, dtype = "f32")))
+    want <- as_array_torch(do.call(
+      torch_fun,
+      c(
+        list(
+          torch::torch_tensor(x, dtype = torch::torch_float32()),
+          torch::torch_tensor(w, dtype = torch::torch_float32())
+        ),
+        dots
+      )
+    ))
+    expect_equal(dim(got), dim(want))
+    expect_equal(got, want, tolerance = tol)
+  }
+
+  it("nv_conv1d matches torch nnf_conv1d (stride, padding, groups)", {
+    x <- generate_test_data(c(1, 2, 8), "f32")
+    w <- generate_test_data(c(3, 2, 3), "f32")
+    conv_cmp(x, w, nv_conv1d, torch::nnf_conv1d, stride = 1L, padding = 0L)
+    conv_cmp(x, w, nv_conv1d, torch::nnf_conv1d, stride = 2L, padding = 1L)
+    # depthwise (groups == in_channels)
+    xg <- generate_test_data(c(1, 4, 8), "f32")
+    wg <- generate_test_data(c(4, 1, 3), "f32")
+    conv_cmp(xg, wg, nv_conv1d, torch::nnf_conv1d, stride = 1L, padding = 1L, groups = 4L)
+  })
+
+  it("nv_conv2d matches torch nnf_conv2d (stride, padding, groups)", {
+    x <- generate_test_data(c(1, 3, 6, 6), "f32")
+    w <- generate_test_data(c(4, 3, 3, 3), "f32")
+    conv_cmp(x, w, nv_conv2d, torch::nnf_conv2d, stride = 1L, padding = 1L)
+    conv_cmp(x, w, nv_conv2d, torch::nnf_conv2d, stride = 2L, padding = 1L)
+    conv_cmp(x, w, nv_conv2d, torch::nnf_conv2d, stride = 1L, padding = 0L)
+    # depthwise
+    wg <- generate_test_data(c(3, 1, 3, 3), "f32")
+    conv_cmp(x, wg, nv_conv2d, torch::nnf_conv2d, stride = 1L, padding = 1L, groups = 3L)
+  })
+
+  it("nv_conv3d matches torch nnf_conv3d (stride, padding)", {
+    x <- generate_test_data(c(1, 2, 5, 5, 5), "f32")
+    w <- generate_test_data(c(3, 2, 3, 3, 3), "f32")
+    conv_cmp(x, w, nv_conv3d, torch::nnf_conv3d, stride = 1L, padding = 1L)
+    conv_cmp(x, w, nv_conv3d, torch::nnf_conv3d, stride = 2L, padding = 1L)
+  })
+
+  it("asymmetric (causal) padding matches F.pad + valid conv", {
+    # 1D causal conv as rank-3: left-pad only, so out length == in length and
+    # out[t] depends only on inputs <= t. torch has no asymmetric conv padding,
+    # so emulate it with an explicit left pad + valid (padding = 0) conv.
+    x <- generate_test_data(c(1, 2, 6), "f32")
+    w <- generate_test_data(c(3, 2, 3), "f32")
+    got <- as_array(jit(function(a, b) {
+      prim_convolution(
+        a,
+        b,
+        input_batch_dimension = 1L,
+        input_feature_dimension = 2L,
+        input_spatial_dimensions = 3L,
+        kernel_input_feature_dimension = 2L,
+        kernel_output_feature_dimension = 1L,
+        kernel_spatial_dimensions = 3L,
+        output_batch_dimension = 1L,
+        output_feature_dimension = 2L,
+        output_spatial_dimensions = 3L,
+        window_strides = 1L,
+        padding = matrix(c(2L, 0L), nrow = 1L),
+        lhs_dilation = 1L,
+        rhs_dilation = 1L
+      )
+    })(nv_array(x, dtype = "f32"), nv_array(w, dtype = "f32")))
+    x_th <- torch::torch_tensor(x, dtype = torch::torch_float32())
+    w_th <- torch::torch_tensor(w, dtype = torch::torch_float32())
+    x_pad <- torch::nnf_pad(x_th, c(2L, 0L))
+    want <- as_array_torch(torch::nnf_conv1d(x_pad, w_th, padding = 0L))
+    expect_equal(dim(got), c(1L, 3L, 6L))
+    expect_equal(got, want, tolerance = 1e-4)
+  })
+})
