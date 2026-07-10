@@ -3175,3 +3175,87 @@ nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   first_nan_idx <- prim_argmax(nan_mask, dim = dim, drop = drop)
   nv_ifelse(any_nan, first_nan_idx, result)
 }
+
+# Build the NCHW/NC(D)HW dimension numbers (1-based) for nv_conv*.
+.nv_conv_dim_numbers <- function(n_spatial) {
+  spatial <- 3:(2 + n_spatial)
+  list(
+    input_batch_dimension = 1L,
+    input_feature_dimension = 2L,
+    input_spatial_dimensions = spatial,
+    kernel_output_feature_dimension = 1L,
+    kernel_input_feature_dimension = 2L,
+    kernel_spatial_dimensions = spatial,
+    output_batch_dimension = 1L,
+    output_feature_dimension = 2L,
+    output_spatial_dimensions = spatial
+  )
+}
+
+# Normalize a stride/dilation/padding arg to length n_spatial.
+.nv_conv_vec <- function(x, n, name) {
+  x <- as.integer(x)
+  if (length(x) == 1L) x <- rep(x, n)
+  if (length(x) != n) {
+    cli_abort("{.arg {name}} must have length 1 or {n}.")
+  }
+  x
+}
+
+#' @title 2D Convolution
+#' @description
+#' Torch-style 2D convolution in NCHW layout: `input` is
+#' `[batch, in_channels, height, width]`, `weight` is
+#' `[out_channels, in_channels / groups, kh, kw]`, output is
+#' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
+#' @param input ([`arrayish`])\cr `[N, C_in, H, W]`.
+#' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
+#' @param stride (`integer()`)\cr Length 1 or 2.
+#' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
+#' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
+#' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
+#' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
+#' @return [`arrayish`] `[N, C_out, out_H, out_W]`.
+#' @seealso [nv_conv3d()], [prim_convolution()].
+#' @export
+nv_conv2d <- function(input, weight, stride = 1L, padding = 0L,
+                      dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(input, weight, 2L, stride, padding, dilation, groups, precision)
+}
+
+#' @title 3D Convolution
+#' @description
+#' Torch-style 3D convolution in NCDHW layout. `input` is
+#' `[batch, in_channels, depth, height, width]`, `weight` is
+#' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
+#' padding (e.g. causal temporal padding) is available via
+#' [prim_convolution()].
+#' @inheritParams nv_conv2d
+#' @param stride,padding,dilation (`integer()`)\cr Length 1 or 3.
+#' @return [`arrayish`] `[N, C_out, out_D, out_H, out_W]`.
+#' @seealso [nv_conv2d()], [prim_convolution()].
+#' @export
+nv_conv3d <- function(input, weight, stride = 1L, padding = 0L,
+                      dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(input, weight, 3L, stride, padding, dilation, groups, precision)
+}
+
+.nv_convnd <- function(input, weight, n, stride, padding, dilation, groups,
+                       precision) {
+  input <- as_anvl_array(input)
+  weight <- as_anvl_array(weight)
+  stride <- .nv_conv_vec(stride, n, "stride")
+  pad <- .nv_conv_vec(padding, n, "padding")
+  dilation <- .nv_conv_vec(dilation, n, "dilation")
+  prim_convolution(
+    input, weight,
+    dimension_numbers = .nv_conv_dim_numbers(n),
+    window_strides = stride,
+    padding = cbind(pad, pad),                 # symmetric [n, 2]
+    lhs_dilation = rep(1L, n),
+    rhs_dilation = dilation,
+    feature_group_count = as.integer(groups),
+    batch_group_count = 1L,
+    precision = precision
+  )
+}
