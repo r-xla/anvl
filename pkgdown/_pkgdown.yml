@@ -264,6 +264,13 @@ reference:
       - nv_lower_tri
       - nv_upper_tri
 
+  - subtitle: Convolution
+    desc: N-dimensional convolution operations
+    contents:
+      - nv_conv1d
+      - nv_conv2d
+      - nv_conv3d
+
   - subtitle: Logical and Bitwise Operations
     desc: Logical and bitwise operations on arrays
     contents:
