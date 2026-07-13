@@ -974,9 +974,9 @@ test_that("prim_reduce_prod: gradient is safe at zeros", {
   # non-zero gradient; with two or more zeros, the gradient is zero everywhere.
   f1 <- jit(gradient(function(x) prim_reduce_prod(x, dims = 1L, drop = TRUE)))
 
-  expect_equal(as.numeric(as_array(f1(nv_array(c(2, 3, 5)))[[1L]])), c(15, 10, 6))
-  expect_equal(as.numeric(as_array(f1(nv_array(c(2, 0, 5)))[[1L]])), c(0, 10, 0))
-  expect_equal(as.numeric(as_array(f1(nv_array(c(2, 0, 0)))[[1L]])), c(0, 0, 0))
+  expect_equal(as.numeric(f1(nv_array(c(2, 3, 5)))[[1L]]), c(15, 10, 6))
+  expect_equal(as.numeric(f1(nv_array(c(2, 0, 5)))[[1L]]), c(0, 10, 0))
+  expect_equal(as.numeric(f1(nv_array(c(2, 0, 0)))[[1L]]), c(0, 0, 0))
 })
 
 test_that("prim_reduce_prod: multi-axis reduction with a zero", {
