@@ -578,7 +578,7 @@ match_args_to_formals <- function(f, args) {
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
 #' @return An [`AnvlGraph`] containing the traced operations.
-#' @seealso [`stablehlo()`] to lower the graph, [`jit()`] / [`xla()`] for end-to-end
+#' @seealso [`stablehlo()`] to lower the graph, [`jit()`] for end-to-end
 #'   compilation.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()

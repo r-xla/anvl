@@ -70,6 +70,6 @@ graph
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=stablehlo]{stablehlo()}} to lower the graph, \code{\link[=jit]{jit()}} / \code{\link[=xla]{xla()}} for end-to-end
+\code{\link[=stablehlo]{stablehlo()}} to lower the graph, \code{\link[=jit]{jit()}} for end-to-end
 compilation.
 }

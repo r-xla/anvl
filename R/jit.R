@@ -5,8 +5,7 @@
 #' @description
 #' Wraps a function so that it is traced and compiled on first call. Subsequent
 #' calls with the same input structure, shapes, and dtypes hit an LRU cache and
-#' skip recompilation. Unlike [`xla()`], the compiled executable is not created
-#' eagerly but lazily on the first invocation.
+#' skip recompilation.
 #'
 #' @param f (`function`)\cr
 #'   Function to compile. Must accept and return [`AnvlArray`]s (and/or
@@ -82,7 +81,7 @@
 #' @return A `JitFunction` (a `function` with the same formals as `f`).
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
-#' @seealso [`xla()`] for ahead-of-time compilation, [`jit_eval()`] for evaluating an expression once,
+#' @seealso [`jit_eval()`] for evaluating an expression once,
 #'   [`jit_roclet()`] for the `@jit` tag used inside R packages.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -309,68 +308,6 @@ jit_auto_detect_backend <- function(args, static = character()) {
 }
 
 
-# Validate an (already-evaluated) argument list and prepare the flat leaves /
-# tree / static mask / device the compile path needs. Called on the native
-# dispatcher's miss path -- and, standalone, to reproduce the canonical
-# validation errors when the dispatcher refuses a call.
-jit_prepare_args <- function(args, static, device = NULL, backend) {
-  assert_choice(backend, c("xla", "quickr"))
-
-  in_tree <- build_tree(args)
-  args_flat <- flatten(args)
-  is_static_flat <- pjrt::tree_leaf_mask(in_tree, static)
-
-  # Resolve device: device_arg() → extract from args, string/device → nv_device(),
-  # NULL → infer from inputs, then fall back to PJRT_PLATFORM default.
-  if (is_device_arg(device)) {
-    device <- args[[device$argname]]
-  }
-
-  # Determine allocation device:
-  # if device is specified -> use it
-  # else, use first found device; if no device was found, leave it at NULL and don't check
-  # device (will be inferred during tracing)
-  allocation_device <- if (is.null(device)) {
-    found_device <- NULL
-    # If any input lives on a device, use it instead
-    for (i in seq_along(args_flat)) {
-      if (!is_static_flat[[i]] && is_anvl_array(args_flat[[i]])) {
-        found_device <- device(args_flat[[i]])
-        break
-      }
-    }
-    found_device
-  } else {
-    device
-  }
-
-  # No input checking here. On the jit() path pjrt's dispatcher validates every
-  # leaf -- backend, device agreement, R-value shape -- before it probes its
-  # cache, so this runs only on a miss and only on inputs already known good.
-  # xla() has no dispatcher in front of it and calls check_jit_inputs() itself.
-  list(
-    args = args,
-    args_flat = args_flat,
-    is_static_flat = is_static_flat,
-    in_tree = in_tree,
-    device = allocation_device
-  )
-}
-
-# Validate the non-static leaves of a jit_prepare_args() result. Only the
-# ahead-of-time xla() path needs this: everything reached through jit() is
-# validated natively by pjrt's dispatcher before its cache is probed.
-check_jit_inputs <- function(prep, copy_to_device) {
-  .mapply(
-    function(x, is_static, i) {
-      if (is_static) x else check_jit_input(x, prep$device, prep$in_tree, i, copy_to_device)
-    },
-    list(prep$args_flat, prep$is_static_flat, seq_along(prep$args_flat)),
-    NULL
-  )
-  invisible(prep)
-}
-
 # The flat argument list a compile callback traces with, built from the `info`
 # pjrt's dispatcher hands it: a static leaf traces as its value, a dynamic one
 # as the aval the dispatcher already derived. There is deliberately no
@@ -397,53 +334,6 @@ dispatch_arg_devices <- function(info) {
   lapply(info$leaves[is_array], tengen::device)
 }
 
-
-# Check whether an input to jit is valid (w.r.t. information available before tracing)
-# We don't convert yet as the concrete device is only known after tracing (respecting found constant's device)
-# in_tree and i are only used for good error messages
-check_jit_input <- function(x, alloc_device, in_tree = NULL, i = NULL, copy_to_device) {
-  make_path <- function() {
-    if (!is.null(in_tree) && !is.null(i)) tree_path(in_tree, i) else ""
-  }
-  if (is_anvl_array(x)) {
-    # only single device currently
-    if (backend(x) == "quickr") {
-      return(x)
-    }
-    # there any input is valid as we will move it to it
-    if (copy_to_device) {
-      return(x)
-    }
-
-    # allocation device can be NULL if e.g. all inputs are R objects and no concrete device
-    # was enforced in jit()
-    if (!is.null(alloc_device) && !eq_device(device(x), alloc_device)) {
-      # this can happen when there are multiple input devices but we are auto-detecting device
-      path <- make_path()
-      cli_abort(c(
-        "Found AnvlArray input {.arg {path}} on unexpected device {device(x)}",
-        i = "when using jit(f, device = NULL), ensure that all inputs live on the same device"
-      ))
-    }
-
-    return(x)
-  }
-
-  if (is_valid_r(x)) {
-    return(x)
-  }
-  path <- make_path()
-  msg <- if (nzchar(path)) {
-    "Attempted to autoconvert {.arg {path}} to an {.cls AnvlArray}."
-  } else {
-    "Attempted to autoconvert input to an {.cls AnvlArray}."
-  }
-  cli_abort(c(
-    msg,
-    i = "Expected an {.cls AnvlArray}, a length-1 atomic scalar, or an {.code is.array()} value.",
-    x = "Got {.cls {class(x)[1]}} of length {length(x)}."
-  ))
-}
 
 jit_wrap_outputs <- function(out_flat, out_tree, ambiguous_out, backend) {
   if (!is.null(ambiguous_out)) {

@@ -64,7 +64,7 @@ env_get <- function(env, gval) {
 #'
 #' The rules for translating to stablehlo are stored in `$rules[["stablehlo"]]` of the primitives.
 #'
-#' This is a low-level function; most users should use [`jit()`] or [`xla()`] instead.
+#' This is a low-level function; most users should use [`jit()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
 #'   The graph to lower (e.g. produced by [`trace_fn()`]).
 #' @param id (`character(1)`)\cr
@@ -104,7 +104,7 @@ env_get <- function(env, gval) {
 #'     appended when `donate_unaliased_outputs = TRUE`. Each entry is a
 #'     `list(dtype, shape)` describing the buffer the executor must
 #'     allocate. Empty when no phantoms were added.
-#' @seealso [`trace_fn()`], [`jit()`], [`xla()`], [`current_platform()`]
+#' @seealso [`trace_fn()`], [`jit()`], [`current_platform()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2))

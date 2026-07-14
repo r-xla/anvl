@@ -382,7 +382,6 @@ reference:
 
   - subtitle: Transformations
     contents:
-      - xla
       - jit_roclet
       - apply_jit_registry
       - trace_fn
