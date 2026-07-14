@@ -24,7 +24,7 @@ quickr_restore_leaf <- function(value, info) {
 }
 
 quickr_restore_output_flat <- function(value, out_tree, out_infos) {
-  if (pjrt::tree_kind(out_tree) == "leaf" && length(out_infos) == 1L) {
+  if (pjrt::tree_root_kind(out_tree) == "leaf" && length(out_infos) == 1L) {
     return(list(quickr_restore_leaf(value, out_infos[[1L]])))
   }
 
@@ -45,10 +45,10 @@ quickr_restore_output <- function(value, out_tree, out_infos) {
 
 graph_to_quickr_prepare <- function(graph) {
   in_tree <- graph$in_tree
-  needs_flatten <- pjrt::tree_kind(in_tree) == "list" &&
-    any(pjrt::child_kinds(in_tree) == "list")
+  needs_flatten <- pjrt::tree_root_kind(in_tree) == "list" &&
+    any(pjrt::tree_child_kinds(in_tree) == "list")
 
-  needs_output_wrapper <- !(pjrt::tree_kind(graph$out_tree) == "leaf" && length(graph$outputs) == 1L)
+  needs_output_wrapper <- !(pjrt::tree_root_kind(graph$out_tree) == "leaf" && length(graph$outputs) == 1L)
   out_infos <- lapply(graph$outputs, function(node) {
     list(
       dtype = as.character(dtype(node)),
@@ -140,15 +140,13 @@ graph_to_quickr_make_wrapper <- function(
   wrapper_env$restore_output <- quickr_restore_output
 
   if (isTRUE(flat)) {
+    # pjrt's dispatcher calls this one, and it passes the call's inputs only:
+    # the dynamic leaves, in order. The statics are constants of this very
+    # closure -- the dispatcher keyed on them with identical(), so reaching
+    # here already proves they match -- and never arrive, so there is nothing
+    # to check or drop.
     flat_wrapper <- function(args_flat) {}
     body(flat_wrapper) <- quote({
-      if (!is.null(is_static_flat)) {
-        if (length(args_flat) != length(is_static_flat)) {
-          cli_abort("Expected {length(is_static_flat)} flattened inputs, got {length(args_flat)}")
-        }
-        quickr_assert_static_args(args_flat, is_static_flat, static_args_flat)
-        args_flat <- args_flat[!is_static_flat]
-      }
       args <- stats::setNames(args_flat, leaf_arg_names)
       value <- do.call(inner, c(const_args, args))
       restore_output(value, out_tree, out_infos)
@@ -161,8 +159,8 @@ graph_to_quickr_make_wrapper <- function(
   wrapper <- function() {}
   if (isTRUE(use_in_tree_formals)) {
     in_tree <- graph$in_tree
-    top_names <- pjrt::tree_names(in_tree) %||%
-      rep("", length(pjrt::child_sizes(in_tree)))
+    top_names <- pjrt::tree_child_names(in_tree) %||%
+      rep("", length(pjrt::tree_child_sizes(in_tree)))
     top_names <- vapply(
       top_names,
       function(x) {

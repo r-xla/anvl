@@ -22,7 +22,7 @@ prepare_gradient_args <- function(args, wrt) {
   args_flat <- flatten(args)
   in_tree <- build_tree(args)
   is_wrt_flat <- if (!is.null(wrt)) {
-    pjrt::mask_from_names(in_tree, wrt)
+    pjrt::tree_leaf_mask(in_tree, wrt)
   } else {
     rep(TRUE, length(args_flat))
   }
@@ -129,7 +129,7 @@ transform_gradient_impl <- function(graph, wrt) {
   desc$is_static_flat <- graph$is_static_flat
   desc$static_args_flat <- graph$static_args_flat
   desc$out_tree <- if (length(wrt)) {
-    pjrt::filter_by_names(graph$in_tree, wrt)
+    pjrt::tree_filter_by_names(graph$in_tree, wrt)
   } else {
     graph$in_tree
   }
@@ -168,14 +168,18 @@ compute_requirements <- function(graph, wrt) {
   requires_grad_all <- if (is.null(wrt) || length(wrt) == 0L) {
     rep(TRUE, tree_size(graph$in_tree))
   } else {
-    pjrt::mask_from_names(graph$in_tree, wrt)
+    pjrt::tree_leaf_mask(graph$in_tree, wrt)
   }
   # `in_tree` may include static (non-array) args not present in
   # `graph$inputs`; filter them out. `gradient()` already rejects static
   # `wrt` entries, so this drop is safe.
   is_static <- graph$is_static_flat
   if (!is.null(is_static) && any(requires_grad_all & is_static)) {
-    flat_argnames <- pjrt::flat_names(graph$in_tree)
+    # pjrt dropped flat_names(); the per-leaf top-level group name is the
+    # top-level child's name repeated once per leaf beneath it.
+    sizes <- pjrt::tree_child_sizes(graph$in_tree)
+    nms <- pjrt::tree_child_names(graph$in_tree) %||% rep("", length(sizes))
+    flat_argnames <- rep(nms, times = sizes)
     bad <- unique(flat_argnames[requires_grad_all & is_static])
     cli_abort(c(
       "Cannot compute gradient with respect to {.arg {bad}}.",

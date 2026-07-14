@@ -202,10 +202,10 @@ test_that("a static xla jit caches in the native dispatcher, not the R cache", {
   r2 <- g(nv_array(3), FALSE)
   r3 <- g(nv_array(3), TRUE)
 
-  expect_equal(as.numeric(as_array(r1)), 4)
-  expect_equal(as.numeric(as_array(r2)), 6)
-  expect_equal(as.numeric(as_array(r3)), 4)
-  expect_equal(pjrt::pjrt_dispatch_size(env$dispatcher), 2L) # native cache used
+  expect_equal(as.numeric(r1), 4)
+  expect_equal(as.numeric(r2), 6)
+  expect_equal(as.numeric(r3), 4)
+  expect_equal(pjrt::dispatcher_size(env$dispatcher), 2L) # native cache used
   expect_null(env$cache) # there is no R-side cache anymore
 })
 
@@ -266,7 +266,10 @@ test_that("... works (#19)", {
 })
 
 test_that("good error message when passing AbstractArrays", {
-  expect_error(jit(nv_negate)(nv_aval("f32", c(2, 2))), "autoconvert")
+  expect_error(
+    jit(nv_negate)(nv_aval("f32", c(2, 2))),
+    "invalid input `operand`.*<AbstractArray>"
+  )
 })
 
 test_that("jit_eval does not modify calling environment", {
@@ -444,7 +447,7 @@ describe("jit: device and backend handling", {
     g <- jit(f)
     expect_error(
       g(nv_scalar(1, device = "cpu:0"), nv_scalar(2, device = "cpu:1")),
-      "on unexpected device"
+      "invalid input `y`.*different device"
     )
   })
   it("allocates scalar on default device when there is no AnvlArray to infer from", {

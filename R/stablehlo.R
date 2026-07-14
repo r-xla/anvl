@@ -140,7 +140,7 @@ stablehlo <- function(
     # Constants are never donated, inputs may be
     c(
       rep(FALSE, length(graph$constants)),
-      pjrt::mask_from_names(graph$in_tree, donate)
+      pjrt::tree_leaf_mask(graph$in_tree, donate)
     )
   } else {
     rep(FALSE, length(inps))

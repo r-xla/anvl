@@ -318,7 +318,7 @@ jit_prepare_args <- function(args, static, device = NULL, backend) {
 
   in_tree <- build_tree(args)
   args_flat <- flatten(args)
-  is_static_flat <- pjrt::mask_from_names(in_tree, static)
+  is_static_flat <- pjrt::tree_leaf_mask(in_tree, static)
 
   # Resolve device: device_arg() → extract from args, string/device → nv_device(),
   # NULL → infer from inputs, then fall back to PJRT_PLATFORM default.
@@ -344,15 +344,10 @@ jit_prepare_args <- function(args, static, device = NULL, backend) {
     device
   }
 
-  # whether we are copying between devices. This happens when specific device was specified in jit()
-  copy_to_device <- !is.null(device)
-
-  .mapply(
-    function(x, is_static, i) if (is_static) x else check_jit_input(x, allocation_device, in_tree, i, copy_to_device),
-    list(args_flat, is_static_flat, seq_along(args_flat)),
-    NULL
-  )
-
+  # No input checking here. On the jit() path pjrt's dispatcher validates every
+  # leaf -- backend, device agreement, R-value shape -- before it probes its
+  # cache, so this runs only on a miss and only on inputs already known good.
+  # xla() has no dispatcher in front of it and calls check_jit_inputs() itself.
   list(
     args = args,
     args_flat = args_flat,
@@ -362,24 +357,44 @@ jit_prepare_args <- function(args, static, device = NULL, backend) {
   )
 }
 
-to_avals <- function(args_flat, is_static_flat) {
-  Map(
-    function(x, is_static) {
-      if (is_static) {
-        x
-      } else if (is_anvl_array(x)) {
-        nv_aval(dtype(x), shape(x), ambiguous(x))
-      } else if (is_valid_r_lit(x)) {
-        nv_aval(default_dtype(x), integer(), ambiguous = TRUE)
-      } else if (is_valid_r_array(x)) {
-        nv_aval(default_dtype(x), as.integer(dim(x)), ambiguous = TRUE)
-      } else {
-        cli_abort("internal error: invalid input type for jit: {.cls {class(x)[1L]}}")
-      }
+# Validate the non-static leaves of a jit_prepare_args() result. Only the
+# ahead-of-time xla() path needs this: everything reached through jit() is
+# validated natively by pjrt's dispatcher before its cache is probed.
+check_jit_inputs <- function(prep, copy_to_device) {
+  .mapply(
+    function(x, is_static, i) {
+      if (is_static) x else check_jit_input(x, prep$device, prep$in_tree, i, copy_to_device)
     },
-    args_flat,
-    is_static_flat
+    list(prep$args_flat, prep$is_static_flat, seq_along(prep$args_flat)),
+    NULL
   )
+  invisible(prep)
+}
+
+# The flat argument list a compile callback traces with, built from the `info`
+# pjrt's dispatcher hands it: a static leaf traces as its value, a dynamic one
+# as the aval the dispatcher already derived. There is deliberately no
+# classification here -- the dtype and shape below are the ones the cache key
+# was built from, so the program we compile cannot disagree with the key it is
+# filed under.
+avals_from_dispatch <- function(info) {
+  .mapply(
+    function(leaf, is_static, av) {
+      if (is_static) {
+        return(leaf)
+      }
+      nv_aval(as_dtype(av$dtype), av$shape, av$ambiguous)
+    },
+    list(info$leaves, info$is_static, info$avals),
+    NULL
+  )
+}
+
+# The devices of the call's array inputs, for compile_xla()'s device inference.
+# pjrt has already checked they agree; this only converts them to anvl devices.
+dispatch_arg_devices <- function(info) {
+  is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1))
+  lapply(info$leaves[is_array], tengen::device)
 }
 
 

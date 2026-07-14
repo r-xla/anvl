@@ -2,43 +2,39 @@
 NULL
 
 # Build the native-dispatch compile callback for a jitted function. Invoked by
-# pjrt's dispatcher only on a cache miss; it runs the normal validate + trace +
-# compile path on the evaluated `args` and returns the artifacts the dispatcher
-# needs to execute and to let anvl wrap the outputs. It is also the error path:
-# an input the dispatcher could not classify reaches jit_prepare_args() /
-# compile_xla() here, which raise the canonical (path-annotated) errors.
+# pjrt's dispatcher only on a cache miss, and only for inputs the dispatcher has
+# already validated -- so this traces, lowers, and compiles, and does no
+# checking or classification of its own. `info` carries the tree, the flat
+# leaves, the static mask, and the avals the cache key was built from.
 # `device` is the jit's device policy: NULL (infer), a concrete device, or a
 # device_arg() whose value is read from the static args.
-jit_xla_compile_cb <- function(f, static, donate, device = NULL) {
-  function(args) {
-    prep <- jit_prepare_args(args, static, device = device, backend = "xla")
-    avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
-    args_flat_nv <- prep$args_flat[!prep$is_static_flat & vapply(prep$args_flat, is_anvl_array, logical(1))]
-    arg_devices <- lapply(args_flat_nv, tengen::device)
+jit_xla_compile_cb <- function(f, donate, device = NULL) {
+  function(info) {
     compile_device <- if (is_device_arg(device)) {
-      prep$args[[device$argname]]
+      info$args[[device$argname]]
     } else {
       device
     }
     compiled <- compile_xla(
       f,
-      args_flat = avals_in,
-      in_tree = prep$in_tree,
+      args_flat = avals_from_dispatch(info),
+      in_tree = info$in_tree,
       donate = donate,
       device = compile_device,
-      arg_devices = arg_devices
+      arg_devices = dispatch_arg_devices(info),
+      fallback_device = info$default_device
     )
     phantom_specs <- lapply(compiled$phantom_specs, function(spec) {
       list(dtype = as.character(spec$dtype), shape = as.integer(spec$shape))
     })
     list(
       exec = compiled$exec,
-      const_arrays = lapply(compiled$const_arrays, function(b) b),
+      const_arrays = compiled$const_arrays,
       phantom_specs = phantom_specs,
       client = pjrt::pjrt_client(as.character(pjrt::platform(compiled$device))),
       device = compiled$device,
       out_tree = compiled$out_tree,
-      ambiguous_out = compiled$ambiguous_out
+      out_avals = compiled$out_avals
     )
   }
 }
@@ -53,33 +49,29 @@ jit_xla_impl <- function(f, static, cache_size, donate, device) {
   # target device (jit(device = ) or device_arg()) it copies buffer inputs to
   # the entry's device per call (move_inputs); otherwise the first input's
   # device is the call's device.
-  dispatcher <- pjrt::pjrt_dispatcher(
+  dispatcher <- pjrt::dispatcher(
     cache_size,
-    jit_xla_compile_cb(f, static, donate, device),
+    jit_xla_compile_cb(f, donate, device),
     static = static,
-    move_inputs = !is.null(device)
+    move_inputs = !is.null(device),
+    # Consulted only when a call has no array input to name a device. It reads
+    # the default afresh, so a call of literals alone recompiles when the
+    # default device changes rather than reusing the old entry.
+    default_device = if (is.null(device)) function() default_device("xla")
   )
   # Hoisted out of the per-call path: `::` resolves via getExportedValue on
   # every evaluation, which costs ~1us per lookup.
-  sentinel <- pjrt::pjrt_dispatch_sentinel()
-  dispatch <- pjrt::pjrt_dispatch
+  dispatch <- pjrt::dispatch
 
   # One call on already-evaluated args. This is the fast entry: jit_auto's
   # wrapper (which has already captured and evaluated the arguments) calls it
   # directly via the "jit_run_args" attribute, skipping the inner closure's
-  # match.call() + eval() re-capture.
+  # match.call() + eval() re-capture. The dispatcher validates the inputs
+  # itself and errors on anything it cannot execute, so there is no fallback --
+  # and it wraps the output buffers into AnvlArrays natively, so its result is
+  # the call's result.
   run <- function(args) {
-    res <- dispatch(dispatcher, args)
-    if (!identical(res, sentinel)) {
-      return(jit_wrap_outputs_native(res))
-    }
-    # The dispatcher refuses only inputs that cannot pass validation (e.g. a
-    # device conflict when no target device is fixed): re-run the R-side
-    # validation to raise the canonical error.
-    jit_prepare_args(args, static, device = device, backend = "xla")
-    cli_abort(
-      "Internal error: native dispatch refused a call that passed validation."
-    )
+    dispatch(dispatcher, args)
   }
 
   fn <- function() {
@@ -98,43 +90,6 @@ jit_xla_impl <- function(f, static, cache_size, donate, device) {
   attr(fn, "jit_run_args") <- run
   fn
 }
-
-# Build xla AnvlArrays straight from the native dispatcher's result: the
-# dispatcher already read each output's dtype/shape off the buffer and holds
-# the shared device object, so wrapping is a table lookup plus structure() --
-# no per-output S3 dtype()/shape()/device() round-trips (formerly ~half the
-# cost of a cache-hit call).
-jit_wrap_outputs_native <- function(res) {
-  bufs <- res$buffers
-  dtypes <- res$out_dtypes
-  shapes <- res$out_shapes
-  dev <- res$device
-  amb <- res$ambiguous_out
-  has_amb <- !is.null(amb)
-  out_flat <- vector("list", length(bufs))
-  for (i in seq_along(out_flat)) {
-    s <- dtypes[[i]]
-    dt <- the_xla_dtypes[[s]]
-    if (is.null(dt)) {
-      dt <- tengen::as_dtype(s)
-      the_xla_dtypes[[s]] <- dt
-    }
-    a <- list(
-      data = bufs[[i]],
-      dtype = dt,
-      shape = shapes[[i]],
-      device = dev,
-      ambiguous = if (has_amb) amb[[i]] else FALSE,
-      backend = "xla"
-    )
-    class(a) <- "AnvlArray"
-    out_flat[[i]] <- a
-  }
-  unflatten(res$out_tree, out_flat)
-}
-
-# dtype-string -> tengen DataType, memoised (the objects are immutable).
-the_xla_dtypes <- new.env(parent = emptyenv())
 
 #' @title Trace, lower, and compile a function to an XLA executable
 #' @description
@@ -156,13 +111,27 @@ the_xla_dtypes <- new.env(parent = emptyenv())
 #'   Devices of the concrete (non-static) input arguments, extracted before
 #'   converting to abstract values. Used together with traced devices for
 #'   device inference when `device` is `NULL`.
+#' @param fallback_device (`NULL` | device)\cr
+#'   The device to compile for when `device` is `NULL` and nothing in the graph
+#'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
+#'   the program and its cache key agree. `NULL` (a caller with no dispatcher in
+#'   front of it) falls back to [`default_device()`].
 #' @return A `list` with elements:
 #'   - `exec`: The compiled PJRT executable.
 #'   - `out_tree`: The output tree structure.
 #'   - `const_arrays`: Constants needed at execution time.
-#'   - `ambiguous_out`: Logical vector indicating which outputs are ambiguous (`NULL` if none are).
+#'   - `out_avals`: One `list(dtype, shape, ambiguous)` per output leaf; pjrt's
+#'     dispatcher builds the output wrappers from these.
 #' @keywords internal
-compile_xla <- function(f, args_flat, in_tree, donate = character(), device = NULL, arg_devices = list()) {
+compile_xla <- function(
+  f,
+  args_flat,
+  in_tree,
+  donate = character(),
+  device = NULL,
+  arg_devices = list(),
+  fallback_device = NULL
+) {
   desc <- local_descriptor()
   graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, mode = "toplevel")
 
@@ -178,7 +147,10 @@ compile_xla <- function(f, args_flat, in_tree, donate = character(), device = NU
     # There might still be "plain" constants to be converted, so we
     # set device to default device
     if (length(unique_devices) == 0L) {
-      device <- default_device("xla")
+      # Nothing in the graph names a device. pjrt's dispatcher already resolved
+      # one and keyed this entry on it, so compile for that exact device; only
+      # a caller with no dispatcher in front of it falls back to the default.
+      device <- fallback_device %||% default_device("xla")
     } else if (length(unique_devices) > 1L) {
       devices_str <- paste0(vapply(unique_devices, as.character, character(1)), collapse = ", ")
       cli_abort(c(
@@ -228,10 +200,16 @@ compile_graph_xla <- function(graph, donate = character(), device) {
 
   out_tree <- graph$out_tree
 
-  ambiguous_out <- vapply(graph$outputs, \(x) x$aval$ambiguous, logical(1))
-  if (!any(ambiguous_out)) {
-    ambiguous_out <- NULL
-  }
+  # The outputs' avals, in pjrt's wire shape -- the inverse of the input avals
+  # the dispatcher hands us (see avals_from_dispatch()). pjrt builds the output
+  # wrappers from these, once, when it caches the entry.
+  out_avals <- lapply(graph$outputs, function(x) {
+    list(
+      dtype = as.character(x$aval$dtype),
+      shape = shape(x$aval),
+      ambiguous = x$aval$ambiguous
+    )
+  })
 
   src <- stablehlo::repr(func)
   program <- pjrt_program(src = src, format = "mlir")
@@ -241,7 +219,7 @@ compile_graph_xla <- function(graph, donate = character(), device) {
     exec = exec,
     out_tree = out_tree,
     const_arrays = const_arrays,
-    ambiguous_out = ambiguous_out,
+    out_avals = out_avals,
     device = device(exec),
     phantom_specs = phantom_specs
   )
@@ -293,13 +271,20 @@ xla <- function(f, args, donate = character(), device = NULL) {
   exec <- compiled$exec
   out_tree <- compiled$out_tree
   const_arrays <- compiled$const_arrays
-  ambiguous_out <- compiled$ambiguous_out
   phantom_specs <- compiled$phantom_specs
+  # This path wraps its own outputs (no dispatcher in front of it), and
+  # jit_wrap_outputs() only needs the ambiguity flags.
+  ambiguous_out <- vapply(compiled$out_avals, \(a) a$ambiguous, logical(1))
+  if (!any(ambiguous_out)) {
+    ambiguous_out <- NULL
+  }
 
   f_xla <- function() {
     args <- as.list(match.call())[-1L]
     args <- lapply(args, eval, envir = parent.frame())
     prep <- jit_prepare_args(args, character(), device = device, backend = "xla")
+    # No dispatcher in front of this path, so validate the inputs here.
+    check_jit_inputs(prep, copy_to_device = !is.null(device))
     args_unwrapped <- lapply(prep$args_flat, \(a) {
       if (is_valid_r_lit(a)) {
         pjrt_scalar(a, device = device)

@@ -211,7 +211,7 @@ cache_size <- function(f) {
   if (is.null(dispatcher)) {
     return(0L)
   }
-  pjrt::pjrt_dispatch_size(dispatcher)
+  pjrt::dispatcher_size(dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
