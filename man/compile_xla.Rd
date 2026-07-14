@@ -10,7 +10,8 @@ compile_xla(
   in_tree,
   donate = character(),
   device = NULL,
-  arg_devices = list()
+  arg_devices = list(),
+  fallback_device = NULL
 )
 }
 \arguments{
@@ -34,6 +35,12 @@ and traced arrays.}
 Devices of the concrete (non-static) input arguments, extracted before
 converting to abstract values. Used together with traced devices for
 device inference when \code{device} is \code{NULL}.}
+
+\item{fallback_device}{(\code{NULL} | device)\cr
+The device to compile for when \code{device} is \code{NULL} and nothing in the graph
+names one. pjrt's dispatcher supplies the device it keyed the entry on, so
+the program and its cache key agree. \code{NULL} (a caller with no dispatcher in
+front of it) falls back to \code{\link[=default_device]{default_device()}}.}
 }
 \value{
 A \code{list} with elements:
@@ -41,7 +48,8 @@ A \code{list} with elements:
 \item \code{exec}: The compiled PJRT executable.
 \item \code{out_tree}: The output tree structure.
 \item \code{const_arrays}: Constants needed at execution time.
-\item \code{ambiguous_out}: Logical vector indicating which outputs are ambiguous (\code{NULL} if none are).
+\item \code{out_avals}: One \code{list(dtype, shape, ambiguous)} per output leaf; pjrt's
+dispatcher builds the output wrappers from these.
 }
 }
 \description{

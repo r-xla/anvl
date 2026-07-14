@@ -20,14 +20,11 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
 
 prepare_gradient_args <- function(args, wrt) {
   args_flat <- flatten(args)
-  if (!is.null(wrt)) {
-    in_tree <- build_tree(mark_some(args, wrt))
-    is_wrt_flat <- in_tree$marked
-    in_tree$marked <- NULL
-    class(in_tree) <- c("ListNode", "Node")
+  in_tree <- build_tree(args)
+  is_wrt_flat <- if (!is.null(wrt)) {
+    pjrt::tree_leaf_mask(in_tree, wrt)
   } else {
-    in_tree <- build_tree(args)
-    is_wrt_flat <- rep(TRUE, length(args_flat))
+    rep(TRUE, length(args_flat))
   }
   check_wrt_arrayish(args_flat, is_wrt_flat)
   list(args_flat = args_flat, in_tree = in_tree)
@@ -132,7 +129,7 @@ transform_gradient_impl <- function(graph, wrt) {
   desc$is_static_flat <- graph$is_static_flat
   desc$static_args_flat <- graph$static_args_flat
   desc$out_tree <- if (length(wrt)) {
-    filter_list_node(graph$in_tree, wrt)
+    pjrt::tree_filter_by_names(graph$in_tree, wrt)
   } else {
     graph$in_tree
   }
@@ -168,16 +165,21 @@ validate_gradient_output <- function(out_gvals) {
 #   - requires_grad: logical vector aligned with `graph$inputs`, used by
 #     phase 3 to pick which inputs to emit gradients for.
 compute_requirements <- function(graph, wrt) {
-  requires_grad_all <- flat_mask_from_names(graph$in_tree, wrt)
+  requires_grad_all <- if (is.null(wrt) || length(wrt) == 0L) {
+    rep(TRUE, tree_size(graph$in_tree))
+  } else {
+    pjrt::tree_leaf_mask(graph$in_tree, wrt)
+  }
   # `in_tree` may include static (non-array) args not present in
   # `graph$inputs`; filter them out. `gradient()` already rejects static
   # `wrt` entries, so this drop is safe.
   is_static <- graph$is_static_flat
   if (!is.null(is_static) && any(requires_grad_all & is_static)) {
-    flat_argnames <- rep(
-      graph$in_tree$names,
-      times = vapply(graph$in_tree$nodes, tree_size, integer(1L))
-    )
+    # pjrt dropped flat_names(); the per-leaf top-level group name is the
+    # top-level child's name repeated once per leaf beneath it.
+    sizes <- pjrt::tree_child_sizes(graph$in_tree)
+    nms <- pjrt::tree_child_names(graph$in_tree) %||% rep("", length(sizes))
+    flat_argnames <- rep(nms, times = sizes)
     bad <- unique(flat_argnames[requires_grad_all & is_static])
     cli_abort(c(
       "Cannot compute gradient with respect to {.arg {bad}}.",
@@ -510,11 +512,8 @@ value_and_gradient <- function(f, wrt = NULL) {
     combined_graph <- grad_graph
     combined_graph$outputs <- c(fwd_outputs, grad_graph$outputs)
 
-    counter <- new_counter()
-    value_tree <- reindex_tree(fwd_graph$out_tree, counter)
-    grad_tree <- reindex_tree(grad_graph$out_tree, counter)
-    combined_graph$out_tree <- ListNode(
-      list(value_tree, grad_tree),
+    combined_graph$out_tree <- pjrt::tree_concat(
+      list(fwd_graph$out_tree, grad_graph$out_tree),
       names = c("value", "grad")
     )
     inline_graph_into_desc(parent_desc, combined_graph)

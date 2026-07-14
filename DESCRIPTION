@@ -74,7 +74,6 @@ Collate:
     'backend-xla.R'
     'bibentries.R'
     'box.R'
-    'flatten.R'
     'graph-passes.R'
     'graph.R'
     'graph-print.R'

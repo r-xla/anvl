@@ -2344,7 +2344,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
   out_exprs <- lowered$out_exprs
   result_sym <- as.name(paste0(prefix, "out"))
 
-  if (inherits(graph$out_tree, "LeafNode") && length(out_exprs) == 1L) {
+  if (pjrt::tree_root_kind(graph$out_tree) == "leaf" && length(out_exprs) == 1L) {
     out_node <- graph$outputs[[1L]]
     out_expr <- out_exprs[[1L]]
     if (is_graph_value(out_node) && length(shape(out_node$aval)) == 1L) {

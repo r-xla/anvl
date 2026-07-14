@@ -247,3 +247,31 @@ NULL
 #' @importFrom pjrt await
 #' @export
 pjrt::await
+
+#' @importFrom pjrt flatten
+#' @export
+pjrt::flatten
+
+#' @importFrom pjrt build_tree
+#' @export
+pjrt::build_tree
+
+#' @importFrom pjrt unflatten
+#' @export
+pjrt::unflatten
+
+#' @importFrom pjrt tree_size
+#' @export
+pjrt::tree_size
+
+#' @importFrom pjrt tree_path
+#' @export
+pjrt::tree_path
+
+#' @importFrom pjrt map_tree
+#' @export
+pjrt::map_tree
+
+#' @importFrom pjrt pmap_tree
+#' @export
+pjrt::pmap_tree

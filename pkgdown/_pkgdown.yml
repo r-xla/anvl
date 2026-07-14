@@ -401,12 +401,10 @@ reference:
       - flatten
       - unflatten
       - build_tree
-      - reindex_tree
       - tree_size
       - tree_path
       - map_tree
       - pmap_tree
-      - filter_list_node
 
   - subtitle: Miscellaneous
     contents:

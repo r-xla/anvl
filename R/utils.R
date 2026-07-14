@@ -206,7 +206,12 @@ is_valid_r <- function(x) {
 }
 
 cache_size <- function(f) {
-  environment(f)$cache$size
+  # All jit paths cache in pjrt's native dispatcher.
+  dispatcher <- environment(f)$dispatcher
+  if (is.null(dispatcher)) {
+    cli_abort("{.arg f} has no dispatcher; is it a jitted function?")
+  }
+  pjrt::dispatcher_size(dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.

@@ -177,7 +177,7 @@ register_backend(
       print(x$data)
       cat(footer, "\n")
     },
-    jit = function(f, static, cache, ...) {
+    jit = function(f, static, cache_size, ...) {
       cli_abort("JIT compilation is not supported for the {.val plain} backend.")
     },
     await_data = function(x) invisible(NULL)

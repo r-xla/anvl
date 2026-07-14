@@ -298,7 +298,7 @@ prim_cummin[["stablehlo"]] <- function(operand, dim) {
 }
 
 prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph, .env) {
-  red_func <- stablehlo(reductor_graph)[[1L]]
+  red_func <- stablehlo(reductor_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
   out <- hlo_reduce(
     inputs = list(operand),
     init_values = list(init),
@@ -315,7 +315,7 @@ prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph
 
 .r_reductor_to_hlo_func <- function(fn, dummy_args) {
   graph <- trace_fn(fn, dummy_args, desc = local_descriptor())
-  stablehlo(graph, constants_as_inputs = FALSE)[[1L]]
+  stablehlo(graph, id = "", constants_as_inputs = FALSE)[[1L]]
 }
 
 .stablehlo_arg_extreme <- function(operand, dim, drop, direction, init_v_fn) {
@@ -677,14 +677,14 @@ prim_print[["stablehlo"]] <- function(operand, footer) {
 # higher order primitives --------------------------------------------------------
 
 prim_if[["stablehlo"]] <- function(pred, true_graph, false_graph, .env) {
-  true_func <- stablehlo(true_graph, constants_as_inputs = FALSE, env = .env)[[1L]]
-  false_func <- stablehlo(false_graph, constants_as_inputs = FALSE, env = .env)[[1L]]
+  true_func <- stablehlo(true_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
+  false_func <- stablehlo(false_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
   hlo_if(pred, true_func, false_func, simplify = FALSE)
 }
 
 prim_while[["stablehlo"]] <- function(..., cond_graph, body_graph, .env) {
-  body_func <- stablehlo(body_graph, constants_as_inputs = FALSE, env = .env)[[1L]]
-  cond_func <- stablehlo(cond_graph, constants_as_inputs = FALSE, env = .env)[[1L]]
+  body_func <- stablehlo(body_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
+  cond_func <- stablehlo(cond_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
   hlo_while(..., cond = cond_func, body = body_func, simplify = FALSE)
 }
 
@@ -775,7 +775,7 @@ prim_scatter[["stablehlo"]] <- function(
   update_computation_graph,
   .env
 ) {
-  update_func <- stablehlo(update_computation_graph, constants_as_inputs = FALSE, env = .env)[[1L]]
+  update_func <- stablehlo(update_computation_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
 
   scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
     update_window_dims = update_window_dims - 1L,

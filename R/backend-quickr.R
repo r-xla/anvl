@@ -5,6 +5,7 @@ NULL
 #' @description
 #' Device descriptor for the quickr backend. The only supported `type` is
 #' `"cpu"`.
+#'
 #' @param x (`character(1)`)\cr
 #'   Device type. Currently only supports `"cpu"`.
 #' @return A `QuickrDevice` object.
@@ -32,40 +33,67 @@ print.QuickrDevice <- function(x, ...) {
   invisible(x)
 }
 
-jit_quickr_impl <- function(f, static, cache, unwrap) {
-  function() {
+# The native-dispatch compile callback: traces and quickr-compiles on a cache
+# miss and hands the dispatcher the compiled R closure. Reached only for inputs
+# the dispatcher has already validated (see jit_xla_compile_cb).
+jit_quickr_compile_cb <- function(f, unwrap) {
+  function(info) {
+    compiled <- compile_quickr(
+      f,
+      args_flat = avals_from_dispatch(info),
+      in_tree = info$in_tree,
+      arg_devices = dispatch_arg_devices(info),
+      unwrap = unwrap,
+      flat = TRUE
+    )
+    list(r_fun = compiled$fun)
+  }
+}
+
+jit_quickr_impl <- function(f, static, cache_size, unwrap) {
+  # use pjrt's "closure" engine for quickr.
+  dispatcher <- pjrt::dispatcher(
+    cache_size,
+    jit_quickr_compile_cb(f, unwrap),
+    static = static,
+    backend = "quickr",
+    # The dispatcher reads a non-xla leaf's metadata through this, via the
+    # backend's accessor generics -- so an AnvlArray need only carry $data, per
+    # the AnvlBackend contract, not store dtype/shape/device as fields.
+    extractor = function(leaf) {
+      list(
+        aval = list(dtype = dtype(leaf), shape = shape(leaf), ambiguous = ambiguous(leaf)),
+        device = device(leaf),
+        backend = backend(leaf)
+      )
+    },
+    # Consulted only when a call has no array input to name a device. quickr has
+    # one device today, but the dispatcher keys on whatever this returns, so a
+    # second one would split the cache without further work here.
+    default_device = function() default_device("quickr")
+  )
+  dispatch <- pjrt::dispatch
+
+  # The dispatcher validates the inputs itself and errors on anything the
+  # compiled closure cannot take, so there is no fallback. The compiled
+  # closure's return value is the call's result, verbatim.
+  run <- function(args) {
+    dispatch(dispatcher, args)
+  }
+
+  fn <- function() {
     # calling a jitted function within another jitted function --> re-trace the original closure
     if (currently_tracing()) {
       args <- as.list(match.call())[-1L]
       args <- lapply(args, eval, envir = parent.frame())
       return(do.call(f, args))
     }
-    prep <- jit_prepare_call(match.call(), parent.frame(), static, backend = "quickr")
-    avals_in <- to_avals(prep$args_flat, prep$is_static_flat)
-
-    args_flat_nv <- prep$args_flat[!prep$is_static_flat & vapply(prep$args_flat, is_anvl_array, logical(1))]
-    arg_devices <- lapply(args_flat_nv, tengen::device)
-
-    cache_key <- list(prep$in_tree, avals_in)
-    r_args_flat <- lapply(prep$args_flat, function(a) {
-      if (is_anvl_array(a)) as_array(a) else a
-    })
-    cache_hit <- cache$get(cache_key)
-    if (!is.null(cache_hit)) {
-      return(cache_hit(r_args_flat))
-    }
-
-    compiled <- compile_quickr(
-      f,
-      args_flat = avals_in,
-      in_tree = prep$in_tree,
-      arg_devices = arg_devices,
-      unwrap = unwrap,
-      flat = TRUE
-    )
-    cache$set(cache_key, compiled$fun)
-    compiled$fun(r_args_flat)
+    args <- as.list(match.call())[-1L]
+    args <- lapply(args, eval, envir = parent.frame())
+    run(args)
   }
+  attr(fn, "jit_run_args") <- run
+  fn
 }
 
 compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap = FALSE, flat = FALSE) {
@@ -78,8 +106,7 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #' Quickr backend
 #'
 #' Constructs the quickr backend, which stores array data as plain R arrays and
-#' compiles jitted functions to R code via the
-#' [quickr](https://CRAN.R-project.org/package=quickr) package.
+#' compiles jitted functions to R code via the \CRANpkg{quickr} package.
 #'
 #' To use it, the `"quickr"` package needs to be installed.
 #'
@@ -92,9 +119,10 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #' An [`AnvlArray`] with `backend = "quickr"` is, under the hood, a plain R
 #' vector or array (`numeric`, `integer`, or `logical`) stored in the `$data`
 #' field. [`as_array()`] returns the underlying vector/array directly without
-#' copying, and [`nv_array()`] simply wraps an R vector/array. As a
-#' consequence, there is no separate notion of a device: data always lives in
-#' R's memory and computation always runs on the CPU.
+#' copying, and [`nv_array()`] simply wraps an R vector/array. Data always lives
+#' in R's memory and computation always runs on the CPU, so the only device is
+#' [`quickr_device("cpu")`][quickr_device()]; every array still carries it in
+#' `$device`, as arrays of every backend do.
 #'
 #' @section Status:
 #' This backend is **experimental** and has a number of limitations:
@@ -155,7 +183,17 @@ AnvlBackendQuickr <- function() {
         dim(data) <- shape
       }
       structure(
-        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "quickr"),
+        list(
+          data = data,
+          dtype = dtype,
+          shape = shape,
+          ambiguous = ambiguous,
+          # quickr is CPU-only, so every accepted `device` is this one. It is
+          # stored rather than recomputed on demand: `$device` is part of what
+          # identifies an array, and pjrt's dispatcher reads it off the leaf.
+          device = quickr_device("cpu"),
+          backend = "quickr"
+        ),
         class = "AnvlArray"
       )
     },
@@ -183,7 +221,14 @@ AnvlBackendQuickr <- function() {
         dim(data) <- shape
       }
       structure(
-        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "quickr"),
+        list(
+          data = data,
+          dtype = dtype,
+          shape = shape,
+          ambiguous = ambiguous,
+          device = quickr_device("cpu"),
+          backend = "quickr"
+        ),
         class = "AnvlArray"
       )
     },
@@ -193,15 +238,15 @@ AnvlBackendQuickr <- function() {
     as_array = function(x, check) x$data,
     as_raw = function(x, row_major) as.raw(x$data),
     platform = function(x) "cpu",
-    device = function(x) quickr_device("cpu"),
+    device = function(x) x$device,
     new_device = function(x) quickr_device(x),
     print_data = function(x, footer) {
       print(x$data)
       cat(footer, "\n")
     },
-    jit = function(f, static, cache, unwrap = FALSE, device = NULL) {
+    jit = function(f, static, cache_size, unwrap = FALSE, device = NULL) {
       assert_flag(unwrap)
-      jit_quickr_impl(f, static, cache, unwrap)
+      jit_quickr_impl(f, static, cache_size, unwrap)
     },
     await_data = function(x) invisible(NULL)
   )

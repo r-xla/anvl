@@ -16,6 +16,12 @@ A \code{QuickrDevice} object.
 \description{
 Device descriptor for the quickr backend. The only supported \code{type} is
 \code{"cpu"}.
+
+Each call returns a fresh object; the quickr backend does not intern its
+devices. pjrt's dispatcher canonicalizes devices with \code{identical()} as a
+fallback to object identity, so equal-but-distinct \code{QuickrDevice} objects
+still collapse to one device -- and quickr has a single device, so interning
+would buy nothing.
 }
 \seealso{
 \code{\link[=nv_device]{nv_device()}}, \code{\link[=AnvlBackendQuickr]{AnvlBackendQuickr()}}.

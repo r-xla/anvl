@@ -250,7 +250,10 @@ test_that("... works (#19)", {
 })
 
 test_that("good error message when passing AbstractArrays", {
-  expect_error(jit(nv_negate)(nv_aval("f32", c(2, 2))), "autoconvert")
+  expect_error(
+    jit(nv_negate)(nv_aval("f32", c(2, 2))),
+    "invalid input `operand`.*<AbstractArray>"
+  )
 })
 
 test_that("jit_eval does not modify calling environment", {
@@ -428,7 +431,7 @@ describe("jit: device and backend handling", {
     g <- jit(f)
     expect_error(
       g(nv_scalar(1, device = "cpu:0"), nv_scalar(2, device = "cpu:1")),
-      "on unexpected device"
+      "invalid input `y`.*different device"
     )
   })
   it("allocates scalar on default device when there is no AnvlArray to infer from", {

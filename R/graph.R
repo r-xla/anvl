@@ -611,7 +611,7 @@ trace_fn <- function(
     in_tree <- build_tree(args)
     args_flat <- flatten(args)
   }
-  f_flat <- flatten_fun(f, in_node = in_tree)
+  f_flat <- pjrt::flatten_fun(f, in_tree = in_tree)
   if (is.null(desc)) {
     desc <- local_descriptor(in_tree = in_tree)
   } else {
@@ -703,7 +703,8 @@ maybe_restore_previous_desc <- function(desc = NULL) {
 }
 
 currently_tracing <- function() {
-  !is.null(.current_descriptor(silent = TRUE))
+  # read the global directly: this runs on every jitted call (hot path)
+  !is.null(globals[["CURRENT_DESCRIPTOR"]])
 }
 
 maybe_previous_descriptor <- function() {

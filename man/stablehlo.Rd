@@ -6,6 +6,7 @@
 \usage{
 stablehlo(
   graph,
+  id = "main",
   constants_as_inputs = TRUE,
   env = NULL,
   donate = character(),
@@ -16,6 +17,13 @@ stablehlo(
 \arguments{
 \item{graph}{(\code{\link{AnvlGraph}})\cr
 The graph to lower (e.g. produced by \code{\link[=trace_fn]{trace_fn()}}).}
+
+\item{id}{(\code{character(1)})\cr
+The id of the resulting StableHLO function. Use \code{"main"} (the default)
+for a top-level lowering (returning from the \code{main} function finalizes
+the module) and \code{""} for a closure/region lowering (e.g. a while body or
+a scatter update computation) that builds an anonymous nested function
+inside an enclosing build.}
 
 \item{constants_as_inputs}{(\code{logical(1)})\cr
 If \code{TRUE} (default), constants are registered as inputs to the StableHLO function
