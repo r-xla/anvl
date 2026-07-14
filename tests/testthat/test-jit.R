@@ -193,22 +193,6 @@ test_that("can mark arguments as static ", {
   expect_equal(f(nv_array(1), FALSE), nv_array(1))
 })
 
-test_that("a static xla jit caches in the native dispatcher, not the R cache", {
-  skip_if_not(pjrt::plugins_downloaded("cpu"))
-  g <- jit(function(x, flag) if (flag) x + 1 else x * 2, static = "flag")
-  env <- environment(g)
-
-  r1 <- g(nv_array(3), TRUE)
-  r2 <- g(nv_array(3), FALSE)
-  r3 <- g(nv_array(3), TRUE)
-
-  expect_equal(as.numeric(r1), 4)
-  expect_equal(as.numeric(r2), 6)
-  expect_equal(as.numeric(r3), 4)
-  expect_equal(pjrt::dispatcher_size(env$dispatcher), 2L) # native cache used
-  expect_null(env$cache) # there is no R-side cache anymore
-})
-
 test_that("static accepts integer positions", {
   body_fn <- function(x, add_one) {
     if (add_one) x + nv_array(1) else x

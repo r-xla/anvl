@@ -1,15 +1,5 @@
 # anvl (development version)
 
-## Breaking changes
-
-* The pytree module moved to pjrt, which owns the native `PJRTNode` tree
-  type used by its eager-dispatch cache. `flatten()`, `build_tree()`,
-  `unflatten()`, `tree_size()`, `tree_path()`, `map_tree()`, and
-  `pmap_tree()` are re-exported from pjrt and keep working; trees are now
-  opaque native handles instead of R lists. `filter_list_node()` and
-  `reindex_tree()` were removed (superseded by `pjrt::filter_by_names()`
-  and `pjrt::tree_concat()`).
-
 ## Features
 
 * New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /

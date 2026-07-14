@@ -6,11 +6,6 @@ NULL
 #' Device descriptor for the quickr backend. The only supported `type` is
 #' `"cpu"`.
 #'
-#' Each call returns a fresh object; the quickr backend does not intern its
-#' devices. pjrt's dispatcher canonicalizes devices with `identical()` as a
-#' fallback to object identity, so equal-but-distinct `QuickrDevice` objects
-#' still collapse to one device -- and quickr has a single device, so interning
-#' would buy nothing.
 #' @param x (`character(1)`)\cr
 #'   Device type. Currently only supports `"cpu"`.
 #' @return A `QuickrDevice` object.
@@ -56,11 +51,7 @@ jit_quickr_compile_cb <- function(f, unwrap) {
 }
 
 jit_quickr_impl <- function(f, static, cache_size, unwrap) {
-  # pjrt's native dispatcher owns the cache; entries hold the quickr-compiled
-  # R closure -- the "quickr" backend (anything but "xla") selects pjrt's
-  # closure engine, which is called on the flat leaves: R-array-backed
-  # AnvlArrays contribute their $data, everything else passes through (the
-  # closure's wrapper checks and drops the static slots).
+  # use pjrt's "closure" engine for quickr.
   dispatcher <- pjrt::dispatcher(
     cache_size,
     jit_quickr_compile_cb(f, unwrap),

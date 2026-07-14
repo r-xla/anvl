@@ -209,7 +209,7 @@ cache_size <- function(f) {
   # All jit paths cache in pjrt's native dispatcher.
   dispatcher <- environment(f)$dispatcher
   if (is.null(dispatcher)) {
-    return(0L)
+    cli_abort("{.arg f} has no dispatcher; is it a jitted function?")
   }
   pjrt::dispatcher_size(dispatcher)
 }
