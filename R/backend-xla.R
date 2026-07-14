@@ -210,9 +210,8 @@ compile_graph_xla <- function(graph, donate = character(), device) {
 
   out_tree <- graph$out_tree
 
-  # The outputs' avals, in pjrt's wire shape -- the inverse of the input avals
-  # the dispatcher hands us (see avals_from_dispatch()). pjrt builds the output
-  # wrappers from these, once, when it caches the entry.
+  # pjrt needs these to create templates for the outputs
+  # We also provide dtype and shape because these are created BEFORE the first execution
   out_avals <- lapply(graph$outputs, function(x) {
     list(
       dtype = as.character(x$aval$dtype),

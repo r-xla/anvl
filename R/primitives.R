@@ -2975,7 +2975,7 @@ prim_scatter <- new_primitive(
         scatter_dimension_numbers = scatter_dimension_numbers,
         indices_are_sorted = indices_sorted_attr,
         unique_indices = unique_indices_attr,
-        update_computation = stablehlo(update_computation_graph, constants_as_inputs = FALSE)[[1L]]
+        update_computation = stablehlo(update_computation_graph, id = "", constants_as_inputs = FALSE)[[1L]]
       )[[1L]]
 
       out <- vt2at(out)

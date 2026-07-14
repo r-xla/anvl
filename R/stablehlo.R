@@ -67,6 +67,12 @@ env_get <- function(env, gval) {
 #' This is a low-level function; most users should use [`jit()`] or [`xla()`] instead.
 #' @param graph ([`AnvlGraph`])\cr
 #'   The graph to lower (e.g. produced by [`trace_fn()`]).
+#' @param id (`character(1)`)\cr
+#'   The id of the resulting StableHLO function. Use `"main"` (the default)
+#'   for a top-level lowering (returning from the `main` function finalizes
+#'   the module) and `""` for a closure/region lowering (e.g. a while body or
+#'   a scatter update computation) that builds an anonymous nested function
+#'   inside an enclosing build.
 #' @param constants_as_inputs (`logical(1)`)\cr
 #'   If `TRUE` (default), constants are registered as inputs to the StableHLO function
 #'   so they can be passed in at execution time.
@@ -107,23 +113,24 @@ env_get <- function(env, gval) {
 #' stablehlo(graph)
 stablehlo <- function(
   graph,
+  id = "main",
   constants_as_inputs = TRUE,
   env = NULL,
   donate = character(),
   donate_unaliased_outputs = FALSE,
   platform = NULL
 ) {
+  assert_string(id)
   if (!is.null(platform)) {
     local_platform(platform)
   }
   # Node -> FuncValue
   env <- HloEnv(parent = env)
-  # A top-level lowering starts a fresh build ("main" resets stablehlo's
-  # SSA-id counter). A closure/region lowering (constants_as_inputs = FALSE,
-  # e.g. a scatter update computation or a while body) runs inside an
-  # enclosing build and must share its counter -- resetting it would hand out
-  # value ids that collide with the enclosing func's (redefined SSA values).
-  func <- stablehlo::local_func(id = if (constants_as_inputs) "main" else "")
+  # A top-level lowering builds the module's `main` func (whose hlo_return
+  # finalizes the module). A closure/region lowering (id = "", e.g. a scatter
+  # update computation or a while body) builds an anonymous nested func
+  # inside the enclosing build.
+  func <- stablehlo::local_func(id = id)
   inps <- if (constants_as_inputs) c(graph$constants, graph$inputs) else graph$inputs
 
   gnode_to_fval <- function(gnode) {
