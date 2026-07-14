@@ -234,10 +234,20 @@ stablehlo <- function(
         gnode_to_fval(x)
       }
     })
+    rule <- prim[["stablehlo"]]
     if (is_higher_order_primitive(prim)) {
       params <- c(params, list(.env = env))
     }
-    fvals_out <- rlang::exec(prim[["stablehlo"]], !!!c(inputs, params))
+    # Forward this call's known output types (already inferred at trace time) to
+    # rules that opt in by declaring an `output_types` parameter, letting them
+    # pass the types to their hlo_* builder and skip stablehlo's re-inference.
+    if ("output_types" %in% names(formals(rule))) {
+      params <- c(
+        params,
+        list(output_types = lapply(call$outputs, function(o) at2vt(o$aval)))
+      )
+    }
+    fvals_out <- rlang::exec(rule, !!!c(inputs, params))
     if (length(call$outputs) != length(fvals_out)) {
       cli_abort("Expected {length(call$outputs)} outputs, but got {length(fvals_out)}")
     }

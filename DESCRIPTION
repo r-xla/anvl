@@ -8,7 +8,9 @@ Authors@R: c(
            comment = c(ORCID = "https://orcid.org/0009-0006-0143-2392")),
     person("Tomasz", "Kalinowski", , "tomasz@posit.co", role = "aut"),
     person("Nikolai", "German", , "niko.german@gmail.com", role = "aut",
-           comment = c(ORCID = "https://orcid.org/0009-0001-7394-8367"))
+           comment = c(ORCID = "https://orcid.org/0009-0001-7394-8367")),
+    person("Louis", "Aslett", , "louis.aslett@durham.ac.uk", role = "ctb",
+           comment = c(ORCID = "https://orcid.org/0000-0003-2211-233X"))
   )
 Description: Accelerated array computing and code transformations for R.
     Numerical programs operating on multi-dimensional arrays can be
@@ -25,11 +27,12 @@ Depends:
 Imports:
     checkmate,
     cli,
+    fastmap,
     methods,
     pjrt (>= 0.4.0),
     rlang,
     safetensors (>= 0.2.0),
-    stablehlo (>= 0.3.0),
+    stablehlo (>= 0.3.0.901),
     tengen (>= 0.2.0),
     withr,
     xlamisc (>= 0.3.0)
@@ -51,6 +54,7 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
 Collate:
     'aaa.R'
+    'api-distributions.R'
     'array.R'
     'device.R'
     'backend.R'
@@ -87,3 +91,4 @@ Collate:
     'stablehlo.R'
     'zzz.R'
 Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.3

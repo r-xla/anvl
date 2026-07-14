@@ -1,6 +1,10 @@
 #' @include primitives.R
 
-# TODO: Here we don't have to re-do the type inference again, because it was already done.
+# Type inference was already done at trace time. Rules that declare an
+# `output_types` parameter receive the known result types from the lowering
+# driver (see stablehlo()) and forward them to their hlo_* builder, letting
+# stablehlo skip re-inference. Composite and region rules (reduce, cumulative
+# ops, linalg decompositions, ...) omit the parameter and keep normal inference.
 
 prim_fill[["stablehlo"]] <- function(value, shape, dtype, ambiguous) {
   # ambiguity only relevant for type promotion, but when we lower
@@ -8,35 +12,35 @@ prim_fill[["stablehlo"]] <- function(value, shape, dtype, ambiguous) {
   list(hlo_tensor(value, shape = shape, dtype = dtype))
 }
 
-prim_add[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_add(lhs, rhs))
+prim_add[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_add(lhs, rhs, output_types = output_types))
 }
 
-prim_mul[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_multiply(lhs, rhs))
+prim_mul[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_multiply(lhs, rhs, output_types = output_types))
 }
 
-prim_sub[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_subtract(lhs, rhs))
+prim_sub[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_subtract(lhs, rhs, output_types = output_types))
 }
 
-prim_negate[["stablehlo"]] <- function(operand) {
-  list(hlo_negate(operand))
+prim_negate[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_negate(operand, output_types = output_types))
 }
 
-prim_div[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_divide(lhs, rhs))
+prim_div[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_divide(lhs, rhs, output_types = output_types))
 }
 
-prim_pow[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_power(lhs, rhs))
+prim_pow[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_power(lhs, rhs, output_types = output_types))
 }
 
-prim_broadcast_in_dim[["stablehlo"]] <- function(operand, shape, broadcast_dimensions) {
-  list(hlo_broadcast_in_dim(operand, broadcast_dimensions - 1L, shape))
+prim_broadcast_in_dim[["stablehlo"]] <- function(operand, shape, broadcast_dimensions, output_types) {
+  list(hlo_broadcast_in_dim(operand, broadcast_dimensions - 1L, shape, output_types = output_types))
 }
 
-prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_dims, batching_dims, precision) {
+prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_dims, batching_dims, precision, output_types) {
   contracting_dims <- lapply(contracting_dims, \(x) x - 1L)
   batching_dims <- lapply(batching_dims, \(x) x - 1L)
   list(hlo_dot_general(
@@ -44,28 +48,29 @@ prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_dims, batching
     rhs,
     contracting_dims,
     batching_dims,
-    precision_config = toupper(precision)
+    precision_config = toupper(precision),
+    output_types = output_types
   ))
 }
 
-prim_transpose[["stablehlo"]] <- function(operand, permutation) {
-  list(hlo_transpose(operand, permutation - 1L))
+prim_transpose[["stablehlo"]] <- function(operand, permutation, output_types) {
+  list(hlo_transpose(operand, permutation - 1L, output_types = output_types))
 }
 
-prim_reshape[["stablehlo"]] <- function(operand, shape) {
-  list(hlo_reshape(operand, shape))
+prim_reshape[["stablehlo"]] <- function(operand, shape, output_types) {
+  list(hlo_reshape(operand, shape, output_types = output_types))
 }
 
-prim_concatenate[["stablehlo"]] <- function(..., dimension) {
-  list(hlo_concatenate(..., dimension = dimension - 1L))
+prim_concatenate[["stablehlo"]] <- function(..., dimension, output_types) {
+  list(hlo_concatenate(..., dimension = dimension - 1L, output_types = output_types))
 }
 
-prim_static_slice[["stablehlo"]] <- function(operand, start_indices, limit_indices, strides) {
+prim_static_slice[["stablehlo"]] <- function(operand, start_indices, limit_indices, strides, output_types) {
   # we use 1:n, which includes n, but this translates to 0:n in stablehlo
-  list(hlo_slice(operand, start_indices - 1L, limit_indices, strides))
+  list(hlo_slice(operand, start_indices - 1L, limit_indices, strides, output_types = output_types))
 }
 
-prim_dynamic_slice[["stablehlo"]] <- function(operand, ..., slice_sizes) {
+prim_dynamic_slice[["stablehlo"]] <- function(operand, ..., slice_sizes, output_types) {
   start_indices <- list(...)
   # Convert start indices from 1-based to 0-based by subtracting 1
   start_indices_0based <- lapply(start_indices, function(idx) {
@@ -76,11 +81,12 @@ prim_dynamic_slice[["stablehlo"]] <- function(operand, ..., slice_sizes) {
     hlo_dynamic_slice,
     operand,
     !!!start_indices_0based,
-    slice_sizes = slice_sizes
+    slice_sizes = slice_sizes,
+    output_types = output_types
   ))
 }
 
-prim_dynamic_update_slice[["stablehlo"]] <- function(operand, update, ...) {
+prim_dynamic_update_slice[["stablehlo"]] <- function(operand, update, ..., output_types) {
   start_indices <- list(...)
   if (!length(start_indices)) {
     return(list(update))
@@ -94,7 +100,8 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(operand, update, ...) {
     hlo_dynamic_update_slice,
     operand,
     update,
-    !!!start_indices_0based
+    !!!start_indices_0based,
+    output_types = output_types
   ))
 }
 
@@ -381,9 +388,15 @@ prim_argmin[["stablehlo"]] <- function(operand, dim, drop) {
 }
 
 .stablehlo_compare_bin <- function(direction) {
-  function(lhs, rhs) {
+  function(lhs, rhs, output_types) {
     ct <- .compare_type_for(lhs)
-    list(hlo_compare(lhs, rhs, comparison_direction = direction, compare_type = ct))
+    list(hlo_compare(
+      lhs,
+      rhs,
+      comparison_direction = direction,
+      compare_type = ct,
+      output_types = output_types
+    ))
   }
 }
 
@@ -397,190 +410,190 @@ prim_le[["stablehlo"]] <- .stablehlo_compare_bin("LE")
 
 # binary simple math jit rules ---------------------------------------------------
 
-prim_max[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_maximum(lhs, rhs))
+prim_max[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_maximum(lhs, rhs, output_types = output_types))
 }
 
-prim_min[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_minimum(lhs, rhs))
+prim_min[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_minimum(lhs, rhs, output_types = output_types))
 }
 
-prim_remainder[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_remainder(lhs, rhs))
+prim_remainder[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_remainder(lhs, rhs, output_types = output_types))
 }
 
-prim_and[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_and(lhs, rhs))
+prim_and[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_and(lhs, rhs, output_types = output_types))
 }
 
-prim_not[["stablehlo"]] <- function(operand) {
-  list(hlo_not(operand))
+prim_not[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_not(operand, output_types = output_types))
 }
 
-prim_or[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_or(lhs, rhs))
+prim_or[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_or(lhs, rhs, output_types = output_types))
 }
 
-prim_xor[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_xor(lhs, rhs))
+prim_xor[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_xor(lhs, rhs, output_types = output_types))
 }
 
-prim_shift_left[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_shift_left(lhs, rhs))
+prim_shift_left[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_shift_left(lhs, rhs, output_types = output_types))
 }
 
-prim_shift_right_logical[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_shift_right_logical(lhs, rhs))
+prim_shift_right_logical[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_shift_right_logical(lhs, rhs, output_types = output_types))
 }
 
-prim_shift_right_arithmetic[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_shift_right_arithmetic(lhs, rhs))
+prim_shift_right_arithmetic[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_shift_right_arithmetic(lhs, rhs, output_types = output_types))
 }
 
-prim_atan2[["stablehlo"]] <- function(lhs, rhs) {
-  list(hlo_atan2(lhs, rhs))
+prim_atan2[["stablehlo"]] <- function(lhs, rhs, output_types) {
+  list(hlo_atan2(lhs, rhs, output_types = output_types))
 }
 
-prim_bitcast_convert[["stablehlo"]] <- function(operand, dtype) {
-  list(hlo_bitcast_convert(operand, dtype))
+prim_bitcast_convert[["stablehlo"]] <- function(operand, dtype, output_types) {
+  list(hlo_bitcast_convert(operand, dtype, output_types = output_types))
 }
 
 # unary simple math jit rules ---------------------------------------------------
 
-prim_abs[["stablehlo"]] <- function(operand) {
-  list(hlo_abs(operand))
+prim_abs[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_abs(operand, output_types = output_types))
 }
 
-prim_sqrt[["stablehlo"]] <- function(operand) {
-  list(hlo_sqrt(operand))
+prim_sqrt[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_sqrt(operand, output_types = output_types))
 }
 
-prim_rsqrt[["stablehlo"]] <- function(operand) {
-  list(hlo_rsqrt(operand))
+prim_rsqrt[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_rsqrt(operand, output_types = output_types))
 }
 
-prim_log[["stablehlo"]] <- function(operand) {
-  list(hlo_log(operand))
+prim_log[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_log(operand, output_types = output_types))
 }
 
-prim_tanh[["stablehlo"]] <- function(operand) {
-  list(hlo_tanh(operand))
+prim_tanh[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_tanh(operand, output_types = output_types))
 }
 
-prim_tan[["stablehlo"]] <- function(operand) {
-  list(hlo_tan(operand))
+prim_tan[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_tan(operand, output_types = output_types))
 }
 
-prim_sin[["stablehlo"]] <- function(operand) {
-  list(hlo_sine(operand))
+prim_sin[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_sine(operand, output_types = output_types))
 }
 
-prim_cos[["stablehlo"]] <- function(operand) {
-  list(hlo_cosine(operand))
+prim_cos[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_cosine(operand, output_types = output_types))
 }
 
-prim_floor[["stablehlo"]] <- function(operand) {
-  list(hlo_floor(operand))
+prim_floor[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_floor(operand, output_types = output_types))
 }
 
-prim_ceil[["stablehlo"]] <- function(operand) {
-  list(hlo_ceil(operand))
+prim_ceil[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_ceil(operand, output_types = output_types))
 }
 
-prim_sign[["stablehlo"]] <- function(operand) {
-  list(hlo_sign(operand))
+prim_sign[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_sign(operand, output_types = output_types))
 }
 
-prim_exp[["stablehlo"]] <- function(operand) {
-  list(hlo_exponential(operand))
+prim_exp[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_exponential(operand, output_types = output_types))
 }
 
-prim_expm1[["stablehlo"]] <- function(operand) {
-  list(hlo_exponential_minus_one(operand))
+prim_expm1[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_exponential_minus_one(operand, output_types = output_types))
 }
 
-prim_log1p[["stablehlo"]] <- function(operand) {
-  list(hlo_log_plus_one(operand))
+prim_log1p[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_log_plus_one(operand, output_types = output_types))
 }
 
-prim_cbrt[["stablehlo"]] <- function(operand) {
-  list(hlo_cbrt(operand))
+prim_cbrt[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_cbrt(operand, output_types = output_types))
 }
 
-prim_logistic[["stablehlo"]] <- function(operand) {
-  list(hlo_logistic(operand))
+prim_logistic[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_logistic(operand, output_types = output_types))
 }
 
-prim_acos[["stablehlo"]] <- function(operand) {
-  list(hlo_acos(operand))
+prim_acos[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_acos(operand, output_types = output_types))
 }
 
-prim_acosh[["stablehlo"]] <- function(operand) {
-  list(hlo_acosh(operand))
+prim_acosh[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_acosh(operand, output_types = output_types))
 }
 
-prim_asin[["stablehlo"]] <- function(operand) {
-  list(hlo_asin(operand))
+prim_asin[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_asin(operand, output_types = output_types))
 }
 
-prim_asinh[["stablehlo"]] <- function(operand) {
-  list(hlo_asinh(operand))
+prim_asinh[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_asinh(operand, output_types = output_types))
 }
 
-prim_atan[["stablehlo"]] <- function(operand) {
-  list(hlo_atan(operand))
+prim_atan[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_atan(operand, output_types = output_types))
 }
 
-prim_atanh[["stablehlo"]] <- function(operand) {
-  list(hlo_atanh(operand))
+prim_atanh[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_atanh(operand, output_types = output_types))
 }
 
-prim_cosh[["stablehlo"]] <- function(operand) {
-  list(hlo_cosh(operand))
+prim_cosh[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_cosh(operand, output_types = output_types))
 }
 
-prim_sinh[["stablehlo"]] <- function(operand) {
-  list(hlo_sinh(operand))
+prim_sinh[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_sinh(operand, output_types = output_types))
 }
 
-prim_digamma[["stablehlo"]] <- function(operand) {
-  list(hlo_digamma(operand))
+prim_digamma[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_digamma(operand, output_types = output_types))
 }
 
-prim_lgamma[["stablehlo"]] <- function(operand) {
-  list(hlo_lgamma(operand))
+prim_lgamma[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_lgamma(operand, output_types = output_types))
 }
 
-prim_polygamma[["stablehlo"]] <- function(n, x) {
-  list(hlo_polygamma(n, x))
+prim_polygamma[["stablehlo"]] <- function(n, x, output_types) {
+  list(hlo_polygamma(n, x, output_types = output_types))
 }
 
-prim_erf[["stablehlo"]] <- function(operand) {
-  list(hlo_erf(operand))
+prim_erf[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_erf(operand, output_types = output_types))
 }
 
-prim_erf_inv[["stablehlo"]] <- function(operand) {
-  list(hlo_erf_inv(operand))
+prim_erf_inv[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_erf_inv(operand, output_types = output_types))
 }
 
-prim_erfc[["stablehlo"]] <- function(operand) {
-  list(hlo_erfc(operand))
+prim_erfc[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_erfc(operand, output_types = output_types))
 }
 
-prim_is_finite[["stablehlo"]] <- function(operand) {
-  list(hlo_is_finite(operand))
+prim_is_finite[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_is_finite(operand, output_types = output_types))
 }
 
-prim_popcnt[["stablehlo"]] <- function(operand) {
-  list(hlo_popcnt(operand))
+prim_popcnt[["stablehlo"]] <- function(operand, output_types) {
+  list(hlo_popcnt(operand, output_types = output_types))
 }
 
-prim_clamp[["stablehlo"]] <- function(min_val, operand, max_val) {
-  list(hlo_clamp(min_val, operand, max_val))
+prim_clamp[["stablehlo"]] <- function(min_val, operand, max_val, output_types) {
+  list(hlo_clamp(min_val, operand, max_val, output_types = output_types))
 }
 
-prim_reverse[["stablehlo"]] <- function(operand, dims) {
-  list(hlo_reverse(operand, dims - 1L))
+prim_reverse[["stablehlo"]] <- function(operand, dims, output_types) {
+  list(hlo_reverse(operand, dims - 1L, output_types = output_types))
 }
 
 prim_iota[["stablehlo"]] <- function(dim, dtype, shape, start, ambiguous) {
@@ -596,8 +609,22 @@ prim_iota[["stablehlo"]] <- function(dim, dtype, shape, start, ambiguous) {
   list(out)
 }
 
-prim_pad[["stablehlo"]] <- function(operand, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
-  list(hlo_pad(operand, padding_value, edge_padding_low, edge_padding_high, interior_padding))
+prim_pad[["stablehlo"]] <- function(
+  operand,
+  padding_value,
+  edge_padding_low,
+  edge_padding_high,
+  interior_padding,
+  output_types
+) {
+  list(hlo_pad(
+    operand,
+    padding_value,
+    edge_padding_low,
+    edge_padding_high,
+    interior_padding,
+    output_types = output_types
+  ))
 }
 
 prim_round[["stablehlo"]] <- function(operand, method) {
@@ -609,13 +636,13 @@ prim_round[["stablehlo"]] <- function(operand, method) {
   )
 }
 
-prim_convert[["stablehlo"]] <- function(operand, dtype, ambiguous) {
-  list(hlo_convert(operand, dtype))
+prim_convert[["stablehlo"]] <- function(operand, dtype, ambiguous, output_types) {
+  list(hlo_convert(operand, dtype, output_types = output_types))
 }
 
 
-prim_ifelse[["stablehlo"]] <- function(pred, true_value, false_value) {
-  list(hlo_select(pred, true_value, false_value))
+prim_ifelse[["stablehlo"]] <- function(pred, true_value, false_value, output_types) {
+  list(hlo_select(pred, true_value, false_value, output_types = output_types))
 }
 
 # RNG jit rules --------------------------------------------------------
@@ -833,14 +860,15 @@ prim_chol[["stablehlo"]] <- function(operand, lower) {
   list(hlo_select(mask, L, zero))
 }
 
-prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a) {
+prim_triangular_solve[["stablehlo"]] <- function(a, b, left_side, lower, unit_diagonal, transpose_a, output_types) {
   list(hlo_triangular_solve(
     a,
     b,
     left_side = left_side,
     lower = lower,
     unit_diagonal = unit_diagonal,
-    transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE"
+    transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE",
+    output_types = output_types
   ))
 }
 

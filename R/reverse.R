@@ -280,7 +280,7 @@ rebuild_forward_pass <- function(graph, envir = parent.frame()) {
       new_inputs <- lapply(call$inputs, translate_gnode)
       new_call <- PrimitiveCall(call$primitive, new_inputs, call$params, call$outputs)
 
-      desc$calls[[length(desc$calls) + 1L]] <- new_call
+      desc$calls$add(new_call)
       register_gvals(desc, call$outputs)
 
       # If `rule` is NULL `backwards[[i]]` stays NULL. `run_backward_pass`

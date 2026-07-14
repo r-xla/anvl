@@ -204,7 +204,7 @@ format.GraphDescriptor <- function(x, ...) {
   format_graph_body(
     inputs = x$inputs,
     constants = constants,
-    calls = x$calls,
+    calls = x$calls$as_list(),
     outputs = x$outputs,
     title = "GraphDescriptor"
   )

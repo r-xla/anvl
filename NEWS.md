@@ -12,24 +12,18 @@
 
 ## Features
 
-* Jitted functions with static arguments now cache in pjrt's native
-  dispatcher instead of falling back to the R-side cache, removing the
-  per-call R overhead for static-arg jits.
-
-* All jit calls now cache and dispatch through pjrt's native dispatcher --
-  including calls with bare R literal/array inputs, `jit(device = )` /
-  `device_arg()` device moves, all-static calls, and the quickr backend
-  (whose compiled closures the dispatcher invokes directly). The R-side
-  fallback caches and `jit_call_xla()` are gone; `cache_size()` reports the
-  native cache alone.
-
-* The launch overhead of calling a jitted function dropped by roughly 3x:
-  outputs are wrapped from the dispatcher's natively-read metadata instead
-  of per-output S3 dtype()/shape()/device() reads, the `jit(backend =
-  "auto")` wrapper calls the backend's evaluated-args fast entry instead of
-  re-capturing the arguments via match.call(), and several per-call
-  lookups were hoisted out of the hot path.
-
+* New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /
+  `nv_upper_tri_like()`) return a boolean triangular mask for a given shape,
+  mirroring base R's `lower.tri()` / `upper.tri()`. As in base R, the main
+  diagonal is excluded by default; pass `diagonal = 0L` to include it. Use
+  `nv_tril()` / `nv_triu()` to zero out a triangle of an existing array.
+* `trace_fn()` gained an `optimize` argument controlling which graph
+  optimization passes run on the traced graph. `TRUE` runs all passes, `FALSE`
+  (default) runs none, and a character vector (e.g.
+  `c("inline_scalars", "remove_unused_constants")`) selects a subset. `jit()`
+  and `xla()` always trace with all passes enabled.
+* New `nv_dnorm()` computes the normal distribution's probability density
+  function (or, with `log = TRUE`, its log-density).
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for
   `AnvlArray` gained a `check` argument that opts into scanning for
@@ -44,6 +38,16 @@
 
 * Most `nv_*()` API functions are now JIT-compiled internally (via a new
   `@jit` roxygen roclet), speeding up eager-mode execution.
+* Tracing (`trace_fn()`) performance has been improved.
+* Tracing now accumulates primitive calls in a `fastmap::fastqueue`
+  (amortised-O(1) append) instead of an R list grown with `c()`
+  (copy-on-modify, O(n^2)). Tracing large unrolled graphs is
+  substantially faster, e.g. ~1.36x for an 8000-op chain, with the gain
+  growing with graph size.
+* StableHLO lowering forwards the trace-time output types to the `hlo_*`
+  builders (via an `output_types` argument passed to the lowering rules), so
+  stablehlo skips redundant type inference when lowering the graph.
+* Calling `jit()`ted functions is now significantly faster.
 
 ## Bug fixes
 

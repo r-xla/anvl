@@ -9,9 +9,7 @@
 #' @return (`GraphValue`)
 #' @export
 GraphValue <- function(aval) {
-  checkmate::assert_class(aval, "AbstractArray")
-
-  # Use an environment for reference semantics (mutable)
+  # hot-path constructor: no input validation
   env <- new.env(parent = emptyenv())
   env$aval <- aval
 
@@ -26,9 +24,7 @@ GraphValue <- function(aval) {
 #' @return (`GraphLiteral`)
 #' @export
 GraphLiteral <- function(aval) {
-  checkmate::assert_class(aval, "LiteralArray")
-
-  # Use an environment for reference semantics (mutable)
+  # hot-path constructor: no input validation
   env <- new.env(parent = emptyenv())
   env$aval <- aval
 
@@ -94,11 +90,7 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
-  checkmate::assert_class(primitive, "AnvlPrimitive")
-  checkmate::assert_list(inputs, types = c("GraphValue", "GraphLiteral"))
-  checkmate::assert_list(params)
-  checkmate::assert_list(outputs, c("GraphValue", "GraphLiteral"))
-
+  # hot-path constructor: no input validation
   structure(
     list(
       primitive = primitive,
@@ -207,7 +199,13 @@ GraphDescriptor <- function(
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
-  env$calls <- calls
+  # `calls` accumulates one entry per traced primitive. A fastqueue gives
+  # amortised-O(1) append; growing an R list here (`env$calls[[n]] <- x` or
+  # `c(env$calls, x)`) is copy-on-modify and would make tracing O(n^2).
+  env$calls <- fastmap::fastqueue()
+  if (length(calls)) {
+    env$calls$madd(.list = calls)
+  }
   env$data_to_gval <- tensor_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
   env$constants <- constants
@@ -259,7 +257,7 @@ is_graph_descriptor <- function(x) {
 
 descriptor_to_graph <- function(descriptor) {
   graph <- AnvlGraph(
-    calls = descriptor$calls,
+    calls = descriptor$calls$as_list(),
     in_tree = descriptor$in_tree,
     out_tree = descriptor$out_tree,
     inputs = descriptor$inputs,
@@ -296,11 +294,7 @@ descriptor_to_graph <- function(descriptor) {
 #' @seealso [AnvlBox], [trace_fn()], [jit()]
 #' @export
 GraphBox <- function(gnode, desc) {
-  if (!is_graph_node(gnode)) {
-    cli_abort("gnode must be a GraphValue or GraphLiteral")
-  }
-  checkmate::assert_class(desc, "GraphDescriptor")
-
+  # hot-path constructor: no input validation
   structure(
     list(gnode = gnode, desc = desc),
     class = c("GraphBox", "AnvlBox")
@@ -348,14 +342,12 @@ format.GraphBox <- function(x, ...) {
   sprintf("GraphBox(%s)", format(x$gnode))
 }
 
-maybe_box_arrayish <- function(x) {
-  current_desc <- .current_descriptor()
+maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
-    if (identical(x$desc, current_desc)) {
+    if (identical(x$desc, desc)) {
       return(x)
     }
-    gval <- x$gnode
-    return(get_box_or_register_const(current_desc, gval))
+    return(get_box_or_register_const(desc, x$gnode))
   }
   if (is_valid_r_array(x)) {
     # Materialize R arrays as plain-backend AnvlArrays so they can be
@@ -363,7 +355,7 @@ maybe_box_arrayish <- function(x) {
     x <- nv_array(x, ambiguous = !is.logical(x))
   }
   if (is_anvl_array(x) || is_valid_r_lit(x)) {
-    return(get_box_or_register_const(current_desc, x))
+    return(get_box_or_register_const(desc, x))
   }
   cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
 }
@@ -477,12 +469,7 @@ register_gvals <- function(desc, gvals) {
 }
 
 register_gval <- function(desc, x) {
-  if (!is_graph_descriptor(desc)) {
-    cli_abort("Internal error: trying to register a gval in a non-graph descriptor")
-  }
-  if (!is_graph_value(x)) {
-    cli_abort("Internal error: trying to register an invalid gval")
-  }
+  # hot path (one call per traced output): no input validation
   box <- desc$gval_to_box[[x]]
   if (!is.null(box)) {
     return(box)
@@ -494,9 +481,6 @@ register_gval <- function(desc, x) {
 
 # Returns a Box
 get_box_or_register_const <- function(desc, x) {
-  if (!is_graph_descriptor(desc)) {
-    cli_abort("Internal error: trying to register a constant in a non-graph descriptor")
-  }
   if (is_anvl_array(x)) {
     if (backend(x) != "plain") {
       desc$devices <- c(desc$devices, device(x))
@@ -592,6 +576,7 @@ match_args_to_formals <- function(f, args) {
 #'   Flattened arguments. Must be accompanied by `in_tree`.
 #' @param in_tree (`Node`)\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
+#' @template param_optimize
 #' @return An [`AnvlGraph`] containing the traced operations.
 #' @seealso [`stablehlo()`] to lower the graph, [`jit()`] / [`xla()`] for end-to-end
 #'   compilation.
@@ -606,7 +591,8 @@ trace_fn <- function(
   desc = NULL,
   mode = NULL,
   args_flat = NULL,
-  in_tree = NULL
+  in_tree = NULL,
+  optimize = FALSE
 ) {
   if (is.null(mode) && !currently_tracing()) {
     mode <- "toplevel"
@@ -644,7 +630,26 @@ trace_fn <- function(
   inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  output <- do.call(f_flat, inputs_flat)
+  if (mode == "toplevel") {
+    globals[["INFER_PRIMITIVE"]] <- NULL
+    output <- tryCatch(
+      do.call(f_flat, inputs_flat),
+      error = function(e) {
+        prim <- globals[["INFER_PRIMITIVE"]]
+        globals[["INFER_PRIMITIVE"]] <- NULL
+        if (!is.null(prim)) {
+          e$call <- print_call_repr(prim)
+          # only stablehlo errors carry 0-based indices to convert
+          if (inherits(e, "ErrorStablehlo")) {
+            e <- stablehlo::to_one_based(e)
+          }
+        }
+        rlang::cnd_signal(e)
+      }
+    )
+  } else {
+    output <- do.call(f_flat, inputs_flat)
+  }
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -659,11 +664,7 @@ trace_fn <- function(
   }
 
   graph <- descriptor_to_graph(desc)
-  return(graph)
-}
-
-is_graph_node <- function(x) {
-  is_graph_value(x) || is_graph_literal(x)
+  optimize_graph(graph, optimize)
 }
 
 is_graph_value <- function(x) {
@@ -787,24 +788,24 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
-  checkmate::assert_class(primitive, "AnvlPrimitive")
 
-  boxes_in <- lapply(args, maybe_box_arrayish)
-  gnodes_in <- unname(lapply(boxes_in, \(box) box$gnode))
-  avals_in <- lapply(boxes_in, \(box) box$gnode$aval)
-  ats_out <- tryCatch(
-    {
-      rlang::exec(infer_fn, !!!c(avals_in, params))
-    },
-    error = function(e) {
-      e$call <- print_call_repr(primitive)
-      e <- stablehlo::to_one_based(e)
-      rlang::cnd_signal(e)
-    }
-  )
+  # Box each input and pull out its gnode + aval in one pass (`gnodes_in`
+  # unnamed for the PrimitiveCall; `avals_in` keeps arg names for infer_fn).
+  n_in <- length(args)
+  gnodes_in <- vector("list", n_in)
+  avals_in <- vector("list", n_in)
+  for (i in seq_len(n_in)) {
+    gnode <- maybe_box_arrayish(args[[i]], desc)$gnode
+    gnodes_in[[i]] <- gnode
+    avals_in[[i]] <- gnode$aval
+  }
+  names(avals_in) <- names(args)
+  globals[["INFER_PRIMITIVE"]] <- primitive
+  ats_out <- do.call(infer_fn, c(avals_in, params))
+  globals[["INFER_PRIMITIVE"]] <- NULL
   gvals_out <- lapply(ats_out, GraphValue)
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
-  desc$calls <- c(desc$calls, list(call))
+  desc$calls$add(call)
   lapply(gvals_out, register_gval, desc = desc)
 }
 
@@ -820,7 +821,9 @@ inline_graph_into_desc <- function(desc, graph) {
   # registered via `maybe_box_arrayish`) still need to be propagated up.
   register_consts(desc, graph$constants)
 
-  desc$calls <- c(desc$calls, graph$calls)
+  if (length(graph$calls)) {
+    desc$calls$madd(.list = graph$calls)
+  }
 
   gvals_out_flat <- graph$outputs
   boxes_out_flat <- lapply(gvals_out_flat, GraphBox, desc)
