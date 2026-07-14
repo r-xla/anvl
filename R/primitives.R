@@ -3487,3 +3487,127 @@ prim_eigh <- new_primitive(
     )
   }
 )
+
+#' @title Primitive Convolution
+#' @description
+#' General N-D windowed convolution, lowering to StableHLO's
+#' `convolution` op. Dimension numbers are given 1-based (anvl
+#' convention) and converted to StableHLO's 0-based layout internally.
+#' Most users want [nv_conv1d()] / [nv_conv2d()] / [nv_conv3d()] instead.
+#' @param lhs ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
+#' @param rhs ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
+#' @param input_batch_dimension,input_feature_dimension (`integer(1)`)\cr
+#'   1-based batch/feature dimension of `lhs`.
+#' @param input_spatial_dimensions (`integer()`)\cr 1-based spatial dims of `lhs`.
+#' @param kernel_input_feature_dimension,kernel_output_feature_dimension (`integer(1)`)\cr
+#'   1-based input/output feature dimension of `rhs`.
+#' @param kernel_spatial_dimensions (`integer()`)\cr 1-based spatial dims of `rhs`.
+#' @param output_batch_dimension,output_feature_dimension (`integer(1)`)\cr
+#'   1-based batch/feature dimension of the output.
+#' @param output_spatial_dimensions (`integer()`)\cr
+#'   1-based spatial dims of the output.
+#' @param window_strides (`integer()`)\cr Stride per spatial dim.
+#' @param padding (`matrix`)\cr `[n_spatial, 2]` of `(low, high)` padding.
+#' @param lhs_dilation,rhs_dilation (`integer()`)\cr Input/kernel dilation.
+#' @param feature_group_count,batch_group_count (`integer(1)`)\cr Grouping.
+#' @param precision (`character(1)`)\cr One of `"highest"`, `"high"`,
+#'   `"default"`.
+#' @return [`arrayish`]
+#' @export
+prim_convolution <- new_primitive(
+  "convolution",
+  function(
+    lhs,
+    rhs,
+    input_batch_dimension,
+    input_feature_dimension,
+    input_spatial_dimensions,
+    kernel_input_feature_dimension,
+    kernel_output_feature_dimension,
+    kernel_spatial_dimensions,
+    output_batch_dimension,
+    output_feature_dimension,
+    output_spatial_dimensions,
+    window_strides,
+    padding,
+    lhs_dilation,
+    rhs_dilation,
+    feature_group_count = 1L,
+    batch_group_count = 1L,
+    precision = "highest"
+  ) {
+    infer_fn <- function(
+      lhs,
+      rhs,
+      input_batch_dimension,
+      input_feature_dimension,
+      input_spatial_dimensions,
+      kernel_input_feature_dimension,
+      kernel_output_feature_dimension,
+      kernel_spatial_dimensions,
+      output_batch_dimension,
+      output_feature_dimension,
+      output_spatial_dimensions,
+      window_strides,
+      padding,
+      lhs_dilation,
+      rhs_dilation,
+      feature_group_count,
+      batch_group_count,
+      precision
+    ) {
+      shlo_dn <- stablehlo::ConvDimensionNumbers(
+        input_batch_dimension = input_batch_dimension - 1L,
+        input_feature_dimension = input_feature_dimension - 1L,
+        input_spatial_dimensions = input_spatial_dimensions - 1L,
+        kernel_input_feature_dimension = kernel_input_feature_dimension - 1L,
+        kernel_output_feature_dimension = kernel_output_feature_dimension - 1L,
+        kernel_spatial_dimensions = kernel_spatial_dimensions - 1L,
+        output_batch_dimension = output_batch_dimension - 1L,
+        output_feature_dimension = output_feature_dimension - 1L,
+        output_spatial_dimensions = output_spatial_dimensions - 1L
+      )
+      n <- length(input_spatial_dimensions)
+      pad <- padding
+      storage.mode(pad) <- "integer"
+      out <- stablehlo::infer_types_convolution(
+        at2vt(lhs),
+        at2vt(rhs),
+        dimension_numbers = shlo_dn,
+        precision_config = rep(toupper(precision), 2L),
+        window_strides = r_to_constant(as.integer(window_strides), dtype = "i64", shape = length(window_strides)),
+        padding = r_to_constant(pad, dtype = "i64", shape = dim(pad)),
+        lhs_dilation = r_to_constant(as.integer(lhs_dilation), dtype = "i64", shape = length(lhs_dilation)),
+        rhs_dilation = r_to_constant(as.integer(rhs_dilation), dtype = "i64", shape = length(rhs_dilation)),
+        window_reversal = r_to_constant(rep(FALSE, n), dtype = "i1", shape = n),
+        feature_group_count = r_to_constant(as.integer(feature_group_count), dtype = "i64", shape = integer()),
+        batch_group_count = r_to_constant(as.integer(batch_group_count), dtype = "i64", shape = integer())
+      )[[1L]]
+      list(vt2at(out))
+    }
+    graph_desc_add(
+      self,
+      list(lhs = lhs, rhs = rhs),
+      list(
+        input_batch_dimension = input_batch_dimension,
+        input_feature_dimension = input_feature_dimension,
+        input_spatial_dimensions = input_spatial_dimensions,
+        kernel_input_feature_dimension = kernel_input_feature_dimension,
+        kernel_output_feature_dimension = kernel_output_feature_dimension,
+        kernel_spatial_dimensions = kernel_spatial_dimensions,
+        output_batch_dimension = output_batch_dimension,
+        output_feature_dimension = output_feature_dimension,
+        output_spatial_dimensions = output_spatial_dimensions,
+        window_strides = window_strides,
+        padding = padding,
+        lhs_dilation = lhs_dilation,
+        rhs_dilation = rhs_dilation,
+        feature_group_count = feature_group_count,
+        batch_group_count = batch_group_count,
+        precision = precision
+      ),
+      infer_fn = infer_fn
+    )[[1L]]
+  },
+  static = 3:18
+)
