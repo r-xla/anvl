@@ -6,10 +6,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Quickr backend — AnvlBackendQuickr"><meta name="description" content="Constructs the quickr backend, which stores array data as plain R arrays and
-compiles jitted functions to R code via the
-quickr package."><meta property="og:description" content="Constructs the quickr backend, which stores array data as plain R arrays and
-compiles jitted functions to R code via the
-quickr package."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+compiles jitted functions to R code via the quickr package."><meta property="og:description" content="Constructs the quickr backend, which stores array data as plain R arrays and
+compiles jitted functions to R code via the quickr package."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -81,8 +79,7 @@ quickr package."><meta property="og:image" content="https://r-xla.github.io/anvl
 
     <div class="ref-description section level2">
     <p>Constructs the quickr backend, which stores array data as plain R arrays and
-compiles jitted functions to R code via the
-<a href="https://CRAN.R-project.org/package=quickr" class="external-link">quickr</a> package.</p>
+compiles jitted functions to R code via the <a href="https://CRAN.R-project.org/package=quickr" class="external-link"><span class="pkg">quickr</span></a> package.</p>
     </div>
 
     <div class="section level2">
@@ -109,9 +106,10 @@ quickr package to be installed.</p>
 <p>An <code><a href="AnvlArray.html">AnvlArray</a></code> with <code>backend = "quickr"</code> is, under the hood, a plain R
 vector or array (<code>numeric</code>, <code>integer</code>, or <code>logical</code>) stored in the <code>$data</code>
 field. <code><a href="as_array.html">as_array()</a></code> returns the underlying vector/array directly without
-copying, and <code><a href="AnvlArray.html">nv_array()</a></code> simply wraps an R vector/array. As a
-consequence, there is no separate notion of a device: data always lives in
-R's memory and computation always runs on the CPU.</p>
+copying, and <code><a href="AnvlArray.html">nv_array()</a></code> simply wraps an R vector/array. Data always lives
+in R's memory and computation always runs on the CPU, so the only device is
+<code><a href="quickr_device.html">quickr_device("cpu")</a></code>; every array still carries it in
+<code>$device</code>, as arrays of every backend do.</p>
     </div>
     <div class="section level2">
     <h2 id="status">Status<a class="anchor" aria-label="anchor" href="#status"></a></h2>

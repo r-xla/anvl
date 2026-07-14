@@ -55,22 +55,22 @@
 
 - Most `nv_*()` API functions are now JIT-compiled internally (via a new
   `@jit` roxygen roclet), speeding up eager-mode execution.
-
 - Tracing
   ([`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md))
   performance has been improved.
-
 - Tracing now accumulates primitive calls in a
   [`fastmap::fastqueue`](https://r-lib.github.io/fastmap/reference/fastqueue.html)
   (amortised-O(1) append) instead of an R list grown with
   [`c()`](https://rdrr.io/r/base/c.html) (copy-on-modify, O(n^2)).
   Tracing large unrolled graphs is substantially faster, e.g. ~1.36x for
   an 8000-op chain, with the gain growing with graph size.
-
 - StableHLO lowering forwards the trace-time output types to the `hlo_*`
   builders (via an `output_types` argument passed to the lowering
   rules), so stablehlo skips redundant type inference when lowering the
   graph.
+- Calling
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)ted
+  functions is now significantly faster.
 
 ### Bug fixes
 
@@ -248,9 +248,9 @@
   [`await()`](https://r-xla.github.io/anvl/dev/reference/await.md) that
   blocks until the underlying computation has finished.
 - New tree utilities
-  [`map_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
+  [`map_tree()`](https://r-xla.github.io/pjrt/reference/map_tree.html)
   and
-  [`pmap_tree()`](https://r-xla.github.io/anvl/dev/reference/pmap_tree.md)
+  [`pmap_tree()`](https://r-xla.github.io/pjrt/reference/pmap_tree.html)
   for applying functions leaf-wise over (possibly nested) lists.
 - Added support for `range` generic.
 - Improved NaN handling across various primitives and API functions.

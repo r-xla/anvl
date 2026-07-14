@@ -21,6 +21,7 @@ This is a low-level function; most users should use
 ``` r
 stablehlo(
   graph,
+  id = "main",
   constants_as_inputs = TRUE,
   env = NULL,
   donate = character(),
@@ -36,6 +37,15 @@ stablehlo(
   ([`AnvlGraph`](https://r-xla.github.io/anvl/dev/reference/AnvlGraph.md))  
   The graph to lower (e.g. produced by
   [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)).
+
+- id:
+
+  (`character(1)`)  
+  The id of the resulting StableHLO function. Use `"main"` (the default)
+  for a top-level lowering (returning from the `main` function finalizes
+  the module) and `""` for a closure/region lowering (e.g. a while body
+  or a scatter update computation) that builds an anonymous nested
+  function inside an enclosing build.
 
 - constants_as_inputs:
 

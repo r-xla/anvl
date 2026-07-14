@@ -325,7 +325,7 @@ cache_size <- function(f) environment(f)$cache$size
 cache_size(f_jit)
 ```
 
-    ## [1] 1
+    ## NULL
 
 After calling it with arrays of the same types and identical static
 argument values, the size of the cache remains 1:
@@ -344,7 +344,7 @@ f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
 cache_size(f_jit)
 ```
 
-    ## [1] 1
+    ## NULL
 
 When we execute the function with arrays of different `dtype` or
 `shape`, the function will be recompiled:
@@ -363,7 +363,7 @@ f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
 cache_size(f_jit)
 ```
 
-    ## [1] 2
+    ## NULL
 
 Also, if we provide different values for static arguments, the function
 will be recompiled:
@@ -382,7 +382,7 @@ f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
 cache_size(f_jit)
 ```
 
-    ## [1] 3
+    ## NULL
 
 ### `gradient()`
 

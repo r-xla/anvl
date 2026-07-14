@@ -64,14 +64,14 @@ cache_size <- function(f) environment(f)$cache$size
 
 linear_jit <- jit(linear)
 cache_size(linear_jit)   # 0: nothing cached yet
-#> [1] 0
+#> NULL
 
 linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(1))
 #> AnvlArray
 #>  7
 #> [ CPUf32{} ]
 cache_size(linear_jit)   # 1: a new entry was added
-#> [1] 1
+#> NULL
 
 # same shapes -> cache hit, size unchanged
 linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
@@ -79,7 +79,7 @@ linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
 #>  11
 #> [ CPUf32{} ]
 cache_size(linear_jit)
-#> [1] 1
+#> NULL
 
 # different shapes -> a second entry is added
 linear_jit(
@@ -92,7 +92,7 @@ linear_jit(
 #>  9
 #> [ CPUf32{2} ]
 cache_size(linear_jit)
-#> [1] 2
+#> NULL
 ```
 
 Each input to the function contributes to the cache key differently,

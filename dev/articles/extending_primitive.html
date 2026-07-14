@@ -484,21 +484,28 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;         else backend(dev_val)</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     else {</span></span>
-<span><span class="co">#&gt;         jit_auto_detect_backend(flatten(args[!names(args) %in% </span></span>
-<span><span class="co">#&gt;             static]))</span></span>
+<span><span class="co">#&gt;         jit_auto_detect_backend(args, static)</span></span>
 <span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;     if (is.null(jit_fns[[be]])) {</span></span>
-<span><span class="co">#&gt;         jit_fns[[be]] &lt;&lt;- do.call(jit_with_backend, c(list(f = f, </span></span>
-<span><span class="co">#&gt;             static = static, cache_size = cache_size, backend = be), </span></span>
-<span><span class="co">#&gt;             if (!is.null(device_argname)) {</span></span>
-<span><span class="co">#&gt;                 list(device = device_arg(device_argname))</span></span>
-<span><span class="co">#&gt;             } else if (!is.null(device)) {</span></span>
-<span><span class="co">#&gt;                 list(device = device)</span></span>
-<span><span class="co">#&gt;             }, dots))</span></span>
+<span><span class="co">#&gt;     run &lt;- jit_runs[[be]]</span></span>
+<span><span class="co">#&gt;     if (is.null(run)) {</span></span>
+<span><span class="co">#&gt;         if (is.null(jit_fns[[be]])) {</span></span>
+<span><span class="co">#&gt;             jit_fns[[be]] &lt;&lt;- do.call(jit_with_backend, c(list(f = f, </span></span>
+<span><span class="co">#&gt;                 static = static, cache_size = cache_size, backend = be), </span></span>
+<span><span class="co">#&gt;                 if (!is.null(device_argname)) {</span></span>
+<span><span class="co">#&gt;                   list(device = device_arg(device_argname))</span></span>
+<span><span class="co">#&gt;                 } else if (!is.null(device)) {</span></span>
+<span><span class="co">#&gt;                   list(device = device)</span></span>
+<span><span class="co">#&gt;                 }, dots))</span></span>
+<span><span class="co">#&gt;         }</span></span>
+<span><span class="co">#&gt;         run &lt;- attr(jit_fns[[be]], "jit_run_args")</span></span>
+<span><span class="co">#&gt;         if (is.null(run)) {</span></span>
+<span><span class="co">#&gt;             run &lt;- function(args) do.call(jit_fns[[be]], args)</span></span>
+<span><span class="co">#&gt;         }</span></span>
+<span><span class="co">#&gt;         jit_runs[[be]] &lt;&lt;- run</span></span>
 <span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;     do.call(jit_fns[[be]], args)</span></span>
+<span><span class="co">#&gt;     run(args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55f2ab073bb0&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x559fd3500f50&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"backend")</span></span>

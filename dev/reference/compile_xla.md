@@ -13,7 +13,8 @@ compile_xla(
   in_tree,
   donate = character(),
   device = NULL,
-  arg_devices = list()
+  arg_devices = list(),
+  fallback_device = NULL
 )
 ```
 
@@ -52,6 +53,15 @@ compile_xla(
   converting to abstract values. Used together with traced devices for
   device inference when `device` is `NULL`.
 
+- fallback_device:
+
+  (`NULL` \| device)  
+  The device to compile for when `device` is `NULL` and nothing in the
+  graph names one. pjrt's dispatcher supplies the device it keyed the
+  entry on, so the program and its cache key agree. `NULL` (a caller
+  with no dispatcher in front of it) falls back to
+  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
+
 ## Value
 
 A `list` with elements:
@@ -62,5 +72,5 @@ A `list` with elements:
 
 - `const_arrays`: Constants needed at execution time.
 
-- `ambiguous_out`: Logical vector indicating which outputs are ambiguous
-  (`NULL` if none are).
+- `out_avals`: One `list(dtype, shape, ambiguous)` per output leaf;
+  pjrt's dispatcher builds the output wrappers from these.

@@ -731,24 +731,15 @@ Internal data structures and functions
 
 Utilities for working with nested structures
 
-- [`flatten()`](https://r-xla.github.io/anvl/dev/reference/flatten.md) :
-  Flatten
-- [`unflatten()`](https://r-xla.github.io/anvl/dev/reference/unflatten.md)
-  : Unflatten
-- [`build_tree()`](https://r-xla.github.io/anvl/dev/reference/build_tree.md)
-  : Build Tree
-- [`reindex_tree()`](https://r-xla.github.io/anvl/dev/reference/reindex_tree.md)
-  : Reindex Tree
-- [`tree_size()`](https://r-xla.github.io/anvl/dev/reference/tree_size.md)
-  : Tree Size
-- [`tree_path()`](https://r-xla.github.io/anvl/dev/reference/tree_path.md)
-  : Tree Path
-- [`map_tree()`](https://r-xla.github.io/anvl/dev/reference/map_tree.md)
-  : Map Over a Tree
-- [`pmap_tree()`](https://r-xla.github.io/anvl/dev/reference/pmap_tree.md)
-  : Map Over Multiple Trees
-- [`filter_list_node()`](https://r-xla.github.io/anvl/dev/reference/filter_list_node.md)
-  : Filter List Node
+- [`reexports`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  [`flatten`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  [`build_tree`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  [`unflatten`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  [`tree_size`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  [`tree_path`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  [`map_tree`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  [`pmap_tree`](https://r-xla.github.io/anvl/dev/reference/reexports.md)
+  : Objects exported from other packages
 
 ### Miscellaneous
 

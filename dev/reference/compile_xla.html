@@ -93,7 +93,8 @@ metadata needed for execution.</p>
 <span>  <span class="va">in_tree</span>,</span>
 <span>  donate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  arg_devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  arg_devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  fallback_device <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -133,13 +134,22 @@ Devices of the concrete (non-static) input arguments, extracted before
 converting to abstract values. Used together with traced devices for
 device inference when <code>device</code> is <code>NULL</code>.</p></dd>
 
+
+<dt id="arg-fallback-device">fallback_device<a class="anchor" aria-label="anchor" href="#arg-fallback-device"></a></dt>
+<dd><p>(<code>NULL</code> | device)<br>
+The device to compile for when <code>device</code> is <code>NULL</code> and nothing in the graph
+names one. pjrt's dispatcher supplies the device it keyed the entry on, so
+the program and its cache key agree. <code>NULL</code> (a caller with no dispatcher in
+front of it) falls back to <code><a href="default_device.html">default_device()</a></code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code>list</code> with elements:</p><ul><li><p><code>exec</code>: The compiled PJRT executable.</p></li>
 <li><p><code>out_tree</code>: The output tree structure.</p></li>
 <li><p><code>const_arrays</code>: Constants needed at execution time.</p></li>
-<li><p><code>ambiguous_out</code>: Logical vector indicating which outputs are ambiguous (<code>NULL</code> if none are).</p></li>
+<li><p><code>out_avals</code>: One <code>list(dtype, shape, ambiguous)</code> per output leaf; pjrt's
+dispatcher builds the output wrappers from these.</p></li>
 </ul></div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -406,7 +406,7 @@ called it on <code>x</code> and <code>y</code> above.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">cache_size</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">environment</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">$</span><span class="va">cache</span><span class="op">$</span><span class="va">size</span></span>
 <span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] 1</span></span></code></pre>
+<pre><code><span><span class="co">## NULL</span></span></code></pre>
 <p>After calling it with arrays of the same types and identical static
 argument values, the size of the cache remains 1:</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
@@ -416,7 +416,7 @@ argument values, the size of the cache remains 1:</p>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] 1</span></span></code></pre>
+<pre><code><span><span class="co">## NULL</span></span></code></pre>
 <p>When we execute the function with arrays of different
 <code>dtype</code> or <code>shape</code>, the function will be
 recompiled:</p>
@@ -427,7 +427,7 @@ recompiled:</p>
 <span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] 2</span></span></code></pre>
+<pre><code><span><span class="co">## NULL</span></span></code></pre>
 <p>Also, if we provide different values for static arguments, the
 function will be recompiled:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
@@ -437,7 +437,7 @@ function will be recompiled:</p>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] 3</span></span></code></pre>
+<pre><code><span><span class="co">## NULL</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="gradient">

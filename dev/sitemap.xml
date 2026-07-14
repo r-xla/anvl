@@ -58,7 +58,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/at2vt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/await.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/backend.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/build_tree.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/common_dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/compile_xla.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/current_platform.html</loc></url>
@@ -69,8 +68,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/dot-current_descriptor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/eq_type.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/filter_list_node.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/flatten.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/graph_desc_add.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/graph_to_quickr_function.html</loc></url>
@@ -83,7 +80,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit_roclet.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_descriptor.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/map_tree.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/ndims.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/new_primitive.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_abs.html</loc></url>
@@ -229,7 +225,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_while.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_xor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/platform.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/pmap_tree.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_abs.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_acos.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_acosh.html</loc></url>
@@ -330,7 +325,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_while.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_xor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/quickr_device.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/reindex_tree.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/reexports.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/rule_reverse.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/shape.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/stablehlo.html</loc></url>
@@ -338,10 +333,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/to_abstract.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/trace_fn.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/transform_gradient.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/tree_diff.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/tree_path.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/tree_size.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/unflatten.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/unwrap_if_array.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/value_and_gradient.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/vt.html</loc></url>

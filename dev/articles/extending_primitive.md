@@ -376,21 +376,28 @@ prim_repeat_along
 #>         else backend(dev_val)
 #>     }
 #>     else {
-#>         jit_auto_detect_backend(flatten(args[!names(args) %in% 
-#>             static]))
+#>         jit_auto_detect_backend(args, static)
 #>     }
-#>     if (is.null(jit_fns[[be]])) {
-#>         jit_fns[[be]] <<- do.call(jit_with_backend, c(list(f = f, 
-#>             static = static, cache_size = cache_size, backend = be), 
-#>             if (!is.null(device_argname)) {
-#>                 list(device = device_arg(device_argname))
-#>             } else if (!is.null(device)) {
-#>                 list(device = device)
-#>             }, dots))
+#>     run <- jit_runs[[be]]
+#>     if (is.null(run)) {
+#>         if (is.null(jit_fns[[be]])) {
+#>             jit_fns[[be]] <<- do.call(jit_with_backend, c(list(f = f, 
+#>                 static = static, cache_size = cache_size, backend = be), 
+#>                 if (!is.null(device_argname)) {
+#>                   list(device = device_arg(device_argname))
+#>                 } else if (!is.null(device)) {
+#>                   list(device = device)
+#>                 }, dots))
+#>         }
+#>         run <- attr(jit_fns[[be]], "jit_run_args")
+#>         if (is.null(run)) {
+#>             run <- function(args) do.call(jit_fns[[be]], args)
+#>         }
+#>         jit_runs[[be]] <<- run
 #>     }
-#>     do.call(jit_fns[[be]], args)
+#>     run(args)
 #> }
-#> <environment: 0x55f2ab073bb0>
+#> <environment: 0x559fd3500f50>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")

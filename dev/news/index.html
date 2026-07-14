@@ -86,10 +86,11 @@
 </ul></div>
 <div class="section level3">
 <h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>
-<ul><li><p>Most <code>nv_*()</code> API functions are now JIT-compiled internally (via a new <code>@jit</code> roxygen roclet), speeding up eager-mode execution.</p></li>
-<li><p>Tracing (<code><a href="../reference/trace_fn.html">trace_fn()</a></code>) performance has been improved.</p></li>
-<li><p>Tracing now accumulates primitive calls in a <code><a href="https://r-lib.github.io/fastmap/reference/fastqueue.html" class="external-link">fastmap::fastqueue</a></code> (amortised-O(1) append) instead of an R list grown with <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> (copy-on-modify, O(n^2)). Tracing large unrolled graphs is substantially faster, e.g. ~1.36x for an 8000-op chain, with the gain growing with graph size.</p></li>
-<li><p>StableHLO lowering forwards the trace-time output types to the <code>hlo_*</code> builders (via an <code>output_types</code> argument passed to the lowering rules), so stablehlo skips redundant type inference when lowering the graph.</p></li>
+<ul><li>Most <code>nv_*()</code> API functions are now JIT-compiled internally (via a new <code>@jit</code> roxygen roclet), speeding up eager-mode execution.</li>
+<li>Tracing (<code><a href="../reference/trace_fn.html">trace_fn()</a></code>) performance has been improved.</li>
+<li>Tracing now accumulates primitive calls in a <code><a href="https://r-lib.github.io/fastmap/reference/fastqueue.html" class="external-link">fastmap::fastqueue</a></code> (amortised-O(1) append) instead of an R list grown with <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> (copy-on-modify, O(n^2)). Tracing large unrolled graphs is substantially faster, e.g. ~1.36x for an 8000-op chain, with the gain growing with graph size.</li>
+<li>StableHLO lowering forwards the trace-time output types to the <code>hlo_*</code> builders (via an <code>output_types</code> argument passed to the lowering rules), so stablehlo skips redundant type inference when lowering the graph.</li>
+<li>Calling <code><a href="../reference/jit.html">jit()</a></code>ted functions is now significantly faster.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
@@ -169,7 +170,7 @@
 <h4 id="misc-0-3-0">Misc<a class="anchor" aria-label="anchor" href="#misc-0-3-0"></a></h4>
 <ul><li>New <code>AnvlArray</code> -&gt; R <code>vector</code> converters: <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code>, <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code>, <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code>, <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code>, <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>.</li>
 <li>New function <code><a href="../reference/await.html">await()</a></code> that blocks until the underlying computation has finished.</li>
-<li>New tree utilities <code><a href="../reference/map_tree.html">map_tree()</a></code> and <code><a href="../reference/pmap_tree.html">pmap_tree()</a></code> for applying functions leaf-wise over (possibly nested) lists.</li>
+<li>New tree utilities <code><a href="https://r-xla.github.io/pjrt/reference/map_tree.html" class="external-link">map_tree()</a></code> and <code><a href="https://r-xla.github.io/pjrt/reference/pmap_tree.html" class="external-link">pmap_tree()</a></code> for applying functions leaf-wise over (possibly nested) lists.</li>
 <li>Added support for <code>range</code> generic.</li>
 <li>Improved NaN handling across various primitives and API functions.</li>
 </ul></div>
