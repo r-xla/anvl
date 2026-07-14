@@ -11,7 +11,7 @@ An \code{\link{AnvlBackend}} object with subclass \code{"AnvlBackendQuickr"}.
 }
 \description{
 Constructs the quickr backend, which stores array data as plain R arrays and
-compiles jitted functions to R code via the \CRANPkg{quickr} package.
+compiles jitted functions to R code via the \CRANpkg{quickr} package.
 }
 \details{
 To use it, the \code{"quickr"} package needs to be installed.
