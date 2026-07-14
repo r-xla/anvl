@@ -20,7 +20,6 @@
   [`nv_tril()`](https://r-xla.github.io/anvl/dev/reference/nv_tril.md) /
   [`nv_triu()`](https://r-xla.github.io/anvl/dev/reference/nv_triu.md)
   to zero out a triangle of an existing array.
-
 - [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
   gained an `optimize` argument controlling which graph optimization
   passes run on the traced graph. `TRUE` runs all passes, `FALSE`
@@ -29,12 +28,10 @@
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) and
   [`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) always
   trace with all passes enabled.
-
 - New
   [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_dnorm.md)
   computes the normal distribution’s probability density function (or,
   with `log = TRUE`, its log-density).
-
 - [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),
@@ -45,11 +42,11 @@
   `AnvlArray` gained a `check` argument that opts into scanning for `NA`
   values during host -\> device and device -\> host transfers. See the
   “Gotchas” vignette.
-
 - [`nv_var()`](https://r-xla.github.io/anvl/dev/reference/nv_var.md) and
   [`nv_sd()`](https://r-xla.github.io/anvl/dev/reference/nv_sd.md) now
   default to `dims = NULL`, which reduces over all dimensions and
   returns a scalar, consistent with the other reductions.
+- Supports 1-3d convolutions.
 
 ### Performance
 
