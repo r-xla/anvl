@@ -104,6 +104,9 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_chol.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_clamp.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_concatenate.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_conv1d.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_conv2d.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_conv3d.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_convert.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cos.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cosh.html</loc></url>
@@ -244,6 +247,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_clamp.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_concatenate.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_convert.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_convolution.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cos.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cosh.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cummax.html</loc></url>

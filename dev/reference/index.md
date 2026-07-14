@@ -370,6 +370,17 @@ Linear algebra operations
   [`nv_upper_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md)
   : Upper Triangular Mask
 
+### Convolution
+
+N-dimensional convolution operations
+
+- [`nv_conv1d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv1d.md)
+  : 1D Convolution
+- [`nv_conv2d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv2d.md)
+  : 2D Convolution
+- [`nv_conv3d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv3d.md)
+  : 3D Convolution
+
 ### Logical and Bitwise Operations
 
 Logical and bitwise operations on arrays
@@ -671,6 +682,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Concatenate
 - [`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
   : Primitive Convert
+- [`prim_convolution()`](https://r-xla.github.io/anvl/dev/reference/prim_convolution.md)
+  : Primitive Convolution
 - [`prim_cos()`](https://r-xla.github.io/anvl/dev/reference/prim_cos.md)
   : Primitive Cosine
 - [`prim_cosh()`](https://r-xla.github.io/anvl/dev/reference/prim_cosh.md)
