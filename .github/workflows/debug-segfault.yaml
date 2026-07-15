@@ -1,0 +1,69 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: [debug/faq-segfault]
+
+name: debug-segfault
+
+permissions: read-all
+
+jobs:
+  debug-segfault:
+    runs-on: ubuntu-latest
+    name: debug-segfault
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      PJRT_PLATFORM: cpu
+      PJRT_INSTALL: "1"
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+          extra-repositories: https://r-xla.r-universe.dev https://t-kalinowski.r-universe.dev
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          needs: check
+
+      - name: Install dev versions and anvl
+        run: pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen", "local::."))
+        shell: Rscript {0}
+
+      - name: Enable core dumps
+        run: |
+          sudo sysctl -w kernel.core_pattern="core.%e.%p"
+          sudo apt-get install -y -qq gdb > /dev/null
+          # download the plugin once so later iterations are pure workload
+          Rscript -e 'pjrt::pjrt_client("cpu")'
+
+      - name: Run faq chunk in a loop until it crashes
+        run: |
+          ulimit -c unlimited
+          for i in $(seq 1 12); do
+            echo "=== iteration $i ==="
+            set +e
+            Rscript debug-repro/faq-chunk.R
+            status=$?
+            set -e
+            echo "exit status: $status"
+            if [ $status -ne 0 ]; then
+              echo "=== crash on iteration $i (status $status) ==="
+              core=$(ls core.* 2>/dev/null | head -1)
+              if [ -n "$core" ]; then
+                echo "=== gdb backtrace of $core ==="
+                gdb -batch -ex "set pagination off" -ex "thread apply all bt" \
+                  "$(R RHOME)/bin/exec/R" "$core" || true
+              else
+                echo "no core file found (OOM kill?); dmesg tail:"
+                sudo dmesg | tail -20 || true
+              fi
+              exit 1
+            fi
+          done
+          echo "no crash in 12 iterations"
