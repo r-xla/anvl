@@ -1104,3 +1104,48 @@ prim_eigh[["stablehlo"]] <- function(operand) {
   )
   list(out[[2L]], out[[1L]]) # values, vectors
 }
+
+prim_convolution[["stablehlo"]] <- function(
+  lhs,
+  rhs,
+  input_batch_dimension,
+  input_feature_dimension,
+  input_spatial_dimensions,
+  kernel_input_feature_dimension,
+  kernel_output_feature_dimension,
+  kernel_spatial_dimensions,
+  output_batch_dimension,
+  output_feature_dimension,
+  output_spatial_dimensions,
+  window_strides,
+  padding,
+  lhs_dilation,
+  rhs_dilation,
+  feature_group_count,
+  batch_group_count,
+  precision
+) {
+  shlo_dn <- stablehlo::ConvDimensionNumbers(
+    input_batch_dimension = input_batch_dimension - 1L,
+    input_feature_dimension = input_feature_dimension - 1L,
+    input_spatial_dimensions = input_spatial_dimensions - 1L,
+    kernel_input_feature_dimension = kernel_input_feature_dimension - 1L,
+    kernel_output_feature_dimension = kernel_output_feature_dimension - 1L,
+    kernel_spatial_dimensions = kernel_spatial_dimensions - 1L,
+    output_batch_dimension = output_batch_dimension - 1L,
+    output_feature_dimension = output_feature_dimension - 1L,
+    output_spatial_dimensions = output_spatial_dimensions - 1L
+  )
+  list(hlo_convolution(
+    lhs,
+    rhs,
+    dimension_numbers = shlo_dn,
+    window_strides = window_strides,
+    padding = padding,
+    lhs_dilation = lhs_dilation,
+    rhs_dilation = rhs_dilation,
+    feature_group_count = feature_group_count,
+    batch_group_count = batch_group_count,
+    precision_config = rep(toupper(precision), 2L)
+  ))
+}

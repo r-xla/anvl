@@ -25,10 +25,10 @@
   `AnvlArray` gained a `check` argument that opts into scanning for
   `NA` values during host -> device and device -> host transfers. See
   the "Gotchas" vignette.
-
 * `nv_var()` and `nv_sd()` now default to `dims = NULL`, which reduces
   over all dimensions and returns a scalar, consistent with the other
   reductions.
+* Supports 1-3d convolutions.
 
 ## Performance
 
