@@ -34,7 +34,9 @@ jobs:
           needs: check
 
       - name: Install dev versions and anvl (pjrt from the UAF-fix branch)
-        run: pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt@fix/donated-output-keepalive-uaf", "r-xla/stablehlo", "r-xla/tengen", "local::."))
+        run: |
+          pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen", "local::."))
+          pak::pkg_install("r-xla/pjrt@fix/donated-output-keepalive-uaf")
         shell: Rscript {0}
 
       - name: Enable core dumps
