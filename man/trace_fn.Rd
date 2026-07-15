@@ -50,7 +50,7 @@ vector selects a subset by name. The available passes are:
 \item \code{"remove_unused_constants"}: drop constants not referenced by the graph.
 }
 
-\code{\link[=jit]{jit()}} and \code{\link[=xla]{xla()}} always trace with all passes enabled.}
+\code{\link[=jit]{jit()}} always traces with all passes enabled.}
 }
 \value{
 An \code{\link{AnvlGraph}} containing the traced operations.
