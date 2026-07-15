@@ -27,6 +27,8 @@ jobs:
           use-public-rspm: true
           extra-repositories: https://r-xla.r-universe.dev https://t-kalinowski.r-universe.dev
 
+      - uses: r-lib/actions/setup-pandoc@v2
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           needs: check
@@ -45,10 +47,10 @@ jobs:
       - name: Run faq chunk in a loop until it crashes
         run: |
           ulimit -c unlimited
-          for i in $(seq 1 12); do
+          for i in $(seq 1 25); do
             echo "=== iteration $i ==="
             set +e
-            Rscript debug-repro/faq-chunk.R
+            Rscript -e 'rmarkdown::render("vignettes/faq.Rmd", output_dir = tempdir(), intermediates_dir = tempdir(), quiet = TRUE)'
             status=$?
             set -e
             echo "exit status: $status"
@@ -66,4 +68,4 @@ jobs:
               exit 1
             fi
           done
-          echo "no crash in 12 iterations"
+          echo "no crash in 25 iterations"
