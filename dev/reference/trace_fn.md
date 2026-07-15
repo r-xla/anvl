@@ -85,9 +85,8 @@ trace_fn(
   - `"remove_unused_constants"`: drop constants not referenced by the
     graph.
 
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) and
-  [`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) always
-  trace with all passes enabled.
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) always
+  traces with all passes enabled.
 
 ## Value
 
@@ -99,8 +98,7 @@ containing the traced operations.
 
 [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
 to lower the graph,
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) /
-[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) for
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) for
 end-to-end compilation.
 
 ## Examples

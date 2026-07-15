@@ -573,9 +573,6 @@ Internal data structures and functions
 
 ### Transformations
 
-- [`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) :
-  Ahead-of-time compile a function to XLA
-
 - [`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
   :
 

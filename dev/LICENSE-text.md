@@ -1,4 +1,4 @@
 # License
 
-    YEAR: 2025
-    COPYRIGHT HOLDER: pjrt authors
+    YEAR: 2026
+    COPYRIGHT HOLDER: anvl authors

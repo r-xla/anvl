@@ -10,12 +10,12 @@ Each graph operation is translated to its corresponding StableHLO op. The result
 be serialized to MLIR text via stablehlo::repr() and subsequently compiled to an
 XLA executable with pjrt::pjrt_compile().
 The rules for translating to stablehlo are stored in $rules[["stablehlo"]] of the primitives.
-This is a low-level function; most users should use jit() or xla() instead.'><meta property="og:description" content='Converts a traced AnvlGraph into the StableHLO intermediate representation (IR).
+This is a low-level function; most users should use jit() instead.'><meta property="og:description" content='Converts a traced AnvlGraph into the StableHLO intermediate representation (IR).
 Each graph operation is translated to its corresponding StableHLO op. The result can
 be serialized to MLIR text via stablehlo::repr() and subsequently compiled to an
 XLA executable with pjrt::pjrt_compile().
 The rules for translating to stablehlo are stored in $rules[["stablehlo"]] of the primitives.
-This is a low-level function; most users should use jit() or xla() instead.'><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+This is a low-level function; most users should use jit() instead.'><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -91,7 +91,7 @@ Each graph operation is translated to its corresponding StableHLO op. The result
 be serialized to MLIR text via <code><a href="https://r-xla.github.io/stablehlo/reference/repr.html" class="external-link">stablehlo::repr()</a></code> and subsequently compiled to an
 XLA executable with <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_compile.html" class="external-link">pjrt::pjrt_compile()</a></code>.</p>
 <p>The rules for translating to stablehlo are stored in <code>$rules[["stablehlo"]]</code> of the primitives.</p>
-<p>This is a low-level function; most users should use <code><a href="jit.html">jit()</a></code> or <code><a href="xla.html">xla()</a></code> instead.</p>
+<p>This is a low-level function; most users should use <code><a href="jit.html">jit()</a></code> instead.</p>
     </div>
 
     <div class="section level2">
@@ -175,7 +175,7 @@ allocate. Empty when no phantoms were added.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="trace_fn.html">trace_fn()</a></code>, <code><a href="jit.html">jit()</a></code>, <code><a href="xla.html">xla()</a></code>, <code><a href="current_platform.html">current_platform()</a></code></p></div>
+    <div class="dont-index"><p><code><a href="trace_fn.html">trace_fn()</a></code>, <code><a href="jit.html">jit()</a></code>, <code><a href="current_platform.html">current_platform()</a></code></p></div>
     </div>
 
     <div class="section level2">

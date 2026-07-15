@@ -2,10 +2,7 @@
 
 Wraps a function so that it is traced and compiled on first call.
 Subsequent calls with the same input structure, shapes, and dtypes hit
-an LRU cache and skip recompilation. Unlike
-[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md), the
-compiled executable is not created eagerly but lazily on the first
-invocation.
+an LRU cache and skip recompilation.
 
 ## Usage
 
@@ -146,8 +143,6 @@ for the one-time setup of the roclet in your package.
 
 ## See also
 
-[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) for
-ahead-of-time compilation,
 [`jit_eval()`](https://r-xla.github.io/anvl/dev/reference/jit_eval.md)
 for evaluating an expression once,
 [`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)

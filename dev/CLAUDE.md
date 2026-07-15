@@ -6,8 +6,7 @@
 
 `anvl` is a code transformation framework for R, similar to JAX. It
 provides JIT compilation
-([`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
-[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md)) and
+([`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)) and
 automatic differentiation
 ([`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md),
 [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)).

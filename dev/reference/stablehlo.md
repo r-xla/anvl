@@ -13,8 +13,7 @@ The rules for translating to stablehlo are stored in
 `$rules[["stablehlo"]]` of the primitives.
 
 This is a low-level function; most users should use
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) or
-[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) instead.
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) instead.
 
 ## Usage
 
@@ -109,7 +108,6 @@ A `list` of length 3:
 
 [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md),
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
-[`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md),
 [`current_platform()`](https://r-xla.github.io/anvl/dev/reference/current_platform.md)
 
 ## Examples

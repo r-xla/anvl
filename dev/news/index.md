@@ -2,6 +2,13 @@
 
 ## anvl (development version)
 
+### Breaking changes
+
+- `xla()` has been removed. Use
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) instead:
+  it compiles through the same pipeline, lazily on the first call. Warm
+  a jitted function up by calling it once with representative inputs.
+
 ### Features
 
 - New
@@ -25,9 +32,8 @@
   passes run on the traced graph. `TRUE` runs all passes, `FALSE`
   (default) runs none, and a character vector (e.g.
   `c("inline_scalars", "remove_unused_constants")`) selects a subset.
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) and
-  [`xla()`](https://r-xla.github.io/anvl/dev/reference/xla.md) always
-  trace with all passes enabled.
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) always
+  traces with all passes enabled.
 - New
   [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_dnorm.md)
   computes the normal distribution’s probability density function (or,
