@@ -73,7 +73,7 @@ XLA executable with \code{pjrt::pjrt_compile()}.
 
 The rules for translating to stablehlo are stored in \verb{$rules[["stablehlo"]]} of the primitives.
 
-This is a low-level function; most users should use \code{\link[=jit]{jit()}} or \code{\link[=xla]{xla()}} instead.
+This is a low-level function; most users should use \code{\link[=jit]{jit()}} instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -84,5 +84,5 @@ stablehlo(graph)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}, \code{\link[=xla]{xla()}}, \code{\link[=current_platform]{current_platform()}}
+\code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}, \code{\link[=current_platform]{current_platform()}}
 }

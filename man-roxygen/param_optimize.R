@@ -5,4 +5,4 @@
 #'   * `"inline_scalars"`: replace scalar-shaped constants with inline literals.
 #'   * `"remove_unused_constants"`: drop constants not referenced by the graph.
 #'
-#'   [`jit()`] and [`xla()`] always trace with all passes enabled.
+#'   [`jit()`] always traces with all passes enabled.

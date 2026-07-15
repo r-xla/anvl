@@ -54,8 +54,7 @@ The returned wrapper expects \code{\link{AnvlArray}} inputs and returns
 \description{
 Wraps a function so that it is traced and compiled on first call. Subsequent
 calls with the same input structure, shapes, and dtypes hit an LRU cache and
-skip recompilation. Unlike \code{\link[=xla]{xla()}}, the compiled executable is not created
-eagerly but lazily on the first invocation.
+skip recompilation.
 }
 \section{Device and Backend selection}{
 
@@ -142,6 +141,6 @@ with_backend("quickr", {
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=xla]{xla()}} for ahead-of-time compilation, \code{\link[=jit_eval]{jit_eval()}} for evaluating an expression once,
+\code{\link[=jit_eval]{jit_eval()}} for evaluating an expression once,
 \code{\link[=jit_roclet]{jit_roclet()}} for the \verb{@jit} tag used inside R packages.
 }

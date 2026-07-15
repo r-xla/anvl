@@ -147,7 +147,7 @@ compile_xla <- function(
   # backend and let `check_single_backend()` pass incorrectly.
   check_single_backend(graph, arg_devices, expected = "xla")
 
-  # jit() / xla() always run the full set of graph optimization passes.
+  # jit() always runs the full set of graph optimization passes.
   graph <- optimize_graph(graph, optimize = TRUE)
 
   # if device is NULL, all devices from args_flat and the traced devices must be the same.
@@ -232,95 +232,6 @@ compile_graph_xla <- function(graph, donate = character(), device) {
     device = device(exec),
     phantom_specs = phantom_specs
   )
-}
-
-#' @title Ahead-of-time compile a function to XLA
-#' @description
-#' Compiles a function to an XLA executable via tracing.
-#'
-#' Returns a callable R function that executes the compiled binary.
-#' Unlike [`jit()`], compilation happens eagerly at
-#' definition time rather than on first call, so the input shapes and dtypes must be
-#' specified upfront via abstract arrays (see [`nv_aval()`]).
-#' @details
-#' Traces `f` with the given abstract `args` (via [`trace_fn()`]), lowers the resulting graph
-#' via [`stablehlo()`] and then compiles it to an XLA executable via [`pjrt::pjrt_compile()`].
-#'
-#' @param f (`function`)\cr
-#'   Function to compile. Must accept and return [`AnvlArray`]s.
-#' @param args (`list`)\cr
-#'   List of abstract array specifications (e.g. from [`nv_aval()`]) describing the
-#'   expected shapes and dtypes of `f`'s arguments.
-#' @param donate (`character()`)\cr
-#'   Names of the arguments whose buffers should be donated.
-#' @param device (`character(1)` | `PJRTDevice`)\cr
-#'   Target device such as `"cpu"` (default) or `"cuda"`.
-#' @return (`function`)\cr
-#'   A function that accepts [`AnvlArray`] arguments (matching the flat inputs)
-#'   and returns the result as [`AnvlArray`]s.
-#' @seealso [`jit()`] for lazy compilation, [`compile_xla()`] for the lower-level API.
-#' @export
-#' @examplesIf pjrt::plugins_downloaded()
-#' f_compiled <- xla(function(x, y) x + y,
-#'   args = list(x = nv_aval("f32", c(2, 2)), y = nv_aval("f32", c(2, 2)))
-#' )
-#' a <- nv_matrix(1:4, nrow = 2, dtype = "f32")
-#' b <- nv_matrix(5:8, nrow = 2, dtype = "f32")
-#' f_compiled(a, b)
-xla <- function(f, args, donate = character(), device = NULL) {
-  # FIXME: Also use device inference from trace_fn
-  device <- if (is.null(device)) {
-    default_device("xla")
-  } else {
-    nv_device(device, "xla")
-  }
-  in_tree <- build_tree(args)
-  args_flat <- flatten(args)
-  compiled <- compile_xla(f, args_flat = args_flat, in_tree = in_tree, donate = donate, device = device)
-  exec <- compiled$exec
-  out_tree <- compiled$out_tree
-  const_arrays <- compiled$const_arrays
-  phantom_specs <- compiled$phantom_specs
-  # This path wraps its own outputs (no dispatcher in front of it), and
-  # jit_wrap_outputs() only needs the ambiguity flags.
-  ambiguous_out <- vapply(compiled$out_avals, \(a) a$ambiguous, logical(1))
-  if (!any(ambiguous_out)) {
-    ambiguous_out <- NULL
-  }
-
-  f_xla <- function() {
-    args <- as.list(match.call())[-1L]
-    args <- lapply(args, eval, envir = parent.frame())
-    prep <- jit_prepare_args(args, character(), device = device, backend = "xla")
-    # No dispatcher in front of this path, so validate the inputs here.
-    check_jit_inputs(prep, copy_to_device = !is.null(device))
-    args_unwrapped <- lapply(prep$args_flat, \(a) {
-      if (is_valid_r_lit(a)) {
-        pjrt_scalar(a, device = device)
-      } else if (is_valid_r_array(a)) {
-        pjrt_buffer(a, device = device)
-      } else {
-        pjrt::copy_buffer(a$data, device)
-      }
-    })
-    phantom_bufs <- lapply(phantom_specs, function(spec) {
-      pjrt::pjrt_empty(dtype = spec$dtype, shape = spec$shape, device = device)
-    })
-    out_vals <- rlang::exec(
-      pjrt::pjrt_execute,
-      exec,
-      !!!const_arrays,
-      !!!args_unwrapped,
-      !!!phantom_bufs,
-      simplify = FALSE,
-      # Trusted hot path: inputs were assembled and validated above, so skip
-      # pjrt_execute()'s argument re-validation.
-      check = FALSE
-    )
-    jit_wrap_outputs(out_vals, out_tree, ambiguous_out, "xla")
-  }
-  formals(f_xla) <- formals2(f)
-  f_xla
 }
 
 #' XLA backend

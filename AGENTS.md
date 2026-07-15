@@ -3,7 +3,7 @@
 ## Package Overview
 
 `anvl` is a code transformation framework for R, similar to JAX.
-It provides JIT compilation (`jit()`, `xla()`) and automatic differentiation (`gradient()`, `value_and_gradient()`).
+It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()`, `value_and_gradient()`).
 
 ## Two-Layer API
 
