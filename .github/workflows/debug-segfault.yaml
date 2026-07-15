@@ -39,10 +39,13 @@ jobs:
 
       - name: Enable core dumps
         run: |
-          sudo sysctl -w kernel.core_pattern="core.%e.%p"
+          sudo sysctl -w kernel.core_pattern="/home/runner/work/core.%e.%p"
           sudo apt-get install -y -qq gdb > /dev/null
           # download the plugin once so later iterations are pure workload
           Rscript -e 'pjrt::pjrt_client("cpu")'
+
+      - name: Check whether donated zero-copy memory is reused for outputs (x86)
+        run: Rscript debug-repro/aliasing-probe.R
 
       - name: Run faq chunk in a loop until it crashes
         run: |
@@ -56,7 +59,7 @@ jobs:
             echo "exit status: $status"
             if [ $status -ne 0 ]; then
               echo "=== crash on iteration $i (status $status) ==="
-              core=$(ls core.* 2>/dev/null | head -1)
+              core=$(ls /home/runner/work/core.* 2>/dev/null | head -1)
               if [ -n "$core" ]; then
                 echo "=== gdb backtrace of $core ==="
                 gdb -batch -ex "set pagination off" -ex "thread apply all bt" \
