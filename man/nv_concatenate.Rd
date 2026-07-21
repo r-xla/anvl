@@ -12,6 +12,7 @@ Arrays to concatenate. Must have the same shape except along \code{dimension}.}
 
 \item{dimension}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to concatenate.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.
 If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along dimension 1.}
 }
 \value{

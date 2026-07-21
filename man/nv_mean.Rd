@@ -14,7 +14,8 @@ nv_mean(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 Operand.}
 
 \item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to reduce. If \code{NULL} (default), reduces over all
+Dimensions to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last dimension. If \code{NULL} (default), reduces over all
 dimensions, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr

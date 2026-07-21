@@ -8,6 +8,18 @@
 
 ## Features
 
+* Dimension arguments of the `nv_*` API (`dim`, `dims`, `dimension`,
+  `permutation`) now accept negative values that count from the end, so `-1`
+  refers to the last dimension. This covers `nv_transpose()`,
+  `nv_concatenate()`, `nv_reverse()`, `nv_iota()`, the reductions
+  (`nv_reduce_*()`, `nv_mean()`, `nv_var()`, `nv_sd()`), the cumulative
+  functions, `nv_squeeze()`, `nv_unsqueeze()`, `nv_select()`, `nv_sort()`,
+  `nv_argsort()`, `nv_top_k()`, `nv_quantile()`, `nv_median()`, `nv_argmax()`
+  and `nv_argmin()`. The `prim_*` primitives keep requiring positive
+  dimensions (#396).
+* `nv_reshape()` accepts a single `-1` in `shape`, whose extent is then
+  inferred from the number of elements of the input, e.g.
+  `nv_reshape(x, c(2, -1))` (#396).
 * New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /
   `nv_upper_tri_like()`) return a boolean triangular mask for a given shape,
   mirroring base R's `lower.tri()` / `upper.tri()`. As in base R, the main

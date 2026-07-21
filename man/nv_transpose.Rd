@@ -14,7 +14,8 @@ nv_transpose(operand, permutation = NULL)
 Operand.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
-New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.}
+New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}

@@ -11,7 +11,8 @@ nv_reverse(operand, dims)
 Operand.}
 
 \item{dims}{(\code{integer()})\cr
-Dimensions to reverse.}
+Dimensions to reverse.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 }
 \value{
 \code{\link{arrayish}}\cr

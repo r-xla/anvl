@@ -11,7 +11,9 @@ nv_squeeze(operand, dims = NULL)
 Operand.}
 
 \item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to squeeze. If \code{NULL} (default), all dimensions of size 1 are removed.}
+Dimensions to squeeze. Negative values count from the end, i.e. \code{-1}
+refers to the last dimension.
+If \code{NULL} (default), all dimensions of size 1 are removed.}
 }
 \value{
 \code{\link{arrayish}}\cr

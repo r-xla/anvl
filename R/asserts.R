@@ -27,6 +27,87 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   as.integer(x)
 }
 
+# Normalize possibly-negative dimension indices.
+#
+# Negative values count from the end: `-1` is the last dimension, `-2` the
+# second-to-last. `max_dim` is the largest admissible dimension. It is the rank
+# of the array for most operations, but `rank + 1` for operations that insert a
+# new dimension (e.g. `nv_unsqueeze()`).
+# Returns the resolved (positive) dimensions as an integer vector.
+resolve_dims <- function(dims, max_dim, arg = rlang::caller_arg(dims), unique = FALSE) {
+  if (!test_integerish(dims, any.missing = FALSE, null.ok = FALSE)) {
+    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(dims)}}")
+  }
+  original <- as.integer(dims)
+  resolved <- original
+  negative <- original < 0L
+  resolved[negative] <- max_dim + 1L + resolved[negative]
+  invalid <- resolved < 1L | resolved > max_dim
+  if (any(invalid)) {
+    if (max_dim < 1L) {
+      cli_abort(c(
+        "{.arg {arg}} cannot be used, there is no dimension to select.",
+        x = "Got {.val {original[invalid]}}."
+      ))
+    }
+    cli_abort(c(
+      "{.arg {arg}} must be between 1 and {max_dim}, or between {-max_dim} and -1 to count from the end.",
+      x = "Got {.val {original[invalid]}}."
+    ))
+  }
+  if (unique && anyDuplicated(resolved)) {
+    cli_abort(c(
+      "{.arg {arg}} must not contain duplicate dimensions.",
+      x = "Got {.val {original}}."
+    ))
+  }
+  resolved
+}
+
+# Like `resolve_dims()`, but for a single dimension.
+resolve_dim <- function(dim, max_dim, arg = rlang::caller_arg(dim)) {
+  if (length(dim) != 1L) {
+    cli_abort("{.arg {arg}} must have length 1, not {length(dim)}")
+  }
+  resolve_dims(dim, max_dim, arg = arg)
+}
+
+# Resolve a `-1` placeholder in a reshape target shape by inferring the
+# corresponding extent from the total number of elements `nelts`.
+# Returns the resolved shape as an integer vector.
+resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
+  if (!test_integerish(shape, any.missing = FALSE, null.ok = FALSE)) {
+    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(shape)}}")
+  }
+  shape <- as.integer(shape)
+  invalid <- shape < -1L
+  if (any(invalid)) {
+    cli_abort(c(
+      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer a dimension.",
+      x = "Got {.val {shape[invalid]}}."
+    ))
+  }
+  inferred <- which(shape == -1L)
+  if (length(inferred) == 0L) {
+    return(shape)
+  }
+  if (length(inferred) > 1L) {
+    cli_abort(c(
+      "{.arg {arg}} must contain at most one {.val {-1L}}.",
+      x = "Got {length(inferred)} at positions {.val {inferred}}."
+    ))
+  }
+  known <- prod(shape[-inferred])
+  if (known <= 0 || nelts %% known != 0) {
+    cli_abort(c(
+      "Cannot infer dimension {inferred} of {.arg {arg}}.",
+      x = "{nelts} element{?s} cannot be divided evenly into shape {.val {shape}}."
+    ))
+  }
+  shape[inferred] <- as.integer(nelts / known)
+  shape
+}
+
 # Convert `x` to a DataType via `as_dtype()` and assert it is a floating-point
 # dtype (f32 or f64). Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x)) {

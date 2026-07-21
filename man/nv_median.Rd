@@ -14,7 +14,8 @@ nv_median(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE)
 Operand.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to compute the median. If \code{NULL} (default),
+Dimension along which to compute the median. Negative values count from
+the end, i.e. \code{-1} refers to the last dimension. If \code{NULL} (default),
 uses the last dimension.}
 
 \item{interpolation}{(\code{character(1)})\cr

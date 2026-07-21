@@ -176,6 +176,7 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #' @template param_x_operand
 #' @param permutation (`integer()` | `NULL`)\cr
 #'   New ordering of dimensions. If `NULL` (default), reverses the dimensions.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as `operand` and shape `nv_shape(operand)[permutation]`.
 #' @seealso [prim_transpose()] for the underlying primitive.
