@@ -8,14 +8,14 @@ NULL
 # leaves, the static mask, and the avals the cache key was built from.
 # `device` is the jit's device policy: NULL (infer), a concrete device, or a
 # device_arg() whose value is read from the static args.
-jit_xla_compile_cb <- function(f, donate, device = NULL) {
+jit_pjrt_compile_cb <- function(f, donate, device = NULL) {
   function(info) {
     compile_device <- if (is_device_arg(device)) {
       info$args[[device$argname]]
     } else {
       device
     }
-    compiled <- compile_xla(
+    compiled <- compile_pjrt(
       f,
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
@@ -40,9 +40,9 @@ jit_xla_compile_cb <- function(f, donate, device = NULL) {
 }
 
 # device: NULL | PJRTDdevice | AnvlDeviceArg;
-jit_xla_impl <- function(f, static, cache_size, donate, device) {
+jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   if (!is.null(device) && !is_device_arg(device)) {
-    device <- nv_device(device, "xla")
+    device <- nv_device(device, "pjrt")
   }
 
   # pjrt's native dispatcher is the single cache + dispatch path. With a
@@ -51,13 +51,16 @@ jit_xla_impl <- function(f, static, cache_size, donate, device) {
   # device is the call's device.
   dispatcher <- pjrt::dispatcher(
     cache_size,
-    jit_xla_compile_cb(f, donate, device),
+    jit_pjrt_compile_cb(f, donate, device),
     static = static,
+    # The tag every AnvlArray input must carry and that the dispatcher stamps
+    # on the arrays it returns; it also selects pjrt's native execution engine.
+    backend = "pjrt",
     move_inputs = !is.null(device),
     # Consulted only when a call has no array input to name a device. It reads
     # the default afresh, so a call of literals alone recompiles when the
     # default device changes rather than reusing the old entry.
-    default_device = if (is.null(device)) function() default_device("xla")
+    default_device = if (is.null(device)) function() default_device("pjrt")
   )
   # Hoisted out of the per-call path: `::` resolves via getExportedValue on
   # every evaluation, which costs ~1us per lookup.
@@ -123,7 +126,7 @@ jit_xla_impl <- function(f, static, cache_size, donate, device) {
 #'   - `out_avals`: One `list(dtype, shape, ambiguous)` per output leaf; pjrt's
 #'     dispatcher builds the output wrappers from these.
 #' @keywords internal
-compile_xla <- function(
+compile_pjrt <- function(
   f,
   args_flat,
   in_tree,
@@ -145,7 +148,7 @@ compile_xla <- function(
   # below run: `inline_scalarish_constants()` inlines and drops scalar
   # constants, which would otherwise hide a closed-over constant from a foreign
   # backend and let `check_single_backend()` pass incorrectly.
-  check_single_backend(graph, arg_devices, expected = "xla")
+  check_single_backend(graph, arg_devices, expected = "pjrt")
 
   # jit() always runs the full set of graph optimization passes.
   graph <- optimize_graph(graph, optimize = TRUE)
@@ -163,7 +166,7 @@ compile_xla <- function(
       # Nothing in the graph names a device. pjrt's dispatcher already resolved
       # one and keyed this entry on it, so compile for that exact device; only
       # a caller with no dispatcher in front of it falls back to the default.
-      device <- fallback_device %||% default_device("xla")
+      device <- fallback_device %||% default_device("pjrt")
     } else if (length(unique_devices) > 1L) {
       devices_str <- paste0(vapply(unique_devices, as.character, character(1)), collapse = ", ")
       cli_abort(c(
@@ -178,10 +181,10 @@ compile_xla <- function(
   # Otherwise, everything will be converted to requested device and it does not matter
   # If we found different devices during tracing.
 
-  compile_graph_xla(graph, donate = donate, device = device)
+  compile_graph_pjrt(graph, donate = donate, device = device)
 }
 
-compile_graph_xla <- function(graph, donate = character(), device) {
+compile_graph_pjrt <- function(graph, donate = character(), device) {
   platform_name <- if (is.character(device)) device else platform(device)
   out <- stablehlo(
     graph,
@@ -200,8 +203,8 @@ compile_graph_xla <- function(graph, donate = character(), device) {
     arr <- const$aval$data
     if (backend(arr) == "plain") {
       pjrt_buffer(as_array(arr), dtype = dtype(arr), device = device, shape = shape(arr))
-    } else if (backend(arr) != "xla") {
-      cli_abort("Found non-XLA constant in program")
+    } else if (backend(arr) != "pjrt") {
+      cli_abort("Found non-PJRT constant in program")
     } else {
       # no copy is done if buffer already on correct device
       pjrt::copy_buffer(arr$data, device = device)
@@ -234,15 +237,15 @@ compile_graph_xla <- function(graph, donate = character(), device) {
   )
 }
 
-#' XLA backend
+#' PJRT backend
 #'
-#' Constructs the XLA backend, which stores array data in PJRT buffers (via
+#' Constructs the PJRT backend, which stores array data in PJRT buffers (via
 #' [`pjrt::pjrt_buffer()`]) and compiles jitted functions to XLA executables
 #' via [`stablehlo()`] and [`pjrt::pjrt_compile()`]. This is the default
 #' backend.
 #'
 #' @section Data representation:
-#' An [`AnvlArray`] with `backend = "xla"` wraps a [`pjrt::pjrt_buffer()`]
+#' An [`AnvlArray`] with `backend = "pjrt"` wraps a [`pjrt::pjrt_buffer()`]
 #' stored in the `$data` field. The buffer owns the memory holding the tensor
 #' values and may live on any device supported by PJRT (CPU, CUDA, Metal,
 #' ...). Calling [`as_array()`] transfers the buffer contents back to an R
@@ -257,17 +260,17 @@ compile_graph_xla <- function(graph, donate = character(), device) {
 #' to `"cpu"`), or is inferred from the existing inputs of a jitted call.
 #' Operations require all inputs to live on the same device.
 #'
-#' @section XLA JIT arguments:
+#' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose
 #'   underlying buffers may be donated to (i.e., reused/consumed by) the
 #'   compiled XLA executable. Donated buffers must not be used again by the
 #'   caller after the call; this can reduce memory usage and copies for large
 #'   inputs. Must not overlap with `static`.
 #'
-#' @return An [`AnvlBackend`] object with subclass `"AnvlBackendXla"`.
+#' @return An [`AnvlBackend`] object with subclass `"AnvlBackendPjrt"`.
 #' @seealso [`AnvlBackend()`], [`AnvlBackendQuickr()`], [`local_backend()`], [`jit()`].
 #' @export
-AnvlBackendXla <- function() {
+AnvlBackendPjrt <- function() {
   backend <- AnvlBackend(
     # The dtype/shape/device of a PJRT buffer are immutable, so we resolve them
     # once here and cache them on the AnvlArray (as the plain/quickr backends
@@ -283,7 +286,7 @@ AnvlBackendXla <- function() {
           shape = tengen::shape(buf),
           device = device(buf),
           ambiguous = ambiguous,
-          backend = "xla"
+          backend = "pjrt"
         ),
         class = "AnvlArray"
       )
@@ -297,7 +300,7 @@ AnvlBackendXla <- function() {
           shape = tengen::shape(buf),
           device = device(buf),
           ambiguous = ambiguous,
-          backend = "xla"
+          backend = "pjrt"
         ),
         class = "AnvlArray"
       )
@@ -318,12 +321,10 @@ AnvlBackendXla <- function() {
       if (length(common)) {
         cli_abort("{.val {common}} cannot be both in {.arg donate} and {.arg static}.")
       }
-      jit_xla_impl(f, static, cache_size, donate, device)
+      jit_pjrt_impl(f, static, cache_size, donate, device)
     },
     await_data = function(x) pjrt::await(x$data)
   )
-  class(backend) <- c("AnvlBackendXla", class(backend))
+  class(backend) <- c("AnvlBackendPjrt", class(backend))
   backend
 }
-
-register_backend("xla", AnvlBackendXla())

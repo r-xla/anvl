@@ -35,7 +35,7 @@ print.QuickrDevice <- function(x, ...) {
 
 # The native-dispatch compile callback: traces and quickr-compiles on a cache
 # miss and hands the dispatcher the compiled R closure. Reached only for inputs
-# the dispatcher has already validated (see jit_xla_compile_cb).
+# the dispatcher has already validated (see jit_pjrt_compile_cb).
 jit_quickr_compile_cb <- function(f, unwrap) {
   function(info) {
     compiled <- compile_quickr(
@@ -57,7 +57,7 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
     jit_quickr_compile_cb(f, unwrap),
     static = static,
     backend = "quickr",
-    # The dispatcher reads a non-xla leaf's metadata through this, via the
+    # The dispatcher reads a non-pjrt leaf's metadata through this, via the
     # backend's accessor generics -- so an AnvlArray need only carry $data, per
     # the AnvlBackend contract, not store dtype/shape/device as fields.
     extractor = function(leaf) {
@@ -130,7 +130,7 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #' * Compilation (tracing + quickr lowering) is somewhat slow, so it is best
 #'   suited to long-running or repeatedly-called functions where the one-time
 #'   compilation cost is amortized.
-#' * Only a subset of the primitives that the XLA backend supports are currently
+#' * Only a subset of the primitives that the PJRT backend supports are currently
 #'   lowered to quickr code. See `vignette("primitives")` for an overview.
 #' * Only the data types `f64`, `i32`, and `bool` are supported.
 #' * Only CPU execution is supported.
@@ -143,7 +143,7 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #'   would only get stripped again.
 #'
 #' @return An [`AnvlBackend`] object with subclass `"AnvlBackendQuickr"`.
-#' @seealso [`AnvlBackend()`], [`AnvlBackendXla()`], [`local_backend()`], [`jit()`].
+#' @seealso [`AnvlBackend()`], [`AnvlBackendPjrt()`], [`local_backend()`], [`jit()`].
 #' @export
 AnvlBackendQuickr <- function() {
   backend <- AnvlBackend(
@@ -253,5 +253,3 @@ AnvlBackendQuickr <- function() {
   class(backend) <- c("AnvlBackendQuickr", class(backend))
   backend
 }
-
-register_backend("quickr", AnvlBackendQuickr())

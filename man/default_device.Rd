@@ -15,7 +15,7 @@ A backend-specific device object.
 }
 \description{
 Returns a device object for the default backend and platform.
-For the \code{"xla"} backend, the platform is determined by the \code{PJRT_PLATFORM}
+For the \code{"pjrt"} backend, the platform is determined by the \code{PJRT_PLATFORM}
 environment variable (defaulting to \code{"cpu"}). Other backends (e.g. \code{"quickr"})
 only support CPU. The backend defaults to \code{\link[=default_backend]{default_backend()}}.
 }

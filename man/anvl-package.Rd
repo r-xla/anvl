@@ -10,6 +10,39 @@
 
 Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
 }
+\section{Options}{
+
+\itemize{
+\item \code{anvl.backends} (\code{character()}, default \code{"pjrt"}): the backends anvl
+activates. Known backends are \code{"pjrt"} and \code{"quickr"}. This option is read
+\strong{once, when the anvl namespace is loaded}; setting it afterwards has no
+effect, so set it before \code{library(anvl)} (e.g. in your \code{.Rprofile}):
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{options(anvl.backends = c("pjrt", "quickr"))
+library(anvl)
+}\if{html}{\out{</div>}}
+
+Requesting a backend that is not active (via \code{\link[=jit]{jit()}}, \code{\link[=local_backend]{local_backend()}},
+\code{\link[=nv_array]{nv_array()}}, ...) is an error. The initial value of
+\code{anvl.default_backend} is derived from this option: the single active
+backend, or \code{"auto"} when several are active.
+\item \code{anvl.default_backend} (\code{character(1)}): the backend used when none is
+given explicitly, see \code{\link[=default_backend]{default_backend()}}. Change it for a scope with
+\code{\link[=local_backend]{local_backend()}} or \code{\link[=with_backend]{with_backend()}}. With the value \code{"auto"},
+\code{\link[=jit]{jit()}} picks the backend from its inputs and eager constructors that
+have neither an array nor a device to infer from use the first entry of
+\code{anvl.backends}.
+}
+}
+
+\section{Environment Variables}{
+
+\itemize{
+\item \code{PJRT_PLATFORM}: the platform \code{\link[=default_device]{default_device()}} uses for the \code{"pjrt"}
+backend (e.g. \code{"cpu"}, \code{"cuda"}). Defaults to \code{"cpu"}.
+}
+}
+
 \section{Third-Party Licenses}{
 
 The \code{anvl} package itself is MIT-licensed. The CUDA backend dynamically

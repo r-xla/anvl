@@ -168,7 +168,8 @@ nv_unserialize <- function(con, device = NULL, backend = default_backend()) {
     NULL
   }
 
-  backend <- assert_backend(backend)
+  backend <- resolve_eager_backend(backend)
+  assert_backend(backend)
   result_wrapped <- lapply(names(result), function(name) {
     buf <- result[[name]]
     is_ambiguous <- if (!is.null(ambiguity_info) && !is.null(ambiguity_info[[name]])) {
@@ -176,8 +177,8 @@ nv_unserialize <- function(con, device = NULL, backend = default_backend()) {
     } else {
       FALSE
     }
-    if (backend == "xla") {
-      nv_array(buf, ambiguous = is_ambiguous, backend = "xla")
+    if (backend == "pjrt") {
+      nv_array(buf, ambiguous = is_ambiguous, backend = "pjrt")
     } else {
       nv_array(
         tengen::as_array(buf),
