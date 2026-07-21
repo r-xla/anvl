@@ -473,6 +473,37 @@ describe("boolean masks", {
     expect_equal(as_array(x[m1, m2]), r_arr[as.vector(m1), as.vector(m2), drop = FALSE])
   })
 
+  it("2D: mask combines with a range", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    m <- arr(TRUE, FALSE, TRUE)
+    expect_equal(as_array(x[m, 2:3]), r_arr[as.vector(m), 2:3, drop = FALSE])
+  })
+
+  it("3D: masks in all three dimensions", {
+    r_arr <- array(1:24, dim = c(2L, 3L, 4L))
+    x <- nv_array(r_arr)
+    m1 <- arr(TRUE, FALSE)
+    m2 <- arr(FALSE, TRUE, TRUE)
+    m3 <- arr(TRUE, FALSE, FALSE, TRUE)
+    expect_equal(
+      as_array(x[m1, m2, m3]),
+      r_arr[as.vector(m1), as.vector(m2), as.vector(m3), drop = FALSE]
+    )
+  })
+
+  it("subset_assign with masks on both dimensions", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    m1 <- arr(TRUE, FALSE, TRUE)
+    m2 <- arr(FALSE, TRUE, TRUE, FALSE)
+    r_expected <- r_arr
+    r_expected[as.vector(m1), as.vector(m2)] <- array(101:104, dim = c(2L, 2L))
+
+    x <- nv_array(r_arr)
+    x[m1, m2] <- nv_array(101:104, shape = c(2L, 2L))
+    expect_equal(as_array(x), r_expected)
+  })
+
   it("2D: mask combines with other subset kinds", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
@@ -536,6 +567,17 @@ describe("boolean masks from arrays", {
     expect_error(
       f(nv_array(array(1:12, dim = c(3L, 4L))), nv_array(arr(TRUE, FALSE, TRUE))),
       "only supported in eager mode"
+    )
+  })
+
+  it("2D: anvl masks in both dimensions", {
+    r_arr <- array(1:12, dim = c(3L, 4L))
+    x <- nv_array(r_arr)
+    row_mask <- nv_reduce_sum(x, dims = 2L) > 20L
+    col_mask <- nv_reduce_sum(x, dims = 1L) > 10L
+    expect_equal(
+      as_array(x[row_mask, col_mask]),
+      r_arr[rowSums(r_arr) > 20L, colSums(r_arr) > 10L, drop = FALSE]
     )
   })
 
@@ -612,6 +654,11 @@ describe("whole-array boolean masks", {
     x <- nv_array(r_arr)
     x[x > 6L] <- 0L
     expect_equal(as_array(x), r_expected)
+  })
+
+  it("errors when a whole-array mask is combined with another subscript", {
+    x <- nv_array(array(1:12, dim = c(3L, 4L)))
+    expect_error(x[x > 6L, 1L], "must be 1D, but got 2D")
   })
 
   it("subset_assign errors when the update length does not match", {
