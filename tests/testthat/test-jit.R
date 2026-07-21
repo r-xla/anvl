@@ -549,3 +549,63 @@ test_that("cache hit when using PJRTDevice", {
   f(dev = dev1)
   expect_equal(cache_size(f), 1L)
 })
+
+test_that("static arguments with reference semantics are rejected", {
+  e <- new.env()
+  e$flag <- TRUE
+
+  f <- jit(function(e, x) if (e$flag) x else -x, static = "e")
+  expect_error(f(e, nv_array(1)), "reference semantics")
+
+  # A reference class object is an environment underneath (so is an R6 object).
+  gen <- methods::setRefClass("StaticRefCls", fields = list(flag = "logical"))
+  g <- jit(function(o, x) if (o$flag) x else -x, static = "o")
+  expect_error(g(gen$new(flag = TRUE), nv_array(1)), "reference semantics")
+
+  # External pointer.
+  h <- jit(function(p, x) x + 1, static = "p")
+  expect_error(h(pjrt::pjrt_scalar(1), nv_array(1)), "reference semantics")
+
+  # pjrt flattens a static list into one cache-key leaf per element, so an
+  # environment nested in one goes stale just like a bare one.
+  k <- jit(function(s, x) if (s$e$flag) x else -x, static = "s")
+  expect_error(k(list(e = e), nv_array(1)), "reference semantics")
+  # Also below a classed list and behind an unnamed element.
+  expect_error(k(structure(list(e = e), class = "cfg"), nv_array(1)), "reference semantics")
+  l <- jit(function(s, x) x + 1, static = "s")
+  expect_error(l(list(1, e), nv_array(1)), "reference semantics")
+})
+
+test_that("static arguments with reference semantics are rejected (quickr)", {
+  skip_if_no_quickr()
+  local_backend("quickr")
+
+  e <- new.env()
+  e$flag <- TRUE
+  f <- jit(function(e, x) if (e$flag) x else -x, static = "e")
+  expect_error(f(e, nv_array(1)), "reference semantics")
+})
+
+test_that("static arguments without reference semantics are accepted", {
+  # A function: keyed on its formals, body and environment.
+  f <- jit(function(fn, x) fn(x), static = "fn")
+  expect_equal(f(function(z) z + 1, nv_array(1)), nv_array(2))
+  expect_equal(f(function(z) z * 3, nv_array(2)), nv_array(6))
+
+  # A device is an external pointer, but an immutable interned one.
+  g <- jit(function(dev) nv_scalar(1, device = dev), static = "dev")
+  expect_equal(device(g(nv_device("cpu", "xla"))), nv_device("cpu", "xla"))
+
+  # A plain list of values, and a formula (whose `.Environment` attribute is
+  # metadata, not a value the trace reads).
+  h <- jit(function(s, x) if (s$flag) x else -x, static = "s")
+  expect_equal(h(list(flag = FALSE), nv_array(1)), nv_array(-1))
+  k <- jit(function(s, x) x + 1, static = "s")
+  expect_equal(k(y ~ x, nv_array(1)), nv_array(2))
+})
+
+test_that("rejecting a reference-semantics static names it helpfully", {
+  e <- new.env()
+  f <- jit(function(s, x) x + 1, static = "s")
+  expect_snapshot(f(list(a = 1, opts = list(env = e)), nv_array(1)), error = TRUE)
+})

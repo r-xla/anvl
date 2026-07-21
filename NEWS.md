@@ -59,6 +59,13 @@
 * `nv_diag()` now errors on non-1-D input instead of silently producing an
   incorrect result.
 
+* `jit()` now rejects static arguments with reference semantics -- an
+  environment (and therefore also an R6 or reference class object) or an
+  external pointer, including one nested inside a static list (#17).
+  Such a value can be mutated in place while the compilation cache key stays
+  equal, which silently reused a program compiled from its old contents.
+  Functions and device objects remain valid static values.
+
 
 # anvl 0.3.0
 
