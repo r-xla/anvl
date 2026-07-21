@@ -35,7 +35,7 @@ test_that("shape_abstract", {
 
 describe("gather_clamp_indices", {
   it("clamps indices that exceed upper bound (implicit index vector)", {
-    # operand dim=10, slice_size=3, so max valid start = 10-3+1 = 8
+    # gather operand dim=10, slice_size=3, so max valid start = 10-3+1 = 8
     idx <- nv_array(c(9L, 10L, 5L), dtype = "i32")
     result <- gather_clamp_indices(
       start_indices = idx,
@@ -72,7 +72,7 @@ describe("gather_clamp_indices", {
   })
 
   it("clamps with explicit index vector dim (multiple coordinates)", {
-    # Shape [2]: two coordinates, one per operand dim
+    # Shape [2]: two coordinates, one per gather operand dim
     # operand_shape = c(5, 8), slice_sizes = c(2, 3)
     # max for dim1 = 5-2+1 = 4, max for dim2 = 8-3+1 = 6
     idx <- nv_array(c(10L, 10L), dtype = "i32")

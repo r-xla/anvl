@@ -4,15 +4,15 @@
 \alias{nv_top_k}
 \title{Top-K Elements}
 \usage{
-nv_top_k(operand, k, dim = NULL, with_indices = FALSE)
+nv_top_k(x, k, dim = NULL, with_indices = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements to return. Must satisfy
-\verb{1 <= k <= shape(operand)[dim]}.}
+\verb{1 <= k <= shape(x)[dim]}.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to take the top \code{k}. If \code{NULL} (default),
@@ -25,7 +25,7 @@ returns \code{list(values = ..., indices = ...)} where \code{indices} is the
 }
 \value{
 \code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
-arrays (when \code{with_indices = TRUE}). Output shape matches \code{operand} with
+arrays (when \code{with_indices = TRUE}). Output shape matches \code{x} with
 \code{dim} resized to \code{k}; values are sorted decreasing along \code{dim}.
 }
 \description{

@@ -5,7 +5,7 @@
 \title{Primitive Gather}
 \usage{
 prim_gather(
-  operand,
+  x,
   start_indices,
   slice_sizes,
   offset_dims,
@@ -19,30 +19,30 @@ prim_gather(
 )
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of starting indices. Contains index vectors that map to
-positions in \code{operand} via \code{start_index_map}. The dimension
+positions in \code{x} via \code{start_index_map}. The dimension
 specified by \code{index_vector_dim} holds the index vectors.}
 
 \item{slice_sizes}{(\code{integer()})\cr
-Size of the slice to gather from \code{operand} in each dimension.
-Must have length equal to \code{ndims(operand)}.}
+Size of the slice to gather from \code{x} in each dimension.
+Must have length equal to \code{ndims(x)}.}
 
 \item{offset_dims}{(\code{integer()})\cr
 Dimensions in the output that correspond to the non-collapsed
-slice dimensions of \code{operand}.}
+slice dimensions of \code{x}.}
 
 \item{collapsed_slice_dims}{(\code{integer()})\cr
-Dimensions of \code{operand} that are collapsed (removed) from the
+Dimensions of \code{x} that are collapsed (removed) from the
 slice. The corresponding entries in \code{slice_sizes} must be \code{1}.
 Together with \code{offset_dims} and \code{operand_batching_dims}, these
-must account for all dimensions of \code{operand}.}
+must account for all dimensions of \code{x}.}
 
 \item{operand_batching_dims}{(\code{integer()})\cr
-Dimensions of \code{operand} that are batch dimensions.
+Dimensions of \code{x} that are batch dimensions.
 Use \code{integer(0)} when there are no batch dimensions.}
 
 \item{start_indices_batching_dims}{(\code{integer()})\cr
@@ -50,9 +50,9 @@ Dimensions of \code{start_indices} that correspond to batch
 dimensions. Must have the same length as \code{operand_batching_dims}.}
 
 \item{start_index_map}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{operand}
+Maps each component of the index vector to an \code{x}
 dimension. For example, \code{start_index_map = c(1L)} means each
-index vector indexes into the first dimension of \code{operand}.}
+index vector indexes into the first dimension of \code{x}.}
 
 \item{index_vector_dim}{(\code{integer(1)})\cr
 Dimension of \code{start_indices} that contains the index vectors.
@@ -71,15 +71,15 @@ behavior if the indices are not actually unique. Default \code{FALSE}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand}. The output shape is composed
+Has the same data type as \code{x}. The output shape is composed
 of the offset dimensions (from the slice) and the remaining
 dimensions from \code{start_indices}. See the underluing stableHLO function
 for more details.
 }
 \description{
-Gathers slices from the \code{operand} array at positions specified by
+Gathers slices from the \code{x} array at positions specified by
 \code{start_indices}. Each index vector in \code{start_indices} identifies a
-starting position in \code{operand}, and a slice of size \code{slice_sizes} is
+starting position in \code{x}, and a slice of size \code{slice_sizes} is
 extracted from that position. The gathered slices are assembled into
 the output array.
 
@@ -90,7 +90,7 @@ given indices.
 \section{Out Of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
-\code{clamp(1, start_index, nv_shape(operand) - slice_sizes + 1)}.
+\code{clamp(1, start_index, nv_shape(x) - slice_sizes + 1)}.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.
 }
@@ -112,10 +112,10 @@ Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Gather rows 1 and 3 from a 3x3 matrix
-operand <- nv_matrix(1:9, nrow = 3)
+x <- nv_matrix(1:9, nrow = 3)
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(
-  operand, indices,
+  x, indices,
   slice_sizes = c(1L, 3L),
   offset_dims = 2L,
   collapsed_slice_dims = 1L,

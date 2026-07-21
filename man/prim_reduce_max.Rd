@@ -4,10 +4,10 @@
 \alias{prim_reduce_max}
 \title{Primitive Max Reduction}
 \usage{
-prim_reduce_max(operand, dims, drop = TRUE)
+prim_reduce_max(x, dims, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dims}{(\code{integer()})\cr
@@ -21,8 +21,8 @@ If \code{FALSE}, the reduced dimensions are set to 1.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input.
-When \code{drop = TRUE}, the shape is that of \code{operand} with \code{dims} removed.
-When \code{drop = FALSE}, the shape is that of \code{operand} with \code{dims} set to 1.
+When \code{drop = TRUE}, the shape is that of \code{x} with \code{dims} removed.
+When \code{drop = FALSE}, the shape is that of \code{x} with \code{dims} set to 1.
 It is ambiguous if the input is ambiguous.
 }
 \description{

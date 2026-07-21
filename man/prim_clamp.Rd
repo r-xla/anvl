@@ -4,26 +4,26 @@
 \alias{prim_clamp}
 \title{Primitive Clamp}
 \usage{
-prim_clamp(min_val, operand, max_val)
+prim_clamp(min_val, x, max_val)
 }
 \arguments{
 \item{min_val}{(\code{\link{arrayish}})\cr
-Minimum value. Must be scalar or the same shape as \code{operand}.}
+Minimum value. Must be scalar or the same shape as \code{x}.}
 
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{max_val}{(\code{\link{arrayish}})\cr
-Maximum value. Must be scalar or the same shape as \code{operand}.}
+Maximum value. Must be scalar or the same shape as \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type and shape as \code{operand}.
+Has the same data type and shape as \code{x}.
 It is ambiguous if the input is ambiguous.
 }
 \description{
-Clamps every element of \code{operand} to the range \verb{[min_val, max_val]},
-i.e. \code{max(min_val, min(operand, max_val))}.
+Clamps every element of \code{x} to the range \verb{[min_val, max_val]},
+i.e. \code{max(min_val, min(x, max_val))}.
 }
 \section{Implemented Rules}{
 

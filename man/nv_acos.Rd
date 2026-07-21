@@ -4,11 +4,11 @@
 \alias{nv_acos}
 \title{Arc Cosine}
 \usage{
-nv_acos(operand)
+nv_acos(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

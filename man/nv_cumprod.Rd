@@ -4,11 +4,11 @@
 \alias{nv_cumprod}
 \title{Cumulative Product}
 \usage{
-nv_cumprod(operand, dim = NULL, nan_rm = FALSE)
+nv_cumprod(x, dim = NULL, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to accumulate. If \code{NULL} (default), the input

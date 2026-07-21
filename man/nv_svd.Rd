@@ -4,10 +4,10 @@
 \alias{nv_svd}
 \title{Singular Value Decomposition}
 \usage{
-nv_svd(operand)
+nv_svd(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Matrix of data type floating-point with exactly 2 dimensions.}
 }
 \value{
@@ -17,7 +17,7 @@ the input.
 }
 \description{
 Computes the reduced ("economy") singular value decomposition of a
-matrix \code{operand} of shape \verb{(m, n)}:
+matrix \code{x} of shape \verb{(m, n)}:
 \deqn{A = u \, \mathrm{diag}(d) \, vt,}
 where \code{u} has orthonormal columns, \code{vt} has orthonormal rows, and \code{d}
 is the length-\code{k} (\code{k = min(m, n)}) vector of non-negative singular

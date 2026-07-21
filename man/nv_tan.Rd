@@ -4,11 +4,11 @@
 \alias{nv_tan}
 \title{Tangent}
 \usage{
-nv_tan(operand)
+nv_tan(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

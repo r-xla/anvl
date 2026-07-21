@@ -4,18 +4,18 @@
 \alias{nv_unsqueeze}
 \title{Unsqueeze}
 \usage{
-nv_unsqueeze(operand, dim)
+nv_unsqueeze(x, dim)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dim}{(\code{integer(1)})\cr
 Position at which to insert the new dimension.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand} with an extra dimension of size 1.
+Has the same data type as \code{x} with an extra dimension of size 1.
 }
 \description{
 Inserts a dimension of size 1 at the specified position.

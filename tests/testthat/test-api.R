@@ -81,7 +81,7 @@ test_that("promote to common", {
   )
 })
 
-test_that("nv_clamp converts min and max to operand dtype", {
+test_that("nv_clamp converts min and max to the input dtype", {
   expect_equal(
     nv_clamp(nv_scalar(0L), nv_array(c(-1, 0.5, 2), dtype = "f32"), nv_scalar(1L)),
     nv_array(c(0, 0.5, 1), dtype = "f32")
@@ -179,7 +179,7 @@ describe("nv_rbind", {
     )
   })
 
-  it("treats 1-D operand as a row when mixed with a matrix", {
+  it("treats a 1-D input as a row when mixed with a matrix", {
     a <- matrix(1:6, nrow = 2)
     v <- c(7, 8, 9)
     expect_equal(
@@ -272,7 +272,7 @@ describe("nv_cbind", {
     )
   })
 
-  it("treats 1-D operand as a column when mixed with a matrix", {
+  it("treats a 1-D input as a column when mixed with a matrix", {
     a <- matrix(1:6, nrow = 3)
     v <- c(7, 8, 9)
     expect_equal(
@@ -964,7 +964,7 @@ describe("nv_triu", {
 })
 
 describe("nv_tril with quickr backend", {
-  it("works when operand is quickr", {
+  it("works when the input is quickr", {
     skip_if_no_quickr()
     x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
     result <- nv_tril(x)
@@ -974,7 +974,7 @@ describe("nv_tril with quickr backend", {
 })
 
 describe("nv_triu with quickr backend", {
-  it("works when operand is quickr", {
+  it("works when the input is quickr", {
     skip_if_no_quickr()
     x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
     result <- nv_triu(x)

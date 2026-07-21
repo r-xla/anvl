@@ -114,7 +114,6 @@ Summary.AnvlArray <- function(x, ..., na.rm = FALSE) {
 Summary.AnvlBox <- Summary.AnvlArray
 
 #' @rdname nv_mean
-#' @template param_x_operand
 #' @param trim Currently not supported.
 #' @param na.rm Forwarded to [nv_mean()]'s `nan_rm` argument.
 #' @param ... No additional arguments.
@@ -132,7 +131,6 @@ mean.AnvlArray <- function(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = 
 mean.AnvlBox <- mean.AnvlArray
 
 #' @rdname nv_is_nan
-#' @template param_x_operand
 #' @method is.nan AnvlArray
 #' @export
 is.nan.AnvlArray <- function(x) {
@@ -144,7 +142,6 @@ is.nan.AnvlArray <- function(x) {
 is.nan.AnvlBox <- is.nan.AnvlArray
 
 #' @rdname nv_is_infinite
-#' @template param_x_operand
 #' @method is.infinite AnvlArray
 #' @export
 is.infinite.AnvlArray <- function(x) {
@@ -156,7 +153,6 @@ is.infinite.AnvlArray <- function(x) {
 is.infinite.AnvlBox <- is.infinite.AnvlArray
 
 #' @rdname nv_is_finite
-#' @template param_x_operand
 #' @method is.finite AnvlArray
 #' @export
 is.finite.AnvlArray <- function(x) {
@@ -173,11 +169,10 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #' @name nv_transpose
 #' @description
 #' Permutes the dimensions of an array. You can also use `t()` for matrices.
-#' @template param_x_operand
 #' @param permutation (`integer()` | `NULL`)\cr
 #'   New ordering of dimensions. If `NULL` (default), reverses the dimensions.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as `operand` and shape `nv_shape(operand)[permutation]`.
+#'   Has the same data type as `x` and shape `nv_shape(x)[permutation]`.
 #' @seealso [prim_transpose()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -197,7 +192,6 @@ t.AnvlArray <- function(x) {
 t.AnvlBox <- t.AnvlArray
 
 #' @rdname nv_median
-#' @template param_x_operand
 #' @param na.rm Forwarded to [nv_median()]'s `nan_rm` argument.
 #' @param ... No additional arguments.
 #' @method median AnvlArray
@@ -212,7 +206,6 @@ median.AnvlArray <- function(x, na.rm = FALSE, ..., dim = NULL, interpolation = 
 median.AnvlBox <- median.AnvlArray
 
 #' @rdname nv_sort
-#' @template param_x_operand
 #' @param decreasing (`logical(1)`)\cr If `TRUE`, sort in decreasing order.
 #' @param ... No additional arguments.
 #' @method sort AnvlArray
@@ -226,7 +219,6 @@ sort.AnvlArray <- function(x, decreasing = FALSE, ..., dim = NULL) {
 sort.AnvlBox <- sort.AnvlArray
 
 #' @rdname nv_subset
-#' @template param_x_operand
 #' @method [ AnvlArray
 #' @export
 `[.AnvlArray` <- function(x, ...) {
@@ -246,7 +238,6 @@ sort.AnvlBox <- sort.AnvlArray
 `[.AnvlBox` <- `[.AnvlArray`
 
 #' @rdname nv_subset_assign
-#' @template param_x_operand
 #' @method [<- AnvlArray
 #' @export
 `[<-.AnvlArray` <- function(x, ..., value) {
@@ -348,7 +339,6 @@ solve.AnvlArray <- function(a, b, ...) {
 solve.AnvlBox <- solve.AnvlArray
 
 #' @rdname nv_qr
-#' @template param_x_operand
 #' @param ... No additional arguments.
 #' @method qr AnvlArray
 #' @export
@@ -361,7 +351,6 @@ qr.AnvlArray <- function(x, ...) {
 qr.AnvlBox <- qr.AnvlArray
 
 #' @rdname nv_chol
-#' @template param_x_operand
 #' @param lower (`logical(1)`)\cr If `TRUE`, return the lower-triangular factor.
 #' @param ... No additional arguments.
 #' @method chol AnvlArray
@@ -375,7 +364,6 @@ chol.AnvlArray <- function(x, ..., lower = FALSE) {
 chol.AnvlBox <- chol.AnvlArray
 
 #' @rdname nv_determinant
-#' @template param_x_operand
 #' @param logarithm (`logical(1)`)\cr If `TRUE` (default), return the log
 #'   of the absolute determinant.
 #' @param ... No additional arguments.

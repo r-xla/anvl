@@ -635,7 +635,7 @@ describe("prim_svd", {
   })
 
   # On CUDA this exercises the layout-flip path in prim_svd[["stablehlo"]]
-  # (transposed = TRUE + row-major operand / U / Vt layouts), which the
+  # (transposed = TRUE + row-major x / U / Vt layouts), which the
   # cuSOLVER FFI handler resolves by swapping m / n and the U / Vt slots.
   it("decomposes a wide matrix", {
     A <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 2L, dtype = "f64")
@@ -736,7 +736,7 @@ test_that("prim_gather", {
   x <- nv_array(c(10L, 20L, 30L, 40L, 50L), dtype = "i32")
   indices <- nv_array(c(1L, 3L, 5L), dtype = "i64", shape = c(3, 1))
   out <- prim_gather(
-    operand = x,
+    x = x,
     start_indices = indices,
     slice_sizes = c(1L),
     offset_dims = integer(),
@@ -880,7 +880,7 @@ describe("prim_top_k", {
     expect_equal(as.vector(out[[2L]]), c(2L, 3L))
   })
 
-  it("preserves operand dtype on values output", {
+  it("preserves the input dtype on values output", {
     out <- prim_top_k(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), k = 2L)
     expect_equal(as.character(dtype(out[[1L]])), "i32")
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
@@ -917,7 +917,7 @@ describe("prim_argmax", {
     expect_equal(as.character(dtype(out)), "i32")
   })
 
-  it("works with integer operand", {
+  it("works with integer input", {
     out <- prim_argmax(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), dim = 1L)
     expect_equal(as_array(out), 3L)
   })

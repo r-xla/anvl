@@ -4,10 +4,10 @@
 \alias{prim_sqrt}
 \title{Primitive Square Root}
 \usage{
-prim_sqrt(operand)
+prim_sqrt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

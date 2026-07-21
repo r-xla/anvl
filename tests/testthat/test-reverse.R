@@ -262,13 +262,13 @@ test_that("wrt for nested non-array input: value_and_gradient", {
 
 test_that("can only compute gradient w.r.t. float arrays", {
   expect_snapshot(error = TRUE, {
-    gradient(nv_floor, wrt = "operand")(nv_scalar(1L))
+    gradient(nv_floor, wrt = "x")(nv_scalar(1L))
   })
 })
 
 test_that("wrt arg passed as plain R literal errors clearly", {
   expect_snapshot(error = TRUE, {
-    jit(function() gradient(nv_log, wrt = "operand")(1))()
+    jit(function() gradient(nv_log, wrt = "x")(1))()
   })
   expect_snapshot(error = TRUE, {
     jit(function() gradient(function(x, y) prim_add(x, y))(1, 2))()

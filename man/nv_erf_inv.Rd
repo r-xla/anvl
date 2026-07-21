@@ -4,11 +4,11 @@
 \alias{nv_erf_inv}
 \title{Inverse Error Function}
 \usage{
-nv_erf_inv(operand)
+nv_erf_inv(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

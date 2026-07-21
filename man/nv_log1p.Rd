@@ -4,11 +4,11 @@
 \alias{nv_log1p}
 \title{Log Plus One}
 \usage{
-nv_log1p(operand)
+nv_log1p(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

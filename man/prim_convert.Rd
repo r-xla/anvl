@@ -4,10 +4,10 @@
 \alias{prim_convert}
 \title{Primitive Convert}
 \usage{
-prim_convert(operand, dtype, ambiguous = FALSE)
+prim_convert(x, dtype, ambiguous = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
@@ -20,7 +20,7 @@ See the \code{vignette("type-promotion")} for more details.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the given \code{dtype} and the same shape as \code{operand}.
+Has the given \code{dtype} and the same shape as \code{x}.
 Ambiguity is controlled by the \code{ambiguous} parameter.
 }
 \description{

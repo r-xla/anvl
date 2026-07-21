@@ -20,7 +20,7 @@ Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with 
 
 Use templates from `man-roxygen/` where applicable:
 
-- **Unary ops:** `@template param_prim_operand_any` (or `_float`, `_signed_numeric`)
+- **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
 - **Binary ops:** `@template params_prim_lhs_rhs_any` (or `_numeric`, `_float`)
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`

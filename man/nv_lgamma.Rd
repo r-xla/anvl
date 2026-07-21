@@ -4,11 +4,11 @@
 \alias{nv_lgamma}
 \title{Log-Gamma}
 \usage{
-nv_lgamma(operand)
+nv_lgamma(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

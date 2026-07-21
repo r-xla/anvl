@@ -5,16 +5,13 @@
 \alias{is.finite.AnvlArray}
 \title{Is Finite}
 \usage{
-nv_is_finite(operand)
+nv_is_finite(x)
 
 \method{is.finite}{AnvlArray}(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
-
 \item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

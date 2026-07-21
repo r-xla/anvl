@@ -40,8 +40,8 @@ The exact convenience a wrapper should add varies by operation. **Propose a wrap
 - **Type promotion:** auto-promote inputs to a common dtype via `nv_promote_to_common()`
 - **Broadcasting:** broadcast scalars to match array shapes via `nv_broadcast_scalars()`
 - **Default arguments:** infer `dtype` from the input when not provided
-- **Idempotency:** skip no-op cases (return operand unchanged if already correct dtype/shape)
-- **Input coercion:** convert auxiliary arguments to match the operand's dtype
+- **Idempotency:** skip no-op cases (return the input unchanged if already correct dtype/shape)
+- **Input coercion:** convert auxiliary arguments to match the input's dtype
 
 ## Implementation
 
@@ -93,7 +93,7 @@ For full NumPy-style broadcasting (not just scalar-against-tensor), use `nv_broa
 
 ### Converting auxiliary arguments
 
-If the underlying primitive requires all its inputs to share a dtype (e.g. `nvl_clamp`, `nvl_pad`), convert the helper arguments to the operand dtype via `nv_convert(aux, dtype(operand))`. `nv_convert()` is a no-op when the dtype already matches, so the extra calls are free.
+If the underlying primitive requires all its inputs to share a dtype (e.g. `nvl_clamp`, `nvl_pad`), convert the helper arguments to the input dtype via `nv_convert(aux, dtype(x))`. `nv_convert()` is a no-op when the dtype already matches, so the extra calls are free.
 
 ### Static arguments
 
@@ -112,7 +112,7 @@ If no proper template for a parameter or the return value exist, write the docum
 #' @title <Short Title>
 #' @description
 #' <One-sentence description.> You can also use `<R operator or generic>()`.
-#' @template param_operand              # or @template params_lhs_rhs, etc.
+#' @template param_x                    # or @template params_lhs_rhs, etc.
 #' @param <custom_param> (<type>)\cr    # for params not covered by templates
 #'   <Description.>
 #' @template return_unary               # or return_binary, return_reduce, etc.
@@ -127,7 +127,7 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@title`**: short, e.g. "Absolute Value", "Addition", "Transpose"
 - **`@description`**: one sentence describing what the function does. If an R operator or generic dispatches to this function, mention it: "You can also use `abs()`.", "You can also use the `+` operator."
 - **`@template`**: use templates for common parameter/return patterns:
-  - `param_operand` — single operand
+  - `param_x` — single input array
   - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
   - `param_dtype`, `param_shape`, `param_ambiguous` — common params
   - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
@@ -211,7 +211,7 @@ devtools::test()
 - [ ] `nv_<name>` implemented with roxygen docs and `@export`
 - [ ] Array inputs normalized at the top via `as_anvl_array()` / `as_anvl_arrays()`
 - [ ] Binary element-wise ops built with `make_do_binary()` (or equivalent `nv_promote_to_common()` + `nv_broadcast_scalars()` pipeline)
-- [ ] Auxiliary arguments converted to the operand dtype via `nv_convert()` where the primitive requires it
+- [ ] Auxiliary arguments converted to the input dtype via `nv_convert()` where the primitive requires it
 - [ ] No-op shortcuts return the input unchanged (e.g. identity reshape / convert / broadcast)
 - [ ] Constants created inside the function use `nv_<op>_like()` so they live on the right backend/device
 - [ ] If the function is an array creator, a matching `nv_<name>_like()` variant is provided

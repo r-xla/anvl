@@ -4,14 +4,14 @@
 \alias{prim_reshape}
 \title{Primitive Reshape}
 \usage{
-prim_reshape(operand, shape)
+prim_reshape(x, shape)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Must have the same number of elements as \code{operand}.}
+Target shape. Must have the same number of elements as \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr

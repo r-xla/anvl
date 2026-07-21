@@ -4,10 +4,10 @@
 \alias{prim_cumsum}
 \title{Primitive Cumulative Sum}
 \usage{
-prim_cumsum(operand, dim)
+prim_cumsum(x, dim)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dim}{(\code{integer(1)})\cr

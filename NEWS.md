@@ -2,6 +2,12 @@
 
 ## Breaking changes
 
+* The `operand` argument of the `nv_*` and `prim_*` functions was renamed to
+  `x` (e.g. `nv_reshape(x, shape)`, `prim_gather(x, start_indices, ...)`).
+  Code that passed it by name needs to be updated. The binary `lhs` / `rhs`
+  arguments and `prim_sort()`'s variadic `operands` argument are unchanged, as
+  are the StableHLO dimension-number arguments `operand_batching_dims` and
+  `scatter_dims_to_operand_dims`.
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.

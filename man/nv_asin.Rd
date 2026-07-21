@@ -4,11 +4,11 @@
 \alias{nv_asin}
 \title{Arc Sine}
 \usage{
-nv_asin(operand)
+nv_asin(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -4,22 +4,22 @@
 \alias{nv_clamp}
 \title{Clamp}
 \usage{
-nv_clamp(min_val, operand, max_val)
+nv_clamp(min_val, x, max_val)
 }
 \arguments{
 \item{min_val, max_val}{(\code{\link{arrayish}})\cr
-Minimum and maximum values (scalar or same shape as \code{operand}).}
+Minimum and maximum values (scalar or same shape as \code{x}).}
 
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
 }
 \description{
-Element-wise clamp: \code{max(min_val, min(operand, max_val))}.
-Converts \code{min_val} and \code{max_val} to the data type of \code{operand}.
+Element-wise clamp: \code{max(min_val, min(x, max_val))}.
+Converts \code{min_val} and \code{max_val} to the data type of \code{x}.
 }
 \details{
 The underlying stableHLO function already broadcasts scalars, so no need to broadcast manually.

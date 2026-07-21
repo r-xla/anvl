@@ -4,11 +4,11 @@
 \alias{nv_log2}
 \title{Base-2 Logarithm}
 \usage{
-nv_log2(operand)
+nv_log2(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

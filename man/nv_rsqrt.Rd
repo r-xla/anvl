@@ -4,11 +4,11 @@
 \alias{nv_rsqrt}
 \title{Reciprocal Square Root}
 \usage{
-nv_rsqrt(operand)
+nv_rsqrt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr
