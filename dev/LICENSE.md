@@ -1,6 +1,6 @@
 # MIT License
 
-Copyright (c) 2025 pjrt authors
+Copyright (c) 2026 pjrt authors
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the
