@@ -417,7 +417,7 @@ test_that("prim_pad rejects non-scalar padding_value", {
   x <- nv_array(1:6, shape = c(2, 3), dtype = "f32")
   expect_error(
     prim_pad(x, nv_array(c(0, 0), dtype = "f32"), c(1L, 1L), c(1L, 1L), c(0L, 0L)),
-    "must be a 0-dimensional tensor"
+    "must be a 0-dimensional array"
   )
 })
 
