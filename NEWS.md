@@ -8,6 +8,16 @@
 
 ## Features
 
+* `nv_subset()` and `nv_subset_assign()` (and hence `[` and `[<-`) support
+  boolean masks. A mask for a single dimension selects the `TRUE` positions of
+  that dimension (`x[arr(TRUE, FALSE, TRUE), ]`), while a mask with the shape of
+  the whole array selects across all dimensions and returns a 1-D result
+  (`x[x > 6]`). Masks whose values come from an array only work in eager mode,
+  because the number of selected elements determines the output shape; masks
+  built from R logicals are known at compile time and also work under `jit()`.
+* Subsets that select no elements, such as an all-`FALSE` mask,
+  `x[array(integer(0)), ]` or `x[1:0, ]`, now return a zero-sized array instead
+  of failing inside `prim_gather()` / `prim_scatter()`.
 * New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /
   `nv_upper_tri_like()`) return a boolean triangular mask for a given shape,
   mirroring base R's `lower.tri()` / `upper.tri()`. As in base R, the main

@@ -13,8 +13,18 @@ nv_subset_assign(operand, ..., value)
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
 
-\item{...}{Subset specifications, one per dimension. See
-\code{vignette("subsetting")} for details.}
+\item{...}{Subset specifications, one per dimension. Omitted trailing
+dimensions select all elements.
+
+A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
+arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
+positions. A mask for one dimension must have as many elements as that
+dimension. A mask that is the only subscript and has the same shape as
+\code{operand} selects across the whole array, yielding a 1-D result. Masks
+whose values come from an array only work in eager mode, because the number
+of selected elements determines the output shape.
+
+See \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape.
@@ -36,6 +46,10 @@ You can also use the \verb{[<-} operator.
 x <- nv_matrix(1:12, nrow = 3)
 # Set row 1 to zeros
 x[1, ] <- nv_scalar(0L)
+x
+
+# Zero out every element greater than 6 (eager mode only)
+x[x > 6] <- 0L
 x
 \dontshow{\}) # examplesIf}
 }

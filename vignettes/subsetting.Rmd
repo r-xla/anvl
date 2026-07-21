@@ -17,11 +17,11 @@ We start by listing possible subsets and whether they support dynamic values (ar
 | Single Index | Yes | Yes |
 | Multiple Indices | Yes | Yes |
 | Range | No | Yes |
-| Mask | No | No |
+| Mask | Eager only | Yes |
 
 Ranges cannot have dynamic values, because then the size of the subset would be unknown (what's the size of `a:b` where `a` and `b` are unknown?).
-Boolean masks are not supported, because the output shape depends on the data, which is not known at compile time.
-For workarounds (e.g. `sum(x[x > 0])` or `x[mask] <- update`), see the [masking pattern](static_shapes.html#the-masking-pattern) section of the Static Shape Restriction vignette.
+Boolean masks are supported, but a mask that comes from an array (such as `x > 0`) only works in eager mode: the number of selected elements, and hence the output shape, depends on the data.
+For the same operation inside a `jit()`ed function (e.g. `sum(x[x > 0])` or `x[mask] <- update`), see the [masking pattern](static_shapes.html#the-masking-pattern) section of the Static Shape Restriction vignette.
 Negative indexing (e.g., `x[-1]` to exclude elements) is currently also not supported.
 For static values, this will throw an error.
 For dynamic values, negative indices are treated as out-of-bounds and clamped to the valid range (see [Out-of-bounds Handling](#out-of-bounds-handling) below).
@@ -125,6 +125,57 @@ x[1:2, 2:3]
 x[1, 2:3]
 x[arr(2, 2), ]
 x[arr(2, 2)]
+```
+
+### Boolean Masks
+
+A boolean mask selects the elements at the `TRUE` positions.
+Masks must be arrays -- plain R logical vectors are rejected, just like plain numeric vectors -- so use `arr()` to write one out.
+A mask for a single dimension must have exactly as many elements as that dimension, and never drops it.
+
+```{r}
+x <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
+x[arr(TRUE, FALSE, TRUE), ]
+x[, arr(FALSE, TRUE, TRUE, FALSE)]
+```
+
+If a mask has the same shape as the array itself, and is the only subscript, it selects across the whole array and the result is 1-dimensional.
+This is the familiar `x[x > 6]` idiom:
+
+```{r}
+x[x > 6]
+```
+
+The elements come back in the same order as in R, i.e. column-major.
+Note that a single subscript that is *not* shaped like the whole array still refers to the first dimension, as everywhere else in {anvl}:
+
+```{r}
+x[arr(TRUE, FALSE, TRUE)]
+```
+
+Masks work in assignment as well, where the result keeps the shape of the array:
+
+```{r}
+x[x > 6] <- 0L
+x
+```
+
+Because the number of selected elements depends on the values of the array, a mask that comes from an array only works in eager mode:
+
+```{r, error = TRUE}
+jit(function(x) x[x > 6])(x)
+```
+
+A mask made of R literals is known at compile time, so it works inside `jit()` too:
+
+```{r}
+jit(function(x) x[arr(TRUE, FALSE, TRUE), ])(x)
+```
+
+An all-`FALSE` mask selects nothing and produces a zero-sized array.
+
+```{r}
+x[x > 100]
 ```
 
 ### Out-of-bounds Handling
