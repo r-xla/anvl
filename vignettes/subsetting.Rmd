@@ -130,7 +130,7 @@ x[arr(2, 2)]
 ### Out-of-bounds Handling
 
 If one specifies out-of-bounds indices, we can only throw an error if the indices are static (and therefore known at compile time).
-The XLA backend that {anvl} compiles to does not throw errors for out-of-bounds dynamic indices, but instead clamps them to the valid range:
+The PJRT backend that {anvl} compiles to does not throw errors for out-of-bounds dynamic indices, but instead clamps them to the valid range:
 
 ```{r}
 x[nv_array(-1L), nv_array(100L)]

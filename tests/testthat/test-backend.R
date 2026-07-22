@@ -1,5 +1,5 @@
-test_that("default_backend returns 'xla' by default", {
-  expect_equal(default_backend(), "xla")
+test_that("default_backend returns 'pjrt' by default", {
+  expect_equal(default_backend(), "pjrt")
 })
 
 test_that("local_backend sets and restores the default backend", {
@@ -12,24 +12,24 @@ test_that("local_backend sets and restores the default backend", {
 
 test_that("with_backend temporarily changes the backend", {
   skip_if_no_quickr()
-  expect_equal(default_backend(), "xla")
+  expect_equal(default_backend(), "pjrt")
   result <- with_backend("quickr", {
     expect_equal(default_backend(), "quickr")
     backend(nv_array(1))
   })
   expect_equal(result, "quickr")
-  expect_equal(default_backend(), "xla")
+  expect_equal(default_backend(), "pjrt")
 })
 
 test_that("with_backend restores backend on error", {
   skip_if_no_quickr()
-  expect_equal(default_backend(), "xla")
+  expect_equal(default_backend(), "pjrt")
   try(with_backend("quickr", stop("test error")), silent = TRUE)
-  expect_equal(default_backend(), "xla")
+  expect_equal(default_backend(), "pjrt")
 })
 
 test_that("backend() returns the backend name", {
-  expect_equal(backend(nv_array(1)), "xla")
+  expect_equal(backend(nv_array(1)), "pjrt")
 })
 
 test_that("backend() returns 'quickr' for quickr arrays", {
@@ -47,9 +47,9 @@ test_that("nv_empty works with quickr backend", {
   expect_equal(shape(x), c(0L, 3L))
 })
 
-test_that("nv_empty works with xla backend", {
+test_that("nv_empty works with pjrt backend", {
   x <- nv_empty("f32", c(0L, 3L))
-  expect_equal(backend(x), "xla")
+  expect_equal(backend(x), "pjrt")
   expect_equal(dtype(x), as_dtype("f32"))
   expect_equal(shape(x), c(0L, 3L))
 })

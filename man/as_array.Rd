@@ -17,7 +17,7 @@ An array-like object.}
 If \code{TRUE}, sanity-check the materialized R vector against losing
 information across the device-to-host boundary, and abort if any
 problematic value is detected. Forwarded to the backend; for the
-\code{xla} backend the relevant cases are \code{i32}/\code{i64} values colliding
+\code{pjrt} backend the relevant cases are \code{i32}/\code{i64} values colliding
 with the \code{NA} bit pattern and \code{ui64} values \verb{>= 2^63} wrapping
 through \code{bit64::integer64}. See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for
 the full list. Defaults to \code{FALSE}. See the "Gotchas" vignette.}

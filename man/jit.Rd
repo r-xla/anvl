@@ -33,7 +33,7 @@ enclosing environment does not change in a way that modifies their behavior.}
 Maximum number of compiled executables to keep in the LRU cache.}
 
 \item{backend}{(\code{NULL} |  \code{character(1)})\cr
-Compilation backend (e.g. \code{"xla"}, \code{"quickr"}).
+Compilation backend (e.g. \code{"pjrt"}, \code{"quickr"}).
 The special value \code{"auto"} defers backend selection to call-time.
 \code{NULL} (default) respects \code{device} and otherwise falls back to \code{\link[=default_backend]{default_backend()}}.}
 
@@ -48,7 +48,7 @@ In order to use dynamic device selection with the \code{"auto"} backend (e.g. fo
 dynamic inputs such as constant creation), set \code{device = device_arg("<arg>")}.}
 
 \item{...}{Backend-specific options. Passing an option that is not supported
-by the selected backend raises an error. See the \strong{XLA JIT arguments} and
+by the selected backend raises an error. See the \strong{PJRT JIT arguments} and
 \strong{Quickr JIT arguments} sections below for the options accepted by each
 backend.}
 }
@@ -106,7 +106,7 @@ See \code{\link[=jit_roclet]{jit_roclet()}} for the one-time setup of the roclet
 package.
 }
 
-\section{XLA JIT arguments}{
+\section{PJRT JIT arguments}{
 
 \itemize{
 \item \code{donate} (\code{character()}, default \code{character()}): names of arguments whose
