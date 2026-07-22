@@ -32,7 +32,7 @@ Imports:
     pjrt (>= 0.4.0),
     rlang,
     safetensors (>= 0.2.0),
-    stablehlo (>= 0.3.0.901),
+    stablehlo (>= 0.3.0.902),
     tengen (>= 0.2.0),
     withr,
     xlamisc (>= 0.3.0)
@@ -70,8 +70,8 @@ Collate:
     'api-subset.R'
     'api-utilities.R'
     'asserts.R'
+    'backend-pjrt.R'
     'backend-quickr.R'
-    'backend-xla.R'
     'bibentries.R'
     'box.R'
     'graph-passes.R'

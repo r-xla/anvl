@@ -15,7 +15,7 @@ See `vignettes/extending_api.Rmd` for the in-depth explanation of the patterns b
 
 ### Work with any backend
 
-API functions shipped with {anvl} must work with **both** the xla and quickr backends. In practice this means:
+API functions shipped with {anvl} must work with **both** the pjrt and quickr backends. In practice this means:
 
 - If the function internally `jit()`s a helper, set `backend = "auto"` on that `jit()` call so it adapts to the caller's backend.
 - If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's backend/device. Do **not** call `device()` on a traced input -- it fails under `jit()`.

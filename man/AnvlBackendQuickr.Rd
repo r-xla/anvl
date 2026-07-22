@@ -39,7 +39,7 @@ This backend is \strong{experimental} and has a number of limitations:
 \item Compilation (tracing + quickr lowering) is somewhat slow, so it is best
 suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.
-\item Only a subset of the primitives that the XLA backend supports are currently
+\item Only a subset of the primitives that the PJRT backend supports are currently
 lowered to quickr code. See \code{vignette("primitives")} for an overview.
 \item Only the data types \code{f64}, \code{i32}, and \code{bool} are supported.
 \item Only CPU execution is supported.
@@ -57,5 +57,5 @@ would only get stripped again.
 }
 
 \seealso{
-\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendXla]{AnvlBackendXla()}}, \code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
+\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendPjrt]{AnvlBackendPjrt()}}, \code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
 }

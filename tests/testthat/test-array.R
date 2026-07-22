@@ -354,26 +354,26 @@ test_that("platform returns 'cpu' for plain backend", {
 test_that("nv_array respects backend argument", {
   skip_if_no_quickr()
   local_backend("quickr")
-  x <- nv_array(1, backend = "xla")
-  expect_equal(backend(x), "xla")
+  x <- nv_array(1, backend = "pjrt")
+  expect_equal(backend(x), "pjrt")
 })
 
 test_that("nv_array infers backend from device object", {
   skip_if_no_quickr()
   local_backend("quickr")
   x <- nv_array(1, device = pjrt::pjrt_device("cpu"))
-  expect_equal(backend(x), "xla")
-  expect_equal(device(x), nv_device("cpu", "xla"))
+  expect_equal(backend(x), "pjrt")
+  expect_equal(device(x), nv_device("cpu", "pjrt"))
 })
 
 test_that("nv_array errors when backend specified inside jit", {
   expect_error(
-    jit(function() nv_array(1, backend = "xla"))(),
+    jit(function() nv_array(1, backend = "pjrt"))(),
     "must not be specified"
   )
 })
 
-test_that("default floating dtype is f32 for xla", {
+test_that("default floating dtype is f32 for pjrt", {
   expect_equal(dtype(nv_array(1.0)), as_dtype("f32"))
   expect_equal(dtype(nv_scalar(1.0)), as_dtype("f32"))
 })
@@ -433,13 +433,13 @@ describe("as_anvl_array", {
   })
 
   it("places R literals on the requested device", {
-    dev <- nv_device("cpu:1", "xla")
+    dev <- nv_device("cpu:1", "pjrt")
     expect_equal(device(as_anvl_array(1L, device = dev)), dev)
   })
 
   it("errors if an AnvlArray is on a different device than requested", {
-    dev0 <- nv_device("cpu:0", "xla")
-    dev1 <- nv_device("cpu:1", "xla")
+    dev0 <- nv_device("cpu:0", "pjrt")
+    dev1 <- nv_device("cpu:1", "pjrt")
     x <- nv_array(1:3, device = dev0)
     expect_error(
       as_anvl_array(x, device = dev1),
@@ -471,7 +471,7 @@ describe("as_anvl_array", {
 
 describe("as_anvl_arrays", {
   it("places R literals on the first concrete input's device", {
-    dev <- nv_device("cpu:1", "xla")
+    dev <- nv_device("cpu:1", "pjrt")
     x <- nv_array(1:3, device = dev)
     out <- as_anvl_arrays(x, 1L)
     expect_equal(device(out[[1L]]), dev)
@@ -485,8 +485,8 @@ describe("as_anvl_arrays", {
   })
 
   it("errors when concrete inputs live on different devices", {
-    dev0 <- nv_device("cpu:0", "xla")
-    dev1 <- nv_device("cpu:1", "xla")
+    dev0 <- nv_device("cpu:0", "pjrt")
+    dev1 <- nv_device("cpu:1", "pjrt")
     x <- nv_array(1:3, device = dev0)
     y <- nv_array(1:3, device = dev1)
     expect_error(
@@ -497,9 +497,9 @@ describe("as_anvl_arrays", {
 
   it("errors when concrete inputs come from different backends", {
     skip_if_no_quickr()
-    dev_xla <- nv_device("cpu", "xla")
+    dev_pjrt <- nv_device("cpu", "pjrt")
     dev_quickr <- nv_device("cpu", "quickr")
-    x <- nv_array(1:3, device = dev_xla)
+    x <- nv_array(1:3, device = dev_pjrt)
     y <- nv_array(1:3, device = dev_quickr)
     expect_error(
       as_anvl_arrays(x, y),

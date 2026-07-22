@@ -8,7 +8,7 @@ with_backend(backend, code)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to use (\code{"xla"} or \code{"quickr"}).}
+Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 
 \item{code}{An expression to evaluate with the given backend.}
 }

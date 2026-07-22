@@ -14,10 +14,17 @@
 #'   Names or positions of parameters of `f` that are *not* arrays. Static values are
 #'   embedded as constants in the compiled program; a new compilation is triggered whenever
 #'   a static value changes. For example useful when you want R control flow in your function.
+#'
+#'   Note that the values that are passed to static arguments must not have reference semantics.
+#'   Such a value can be mutated in place while the cache key stays equal, which
+#'   would silently reuse a program compiled from its old contents.
+#'   One exception are closures, but there you need to ensure that their
+#'   enclosing environment does not change in a way that modifies their behavior.
+#'
 #' @param cache_size (`integer(1)`)\cr
 #'   Maximum number of compiled executables to keep in the LRU cache.
 #' @param backend (`NULL` |  `character(1)`)\cr
-#'   Compilation backend (e.g. `"xla"`, `"quickr"`).
+#'   Compilation backend (e.g. `"pjrt"`, `"quickr"`).
 #'   The special value `"auto"` defers backend selection to call-time.
 #'   `NULL` (default) respects `device` and otherwise falls back to [`default_backend()`].
 #' @param device (`NULL` | `character(1)` | [`nv_device`] | `device_arg()`)\cr
@@ -31,10 +38,10 @@
 #'   dynamic inputs such as constant creation), set `device = device_arg("<arg>")`.
 #'
 #' @param ... Backend-specific options. Passing an option that is not supported
-#'   by the selected backend raises an error. See the **XLA JIT arguments** and
+#'   by the selected backend raises an error. See the **PJRT JIT arguments** and
 #'   **Quickr JIT arguments** sections below for the options accepted by each
 #'   backend.
-#' @inheritSection AnvlBackendXla XLA JIT arguments
+#' @inheritSection AnvlBackendPjrt PJRT JIT arguments
 #' @inheritSection AnvlBackendQuickr Quickr JIT arguments
 #'
 #' @section Device and Backend selection:
@@ -173,7 +180,7 @@ jit_with_backend <- function(f, static, cache_size, backend, ...) {
 #' @examplesIf pjrt::plugins_downloaded("cpu")
 #' f <- function(x) nv_scalar(1, device = x)
 #' g <- jit(f, backend = "auto", device = device_arg("x"))
-#' g(nv_device("cpu", "xla"))
+#' g(nv_device("cpu", "pjrt"))
 device_arg <- function(argname) {
   assert_string(argname)
   structure(list(argname = argname), class = "AnvlDeviceArg")
@@ -327,7 +334,94 @@ avals_from_dispatch <- function(info) {
   )
 }
 
-# The devices of the call's array inputs, for compile_xla()'s device inference.
+# Reject static arguments with reference semantics, before their values are
+# traced into a program.
+#
+# A static value is part of the executable-cache key: the dispatcher keeps the
+# value and compares later calls against it with identical(). That is only
+# sound while the value's content cannot change behind its identity. An
+# environment or an external pointer can be mutated in place, leaving the key
+# equal to one whose program was compiled from different contents -- a silently
+# stale result rather than an error. So they are rejected here, at the first
+# use of the value (the cache miss that traces it).
+#
+# Called with the call's argument list, which `match.call()` has named, and the
+# jit's static argument names.
+check_static_args <- function(args, static) {
+  for (nm in intersect(rlang::names2(args), static)) {
+    check_static_value(args[[nm]], nm)
+  }
+  invisible(NULL)
+}
+
+# Walk one static value, erroring on the first reference-semantics part of it.
+# `path` is how that part is spelled from the argument, e.g. `opts$env`.
+#
+# Lists are walked because pjrt flattens a static list into one key leaf per
+# element, so an environment inside one is keyed -- and goes stale -- exactly
+# like a bare one. Attributes are not walked: they carry metadata rather than
+# values the trace reads, and a formula's `.Environment` would make every
+# static formula an error.
+check_static_value <- function(x, path) {
+  # The one reference-like static anvl passes itself (`jit(device = ...)`,
+  # `device_arg()`): a device is an immutable, interned handle, so its identity
+  # is its value.
+  if (is_device(x)) {
+    return(invisible(NULL))
+  }
+  kind <- reference_kind(x)
+  if (!is.null(kind)) {
+    cli_abort(
+      c(
+        "Static argument {.code {path}} has reference semantics: it is {kind}.",
+        x = "A static value is part of the compilation cache key and is compared by identity,
+             so mutating it in place would silently reuse a program compiled from its old contents.",
+        i = "Pass it as a regular argument, or extract the plain values you need from it."
+      ),
+      call = NULL
+    )
+  }
+  if (typeof(x) == "list") {
+    nms <- rlang::names2(x)
+    # .subset2() rather than `[[`: a classed static list must not get to decide
+    # via a method of its own what its elements are.
+    for (i in seq_along(x)) {
+      check_static_value(.subset2(x, i), static_path(path, nms[[i]], i))
+    }
+  }
+  invisible(NULL)
+}
+
+# A human description of `x`'s reference semantics, or NULL if it has none.
+# Only R's own reference types are detected: a value-semantics object that some
+# package mutates in place through C (a data.table, say) is indistinguishable
+# from a plain list here.
+reference_kind <- function(x) {
+  what <- if (is.environment(x)) {
+    "an environment"
+  } else if (typeof(x) == "externalptr") {
+    "an external pointer"
+  } else {
+    return(NULL)
+  }
+  if (is.object(x)) {
+    sprintf("an object of class <%s> (%s)", class(x)[[1L]], what)
+  } else {
+    what
+  }
+}
+
+static_path <- function(path, name, i) {
+  if (!nzchar(name)) {
+    sprintf("%s[[%i]]", path, i)
+  } else if (identical(make.names(name), name)) {
+    sprintf("%s$%s", path, name)
+  } else {
+    sprintf("%s[[\"%s\"]]", path, name)
+  }
+}
+
+# The devices of the call's array inputs, for compile_pjrt()'s device inference.
 # pjrt has already checked they agree; this only converts them to anvl devices.
 dispatch_arg_devices <- function(info) {
   is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1))
@@ -354,7 +448,7 @@ jit_wrap_outputs <- function(out_flat, out_tree, ambiguous_out, backend) {
 #' @param expr (NSE)\cr
 #'   Expression to compile and evaluate.
 #' @param ... Backend-specific options forwarded to [`jit()`] (e.g. `device`
-#'   for the `"xla"` backend, `unwrap` for the `"quickr"` backend).
+#'   for the `"pjrt"` backend, `unwrap` for the `"quickr"` backend).
 #' @return (`any`)\cr
 #'   Result of the compiled and evaluated expression.
 #' @export

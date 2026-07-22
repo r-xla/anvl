@@ -26,7 +26,7 @@
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   One of `r stablehlo:::roxy_dtypes()` or a [`tengen::DataType`].
 #'   The default (`NULL`) uses the current backend's default dtype:
-#'   `f32` for numeric data on `"xla"`, `f64` for numeric data on `"quickr"`,
+#'   `f32` for numeric data on `"pjrt"`, `f64` for numeric data on `"quickr"`,
 #'   `i32` for integer data, and `bool` for logical data.
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device for the array (`"cpu"`, `"cuda"`).
@@ -41,7 +41,7 @@
 #'   Whether the dtype should be marked as ambiguous.
 #'   Defaults to `FALSE` for new arrays.
 #' @param backend (`NULL` | `character(1)`)\cr
-#'   Backend to use (`"xla"` or `"quickr"`).
+#'   Backend to use (`"pjrt"` or `"quickr"`).
 #'   Defaults to `default_backend()`.
 #'   Must not be specified inside [`jit()`].
 #' @param byrow (`logical(1)`)\cr
@@ -430,7 +430,7 @@ shape.AnvlArray <- function(x, ...) {
 #'   If `TRUE`, sanity-check the materialized R vector against losing
 #'   information across the device-to-host boundary, and abort if any
 #'   problematic value is detected. Forwarded to the backend; for the
-#'   `xla` backend the relevant cases are `i32`/`i64` values colliding
+#'   `pjrt` backend the relevant cases are `i32`/`i64` values colliding
 #'   with the `NA` bit pattern and `ui64` values `>= 2^63` wrapping
 #'   through `bit64::integer64`. See [`pjrt::as_array.PJRTBuffer()`] for
 #'   the full list. Defaults to `FALSE`. See the "Gotchas" vignette.
@@ -564,7 +564,7 @@ backend.AnvlArray <- function(x, ...) {
 
 #' @export
 backend.PJRTDevice <- function(x, ...) {
-  "xla"
+  "pjrt"
 }
 
 #' @export
