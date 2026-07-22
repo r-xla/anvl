@@ -8,7 +8,7 @@
 \usage{
 nv_dnorm(x, mean = 0, sd = 1, log = FALSE)
 
-nv_pnorm(q, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE)
+nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -22,10 +22,10 @@ Mean of the distribution (scalar or same shape as \code{x}/\code{q}).}
 Standard deviation of the distribution (scalar or same shape as
 \code{x}/\code{q}). Must be positive, otherwise results are invalid.}
 
-\item{log, log.p}{(\code{logical(1)})\cr
+\item{log, log_p}{(\code{logical(1)})\cr
 If \code{TRUE}, the densities/probabilities are given as logarithms.}
 
-\item{lower.tail}{(\code{logical(1)})\cr
+\item{lower_tail}{(\code{logical(1)})\cr
 If \code{TRUE} (default), probabilities are \eqn{P(X \le q)}; otherwise,
 \eqn{P(X > q)}.}
 }
@@ -45,7 +45,7 @@ where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
 The \code{mean} and \code{sd} are converted to the data type of \code{x}/\code{q}.
 
 \code{nv_pnorm} uses the asymptotic expansion from Abramowitz and Stegun (1964),
-equation 26.2.12, in the left tail when \code{log.p = TRUE} to maintain accuracy.
+equation 26.2.12, in the left tail when \code{log_p = TRUE} to maintain accuracy.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -56,8 +56,8 @@ nv_dnorm(x, log = TRUE)
 
 nv_pnorm(x)
 nv_pnorm(x, mean = 1, sd = 2)
-nv_pnorm(x, lower.tail = FALSE)
-nv_pnorm(x, log.p = TRUE)
+nv_pnorm(x, lower_tail = FALSE)
+nv_pnorm(x, log_p = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \references{

@@ -13,9 +13,9 @@
 #' @param sd ([`arrayish`])\cr
 #'   Standard deviation of the distribution (scalar or same shape as
 #'   `x`/`q`). Must be positive, otherwise results are invalid.
-#' @param log,log.p (`logical(1)`)\cr
+#' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms.
-#' @param lower.tail (`logical(1)`)\cr
+#' @param lower_tail (`logical(1)`)\cr
 #'   If `TRUE` (default), probabilities are \eqn{P(X \le q)}; otherwise,
 #'   \eqn{P(X > q)}.
 #' @details
@@ -26,7 +26,7 @@
 #' The `mean` and `sd` are converted to the data type of `x`/`q`.
 #'
 #' `nv_pnorm` uses the asymptotic expansion from Abramowitz and Stegun (1964),
-#' equation 26.2.12, in the left tail when `log.p = TRUE` to maintain accuracy.
+#' equation 26.2.12, in the left tail when `log_p = TRUE` to maintain accuracy.
 #' @references
 #' Abramowitz, M. and Stegun, I.A. (1964) *Handbook of Mathematical Functions
 #' with Formulas, Graphs, and Mathematical Tables*. Washington, D.C.: National
@@ -41,8 +41,8 @@
 #'
 #' nv_pnorm(x)
 #' nv_pnorm(x, mean = 1, sd = 2)
-#' nv_pnorm(x, lower.tail = FALSE)
-#' nv_pnorm(x, log.p = TRUE)
+#' nv_pnorm(x, lower_tail = FALSE)
+#' nv_pnorm(x, log_p = TRUE)
 NULL
 
 #' @rdname nv_normal
@@ -69,10 +69,10 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
 
 #' @rdname nv_normal
 #' @export
-#' @jit static c("lower.tail", "log.p")
-nv_pnorm <- function(q, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE) {
-  assert_flag(lower.tail)
-  assert_flag(log.p)
+#' @jit static c("lower_tail", "log_p")
+nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
+  assert_flag(lower_tail)
+  assert_flag(log_p)
   args <- as_anvl_arrays(q, mean, sd)
   q <- args[[1L]]
   mean <- args[[2L]]
@@ -82,9 +82,9 @@ nv_pnorm <- function(q, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE) {
   sd <- nv_convert(sd, op_dtype)
 
   # Standardise, flipping sign if computing upper tail
-  d <- if (lower.tail) (q - mean) / sd else (mean - q) / sd
+  d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
 
-  if (!log.p) {
+  if (!log_p) {
     # When not computing log cdf we're done as no accuracy concerns with erfc
     return(0.5 * nv_erfc(-d / sqrt(2)))
   }

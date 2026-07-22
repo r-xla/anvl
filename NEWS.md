@@ -21,7 +21,7 @@
 * New `nv_dnorm()` computes the normal distribution's probability density
   function (or, with `log = TRUE`, its log-density).
 * New `nv_pnorm()` computes the normal distribution's cumulative distribution
-  function (`lower.tail = FALSE` for the upper tail, `log.p = TRUE` for the
+  function (`lower_tail = FALSE` for the upper tail, `log_p = TRUE` for the
   log-probability, staying accurate far into either tail).
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for
