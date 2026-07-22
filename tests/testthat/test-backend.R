@@ -123,9 +123,12 @@ describe("inactive backends", {
   })
 })
 
-test_that("the quickr backend is active in the test suite", {
-  skip_if_no_quickr()
-  expect_setequal(globals$active_backends, c("pjrt", "quickr"))
+# The suite inherits the default `anvl.backends`. A developer who overrides that
+# option in their `.Rprofile` sees this fail first, naming the reason, rather
+# than a pile of confusing backend errors further down.
+test_that("the test suite runs with the default backends", {
+  expect_equal(globals$active_backends, c("pjrt", "quickr"))
+  expect_equal(default_backend(), "pjrt")
 })
 
 describe("the default backend is always concrete", {

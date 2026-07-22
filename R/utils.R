@@ -6,15 +6,17 @@ dtype_from_buffer <- function(x) {
 #' @title Apply a `@jit` registry
 #' @description
 #' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
-#' listed function in `envir` to
-#' `jit(f, backend = "auto", static = entry$static)`.
+#' listed function in `envir` to `jit(f, static = entry$static)`. The backend
+#' is left to [`jit()`]: it binds the only active backend when just one is
+#' active, and otherwise picks one per call.
 #'
-#' Call this from the top level of your package's `R/zzz.R`, right next to
-#' `.onLoad`, so the wrappers are byte-compiled during package install
-#' instead of being rebuilt on every `.onLoad`:
+#' Call this from your package's `.onLoad()`, after the active backends have
+#' been fixed, passing the package namespace explicitly:
 #'
 #' ```r
-#' anvl::apply_jit_registry(.jit_registry)
+#' .onLoad <- function(libname, pkgname) {
+#'   apply_jit_registry(.jit_registry, asNamespace(pkgname))
+#' }
 #' ```
 #'
 #' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
@@ -24,21 +26,16 @@ dtype_from_buffer <- function(x) {
 #'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
 #'   `.jit_registry` object emitted by the roclet.
 #' @param envir (`environment`)\cr
-#'   Environment in which to look up and rebind functions. Defaults to
-#'   `parent.frame()`, which at top-level package source time is the package
+#'   Environment in which to look up and rebind functions; pass the package
 #'   namespace.
 #' @return Invisibly returns `envir`.
 #' @seealso [`jit_roclet()`], [`jit()`]
 #' @export
-apply_jit_registry <- function(registry, envir = parent.frame()) {
+apply_jit_registry <- function(registry, envir) {
   for (entry in registry) {
     assign(
       entry$name,
-      jit(
-        get(entry$name, envir = envir, inherits = FALSE),
-        backend = "auto",
-        static = entry$static
-      ),
+      jit(get(entry$name, envir = envir, inherits = FALSE), static = entry$static),
       envir = envir
     )
   }

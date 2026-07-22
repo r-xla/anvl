@@ -49,9 +49,10 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   register_s3_method("roxygen2", "roclet_process", "roclet_jit")
   register_s3_method("roxygen2", "roclet_output", "roclet_jit")
   register_s3_method("roxygen2", "roclet_clean", "roclet_jit")
-}
 
-# Wrap functions tagged with `@jit` (see `jit_roclet()`). Runs at package
-# source time so the wrappers are byte-compiled along with the rest of the
-# package, instead of being rebuilt on every `.onLoad`.
-apply_jit_registry(.jit_registry)
+  # Wrap functions tagged with `@jit` (see `jit_roclet()`). This runs after
+  # `activate_backends()` because the wrappers bind a concrete backend when
+  # only one is active. The namespace is not sealed until `.onLoad()` returns,
+  # so the existing bindings can still be replaced here.
+  apply_jit_registry(.jit_registry, asNamespace(pkgname))
+}

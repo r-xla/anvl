@@ -35,9 +35,10 @@
   reductions.
 * Supports 1-3d convolutions.
 * New option `anvl.backends`: only the backends listed in it are active.
-  This is read once when the package is loaded. Its first entry is the initial
-  `default_backend()`, and while more than one backend is active `jit()` picks
-  the backend per call (as with `backend = "auto"`) unless one is named.
+  This is read once when the package is loaded and defaults to
+  `c("pjrt", "quickr")`. Its first entry is the initial `default_backend()`,
+  and while more than one backend is active `jit()` picks the backend per call
+  (as with `backend = "auto"`) unless one is named.
 
 ## Performance
 
