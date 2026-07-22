@@ -1,0 +1,300 @@
+---
+title: "Upper Crossover Threshold (Direct ↔ upper-tail branch)"
+subtitle: "`nv_pnorm(log.p = TRUE)` branch-selection analysis"
+author: "Louis Aslett <louis.aslett@durham.ac.uk>"
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+    df-print: kable
+execute:
+  cache: false
+---
+
+## Overview
+
+The natural way to compute the Normal cdf is via the complementary error function (erfc),
+
+$$\Phi(x) = \frac{1}{2} \text{erfc}\left( -\frac{x}{\sqrt{2}} \right)$$
+
+However, XLA does not provide any numerically stable log erfc, so when $\text{erfc}\left( -\frac{x}{\sqrt{2}} \right) \xrightarrow{x \to \infty} 1$, an alternative approach because the logarithm will prematurely evaluate to 0.
+
+Hence, `nv_pnorm(..., log.p = TRUE)` computes the normal log CDF by selecting, per element, one of three numerically-independent branches based on `d = (q - mean) / sd`:
+
+* `d <= lower_threshold` -- lower-tail branch (also requires care, see separate lower threshold analysis)
+* `lower_threshold < d <= upper_threshold` -- **direct** `log(0.5 * erfc(-d/sqrt(2)))`
+* `d > upper_threshold` -- either a standard linear approximation or use of exact (but slower) `log1p`.
+
+Note one might reasonably query whether an upper branch could be avoided by always using `log1p` for `d > lower_threshold`, since
+$$\log \left( \frac{1}{2} \text{erfc}\left( -\frac{x}{\sqrt{2}} \right) \right) = \log \left( 1 - \frac{1}{2} \text{erfc}\left( \frac{x}{\sqrt{2}} \right) \right)$$
+
+However, for some $x \in (-9, -8)$ the argument becomes machine zero even in double precision.
+All the optimal lower thresholds identified for the asymptotic expansion were $x < -10$.
+Hence, there is some region where the direct method is strictly superior to `log1p`.
+
+For the linear approximation, let $Q(x) = 1 - \Phi(x)$ be the upper-tail area,
+$$\log \Phi(x) = \log(1 - Q(x)) = -Q(x) - \frac{Q(x)^2}{2} - \frac{Q(x)^3}{3} - \dots$$
+The linear approximation keeps only the leading term $-Q(x)$, resulting in a relative error of which is $\frac{Q(x)}{2} + \mathcal{O}(Q(x)^2)$.
+This is accurate only once $Q(x)$ is very deep in the right tail.
+
+### Branch isolated implementations
+
+We run each possible branch (direct/upper tail) in isolation for a range of input arguments so as to identify an optimal threshold at which to switch between branches for the package code.
+This is identical to evaluating the real parametrised `nv_pnorm` body at that threshold, since the branches don't interact.
+
+Libraries:
+
+```{r setup}
+#| message: false
+library("Rmpfr")
+library("anvl")
+```
+
+Define the code for direct and upper exact/approx branches:
+
+```{r branches}
+#| code-fold: show
+branch_direct <- function(d) nv_log(0.5 * nv_erfc(-d / sqrt(2)))
+branch_log1p  <- function(d) nv_log1p(-0.5 * nv_erfc(d / sqrt(2)))
+branch_linear <- function(d) -0.5 * nv_erfc(d / sqrt(2))
+```
+
+Evaluation helpers for log CDF and its gradient:
+
+```{r eval-helpers}
+# Helper to jit and evaluate function at vector of values with particular type
+eval_val <- function(fn, z, type) {
+  as.vector(jit(fn)(nv_array(z, dtype = type)))
+}
+
+# Helper to jit and evaluate gradient of function at vector of values with
+# particular type
+eval_grad <- function(fn, z, type) {
+  # Trick to do vectorised gradient: use sum to transform vector output into
+  # a scalar, then differentiate wrt vector input.
+  # Also sum's backward is linear, so non-finite elements do not
+  # cross-contaminate finite ones.
+  f <- function(q) nv_reduce_sum(fn(q))
+  as.vector(jit(gradient(f, wrt = "q"))(nv_array(z, dtype = type))[[1L]])
+}
+```
+
+`Rmpfr` gold standard which is safe in the far tails.
+Note, evaluate log CDF from whichever tail is small, so `mpfr` never rounds to 1:
+
+```{r gold}
+mpfr_gold <- function(zs) {
+  zm <- mpfr(zs, 256)
+  lo <- as.numeric(log(pnorm(zm)))
+  hi <- as.numeric(log1p(-pnorm(zm, lower.tail = FALSE)))
+  val <- ifelse(zs <= 0, lo, hi)
+  list(val = val, grad = as.numeric(dnorm(zm) / pnorm(zm)))
+}
+
+# Helper to compute relative error
+rel_err <- function(got, gold) {
+  e <- abs((got - gold) / gold)
+  e[gold == 0] <- ifelse(abs(got[gold == 0]) == 0, 0, Inf)
+  e[!is.finite(got)] <- Inf
+  e
+}
+```
+
+Error analysis helpers:
+
+```{r analyse}
+# Get relative errors for direct and upper branches
+get_errs <- function(dt, zs) {
+  g <- mpfr_gold(zs)
+  br <- lapply(list(direct = branch_direct, log1p = branch_log1p,
+                    linear = branch_linear),
+               function(fn) list(val = eval_val(fn, zs, dt), grad = eval_grad(fn, zs, dt)))
+  err <- lapply(br, function(b) list(val = rel_err(b$val, g$val), grad = rel_err(b$grad, g$grad)))
+  list(zs = zs, gold = g, branch = br, err = err)
+}
+
+## Combined error over the full domain in A, for a threshold U, by branch
+## selection. upper_branch selects which upper-tail formula sits above U: the
+## exact "log1p" (recommended) or the discarded "linear" approximation.
+combined_maxerr <- function(A, U, upper_branch = "log1p") {
+  use_upper <- A$zs > U
+  ev <- ifelse(use_upper, A$err[[upper_branch]]$val, A$err$direct$val)
+  eg <- ifelse(use_upper, A$err[[upper_branch]]$grad, A$err$direct$grad)
+  c(val = max(ev), grad = max(eg))
+}
+
+fmt <- function(x) ifelse(is.finite(x), sprintf("%.2e", x), "Inf")
+
+sweep_tbl <- function(A, Us, upper_branch = "log1p") {
+  res <- t(vapply(Us, function(U) combined_maxerr(A, U, upper_branch),
+                  numeric(2)))
+  data.frame(
+    `upper T` = Us,
+    `max value err` = fmt(res[, "val"]),
+    `max gradient err` = fmt(res[, "grad"]),
+    check.names = FALSE
+  )
+}
+
+# Robust optimal threshold selection from among `candidates` set of upper
+# thresholds U, over the full domain in A. "Robust" in the same sense as
+# threshold-lower.qmd's robust_optimum(): if the joint-optimal U sits right
+# at a non-finite cliff, prefer a candidate with a margin against that cliff
+# over the literal minimum. Ties at the floor are common here (the same
+# worst-case z-point often stays in the same region across a whole run of
+# candidate U, giving bit-identical error) -- among tied candidates we
+# report the one closest to zero, rather than an arbitrary array-order pick,
+# and also return the full tied `plateau` so the tie is visible rather than
+# hidden behind a single point estimate.
+robust_optimum <- function(A, candidates, upper_branch, tol = 2) {
+  errs <- t(vapply(candidates, function(U) combined_maxerr(A, U, upper_branch), numeric(2)))
+  e <- pmax(errs[, "val"], errs[, "grad"])
+  finite <- is.finite(e)
+  if (!any(finite)) return(list(U = NA_real_, val = Inf, grad = Inf, plateau = c(NA, NA)))
+  floor_val <- min(e[finite])
+  near_floor <- finite & e <= tol * floor_val
+  U_best <- if (any(!finite)) {
+    cliff <- candidates[!finite]
+    margin <- vapply(candidates[near_floor], function(U) min(abs(U - cliff)), numeric(1))
+    candidates[near_floor][which.max(margin)]
+  } else {
+    at_floor <- candidates[finite & e == floor_val]
+    at_floor[which.min(abs(at_floor))]
+  }
+  idx <- match(U_best, candidates)
+  list(U = U_best, val = errs[idx, "val"], grad = errs[idx, "grad"], plateau = range(candidates[near_floor]))
+}
+```
+
+```{r grids}
+A64 <- get_errs("f64", round(seq(-8, 20, by = 0.2), 4))
+A32 <- get_errs("f32", round(seq(-5, 12, by = 0.1), 4))
+```
+
+All tables below scan the max relative error across the entire domain ($x \in [-8, 20]$ for f64, $x \in [-5, 12]$ for f32).
+The lower bound stays strictly above the asymptotic branch's territory, and the upper bound stays comfortably clear of the deep upper-tail XLA wall ($x \approx 37.6$ / $x \approx 12.9$, see later) while being deep enough to demonstrate the linear approximation failure.
+
+## 1. Linear approximation
+
+### f64
+
+```{r f64-linear-sweep}
+Us64_lin <- seq(3, 9, by = 0.5)
+tbl64_lin <- sweep_tbl(A64, Us64_lin, "linear")
+knitr::kable(tbl64_lin, align = "c")
+```
+
+```{r f64-linear-best}
+#| echo: false
+best64_lin <- robust_optimum(A64, Us64_lin, "linear")
+log1p_floor64 <- combined_maxerr(A64, 0, "log1p")
+```
+
+Best *joint* (max of value & gradient) is `r fmt(max(best64_lin$val, best64_lin$grad))` at `T` = `r best64_lin$U`.
+Note that the relative error of the log CDF value and log CDF gradient pull in opposite directions: the gradient reaches its best only at large `T`, where the value error has already blown up.
+
+In addition, accuracy can be seen to be increasing as the threshold pushed into the tail, but the direct branch accuracy collapses before we reach deep enough in the tail for the approximation to hold well.
+
+### f32
+
+```{r f32-linear-sweep}
+Us32_lin <- seq(2, 6, by = 0.5)
+tbl32_lin <- sweep_tbl(A32, Us32_lin, "linear")
+knitr::kable(tbl32_lin, align = "c")
+```
+
+```{r f32-linear-best}
+#| echo: false
+best32_lin <- robust_optimum(A32, Us32_lin, "linear")
+log1p_floor32 <- combined_maxerr(A32, 0, "log1p")
+```
+
+Best *joint* is `r fmt(max(best32_lin$val, best32_lin$grad))` at `T` = `r best32_lin$U`.
+
+**Conclusion:** across the entire threshold range the linear approximation's
+best joint accuracy is `r fmt(max(best64_lin$val, best64_lin$grad))` (f64) /
+`r fmt(max(best32_lin$val, best32_lin$grad))` (f32).
+Both are unacceptably worse than the exact `log1p` branch below and the linear approximation is not recoverable by threshold tuning.
+
+## 2. Exact `log1p` architecture
+
+Switching the upper branch to the exact `log1p(-0.5 * erfc(z/sqrt(2)))`
+widens the joint-optimal region to a broad plateau for both dtypes, centred
+naturally on `U = 0`.
+
+### f64
+
+```{r f64-log1p-sweep}
+Us64 <- c(-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6)
+knitr::kable(sweep_tbl(A64, Us64, "log1p"), align = "c")
+```
+
+### f32
+
+```{r f32-log1p-sweep}
+Us32 <- c(-4, -3, -2, -1, 0, 1, 2, 3, 4)
+knitr::kable(sweep_tbl(A32, Us32, "log1p"), align = "c")
+```
+
+```{r f64-log1p-best}
+#| echo: false
+best64_log1p <- robust_optimum(A64, Us64, "log1p")
+best32_log1p <- robust_optimum(A32, Us32, "log1p")
+```
+
+**Conclusion: `U` = `r best64_log1p$U`** for both dtypes.
+This is optimal (or tied for optimal within a wide floor plateau) in both.
+It is also the logical switch point based on the identity in the Overview.
+
+## Deep upper-tail XLA wall (branch-independent)
+
+For `z` beyond approximately 37.6 (f64) / 12.9 (f32), `erfc(z/sqrt(2))` underflows to exactly 0 in XLA (this is probably the `exp` inside `erfc` dropping below the flush threshold?), so the `log1p` branch returns `0` where the true log-CDF is a representable value.
+See confirmation for the upper-tail branch below.
+This behaviour was seen in the lower threshold analysis for `exp` via a bare `nv_exp` call, though at a slightly different numeric cutoff (expected since `erfc` is not just an `exp` opcode).
+
+```{r deep-tail-demo}
+#| code-fold: show
+z64_deep <- c(19, 37.5, 37.6)
+z32_deep <- c(9, 12.9, 13)
+gold64_deep <- mpfr_gold(z64_deep)$val
+gold32_deep <- mpfr_gold(z32_deep)$val
+anvl64_deep <- eval_val(branch_log1p, z64_deep, "f64")
+anvl32_deep <- eval_val(branch_log1p, z32_deep, "f32")
+# kable()/format() round extreme-magnitude doubles (1e-300 range) to display
+# as "0" unless formatted to scientific notation explicitly first.
+knitr::kable(data.frame(
+  dtype = c(rep("f64", 3), rep("f32", 3)),
+  z = c(z64_deep, z32_deep),
+  gold_log_phi = sprintf("%.4e", c(gold64_deep, gold32_deep)),
+  anvl_log1p = sprintf("%.4e", c(anvl64_deep, anvl32_deep)),
+  check.names = FALSE
+), align = "c")
+```
+
+The `log1p` branch is accurate to the precision shown right up to the cliff edge (`z = 37.5` for f64, `z = 12.9` for f32) but returns exactly `0` one step later (`z = 37.6` / `z = 13`), where the true value is a tiny representable value (`r fmt(mpfr_gold(37.6)$val)` for f64, `r fmt(mpfr_gold(13)$val)` for f32).
+
+## Summary
+
+```{r summary}
+#| echo: false
+lin_joint64   <- max(best64_lin$val,   best64_lin$grad)
+lin_joint32   <- max(best32_lin$val,   best32_lin$grad)
+log1p_joint64 <- max(best64_log1p$val, best64_log1p$grad)
+log1p_joint32 <- max(best32_log1p$val, best32_log1p$grad)
+ratio64 <- lin_joint64 / log1p_joint64
+ratio32 <- lin_joint32 / log1p_joint32
+fmt_ratio <- function(x) sprintf("%sx", formatC(x, format = "g", digits = 3))
+
+summary_tbl <- data.frame(
+  dtype = c("f64", "f32"),
+  `upper branch` = c("log1p", "log1p"),
+  `recommended T` = c(best64_log1p$U, best32_log1p$U),
+  plateau = c(paste(best64_log1p$plateau, collapse = " to "),
+              paste(best32_log1p$plateau, collapse = " to ")),
+  `value err` = c(fmt(best64_log1p$val), fmt(best32_log1p$val)),
+  `gradient err` = c(fmt(best64_log1p$grad), fmt(best32_log1p$grad)),
+  check.names = FALSE
+)
+knitr::kable(summary_tbl, align = "c")
+```

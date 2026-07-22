@@ -1,0 +1,452 @@
+---
+title: "Lower Crossover Threshold (Asymptotic ↔ Direct)"
+subtitle: "`nv_pnorm(log.p = TRUE)` branch-selection analysis"
+author: "Louis Aslett <louis.aslett@durham.ac.uk>"
+format:
+  html:
+    toc: true
+    embed-resources: true
+    code-fold: true
+    df-print: kable
+execute:
+  cache: false
+references:
+- id: abramowitz64
+  type: book
+  author:
+    - family: Abramowitz
+      given: M.
+    - family: Stegun
+      given: I. A.
+  issued:
+    date-parts:
+      - [1964]
+  title: "Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables"
+  publisher: "National Bureau of Standards"
+  publisher-place: "Washington, D.C."
+  collection-title: "Applied Mathematics Series"
+  collection-number: 55
+  number: "AMS 55"
+- id: cody69
+  type: article-journal
+  title: "Rational Chebyshev Approximation for the Error Function"
+  author:
+    - family: Cody
+      given: W. J.
+  container-title: Mathematics of Computation
+  volume: 23
+  issue: 107
+  page: 631-637
+  issued:
+    year: 1969
+  DOI: 10.1090/S0025-5718-1969-0247736-4
+- id: cody93
+  type: article-journal
+  title: "Algorithm 715: SPECFUN -- A Portable FORTRAN Package of Special Function Routines and Test Drivers"
+  author:
+    - family: Cody
+      given: W. J.
+  container-title: ACM Transactions on Mathematical Software
+  volume: 19
+  issue: 1
+  page: 22-30
+  issued:
+    year: 1993
+    month: 3
+  DOI: 10.1145/151271.151273
+csl: https://www.zotero.org/styles/harvard-cite-them-right-no-et-al
+---
+
+## Overview
+
+The natural way to compute the Normal cdf is via the complementary error function (erfc),
+
+$$\Phi(x) = \frac{1}{2} \text{erfc}\left( -\frac{x}{\sqrt{2}} \right)$$
+
+However, XLA does not provide any numerically stable log erfc, so when $\text{erfc}\left( -\frac{x}{\sqrt{2}} \right) \xrightarrow{x \to -\infty} 0$, an alternative approach is required.
+
+After investigating Cody [-@cody69; -@cody93] which is used by R, and both @abramowitz64 equations 26.2.12 and 26.2.13, it was clear that @abramowitz64 equation 26.2.12 was the most suitable for implementation in {anvl}.
+Cody [-@cody69; -@cody93] involves a complex rational polynomial and @abramowitz64 equation 26.2.13 has more unavoidable divisions.
+This aligns with the choice made by JAX, but was worth investigating.
+
+Hence, `nv_pnorm(..., log.p = TRUE)` computes the normal log CDF by selecting, per element, one of three numerically-independent branches based on `d = (q - mean) / sd`:
+
+* `d <= lower_threshold` -- **asymptotic** tail series [@abramowitz64, p.932], truncated to a chosen number of terms
+* `lower_threshold < d <= upper_threshold` -- **direct** `log(0.5 * erfc(-d/sqrt(2)))`
+* `d > upper_threshold` -- upper-tail branch (also requires care, see separate upper threshold analysis)
+
+Here we seek the optimal **lower** crossover threshold between the asymptotic and direct branches, for both `f32` and `f64`, checking both log CDF value and the gradient accuracy against an [Rmpfr](https://cran.r-project.org/package=Rmpfr) 256-bit gold standard.
+
+@abramowitz64, equation 26.2.12, states (with a change to statistical notation $\Phi, \phi$):
+
+> $$ 1-\Phi(x) = \frac{\phi(x)}{x} \left\{ 1 - \frac{1}{x^2} + \frac{1 \cdot 3}{x^4} + \dots + \frac{(-1)^n 1 \cdot 3 \dots (2n - 1)}{x^{2n}} \right\} + R_n $$
+> where
+> $$ R_n = (-1)^{n+1} 1 \cdot 3 \dots (2n + 1) \int_{x}^{\infty} \frac{\phi(t)}{t^{2n+2}} \, dt $$
+> which is less in absolute value than the first neglected term.
+
+This is a divergent asymptotic series, so truncating it at a different number of terms changes both the accuracy achievable and in turn the threshold at which it is optimal to switch between direct and asymptotic calculation.
+The $k$th term is
+$$A_k = \frac{\phi(x)}{x}\frac{(2k-1)!!}{x^{2k}}$$
+so by considering the ratio of successive terms, we see the error shrinks only while $2k+1 < x^2$.
+Since we are considering deep left tail values $x \ll -8$ we should have shrinking error well beyond the number of terms we would anyway consider evaluating for speed reasons (e.g., JAX uses the asymptotic path only for $x < -8$ in fp32 and $x < -20$ in fp64).
+
+JAX appears to always use $n=3$, but I could not immediately see any indication why this choice.
+Perhaps implicit from the docstring is that it might be because they note that
+$$R_n = \mathcal{O}\left( \frac{e^{-x^2/2} (2n+1)!!}{|x|^{2n+3}} \right)$$
+so for $|x| = 10, R_3 \approx 2.03 \times 10^{-29}$ which is well below machine epsilon.
+However, this is missing a constant and in particular is an absolute error.
+For deep tail values, the relative error corresponding to this absolute error could be well above $10^{-6}$ (indeed, this happens and JAX catastrophically loses precision in some places, see separate JAX comparison notes).
+
+Hence, I wanted to take a deeper look and sweep a range of choices for $n$ for both precisions.
+
+Finally, the asymptotic branch ends in computing `log1p(...)`, which is one of its more expensive steps. Since the argument is expected to be small where the asymptotic branch is actually used, sections 3 and 4 provide an accuracy analysis which is the same as sections 1 and 2 with that call replaced by the approximation `log1p(x) ~= x`.
+
+### Branch isolated implementations
+
+We run each possible branch (asymptotic/direct) in isolation for a range of input arguments so as to identify an optimal threshold at which to switch between branches for the package code.
+This is identical to evaluating the real parametrised `nv_pnorm` body at that threshold, since the branches don't interact.
+
+Libraries:
+
+```{r setup}
+#| message: false
+library("Rmpfr")
+library("anvl")
+library("kableExtra")
+```
+
+Define the code for direct and asymptotic branches:
+
+```{r branches}
+#| code-fold: show
+branch_direct <- function(d) {
+  nv_log(0.5 * nv_erfc(-d / sqrt(2)))
+}
+
+# Abramowitz & Stegun 26.2.12 asymptotic coefficients
+# c_j = (-1)^j * (2j-1)!!, i.e. c_1=-1, c_2=3, c_3=-15, c_4=105
+asymp_coef <- function(n) {
+  cf <- numeric(n)
+  cf[1] <- -1
+  if (n > 1) for (j in 2:n) cf[j] <- cf[j - 1] * (-(2 * j - 1))
+  cf
+}
+
+# `series_terms` corresponds to $n$ above
+# `use_log1p = FALSE` swaps the exact `nv_log1p(series_minus_1)` for the
+# approximation `log1p(x) ~= x`
+# NB actual implementation in `nv_pnorm` not written as loop
+branch_asymp <- function(d, series_terms, use_log1p = TRUE) {
+  d_asymp <- nv_max(-d, 1)
+  d2_asymp <- d_asymp * d_asymp
+  w <- 1 / d2_asymp
+  cf <- asymp_coef(series_terms)
+  acc <- cf[series_terms]
+  if (series_terms > 1) for (j in seq(series_terms - 1, 1)) acc <- cf[j] + w * acc
+  series_minus_1 <- w * acc
+  log_term <- if (use_log1p) nv_log1p(series_minus_1) else series_minus_1
+  -0.5 * d2_asymp - 0.5 * base::log(2 * pi) - nv_log(d_asymp) + log_term
+}
+```
+
+Evaluation helpers for log CDF and its gradient:
+
+```{r eval-helpers}
+# Helper to jit and evaluate function at vector of values with particular type
+eval_val <- function(fn, z, type) {
+  as.vector(jit(fn)(nv_array(z, dtype = type)))
+}
+
+# Helper to jit and evaluate gradient of function at vector of values with
+# particular type
+eval_grad <- function(fn, z, type) {
+  # Trick to do vectorised gradient: use sum to transform vector output into
+  # a scalar, then differentiate wrt vector input.
+  # Also sum's backward is linear, so non-finite elements do not
+  # cross-contaminate finite ones.
+  f <- function(q) nv_reduce_sum(fn(q))
+  as.vector(jit(gradient(f, wrt = "q"))(nv_array(z, dtype = type))[[1L]])
+}
+```
+
+`Rmpfr` gold standard which is safe in the far tails:
+
+```{r gold}
+# Use mpfr in 256-bit accuracy to create gold standard log cdf and gradient
+# values (gradient using analytical derivative)
+mpfr_gold <- function(z) {
+  z_ <- mpfr(z, 256)
+  val <- as.numeric(pnorm(z_, log.p = TRUE))
+  grad <- as.numeric(dnorm(z_) / pnorm(z_))
+  list(val = val, grad = grad)
+}
+
+# Helper to compute relative error
+rel_err <- function(got, gold) {
+  e <- abs((got - gold) / gold)
+  e[gold == 0] <- ifelse(abs(got[gold == 0]) == 0, 0, Inf)
+  e[!is.finite(got)] <- Inf
+  e
+}
+```
+
+Error analysis helpers:
+
+```{r analyse}
+# Get relative errors for direct and asymptotic branch (given each of number of
+# `terms` in series and use/no use of log1p approximation)
+get_errs <- function(dt, zs, terms, use_log1p = TRUE) {
+  g <- mpfr_gold(zs)
+  direct_raw <- list(val = eval_val(branch_direct, zs, dt), grad = eval_grad(branch_direct, zs, dt))
+  direct_err <- list(val = rel_err(direct_raw$val, g$val), grad = rel_err(direct_raw$grad, g$grad))
+  asymp_err <- setNames(lapply(terms, function(n) {
+    fn <- function(d) branch_asymp(d, n, use_log1p)
+    raw <- list(val = eval_val(fn, zs, dt), grad = eval_grad(fn, zs, dt))
+    list(val = rel_err(raw$val, g$val), grad = rel_err(raw$grad, g$grad))
+  }), as.character(terms))
+  list(zs = zs, gold = g, direct = direct_err, asymp = asymp_err)
+}
+
+# For a single given threshold and single number of asymptotic terms, find the
+# worst error suffered across the range of z's.
+# See `robust_optimum()` for using this to check multiple thresholds
+combined_maxerr <- function(A, thres, n) {
+  use_asymp <- A$zs <= thres
+  ev <- ifelse(use_asymp, A$asymp[[as.character(n)]]$val, A$direct$val)
+  eg <- ifelse(use_asymp, A$asymp[[as.character(n)]]$grad, A$direct$grad)
+  c(val = max(ev), grad = max(eg))
+}
+
+fmt <- function(x) ifelse(is.finite(x), sprintf("%.2e", x), "Inf")
+
+# Grouped-header sweep table: term count on top, value/gradient nested
+# underneath each.
+sweep_tbl_terms <- function(A, threshs, terms) {
+  cols <- lapply(terms, function(n) {
+    res <- t(vapply(threshs, function(L) combined_maxerr(A, L, n), numeric(2)))
+    data.frame(value = fmt(res[, "val"]), gradient = fmt(res[, "grad"]))
+  })
+  df <- do.call(cbind, c(list(`lower T` = threshs), cols))
+  colnames(df) <- c("lower T", rep(c("value", "gradient"), length(terms)))
+  header <- c(1, rep(2, length(terms)))
+  names(header) <- c(" ", paste0(terms, ifelse(terms == 1, " term", " terms")))
+  k <- knitr::kable(df, format = "html", align = "c", row.names = FALSE)
+  kableExtra::add_header_above(k, header)
+}
+
+# Robust optimal threshold selection from among `candidates` set of thresholds.
+# "Robust" in the sense that if an optimal value falls very near a non-finite
+# value cliff, we don't want to necessarily take that fully optimal value and
+# would favour having a margin against the underflow cliff edge.
+# Use `tol` to set the multiplicative margin within the total minimum we accept.
+# `metric` is "joint" to optimise worst error for gradient and value, or is
+# "val" or "grad" to optimise just those.
+# See `terms_summary()` for using this to find opt thresholds at multiple series
+# terms values n
+robust_optimum <- function(A, candidates, metric, n, tol = 2) {
+  # Get all errors 
+  errs <- t(vapply(candidates, function(thres) combined_maxerr(A, thres, n), numeric(2)))
+  # joint/val/grad to optimise?
+  e <- if (metric == "joint") pmax(errs[, "val"], errs[, "grad"]) else errs[, metric]
+  # Finiteness check: need some solution to exist!
+  finite <- is.finite(e)
+  if (!any(finite)) return(list(L = NA_real_, val = Inf, grad = Inf))
+  # Find absolute best error, then back off if neear cliff
+  floor_val <- min(e[finite])
+  near_floor <- finite & e <= tol * floor_val
+  thres_best <- if (any(!finite)) {
+    cliff <- candidates[!finite]
+    margin <- vapply(candidates[near_floor], function(L) min(abs(L - cliff)), numeric(1))
+    candidates[near_floor][which.max(margin)]
+  } else {
+    candidates[which.min(e)]
+  }
+  # Return robust optimal threshold
+  idx <- match(thres_best, candidates)
+  list(thres = thres_best, val = errs[idx, "val"], grad = errs[idx, "grad"])
+}
+
+# Main checking function: check mutiple candidate threshold values at multiple
+# possible numbers of terms in the expansion
+terms_summary <- function(A, candidates, terms) {
+  best <- setNames(lapply(terms, function(n) robust_optimum(A, candidates, "joint", n)),
+                    as.character(terms))
+  worst <- vapply(best, function(b) max(b$val, b$grad), numeric(1))
+  df <- data.frame(
+    terms = terms,
+    `optimal lower T` = vapply(best, function(b) b$thres, numeric(1)),
+    `value err` = fmt(vapply(best, function(b) b$val, numeric(1))),
+    `gradient err` = fmt(vapply(best, function(b) b$grad, numeric(1))),
+    `worst err` = fmt(worst),
+    check.names = FALSE
+  )
+  list(df = df, best = best, worst = worst)
+}
+```
+
+## 1. Double precision (f64)
+
+```{r f64-terms}
+# Single source of truth for which series_terms values are explored below
+# -- change just this to widen/narrow the sweep for f64.
+terms64 <- 1:8
+zs64 <- c(-40, 0)
+```
+
+Max relative error over threshold choices `r paste0("$T \\in [", zs64[1], ", ", zs64[2], "]$")`, for `r paste0("$n \\in \\{", paste(terms64, collapse = ", "), "\\}$")` terms in asymptotic expansion:
+
+```{r f64-sweep}
+A64 <- get_errs("f64", round(seq(zs64[1], zs64[2], by = 0.2), 4), terms64)
+thresh64 <- c(-38, -37, -36, -35, -34, -33, -32, -30, -25, -20, -15, -12)
+sweep_tbl_terms(A64, thresh64, terms64)
+```
+
+For each term count, its own joint-optimal threshold (see `robust_optimum()` above) and the worst error achieved there:
+
+```{r f64-terms-summary}
+cands64 <- A64$zs
+s64 <- terms_summary(A64, cands64, terms64)
+knitr::kable(s64$df, align = "c", row.names = FALSE)
+```
+
+```{r f64-best}
+#| echo: false
+best_n64 <- as.integer(names(which.min(s64$worst)))
+best64   <- s64$best[[as.character(best_n64)]]
+```
+
+**Robust optimum: `r best_n64` series terms, threshold `r best64$thres`**
+(value err `r fmt(best64$val)`, gradient err `r fmt(best64$grad)`).
+
+* **Hard floor at `-37.6`.** The direct branch calls `erfc(-d/sqrt(2))`; XLA flushes `exp` to zero once its argument drops below approximately -708, so `erfc` underflows and the direct value returns `-Inf` for `z < -sqrt(2*708) ~= -37.6` -- the threshold must stay strictly above -37.6, as confirmed below.
+  `nv_exp` on this backend matches R exactly at the last representable double before the flush, then goes to exactly zero one step later.
+
+```{r underflow-demo-f64}
+#| code-fold: show
+as.vector(jit(nv_exp)(nv_array(c(-708, -709), dtype = "f64")))
+```
+
+## 2. Single precision (f32)
+
+```{r f32-terms}
+# Single source of truth for which series_terms values are explored below
+# -- change just this to widen/narrow the sweep for f32. Independent of
+# terms64, since the two dtypes can have very different sweet spots.
+terms32 <- 1:4
+zs32 <- c(-16, 0)
+```
+
+Max relative error over threshold choices `r paste0("$T \\in [", zs32[1], ", ", zs32[2], "]$")`, for `r paste0("$n \\in \\{", paste(terms32, collapse = ", "), "\\}$")` terms in asymptotic expansion:
+
+```{r f32-sweep}
+A32 <- get_errs("f32", round(seq(zs32[1], zs32[2], by = 0.1), 4), terms32)
+thresh32 <- c(-13, -12, -11, -10, -9, -8, -7, -6, -5)
+sweep_tbl_terms(A32, thresh32, terms32)
+```
+
+```{r f32-terms-summary}
+cands32 <- A32$zs
+s32 <- terms_summary(A32, cands32, terms32)
+knitr::kable(s32$df, align = "c", row.names = FALSE)
+```
+
+```{r f32-best}
+#| echo: false
+best_n32 <- as.integer(names(which.min(s32$worst)))
+best32   <- s32$best[[as.character(best_n32)]]
+```
+
+**Robust optimum: `r best_n32` series terms, threshold `r best32$thres`** (value err `r fmt(best32$val)`, gradient err `r fmt(best32$grad)`).
+
+* **Hard floor at `-12.6`** (same `erfc`/`exp` underflow mechanism as f64, confirmed directly below).
+
+```{r underflow-demo-f32}
+#| code-fold: show
+as.vector(jit(nv_exp)(nv_array(c(-87, -88), dtype = "f32")))
+```
+
+## 3. Double precision (f64), `log1p` approximation
+
+Same experiment as Section 1, with `branch_asymp`'s `nv_log1p(series_minus_1)` replaced by the approximation `series_minus_1` (`use_log1p = FALSE`):
+
+```{r f64-approx-sweep}
+A64_approx <- get_errs("f64", round(seq(zs64[1], zs64[2], by = 0.2), 4), terms64, use_log1p = FALSE)
+sweep_tbl_terms(A64_approx, thresh64, terms64)
+```
+
+```{r f64-approx-terms-summary}
+s64_approx <- terms_summary(A64_approx, cands64, terms64)
+knitr::kable(s64_approx$df, align = "c", row.names = FALSE)
+```
+
+```{r f64-approx-best}
+#| echo: false
+best_n64_approx <- as.integer(names(which.min(s64_approx$worst)))
+best64_approx   <- s64_approx$best[[as.character(best_n64_approx)]]
+```
+
+**Robust optimum (approximation): `r best_n64_approx` series terms, threshold `r best64_approx$thres`** (value err `r fmt(best64_approx$val)`, gradient err `r fmt(best64_approx$grad)`).
+
+* The hard floor and underflow cliff are unchanged from Section 1 -- they come entirely from `branch_direct`, which the `log1p` approximation doesn't touch.
+* What *does* change is the asymptotic branch's own accuracy at shallow (less negative) thresholds: `log1p(x) ~= x` is a poor approximation in f64 across the board.
+  Compare this section's optimal threshold to Section 1's, which shows that even deep in the tail where the direct branch is inaccurate it still ends up preferred because the approximation is so poor.
+
+## 4. Single precision (f32), `log1p` approximation
+
+Same experiment as Section 2, with the `log1p` approximation:
+
+```{r f32-approx-sweep}
+A32_approx <- get_errs("f32", round(seq(zs32[1], zs32[2], by = 0.1), 4), terms32, use_log1p = FALSE)
+sweep_tbl_terms(A32_approx, thresh32, terms32)
+```
+
+```{r f32-approx-terms-summary}
+s32_approx <- terms_summary(A32_approx, cands32, terms32)
+knitr::kable(s32_approx$df, align = "c", row.names = FALSE)
+```
+
+```{r f32-approx-best}
+#| echo: false
+best_n32_approx <- as.integer(names(which.min(s32_approx$worst)))
+best32_approx   <- s32_approx$best[[as.character(best_n32_approx)]]
+```
+
+**Robust optimum (approximation): `r best_n32_approx` series terms, threshold `r best32_approx$thres`** (value err `r fmt(best32_approx$val)`, gradient err `r fmt(best32_approx$grad)`).
+
+* As with f64, the hard floor at `-12.6` is unchanged from Section 2, it being a property of the direct branch.
+
+## Summary of robust optimal thresholds
+
+```{r summary}
+#| echo: false
+summary_tbl <- data.frame(
+  dtype = c("f64", "f64", "f32", "f32"),
+  `log1p` = c("exact", "approx", "exact", "approx"),
+  `series terms` = c(best_n64, best_n64_approx, best_n32, best_n32_approx),
+  `recommended thres` = c(best64$thres, best64_approx$thres, best32$thres, best32_approx$thres),
+  upper = c("0", "0", "0", "0"),
+  `value err` = c(fmt(best64$val), fmt(best64_approx$val), fmt(best32$val), fmt(best32_approx$val)),
+  `gradient err` = c(fmt(best64$grad), fmt(best64_approx$grad), fmt(best32$grad), fmt(best32_approx$grad)),
+  check.names = FALSE
+)
+knitr::kable(summary_tbl, align = "c")
+```
+
+```{r summary-tradeoff}
+#| echo: false
+worst64        <- max(best64$val, best64$grad)
+worst64_approx <- max(best64_approx$val, best64_approx$grad)
+worst32        <- max(best32$val, best32$grad)
+worst32_approx <- max(best32_approx$val, best32_approx$grad)
+acc_ratio64 <- worst64_approx / worst64
+acc_ratio32 <- worst32_approx / worst32
+depth64 <- best64_approx$thres - best64$thres
+depth32 <- best32_approx$thres - best32$thres
+fmt_ratio <- function(x) sprintf("%sx", formatC(x, format = "g", digits = 3))
+```
+
+This gives the three comparisons directly:
+
+* **Term count:** `r best_n64` for f64 (exact) vs `r best_n64_approx` (approx); `r best_n32` for f32 (exact) vs `r best_n32_approx` (approx).
+* **Threshold:** the `log1p` approximation moves the recommended f64 threshold by `r sprintf("%+.1f", depth64)` and the f32 threshold by `r sprintf("%+.1f", depth32)` relative to the exact version (negative means it must be pushed deeper into the tail to stay safe).
+* **Whether `log1p` is worth it:** at its own optimal threshold, the approximation's worst error is `r fmt_ratio(acc_ratio64)` (f64) / `r fmt_ratio(acc_ratio32)` (f32) larger than the exact version's.
