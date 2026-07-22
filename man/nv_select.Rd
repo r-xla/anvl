@@ -11,7 +11,8 @@ nv_select(x, dim, index)
 Input array.}
 
 \item{dim}{(\code{integer(1)})\cr
-Dimension to index into.}
+Dimension to index into.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 
 \item{index}{(\code{\link{arrayish}})\cr
 Scalar or 1D arrayish input (integer).}

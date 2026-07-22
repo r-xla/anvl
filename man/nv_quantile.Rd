@@ -17,7 +17,8 @@ One or more probabilities in \verb{[0, 1]}. Either a length-1 numeric
 rejected — wrap with \code{array()}.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to compute the quantile. If \code{NULL} (default),
+Dimension along which to compute the quantile. Negative values count from
+the end, i.e. \code{-1} refers to the last dimension. If \code{NULL} (default),
 uses the last dimension.}
 
 \item{interpolation}{(\code{character(1)})\cr

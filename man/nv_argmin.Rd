@@ -11,7 +11,8 @@ nv_argmin(x, dim = NULL, drop = TRUE, nan_rm = FALSE)
 Input array.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to find the index. If \code{NULL} (default), uses
+Dimension along which to find the index. Negative values count from the
+end, i.e. \code{-1} refers to the last dimension. If \code{NULL} (default), uses
 the last dimension.}
 
 \item{drop}{(\code{logical(1)})\cr

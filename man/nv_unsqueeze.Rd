@@ -11,7 +11,9 @@ nv_unsqueeze(x, dim)
 Input array.}
 
 \item{dim}{(\code{integer(1)})\cr
-Position at which to insert the new dimension.}
+Position at which to insert the new dimension. Valid positions range from
+1 to \code{ndims(x) + 1}. Negative values count from the end of the
+\emph{result}, i.e. \code{-1} appends the new dimension at the end.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -24,6 +26,7 @@ Inserts a dimension of size 1 at the specified position.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
 nv_unsqueeze(x, dim = 1L)
+nv_unsqueeze(x, dim = -1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

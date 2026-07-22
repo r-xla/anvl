@@ -11,7 +11,9 @@ nv_reshape(x, shape)
 Input array.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Must have the same number of elements as \code{x}.}
+Target shape. Must have the same number of elements as \code{x}.
+At most one entry may be \code{-1}, in which case its extent is inferred from
+the remaining entries and the number of elements of \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -28,6 +30,8 @@ Note that row-major order is used, which differs from R's column-major order.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:6)
 nv_reshape(x, c(2, 3))
+nv_reshape(x, c(2, -1)) # infer the second dimension
+nv_reshape(x, -1) # flatten
 \dontshow{\}) # examplesIf}
 }
 \seealso{

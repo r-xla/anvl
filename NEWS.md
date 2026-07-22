@@ -15,6 +15,20 @@
 
 ## Features
 
+* Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now accept
+  negative values that count from the end, so `-1` refers to the last
+  dimension. This works at both layers: in the `prim_*` primitives
+  (`prim_transpose()`, `prim_concatenate()`, `prim_reduce_*()`,
+  `prim_reduce()`, `prim_cumsum()` / `prim_cumprod()` / `prim_cummax()` /
+  `prim_cummin()`, `prim_argmax()`, `prim_argmin()`, `prim_reverse()`,
+  `prim_iota()`, `prim_sort()`) and in the `nv_*` functions built on top of
+  them, including `nv_squeeze()`, `nv_unsqueeze()`, `nv_select()`,
+  `nv_top_k()`, `nv_quantile()` and `nv_median()` (#396).
+* `nv_reshape()` and `prim_reshape()` accept a single `-1` in `shape`, whose
+  extent is then inferred from the number of elements of the input, e.g.
+  `nv_reshape(x, c(2, -1))` (#396).
+* Reductions now reject dimensions that are out of range for the operand
+  instead of silently ignoring them (#396).
 * New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /
   `nv_upper_tri_like()`) return a boolean triangular mask for a given shape,
   mirroring base R's `lower.tri()` / `upper.tri()`. As in base R, the main

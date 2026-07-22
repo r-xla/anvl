@@ -236,15 +236,22 @@ nv_transpose <- function(x, permutation = NULL) {
 #' @template param_x
 #' @param shape (`integer()`)\cr
 #'   Target shape. Must have the same number of elements as `x`.
+#'   At most one entry may be `-1`, in which case its extent is inferred from
+#'   the remaining entries and the number of elements of `x`.
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [prim_reshape()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:6)
 #' nv_reshape(x, c(2, 3))
+#' nv_reshape(x, c(2, -1)) # infer the second dimension
+#' nv_reshape(x, -1) # flatten
 #' @export
 nv_reshape <- function(x, shape) {
   x <- as_anvl_array(x)
+  # `prim_reshape()` resolves `-1` itself; resolving here too keeps the
+  # identity shortcut below able to recognize a no-op reshape.
+  shape <- resolve_reshape_shape(shape, prod(shape(x)), arg = "shape")
   if (!identical(shape(x), shape)) {
     prim_reshape(x, shape)
   } else {
@@ -278,6 +285,7 @@ nv_flatten <- function(x) {
 #'   Arrays to concatenate. Must have the same shape except along `dimension`.
 #' @param dimension (`integer(1)` | `NULL`)\cr
 #'   Dimension along which to concatenate.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #'   If `NULL` (default), assumes all inputs are at most 1-D and concatenates along dimension 1.
 #' @return [`arrayish`]\cr
 #'   Has the common data type and a shape matching the inputs in all
@@ -295,8 +303,15 @@ nv_concatenate <- function(..., dimension = NULL) {
   ranks <- lengths(shapes)
   non_scalar_shapes <- shapes[ranks > 0L]
   n_scalars <- sum(ranks == 0L)
-  assert_int(dimension, lower = 1L, upper = max(max(ranks), 1L), null.ok = max(ranks) <= 1L)
-  dimension <- dimension %||% 1L
+  max_dim <- max(max(ranks), 1L)
+  if (is.null(dimension)) {
+    if (max(ranks) > 1L) {
+      cli_abort("{.arg dimension} must be provided when concatenating arrays with more than one dimension.")
+    }
+    dimension <- 1L
+  } else {
+    dimension <- resolve_dim(dimension, max_dim)
+  }
 
   non_scalar_shapes_without_dim <- lapply(non_scalar_shapes, \(shape) {
     shape[-dimension]
@@ -1335,6 +1350,7 @@ nv_clamp <- function(min_val, x, max_val) {
 #' @template param_x
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reverse.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [prim_reverse()] for the underlying primitive.
@@ -1353,6 +1369,8 @@ nv_reverse <- prim_reverse
 #' `device` default to those of `like`.
 #' @param dim (`integer(1)`)\cr
 #'   Dimension along which values increase.
+#'   Negative values count from the end of `shape`, i.e. `-1` refers to the
+#'   last dimension.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_iota_like()`).
@@ -1983,8 +2001,14 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
   nv_diag(nv_fill(1, n, dtype = dtype, device = device))
 }
 
+# Expand `dims = NULL` to "all dimensions". Negative dims are resolved here
+# (not just in the primitive) because `nv_mean()` / `nv_var()` / `nv_sd()`
+# index `shape(x)[dims]` to compute the number of reduced elements.
 .resolve_reduce_dims <- function(x, dims) {
-  as.integer(dims %||% seq_len(ndims(x)))
+  if (is.null(dims)) {
+    return(seq_len(ndims(x)))
+  }
+  resolve_dims(dims, ndims(x), arg = "dims", unique = TRUE)
 }
 
 #' @title Sum Reduction
@@ -2190,7 +2214,7 @@ nv_cumsum <- function(x, dim = NULL, nan_rm = FALSE) {
   if (nan_rm && inherits(dtype(x), "FloatType")) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
-  prim_cumsum(x, dim = as.integer(dim))
+  prim_cumsum(x, dim = dim)
 }
 
 #' @title Cumulative Product
@@ -2221,7 +2245,7 @@ nv_cumprod <- function(x, dim = NULL, nan_rm = FALSE) {
   if (nan_rm && inherits(dtype(x), "FloatType")) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
-  prim_cumprod(x, dim = as.integer(dim))
+  prim_cumprod(x, dim = dim)
 }
 
 #' @title Cumulative Maximum
@@ -2288,7 +2312,7 @@ nv_cummin <- function(x, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
   if (nan_rm && inherits(dtype(x), "FloatType")) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
-  out <- prim_cum(x, dim = as.integer(dim))
+  out <- prim_cum(x, dim = dim)
   if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
 }
 
@@ -2478,7 +2502,9 @@ nv_sd <- function(x, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) 
 #' Removes dimensions of size 1 from an array.
 #' @template param_x
 #' @param dims (`integer()` | `NULL`)\cr
-#'   Dimensions to squeeze. If `NULL` (default), all dimensions of size 1 are removed.
+#'   Dimensions to squeeze. Negative values count from the end, i.e. `-1`
+#'   refers to the last dimension.
+#'   If `NULL` (default), all dimensions of size 1 are removed.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as `x` with the specified dimensions removed.
 #' @seealso [nv_unsqueeze()], [nv_reshape()]
@@ -2492,7 +2518,7 @@ nv_squeeze <- function(x, dims = NULL) {
   if (is.null(dims)) {
     new_shape <- shp[shp != 1L]
   } else {
-    assert_integerish(dims, lower = 1L, upper = length(shp), unique = TRUE, any.missing = FALSE)
+    dims <- resolve_dims(dims, length(shp), unique = TRUE)
     for (d in dims) {
       if (shp[d] != 1L) {
         cli_abort("Cannot squeeze dimension {d} with size {shp[d]} (must be 1)")
@@ -2511,18 +2537,21 @@ nv_squeeze <- function(x, dims = NULL) {
 #' Inserts a dimension of size 1 at the specified position.
 #' @template param_x
 #' @param dim (`integer(1)`)\cr
-#'   Position at which to insert the new dimension.
+#'   Position at which to insert the new dimension. Valid positions range from
+#'   1 to `ndims(x) + 1`. Negative values count from the end of the
+#'   *result*, i.e. `-1` appends the new dimension at the end.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as `x` with an extra dimension of size 1.
 #' @seealso [nv_squeeze()], [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' nv_unsqueeze(x, dim = 1L)
+#' nv_unsqueeze(x, dim = -1L)
 #' @export
 nv_unsqueeze <- function(x, dim) {
   x <- as_anvl_array(x)
   shp <- shape(x)
-  assert_int(dim, lower = 1L, upper = length(shp) + 1L)
+  dim <- resolve_dim(dim, length(shp) + 1L)
   new_shape <- append(shp, 1L, after = dim - 1L)
   nv_reshape(x, new_shape)
 }
@@ -2796,6 +2825,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
 #' @template param_x
 #' @param dim (`integer(1)`)\cr
 #'   Dimension to index into.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param index ([`arrayish`])\cr
 #'   Scalar or 1D arrayish input (integer).
 #' @return [`arrayish`]\cr
@@ -2813,9 +2843,7 @@ nv_select <- function(x, dim, index) {
   if (rank == 0L) {
     cli_abort("Cannot select along a 0-dimensional array")
   }
-  dim <- as.integer(dim)
-  shp <- shape(x)
-  assert_int(dim, lower = 1L, upper = rank)
+  dim <- resolve_dim(dim, rank)
 
   args <- rep(list(quote(expr = )), rank)
   args[[dim]] <- index
@@ -2865,7 +2893,8 @@ nv_select <- function(x, dim, index) {
 #' You can also use `sort()` directly.
 #' @template param_x
 #' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to sort. If `NULL` (default), uses the last
+#'   Dimension along which to sort. Negative values count from the end,
+#'   i.e. `-1` refers to the last dimension. If `NULL` (default), uses the last
 #'   dimension.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, sort in decreasing order. Default `FALSE`.
@@ -2897,8 +2926,7 @@ nv_sort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
   if (ndims(x) == 0L) {
     cli_abort("Cannot sort a 0-dimensional array")
   }
-  dim <- dim %||% ndims(x)
-  prim_sort(list(x), dim = as.integer(dim), descending = decreasing, is_stable = stable)[[1L]]
+  prim_sort(list(x), dim = dim %||% ndims(x), descending = decreasing, is_stable = stable)[[1L]]
 }
 
 #' @title Argsort
@@ -2906,7 +2934,8 @@ nv_sort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
 #' Returns the indices that would sort the array along a dimension.
 #' @template param_x
 #' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to compute the sort permutation. If `NULL`
+#'   Dimension along which to compute the sort permutation. Negative values
+#'   count from the end, i.e. `-1` refers to the last dimension. If `NULL`
 #'   (default), uses the last dimension.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, returns indices that produce a decreasing sort. Default
@@ -2931,7 +2960,7 @@ nv_argsort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
   if (ndims(x) == 0L) {
     cli_abort("Cannot argsort a 0-dimensional array")
   }
-  dim <- as.integer(dim %||% ndims(x))
+  dim <- dim %||% ndims(x)
   idx <- nv_iota_like(x, dim = dim, dtype = "i32")
   prim_sort(list(x, idx), dim = dim, descending = decreasing, is_stable = stable)[[2L]]
 }
@@ -2944,7 +2973,8 @@ nv_argsort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
 #'   Number of top elements to return. Must satisfy
 #'   `1 <= k <= shape(x)[dim]`.
 #' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to take the top `k`. If `NULL` (default),
+#'   Dimension along which to take the top `k`. Negative values count from the
+#'   end, i.e. `-1` refers to the last dimension. If `NULL` (default),
 #'   uses the last dimension.
 #' @param with_indices (`logical(1)`)\cr
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
@@ -2973,7 +3003,7 @@ nv_top_k <- function(x, k, dim = NULL, with_indices = FALSE) {
   if (rank == 0L) {
     cli_abort("Cannot take top-k of a 0-dimensional array")
   }
-  dim <- as.integer(dim %||% rank)
+  dim <- resolve_dim(dim %||% rank, rank, arg = "dim")
   k <- as.integer(k)
   assert_int(k, lower = 1L, upper = shape(x)[dim])
 
@@ -3026,7 +3056,8 @@ nv_top_k <- function(x, k, dim = NULL, with_indices = FALSE) {
 #'   `length(probs)` is prepended). Plain length-K (K > 1) vectors are
 #'   rejected — wrap with `array()`.
 #' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to compute the quantile. If `NULL` (default),
+#'   Dimension along which to compute the quantile. Negative values count from
+#'   the end, i.e. `-1` refers to the last dimension. If `NULL` (default),
 #'   uses the last dimension.
 #' @param interpolation (`character(1)`)\cr
 #'   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
@@ -3059,7 +3090,7 @@ nv_quantile <- function(x, probs, dim = NULL, interpolation = "linear", nan_rm =
   checkmate::assert_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)
 
   is_probs_array <- !is.null(dim(probs))
-  dim <- as.integer(dim %||% rank)
+  dim <- resolve_dim(dim %||% rank, rank, arg = "dim")
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
@@ -3138,7 +3169,8 @@ nv_quantile <- function(x, probs, dim = NULL, interpolation = "linear", nan_rm =
 #' extra arguments (e.g. `interpolation`) are forwarded via `...`.
 #' @template param_x
 #' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to compute the median. If `NULL` (default),
+#'   Dimension along which to compute the median. Negative values count from
+#'   the end, i.e. `-1` refers to the last dimension. If `NULL` (default),
 #'   uses the last dimension.
 #' @param interpolation (`character(1)`)\cr
 #'   Forwarded to [nv_quantile()]. One of `"linear"` (default), `"lower"`,
@@ -3170,7 +3202,8 @@ nv_median <- function(x, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
 #' by returning the smallest index.
 #' @template param_x
 #' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to find the index. If `NULL` (default), uses
+#'   Dimension along which to find the index. Negative values count from the
+#'   end, i.e. `-1` refers to the last dimension. If `NULL` (default), uses
 #'   the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
@@ -3193,7 +3226,10 @@ nv_median <- function(x, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
 #' @export
 nv_argmax <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
-  dim <- as.integer(dim %||% ndims(x))
+  if (ndims(x) == 0L) {
+    cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
+  }
+  dim <- dim %||% ndims(x)
   .nv_arg_extreme(x, dim, drop, nan_rm, prim_argmax)
 }
 
@@ -3203,7 +3239,8 @@ nv_argmax <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #' by returning the smallest index.
 #' @template param_x
 #' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to find the index. If `NULL` (default), uses
+#'   Dimension along which to find the index. Negative values count from the
+#'   end, i.e. `-1` refers to the last dimension. If `NULL` (default), uses
 #'   the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
@@ -3220,7 +3257,10 @@ nv_argmax <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 nv_argmin <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
-  dim <- as.integer(dim %||% ndims(x))
+  if (ndims(x) == 0L) {
+    cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
+  }
+  dim <- dim %||% ndims(x)
   .nv_arg_extreme(x, dim, drop, nan_rm, prim_argmin)
 }
 

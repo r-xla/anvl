@@ -15,7 +15,8 @@ Number of top elements to return. Must satisfy
 \verb{1 <= k <= shape(x)[dim]}.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to take the top \code{k}. If \code{NULL} (default),
+Dimension along which to take the top \code{k}. Negative values count from the
+end, i.e. \code{-1} refers to the last dimension. If \code{NULL} (default),
 uses the last dimension.}
 
 \item{with_indices}{(\code{logical(1)})\cr

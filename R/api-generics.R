@@ -171,6 +171,7 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #' Permutes the dimensions of an array. You can also use `t()` for matrices.
 #' @param permutation (`integer()` | `NULL`)\cr
 #'   New ordering of dimensions. If `NULL` (default), reverses the dimensions.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as `x` and shape `nv_shape(x)[permutation]`.
 #' @seealso [prim_transpose()] for the underlying primitive.

@@ -11,7 +11,8 @@ nv_cumprod(x, dim = NULL, nan_rm = FALSE)
 Input array.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to accumulate. If \code{NULL} (default), the input
+Dimension along which to accumulate. Negative values count from the end,
+i.e. \code{-1} refers to the last dimension. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cumprod]{base::cumprod()}}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr

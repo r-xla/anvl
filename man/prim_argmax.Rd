@@ -11,7 +11,8 @@ prim_argmax(x, dim, drop = TRUE)
 Arrayish value of any data type.}
 
 \item{dim}{(\code{integer(1)})\cr
-Dimension along which to find the index of the maximum.}
+Dimension along which to find the index of the maximum.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 
 \item{drop}{(\code{logical(1)})\cr
 If \code{TRUE} (default) the reduced dimension is removed; if \code{FALSE} it is

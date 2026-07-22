@@ -14,7 +14,8 @@ nv_transpose(x, permutation = NULL)
 Input array.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
-New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.}
+New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 }
 \value{
 \code{\link{arrayish}}\cr

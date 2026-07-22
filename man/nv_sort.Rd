@@ -14,7 +14,8 @@ nv_sort(x, dim = NULL, decreasing = FALSE, stable = FALSE)
 Input array.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to sort. If \code{NULL} (default), uses the last
+Dimension along which to sort. Negative values count from the end,
+i.e. \code{-1} refers to the last dimension. If \code{NULL} (default), uses the last
 dimension.}
 
 \item{decreasing}{(\code{logical(1)})\cr If \code{TRUE}, sort in decreasing order.}

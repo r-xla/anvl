@@ -11,7 +11,8 @@ prim_reduce_prod(x, dims, drop = TRUE)
 Arrayish value of any data type.}
 
 \item{dims}{(\code{integer()})\cr
-Dimensions to reduce over.}
+Dimensions to reduce over.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop the reduced dimensions from the output shape.

@@ -12,7 +12,8 @@ Arrayish value of any data type.}
 
 \item{permutation}{(\code{integer()})\cr
 Specifies the new ordering of dimensions. Must be a permutation of
-\code{seq_len(ndims)} where \code{ndims} is the number of dimensions of \code{x}.}
+\code{seq_len(ndims)} where \code{ndims} is the number of dimensions of \code{x}.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 }
 \value{
 \code{\link{arrayish}}\cr
