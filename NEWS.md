@@ -2,22 +2,8 @@
 
 ## Breaking changes
 
-* The primary array argument of the `nv_*` and `prim_*` functions is now
-  consistently named `x`. Code that passed it by name needs to be updated:
-
-  * `operand` -> `x` throughout (e.g. `nv_reshape(x, shape)`,
-    `prim_gather(x, start_indices, ...)`).
-  * `prim_sort(operands = )` -> `prim_sort(xs = )`.
-  * `prim_scatter(input = )` -> `prim_scatter(x = )`.
-  * `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()`: `input` -> `x`.
-  * The gather/scatter dimension-number arguments follow suit:
-    `prim_gather(operand_batching_dims = )` -> `x_batching_dims`,
-    `prim_scatter(input_batching_dims = )` -> `x_batching_dims`, and
-    `prim_scatter(scatter_dims_to_operand_dims = )` -> `scatter_dims_to_x_dims`.
-
-  The binary `lhs` / `rhs` arguments, the `a` / `b` pair of `nv_solve()` and
-  `nv_triangular_solve()`, and arguments naming a different role
-  (`start_indices`, `update`, `weight`, `like`, ...) are unchanged.
+* The primary array argument (previously `operand`) of array transformation
+  functions (`prim_<*>` and `nv_<*>`) is now consistently called `x`.
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
