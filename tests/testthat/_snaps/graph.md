@@ -20,9 +20,9 @@
       jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)),
       permutation = c(2, 2))
     Condition
-      Error in `prim_transpose()`:
-      ! `permutation` must be a permutation of c(1, 2).
-      x Got c(2, 2).
+      Error in `resolve_dims()`:
+      ! `permutation` must not contain duplicate dimensions.
+      x Got 2 and 2.
 
 # error handling: stablehlo errors use anvl's terminology
 

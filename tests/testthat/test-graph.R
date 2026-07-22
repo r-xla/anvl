@@ -203,12 +203,15 @@ test_that("error handling: stablehlo errors use anvl's terminology", {
   expect_match(conditionMessage(err), "`x` must have dtype FloatType", fixed = TRUE)
 
   # `ErrorStablehlo` conditions build their message lazily in a
-  # `conditionMessage()` method; they keep their class and their 1-based indices
+  # `conditionMessage()` method; they keep their class and their 1-based indices.
+  # A too-short `permutation` passes anvl's own checks (every entry is a valid,
+  # non-duplicated dimension) and is only rejected by stablehlo.
   err <- tryCatch(
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = c(2, 2)),
+    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = 1L),
     error = identity
   )
   expect_s3_class(err, "ErrorPermuteIndex")
+  expect_match(conditionMessage(err), "must be a permutation of c(1, 2)", fixed = TRUE)
 })
 
 test_that("user_terminology() rewrites words but not identifiers", {
