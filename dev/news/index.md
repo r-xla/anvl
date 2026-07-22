@@ -51,9 +51,14 @@
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) always
   traces with all passes enabled.
 - New
-  [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_dnorm.md)
+  [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   computes the normal distribution’s probability density function (or,
   with `log = TRUE`, its log-density).
+- New
+  [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  computes the normal distribution’s cumulative distribution function
+  (`lower_tail = FALSE` for the upper tail, `log_p = TRUE` for the
+  log-probability, staying accurate far into either tail).
 - [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),
