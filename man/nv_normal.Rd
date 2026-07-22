@@ -44,8 +44,9 @@ The Normal distribution has probability density function:
 where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
 The \code{mean} and \code{sd} are converted to the data type of \code{x}/\code{q}.
 
-\code{nv_pnorm} uses the asymptotic expansion from Abramowitz and Stegun (1964),
-equation 26.2.12, in the left tail when \code{log_p = TRUE} to maintain accuracy.
+\code{nv_pnorm} uses the asymptotic expansion from
+Abramowitz (1964), equation 26.2.12, in the
+left tail when \code{log_p = TRUE} to maintain accuracy.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

@@ -25,8 +25,9 @@
 #' where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
 #' The `mean` and `sd` are converted to the data type of `x`/`q`.
 #'
-#' `nv_pnorm` uses the asymptotic expansion from Abramowitz and Stegun (1964),
-#' equation 26.2.12, in the left tail when `log_p = TRUE` to maintain accuracy.
+#' `nv_pnorm` uses the asymptotic expansion from
+#' `r xlamisc::cite_bib("abramowitz1964handbook")`, equation 26.2.12, in the
+#' left tail when `log_p = TRUE` to maintain accuracy.
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook")`
 #' @template return_unary
