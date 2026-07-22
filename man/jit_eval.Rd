@@ -11,7 +11,7 @@ jit_eval(expr, ...)
 Expression to compile and evaluate.}
 
 \item{...}{Backend-specific options forwarded to \code{\link[=jit]{jit()}} (e.g. \code{device}
-for the \code{"xla"} backend, \code{unwrap} for the \code{"quickr"} backend).}
+for the \code{"pjrt"} backend, \code{unwrap} for the \code{"quickr"} backend).}
 }
 \value{
 (\code{any})\cr

@@ -2,6 +2,11 @@
 
 ## Breaking changes
 
+* The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it uses.
+  Pass `backend = "pjrt"` to `jit()`, `nv_array()`, `local_backend()`, and
+  friends; `backend()` and `default_backend()` now return `"pjrt"`. The
+  constructor `AnvlBackendXla()` is now `AnvlBackendPjrt()` and the internal
+  `compile_xla()` is now `compile_pjrt()`.
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
