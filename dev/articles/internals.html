@@ -143,10 +143,9 @@ transformation, namely reverse-mode automatic differentiation via
 <li>
 <code>AnvlGraph</code> <span class="math inline">\(\rightarrow\)</span> <code>Executable</code>: In
 order to perform the actual computation, the <code>AnvlGraph</code>
-needs to be converted into an executable. The main backend is XLA (via
-<code>stablehlo</code> and <code>pjrt</code>). There is also an
-experimental <a href="https://github.com/t-kalinowski/quickr" class="external-link">quickr</a>
-backend.</li>
+needs to be converted into an executable. The main backend is
+<code>"pjrt"</code> (via {stablehlo} and {pjrt}, compiling with XLA).
+There is also an experimental <a href="https://github.com/t-kalinowski/quickr" class="external-link">quickr</a> backend.</li>
 </ol>
 <div class="section level3">
 <h3 id="tracing-r-functions-into-graphs">Tracing R Functions into Graphs<a class="anchor" aria-label="anchor" href="#tracing-r-functions-into-graphs"></a>
@@ -317,7 +316,7 @@ specifies with respect to which arguments to compute the gradient.</p>
 </h3>
 <p>In order to execute a <code>AnvlGraph</code>, we need to convert it
 into a – wait for it – executable. Here, we show how to compile using
-the XLA backend. First, we will translate the <code>AnvlGraph</code>
+the PJRT backend. First, we will translate the <code>AnvlGraph</code>
 into the StableHLO representation via the {stablehlo} package. Then, we
 will compile this program using the XLA compiler that is accessible via
 the {pjrt} package.</p>
@@ -621,7 +620,7 @@ determine the backend from the input arguments. Therefore, the
 <code>device = device_arg("dev")</code> needs to be specified:</p>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">dev</span><span class="op">)</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="va">dev</span><span class="op">)</span>, backend <span class="op">=</span> <span class="st">"auto"</span>, device <span class="op">=</span> <span class="fu"><a href="../reference/device_arg.html">device_arg</a></span><span class="op">(</span><span class="st">"dev"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="../reference/nv_device.html">nv_device</a></span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"xla"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="../reference/nv_device.html">nv_device</a></span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"pjrt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>If we would make the main <code><a href="../reference/jit.html">jit()</a></code> function already trace,
 we could determine the backend during the tracing, but this is not
 really needed yet.</p>

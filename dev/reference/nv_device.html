@@ -108,7 +108,7 @@ Defaults to <code><a href="default_backend.html">default_backend()</a></code> wh
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A backend-specific device object (e.g. <code>PJRTDevice</code> for <code>"xla"</code>,
+    <p>A backend-specific device object (e.g. <code>PJRTDevice</code> for <code>"pjrt"</code>,
 <code><a href="quickr_device.html">quickr_device</a></code> for <code>"quickr"</code>).</p>
     </div>
     <div class="section level2">
@@ -118,8 +118,8 @@ Defaults to <code><a href="default_backend.html">default_backend()</a></code> wh
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create CPU device for xla backend:</span></span></span>
-<span class="r-in"><span><span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"xla"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create CPU device for pjrt backend:</span></span></span>
+<span class="r-in"><span><span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"pjrt"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;CpuDevice(id=0)&gt;</span>
 <span class="r-in"><span><span class="co"># Create CPU device for quickr backend:</span></span></span>
 <span class="r-in"><span><span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"quickr"</span><span class="op">)</span></span></span>

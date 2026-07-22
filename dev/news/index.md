@@ -4,6 +4,19 @@
 
 ### Breaking changes
 
+- The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it
+  uses. Pass `backend = "pjrt"` to
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
+  [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
+  [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
+  and friends;
+  [`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md)
+  and
+  [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md)
+  now return `"pjrt"`. The constructor `AnvlBackendXla()` is now
+  [`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
+  and the internal `compile_xla()` is now
+  [`compile_pjrt()`](https://r-xla.github.io/anvl/dev/reference/compile_pjrt.md).
 - `xla()` has been removed. Use
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) instead:
   it compiles through the same pipeline, lazily on the first call. Warm
@@ -103,6 +116,23 @@
 - [`nv_diag()`](https://r-xla.github.io/anvl/dev/reference/nv_diag.md)
   now errors on non-1-D input instead of silently producing an incorrect
   result.
+
+- Errors raised while tracing are now phrased in anvl’s own vocabulary
+  ([\#298](https://github.com/r-xla/anvl/issues/298)). Messages
+  originating in the `stablehlo` package used the StableHLO spec’s
+  terminology; they now speak of arrays instead of tensors, and of `x`
+  instead of `operand`. For example,
+  `` `operand` must have dtype FloatType `` became
+  `` `x` must have dtype FloatType ``.
+
+- [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) now
+  rejects static arguments with reference semantics – an environment
+  (and therefore also an R6 or reference class object) or an external
+  pointer, including one nested inside a static list
+  ([\#17](https://github.com/r-xla/anvl/issues/17)). Such a value can be
+  mutated in place while the compilation cache key stays equal, which
+  silently reused a program compiled from its old contents. Functions
+  and device objects remain valid static values.
 
 - Errors raised while tracing now speak of arrays instead of tensors
   ([\#298](https://github.com/r-xla/anvl/issues/298)). Previously,

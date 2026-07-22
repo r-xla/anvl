@@ -35,6 +35,13 @@ jit(
   compilation is triggered whenever a static value changes. For example
   useful when you want R control flow in your function.
 
+  Note that the values that are passed to static arguments must not have
+  reference semantics. Such a value can be mutated in place while the
+  cache key stays equal, which would silently reuse a program compiled
+  from its old contents. One exception are closures, but there you need
+  to ensure that their enclosing environment does not change in a way
+  that modifies their behavior.
+
 - cache_size:
 
   (`integer(1)`)  
@@ -43,7 +50,7 @@ jit(
 - backend:
 
   (`NULL` \| `character(1)`)  
-  Compilation backend (e.g. `"xla"`, `"quickr"`). The special value
+  Compilation backend (e.g. `"pjrt"`, `"quickr"`). The special value
   `"auto"` defers backend selection to call-time. `NULL` (default)
   respects `device` and otherwise falls back to
   [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).
@@ -67,7 +74,7 @@ jit(
 - ...:
 
   Backend-specific options. Passing an option that is not supported by
-  the selected backend raises an error. See the **XLA JIT arguments**
+  the selected backend raises an error. See the **PJRT JIT arguments**
   and **Quickr JIT arguments** sections below for the options accepted
   by each backend.
 
@@ -124,7 +131,7 @@ See
 [`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
 for the one-time setup of the roclet in your package.
 
-## XLA JIT arguments
+## PJRT JIT arguments
 
 - `donate` ([`character()`](https://rdrr.io/r/base/character.html),
   default [`character()`](https://rdrr.io/r/base/character.html)): names

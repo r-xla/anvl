@@ -1,7 +1,7 @@
 # Get the default device
 
 Returns a device object for the default backend and platform. For the
-`"xla"` backend, the platform is determined by the `PJRT_PLATFORM`
+`"pjrt"` backend, the platform is determined by the `PJRT_PLATFORM`
 environment variable (defaulting to `"cpu"`). Other backends (e.g.
 `"quickr"`) only support CPU. The backend defaults to
 [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).

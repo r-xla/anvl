@@ -104,7 +104,7 @@ An array-like object.</p></dd>
 If <code>TRUE</code>, sanity-check the materialized R vector against losing
 information across the device-to-host boundary, and abort if any
 problematic value is detected. Forwarded to the backend; for the
-<code>xla</code> backend the relevant cases are <code>i32</code>/<code>i64</code> values colliding
+<code>pjrt</code> backend the relevant cases are <code>i32</code>/<code>i64</code> values colliding
 with the <code>NA</code> bit pattern and <code>ui64</code> values <code>&gt;= 2^63</code> wrapping
 through <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. See <code><a href="https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html" class="external-link">pjrt::as_array.PJRTBuffer()</a></code> for
 the full list. Defaults to <code>FALSE</code>. See the "Gotchas" vignette.</p></dd>

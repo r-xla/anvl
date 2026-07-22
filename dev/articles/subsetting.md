@@ -308,7 +308,7 @@ x[arr(2, 2)]
 ### Out-of-bounds Handling
 
 If one specifies out-of-bounds indices, we can only throw an error if
-the indices are static (and therefore known at compile time). The XLA
+the indices are static (and therefore known at compile time). The PJRT
 backend that {anvl} compiles to does not throw errors for out-of-bounds
 dynamic indices, but instead clamps them to the valid range:
 

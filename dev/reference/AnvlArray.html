@@ -157,7 +157,7 @@ Its type is determined by a data type and a shape.</p>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code>.
 The default (<code>NULL</code>) uses the current backend's default dtype:
-<code>f32</code> for numeric data on <code>"xla"</code>, <code>f64</code> for numeric data on <code>"quickr"</code>,
+<code>f32</code> for numeric data on <code>"pjrt"</code>, <code>f64</code> for numeric data on <code>"quickr"</code>,
 <code>i32</code> for integer data, and <code>bool</code> for logical data.</p></dd>
 
 
@@ -184,7 +184,7 @@ Defaults to <code>FALSE</code> for new arrays.</p></dd>
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
-Backend to use (<code>"xla"</code> or <code>"quickr"</code>).
+Backend to use (<code>"pjrt"</code> or <code>"quickr"</code>).
 Defaults to <code><a href="default_backend.html">default_backend()</a></code>.
 Must not be specified inside <code><a href="jit.html">jit()</a></code>.</p></dd>
 
@@ -297,8 +297,8 @@ Serialize/deserialize arrays to/from raw vectors.</p></li>
 <span class="r-in"><span><span class="co"># placeholder for outputs of jitted functions when donating buffers.</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  7.1655e-05 3.0785e-41 7.1654e-05</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0785e-41 8.0998e-05 3.0785e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.4875e-15 3.0948e-41 4.6501e-19</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0948e-41 3.6696e-19 3.0948e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

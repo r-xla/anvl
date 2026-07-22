@@ -50,7 +50,7 @@ This backend is **experimental** and has a number of limitations:
   best suited to long-running or repeatedly-called functions where the
   one-time compilation cost is amortized.
 
-- Only a subset of the primitives that the XLA backend supports are
+- Only a subset of the primitives that the PJRT backend supports are
   currently lowered to quickr code. See
   [`vignette("primitives")`](https://r-xla.github.io/anvl/dev/articles/primitives.md)
   for an overview.
@@ -70,6 +70,6 @@ This backend is **experimental** and has a number of limitations:
 ## See also
 
 [`AnvlBackend()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md),
-[`AnvlBackendXla()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendXla.md),
+[`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md),
 [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).

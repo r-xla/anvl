@@ -349,7 +349,7 @@ rules you almost always want. A primitive can optionally also carry a
 `quickr` rule, which lowers it to plain R code for the quickr backend
 (see `R/rules-quickr.R`). The quickr rule is only required if you want
 the primitive to run under `local_backend("quickr")`; if you skip it,
-the primitive will still work on the xla backend.
+the primitive will still work on the pjrt backend.
 
 ### Step 4: Verify the Registration
 
@@ -397,7 +397,7 @@ prim_repeat_along
 #>     }
 #>     run(args)
 #> }
-#> <environment: 0x561432eb8c00>
+#> <environment: 0x562af29fd5d8>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")

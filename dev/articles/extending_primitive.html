@@ -458,7 +458,7 @@ always want. A primitive can optionally also carry a <code>quickr</code>
 rule, which lowers it to plain R code for the quickr backend (see
 <code>R/rules-quickr.R</code>). The quickr rule is only required if you
 want the primitive to run under <code>local_backend("quickr")</code>; if
-you skip it, the primitive will still work on the xla backend.</p>
+you skip it, the primitive will still work on the pjrt backend.</p>
 </div>
 </div>
 <div class="section level3">
@@ -505,7 +505,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     run(args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x561432eb8c00&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x562af29fd5d8&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"backend")</span></span>

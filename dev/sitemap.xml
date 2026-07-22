@@ -27,8 +27,8 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/AbstractArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlBackend.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlBackendQuickr.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlBackendXla.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlBox.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlGraph.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/AnvlPrimitive.html</loc></url>
@@ -59,7 +59,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/await.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/common_dtype.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/compile_xla.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/compile_pjrt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/current_platform.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/default_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/default_device.html</loc></url>

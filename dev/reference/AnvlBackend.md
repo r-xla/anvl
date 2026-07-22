@@ -30,7 +30,7 @@ AnvlBackend(
   Constructs an AnvlArray from R data. This should be a
   [`structure()`](https://rdrr.io/r/base/structure.html) with at least a
   `$data` field that contains the actual underlying data (`PJRTBuffer`
-  for `"xla"` backend, [`array()`](https://rdrr.io/r/base/array.html)
+  for `"pjrt"` backend, [`array()`](https://rdrr.io/r/base/array.html)
   for `"quickr"` backend).
 
 - new_empty:

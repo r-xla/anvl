@@ -20,8 +20,8 @@ for reshaping code. We refer to such a rewriting of code as a
     [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md).
 3.  `AnvlGraph` \\\rightarrow\\ `Executable`: In order to perform the
     actual computation, the `AnvlGraph` needs to be converted into an
-    executable. The main backend is XLA (via `stablehlo` and `pjrt`).
-    There is also an experimental
+    executable. The main backend is `"pjrt"` (via {stablehlo} and
+    {pjrt}, compiling with XLA). There is also an experimental
     [quickr](https://github.com/t-kalinowski/quickr) backend.
 
 ### Tracing R Functions into Graphs
@@ -201,8 +201,8 @@ bwd_graph
 ### Lowering a Graph
 
 In order to execute a `AnvlGraph`, we need to convert it into a – wait
-for it – executable. Here, we show how to compile using the XLA backend.
-First, we will translate the `AnvlGraph` into the StableHLO
+for it – executable. Here, we show how to compile using the PJRT
+backend. First, we will translate the `AnvlGraph` into the StableHLO
 representation via the {stablehlo} package. Then, we will compile this
 program using the XLA compiler that is accessible via the {pjrt}
 package.
@@ -598,7 +598,7 @@ complicated. Some things that are important to be aware of:
     ``` r
 
     f <- jit(\(dev) nv_scalar(1, device = dev), backend = "auto", device = device_arg("dev"))
-    f(nv_device("cpu", "xla"))
+    f(nv_device("cpu", "pjrt"))
     ```
 
     If we would make the main

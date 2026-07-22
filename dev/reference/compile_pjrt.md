@@ -7,7 +7,7 @@ executable along with metadata needed for execution.
 ## Usage
 
 ``` r
-compile_xla(
+compile_pjrt(
   f,
   args_flat,
   in_tree,

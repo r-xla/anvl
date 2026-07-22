@@ -84,7 +84,7 @@ nv_empty_like(
   One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a
   [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
   The default (`NULL`) uses the current backend's default dtype: `f32`
-  for numeric data on `"xla"`, `f64` for numeric data on `"quickr"`,
+  for numeric data on `"pjrt"`, `f64` for numeric data on `"quickr"`,
   `i32` for integer data, and `bool` for logical data.
 
 - device:
@@ -112,7 +112,7 @@ nv_empty_like(
 - backend:
 
   (`NULL` \| `character(1)`)  
-  Backend to use (`"xla"` or `"quickr"`). Defaults to
+  Backend to use (`"pjrt"` or `"quickr"`). Defaults to
   [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).
   Must not be specified inside
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
@@ -247,8 +247,8 @@ nv_scalar(3.14)
 # placeholder for outputs of jitted functions when donating buffers.
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  7.1655e-05 3.0785e-41 7.1654e-05
-#>  3.0785e-41 8.0998e-05 3.0785e-41
+#>  3.4875e-15 3.0948e-41 4.6501e-19
+#>  3.0948e-41 3.6696e-19 3.0948e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

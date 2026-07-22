@@ -118,7 +118,7 @@ in R's memory and computation always runs on the CPU, so the only device is
 <p>This backend is <strong>experimental</strong> and has a number of limitations:</p><ul><li><p>Compilation (tracing + quickr lowering) is somewhat slow, so it is best
 suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.</p></li>
-<li><p>Only a subset of the primitives that the XLA backend supports are currently
+<li><p>Only a subset of the primitives that the PJRT backend supports are currently
 lowered to quickr code. See <code><a href="../articles/primitives.html">vignette("primitives")</a></code> for an overview.</p></li>
 <li><p>Only the data types <code>f64</code>, <code>i32</code>, and <code>bool</code> are supported.</p></li>
 <li><p>Only CPU execution is supported.</p></li>
@@ -134,7 +134,7 @@ would only get stripped again.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="AnvlBackend.html">AnvlBackend()</a></code>, <code><a href="AnvlBackendXla.html">AnvlBackendXla()</a></code>, <code><a href="local_backend.html">local_backend()</a></code>, <code><a href="jit.html">jit()</a></code>.</p></div>
+    <div class="dont-index"><p><code><a href="AnvlBackend.html">AnvlBackend()</a></code>, <code><a href="AnvlBackendPjrt.html">AnvlBackendPjrt()</a></code>, <code><a href="local_backend.html">local_backend()</a></code>, <code><a href="jit.html">jit()</a></code>.</p></div>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

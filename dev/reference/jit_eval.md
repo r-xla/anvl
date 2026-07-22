@@ -23,7 +23,7 @@ jit_eval(expr, ...)
 
   Backend-specific options forwarded to
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) (e.g.
-  `device` for the `"xla"` backend, `unwrap` for the `"quickr"`
+  `device` for the `"pjrt"` backend, `unwrap` for the `"quickr"`
   backend).
 
 ## Value

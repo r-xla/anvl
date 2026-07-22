@@ -1,6 +1,7 @@
-# XLA backend
+# PJRT backend
 
-Constructs the XLA backend, which stores array data in PJRT buffers (via
+Constructs the PJRT backend, which stores array data in PJRT buffers
+(via
 [`pjrt::pjrt_buffer()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html))
 and compiles jitted functions to XLA executables via
 [`stablehlo()`](https://r-xla.github.io/anvl/dev/reference/stablehlo.md)
@@ -11,20 +12,20 @@ This is the default backend.
 ## Usage
 
 ``` r
-AnvlBackendXla()
+AnvlBackendPjrt()
 ```
 
 ## Value
 
 An
 [`AnvlBackend`](https://r-xla.github.io/anvl/dev/reference/AnvlBackend.md)
-object with subclass `"AnvlBackendXla"`.
+object with subclass `"AnvlBackendPjrt"`.
 
 ## Data representation
 
 An
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-with `backend = "xla"` wraps a
+with `backend = "pjrt"` wraps a
 [`pjrt::pjrt_buffer()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html)
 stored in the `$data` field. The buffer owns the memory holding the
 tensor values and may live on any device supported by PJRT (CPU, CUDA,
@@ -46,7 +47,7 @@ wrapper, the device defaults to the `PJRT_PLATFORM` environment variable
 (falling back to `"cpu"`), or is inferred from the existing inputs of a
 jitted call. Operations require all inputs to live on the same device.
 
-## XLA JIT arguments
+## PJRT JIT arguments
 
 - `donate` ([`character()`](https://rdrr.io/r/base/character.html),
   default [`character()`](https://rdrr.io/r/base/character.html)): names
