@@ -25,7 +25,8 @@ prim_reduce(x, init, dims, drop = TRUE, reductor)
 - dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reduce over.
+  Dimensions to reduce over. Negative values count from the end, i.e.
+  `-1` refers to the last dimension.
 
 - drop:
 

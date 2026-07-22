@@ -19,7 +19,8 @@ prim_argmax(x, dim, drop = TRUE)
 - dim:
 
   (`integer(1)`)  
-  Dimension along which to find the index of the maximum.
+  Dimension along which to find the index of the maximum. Negative
+  values count from the end, i.e. `-1` refers to the last dimension.
 
 - drop:
 

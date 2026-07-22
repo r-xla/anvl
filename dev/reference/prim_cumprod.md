@@ -19,7 +19,8 @@ prim_cumprod(x, dim)
 - dim:
 
   (`integer(1)`)  
-  Dimension along which to accumulate.
+  Dimension along which to accumulate. Negative values count from the
+  end, i.e. `-1` refers to the last dimension.
 
 ## Value
 

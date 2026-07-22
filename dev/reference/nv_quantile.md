@@ -40,8 +40,9 @@ nv_quantile(x, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE)
 - dim:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to compute the quantile. If `NULL` (default),
-  uses the last dimension.
+  Dimension along which to compute the quantile. Negative values count
+  from the end, i.e. `-1` refers to the last dimension. If `NULL`
+  (default), uses the last dimension.
 
 - interpolation:
 

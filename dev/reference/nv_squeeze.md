@@ -18,8 +18,9 @@ nv_squeeze(x, dims = NULL)
 - dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Dimensions to squeeze. If `NULL` (default), all dimensions of size 1
-  are removed.
+  Dimensions to squeeze. Negative values count from the end, i.e. `-1`
+  refers to the last dimension. If `NULL` (default), all dimensions of
+  size 1 are removed.
 
 ## Value
 

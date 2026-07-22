@@ -98,7 +98,9 @@ Arrayish value of any data type.</p></dd>
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Target shape. Must have the same number of elements as <code>x</code>.</p></dd>
+Target shape. Must have the same number of elements as <code>x</code>.
+At most one entry may be <code>-1</code>, in which case its extent is inferred from
+the remaining entries and the number of elements of <code>x</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

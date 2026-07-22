@@ -18,7 +18,8 @@ nv_reverse(x, dims)
 - dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reverse.
+  Dimensions to reverse. Negative values count from the end, i.e. `-1`
+  refers to the last dimension.
 
 ## Value
 

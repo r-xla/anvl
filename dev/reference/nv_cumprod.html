@@ -95,7 +95,8 @@ Input array.</p></dd>
 
 <dt id="arg-dim">dim<a class="anchor" aria-label="anchor" href="#arg-dim"></a></dt>
 <dd><p>(<code>integer(1)</code> | <code>NULL</code>)<br>
-Dimension along which to accumulate. If <code>NULL</code> (default), the input
+Dimension along which to accumulate. Negative values count from the end,
+i.e. <code>-1</code> refers to the last dimension. If <code>NULL</code> (default), the input
 is first flattened to a 1-D array, like <code><a href="https://rdrr.io/r/base/cumsum.html" class="external-link">base::cumprod()</a></code>.</p></dd>
 
 

@@ -31,7 +31,8 @@ prim_sort(xs, dim = 1L, descending = FALSE, is_stable = FALSE)
 - dim:
 
   (`integer(1)`)  
-  Dimension along which to sort.
+  Dimension along which to sort. Negative values count from the end,
+  i.e. `-1` refers to the last dimension.
 
 - descending:
 

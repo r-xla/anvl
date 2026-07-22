@@ -27,6 +27,43 @@
 
 ### Features
 
+- Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now
+  accept negative values that count from the end, so `-1` refers to the
+  last dimension. This works at both layers: in the `prim_*` primitives
+  ([`prim_transpose()`](https://r-xla.github.io/anvl/dev/reference/prim_transpose.md),
+  [`prim_concatenate()`](https://r-xla.github.io/anvl/dev/reference/prim_concatenate.md),
+  `prim_reduce_*()`,
+  [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md),
+  [`prim_cumsum()`](https://r-xla.github.io/anvl/dev/reference/prim_cumsum.md)
+  /
+  [`prim_cumprod()`](https://r-xla.github.io/anvl/dev/reference/prim_cumprod.md)
+  /
+  [`prim_cummax()`](https://r-xla.github.io/anvl/dev/reference/prim_cummax.md)
+  /
+  [`prim_cummin()`](https://r-xla.github.io/anvl/dev/reference/prim_cummin.md),
+  [`prim_argmax()`](https://r-xla.github.io/anvl/dev/reference/prim_argmax.md),
+  [`prim_argmin()`](https://r-xla.github.io/anvl/dev/reference/prim_argmin.md),
+  [`prim_reverse()`](https://r-xla.github.io/anvl/dev/reference/prim_reverse.md),
+  [`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md),
+  [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md))
+  and in the `nv_*` functions built on top of them, including
+  [`nv_squeeze()`](https://r-xla.github.io/anvl/dev/reference/nv_squeeze.md),
+  [`nv_unsqueeze()`](https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.md),
+  [`nv_select()`](https://r-xla.github.io/anvl/dev/reference/nv_select.md),
+  [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md),
+  [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md)
+  and
+  [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
+  ([\#396](https://github.com/r-xla/anvl/issues/396)).
+- [`nv_reshape()`](https://r-xla.github.io/anvl/dev/reference/nv_reshape.md)
+  and
+  [`prim_reshape()`](https://r-xla.github.io/anvl/dev/reference/prim_reshape.md)
+  accept a single `-1` in `shape`, whose extent is then inferred from
+  the number of elements of the input, e.g. `nv_reshape(x, c(2, -1))`
+  ([\#396](https://github.com/r-xla/anvl/issues/396)).
+- Reductions now reject dimensions that are out of range for the operand
+  instead of silently ignoring them
+  ([\#396](https://github.com/r-xla/anvl/issues/396)).
 - New
   [`nv_lower_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
   and

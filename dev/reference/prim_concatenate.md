@@ -19,7 +19,8 @@ prim_concatenate(..., dimension)
 - dimension:
 
   (`integer(1)`)  
-  Dimension along which to concatenate (1-indexed).
+  Dimension along which to concatenate. Negative values count from the
+  end, i.e. `-1` refers to the last dimension.
 
 ## Value
 

@@ -25,8 +25,9 @@ nv_top_k(x, k, dim = NULL, with_indices = FALSE)
 - dim:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to take the top `k`. If `NULL` (default), uses
-  the last dimension.
+  Dimension along which to take the top `k`. Negative values count from
+  the end, i.e. `-1` refers to the last dimension. If `NULL` (default),
+  uses the last dimension.
 
 - with_indices:
 

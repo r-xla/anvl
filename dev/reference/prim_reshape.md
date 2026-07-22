@@ -20,7 +20,9 @@ prim_reshape(x, shape)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Target shape. Must have the same number of elements as `x`.
+  Target shape. Must have the same number of elements as `x`. At most
+  one entry may be `-1`, in which case its extent is inferred from the
+  remaining entries and the number of elements of `x`.
 
 ## Value
 

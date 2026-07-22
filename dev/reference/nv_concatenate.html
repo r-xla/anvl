@@ -99,6 +99,7 @@ Arrays to concatenate. Must have the same shape except along <code>dimension</co
 <dt id="arg-dimension">dimension<a class="anchor" aria-label="anchor" href="#arg-dimension"></a></dt>
 <dd><p>(<code>integer(1)</code> | <code>NULL</code>)<br>
 Dimension along which to concatenate.
+Negative values count from the end, i.e. <code>-1</code> refers to the last dimension.
 If <code>NULL</code> (default), assumes all inputs are at most 1-D and concatenates along dimension 1.</p></dd>
 
 </dl></div>

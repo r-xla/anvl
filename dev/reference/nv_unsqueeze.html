@@ -95,7 +95,9 @@ Input array.</p></dd>
 
 <dt id="arg-dim">dim<a class="anchor" aria-label="anchor" href="#arg-dim"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Position at which to insert the new dimension.</p></dd>
+Position at which to insert the new dimension. Valid positions range from
+1 to <code>ndims(x) + 1</code>. Negative values count from the end of the
+<em>result</em>, i.e. <code>-1</code> appends the new dimension at the end.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -115,6 +117,12 @@ Has the same data type as <code>x</code> with an extra dimension of size 1.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 2 3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{1,3} ] </span>
+<span class="r-in"><span><span class="fu">nv_unsqueeze</span><span class="op">(</span><span class="va">x</span>, dim <span class="op">=</span> <span class="op">-</span><span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3,1} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

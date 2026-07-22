@@ -20,7 +20,8 @@ nv_select(x, dim, index)
 - dim:
 
   (`integer(1)`)  
-  Dimension to index into.
+  Dimension to index into. Negative values count from the end, i.e. `-1`
+  refers to the last dimension.
 
 - index:
 

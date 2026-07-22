@@ -95,7 +95,9 @@ Input array.</p></dd>
 
 <dt id="arg-dims">dims<a class="anchor" aria-label="anchor" href="#arg-dims"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> | <code>NULL</code>)<br>
-Dimensions to squeeze. If <code>NULL</code> (default), all dimensions of size 1 are removed.</p></dd>
+Dimensions to squeeze. Negative values count from the end, i.e. <code>-1</code>
+refers to the last dimension.
+If <code>NULL</code> (default), all dimensions of size 1 are removed.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -23,8 +23,9 @@ sort(x, decreasing = FALSE, ..., dim = NULL)
 - dim:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to sort. If `NULL` (default), uses the last
-  dimension.
+  Dimension along which to sort. Negative values count from the end,
+  i.e. `-1` refers to the last dimension. If `NULL` (default), uses the
+  last dimension.
 
 - decreasing:
 

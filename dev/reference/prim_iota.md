@@ -13,7 +13,8 @@ prim_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 - dim:
 
   (`integer(1)`)  
-  Dimension along which values increase (1-indexed).
+  Dimension along which values increase. Negative values count from the
+  end of `shape`, i.e. `-1` refers to the last dimension.
 
 - dtype:
 

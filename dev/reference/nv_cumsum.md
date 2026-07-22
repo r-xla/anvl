@@ -18,8 +18,9 @@ nv_cumsum(x, dim = NULL, nan_rm = FALSE)
 - dim:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to accumulate. If `NULL` (default), the input is
-  first flattened to a 1-D array, like
+  Dimension along which to accumulate. Negative values count from the
+  end, i.e. `-1` refers to the last dimension. If `NULL` (default), the
+  input is first flattened to a 1-D array, like
   [`base::cumsum()`](https://rdrr.io/r/base/cumsum.html).
 
 - nan_rm:

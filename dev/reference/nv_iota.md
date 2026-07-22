@@ -27,7 +27,8 @@ nv_iota_like(
 - dim:
 
   (`integer(1)`)  
-  Dimension along which values increase.
+  Dimension along which values increase. Negative values count from the
+  end of `shape`, i.e. `-1` refers to the last dimension.
 
 - dtype:
 

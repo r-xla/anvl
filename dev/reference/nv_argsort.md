@@ -18,7 +18,8 @@ nv_argsort(x, dim = NULL, decreasing = FALSE, stable = FALSE)
 - dim:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to compute the sort permutation. If `NULL`
+  Dimension along which to compute the sort permutation. Negative values
+  count from the end, i.e. `-1` refers to the last dimension. If `NULL`
   (default), uses the last dimension.
 
 - decreasing:

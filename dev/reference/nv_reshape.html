@@ -98,7 +98,9 @@ Input array.</p></dd>
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Target shape. Must have the same number of elements as <code>x</code>.</p></dd>
+Target shape. Must have the same number of elements as <code>x</code>.
+At most one entry may be <code>-1</code>, in which case its extent is inferred from
+the remaining entries and the number of elements of <code>x</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -123,6 +125,20 @@ Has the given <code>shape</code> and the same data type as <code>x</code>.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 2 3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4 5 6</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,3} ] </span>
+<span class="r-in"><span><span class="fu">nv_reshape</span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="op">-</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="co"># infer the second dimension</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1 2 3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4 5 6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,3} ] </span>
+<span class="r-in"><span><span class="fu">nv_reshape</span><span class="op">(</span><span class="va">x</span>, <span class="op">-</span><span class="fl">1</span><span class="op">)</span> <span class="co"># flatten</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{6} ] </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

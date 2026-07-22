@@ -31,8 +31,9 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
 - dim:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to compute the median. If `NULL` (default), uses
-  the last dimension.
+  Dimension along which to compute the median. Negative values count
+  from the end, i.e. `-1` refers to the last dimension. If `NULL`
+  (default), uses the last dimension.
 
 - interpolation:
 

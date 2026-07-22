@@ -19,8 +19,9 @@ nv_argmax(x, dim = NULL, drop = TRUE, nan_rm = FALSE)
 - dim:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to find the index. If `NULL` (default), uses the
-  last dimension.
+  Dimension along which to find the index. Negative values count from
+  the end, i.e. `-1` refers to the last dimension. If `NULL` (default),
+  uses the last dimension.
 
 - drop:
 

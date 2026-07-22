@@ -19,7 +19,8 @@ nv_reduce_any(x, dims = NULL, drop = TRUE)
 - dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Dimensions to reduce. If `NULL` (default), reduces over all
+  Dimensions to reduce. Negative values count from the end, i.e. `-1`
+  refers to the last dimension. If `NULL` (default), reduces over all
   dimensions, returning a scalar.
 
 - drop:

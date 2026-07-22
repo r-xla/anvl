@@ -23,7 +23,8 @@ t(x)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
   New ordering of dimensions. If `NULL` (default), reverses the
-  dimensions.
+  dimensions. Negative values count from the end, i.e. `-1` refers to
+  the last dimension.
 
 ## Value
 

@@ -20,8 +20,9 @@ nv_concatenate(..., dimension = NULL)
 - dimension:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to concatenate. If `NULL` (default), assumes all
-  inputs are at most 1-D and concatenates along dimension 1.
+  Dimension along which to concatenate. Negative values count from the
+  end, i.e. `-1` refers to the last dimension. If `NULL` (default),
+  assumes all inputs are at most 1-D and concatenates along dimension 1.
 
 ## Value
 

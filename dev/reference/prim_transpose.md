@@ -20,6 +20,8 @@ prim_transpose(x, permutation)
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Specifies the new ordering of dimensions. Must be a permutation of
   `seq_len(ndims)` where `ndims` is the number of dimensions of `x`.
+  Negative values count from the end, i.e. `-1` refers to the last
+  dimension.
 
 ## Value
 
