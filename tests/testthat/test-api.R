@@ -201,7 +201,7 @@ describe("nv_rbind", {
     )
   })
 
-  it("promotes operands to a common dtype", {
+  it("promotes inputs to a common dtype", {
     x <- nv_array(c(1L, 2L, 3L))
     y <- nv_array(c(4, 5, 6))
     out <- rbind(x, y)

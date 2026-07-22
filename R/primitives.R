@@ -424,9 +424,9 @@ prim_concatenate <- new_primitive(
   function(..., dimension) {
     dots <- list(...)
     infer_fn <- function(..., dimension) {
-      operands <- list(...)
-      all_ambiguous <- all(vapply(operands, \(x) x$ambiguous, logical(1L)))
-      vts <- lapply(operands, at2vt)
+      xs <- list(...)
+      all_ambiguous <- all(vapply(xs, \(x) x$ambiguous, logical(1L)))
+      vts <- lapply(xs, at2vt)
       # Convert dimension to Constant as required by stablehlo
       dim_const <- stablehlo::r_to_constant(
         as.integer(dimension - 1L),
@@ -2587,29 +2587,29 @@ prim_while <- new_primitive(
 #' @description
 #' Sorts arrays along the given dimension.
 #'
-#' Sorting is determined by the *first operand* only: it is the sort key,
-#' and any additional operands are reordered with the same permutation
+#' Sorting is determined by the *first array* only: it is the sort key,
+#' and any additional arrays are reordered with the same permutation
 #' that sorts the first. This enables idioms like *argsort* (sort `x`
 #' paired with an `iota` and read off the second output) and key-value
 #' sorts (sort `keys` paired with `values`).
 #'
-#' All operands must have the same shape; their dtypes may differ.
+#' All arrays must have the same shape; their dtypes may differ.
 #' 1-dimensional slices along `dim` are sorted independently; other
 #' dimensions are preserved.
-#' @param operands (`list` of [`arrayish`])\cr
+#' @param xs (`list` of [`arrayish`])\cr
 #'   One or more arrays to sort. The first is the sort key; the rest are
 #'   carried along under the same permutation. All must share the same shape.
 #' @param dim (`integer(1)`)\cr
 #'   Dimension along which to sort.
 #' @param descending (`logical(1)`)\cr
 #'   If `TRUE`, sort the key in descending order (largest first). Default
-#'   `FALSE`. Additional operands are reordered by the same permutation
+#'   `FALSE`. Additional arrays are reordered by the same permutation
 #'   regardless.
 #' @param is_stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: the relative order of equal *keys* is
 #'   preserved. Default `FALSE`.
 #' @return `list` of [`arrayish`]\cr
-#'   One sorted output per element of `operands`, in the same order. Each
+#'   One sorted output per element of `xs`, in the same order. Each
 #'   output has the same shape, data type, and ambiguity as the
 #'   corresponding input.
 #' @templateVar primitive_id sort
@@ -2617,7 +2617,7 @@ prim_while <- new_primitive(
 #' @section StableHLO:
 #' Lowers to [hlo_sort()] with a comparator that uses
 #' [hlo_compare()] (`LT` for ascending, `GT` for descending) on
-#' the first operand. For float keys the comparator uses
+#' the first array. For float keys the comparator uses
 #' `compare_type = "TOTALORDER"` and canonicalizes `-0`/`+0` and
 #' `-NaN`/`+NaN` to their positive form before comparing, so all `NaN`
 #' values land at one end of the result regardless of sign. Integer keys
@@ -2636,26 +2636,26 @@ prim_while <- new_primitive(
 #' @export
 prim_sort <- new_primitive(
   "sort",
-  function(operands, dim = 1L, descending = FALSE, is_stable = FALSE) {
+  function(xs, dim = 1L, descending = FALSE, is_stable = FALSE) {
     assert_integerish(dim, lower = 1, len = 1)
     assert_flag(descending)
     assert_flag(is_stable)
-    if (!is.list(operands) || !length(operands)) {
-      cli_abort("{.arg operands} must be a non-empty list of arrayish values")
+    if (!is.list(xs) || !length(xs)) {
+      cli_abort("{.arg xs} must be a non-empty list of arrayish values")
     }
-    ref_shape <- shape(operands[[1L]])
-    for (i in seq_along(operands)[-1L]) {
-      if (!identical(shape(operands[[i]]), ref_shape)) {
+    ref_shape <- shape(xs[[1L]])
+    for (i in seq_along(xs)[-1L]) {
+      if (!identical(shape(xs[[i]]), ref_shape)) {
         cli_abort(c(
-          "All operands of {.fn prim_sort} must have the same shape.",
-          x = "Operand 1 has shape {xlamisc::shapevec_repr(ref_shape)}, operand {i} has shape {xlamisc::shapevec_repr(shape(operands[[i]]))}."
+          "All elements of {.arg xs} must have the same shape.",
+          x = "Element 1 has shape {xlamisc::shapevec_repr(ref_shape)}, element {i} has shape {xlamisc::shapevec_repr(shape(xs[[i]]))}."
         ))
       }
     }
     if (dim > length(ref_shape)) {
       cli_abort(c(
         "{.arg dim} not in valid range.",
-        x = "Operand has {length(ref_shape)} dim(s), got {.arg dim} = {dim}."
+        x = "{.arg xs} has {length(ref_shape)} dim(s), got {.arg dim} = {dim}."
       ))
     }
 
@@ -2673,7 +2673,7 @@ prim_sort <- new_primitive(
 
     graph_desc_add(
       self,
-      args = operands,
+      args = xs,
       params = list(dim = dim, descending = descending, is_stable = is_stable),
       infer_fn = infer_fn
     )
@@ -2811,7 +2811,7 @@ prim_rng_bit_generator <- new_primitive(
 
 #' @title Primitive Scatter
 #' @description
-#' Produces a result array identical to `input` except that slices at
+#' Produces a result array identical to `x` except that slices at
 #' positions specified by `scatter_indices` are updated with values from
 #' the `update` array. When multiple indices point to the same location,
 #' the `update_computation` function determines how to combine the values
@@ -2820,32 +2820,32 @@ prim_rng_bit_generator <- new_primitive(
 #' This is the inverse of [prim_gather()]: gather reads slices from an array
 #' at given indices, while scatter writes slices into an array at given
 #' indices.
-#' @param input ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Arrayish value of any data type. The base array to scatter into.
 #' @param scatter_indices ([`arrayish`] of integer type)\cr
 #'   Array of indices. Contains index vectors that map to positions in
-#'   `input` via `scatter_dims_to_operand_dims`. The dimension specified
+#'   `x` via `scatter_dims_to_x_dims`. The dimension specified
 #'   by `index_vector_dim` holds the index vectors.
 #' @param update ([`arrayish`])\cr
-#'   Update values array. Must have the same data type as `input`.
+#'   Update values array. Must have the same data type as `x`.
 #' @param update_window_dims (`integer()`)\cr
 #'   Dimensions of `update` that are window dimensions, i.e. they
-#'   correspond to the slice being written into `input`.
+#'   correspond to the slice being written into `x`.
 #' @param inserted_window_dims (`integer()`)\cr
-#'   Dimensions of `input` whose slices have size 1 and are inserted
+#'   Dimensions of `x` whose slices have size 1 and are inserted
 #'   (not present) in the `update` window. Together with
-#'   `update_window_dims` and `input_batching_dims`, these must account
-#'   for all dimensions of `input`.
-#' @param input_batching_dims (`integer()`)\cr
-#'   Dimensions of `input` that are batch dimensions.
+#'   `update_window_dims` and `x_batching_dims`, these must account
+#'   for all dimensions of `x`.
+#' @param x_batching_dims (`integer()`)\cr
+#'   Dimensions of `x` that are batch dimensions.
 #'   Use `integer(0)` when there are no batch dimensions.
 #' @param scatter_indices_batching_dims (`integer()`)\cr
 #'   Dimensions of `scatter_indices` that correspond to batch
-#'   dimensions. Must have the same length as `input_batching_dims`.
-#' @param scatter_dims_to_operand_dims (`integer()`)\cr
-#'   Maps each component of the index vector to an `input` dimension.
-#'   For example, `scatter_dims_to_operand_dims = c(1L)` means each
-#'   index vector indexes into the first dimension of `input`.
+#'   dimensions. Must have the same length as `x_batching_dims`.
+#' @param scatter_dims_to_x_dims (`integer()`)\cr
+#'   Maps each component of the index vector to an `x` dimension.
+#'   For example, `scatter_dims_to_x_dims = c(1L)` means each
+#'   index vector indexes into the first dimension of `x`.
 #' @param index_vector_dim (`integer(1)`)\cr
 #'   Dimension of `scatter_indices` that contains the index vectors.
 #'   If set to `ndims(scatter_indices) + 1`, each scalar element of
@@ -2860,17 +2860,17 @@ prim_rng_bit_generator <- new_primitive(
 #'   behavior if the indices are not actually unique. Default `FALSE`.
 #' @param update_computation (`function`)\cr
 #'   Binary function `f(old, new)` that combines the existing value in
-#'   `input` with the value from `update`. The default (`NULL`) uses
+#'   `x` with the value from `update`. The default (`NULL`) uses
 #'   `function(old, new) new`, which replaces the old value.
 #' @return [`arrayish`]\cr
-#'   Has the same data type and shape as `input`.
-#'   It is ambiguous if `input` is ambiguous.
+#'   Has the same data type and shape as `x`.
+#'   It is ambiguous if `x` is ambiguous.
 #' @section Out Of Bounds Behavior:
-#' If a computed result index falls outside the bounds of `input`, the
+#' If a computed result index falls outside the bounds of `x`, the
 #' update for that index is silently ignored.
 #' @section Update Order:
 #' When multiple indices in `scatter_indices` map to the same element
-#' of `input`, the order in which `update_computation` is applied is
+#' of `x`, the order in which `update_computation` is applied is
 #' implementation-defined and may vary between plugins ("cpu", "cuda").
 #' @templateVar primitive_id scatter
 #' @template section_rules
@@ -2879,37 +2879,37 @@ prim_rng_bit_generator <- new_primitive(
 #' @seealso [prim_gather()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Scatter values 10 and 30 into positions 1 and 3 of a zero vector
-#' input <- nv_array(c(0, 0, 0, 0, 0))
+#' x <- nv_array(c(0, 0, 0, 0, 0))
 #' indices <- nv_matrix(c(1L, 3L), ncol = 1)
 #' updates <- nv_array(c(10, 30))
 #' prim_scatter(
-#'   input, indices, updates,
+#'   x, indices, updates,
 #'   update_window_dims = integer(0),
 #'   inserted_window_dims = 1L,
-#'   input_batching_dims = integer(0),
+#'   x_batching_dims = integer(0),
 #'   scatter_indices_batching_dims = integer(0),
-#'   scatter_dims_to_operand_dims = 1L,
+#'   scatter_dims_to_x_dims = 1L,
 #'   index_vector_dim = 2L
 #' )
 #' @export
 prim_scatter <- new_primitive(
   "scatter",
   function(
-    input,
+    x,
     scatter_indices,
     update,
     update_window_dims,
     inserted_window_dims,
-    input_batching_dims,
+    x_batching_dims,
     scatter_indices_batching_dims,
-    scatter_dims_to_operand_dims,
+    scatter_dims_to_x_dims,
     index_vector_dim,
     indices_are_sorted = FALSE,
     unique_indices = FALSE,
     update_computation = NULL
   ) {
     # otherwise, delayed promise evaluation means they might be added to the update_descriptor
-    force(input)
+    force(x)
     force(scatter_indices)
     force(update)
     if (is.null(update_computation)) {
@@ -2925,15 +2925,15 @@ prim_scatter <- new_primitive(
     desc_update <- local_descriptor()
 
     # Create dummy arguments for tracing - use the input's dtype
-    input_dtype <- dtype_abstract(input)
+    x_dtype <- dtype_abstract(x)
     update_dtype <- dtype_abstract(update)
-    if (input_dtype != update_dtype) {
-      cli_abort("input and update must have the same dtype")
+    if (x_dtype != update_dtype) {
+      cli_abort("{.arg x} and {.arg update} must have the same dtype")
     }
 
     dummy_args <- list(
-      AbstractArray(dtype = input_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(input)),
-      AbstractArray(dtype = input_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(update))
+      AbstractArray(dtype = x_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(x)),
+      AbstractArray(dtype = x_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(update))
     )
 
     update_computation_graph <- trace_fn(update_computation, dummy_args, desc = desc_update, mode = "subgraph")
@@ -2942,26 +2942,28 @@ prim_scatter <- new_primitive(
     register_consts(current_desc, update_computation_graph$constants)
 
     infer_fn <- function(
-      input,
+      x,
       scatter_indices,
       update,
       update_window_dims,
       inserted_window_dims,
-      input_batching_dims,
+      x_batching_dims,
       scatter_indices_batching_dims,
-      scatter_dims_to_operand_dims,
+      scatter_dims_to_x_dims,
       index_vector_dim,
       indices_are_sorted,
       unique_indices,
       update_computation_graph
     ) {
       # Convert 1-based dimension numbers to 0-based
+      # StableHLO's ScatterDimensionNumbers() follows the spec naming, so the
+      # anvl-side argument names are mapped back here.
       scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
         update_window_dims = update_window_dims - 1L,
         inserted_window_dims = inserted_window_dims - 1L,
-        input_batching_dims = input_batching_dims - 1L,
+        input_batching_dims = x_batching_dims - 1L,
         scatter_indices_batching_dims = scatter_indices_batching_dims - 1L,
-        scatter_dims_to_operand_dims = scatter_dims_to_operand_dims - 1L,
+        scatter_dims_to_operand_dims = scatter_dims_to_x_dims - 1L,
         index_vector_dim = index_vector_dim - 1L
       )
 
@@ -2969,7 +2971,7 @@ prim_scatter <- new_primitive(
       unique_indices_attr <- r_to_constant(unique_indices, dtype = "bool", shape = integer())
 
       out <- stablehlo::infer_types_scatter(
-        inputs = list(at2vt(input)),
+        inputs = list(at2vt(x)),
         scatter_indices = at2vt(scatter_indices),
         updates = list(at2vt(update)),
         scatter_dimension_numbers = scatter_dimension_numbers,
@@ -2979,19 +2981,19 @@ prim_scatter <- new_primitive(
       )[[1L]]
 
       out <- vt2at(out)
-      out$ambiguous <- input$ambiguous
+      out$ambiguous <- x$ambiguous
       list(out)
     }
 
     out <- graph_desc_add(
       self,
-      args = list(input = input, scatter_indices = scatter_indices, update = update),
+      args = list(x = x, scatter_indices = scatter_indices, update = update),
       params = list(
         update_window_dims = update_window_dims,
         inserted_window_dims = inserted_window_dims,
-        input_batching_dims = input_batching_dims,
+        x_batching_dims = x_batching_dims,
         scatter_indices_batching_dims = scatter_indices_batching_dims,
-        scatter_dims_to_operand_dims = scatter_dims_to_operand_dims,
+        scatter_dims_to_x_dims = scatter_dims_to_x_dims,
         index_vector_dim = index_vector_dim,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
@@ -3032,14 +3034,14 @@ prim_scatter <- new_primitive(
 #' @param collapsed_slice_dims (`integer()`)\cr
 #'   Dimensions of `x` that are collapsed (removed) from the
 #'   slice. The corresponding entries in `slice_sizes` must be `1`.
-#'   Together with `offset_dims` and `operand_batching_dims`, these
+#'   Together with `offset_dims` and `x_batching_dims`, these
 #'   must account for all dimensions of `x`.
-#' @param operand_batching_dims (`integer()`)\cr
+#' @param x_batching_dims (`integer()`)\cr
 #'   Dimensions of `x` that are batch dimensions.
 #'   Use `integer(0)` when there are no batch dimensions.
 #' @param start_indices_batching_dims (`integer()`)\cr
 #'   Dimensions of `start_indices` that correspond to batch
-#'   dimensions. Must have the same length as `operand_batching_dims`.
+#'   dimensions. Must have the same length as `x_batching_dims`.
 #' @param start_index_map (`integer()`)\cr
 #'   Maps each component of the index vector to an `x`
 #'   dimension. For example, `start_index_map = c(1L)` means each
@@ -3080,7 +3082,7 @@ prim_scatter <- new_primitive(
 #'   slice_sizes = c(1L, 3L),
 #'   offset_dims = 2L,
 #'   collapsed_slice_dims = 1L,
-#'   operand_batching_dims = integer(0),
+#'   x_batching_dims = integer(0),
 #'   start_indices_batching_dims = integer(0),
 #'   start_index_map = 1L,
 #'   index_vector_dim = 2L
@@ -3094,7 +3096,7 @@ prim_gather <- new_primitive(
     slice_sizes,
     offset_dims,
     collapsed_slice_dims,
-    operand_batching_dims,
+    x_batching_dims,
     start_indices_batching_dims,
     start_index_map,
     index_vector_dim,
@@ -3107,17 +3109,19 @@ prim_gather <- new_primitive(
       slice_sizes,
       offset_dims,
       collapsed_slice_dims,
-      operand_batching_dims,
+      x_batching_dims,
       start_indices_batching_dims,
       start_index_map,
       index_vector_dim,
       indices_are_sorted,
       unique_indices
     ) {
+      # StableHLO's GatherDimensionNumbers() follows the spec naming, so the
+      # anvl-side `x_batching_dims` is mapped back here.
       gather_dimension_numbers <- stablehlo::GatherDimensionNumbers(
         offset_dims = offset_dims - 1L,
         collapsed_slice_dims = collapsed_slice_dims - 1L,
-        operand_batching_dims = operand_batching_dims - 1L,
+        operand_batching_dims = x_batching_dims - 1L,
         start_indices_batching_dims = start_indices_batching_dims - 1L,
         start_index_map = start_index_map - 1L,
         index_vector_dim = index_vector_dim - 1L
@@ -3145,7 +3149,7 @@ prim_gather <- new_primitive(
         slice_sizes = slice_sizes,
         offset_dims = offset_dims,
         collapsed_slice_dims = collapsed_slice_dims,
-        operand_batching_dims = operand_batching_dims,
+        x_batching_dims = x_batching_dims,
         start_indices_batching_dims = start_indices_batching_dims,
         start_index_map = start_index_map,
         index_vector_dim = index_vector_dim,

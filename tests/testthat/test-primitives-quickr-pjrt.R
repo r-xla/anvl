@@ -828,9 +828,9 @@ test_that("quickr pipeline matches PJRT: indexing ops (slice/update/pad) + gathe
       upd,
       update_window_dims = integer(),
       inserted_window_dims = 1L,
-      input_batching_dims = integer(),
+      x_batching_dims = integer(),
       scatter_indices_batching_dims = integer(),
-      scatter_dims_to_operand_dims = 1L,
+      scatter_dims_to_x_dims = 1L,
       index_vector_dim = 2L,
       update_computation = function(old, new) old + new
     )
@@ -917,7 +917,7 @@ test_that("quickr pipeline matches PJRT: gather can return a scalar", {
       slice_sizes = 1L,
       offset_dims = integer(),
       collapsed_slice_dims = 1L,
-      operand_batching_dims = integer(),
+      x_batching_dims = integer(),
       start_indices_batching_dims = integer(),
       start_index_map = 1L,
       index_vector_dim = 1L

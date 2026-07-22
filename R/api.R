@@ -1949,9 +1949,9 @@ nv_diag <- function(x) {
     x,
     update_window_dims = integer(0),
     inserted_window_dims = c(1L, 2L),
-    input_batching_dims = integer(0),
+    x_batching_dims = integer(0),
     scatter_indices_batching_dims = integer(0),
-    scatter_dims_to_operand_dims = c(1L, 2L),
+    scatter_dims_to_x_dims = c(1L, 2L),
     index_vector_dim = 2L,
     unique_indices = TRUE
   )
@@ -2584,7 +2584,7 @@ nv_extract_diag <- function(x) {
     start_indices = indices,
     offset_dims = integer(0),
     collapsed_slice_dims = c(1L, 2L),
-    operand_batching_dims = integer(0),
+    x_batching_dims = integer(0),
     start_indices_batching_dims = integer(0),
     start_index_map = c(1L, 2L),
     index_vector_dim = 2L,
@@ -2850,7 +2850,7 @@ nv_select <- function(x, dim, index) {
     slice_sizes = rep(1L, rank),
     offset_dims = integer(0),
     collapsed_slice_dims = seq_len(rank),
-    operand_batching_dims = integer(0),
+    x_batching_dims = integer(0),
     start_indices_batching_dims = integer(0),
     start_index_map = seq_len(rank),
     index_vector_dim = rank + 1L
@@ -3274,11 +3274,11 @@ nv_argmin <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 
 #' @title 1D Convolution
 #' @description
-#' Torch-style 1D convolution in NCW layout: `input` is
+#' Torch-style 1D convolution in NCW layout: `x` is
 #' `[batch, in_channels, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kW]`, output is
 #' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param input ([`arrayish`])\cr `[N, C_in, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, W]`.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
@@ -3286,17 +3286,17 @@ nv_argmin <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @return [`arrayish`] `[N, C_out, out_W]`.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
 #' @export
-nv_conv1d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
-  .nv_convnd(input, weight, 1L, stride, padding, dilation, groups, precision)
+nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(x, weight, 1L, stride, padding, dilation, groups, precision)
 }
 
 #' @title 2D Convolution
 #' @description
-#' Torch-style 2D convolution in NCHW layout: `input` is
+#' Torch-style 2D convolution in NCHW layout: `x` is
 #' `[batch, in_channels, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kh, kw]`, output is
 #' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param input ([`arrayish`])\cr `[N, C_in, H, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
 #' @param stride (`integer()`)\cr Length 1 or 2.
 #' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
@@ -3306,13 +3306,13 @@ nv_conv1d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, g
 #' @return [`arrayish`] `[N, C_out, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
 #' @export
-nv_conv2d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
-  .nv_convnd(input, weight, 2L, stride, padding, dilation, groups, precision)
+nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(x, weight, 2L, stride, padding, dilation, groups, precision)
 }
 
 #' @title 3D Convolution
 #' @description
-#' Torch-style 3D convolution in NCDHW layout. `input` is
+#' Torch-style 3D convolution in NCDHW layout. `x` is
 #' `[batch, in_channels, depth, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
 #' padding (e.g. causal temporal padding) is available via
@@ -3322,12 +3322,12 @@ nv_conv2d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, g
 #' @return [`arrayish`] `[N, C_out, out_D, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
 #' @export
-nv_conv3d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
-  .nv_convnd(input, weight, 3L, stride, padding, dilation, groups, precision)
+nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(x, weight, 3L, stride, padding, dilation, groups, precision)
 }
 
-.nv_convnd <- function(input, weight, n, stride, padding, dilation, groups, precision) {
-  # `input`/`weight` are left as raw arrayish; prim_convolution's machinery
+.nv_convnd <- function(x, weight, n, stride, padding, dilation, groups, precision) {
+  # `x`/`weight` are left as raw arrayish; prim_convolution's machinery
   # (graph_desc_add -> maybe_box_arrayish) coerces them.
   stride <- .nv_conv_vec(stride, n, "stride")
   pad <- .nv_conv_vec(padding, n, "padding")
@@ -3335,7 +3335,7 @@ nv_conv3d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, g
   do.call(
     prim_convolution,
     c(
-      list(input, weight),
+      list(x, weight),
       .nv_conv_dim_numbers(n), # individual 1-based dim params
       list(
         window_strides = stride,

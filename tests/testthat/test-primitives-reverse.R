@@ -705,14 +705,14 @@ describe("prim_scatter", {
     expect_error(
       jit(gradient(function(x) {
         out <- prim_scatter(
-          input = x,
+          x = x,
           scatter_indices = nv_array(2L, dtype = "i64"),
           update = nv_scalar(10, dtype = "f32"),
           update_window_dims = integer(),
           inserted_window_dims = 1L,
-          input_batching_dims = integer(),
+          x_batching_dims = integer(),
           scatter_indices_batching_dims = integer(),
-          scatter_dims_to_operand_dims = 1L,
+          scatter_dims_to_x_dims = 1L,
           index_vector_dim = 1L,
           indices_are_sorted = TRUE,
           unique_indices = TRUE,

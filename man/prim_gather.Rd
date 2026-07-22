@@ -10,7 +10,7 @@ prim_gather(
   slice_sizes,
   offset_dims,
   collapsed_slice_dims,
-  operand_batching_dims,
+  x_batching_dims,
   start_indices_batching_dims,
   start_index_map,
   index_vector_dim,
@@ -38,16 +38,16 @@ slice dimensions of \code{x}.}
 \item{collapsed_slice_dims}{(\code{integer()})\cr
 Dimensions of \code{x} that are collapsed (removed) from the
 slice. The corresponding entries in \code{slice_sizes} must be \code{1}.
-Together with \code{offset_dims} and \code{operand_batching_dims}, these
+Together with \code{offset_dims} and \code{x_batching_dims}, these
 must account for all dimensions of \code{x}.}
 
-\item{operand_batching_dims}{(\code{integer()})\cr
+\item{x_batching_dims}{(\code{integer()})\cr
 Dimensions of \code{x} that are batch dimensions.
 Use \code{integer(0)} when there are no batch dimensions.}
 
 \item{start_indices_batching_dims}{(\code{integer()})\cr
 Dimensions of \code{start_indices} that correspond to batch
-dimensions. Must have the same length as \code{operand_batching_dims}.}
+dimensions. Must have the same length as \code{x_batching_dims}.}
 
 \item{start_index_map}{(\code{integer()})\cr
 Maps each component of the index vector to an \code{x}
@@ -119,7 +119,7 @@ prim_gather(
   slice_sizes = c(1L, 3L),
   offset_dims = 2L,
   collapsed_slice_dims = 1L,
-  operand_batching_dims = integer(0),
+  x_batching_dims = integer(0),
   start_indices_batching_dims = integer(0),
   start_index_map = 1L,
   index_vector_dim = 2L

@@ -711,7 +711,7 @@ prim_sort[["stablehlo"]] <- function(..., dim, descending, is_stable) {
   direction <- if (descending) "GT" else "LT"
 
   cmp_func <- stablehlo::local_func("")
-  # Declare 2 scalar inputs per operand: a_<i>, b_<i>. We keep references to
+  # Declare 2 scalar inputs per sorted array: a_<i>, b_<i>. We keep references to
   # the first pair only; subsequent inputs are declared (to match the arity
   # hlo_sort expects) but ignored.
   a <- NULL
@@ -761,14 +761,14 @@ prim_top_k[["stablehlo"]] <- function(x, k) {
 }
 
 prim_scatter[["stablehlo"]] <- function(
-  input,
+  x,
   scatter_indices,
   update,
   update_window_dims,
   inserted_window_dims,
-  input_batching_dims,
+  x_batching_dims,
   scatter_indices_batching_dims,
-  scatter_dims_to_operand_dims,
+  scatter_dims_to_x_dims,
   index_vector_dim,
   indices_are_sorted,
   unique_indices,
@@ -777,12 +777,14 @@ prim_scatter[["stablehlo"]] <- function(
 ) {
   update_func <- stablehlo(update_computation_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
 
+  # StableHLO's ScatterDimensionNumbers() follows the spec naming, so the
+  # anvl-side argument names are mapped back here.
   scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
     update_window_dims = update_window_dims - 1L,
     inserted_window_dims = inserted_window_dims - 1L,
-    input_batching_dims = input_batching_dims - 1L,
+    input_batching_dims = x_batching_dims - 1L,
     scatter_indices_batching_dims = scatter_indices_batching_dims - 1L,
-    scatter_dims_to_operand_dims = scatter_dims_to_operand_dims - 1L,
+    scatter_dims_to_operand_dims = scatter_dims_to_x_dims - 1L,
     index_vector_dim = index_vector_dim - 1L
   )
 
@@ -790,7 +792,7 @@ prim_scatter[["stablehlo"]] <- function(
   scatter_indices_0based <- hlo_subtract(scatter_indices, one)
 
   result <- hlo_scatter(
-    inputs = list(input),
+    inputs = list(x),
     scatter_indices = scatter_indices_0based,
     updates = list(update),
     scatter_dimension_numbers = scatter_dimension_numbers,
@@ -808,7 +810,7 @@ prim_gather[["stablehlo"]] <- function(
   slice_sizes,
   offset_dims,
   collapsed_slice_dims,
-  operand_batching_dims,
+  x_batching_dims,
   start_indices_batching_dims,
   start_index_map,
   index_vector_dim,
@@ -816,10 +818,12 @@ prim_gather[["stablehlo"]] <- function(
   unique_indices
 ) {
   # Convert 1-based dimension numbers to 0-based for stablehlo
+  # StableHLO's GatherDimensionNumbers() follows the spec naming, so the
+  # anvl-side `x_batching_dims` is mapped back here.
   gdn_0based <- stablehlo::GatherDimensionNumbers(
     offset_dims = offset_dims - 1L,
     collapsed_slice_dims = collapsed_slice_dims - 1L,
-    operand_batching_dims = operand_batching_dims - 1L,
+    operand_batching_dims = x_batching_dims - 1L,
     start_indices_batching_dims = start_indices_batching_dims - 1L,
     start_index_map = start_index_map - 1L,
     index_vector_dim = index_vector_dim - 1L

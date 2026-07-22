@@ -208,9 +208,9 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 
   start_indices <- subset_specs_start_indices(subsets, like = like)
 
-  # offset_dims: positions in the output for non-collapsed operand dims.
+  # offset_dims: positions in the output for non-collapsed dims of `x`.
   # The output interleaves batch (gather) dims and offset (slice) dims
-  # in the order of the original operand dimensions.
+  # in the order of the original dimensions of `x`.
   subset_index_dims <- which(vapply(subsets, is_subset_index, logical(1L)))
   surviving_dims <- setdiff(seq_len(rank), subset_index_dims)
   multi_among_surviving <- which(surviving_dims %in% multi_index_dims)
@@ -239,7 +239,7 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #'   - scatter_indices: array of scatter indices
 #'   - update_window_dims: integer vector
 #'   - inserted_window_dims: integer vector
-#'   - scatter_dims_to_operand_dims: integer vector
+#'   - scatter_dims_to_x_dims: integer vector
 #'   - index_vector_dim: integer
 #'   - indices_are_sorted: logical
 #'   - unique_indices: logical
@@ -299,7 +299,7 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
     scatter_indices = scatter_indices,
     update_window_dims = update_window_dims,
     inserted_window_dims = inserted_window_dims,
-    scatter_dims_to_operand_dims = seq_len(rank),
+    scatter_dims_to_x_dims = seq_len(rank),
     index_vector_dim = index_vector_dim,
     # TODO: Could improve this
     indices_are_sorted = !multi_index_subset,
@@ -477,7 +477,7 @@ nv_subset <- function(x, ...) {
     slice_sizes = params$slice_sizes,
     offset_dims = params$offset_dims,
     collapsed_slice_dims = params$collapsed_slice_dims,
-    operand_batching_dims = integer(),
+    x_batching_dims = integer(),
     start_indices_batching_dims = integer(),
     start_index_map = params$start_index_map,
     index_vector_dim = params$index_vector_dim,
@@ -501,7 +501,7 @@ subset_scatter_core <- jit(
     scatter_indices,
     update_window_dims,
     inserted_window_dims,
-    scatter_dims_to_operand_dims,
+    scatter_dims_to_x_dims,
     index_vector_dim,
     indices_are_sorted,
     unique_indices,
@@ -531,14 +531,14 @@ subset_scatter_core <- jit(
     }
 
     prim_scatter(
-      input = x,
+      x = x,
       scatter_indices = scatter_indices,
       update = value,
       update_window_dims = update_window_dims,
       inserted_window_dims = inserted_window_dims,
-      input_batching_dims = integer(),
+      x_batching_dims = integer(),
       scatter_indices_batching_dims = integer(),
-      scatter_dims_to_operand_dims = scatter_dims_to_operand_dims,
+      scatter_dims_to_x_dims = scatter_dims_to_x_dims,
       index_vector_dim = index_vector_dim,
       indices_are_sorted = indices_are_sorted,
       unique_indices = unique_indices
@@ -548,7 +548,7 @@ subset_scatter_core <- jit(
   static = c(
     "update_window_dims",
     "inserted_window_dims",
-    "scatter_dims_to_operand_dims",
+    "scatter_dims_to_x_dims",
     "index_vector_dim",
     "indices_are_sorted",
     "unique_indices",
@@ -602,7 +602,7 @@ nv_subset_assign <- function(x, ..., value) {
     scatter_indices = params$scatter_indices,
     update_window_dims = params$update_window_dims,
     inserted_window_dims = params$inserted_window_dims,
-    scatter_dims_to_operand_dims = params$scatter_dims_to_operand_dims,
+    scatter_dims_to_x_dims = params$scatter_dims_to_x_dims,
     index_vector_dim = params$index_vector_dim,
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices,

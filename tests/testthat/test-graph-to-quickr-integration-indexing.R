@@ -15,7 +15,7 @@ test_that("integration: indexing-heavy graph matches PJRT", {
       slice_sizes = c(1L, 2L, 2L),
       offset_dims = c(2L, 3L),
       collapsed_slice_dims = 1L,
-      operand_batching_dims = integer(),
+      x_batching_dims = integer(),
       start_indices_batching_dims = integer(),
       start_index_map = 1L,
       index_vector_dim = 2L
@@ -42,9 +42,9 @@ test_that("integration: indexing-heavy graph matches PJRT", {
       upd,
       update_window_dims = integer(),
       inserted_window_dims = 1L,
-      input_batching_dims = integer(),
+      x_batching_dims = integer(),
       scatter_indices_batching_dims = integer(),
-      scatter_dims_to_operand_dims = 1L,
+      scatter_dims_to_x_dims = 1L,
       index_vector_dim = 2L,
       update_computation = function(old, new) old + new
     )

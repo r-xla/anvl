@@ -16,6 +16,24 @@ Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with 
 3. If the op doesn't exist in stablehlo, stop and tell the user — it must be added there first.
 4. Read the StableHLO SPEC (`../stablehlo/SPEC.md`) for the operation's semantics and constraints.
 
+## Argument Naming
+
+The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always named **`x`** — never `operand`, `input`, `a`, or anything else. This holds even when StableHLO's own spec calls it `operand` or `input`.
+
+- Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
+- Two symmetric operands of a binary op: `lhs` / `rhs`.
+- Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
+- Dimension-number arguments derived from `x` follow it: `x_batching_dims`, `scatter_dims_to_x_dims`.
+
+When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.
+
+```r
+stablehlo::GatherDimensionNumbers(
+  operand_batching_dims = x_batching_dims - 1L,  # spec name on the left
+  ...
+)
+```
+
 ## Roxygen Documentation
 
 Use templates from `man-roxygen/` where applicable:

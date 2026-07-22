@@ -741,7 +741,7 @@ test_that("prim_gather", {
     slice_sizes = c(1L),
     offset_dims = integer(),
     collapsed_slice_dims = 1L,
-    operand_batching_dims = integer(),
+    x_batching_dims = integer(),
     start_indices_batching_dims = integer(),
     start_index_map = 1L,
     index_vector_dim = 2L,
@@ -755,14 +755,14 @@ test_that("prim_scatter", {
   # Simple 1D scatter: update elements at specific indices
   f <- jit(function(x, indices, updates) {
     prim_scatter(
-      input = x,
+      x = x,
       scatter_indices = indices,
       update = updates,
       update_window_dims = integer(),
       inserted_window_dims = 1L,
-      input_batching_dims = integer(),
+      x_batching_dims = integer(),
       scatter_indices_batching_dims = integer(),
-      scatter_dims_to_operand_dims = 1L,
+      scatter_dims_to_x_dims = 1L,
       index_vector_dim = 2L,
       indices_are_sorted = FALSE,
       unique_indices = TRUE,
@@ -797,7 +797,7 @@ describe("prim_sort", {
     expect_equal(prim_sort(list(m), dim = 2L)[[1L]], nv_matrix(c(1, 3, 5, 0, 2, 4), nrow = 2, byrow = TRUE))
   })
 
-  it("variadic: carried operand is permuted by the key", {
+  it("variadic: carried array is permuted by the key", {
     x <- nv_array(c(3, 1, 4, 2, 5))
     idx <- nv_iota(dim = 1L, dtype = "i64", shape = 5L)
     out <- prim_sort(list(x, idx), dim = 1L)

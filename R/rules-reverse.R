@@ -827,15 +827,15 @@ prim_top_k[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   # All dimensions are iteration dimensions and we have a single index vector dimension that
   # indicates the position to write to (in the last dimension of the input)
   list(prim_scatter(
-    input = zero_input,
-    # index vectors selecting positions along the last dim of `input`
+    x = zero_input,
+    # index vectors selecting positions along the last dim of `x`
     scatter_indices = indices,
     update = grad_values,
     update_window_dims = integer(0),
     inserted_window_dims = rank,
-    input_batching_dims = batching,
+    x_batching_dims = batching,
     scatter_indices_batching_dims = batching,
-    scatter_dims_to_operand_dims = rank,
+    scatter_dims_to_x_dims = rank,
     # we sort along a single dimension -> all dims are iteration dims
     index_vector_dim = rank + 1L,
     unique_indices = TRUE
@@ -956,14 +956,14 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
 
   batching <- seq_len(rank)[-dim]
   list(prim_scatter(
-    input = zeros_like(x),
+    x = zeros_like(x),
     scatter_indices = indices,
     update = grad,
     update_window_dims = integer(0),
     inserted_window_dims = dim,
-    input_batching_dims = batching,
+    x_batching_dims = batching,
     scatter_indices_batching_dims = batching,
-    scatter_dims_to_operand_dims = dim,
+    scatter_dims_to_x_dims = dim,
     index_vector_dim = rank + 1L,
     unique_indices = FALSE,
     update_computation = prim_add
@@ -1040,7 +1040,7 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   slice_sizes <- params$slice_sizes
   offset_dims <- params$offset_dims
   collapsed_slice_dims <- params$collapsed_slice_dims
-  operand_batching_dims <- params$operand_batching_dims
+  x_batching_dims <- params$x_batching_dims
   start_indices_batching_dims <- params$start_indices_batching_dims
   start_index_map <- params$start_index_map
   index_vector_dim <- params$index_vector_dim
@@ -1068,21 +1068,21 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
       # Clamp indices to valid range (same as forward pass clamping behavior)
       scatter_indices <- gather_clamp_indices(
         start_indices = start_indices,
-        operand_shape = shape(x),
+        x_shape = shape(x),
         slice_sizes = slice_sizes,
         start_index_map = start_index_map,
         index_vector_dim = index_vector_dim
       )
 
       prim_scatter(
-        input = zeros_like(x),
+        x = zeros_like(x),
         scatter_indices = scatter_indices,
         update = grad,
         update_window_dims = offset_dims,
         inserted_window_dims = collapsed_slice_dims,
-        input_batching_dims = operand_batching_dims,
+        x_batching_dims = x_batching_dims,
         scatter_indices_batching_dims = start_indices_batching_dims,
-        scatter_dims_to_operand_dims = start_index_map,
+        scatter_dims_to_x_dims = start_index_map,
         index_vector_dim = index_vector_dim,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
@@ -1099,15 +1099,15 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
 prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   update_window_dims <- params$update_window_dims
   inserted_window_dims <- params$inserted_window_dims
-  input_batching_dims <- params$input_batching_dims
+  x_batching_dims <- params$x_batching_dims
   scatter_indices_batching_dims <- params$scatter_indices_batching_dims
-  scatter_dims_to_operand_dims <- params$scatter_dims_to_operand_dims
+  scatter_dims_to_x_dims <- params$scatter_dims_to_x_dims
   index_vector_dim <- params$index_vector_dim
   indices_are_sorted <- params$indices_are_sorted
   unique_indices <- params$unique_indices
   update_computation_graph <- params$update_computation_graph
 
-  input <- inputs[[1L]]
+  x <- inputs[[1L]]
   scatter_indices <- inputs[[2L]]
   update <- inputs[[3L]]
   grad <- grads[[1L]]
@@ -1118,36 +1118,36 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 
   # Generally, the reverse of scatter is:
   # - for the update: gather from the gradient
-  # - for the input: zero out the positions that were overwritten
+  # - for `x`: zero out the positions that were overwritten
 
   # The only problem is when scatter writes multiple times to the same position (unique_indices = FALSE),
   # XLA doesn't guarantee which update "wins" at each position. We use the ID trick from JAX's scatter JVP:
   # https://github.com/jax-ml/jax/blob/ecd3795959e91c3c28cec8696f4c82f2a28bc086/jax/_src/lax/slicing.py
 
   update_shape <- shape(update)
-  input_shape <- shape(input)
+  x_shape <- shape(x)
 
   slice_sizes <- scatter_to_gather_slice_sizes(
     update_shape = update_shape,
-    input_shape = input_shape,
+    x_shape = x_shape,
     update_window_dims = update_window_dims,
     inserted_window_dims = inserted_window_dims,
-    input_batching_dims = input_batching_dims
+    x_batching_dims = x_batching_dims
   )
 
   list(
-    # Gradient for input: zero out overwritten positions.
+    # Gradient for `x`: zero out overwritten positions.
     # Works for both unique and non-unique: scattering zero is idempotent.
     if (required[[1L]]) {
       prim_scatter(
-        input = grad,
+        x = grad,
         scatter_indices = scatter_indices,
         update = zeros_like(update),
         update_window_dims = update_window_dims,
         inserted_window_dims = inserted_window_dims,
-        input_batching_dims = input_batching_dims,
+        x_batching_dims = x_batching_dims,
         scatter_indices_batching_dims = scatter_indices_batching_dims,
-        scatter_dims_to_operand_dims = scatter_dims_to_operand_dims,
+        scatter_dims_to_x_dims = scatter_dims_to_x_dims,
         index_vector_dim = index_vector_dim,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
@@ -1165,9 +1165,9 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           slice_sizes = slice_sizes,
           offset_dims = update_window_dims,
           collapsed_slice_dims = inserted_window_dims,
-          operand_batching_dims = input_batching_dims,
+          x_batching_dims = x_batching_dims,
           start_indices_batching_dims = scatter_indices_batching_dims,
-          start_index_map = scatter_dims_to_operand_dims,
+          start_index_map = scatter_dims_to_x_dims,
           index_vector_dim = index_vector_dim,
           indices_are_sorted = indices_are_sorted,
           unique_indices = TRUE
@@ -1193,14 +1193,14 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 
         # b) Scatter IDs to see which update "wins" at each position
         scattered_ids <- prim_scatter(
-          input = prim_fill(0L, dtype = id_dtype, shape = input_shape),
+          x = prim_fill(0L, dtype = id_dtype, shape = x_shape),
           scatter_indices = scatter_indices,
           update = update_ids,
           update_window_dims = update_window_dims,
           inserted_window_dims = inserted_window_dims,
-          input_batching_dims = input_batching_dims,
+          x_batching_dims = x_batching_dims,
           scatter_indices_batching_dims = scatter_indices_batching_dims,
-          scatter_dims_to_operand_dims = scatter_dims_to_operand_dims,
+          scatter_dims_to_x_dims = scatter_dims_to_x_dims,
           index_vector_dim = index_vector_dim,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE,
@@ -1214,9 +1214,9 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           slice_sizes = slice_sizes,
           offset_dims = update_window_dims,
           collapsed_slice_dims = inserted_window_dims,
-          operand_batching_dims = input_batching_dims,
+          x_batching_dims = x_batching_dims,
           start_indices_batching_dims = scatter_indices_batching_dims,
-          start_index_map = scatter_dims_to_operand_dims,
+          start_index_map = scatter_dims_to_x_dims,
           index_vector_dim = index_vector_dim,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE
@@ -1229,9 +1229,9 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           slice_sizes = slice_sizes,
           offset_dims = update_window_dims,
           collapsed_slice_dims = inserted_window_dims,
-          operand_batching_dims = input_batching_dims,
+          x_batching_dims = x_batching_dims,
           start_indices_batching_dims = scatter_indices_batching_dims,
-          start_index_map = scatter_dims_to_operand_dims,
+          start_index_map = scatter_dims_to_x_dims,
           index_vector_dim = index_vector_dim,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE
