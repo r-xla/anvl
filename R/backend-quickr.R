@@ -36,8 +36,9 @@ print.QuickrDevice <- function(x, ...) {
 # The native-dispatch compile callback: traces and quickr-compiles on a cache
 # miss and hands the dispatcher the compiled R closure. Reached only for inputs
 # the dispatcher has already validated (see jit_pjrt_compile_cb).
-jit_quickr_compile_cb <- function(f, unwrap) {
+jit_quickr_compile_cb <- function(f, static, unwrap) {
   function(info) {
+    check_static_args(info$args, static)
     compiled <- compile_quickr(
       f,
       args_flat = avals_from_dispatch(info),
@@ -54,7 +55,7 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
   # use pjrt's "closure" engine for quickr.
   dispatcher <- pjrt::dispatcher(
     cache_size,
-    jit_quickr_compile_cb(f, unwrap),
+    jit_quickr_compile_cb(f, static, unwrap),
     static = static,
     backend = "quickr",
     # The dispatcher reads a non-pjrt leaf's metadata through this, via the
