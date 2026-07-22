@@ -59,6 +59,12 @@
 * `nv_diag()` now errors on non-1-D input instead of silently producing an
   incorrect result.
 
+* Errors raised while tracing are now phrased in anvl's own vocabulary (#298).
+  Messages originating in the `stablehlo` package used the StableHLO spec's
+  terminology; they now speak of arrays instead of tensors, and of `x` instead
+  of `operand`. For example, `` `operand` must have dtype FloatType `` became
+  `` `x` must have dtype FloatType ``.
+
 
 * `jit()` now rejects static arguments with reference semantics -- an
   environment (and therefore also an R6 or reference class object) or an

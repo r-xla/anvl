@@ -11,7 +11,7 @@
       jit(prim_ceil)(nv_array(1:4))
     Condition
       Error in `prim_ceil()`:
-      ! `operand` must have dtype FloatType.
+      ! `x` must have dtype FloatType.
       x Got i32.
 
 ---
@@ -24,7 +24,7 @@
       ! `permutation` must be a permutation of c(1, 2).
       x Got c(2, 2).
 
-# error handling: stablehlo errors speak of arrays, not tensors
+# error handling: stablehlo errors use anvl's terminology
 
     Code
       jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4)))
