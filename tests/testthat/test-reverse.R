@@ -77,7 +77,17 @@ test_that("constants work (scalar)", {
 })
 
 test_that("broadcasting works", {
-  # TODO
+  # A scalar operand auto-broadcasts against a non-scalar in elementwise ops.
+  # The reverse pass must reduce the broadcasted cotangent back to the scalar's
+  # shape.
+  f <- function(a, b) sum(nv_mul(a, b))
+  g <- jit(gradient(f))
+  res <- g(nv_scalar(2), nv_array(c(1, 2, 3), dtype = "f32"))
+  # d/da sum(a * b) = sum(b) = 6, reduced back to a scalar
+  expect_equal(res$a, nv_scalar(6))
+  expect_equal(shape(res$a), integer())
+  # d/db sum(a * b) = a broadcast over b's shape
+  expect_equal(res$b, nv_array(c(2, 2, 2), dtype = "f32"))
 })
 
 test_that("second order gradient (scalar)", {
@@ -330,7 +340,10 @@ test_that("Can propagate ambiguous float32 through integer/bool functions", {
     mean(x4)
   }
   grad <- jit(gradient(f))
-  grad(nv_scalar(1))
+  out <- grad(nv_scalar(1))
+  # the path runs entirely through integer/bool conversions, so no gradient
+  # flows back to the float input.
+  expect_equal(out$x, nv_scalar(0))
 })
 
 test_that("trace_fn matches args with formals", {

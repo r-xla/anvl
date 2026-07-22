@@ -16,7 +16,7 @@ The backend for which to create the device.
 Defaults to \code{\link[=default_backend]{default_backend()}} when \code{NULL}.}
 }
 \value{
-A backend-specific device object (e.g. \code{PJRTDevice} for \code{"xla"},
+A backend-specific device object (e.g. \code{PJRTDevice} for \code{"pjrt"},
 \code{\link{quickr_device}} for \code{"quickr"}).
 }
 \description{
@@ -27,8 +27,8 @@ It is relevant for data allocation (e.g. via \code{\link[=nv_array]{nv_array()}}
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Create CPU device for xla backend:
-nv_device("cpu", "xla")
+# Create CPU device for pjrt backend:
+nv_device("cpu", "pjrt")
 # Create CPU device for quickr backend:
 nv_device("cpu", "quickr")
 # Pass through an existing device:

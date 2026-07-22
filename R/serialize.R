@@ -176,8 +176,8 @@ nv_unserialize <- function(con, device = NULL, backend = default_backend()) {
     } else {
       FALSE
     }
-    if (backend == "xla") {
-      nv_array(buf, ambiguous = is_ambiguous, backend = "xla")
+    if (backend == "pjrt") {
+      nv_array(buf, ambiguous = is_ambiguous, backend = "pjrt")
     } else {
       nv_array(
         tengen::as_array(buf),

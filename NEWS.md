@@ -2,6 +2,11 @@
 
 ## Breaking changes
 
+* The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it uses.
+  Pass `backend = "pjrt"` to `jit()`, `nv_array()`, `local_backend()`, and
+  friends; `backend()` and `default_backend()` now return `"pjrt"`. The
+  constructor `AnvlBackendXla()` is now `AnvlBackendPjrt()` and the internal
+  `compile_xla()` is now `compile_pjrt()`.
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
@@ -72,6 +77,24 @@
 
 * `nv_diag()` now errors on non-1-D input instead of silently producing an
   incorrect result.
+
+* Errors raised while tracing are now phrased in anvl's own vocabulary (#298).
+  Messages originating in the `stablehlo` package used the StableHLO spec's
+  terminology; they now speak of arrays instead of tensors, and of `x` instead
+  of `operand`. For example, `` `operand` must have dtype FloatType `` became
+  `` `x` must have dtype FloatType ``.
+
+
+* `jit()` now rejects static arguments with reference semantics -- an
+  environment (and therefore also an R6 or reference class object) or an
+  external pointer, including one nested inside a static list (#17).
+  Such a value can be mutated in place while the compilation cache key stays
+  equal, which silently reused a program compiled from its old contents.
+  Functions and device objects remain valid static values.
+* Errors raised while tracing now speak of arrays instead of tensors (#298).
+  Previously, messages that originated in the `stablehlo` package used the
+  StableHLO spec's terminology, e.g. `` `lhs` and `rhs` must have the same
+  tensor type. x Got tensor<4xi32> and tensor<4xf32>. ``
 
 
 # anvl 0.3.0
