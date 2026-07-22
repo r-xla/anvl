@@ -20,7 +20,7 @@ describe("[", {
         idx2 <- nv_scalar(3L, dtype = "i32")
         x[idx1, idx2]
       },
-      # Scalar array indices drop dimensions, so result is a scalar
+      # Scalar array indices drop axes, so result is a scalar
       nv_scalar(8, ambiguous = FALSE)
     )
   })
@@ -254,7 +254,7 @@ describe("Summary group generic", {
     expect_equal(
       {
         x <- nv_array(matrix(1:6, 2))
-        sum(x, dims = 1L)
+        sum(x, axes = 1L)
       },
       nv_array(c(3, 7, 11), dtype = "i32")
     )
@@ -334,7 +334,7 @@ describe("ncol", {
   })
 })
 
-describe("dim", {
+describe("axis", {
   it("returns shape", {
     x <- nv_array(1:24, shape = c(2, 3, 4))
     expect_equal(dim(x), shape(x))

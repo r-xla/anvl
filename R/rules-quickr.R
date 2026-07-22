@@ -372,8 +372,8 @@ quickr_stable_log1p_expr <- function(x_expr) {
   )
 }
 
-quickr_emit_iota <- function(out_sym, dim, start, shape_out, out_aval) {
-  dim <- as.integer(dim)
+quickr_emit_iota <- function(out_sym, axis, start, shape_out, out_aval) {
+  axis <- as.integer(axis)
   shape_out <- as.integer(shape_out)
   rank <- length(shape_out)
   dt_chr <- as.character(dtype(out_aval))
@@ -381,8 +381,8 @@ quickr_emit_iota <- function(out_sym, dim, start, shape_out, out_aval) {
   if (!rank || rank > 5L) {
     cli_abort("iota: only arrays of rank 1..5 are supported by quickr lowering")
   }
-  if (dim < 1L || dim > rank) {
-    cli_abort("iota: invalid {.arg dim}: {dim}")
+  if (axis < 1L || axis > rank) {
+    cli_abort("iota: invalid {.arg axis}: {axis}")
   }
 
   start_expr <- quickr_scalar_cast(start, dt_chr)
@@ -393,13 +393,13 @@ quickr_emit_iota <- function(out_sym, dim, start, shape_out, out_aval) {
     return(quickr_emit_assign(out_sym, expr))
   }
 
-  # Assign whole slices along `dim`, looping only over the other dimensions.
-  n <- as.integer(shape_out[[dim]])
+  # Assign whole slices along `axis`, looping only over the other axes.
+  n <- as.integer(shape_out[[axis]])
   idx <- rlang::call2("seq_len", n)
   vals <- rlang::call2("+", start_expr, rlang::call2("-", idx, 1L))
 
   aligned_shape <- rep.int(1L, rank)
-  aligned_shape[[dim]] <- n
+  aligned_shape[[axis]] <- n
   aligned_sym <- as.name(paste0("aligned_", as.character(out_sym)))
   aligned_stmt <- rlang::call2("<-", aligned_sym, rlang::call2("array", vals, dim = as.integer(aligned_shape)))
 
@@ -410,19 +410,19 @@ quickr_emit_iota <- function(out_sym, dim, start, shape_out, out_aval) {
     return(list(aligned_stmt, out_stmt))
   }
 
-  # Don't loop over extent-1 dimensions: their index is always 1L.
-  loop_dims <- setdiff(which(as.integer(shape_out) > 1L), dim)
+  # Don't loop over extent-1 axes: their index is always 1L.
+  loop_axes <- setdiff(which(as.integer(shape_out) > 1L), axis)
 
   idxs_lhs <- vector("list", rank)
   idxs_rhs <- vector("list", rank)
   for (d in seq_len(rank)) {
-    if (d == dim) {
+    if (d == axis) {
       idxs_lhs[[d]] <- rlang::call2("seq_len", n)
       idxs_rhs[[d]] <- rlang::call2("seq_len", n)
       next
     }
 
-    if (d %in% loop_dims) {
+    if (d %in% loop_axes) {
       idxs_lhs[[d]] <- as.name(paste0("i_", as.character(out_sym), "_", d))
     } else {
       idxs_lhs[[d]] <- 1L
@@ -433,9 +433,9 @@ quickr_emit_iota <- function(out_sym, dim, start, shape_out, out_aval) {
   rhs <- quickr_subscript(aligned_sym, idxs_rhs)
   inner <- rlang::call2("<-", quickr_subscript(out_sym, idxs_lhs), rhs)
 
-  body <- if (length(loop_dims)) {
-    loop_syms <- lapply(loop_dims, function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
-    quickr_row_major_loop(loop_syms, shape_out[loop_dims], inner)
+  body <- if (length(loop_axes)) {
+    loop_syms <- lapply(loop_axes, function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
+    quickr_row_major_loop(loop_syms, shape_out[loop_axes], inner)
   } else {
     inner
   }
@@ -443,9 +443,9 @@ quickr_emit_iota <- function(out_sym, dim, start, shape_out, out_aval) {
   list(aligned_stmt, out_stmt, body)
 }
 
-quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, dims, out_aval) {
+quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval) {
   shape_in <- as.integer(shape_in)
-  dims <- sort(unique(as.integer(dims)))
+  axes <- sort(unique(as.integer(axes)))
   rank <- length(shape_in)
 
   if (rank == 0L) {
@@ -454,12 +454,12 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, dims, out_aval)
   if (rank > 5L) {
     cli_abort("reverse: only arrays up to rank 5 are supported")
   }
-  if (length(dims) && (min(dims) < 1L || max(dims) > rank)) {
-    cli_abort("reverse: invalid {.arg dims}: {dims}")
+  if (length(axes) && (min(axes) < 1L || max(axes) > rank)) {
+    cli_abort("reverse: invalid {.arg axes}: {axes}")
   }
 
   idxs <- lapply(seq_len(rank), function(d) {
-    if (d %in% dims) {
+    if (d %in% axes) {
       # Avoid `n:1` when `n == 0`: `0:1` is non-empty in R and selects the wrong
       # elements (and quickr lowers it to an invalid Fortran slice).
       n <- as.integer(shape_in[[d]])
@@ -472,14 +472,14 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, dims, out_aval)
   quickr_emit_assign(out_sym, quickr_subscript(operand_expr, idxs, drop = if (rank > 1L) FALSE else NULL))
 }
 
-quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, dimension, out_aval) {
-  dimension <- as.integer(dimension)
+quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, axis, out_aval) {
+  axis <- as.integer(axis)
   rank <- length(shape(out_aval))
   if (!rank || rank > 5L) {
     cli_abort("concatenate: only arrays of rank 1..5 are supported by quickr lowering")
   }
-  if (dimension < 1L || dimension > rank) {
-    cli_abort("concatenate: invalid {.arg dimension}: {dimension}")
+  if (axis < 1L || axis > rank) {
+    cli_abort("concatenate: invalid {.arg axis}: {axis}")
   }
 
   operands_shape <- lapply(operands_shape, as.integer)
@@ -492,22 +492,22 @@ quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, dime
   offset <- 0L
   for (k in seq_along(operands_expr)) {
     shp <- operands_shape[[k]]
-    dim_n <- as.integer(shp[[dimension]])
+    axis_size <- as.integer(shp[[axis]])
 
     # Avoid `a:b` when `b < a`: `:` is never empty in R and quickr lowers it to
     # an invalid Fortran slice.
-    if (dim_n == 0L) {
+    if (axis_size == 0L) {
       next
     }
 
-    dim_start <- offset + 1L
-    dim_end <- offset + dim_n
+    axis_start <- offset + 1L
+    axis_end <- offset + axis_size
 
     out_idxs <- lapply(seq_len(rank), function(d) {
-      if (d == dimension) {
-        as.call(list(as.name(":"), dim_start, dim_end))
+      if (d == axis) {
+        as.call(list(as.name(":"), axis_start, axis_end))
       } else if (as.integer(shp[[d]]) == 1L) {
-        # Use a length-1 range to preserve that dimension.
+        # Use a length-1 range to preserve that axis.
         as.call(list(as.name(":"), 1L, 1L))
       } else {
         rlang::call2("seq_len", shp[[d]])
@@ -522,7 +522,7 @@ quickr_emit_concatenate <- function(out_sym, operands_expr, operands_shape, dime
         operands_expr[[k]]
       ))
     )
-    offset <- offset + dim_n
+    offset <- offset + axis_size
   }
 
   stmts
@@ -765,23 +765,23 @@ quickr_emit_gather <- function(
   shape_operand,
   shape_start_indices,
   slice_sizes,
-  offset_dims,
-  collapsed_slice_dims,
-  operand_batching_dims,
-  start_indices_batching_dims,
+  offset_axes,
+  collapsed_slice_axes,
+  operand_batching_axes,
+  start_indices_batching_axes,
   start_index_map,
-  index_vector_dim,
+  index_vector_axis,
   out_aval
 ) {
   shape_operand <- as.integer(shape_operand)
   shape_start_indices <- as.integer(shape_start_indices)
   slice_sizes <- as.integer(slice_sizes)
-  offset_dims <- as.integer(offset_dims)
-  collapsed_slice_dims <- sort(unique(as.integer(collapsed_slice_dims)))
-  operand_batching_dims <- as.integer(operand_batching_dims)
-  start_indices_batching_dims <- as.integer(start_indices_batching_dims)
+  offset_axes <- as.integer(offset_axes)
+  collapsed_slice_axes <- sort(unique(as.integer(collapsed_slice_axes)))
+  operand_batching_axes <- as.integer(operand_batching_axes)
+  start_indices_batching_axes <- as.integer(start_indices_batching_axes)
   start_index_map <- as.integer(start_index_map)
-  index_vector_dim <- as.integer(index_vector_dim)
+  index_vector_axis <- as.integer(index_vector_axis)
 
   op_rank <- length(shape_operand)
   si_rank <- length(shape_start_indices)
@@ -794,11 +794,11 @@ quickr_emit_gather <- function(
   if (op_rank > 5L || si_rank > 5L || out_rank > 5L) {
     cli_abort("gather: only arrays up to rank 5 are supported")
   }
-  if (length(operand_batching_dims) || length(start_indices_batching_dims)) {
-    cli_abort("gather: batching dims are not supported by quickr lowering")
+  if (length(operand_batching_axes) || length(start_indices_batching_axes)) {
+    cli_abort("gather: batching axes are not supported by quickr lowering")
   }
-  if (!identical(index_vector_dim, si_rank)) {
-    cli_abort("gather: only index_vector_dim on the last dimension is supported by quickr lowering")
+  if (!identical(index_vector_axis, si_rank)) {
+    cli_abort("gather: only index_vector_axis on the last axis is supported by quickr lowering")
   }
   if (si_rank == 0L) {
     cli_abort("gather: start_indices must have rank >= 1")
@@ -816,21 +816,21 @@ quickr_emit_gather <- function(
   if (length(unique(start_index_map)) != length(start_index_map)) {
     cli_abort("gather: start_index_map must not contain duplicates")
   }
-  if (length(collapsed_slice_dims) && (min(collapsed_slice_dims) < 1L || max(collapsed_slice_dims) > op_rank)) {
-    cli_abort("gather: invalid collapsed_slice_dims: {collapsed_slice_dims}")
+  if (length(collapsed_slice_axes) && (min(collapsed_slice_axes) < 1L || max(collapsed_slice_axes) > op_rank)) {
+    cli_abort("gather: invalid collapsed_slice_axes: {collapsed_slice_axes}")
   }
 
-  slice_dims <- setdiff(seq_len(op_rank), collapsed_slice_dims)
-  if (!identical(length(offset_dims), length(slice_dims))) {
-    cli_abort("gather: offset_dims must have length {length(slice_dims)}")
+  slice_axes <- setdiff(seq_len(op_rank), collapsed_slice_axes)
+  if (!identical(length(offset_axes), length(slice_axes))) {
+    cli_abort("gather: offset_axes must have length {length(slice_axes)}")
   }
-  if (length(offset_dims) && (min(offset_dims) < 1L || max(offset_dims) > out_rank)) {
-    cli_abort("gather: invalid offset_dims: {offset_dims}")
+  if (length(offset_axes) && (min(offset_axes) < 1L || max(offset_axes) > out_rank)) {
+    cli_abort("gather: invalid offset_axes: {offset_axes}")
   }
 
-  batch_out_dims <- setdiff(seq_len(out_rank), offset_dims)
+  batch_out_axes <- setdiff(seq_len(out_rank), offset_axes)
   expected_batch_rank <- si_rank - 1L
-  if (!identical(length(batch_out_dims), expected_batch_rank)) {
+  if (!identical(length(batch_out_axes), expected_batch_rank)) {
     cli_abort("gather: output batch rank does not match start_indices batch rank")
   }
 
@@ -841,7 +841,7 @@ quickr_emit_gather <- function(
   }
 
   out_idxs <- lapply(seq_len(out_rank), function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
-  batch_idxs <- if (length(batch_out_dims)) out_idxs[batch_out_dims] else list()
+  batch_idxs <- if (length(batch_out_axes)) out_idxs[batch_out_axes] else list()
 
   start_at_component <- function(k) {
     k <- as.integer(k)
@@ -865,11 +865,11 @@ quickr_emit_gather <- function(
 
   operand_idxs <- lapply(seq_len(op_rank), function(d) {
     s <- start_sym[[d]] %||% 1L
-    if (d %in% collapsed_slice_dims) {
+    if (d %in% collapsed_slice_axes) {
       return(s)
     }
-    k <- match(d, slice_dims)
-    od <- offset_dims[[k]]
+    k <- match(d, slice_axes)
+    od <- offset_axes[[k]]
     rlang::call2("+", s, rlang::call2("-", out_idxs[[od]], 1L))
   })
 
@@ -914,8 +914,8 @@ quickr_emit_dot_general <- function(
   rhs_shape,
   out_shape,
   out_aval,
-  contracting_dims,
-  batching_dims
+  contracting_axes,
+  batching_axes
 ) {
   lhs_shape <- as.integer(lhs_shape)
   rhs_shape <- as.integer(rhs_shape)
@@ -929,10 +929,10 @@ quickr_emit_dot_general <- function(
     cli_abort("dot_general: only arrays up to rank 5 are supported")
   }
 
-  cd_lhs <- as.integer(contracting_dims[[1L]])
-  cd_rhs <- as.integer(contracting_dims[[2L]])
-  bd_lhs <- as.integer(batching_dims[[1L]])
-  bd_rhs <- as.integer(batching_dims[[2L]])
+  cd_lhs <- as.integer(contracting_axes[[1L]])
+  cd_rhs <- as.integer(contracting_axes[[2L]])
+  bd_lhs <- as.integer(batching_axes[[1L]])
+  bd_rhs <- as.integer(batching_axes[[2L]])
 
   free_lhs <- setdiff(seq_len(lhs_rank), c(bd_lhs, cd_lhs))
   free_rhs <- setdiff(seq_len(rhs_rank), c(bd_rhs, cd_rhs))
@@ -1022,8 +1022,8 @@ quickr_emit_transpose <- function(out_sym, operand_expr, permutation, out_shape,
   quickr_emit_assign(out_sym, rlang::call2("t", operand_expr))
 }
 
-quickr_emit_broadcast_in_dim <- function(out_sym, operand_expr, shape_in, shape_out, broadcast_dimensions, out_aval) {
-  broadcast_dimensions <- as.integer(broadcast_dimensions)
+quickr_emit_broadcast_in_axis <- function(out_sym, operand_expr, shape_in, shape_out, broadcast_axes, out_aval) {
+  broadcast_axes <- as.integer(broadcast_axes)
   if (identical(shape_in, shape_out)) {
     return(quickr_emit_assign(out_sym, operand_expr))
   }
@@ -1036,23 +1036,23 @@ quickr_emit_broadcast_in_dim <- function(out_sym, operand_expr, shape_in, shape_
   }
 
   if (rank_in > 5L || rank_out > 5L) {
-    cli_abort("broadcast_in_dim: only arrays up to rank 5 are supported")
+    cli_abort("broadcast_in_axis: only arrays up to rank 5 are supported")
   }
   aligned_shape <- rep.int(1L, rank_out)
   for (d_in in seq_len(rank_in)) {
-    aligned_shape[[broadcast_dimensions[[d_in]]]] <- as.integer(shape_in[[d_in]])
+    aligned_shape[[broadcast_axes[[d_in]]]] <- as.integer(shape_in[[d_in]])
   }
 
-  bcast_dims <- which((as.integer(aligned_shape) == 1L) & (as.integer(shape_out) != 1L))
-  if (!length(bcast_dims)) {
-    if (rank_in == rank_out && identical(broadcast_dimensions, seq_len(rank_out))) {
+  bcast_axes <- which((as.integer(aligned_shape) == 1L) & (as.integer(shape_out) != 1L))
+  if (!length(bcast_axes)) {
+    if (rank_in == rank_out && identical(broadcast_axes, seq_len(rank_out))) {
       return(quickr_emit_assign(out_sym, operand_expr))
     }
     return(quickr_emit_assign(out_sym, rlang::call2("array", operand_expr, dim = as.integer(shape_out))))
   }
 
   aligned_sym <- as.name(paste0("aligned_", as.character(out_sym)))
-  aligned_expr <- if (rank_in == rank_out && identical(broadcast_dimensions, seq_len(rank_out))) {
+  aligned_expr <- if (rank_in == rank_out && identical(broadcast_axes, seq_len(rank_out))) {
     operand_expr
   } else {
     rlang::call2("array", operand_expr, dim = as.integer(aligned_shape))
@@ -1066,7 +1066,7 @@ quickr_emit_broadcast_in_dim <- function(out_sym, operand_expr, shape_in, shape_
   idxs_lhs <- vector("list", rank_out)
   idxs_rhs <- vector("list", rank_out)
   for (d in seq_len(rank_out)) {
-    if (d %in% bcast_dims) {
+    if (d %in% bcast_axes) {
       idxs_lhs[[d]] <- as.name(paste0("i_", as.character(out_sym), "_", d))
       idxs_rhs[[d]] <- 1L
     } else if (as.integer(shape_out[[d]]) == 1L) {
@@ -1080,8 +1080,8 @@ quickr_emit_broadcast_in_dim <- function(out_sym, operand_expr, shape_in, shape_
 
   rhs <- quickr_subscript(aligned_sym, idxs_rhs)
   inner <- rlang::call2("<-", quickr_subscript(out_sym, idxs_lhs), rhs)
-  loop_syms <- lapply(bcast_dims, function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
-  body <- quickr_row_major_loop(loop_syms, shape_out[bcast_dims], inner)
+  loop_syms <- lapply(bcast_axes, function(d) as.name(paste0("i_", as.character(out_sym), "_", d)))
+  body <- quickr_row_major_loop(loop_syms, shape_out[bcast_axes], inner)
   list(aligned_stmt, out_stmt, body)
 }
 
@@ -1089,24 +1089,24 @@ quickr_emit_reduce2_axis_loop <- function(
   out_sym,
   m,
   n,
-  dims,
+  axes,
   drop,
   alloc_stmts,
   init_acc_expr,
   inner_start,
   update_builder
 ) {
-  dims <- as.integer(dims)
+  axes <- as.integer(axes)
   ii <- as.name(paste0("i_", as.character(out_sym)))
   jj <- as.name(paste0("j_", as.character(out_sym)))
   acc <- as.name(paste0("acc_", as.character(out_sym)))
 
-  outer_sym <- if (identical(dims, 2L)) ii else jj
-  outer_n <- if (identical(dims, 2L)) m else n
-  inner_sym <- if (identical(dims, 2L)) jj else ii
-  inner_n <- if (identical(dims, 2L)) n else m
+  outer_sym <- if (identical(axes, 2L)) ii else jj
+  outer_n <- if (identical(axes, 2L)) m else n
+  inner_sym <- if (identical(axes, 2L)) jj else ii
+  inner_n <- if (identical(axes, 2L)) n else m
 
-  assign_out <- if (identical(dims, 2L)) {
+  assign_out <- if (identical(axes, 2L)) {
     if (isTRUE(drop)) {
       rlang::call2("<-", rlang::call2("[", out_sym, ii), acc)
     } else {
@@ -1146,17 +1146,17 @@ quickr_emit_reduce2_axis_loop <- function(
   )
 }
 
-quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, dims, drop, out_aval) {
+quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, axes, drop, out_aval) {
   kind <- as.character(kind)
   shape_in <- as.integer(shape_in)
-  dims <- sort(unique(as.integer(dims)))
+  axes <- sort(unique(as.integer(axes)))
   rank <- length(shape_in)
   dt_out <- as.character(dtype(out_aval))
   if (!kind %in% c("sum", "prod", "max", "min")) {
     cli_abort("Internal error: unknown reduction kind: {.val {kind}}")
   }
-  if (kind %in% c("max", "min") && length(dims) && isTRUE(any(shape_in[dims] == 0L, na.rm = TRUE))) {
-    cli_abort("{kind}: reductions over empty dimensions are not supported by quickr lowering")
+  if (kind %in% c("max", "min") && length(axes) && isTRUE(any(shape_in[axes] == 0L, na.rm = TRUE))) {
+    cli_abort("{kind}: reductions over empty axes are not supported by quickr lowering")
   }
   if (kind %in% c("sum", "prod")) {
     init_acc_scalar <- if (kind == "sum") {
@@ -1174,18 +1174,18 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, dims, drop
   }
 
   if (rank == 0L) {
-    if (length(dims)) {
-      cli_abort("{kind}: scalar reduction dims must be empty")
+    if (length(axes)) {
+      cli_abort("{kind}: scalar reduction axes must be empty")
     }
     return(quickr_emit_assign(out_sym, operand_expr))
   }
 
   if (rank == 1L) {
-    if (!length(dims)) {
+    if (!length(axes)) {
       return(quickr_emit_assign(out_sym, operand_expr))
     }
-    if (!identical(dims, 1L)) {
-      cli_abort("{kind}: unsupported reduction dims for rank-1 array")
+    if (!identical(axes, 1L)) {
+      cli_abort("{kind}: unsupported reduction axes for rank-1 array")
     }
     if (kind == "prod" && dt_out == "i32") {
       return(quickr_emit_truncating_i32(out_sym, rlang::call2("prod", operand_expr), shape(out_aval)))
@@ -1204,7 +1204,7 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, dims, drop
     n <- as.integer(shape_in[[2L]])
     ctor <- quickr_dtype_to_r_ctor(as.character(dtype(out_aval)))
 
-    if (identical(dims, c(1L, 2L))) {
+    if (identical(axes, c(1L, 2L))) {
       if (kind == "prod" && dt_out == "i32") {
         return(quickr_emit_truncating_i32(out_sym, rlang::call2("prod", operand_expr), shape(out_aval)))
       }
@@ -1233,7 +1233,7 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, dims, drop
       }
     )
 
-    if (identical(dims, 2L)) {
+    if (identical(axes, 2L)) {
       init_acc_expr <- if (kind %in% c("max", "min")) {
         ii <- as.name(paste0("i_", as.character(out_sym)))
         rlang::call2("[", operand_expr, ii, 1L)
@@ -1249,7 +1249,7 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, dims, drop
       return(quickr_emit_reduce2_axis_loop(out_sym, m, n, 2L, drop, alloc, init_acc_expr, inner_start, update))
     }
 
-    if (identical(dims, 1L)) {
+    if (identical(axes, 1L)) {
       init_acc_expr <- if (kind %in% c("max", "min")) {
         jj <- as.name(paste0("j_", as.character(out_sym)))
         rlang::call2("[", operand_expr, 1L, jj)
@@ -1265,14 +1265,14 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, dims, drop
       return(quickr_emit_reduce2_axis_loop(out_sym, m, n, 1L, drop, alloc, init_acc_expr, inner_start, update))
     }
 
-    cli_abort("{kind}: unsupported reduction dims for rank-2 array")
+    cli_abort("{kind}: unsupported reduction axes for rank-2 array")
   }
 
-  if (!length(dims)) {
+  if (!length(axes)) {
     return(quickr_emit_assign(out_sym, operand_expr))
   }
-  if (!identical(dims, seq_len(rank))) {
-    cli_abort("{kind}: for rank > 2, only full reductions (dims = seq_len(rank)) are supported")
+  if (!identical(axes, seq_len(rank))) {
+    cli_abort("{kind}: for rank > 2, only full reductions (axes = seq_len(rank)) are supported")
   }
 
   if (kind == "prod" && dt_out == "i32") {
@@ -1289,10 +1289,10 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, dims, drop
   )
 }
 
-quickr_emit_reduce_boolean <- function(kind, out_sym, operand_expr, shape_in, dims, drop, out_aval) {
+quickr_emit_reduce_boolean <- function(kind, out_sym, operand_expr, shape_in, axes, drop, out_aval) {
   kind <- as.character(kind)
   shape_in <- as.integer(shape_in)
-  dims <- sort(unique(as.integer(dims)))
+  axes <- sort(unique(as.integer(axes)))
   rank <- length(shape_in)
 
   if (!kind %in% c("any", "all")) {
@@ -1300,21 +1300,21 @@ quickr_emit_reduce_boolean <- function(kind, out_sym, operand_expr, shape_in, di
   }
 
   if (rank == 0L) {
-    if (length(dims)) {
-      cli_abort("{kind}: scalar reduction dims must be empty")
+    if (length(axes)) {
+      cli_abort("{kind}: scalar reduction axes must be empty")
     }
     return(quickr_emit_assign(out_sym, operand_expr))
   }
 
-  if (!length(dims)) {
+  if (!length(axes)) {
     return(quickr_emit_assign(out_sym, operand_expr))
   }
 
   reduce_call <- function(x) rlang::call2(kind, x)
 
   if (rank == 1L) {
-    if (!identical(dims, 1L)) {
-      cli_abort("{kind}: unsupported reduction dims for rank-1 array")
+    if (!identical(axes, 1L)) {
+      cli_abort("{kind}: unsupported reduction axes for rank-1 array")
     }
 
     reduced <- reduce_call(operand_expr)
@@ -1328,7 +1328,7 @@ quickr_emit_reduce_boolean <- function(kind, out_sym, operand_expr, shape_in, di
     m <- as.integer(shape_in[[1L]])
     n <- as.integer(shape_in[[2L]])
 
-    if (identical(dims, c(1L, 2L))) {
+    if (identical(axes, c(1L, 2L))) {
       reduced <- reduce_call(operand_expr)
       if (isTRUE(drop)) {
         return(quickr_emit_assign(out_sym, reduced))
@@ -1339,7 +1339,7 @@ quickr_emit_reduce_boolean <- function(kind, out_sym, operand_expr, shape_in, di
     ctor <- quickr_dtype_to_r_ctor(as.character(dtype(out_aval)))
     zero <- quickr_zero_literal_for(out_aval)
 
-    if (identical(dims, 2L)) {
+    if (identical(axes, 2L)) {
       ii <- as.name(paste0("i_", as.character(out_sym)))
       alloc <- if (isTRUE(drop)) {
         quickr_emit_assign(out_sym, rlang::call2(ctor, m))
@@ -1354,7 +1354,7 @@ quickr_emit_reduce_boolean <- function(kind, out_sym, operand_expr, shape_in, di
       return(c(alloc, list(as.call(list(as.name("for"), ii, rlang::call2("seq_len", m), inner)))))
     }
 
-    if (identical(dims, 1L)) {
+    if (identical(axes, 1L)) {
       jj <- as.name(paste0("j_", as.character(out_sym)))
       alloc <- if (isTRUE(drop)) {
         quickr_emit_assign(out_sym, rlang::call2(ctor, n))
@@ -1369,11 +1369,11 @@ quickr_emit_reduce_boolean <- function(kind, out_sym, operand_expr, shape_in, di
       return(c(alloc, list(as.call(list(as.name("for"), jj, rlang::call2("seq_len", n), inner)))))
     }
 
-    cli_abort("{kind}: unsupported reduction dims for rank-2 array")
+    cli_abort("{kind}: unsupported reduction axes for rank-2 array")
   }
 
-  if (!identical(dims, seq_len(rank))) {
-    cli_abort("{kind}: for rank > 2, only full reductions (dims = seq_len(rank)) are supported")
+  if (!identical(axes, seq_len(rank))) {
+    cli_abort("{kind}: for rank > 2, only full reductions (axes = seq_len(rank)) are supported")
   }
 
   reduced <- reduce_call(operand_expr)
@@ -1558,7 +1558,7 @@ local({
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
-      quickr_emit_iota(out_sym, params$dim, params$start, shape(out_aval), out_aval)
+      quickr_emit_iota(out_sym, params$axis, params$start, shape(out_aval), out_aval)
     }
   )
 
@@ -1578,7 +1578,7 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_reverse(out_sym, inputs[[1L]], shape(operand_node$aval), params$dims, out_aval)
+      quickr_emit_reverse(out_sym, inputs[[1L]], shape(operand_node$aval), params$axes, out_aval)
     }
   )
 
@@ -1588,7 +1588,7 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       shapes <- lapply(input_nodes, function(n) shape(n$aval))
-      quickr_emit_concatenate(out_sym, inputs, shapes, params$dimension, out_aval)
+      quickr_emit_concatenate(out_sym, inputs, shapes, params$axis, out_aval)
     }
   )
 
@@ -1686,12 +1686,12 @@ local({
         shape(operand_node$aval),
         shape(start_indices_node$aval),
         params$slice_sizes,
-        params$offset_dims,
-        params$collapsed_slice_dims,
-        params$operand_batching_dims,
-        params$start_indices_batching_dims,
+        params$offset_axes,
+        params$collapsed_slice_axes,
+        params$operand_batching_axes,
+        params$start_indices_batching_axes,
         params$start_index_map,
-        params$index_vector_dim,
+        params$index_vector_axis,
         out_aval
       )
     }
@@ -1794,29 +1794,29 @@ local({
         cli_abort("scatter: only rank-1 inputs are supported by quickr lowering")
       }
 
-      update_window_dims <- sort(unique(as.integer(params$update_window_dims)))
-      inserted_window_dims <- sort(unique(as.integer(params$inserted_window_dims)))
-      input_batching_dims <- as.integer(params$input_batching_dims)
-      scatter_indices_batching_dims <- as.integer(params$scatter_indices_batching_dims)
-      scatter_dims_to_operand_dims <- as.integer(params$scatter_dims_to_operand_dims)
-      index_vector_dim <- as.integer(params$index_vector_dim)
+      update_window_axes <- sort(unique(as.integer(params$update_window_axes)))
+      inserted_window_axes <- sort(unique(as.integer(params$inserted_window_axes)))
+      input_batching_axes <- as.integer(params$input_batching_axes)
+      scatter_indices_batching_axes <- as.integer(params$scatter_indices_batching_axes)
+      scatter_axes_to_operand_axes <- as.integer(params$scatter_axes_to_operand_axes)
+      index_vector_axis <- as.integer(params$index_vector_axis)
 
-      if (length(input_batching_dims) || length(scatter_indices_batching_dims)) {
-        cli_abort("scatter: batching dims are not supported by quickr lowering")
+      if (length(input_batching_axes) || length(scatter_indices_batching_axes)) {
+        cli_abort("scatter: batching axes are not supported by quickr lowering")
       }
-      if (length(update_window_dims)) {
-        cli_abort("scatter: only scalar updates (empty update_window_dims) are supported by quickr lowering")
+      if (length(update_window_axes)) {
+        cli_abort("scatter: only scalar updates (empty update_window_axes) are supported by quickr lowering")
       }
-      if (!identical(inserted_window_dims, 1L)) {
+      if (!identical(inserted_window_axes, 1L)) {
         cli_abort("scatter: only scalar updates into rank-1 inputs are supported by quickr lowering")
       }
-      if (!identical(scatter_dims_to_operand_dims, 1L)) {
-        cli_abort("scatter: only scatter_dims_to_operand_dims = 1L is supported by quickr lowering")
+      if (!identical(scatter_axes_to_operand_axes, 1L)) {
+        cli_abort("scatter: only scatter_axes_to_operand_axes = 1L is supported by quickr lowering")
       }
 
       shape_idx <- as.integer(shape(idx_node$aval))
-      if (length(shape_idx) != 2L || !identical(index_vector_dim, 2L) || !identical(shape_idx[[2L]], 1L)) {
-        cli_abort("scatter: scatter_indices must have shape (n, 1) with index_vector_dim = 2")
+      if (length(shape_idx) != 2L || !identical(index_vector_axis, 2L) || !identical(shape_idx[[2L]], 1L)) {
+        cli_abort("scatter: scatter_indices must have shape (n, 1) with index_vector_axis = 2")
       }
 
       n_updates <- as.integer(shape_idx[[1L]])
@@ -2095,17 +2095,17 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_broadcast_in_dim,
+    prim_broadcast_in_axis,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_broadcast_in_dim(
+      quickr_emit_broadcast_in_axis(
         out_sym,
         inputs[[1L]],
         shape(operand_node$aval),
         params$shape,
-        params$broadcast_dimensions,
+        params$broadcast_axes,
         out_aval
       )
     }
@@ -2126,8 +2126,8 @@ local({
         shape(rhs_node$aval),
         shape(out_aval),
         out_aval,
-        params$contracting_dims,
-        params$batching_dims
+        params$contracting_axes,
+        params$batching_axes
       )
     }
   )
@@ -2157,7 +2157,7 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_reduce("sum", out_sym, inputs[[1L]], shape(operand_node$aval), params$dims, params$drop, out_aval)
+      quickr_emit_reduce("sum", out_sym, inputs[[1L]], shape(operand_node$aval), params$axes, params$drop, out_aval)
     }
   )
 
@@ -2167,7 +2167,7 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_reduce("prod", out_sym, inputs[[1L]], shape(operand_node$aval), params$dims, params$drop, out_aval)
+      quickr_emit_reduce("prod", out_sym, inputs[[1L]], shape(operand_node$aval), params$axes, params$drop, out_aval)
     }
   )
 
@@ -2177,7 +2177,7 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_reduce("max", out_sym, inputs[[1L]], shape(operand_node$aval), params$dims, params$drop, out_aval)
+      quickr_emit_reduce("max", out_sym, inputs[[1L]], shape(operand_node$aval), params$axes, params$drop, out_aval)
     }
   )
 
@@ -2187,7 +2187,7 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_reduce("min", out_sym, inputs[[1L]], shape(operand_node$aval), params$dims, params$drop, out_aval)
+      quickr_emit_reduce("min", out_sym, inputs[[1L]], shape(operand_node$aval), params$axes, params$drop, out_aval)
     }
   )
 
@@ -2206,7 +2206,7 @@ local({
         out_sym,
         inputs[[1L]],
         shape(operand_node$aval),
-        params$dims,
+        params$axes,
         params$drop,
         out_aval
       )
@@ -2228,7 +2228,7 @@ local({
         out_sym,
         inputs[[1L]],
         shape(operand_node$aval),
-        params$dims,
+        params$axes,
         params$drop,
         out_aval
       )

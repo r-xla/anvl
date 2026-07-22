@@ -4,21 +4,21 @@
 \alias{nv_squeeze}
 \title{Squeeze}
 \usage{
-nv_squeeze(operand, dims = NULL)
+nv_squeeze(operand, axes = NULL)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
 Operand.}
 
-\item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to squeeze. If \code{NULL} (default), all dimensions of size 1 are removed.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to squeeze. If \code{NULL} (default), all axes of size 1 are removed.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand} with the specified dimensions removed.
+Has the same data type as \code{operand} with the specified axes removed.
 }
 \description{
-Removes dimensions of size 1 from an array.
+Removes axes of size 1 from an array.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

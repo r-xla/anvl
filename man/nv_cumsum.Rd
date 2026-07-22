@@ -4,14 +4,14 @@
 \alias{nv_cumsum}
 \title{Cumulative Sum}
 \usage{
-nv_cumsum(operand, dim = NULL, nan_rm = FALSE)
+nv_cumsum(operand, axis = NULL, nan_rm = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
 Operand.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to accumulate. If \code{NULL} (default), the input
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to accumulate. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cumsum]{base::cumsum()}}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
@@ -26,14 +26,14 @@ contributes nothing to the running value.}
 Has the same shape and data type as the input.
 }
 \description{
-Cumulative sum, optionally along a single dimension.
+Cumulative sum, optionally along a single axis.
 }
 \section{Relation to base R}{
 
-Both \code{nv_cumsum()} (with \code{dim = NULL}) and \code{\link[base:cumsum]{base::cumsum()}}
+Both \code{nv_cumsum()} (with \code{axis = NULL}) and \code{\link[base:cumsum]{base::cumsum()}}
 flatten a multi-dimensional input to 1-D before accumulating, but the
 flatten order differs: anvl arrays are row-major (C order), so the
-flattened sequence iterates the last dim fastest, whereas base R uses
+flattened sequence iterates the last axis fastest, whereas base R uses
 column-major (Fortran) order. The two agree on 1-D inputs.
 }
 
@@ -41,7 +41,7 @@ column-major (Fortran) order. The two agree on 1-D inputs.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
 nv_cumsum(x)              # row-major flatten, then accumulate
-nv_cumsum(x, dim = 1L)    # accumulate along rows
+nv_cumsum(x, axis = 1L)    # accumulate along rows
 nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 \dontshow{\}) # examplesIf}

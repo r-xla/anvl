@@ -11,9 +11,9 @@ nv_chol(operand, lower = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
-Symmetric positive-definite matrix with at least 2 dimensions.
-The last two dimensions form the square matrix; any leading dimensions
-are batch dimensions.}
+Symmetric positive-definite matrix with at least 2 axes.
+The last two axes form the square matrix; any leading axes
+are batch axes.}
 
 \item{lower}{(\code{logical(1)})\cr If \code{TRUE}, return the lower-triangular factor.}
 
@@ -28,7 +28,7 @@ Triangular matrix with the same shape and data type as the input.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Supports batched inputs: dimensions before the last two are batch dimensions.
+Supports batched inputs: axes before the last two are batch axes.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

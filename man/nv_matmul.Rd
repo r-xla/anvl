@@ -8,7 +8,7 @@ nv_matmul(lhs, rhs, precision = "highest")
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrays with at least 2 dimensions.
+Arrays with at least 2 axes.
 Operands are \link[=nv_promote_to_common]{promoted to a common data type}.}
 
 \item{precision}{(\code{character(1)})\cr
@@ -21,7 +21,7 @@ See \code{\link[=prim_dot_general]{prim_dot_general()}} for details.}
 }
 \description{
 Matrix multiplication of two arrays. You can also use the \code{\%*\%} operator.
-Supports batched matrix multiplication when inputs have more than 2 dimensions.
+Supports batched matrix multiplication when inputs have more than 2 axes.
 }
 \section{Shapes}{
 

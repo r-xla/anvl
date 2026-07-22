@@ -8,12 +8,12 @@ prim_scatter(
   input,
   scatter_indices,
   update,
-  update_window_dims,
-  inserted_window_dims,
-  input_batching_dims,
-  scatter_indices_batching_dims,
-  scatter_dims_to_operand_dims,
-  index_vector_dim,
+  update_window_axes,
+  inserted_window_axes,
+  input_batching_axes,
+  scatter_indices_batching_axes,
+  scatter_axes_to_operand_axes,
+  index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
   update_computation = NULL
@@ -25,38 +25,38 @@ Arrayish value of any data type. The base array to scatter into.}
 
 \item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of indices. Contains index vectors that map to positions in
-\code{input} via \code{scatter_dims_to_operand_dims}. The dimension specified
-by \code{index_vector_dim} holds the index vectors.}
+\code{input} via \code{scatter_axes_to_operand_axes}. The axis specified
+by \code{index_vector_axis} holds the index vectors.}
 
 \item{update}{(\code{\link{arrayish}})\cr
 Update values array. Must have the same data type as \code{input}.}
 
-\item{update_window_dims}{(\code{integer()})\cr
-Dimensions of \code{update} that are window dimensions, i.e. they
+\item{update_window_axes}{(\code{integer()})\cr
+Axes of \code{update} that are window axes, i.e. they
 correspond to the slice being written into \code{input}.}
 
-\item{inserted_window_dims}{(\code{integer()})\cr
-Dimensions of \code{input} whose slices have size 1 and are inserted
+\item{inserted_window_axes}{(\code{integer()})\cr
+Axes of \code{input} whose slices have size 1 and are inserted
 (not present) in the \code{update} window. Together with
-\code{update_window_dims} and \code{input_batching_dims}, these must account
-for all dimensions of \code{input}.}
+\code{update_window_axes} and \code{input_batching_axes}, these must account
+for all axes of \code{input}.}
 
-\item{input_batching_dims}{(\code{integer()})\cr
-Dimensions of \code{input} that are batch dimensions.
-Use \code{integer(0)} when there are no batch dimensions.}
+\item{input_batching_axes}{(\code{integer()})\cr
+Axes of \code{input} that are batch axes.
+Use \code{integer(0)} when there are no batch axes.}
 
-\item{scatter_indices_batching_dims}{(\code{integer()})\cr
-Dimensions of \code{scatter_indices} that correspond to batch
-dimensions. Must have the same length as \code{input_batching_dims}.}
+\item{scatter_indices_batching_axes}{(\code{integer()})\cr
+Axes of \code{scatter_indices} that correspond to batch
+axes. Must have the same length as \code{input_batching_axes}.}
 
-\item{scatter_dims_to_operand_dims}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{input} dimension.
-For example, \code{scatter_dims_to_operand_dims = c(1L)} means each
-index vector indexes into the first dimension of \code{input}.}
+\item{scatter_axes_to_operand_axes}{(\code{integer()})\cr
+Maps each component of the index vector to an \code{input} axis.
+For example, \code{scatter_axes_to_operand_axes = c(1L)} means each
+index vector indexes into the first axis of \code{input}.}
 
-\item{index_vector_dim}{(\code{integer(1)})\cr
-Dimension of \code{scatter_indices} that contains the index vectors.
-If set to \code{ndims(scatter_indices) + 1}, each scalar element of
+\item{index_vector_axis}{(\code{integer(1)})\cr
+Axis of \code{scatter_indices} that contains the index vectors.
+If set to \code{naxes(scatter_indices) + 1}, each scalar element of
 \code{scatter_indices} is treated as a length-1 index vector.}
 
 \item{indices_are_sorted}{(\code{logical(1)})\cr
@@ -125,12 +125,12 @@ indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))
 prim_scatter(
   input, indices, updates,
-  update_window_dims = integer(0),
-  inserted_window_dims = 1L,
-  input_batching_dims = integer(0),
-  scatter_indices_batching_dims = integer(0),
-  scatter_dims_to_operand_dims = 1L,
-  index_vector_dim = 2L
+  update_window_axes = integer(0),
+  inserted_window_axes = 1L,
+  input_batching_axes = integer(0),
+  scatter_indices_batching_axes = integer(0),
+  scatter_axes_to_operand_axes = 1L,
+  index_vector_axis = 2L
 )
 \dontshow{\}) # examplesIf}
 }

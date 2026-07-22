@@ -13,7 +13,7 @@ nv_subset_assign(operand, ..., value)
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
 
-\item{...}{Subset specifications, one per dimension. See
+\item{...}{Subset specifications, one per axis. See
 \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr

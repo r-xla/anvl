@@ -98,47 +98,47 @@ test_that("graph_to_quickr_function rejects reshape ranks > 5", {
   testthat::expect_error(graph_to_quickr_function(graph), "reshape: only arrays up to rank 5", fixed = FALSE)
 })
 
-test_that("graph_to_quickr_function rejects broadcast_in_dim ranks > 5", {
+test_that("graph_to_quickr_function rejects broadcast_in_axis ranks > 5", {
   skip_if_no_quickr()
 
   graph <- trace_fn(
-    function(x) prim_broadcast_in_dim(x, shape = rep(1L, 6L), broadcast_dimensions = 6L),
+    function(x) prim_broadcast_in_axis(x, shape = rep(1L, 6L), broadcast_axes = 6L),
     list(x = nv_array(1L, dtype = "i32", shape = 1L))
   )
-  expect_error(graph_to_quickr_function(graph), "broadcast_in_dim: only arrays up to rank 5", fixed = FALSE)
+  expect_error(graph_to_quickr_function(graph), "broadcast_in_axis: only arrays up to rank 5", fixed = FALSE)
 })
 
-test_that("graph_to_quickr_function rejects reductions over empty dimensions", {
+test_that("graph_to_quickr_function rejects reductions over empty axes", {
   skip_if_no_quickr()
 
   templ <- list(x = nv_aval("f64", c(2L, 0L)))
-  graph <- trace_fn(function(x) prim_reduce_max(x, dims = 2L, drop = TRUE), templ)
-  expect_error(graph_to_quickr_function(graph), "empty dimensions", fixed = FALSE)
+  graph <- trace_fn(function(x) prim_reduce_max(x, axes = 2L, drop = TRUE), templ)
+  expect_error(graph_to_quickr_function(graph), "empty axes", fixed = FALSE)
 })
 
 test_that("graph_to_quickr_function rejects unsupported reduce_sum variants", {
   skip_if_no_quickr()
 
   graph <- trace_fn(
-    function(x) prim_reduce_sum(x, dims = 1L, drop = TRUE),
+    function(x) prim_reduce_sum(x, axes = 1L, drop = TRUE),
     list(x = nv_scalar(0.0, dtype = "f64"))
   )
-  expect_error(graph_to_quickr_function(graph), "sum: scalar reduction dims must be empty", fixed = FALSE)
+  expect_error(graph_to_quickr_function(graph), "sum: scalar reduction axes must be empty", fixed = FALSE)
 
   graph <- trace_fn(
-    function(x) prim_reduce_sum(x, dims = 2L, drop = TRUE),
+    function(x) prim_reduce_sum(x, axes = 2L, drop = TRUE),
     list(x = nv_array(1:4, dtype = "i32", shape = 4L))
   )
-  expect_error(graph_to_quickr_function(graph), "sum: unsupported reduction dims for rank-1 array", fixed = FALSE)
+  expect_error(graph_to_quickr_function(graph), "sum: unsupported reduction axes for rank-1 array", fixed = FALSE)
 
   graph <- trace_fn(
-    function(x) prim_reduce_sum(x, dims = 3L, drop = TRUE),
+    function(x) prim_reduce_sum(x, axes = 3L, drop = TRUE),
     list(x = nv_matrix(1:6, nrow = 2, ncol = 3, dtype = "i32"))
   )
-  expect_error(graph_to_quickr_function(graph), "sum: unsupported reduction dims for rank-2 array", fixed = FALSE)
+  expect_error(graph_to_quickr_function(graph), "sum: unsupported reduction axes for rank-2 array", fixed = FALSE)
 
   graph <- trace_fn(
-    function(x) prim_reduce_sum(x, dims = 2L, drop = TRUE),
+    function(x) prim_reduce_sum(x, axes = 2L, drop = TRUE),
     list(x = nv_array(1:8, shape = c(2L, 2L, 2L), dtype = "i32"))
   )
   expect_error(graph_to_quickr_function(graph), "for rank > 2, only full reductions", fixed = FALSE)

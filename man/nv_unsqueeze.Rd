@@ -4,26 +4,26 @@
 \alias{nv_unsqueeze}
 \title{Unsqueeze}
 \usage{
-nv_unsqueeze(operand, dim)
+nv_unsqueeze(operand, axis)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
 Operand.}
 
-\item{dim}{(\code{integer(1)})\cr
-Position at which to insert the new dimension.}
+\item{axis}{(\code{integer(1)})\cr
+Position at which to insert the new axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand} with an extra dimension of size 1.
+Has the same data type as \code{operand} with an extra axis of size 1.
 }
 \description{
-Inserts a dimension of size 1 at the specified position.
+Inserts an axis of size 1 at the specified position.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
-nv_unsqueeze(x, dim = 1L)
+nv_unsqueeze(x, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -22,7 +22,7 @@ describe("nv_subset and nv_subset_assign", {
     })
 
     args <- lapply(r_args, \(a) a[[1L]])
-    drop_dims <- vapply(r_args, \(a) a[[2L]], logical(1L))
+    drop_axes <- vapply(r_args, \(a) a[[2L]], logical(1L))
 
     value_shape <- subset_spec_to_shape(spec)
 
@@ -71,11 +71,11 @@ describe("nv_subset and nv_subset_assign", {
     check(c(10L), array(c(1L, 4L, 7L)))
   })
 
-  it("1D: array(i) keeps the dimension", {
+  it("1D: array(i) keeps the axis", {
     check(c(10L), array(3L))
   })
 
-  it("2D: single element in both dims", {
+  it("2D: single element in both axes", {
     check(c(4L, 5L), 2L, 3L)
   })
 
@@ -83,19 +83,19 @@ describe("nv_subset and nv_subset_assign", {
     check(c(6L, 4L), 2:4, )
   })
 
-  it("2D: single in first dim, range in second", {
+  it("2D: single in first axis, range in second", {
     check(c(5L, 8L), 3L, 2:6)
   })
 
-  it("2D: single in first dim, full second", {
+  it("2D: single in first axis, full second", {
     check(c(4L, 5L), 2L, )
   })
 
-  it("2D: range in both dims", {
+  it("2D: range in both axes", {
     check(c(6L, 8L), 2:4, 3:6)
   })
 
-  it("2D: full first dim, range in second", {
+  it("2D: full first axis, range in second", {
     check(c(3L, 6L), , 2:4)
   })
 
@@ -103,23 +103,23 @@ describe("nv_subset and nv_subset_assign", {
     check(c(2, 3, 2), 1:2, array(c(1L, 3L)), 1)
   })
 
-  it("2D: gather in first dim, full second", {
+  it("2D: gather in first axis, full second", {
     check(c(6L, 4L), array(c(1L, 3L, 5L)), )
   })
 
-  it("2D: gather in both dims", {
+  it("2D: gather in both axes", {
     check(c(5L, 6L), array(c(1L, 3L, 5L)), array(c(2L, 4L)))
   })
 
-  it("2D: gather in one dim, single in the other", {
+  it("2D: gather in one axis, single in the other", {
     check(c(5L, 6L), array(c(2L, 4L)), 3L)
   })
 
-  it("2D: single-element array preserves dim", {
+  it("2D: single-element array preserves axis", {
     check(c(4L, 3L), array(2L), )
   })
 
-  it("2D: trailing dim unspecified (defaults to full)", {
+  it("2D: trailing axis unspecified (defaults to full)", {
     check(c(4L, 3L), 2:3)
   })
 
@@ -131,11 +131,11 @@ describe("nv_subset and nv_subset_assign", {
     check(c(3L, 4L, 2L), , , )
   })
 
-  it("3D: gather in two dims, scalar in third", {
+  it("3D: gather in two axes, scalar in third", {
     check(c(4L, 5L, 6L), array(c(1L, 3L)), array(c(2L, 5L)), 1L)
   })
 
-  it("3D: gather in first two dims, range in third", {
+  it("3D: gather in first two axes, range in third", {
     check(c(4L, 5L, 6L), array(c(1L, 3L)), array(c(2L, 4L, 5L)), 2:4)
   })
 
@@ -170,7 +170,7 @@ describe("nv_subset and nv_subset_assign", {
     check(c(8L), 8L)
   })
 
-  it("1D: length-1 range preserves dim", {
+  it("1D: length-1 range preserves axis", {
     check(c(10L), 3:3)
   })
 
@@ -189,26 +189,26 @@ describe("nv_subset and nv_subset_assign", {
     check(c(6L), array(c(2L, 2L, 4L)))
   })
 
-  it("2D: dimension of size 1", {
+  it("2D: axis of size 1", {
     check(c(1L, 5L), 1L, 2:4)
   })
 
-  it("3D: all dims dropped (scalar result)", {
+  it("3D: all axes dropped (scalar result)", {
     check(c(4L, 5L, 3L), 2L, 3L, 1L)
   })
 
-  it("3D: trailing dims unspecified with drop", {
+  it("3D: trailing axes unspecified with drop", {
     check(c(4L, 5L, 3L), 2L)
   })
 
   # TODO: duplicate destination indices — stablehlo.scatter is non-deterministic
   # on GPU. Improve check() to verify membership rather than last-wins equality.
-  it("2D: gather with duplicates in both dims", {
+  it("2D: gather with duplicates in both axes", {
     skip_if(is_cuda())
     check(c(4L, 5L), array(c(1L, 1L, 3L)), array(c(2L, 2L)))
   })
 
-  it("2D: boundary indices in both dims", {
+  it("2D: boundary indices in both axes", {
     check(c(3L, 4L), 1:3, 1:4)
   })
 
@@ -292,7 +292,7 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[0:5], "out of bounds")
   })
 
-  it("errors on out-of-bounds range (end > dim_size)", {
+  it("errors on out-of-bounds range (end > axis_size)", {
     x <- nv_array(1:10)
     expect_error(x[5:11], "out of bounds")
   })
@@ -302,7 +302,7 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[0L], "out of bounds")
   })
 
-  it("errors on out-of-bounds single index (> dim_size)", {
+  it("errors on out-of-bounds single index (> axis_size)", {
     x <- nv_array(1:10)
     expect_error(x[11L], "out of bounds")
   })
@@ -402,7 +402,7 @@ describe("subset_specs_start_indices", {
     expect_equal(dtype(result), as_dtype("i32"))
   })
 
-  it("works with a single dimension", {
+  it("works with a single axis", {
     subsets <- list(SubsetRange(2L, 7L))
     result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i32"))

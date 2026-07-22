@@ -8,7 +8,7 @@ prim_qr(operand)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 dimensions.}
+Matrix of data type floating-point with exactly 2 axes.}
 }
 \value{
 Named \code{list} with elements \code{Q} (shape \verb{(m, k)}) and \code{R}

@@ -4,26 +4,26 @@
 \alias{prim_argmin}
 \title{Primitive Argmin}
 \usage{
-prim_argmin(operand, dim, drop = TRUE)
+prim_argmin(operand, axis, drop = TRUE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which to find the index of the maximum.}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which to find the index of the maximum.}
 
 \item{drop}{(\code{logical(1)})\cr
-If \code{TRUE} (default) the reduced dimension is removed; if \code{FALSE} it is
+If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
 kept with size 1.}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{operand} with \code{dim} removed (or set to 1 if
+Same shape as \code{operand} with \code{axis} removed (or set to 1 if
 \code{drop = FALSE}).
 }
 \description{
-Returns the index of the minimum value along a single dimension. Ties
+Returns the index of the minimum value along a single axis. Ties
 are broken by returning the smallest index.
 }
 \section{Implemented Rules}{
@@ -42,7 +42,7 @@ with a (value < value | (value == value & idx < idx)) selector.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-prim_argmin(nv_array(c(3, 1, 4, 1, 5)), dim = 1L)
+prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

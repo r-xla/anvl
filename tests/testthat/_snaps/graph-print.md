@@ -94,7 +94,7 @@
         Inputs:
           %x1: i32[10]
         Body:
-          %1: i32[] = reduce_max [dims = 1, drop = TRUE] (%x1)
+          %1: i32[] = reduce_max [axes = 1, drop = TRUE] (%x1)
         Outputs:
           %1: i32[] 
 

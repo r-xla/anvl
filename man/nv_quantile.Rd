@@ -7,7 +7,7 @@
 nv_quantile(
   operand,
   probs,
-  dim = NULL,
+  axis = NULL,
   interpolation = "linear",
   nan_rm = FALSE
 )
@@ -18,13 +18,13 @@ Operand.}
 
 \item{probs}{(\code{numeric(1)} | 1-D \code{array})\cr
 One or more probabilities in \verb{[0, 1]}. Either a length-1 numeric
-(scalar; \code{dim} is dropped) or a 1-D \code{array} (a leading dim of size
+(scalar; \code{axis} is dropped) or a 1-D \code{array} (a leading axis of size
 \code{length(probs)} is prepended). Plain length-K (K > 1) vectors are
 rejected — wrap with \code{array()}.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to compute the quantile. If \code{NULL} (default),
-uses the last dimension.}
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to compute the quantile. If \code{NULL} (default),
+uses the last axis.}
 
 \item{interpolation}{(\code{character(1)})\cr
 One of \code{"linear"} (default), \code{"lower"}, \code{"higher"}, \code{"nearest"},
@@ -36,20 +36,20 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-For scalar \code{probs}: same shape as \code{x} with \code{dim} removed. For
-array \code{probs}: a \strong{leading} dimension of size \code{length(probs)} is
+For scalar \code{probs}: same shape as \code{x} with \code{axis} removed. For
+array \code{probs}: a \strong{leading} axis of size \code{length(probs)} is
 prepended.
 }
 \description{
-Computes the \code{probs} quantile(s) of an array along a dimension.
+Computes the \code{probs} quantile(s) of an array along an axis.
 
 \code{probs} follows the same scalar-vs-array convention as \code{\link[=nv_select]{nv_select()}}'s
 \code{index}:
 \itemize{
 \item a length-1 numeric (e.g. \code{0.5}) treats \code{probs} as scalar — the output
-has \code{dim} removed, like a reduction;
+has \code{axis} removed, like a reduction;
 \item a 1-D R array (e.g. \code{array(c(0.25, 0.5, 0.75))}) prepends a leading
-dimension of size \code{length(probs)}.
+axis of size \code{length(probs)}.
 }
 
 Plain length-K (K > 1) vectors are rejected; wrap with \code{array()} to

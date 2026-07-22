@@ -27,22 +27,22 @@ and \code{\link[base:cbind]{base::cbind()}}.}
 \code{\link{arrayish}}\cr
 }
 \description{
-Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) dimension.
+Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) axis.
 Arguments are first promoted to a common data type
 (see \code{\link[=nv_promote_to_common]{nv_promote_to_common()}}).
 
 Each input is then handled according to its rank:
 \itemize{
-\item 0-D: broadcast to match the non-stacked dimensions of the other inputs.
+\item 0-D: broadcast to match the non-stacked axes of the other inputs.
 \item 1-D: treated as a single row/column.
 \item Other: used as-is.
 }
 }
 \section{Differences from base R}{
 \code{\link[base:rbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[=array]{array()}} of rank > 2
-flatten the trailing dimensions into the column axis (so a \code{c(2, 3, 4)}
+flatten the trailing axes into the column axis (so a \code{c(2, 3, 4)}
 array becomes a \verb{2 x 12} matrix). \code{nv_rbind} and \code{nv_cbind} instead
-preserve all non-stacked dimensions: combining two \code{c(2, 3, 4)} arrays
+preserve all non-stacked axes: combining two \code{c(2, 3, 4)} arrays
 with \code{nv_rbind} produces a \code{c(4, 3, 4)} array, and with \code{nv_cbind} a
 \code{c(2, 6, 4)} array.
 }
@@ -56,7 +56,7 @@ nv_cbind(nv_array(1:3), nv_array(4:6))
 # Scalar broadcasting
 nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 
-# Rank-3 arrays preserve trailing dimensions
+# Rank-3 arrays preserve trailing axes
 a <- nv_array(1:24, shape = c(2, 3, 4))
 shape(nv_rbind(a, a)) # c(4, 3, 4)
 \dontshow{\}) # examplesIf}

@@ -14,7 +14,7 @@ wrap_uni_anvl <- function(.f, args_anvl, shp) {
 
   \(operand) {
     x <- do.call(.f, c(list(operand), args_anvl))
-    nv_reduce_sum(x, dims = seq_along(shape(x)), drop = TRUE)
+    nv_reduce_sum(x, axes = seq_along(shape(x)), drop = TRUE)
   }
 }
 
@@ -40,7 +40,7 @@ wrap_biv_anvl <- function(.f, args_anvl, shp) {
 
   \(lhs, rhs) {
     x <- do.call(.f, c(list(lhs, rhs), args_anvl))
-    nv_reduce_sum(x, dims = seq_along(shape(x)), drop = TRUE)
+    nv_reduce_sum(x, axes = seq_along(shape(x)), drop = TRUE)
   }
 }
 
@@ -55,7 +55,7 @@ wrap_biv_torch <- function(.g, args_torch, shp) {
 verify_grad_uni_scalar <- function(
   .f,
   .g,
-  ndims = 0L,
+  naxes = 0L,
   dtypes = "f32",
   args_f = NULL,
   tol = 1e-5,
@@ -104,7 +104,7 @@ verify_grad_uni_scalar <- function(
 verify_grad_uni_tensor <- function(
   .f,
   .g,
-  ndims = sample(1:3, 1L),
+  naxes = sample(1:3, 1L),
   dtypes = "f32",
   args_f = NULL,
   shape = NULL,
@@ -112,7 +112,7 @@ verify_grad_uni_tensor <- function(
   non_negative = FALSE,
   gen = NULL
 ) {
-  shp <- if (is.null(shape)) sample(1:3, ndims, replace = TRUE) else shape
+  shp <- if (is.null(shape)) sample(1:3, naxes, replace = TRUE) else shape
   dtype <- sample(dtypes, 1L)
 
   if (is.null(gen)) {
@@ -154,7 +154,7 @@ verify_grad_uni_tensor <- function(
 verify_grad_biv_scalar <- function(
   .f,
   .g,
-  ndims = 0L,
+  naxes = 0L,
   dtypes = "f32",
   args_f = NULL,
   tol = 1e-5,
@@ -223,7 +223,7 @@ verify_grad_biv_scalar <- function(
 verify_grad_biv_tensor <- function(
   .f,
   .g,
-  ndims = sample(1:3, 1L),
+  naxes = sample(1:3, 1L),
   dtypes = "f32",
   args_f = NULL,
   shape = NULL,
@@ -233,7 +233,7 @@ verify_grad_biv_tensor <- function(
   gen_rhs = NULL
 ) {
   # Prefer shapes without size-0 or size-1 axes to avoid backend broadcast edge-cases
-  shp <- if (is.null(shape)) sample(1:3, ndims, replace = TRUE) else shape
+  shp <- if (is.null(shape)) sample(1:3, naxes, replace = TRUE) else shape
   dtype <- sample(dtypes, 1)
 
   if (length(non_negative) < 2) {
@@ -292,7 +292,7 @@ verify_grad_biv_tensor <- function(
 verify_grad_biv <- function(
   f,
   g,
-  ndims = sample(1:3, 1L),
+  naxes = sample(1:3, 1L),
   dtypes = "f32",
   args_f = NULL,
   tol = 1e-5,
@@ -303,7 +303,7 @@ verify_grad_biv <- function(
   verify_grad_biv_scalar(
     f,
     g,
-    ndims = 0L,
+    naxes = 0L,
     dtypes = dtypes,
     args_f = args_f,
     tol = tol,
@@ -314,7 +314,7 @@ verify_grad_biv <- function(
   verify_grad_biv_tensor(
     f,
     g,
-    ndims = ndims,
+    naxes = naxes,
     dtypes = dtypes,
     args_f = args_f,
     tol = tol,
@@ -327,7 +327,7 @@ verify_grad_biv <- function(
 verify_grad_uni <- function(
   f,
   g,
-  ndims = sample(1:3, 1L),
+  naxes = sample(1:3, 1L),
   dtypes = "f32",
   args_f = NULL,
   tol = 1e-5,
@@ -339,7 +339,7 @@ verify_grad_uni <- function(
     verify_grad_uni_scalar(
       f,
       g,
-      ndims = 0L,
+      naxes = 0L,
       dtypes = dtypes,
       args_f = args_f,
       tol = tol,
@@ -350,7 +350,7 @@ verify_grad_uni <- function(
   verify_grad_uni_tensor(
     f,
     g,
-    ndims = ndims,
+    naxes = naxes,
     dtypes = dtypes,
     args_f = args_f,
     tol = tol,
@@ -404,26 +404,26 @@ test_that("prim_reduce_sum", {
   x_arr <- array(1:6, c(2, 3))
   x <- nv_array(x_arr, dtype = "f32")
   f <- function(a) {
-    y <- prim_reduce_sum(a, dims = 2L, drop = TRUE)
-    prim_reduce_sum(y, dims = 1L, drop = TRUE)
+    y <- prim_reduce_sum(a, axes = 2L, drop = TRUE)
+    prim_reduce_sum(y, axes = 1L, drop = TRUE)
   }
   grads <- jit(gradient(f))(x)
   expect_equal(tengen::as_array(grads[[1L]]), array(1, dim = c(2, 3)))
   # TODO: Also test with drop = FALSE
   f <- function(a) {
-    y <- prim_reduce_sum(a, dims = 2L, drop = FALSE)
-    prim_reduce_sum(y, dims = 1:2, drop = TRUE)
+    y <- prim_reduce_sum(a, axes = 2L, drop = FALSE)
+    prim_reduce_sum(y, axes = 1:2, drop = TRUE)
   }
   grads <- jit(gradient(f))(x)
   expect_equal(tengen::as_array(grads[[1L]]), array(1, dim = c(2, 3)))
 })
 
 test_that("prim_transpose", {
-  verify_grad_uni_tensor(prim_transpose, \(x, permutation) x$permute(permutation), ndims = 3L, args_f = \(shp, dtype) {
-    dims <- sample(seq_along(shp))
+  verify_grad_uni_tensor(prim_transpose, \(x, permutation) x$permute(permutation), naxes = 3L, args_f = \(shp, dtype) {
+    axes <- sample(seq_along(shp))
     list(
-      list(permutation = dims),
-      list(permutation = dims)
+      list(permutation = axes),
+      list(permutation = axes)
     )
   })
 })
@@ -434,10 +434,10 @@ describe("prim_cumsum", {
       prim_cumsum,
       torch::torch_cumsum,
       shape = 5L,
-      args_f = \(shp, dtype) list(list(dim = 1L), list(dim = 1L))
+      args_f = \(shp, dtype) list(list(axis = 1L), list(axis = 1L))
     )
   })
-  it("matrix gradient along each dim", {
+  it("matrix gradient along each axis", {
     for (d in 1:2) {
       verify_grad_uni_tensor(
         prim_cumsum,
@@ -445,20 +445,20 @@ describe("prim_cumsum", {
         shape = c(3L, 4L),
         args_f = local({
           dl <- d
-          \(shp, dtype) list(list(dim = dl), list(dim = dl))
+          \(shp, dtype) list(list(axis = dl), list(axis = dl))
         })
       )
     }
   })
 })
 
-test_that("prim_broadcast_in_dim", {
+test_that("prim_broadcast_in_axis", {
   input_shape <- c(2L, 1L, 3L)
   target_shape <- c(4L, 2L, 5L, 3L)
 
   f <- function(operand, shape) {
     x <- nv_broadcast_to(operand, shape)
-    nv_reduce_sum(x, dims = seq_along(shape), drop = TRUE)
+    nv_reduce_sum(x, axes = seq_along(shape), drop = TRUE)
   }
 
   verify_grad_uni_tensor(
@@ -489,7 +489,7 @@ test_that("prim_ifelse", {
 
   f_anvl <- function(a, b) {
     out <- prim_ifelse(x_anvl, a, b)
-    nv_reduce_sum(out, dims = 1:2, drop = TRUE)
+    nv_reduce_sum(out, axes = 1:2, drop = TRUE)
   }
   grads <- jit(gradient(f_anvl))(a_anvl, b_anvl)
 
@@ -611,7 +611,7 @@ test_that("prim_polygamma", {
     f_nv <- function(x_t) {
       n_t <- prim_fill(as.numeric(n_val), dtype = dtype(x_t), shape = shape(x_t))
       out <- prim_polygamma(n_t, x_t)
-      nv_reduce_sum(out, dims = seq_along(shape(out)), drop = TRUE)
+      nv_reduce_sum(out, axes = seq_along(shape(out)), drop = TRUE)
     }
     grad_nv <- jit(gradient(f_nv))(nv_array(x, dtype = "f32"))[[1L]]
 
@@ -705,7 +705,7 @@ test_that("prim_clamp", {
 
   f_nv <- function(x) {
     y <- prim_clamp(min_val, x, max_val)
-    nv_reduce_sum(y, dims = seq_len(ndims(y)), drop = TRUE)
+    nv_reduce_sum(y, axes = seq_len(naxes(y)), drop = TRUE)
   }
 
   grads_nv <- jit(gradient(f_nv))(x_nv)
@@ -724,12 +724,12 @@ test_that("prim_reverse", {
   verify_grad_uni(
     prim_reverse,
     torch::torch_flip,
-    ndims = 3L,
+    naxes = 3L,
     args_f = \(shp, dtype) {
-      dims_to_reverse <- sample(seq_along(shp), size = sample.int(length(shp), 1L))
+      axes_to_reverse <- sample(seq_along(shp), size = sample.int(length(shp), 1L))
       list(
-        list(dims = dims_to_reverse),
-        list(dims = dims_to_reverse)
+        list(axes = axes_to_reverse),
+        list(axes = axes_to_reverse)
       )
     },
     tol = 1e-5,
@@ -749,7 +749,7 @@ test_that("prim_atan2", {
 })
 
 test_that("prim_concatenate", {
-  verify_grad_concatenate <- function(shapes, dimension = 2L, dtype = "f32", tol = 1e-5) {
+  verify_grad_concatenate <- function(shapes, axis = 2L, dtype = "f32", tol = 1e-5) {
     n <- length(shapes)
     arrs <- lapply(shapes, function(shp) generate_test_data(shp, dtype = dtype))
     nvs <- lapply(arrs, function(arr) nv_array(arr, dtype = dtype))
@@ -757,13 +757,13 @@ test_that("prim_concatenate", {
 
     f_nv <- function(...) {
       args <- list(...)
-      out <- do.call(prim_concatenate, c(args, list(dimension = dimension)))
-      nv_reduce_sum(out, dims = seq_len(ndims(out)), drop = TRUE)
+      out <- do.call(prim_concatenate, c(args, list(axis = axis)))
+      nv_reduce_sum(out, axes = seq_len(naxes(out)), drop = TRUE)
     }
 
     grads_nv <- do.call(jit(gradient(f_nv)), nvs)
 
-    out_th <- torch::torch_cat(ths, dim = dimension)
+    out_th <- torch::torch_cat(ths, dim = axis)
     torch::torch_sum(out_th)$backward()
 
     for (i in seq_len(n)) {
@@ -784,17 +784,17 @@ test_that("prim_reduce_prod", {
   shp <- c(2L, 3L)
   dtype <- "f32"
 
-  check_against_torch <- function(x_arr, dim) {
+  check_against_torch <- function(x_arr, axis) {
     x_nv <- nv_array(x_arr, dtype = "f32")
     x_th <- torch::torch_tensor(x_arr, requires_grad = TRUE, dtype = torch::torch_float32())
 
     f_nv <- function(x) {
-      y <- prim_reduce_prod(x, dims = dim, drop = TRUE)
-      nv_reduce_sum(y, dims = seq_along(shape(y)), drop = TRUE)
+      y <- prim_reduce_prod(x, axes = axis, drop = TRUE)
+      nv_reduce_sum(y, axes = seq_along(shape(y)), drop = TRUE)
     }
     grads_nv <- jit(gradient(f_nv))(x_nv)
 
-    out_th <- torch::torch_prod(x_th, dim = dim, keepdim = FALSE)
+    out_th <- torch::torch_prod(x_th, dim = axis, keepdim = FALSE)
     torch::torch_sum(out_th)$backward()
 
     expect_equal(tengen::as_array(grads_nv[[1L]]), as_array_torch(x_th$grad), tolerance = 1e-4)
@@ -810,11 +810,11 @@ test_that("prim_reduce_prod", {
   x_two_zeros <- array(c(2, 0, 0, 1, 4, 6), dim = c(2L, 3L))
   check_against_torch(x_two_zeros, 2L)
 
-  # Reducing multiple dims at once is not supported by torch::torch_prod,
+  # Reducing multiple axes at once is not supported by torch::torch_prod,
   # so check against a hand-crafted expected gradient.
   x_multi <- array(c(1, 2, 3, 4, 5, 6), dim = c(2L, 3L))
   x_nv <- nv_array(x_multi, dtype = "f32")
-  f_multi <- function(x) prim_reduce_prod(x, dims = c(1L, 2L), drop = TRUE)
+  f_multi <- function(x) prim_reduce_prod(x, axes = c(1L, 2L), drop = TRUE)
   grads_nv <- jit(gradient(f_multi))(x_nv)
   expected <- array(prod(x_multi) / x_multi, dim = dim(x_multi))
   expect_equal(tengen::as_array(grads_nv[[1L]]), expected, tolerance = 1e-4)
@@ -829,7 +829,7 @@ describe("prim_static_slice", {
 
     f_nv <- function(x) {
       out <- prim_static_slice(x, start_indices, limit_indices, strides)
-      nv_reduce_sum(out, dims = seq_len(ndims(out)), drop = TRUE)
+      nv_reduce_sum(out, axes = seq_len(naxes(out)), drop = TRUE)
     }
 
     grads_nv <- jit(gradient(f_nv))(x_nv)
@@ -914,7 +914,7 @@ describe("prim_chol", {
 
     f_anvl <- function(A) {
       L <- prim_chol(A, lower = lower)
-      nv_reduce_sum(L, dims = c(1L, 2L))
+      nv_reduce_sum(L, axes = c(1L, 2L))
     }
     grad_anvl <- as_array(jit(gradient(f_anvl))(A_anvl)[[1L]])
 
@@ -954,7 +954,7 @@ describe("prim_triangular_solve", {
         unit_diagonal = unit_diagonal,
         transpose_a = transpose_a
       )
-      nv_reduce_sum(x, dims = c(1L, 2L))
+      nv_reduce_sum(x, axes = c(1L, 2L))
     }
     grads_anvl <- jit(gradient(f_anvl))(a_anvl, b_anvl)
 
@@ -1047,7 +1047,7 @@ describe("prim_triangular_solve", {
         unit_diagonal = unit_diagonal,
         transpose_a = FALSE
       )
-      nv_reduce_sum(x, dims = c(1L, 2L))
+      nv_reduce_sum(x, axes = c(1L, 2L))
     }
     grad_a <- as_array(jit(gradient(f))(a, b)[[1L]])
 

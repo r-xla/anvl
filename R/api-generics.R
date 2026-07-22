@@ -91,7 +91,7 @@ Math.AnvlBox <- Math.AnvlArray
 #' @export
 Summary.AnvlArray <- function(x, ..., na.rm = FALSE) {
   # Forward `na.rm` to the underlying nv_reduce_*'s `nan_rm` arg and `...`
-  # for supported extras (e.g. `sum(x, dims = 1L)`); unsupported extras error
+  # for supported extras (e.g. `sum(x, axes = 1L)`); unsupported extras error
   # there as unused args.
   switch(
     .Generic, # nolint
@@ -120,11 +120,11 @@ Summary.AnvlBox <- Summary.AnvlArray
 #' @param ... No additional arguments.
 #' @method mean AnvlArray
 #' @export
-mean.AnvlArray <- function(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE) {
+mean.AnvlArray <- function(x, trim = 0, na.rm = FALSE, ..., axes = NULL, drop = TRUE) {
   if (!identical(trim, 0)) {
     cli_abort("{.arg trim} is not supported by {.fn mean} for anvl arrays.")
   }
-  nv_mean(x, ..., dims = dims, drop = drop, nan_rm = na.rm)
+  nv_mean(x, ..., axes = axes, drop = drop, nan_rm = na.rm)
 }
 
 #' @method mean AnvlBox
@@ -172,10 +172,10 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #' @title Transpose
 #' @name nv_transpose
 #' @description
-#' Permutes the dimensions of an array. You can also use `t()` for matrices.
+#' Permutes the axes of an array. You can also use `t()` for matrices.
 #' @template param_x_operand
 #' @param permutation (`integer()` | `NULL`)\cr
-#'   New ordering of dimensions. If `NULL` (default), reverses the dimensions.
+#'   New ordering of axes. If `NULL` (default), reverses the axes.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as `operand` and shape `nv_shape(operand)[permutation]`.
 #' @seealso [prim_transpose()] for the underlying primitive.
@@ -185,7 +185,7 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #' @method t AnvlArray
 #' @export
 t.AnvlArray <- function(x) {
-  nd <- ndims(x)
+  nd <- naxes(x)
   if (nd != 2L) {
     cli_abort("{.fn t} requires a 2-D array, but got a {nd}-D array.")
   }
@@ -202,9 +202,9 @@ t.AnvlBox <- t.AnvlArray
 #' @param ... No additional arguments.
 #' @method median AnvlArray
 #' @export
-median.AnvlArray <- function(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear") {
+median.AnvlArray <- function(x, na.rm = FALSE, ..., axis = NULL, interpolation = "linear") {
   rlang::check_dots_empty()
-  nv_median(x, dim = dim, interpolation = interpolation, nan_rm = na.rm)
+  nv_median(x, axis = axis, interpolation = interpolation, nan_rm = na.rm)
 }
 
 #' @method median AnvlBox
@@ -217,8 +217,8 @@ median.AnvlBox <- median.AnvlArray
 #' @param ... No additional arguments.
 #' @method sort AnvlArray
 #' @export
-sort.AnvlArray <- function(x, decreasing = FALSE, ..., dim = NULL) {
-  nv_sort(x, decreasing = decreasing, ..., dim = dim)
+sort.AnvlArray <- function(x, decreasing = FALSE, ..., axis = NULL) {
+  nv_sort(x, decreasing = decreasing, ..., axis = axis)
 }
 
 #' @method sort AnvlBox

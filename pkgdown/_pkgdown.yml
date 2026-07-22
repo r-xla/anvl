@@ -94,7 +94,8 @@ reference:
       - ambiguous
       - dtype
       - shape
-      - ndims
+      - naxes
+      - axes
       - device
       - starts_with("platform")
 
@@ -214,7 +215,7 @@ reference:
       - nv_is_infinite
 
   - subtitle: Reduction Operations
-    desc: Operations that reduce array dimensions
+    desc: Operations that reduce array axes
     contents:
       - nv_reduce_sum
       - nv_reduce_prod
@@ -224,7 +225,7 @@ reference:
       - nv_reduce_all
 
   - subtitle: Statistical Summaries
-    desc: Summary statistics over array dimensions
+    desc: Summary statistics over array axes
     contents:
       - nv_mean
       - nv_median
@@ -233,7 +234,7 @@ reference:
       - nv_sd
 
   - subtitle: Cumulative Operations
-    desc: Cumulative (scan) operations along a single dimension
+    desc: Cumulative (scan) operations along a single axis
     contents:
       - nv_cumsum
       - nv_cumprod
@@ -382,7 +383,7 @@ reference:
       - IotaArray
       - dtype_abstract
       - shape_abstract
-      - ndims_abstract
+      - naxes_abstract
       - ambiguous_abstract
       - to_abstract
       - arrayish

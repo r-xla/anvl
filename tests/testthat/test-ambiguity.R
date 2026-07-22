@@ -106,8 +106,8 @@ test_that("format.AnvlArray shows ambiguity with ?", {
 })
 
 test_that("boolean reductions never produce ambiguous output", {
-  f_any <- jit(function(x) prim_reduce_any(x, dims = 1L))
-  f_all <- jit(function(x) prim_reduce_all(x, dims = 1L))
+  f_any <- jit(function(x) prim_reduce_any(x, axes = 1L))
+  f_all <- jit(function(x) prim_reduce_all(x, axes = 1L))
 
   # Even with ambiguous input, output is never ambiguous
   x_amb <- nv_array(c(TRUE, FALSE), ambiguous = TRUE)

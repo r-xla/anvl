@@ -37,7 +37,7 @@ test_that("jit: autoconverts matrix via nv_array (ambiguous)", {
   expect_equal(out, nv_matrix(1:4, nrow = 2, ncol = 2, ambiguous = TRUE))
 })
 
-test_that("jit: autoconverts higher-dim array via nv_array", {
+test_that("jit: autoconverts higher-axis array via nv_array", {
   f <- jit(identity)
   a <- array(1:24, dim = c(2, 3, 4))
   out <- f(a)

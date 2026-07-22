@@ -4,25 +4,25 @@
 \alias{prim_concatenate}
 \title{Primitive Concatenate}
 \usage{
-prim_concatenate(..., dimension)
+prim_concatenate(..., axis)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to concatenate. Must all have the same data type, ndims,
-and shape except along \code{dimension}.}
+Arrays to concatenate. Must all have the same data type, naxes,
+and shape except along \code{axis}.}
 
-\item{dimension}{(\code{integer(1)})\cr
-Dimension along which to concatenate (1-indexed).}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which to concatenate (1-indexed).}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the inputs.
-The output shape matches the inputs in all dimensions except \code{dimension},
-which is the sum of the input sizes along that dimension.
+The output shape matches the inputs in all axes except \code{axis},
+which is the sum of the input sizes along that axis.
 It is ambiguous if all inputs are ambiguous.
 }
 \description{
-Concatenates arrays along a dimension.
+Concatenates arrays along an axis.
 }
 \section{Implemented Rules}{
 
@@ -42,7 +42,7 @@ Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
-prim_concatenate(x, y, dimension = 1L)
+prim_concatenate(x, y, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

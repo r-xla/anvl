@@ -23,28 +23,28 @@ as_array_torch <- function(x) {
   }
 }
 
-generate_test_data <- function(dimension, dtype = "f64", non_negative = FALSE) {
+generate_test_data <- function(dims, dtype = "f64", non_negative = FALSE) {
   data <- if (dtype == "bool") {
-    sample(c(TRUE, FALSE), size = prod(dimension), replace = TRUE)
+    sample(c(TRUE, FALSE), size = prod(dims), replace = TRUE)
   } else if (dtype %in% c("ui8", "ui16", "ui32", "ui64")) {
-    sample(0:20, size = prod(dimension), replace = TRUE)
+    sample(0:20, size = prod(dims), replace = TRUE)
   } else if (dtype %in% c("i8", "i16", "i32", "i64")) {
-    test_data <- as.integer(rgeom(prod(dimension), .5))
+    test_data <- as.integer(rgeom(prod(dims), .5))
     if (!non_negative) {
-      test_data <- as.integer((-1)^rbinom(prod(dimension), 1, .5) * test_data)
+      test_data <- as.integer((-1)^rbinom(prod(dims), 1, .5) * test_data)
     }
     test_data
   } else {
     if (!non_negative) {
-      rnorm(prod(dimension), mean = 0, sd = 1)
+      rnorm(prod(dims), mean = 0, sd = 1)
     } else {
-      rchisq(prod(dimension), df = 1)
+      rchisq(prod(dims), df = 1)
     }
   }
 
-  # For scalars (dimension = integer()), return the value directly
+  # For scalars (dims = integer()), return the value directly
   # For arrays, wrap in array() to preserve dimensions
-  if (length(dimension) == 0L) data else array(data, dim = dimension)
+  if (length(dims) == 0L) data else array(data, dim = dims)
 }
 
 make_nv <- function(x, dtype) {

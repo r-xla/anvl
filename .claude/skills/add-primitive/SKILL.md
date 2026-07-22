@@ -74,7 +74,7 @@ Use `describe()` / `it()` blocks. Cover:
 - Different shapes (scalar, vector, matrix, 3D)
 - Boundary values (depends on the specific operation)
 - dtype variations where relevant
-- Parameter variations (e.g. different `dims`, `permutation` values)
+- Parameter variations (e.g. different `axes`, `permutation` values)
 - Non-differentiable points: include those values in the test inputs and verify anvl's gradient matches torch's gradient at those points.
 
 ### Forward test example (torch comparison in `inst/extra-tests/test-primitives-stablehlo-torch.R`)

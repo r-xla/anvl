@@ -110,7 +110,7 @@ describe("nv_concatenate", {
       nv_array(1:2, ambiguous = TRUE)
     )
     expect_equal(
-      nv_concatenate(1L, 2L, dimension = 1L),
+      nv_concatenate(1L, 2L, axis = 1L),
       nv_array(1:2, ambiguous = TRUE)
     )
     # Mixed array + literal: non-ambiguous array determines output ambiguity
@@ -123,24 +123,24 @@ describe("nv_concatenate", {
       nv_array(1:2)
     )
   })
-  it("fails when dimension is out of bounds", {
+  it("fails when axis is out of bounds", {
     expect_error(
-      nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), dimension = 3L)
+      nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), axis = 3L)
     )
   })
   it("can concatenate 2d arrays", {
     expect_equal(
-      nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), dimension = 1L),
+      nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), axis = 1L),
       nv_array(1:4, shape = c(4, 1))
     )
     expect_equal(
-      nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), dimension = 2L),
+      nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), axis = 2L),
       nv_array(1:4, shape = c(2, 2), dtype = "i32")
     )
   })
   it("fails with incompatible shapes", {
     expect_error(
-      nv_concatenate(nv_array(1, shape = c(1, 1, 1)), nv_array(2, shape = c(1, 1)), dimension = 1L)
+      nv_concatenate(nv_array(1, shape = c(1, 1, 1)), nv_array(2, shape = c(1, 1)), axis = 1L)
     )
   })
 })
@@ -233,7 +233,7 @@ describe("nv_rbind", {
     expect_equal(rbind(nv_scalar(1), nv_scalar(2)), nv_array(rbind(1, 2)))
   })
 
-  it("stacks two 3-D arrays along dimension 1", {
+  it("stacks two 3-D arrays along axis 1", {
     a <- array(1:24, dim = c(2L, 3L, 4L))
     b <- array(101:124, dim = c(2L, 3L, 4L))
     out <- rbind(nv_array(a), nv_array(b))
@@ -336,7 +336,7 @@ describe("nv_cbind", {
     expect_equal(cbind(nv_scalar(1), nv_scalar(2)), nv_array(cbind(1, 2)))
   })
 
-  it("stacks two 3-D arrays along dimension 2", {
+  it("stacks two 3-D arrays along axis 2", {
     a <- array(1:24, dim = c(2L, 3L, 4L))
     b <- array(101:124, dim = c(2L, 3L, 4L))
     out <- cbind(nv_array(a), nv_array(b))
@@ -472,20 +472,20 @@ describe("nv_reduce_sum / nv_reduce_prod / nv_mean nan_rm", {
 describe("nv_var / nv_sd nan_rm", {
   it("propagate NaN by default", {
     x <- nv_array(c(1, NaN, 3, 5))
-    expect_true(is.nan(as_array(nv_var(x, dims = 1L))))
-    expect_true(is.nan(as_array(nv_sd(x, dims = 1L))))
+    expect_true(is.nan(as_array(nv_var(x, axes = 1L))))
+    expect_true(is.nan(as_array(nv_sd(x, axes = 1L))))
   })
   it("skip NaN when nan_rm = TRUE (matches base R var/sd)", {
     v <- c(1, NaN, 3, 5)
     x <- nv_array(v)
-    expect_equal(as.numeric(nv_var(x, dims = 1L, nan_rm = TRUE)), var(v, na.rm = TRUE), tolerance = 1e-6)
-    expect_equal(as.numeric(nv_sd(x, dims = 1L, nan_rm = TRUE)), sd(v, na.rm = TRUE), tolerance = 1e-6)
+    expect_equal(as.numeric(nv_var(x, axes = 1L, nan_rm = TRUE)), var(v, na.rm = TRUE), tolerance = 1e-6)
+    expect_equal(as.numeric(nv_sd(x, axes = 1L, nan_rm = TRUE)), sd(v, na.rm = TRUE), tolerance = 1e-6)
   })
   it("respects correction argument", {
     v <- c(1, NaN, 3, 5)
     x <- nv_array(v)
     expect_equal(
-      as.numeric(nv_var(x, dims = 1L, correction = 0L, nan_rm = TRUE)),
+      as.numeric(nv_var(x, axes = 1L, correction = 0L, nan_rm = TRUE)),
       var(v, na.rm = TRUE) * 2 / 3, # 3 non-NaN values, switch n-1 -> n
       tolerance = 1e-6
     )
@@ -493,29 +493,29 @@ describe("nv_var / nv_sd nan_rm", {
   it("all-NaN slice returns NaN, not zero, at default correction = 1", {
     # Regression: previously returned 0 because count - correction = -1
     # and sum_sq / -1 = -0, which coerced to a non-NaN value.
-    expect_true(is.nan(as_array(nv_var(nv_array(c(NaN, NaN)), dims = 1L, nan_rm = TRUE))))
-    expect_true(is.nan(as_array(nv_sd(nv_array(c(NaN, NaN)), dims = 1L, nan_rm = TRUE))))
-    expect_true(is.nan(as_array(nv_var(nv_array(c(NaN, NaN, NaN)), dims = 1L, nan_rm = TRUE))))
+    expect_true(is.nan(as_array(nv_var(nv_array(c(NaN, NaN)), axes = 1L, nan_rm = TRUE))))
+    expect_true(is.nan(as_array(nv_sd(nv_array(c(NaN, NaN)), axes = 1L, nan_rm = TRUE))))
+    expect_true(is.nan(as_array(nv_var(nv_array(c(NaN, NaN, NaN)), axes = 1L, nan_rm = TRUE))))
   })
   it("count below correction returns NaN; count above is well-defined", {
     # Single non-NaN value with default correction = 1 -> n - 1 = 0 -> NaN
-    expect_true(is.nan(as_array(nv_var(nv_array(c(1, NaN)), dims = 1L, nan_rm = TRUE))))
+    expect_true(is.nan(as_array(nv_var(nv_array(c(1, NaN)), axes = 1L, nan_rm = TRUE))))
     # Same input with correction = 0 -> population variance of a single
     # value is 0, well-defined.
-    expect_equal(as.numeric(nv_var(nv_array(c(1, NaN)), dims = 1L, correction = 0L, nan_rm = TRUE)), 0)
+    expect_equal(as.numeric(nv_var(nv_array(c(1, NaN)), axes = 1L, correction = 0L, nan_rm = TRUE)), 0)
   })
   it("per-slice masking: an all-NaN slice in a matrix yields NaN, others valid", {
     m <- matrix(c(NaN, NaN, 1, 2, 3, 4), nrow = 2) # column 1 all-NaN
-    out <- as.numeric(nv_var(nv_array(m), dims = 1L, nan_rm = TRUE))
+    out <- as.numeric(nv_var(nv_array(m), axes = 1L, nan_rm = TRUE))
     expect_true(is.nan(out[1]))
     expect_equal(out[2:3], c(0.5, 0.5))
   })
   it("single-value input with default correction (no NaN) returns NaN", {
     # Matches base R: var(c(1)) is NA. (denom = 0 -> 0/0 = NaN, no change
     # introduced by this commit -- regression check.)
-    expect_true(is.nan(as_array(nv_var(nv_array(1.0), dims = 1L))))
+    expect_true(is.nan(as_array(nv_var(nv_array(1.0), axes = 1L))))
     # With correction = 0, population variance of a single value is 0.
-    expect_equal(as.numeric(nv_var(nv_array(1.0), dims = 1L, correction = 0L)), 0)
+    expect_equal(as.numeric(nv_var(nv_array(1.0), axes = 1L, correction = 0L)), 0)
   })
 })
 
@@ -535,14 +535,14 @@ describe("nv_reduce_max / nv_reduce_min nan_rm", {
     expect_equal(as.numeric(nv_reduce_max(x, nan_rm = TRUE)), -Inf)
     expect_equal(as.numeric(nv_reduce_min(x, nan_rm = TRUE)), Inf)
   })
-  it("propagates per-slice along reduction dims", {
+  it("propagates per-slice along reduction axes", {
     # column 1 has NaN, columns 2 and 3 do not
     m <- nv_matrix(c(1, NaN, 3, 4, 5, 6), nrow = 2)
-    out_default <- as.numeric(nv_reduce_max(m, dims = 1L))
+    out_default <- as.numeric(nv_reduce_max(m, axes = 1L))
     expect_true(is.nan(out_default[1]))
     expect_equal(out_default[2:3], c(4, 6))
     expect_equal(
-      as.numeric(nv_reduce_max(m, dims = 1L, nan_rm = TRUE)),
+      as.numeric(nv_reduce_max(m, axes = 1L, nan_rm = TRUE)),
       c(1, 4, 6)
     )
   })
@@ -631,12 +631,12 @@ describe("nv_argmax / nv_argmin nan_rm", {
     expect_equal(as.integer(nv_argmax(x)), 2L)
     expect_equal(as.integer(nv_argmin(x)), 2L)
   })
-  it("propagates per-slice along the reduced dim", {
+  it("propagates per-slice along the reduced axis", {
     # row 1 has NaN at col 2, row 2 has no NaN
     m <- nv_matrix(c(1, NaN, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.integer(nv_argmax(m, dim = 2L)), c(2L, 2L))
+    expect_equal(as.integer(nv_argmax(m, axis = 2L)), c(2L, 2L))
     expect_equal(
-      as.integer(nv_argmax(m, dim = 2L, nan_rm = TRUE)),
+      as.integer(nv_argmax(m, axis = 2L, nan_rm = TRUE)),
       c(3L, 2L)
     )
   })
@@ -646,7 +646,7 @@ describe("nv_var", {
   it("computes variance with Bessel's correction", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
     expect_equal(
-      nv_var(nv_array(vals), dims = 1L),
+      nv_var(nv_array(vals), axes = 1L),
       nv_scalar(var(vals)),
       tolerance = 1e-5
     )
@@ -655,16 +655,16 @@ describe("nv_var", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
     expected <- mean((vals - mean(vals))^2)
     expect_equal(
-      nv_var(nv_array(vals), dims = 1L, correction = 0L),
+      nv_var(nv_array(vals), axes = 1L, correction = 0L),
       nv_scalar(expected),
       tolerance = 1e-5
     )
   })
-  it("works along specific dimensions of a matrix", {
+  it("works along specific axes of a matrix", {
     vals <- c(1, 2, 3, 4, 5, 6)
     m <- matrix(vals, nrow = 2)
     expect_equal(
-      nv_var(nv_array(vals, shape = c(2, 3), dtype = "f32"), dims = 2L),
+      nv_var(nv_array(vals, shape = c(2, 3), dtype = "f32"), axes = 2L),
       nv_array(apply(m, 1, var), dtype = "f32"),
       tolerance = 1e-5
     )
@@ -677,14 +677,14 @@ describe("nv_var", {
       tolerance = 1e-5
     )
     expect_equal(
-      nv_var(nv_array(vals), dims = NULL),
+      nv_var(nv_array(vals), axes = NULL),
       nv_scalar(var(vals)),
       tolerance = 1e-5
     )
   })
-  it("rejects out-of-range and duplicate dims", {
-    expect_error(nv_var(nv_array(c(1, 2, 3, 4)), dims = 5L))
-    expect_error(nv_var(nv_array(c(1, 2, 3, 4)), dims = c(1L, 1L)))
+  it("rejects out-of-range and duplicate axes", {
+    expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = 5L))
+    expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = c(1L, 1L)))
   })
 })
 
@@ -692,7 +692,7 @@ describe("nv_sd", {
   it("computes standard deviation", {
     vals <- c(2, 4, 4, 4, 5, 5, 7, 9)
     expect_equal(
-      nv_sd(nv_array(vals), dims = 1L),
+      nv_sd(nv_array(vals), axes = 1L),
       nv_scalar(sd(vals)),
       tolerance = 1e-5
     )
@@ -705,7 +705,7 @@ describe("nv_sd", {
       tolerance = 1e-5
     )
     expect_equal(
-      nv_sd(nv_array(vals), dims = NULL),
+      nv_sd(nv_array(vals), axes = NULL),
       nv_scalar(sd(vals)),
       tolerance = 1e-5
     )
@@ -713,7 +713,7 @@ describe("nv_sd", {
 })
 
 describe("nv_squeeze", {
-  it("removes all size-1 dimensions by default", {
+  it("removes all size-1 axes by default", {
     expect_equal(
       {
         x <- nv_array(1:6, shape = c(1, 6, 1))
@@ -722,52 +722,52 @@ describe("nv_squeeze", {
       nv_array(1:6, shape = 6L)
     )
   })
-  it("removes specific dimensions", {
+  it("removes specific axes", {
     expect_equal(
       {
         x <- nv_array(1:6, shape = c(1, 6, 1))
-        nv_squeeze(x, dims = 1L)
+        nv_squeeze(x, axes = 1L)
       },
       nv_array(1:6, shape = c(6, 1))
     )
   })
-  it("errors when squeezing non-1 dimension", {
+  it("errors when squeezing non-1 axis", {
     expect_error(
-      nv_squeeze(nv_array(1:6, shape = c(2, 3)), dims = 1L),
+      nv_squeeze(nv_array(1:6, shape = c(2, 3)), axes = 1L),
       "Cannot squeeze"
     )
   })
-  it("rejects duplicate dims", {
+  it("rejects duplicate axes", {
     expect_error(
-      nv_squeeze(nv_array(1:6, shape = c(1, 6, 1)), dims = c(1L, 1L))
+      nv_squeeze(nv_array(1:6, shape = c(1, 6, 1)), axes = c(1L, 1L))
     )
   })
 })
 
 describe("nv_unsqueeze", {
-  it("adds dimension at the beginning", {
+  it("adds axis at the beginning", {
     expect_equal(
       {
         x <- nv_array(c(1, 2, 3))
-        nv_unsqueeze(x, dim = 1L)
+        nv_unsqueeze(x, axis = 1L)
       },
       nv_array(c(1, 2, 3), shape = c(1, 3))
     )
   })
-  it("adds dimension at the end", {
+  it("adds axis at the end", {
     expect_equal(
       {
         x <- nv_array(c(1, 2, 3))
-        nv_unsqueeze(x, dim = 2L)
+        nv_unsqueeze(x, axis = 2L)
       },
       nv_array(c(1, 2, 3), shape = c(3, 1))
     )
   })
-  it("adds dimension in the middle", {
+  it("adds axis in the middle", {
     x <- nv_array(1:6, shape = c(2, 3))
-    result <- nv_unsqueeze(x, dim = 2L)
+    result <- nv_unsqueeze(x, axis = 2L)
     expect_equal(shape(result), c(2L, 1L, 3L))
-    roundtrip <- nv_squeeze(nv_unsqueeze(x, dim = 2L), dims = 2L)
+    roundtrip <- nv_squeeze(nv_unsqueeze(x, axis = 2L), axes = 2L)
     expect_equal(roundtrip, x)
   })
 })
@@ -1072,7 +1072,7 @@ describe("nv_fill_like", {
 describe("nv_iota_like", {
   it("inherits shape, dtype, ambiguous, device from like", {
     like <- nv_fill(0L, shape = c(2, 3), dtype = "i16")
-    out <- nv_iota_like(like, dim = 1L)
+    out <- nv_iota_like(like, axis = 1L)
     expect_equal(shape(out), shape(like))
     expect_equal(dtype(out), dtype(like))
     expect_equal(as.character(device(out)), as.character(device(like)))
@@ -1080,7 +1080,7 @@ describe("nv_iota_like", {
 
   it("allows overriding the inherited attributes", {
     like <- nv_fill(0L, shape = c(2, 3), dtype = "i16")
-    out <- nv_iota_like(like, dim = 1L, shape = 4L, dtype = "i32")
+    out <- nv_iota_like(like, axis = 1L, shape = 4L, dtype = "i32")
     expect_equal(shape(out), 4L)
     expect_equal(dtype(out), as_dtype("i32"))
   })
@@ -1104,45 +1104,45 @@ describe("nv_seq_like", {
 })
 
 describe("nv_select", {
-  it("selects a row of a matrix and drops the dim", {
+  it("selects a row of a matrix and drops the axis", {
     m <- nv_matrix(1:6, nrow = 2)
-    expect_equal(nv_select(m, dim = 1L, index = 1L), nv_array(c(1L, 3L, 5L)))
-    expect_equal(nv_select(m, dim = 1L, index = 2L), nv_array(c(2L, 4L, 6L)))
+    expect_equal(nv_select(m, axis = 1L, index = 1L), nv_array(c(1L, 3L, 5L)))
+    expect_equal(nv_select(m, axis = 1L, index = 2L), nv_array(c(2L, 4L, 6L)))
   })
 
-  it("selects a column of a matrix and drops the dim", {
+  it("selects a column of a matrix and drops the axis", {
     m <- nv_matrix(1:6, nrow = 2)
-    expect_equal(nv_select(m, dim = 2L, index = 2L), nv_array(c(3L, 4L)))
+    expect_equal(nv_select(m, axis = 2L, index = 2L), nv_array(c(3L, 4L)))
   })
 
-  it("array(i) keeps the dim with size 1", {
+  it("array(i) keeps the axis with size 1", {
     x <- nv_array(1:6, shape = c(2L, 3L))
-    out <- nv_select(x, dim = 2L, index = array(1L))
+    out <- nv_select(x, axis = 2L, index = array(1L))
     expect_equal(shape(out), c(2L, 1L))
   })
 
   it("works on a 3D array", {
     arr <- nv_array(1:24, shape = c(2, 3, 4))
-    out <- nv_select(arr, dim = 3L, index = 2L)
+    out <- nv_select(arr, axis = 3L, index = 2L)
     expect_equal(shape(out), c(2L, 3L))
     expect_equal(as_array(out), array(7:12, dim = c(2, 3)))
   })
 
-  it("errors when dim is out of bounds", {
-    expect_error(nv_select(nv_array(c(1, 2, 3)), dim = 2L, index = 1L))
+  it("errors when axis is out of bounds", {
+    expect_error(nv_select(nv_array(c(1, 2, 3)), axis = 2L, index = 1L))
   })
 
   it("errors when index is out of bounds", {
-    expect_error(nv_select(nv_array(c(1, 2, 3)), dim = 1L, index = 5L))
+    expect_error(nv_select(nv_array(c(1, 2, 3)), axis = 1L, index = 5L))
   })
 
   it("errors on a 0-dimensional input", {
-    expect_error(nv_select(nv_scalar(1), dim = 1L, index = 1L), "0-dimensional")
+    expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "0-dimensional")
   })
 })
 
 describe("nv_sort", {
-  it("defaults dim to the last dimension", {
+  it("defaults axis to the last axis", {
     expect_equal(
       nv_sort(nv_array(c(3, 1, 4, 1, 5))),
       nv_array(c(1, 1, 3, 4, 5))
@@ -1156,7 +1156,7 @@ describe("nv_sort", {
     )
   })
 
-  it("defaults to last dim for matrices (rows)", {
+  it("defaults to last axis for matrices (rows)", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expected <- nv_matrix(c(1, 3, 5, 0, 2, 4), nrow = 2, byrow = TRUE)
     expect_equal(nv_sort(m), expected)
@@ -1193,21 +1193,21 @@ describe("nv_argsort", {
 })
 
 describe("nv_top_k", {
-  it("returns the k largest values along the last dim", {
+  it("returns the k largest values along the last axis", {
     expect_equal(
       nv_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L),
       nv_array(c(9, 6, 5))
     )
   })
 
-  it("operates per-row on a matrix when dim is the last dim", {
+  it("operates per-row on a matrix when axis is the last axis", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     out <- nv_top_k(m, k = 2L)
     expect_equal(shape(out), c(2L, 2L))
     expect_equal(as_array(out), matrix(c(5, 3, 4, 2), nrow = 2, byrow = TRUE))
   })
 
-  it("errors when k > size of dim", {
+  it("errors when k > size of axis", {
     expect_error(nv_top_k(nv_array(c(1, 2, 3)), k = 5L))
   })
 })
@@ -1331,7 +1331,7 @@ describe("nv_quantile", {
     }
   })
 
-  it("vector probs prepends a leading dim of length(probs)", {
+  it("vector probs prepends a leading axis of length(probs)", {
     xr <- c(3, 1, 4, 1, 5, 9, 2, 6)
     x <- nv_array(xr)
     out <- nv_quantile(x, array(c(0.25, 0.5, 0.75)))
@@ -1387,10 +1387,10 @@ describe("nv_quantile", {
     expect_equal(as_array(nv_quantile(x, 0.5, interpolation = "midpoint")), 2.5)
   })
 
-  it("operates along a chosen dim of a matrix", {
+  it("operates along a chosen axis of a matrix", {
     m_raw <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     m <- nv_array(m_raw)
-    out <- nv_quantile(m, 0.5, dim = 2L)
+    out <- nv_quantile(m, 0.5, axis = 2L)
     expect_equal(as.vector(out), c(3, 2))
   })
 
@@ -1412,10 +1412,10 @@ describe("mean()", {
 })
 
 describe("nv_argmax / nv_argmin", {
-  it("default dim is the last dimension", {
+  it("default axis is the last axis", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(nv_argmax(m), prim_argmax(m, dim = 2L))
-    expect_equal(nv_argmin(m), prim_argmin(m, dim = 2L))
+    expect_equal(nv_argmax(m), prim_argmax(m, axis = 2L))
+    expect_equal(nv_argmin(m), prim_argmin(m, axis = 2L))
   })
   it("errors on a 0-dimensional input", {
     expect_error(nv_argmax(nv_scalar(3)))

@@ -11,15 +11,15 @@ prim_static_slice(operand, start_indices, limit_indices, strides)
 Arrayish value of any data type.}
 
 \item{start_indices}{(\code{integer()})\cr
-Start indices (inclusive), one per dimension. Must satisfy
-\verb{1 <= start_indices <= limit_indices} per dimension.}
+Start indices (inclusive), one per axis. Must satisfy
+\verb{1 <= start_indices <= limit_indices} per axis.}
 
 \item{limit_indices}{(\code{integer()})\cr
-End indices (inclusive), one per dimension. Must satisfy
-\code{limit_indices <= nv_shape(operand)} per dimension.}
+End indices (inclusive), one per axis. Must satisfy
+\code{limit_indices <= nv_shape(operand)} per axis.}
 
 \item{strides}{(\code{integer()})\cr
-Step sizes, one per dimension. Must be \verb{>= 1}. A stride of \code{1}
+Step sizes, one per axis. Must be \verb{>= 1}. A stride of \code{1}
 selects every element; a stride of \code{2} selects every other element, etc.}
 }
 \value{

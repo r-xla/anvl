@@ -4,11 +4,11 @@
 \alias{prim_iota}
 \title{Primitive Iota}
 \usage{
-prim_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 }
 \arguments{
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which values increase (1-indexed).}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which values increase (1-indexed).}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
@@ -32,7 +32,7 @@ Device for data to live on.}
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
-Creates an array with values increasing along the specified dimension.
+Creates an array with values increasing along the specified axis.
 }
 \section{Implemented Rules}{
 
@@ -49,7 +49,7 @@ Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-prim_iota(dim = 1L, dtype = "i32", shape = 5L)
+prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

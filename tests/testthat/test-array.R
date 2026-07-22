@@ -100,7 +100,7 @@ test_that("nv_array(byrow = TRUE) extends to higher-rank shapes", {
   expect_equal(shape(x), c(2, 3, 4))
 })
 
-test_that("nv_array(byrow = TRUE) is a no-op for shapes with < 2 dims", {
+test_that("nv_array(byrow = TRUE) is a no-op for shapes with < 2 axes", {
   expect_equal(
     as_array(nv_array(1:4, byrow = TRUE)),
     as_array(nv_array(1:4))
@@ -200,7 +200,7 @@ test_that("nv_matrix() recycles scalar data like base matrix()", {
   )
 })
 
-test_that("nv_matrix() with scalar data defaults missing dim to 1", {
+test_that("nv_matrix() with scalar data defaults missing axis to 1", {
   expect_equal(
     as_array(nv_matrix(1, nrow = 3L)),
     matrix(1, nrow = 3L, ncol = 1L)

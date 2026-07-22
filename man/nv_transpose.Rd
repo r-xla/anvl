@@ -14,7 +14,7 @@ nv_transpose(operand, permutation = NULL)
 Operand.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
-New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.}
+New ordering of axes. If \code{NULL} (default), reverses the axes.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
@@ -24,7 +24,7 @@ Same as \code{operand}; this is the name used by the base R S3 generic.}
 Has the same data type as \code{operand} and shape \code{nv_shape(operand)[permutation]}.
 }
 \description{
-Permutes the dimensions of an array. You can also use \code{t()} for matrices.
+Permutes the axes of an array. You can also use \code{t()} for matrices.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

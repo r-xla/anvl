@@ -50,7 +50,7 @@ assert_linalg_matrix <- function(operand, arg, square = FALSE) {
   }
   if (any(s == 0L)) {
     cli_abort(c(
-      "{.arg {arg}} must not have any zero-sized dimension.",
+      "{.arg {arg}} must not have any zero-sized axis.",
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
     ))
   }

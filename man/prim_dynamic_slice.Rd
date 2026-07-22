@@ -11,13 +11,13 @@ prim_dynamic_slice(operand, ..., slice_sizes)
 Arrayish value of any data type.}
 
 \item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per dimension. Each must be a
-scalar array. Pass one scalar per dimension of \code{operand}.}
+Scalar start indices, one per axis. Each must be a
+scalar array. Pass one scalar per axis of \code{operand}.}
 
 \item{slice_sizes}{(\code{integer()})\cr
-Size of the slice in each dimension. Must have length equal to
-\code{ndims(operand)} and satisfy \verb{1 <= slice_sizes <= nv_shape(operand)}
-per dimension.}
+Size of the slice in each axis. Must have length equal to
+\code{naxes(operand)} and satisfy \verb{1 <= slice_sizes <= nv_shape(operand)}
+per axis.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -11,8 +11,8 @@ prim_transpose(operand, permutation)
 Arrayish value of any data type.}
 
 \item{permutation}{(\code{integer()})\cr
-Specifies the new ordering of dimensions. Must be a permutation of
-\code{seq_len(ndims)} where \code{ndims} is the number of dimensions of \code{operand}.}
+Specifies the new ordering of axes. Must be a permutation of
+\code{seq_len(naxes)} where \code{naxes} is the number of axes of \code{operand}.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -20,7 +20,7 @@ Has the same data type as the input and shape \code{nv_shape(operand)[permutatio
 It is ambiguous if the input is ambiguous.
 }
 \description{
-Permutes the dimensions of an array.
+Permutes the axes of an array.
 }
 \section{Implemented Rules}{
 

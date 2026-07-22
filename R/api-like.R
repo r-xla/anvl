@@ -66,11 +66,11 @@ nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, ambiguous = NU
 
 #' @rdname nv_iota
 #' @export
-nv_iota_like <- function(like, dim, shape = NULL, start = 1L, dtype = NULL, ambiguous = NULL, device = NULL) {
+nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, ambiguous = NULL, device = NULL) {
   do.call(
     nv_iota,
     c(
-      list(dim = dim, start = start),
+      list(axis = axis, start = start),
       like_defaults(like, shape = shape, dtype = dtype, ambiguous = ambiguous, device = device)
     )
   )

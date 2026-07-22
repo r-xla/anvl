@@ -11,7 +11,7 @@ nv_qr(operand)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 dimensions.}
+Matrix of data type floating-point with exactly 2 axes.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}

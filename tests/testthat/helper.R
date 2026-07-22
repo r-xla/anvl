@@ -57,7 +57,7 @@ verify_zero_grad_unary <- function(prim_fn, x, f_wrapper = NULL) {
       x_inner <- nv_convert(x, x_dtype)
       out <- prim_fn(x_inner)
       out <- nv_convert(out, "f32")
-      nv_reduce_sum(out, dims = 1L, drop = TRUE)
+      nv_reduce_sum(out, axes = 1L, drop = TRUE)
     }
   } else {
     f <- f_wrapper
@@ -77,7 +77,7 @@ verify_zero_grad_binary <- function(prim_fn, x, y) {
     y_inner <- nv_convert(y, y_dtype)
     out <- prim_fn(x_inner, y_inner)
     out <- nv_convert(out, "f32")
-    nv_reduce_sum(out, dims = 1L, drop = TRUE)
+    nv_reduce_sum(out, axes = 1L, drop = TRUE)
   }
   grads <- jit(gradient(f))(x_f32, y_f32)
   expected1 <- nv_array(0, shape = shape(x), dtype = "f32")

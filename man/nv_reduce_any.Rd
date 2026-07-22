@@ -4,34 +4,34 @@
 \alias{nv_reduce_any}
 \title{Any Reduction}
 \usage{
-nv_reduce_any(operand, dims = NULL, drop = TRUE)
+nv_reduce_any(operand, axes = NULL, drop = TRUE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
 Operand.}
 
-\item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to reduce. If \code{NULL} (default), reduces over all
-dimensions, returning a scalar.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reduce. If \code{NULL} (default), reduces over all
+axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced dimensions.}
+Whether to drop reduced axes.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Boolean array.
-When \code{drop = TRUE}, the reduced dimensions are removed.
-When \code{drop = FALSE}, the reduced dimensions are set to 1.
+When \code{drop = TRUE}, the reduced axes are removed.
+When \code{drop = FALSE}, the reduced axes are set to 1.
 }
 \description{
-Performs logical OR along the specified dimensions.
+Performs logical OR along the specified axes.
 Returns \code{TRUE} if any element is \code{TRUE}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-nv_reduce_any(x)            # all dims -> scalar
-nv_reduce_any(x, dims = 1L)
+nv_reduce_any(x)            # all axes -> scalar
+nv_reduce_any(x, axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

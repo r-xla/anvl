@@ -8,9 +8,9 @@ prim_chol(operand, lower = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point with at least 2 dimensions.
-The last two dimensions must be equal (square matrix); any leading
-dimensions are batch dimensions.}
+Arrayish value of data type floating-point with at least 2 axes.
+The last two axes must be equal (square matrix); any leading
+axes are batch axes.}
 
 \item{lower}{(\code{logical(1)})\cr
 If \code{FALSE} (default, matching base R's \code{\link[base:chol]{base::chol()}}), compute the
@@ -26,7 +26,7 @@ It is ambiguous if the input is ambiguous.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Dimensions before the last two are batch dimensions.
+Axes before the last two are batch axes.
 }
 \section{Implemented Rules}{
 

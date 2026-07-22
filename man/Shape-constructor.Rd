@@ -7,13 +7,13 @@
 Shape(dims = integer())
 }
 \arguments{
-\item{dims}{An \code{integer()} vector of dimension sizes (>= 0).}
+\item{axes}{An \code{integer()} vector of axis sizes (>= 0).}
 }
 \value{
 A \code{Shape} object.
 }
 \description{
-Constructs a \code{Shape} representing array dimensions.
+Constructs a \code{Shape} representing array axes.
 }
 \examples{
 Shape(c(2L, 3L))

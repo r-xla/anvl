@@ -7,15 +7,15 @@
 prim_convolution(
   lhs,
   rhs,
-  input_batch_dimension,
-  input_feature_dimension,
-  input_spatial_dimensions,
-  kernel_input_feature_dimension,
-  kernel_output_feature_dimension,
-  kernel_spatial_dimensions,
-  output_batch_dimension,
-  output_feature_dimension,
-  output_spatial_dimensions,
+  input_batch_axis,
+  input_feature_axis,
+  input_spatial_axes,
+  kernel_input_feature_axis,
+  kernel_output_feature_axis,
+  kernel_spatial_axes,
+  output_batch_axis,
+  output_feature_axis,
+  output_spatial_axes,
   window_strides,
   padding,
   lhs_dilation,
@@ -30,23 +30,23 @@ prim_convolution(
 
 \item{rhs}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
 
-\item{input_batch_dimension, input_feature_dimension}{(\code{integer(1)})\cr
-1-based batch/feature dimension of \code{lhs}.}
+\item{input_batch_axis, input_feature_axis}{(\code{integer(1)})\cr
+1-based batch/feature axis of \code{lhs}.}
 
-\item{input_spatial_dimensions}{(\code{integer()})\cr 1-based spatial dims of \code{lhs}.}
+\item{input_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{lhs}.}
 
-\item{kernel_input_feature_dimension, kernel_output_feature_dimension}{(\code{integer(1)})\cr
-1-based input/output feature dimension of \code{rhs}.}
+\item{kernel_input_feature_axis, kernel_output_feature_axis}{(\code{integer(1)})\cr
+1-based input/output feature axis of \code{rhs}.}
 
-\item{kernel_spatial_dimensions}{(\code{integer()})\cr 1-based spatial dims of \code{rhs}.}
+\item{kernel_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{rhs}.}
 
-\item{output_batch_dimension, output_feature_dimension}{(\code{integer(1)})\cr
-1-based batch/feature dimension of the output.}
+\item{output_batch_axis, output_feature_axis}{(\code{integer(1)})\cr
+1-based batch/feature axis of the output.}
 
-\item{output_spatial_dimensions}{(\code{integer()})\cr
-1-based spatial dims of the output.}
+\item{output_spatial_axes}{(\code{integer()})\cr
+1-based spatial axes of the output.}
 
-\item{window_strides}{(\code{integer()})\cr Stride per spatial dim.}
+\item{window_strides}{(\code{integer()})\cr Stride per spatial axis.}
 
 \item{padding}{(\code{matrix})\cr \verb{[n_spatial, 2]} of \verb{(low, high)} padding.}
 
@@ -62,7 +62,7 @@ prim_convolution(
 }
 \description{
 General N-D windowed convolution, lowering to StableHLO's
-\code{convolution} op. Dimension numbers are given 1-based (anvl
+\code{convolution} op. Axis numbers are given 1-based (anvl
 convention) and converted to StableHLO's 0-based layout internally.
 Most users want \code{\link[=nv_conv1d]{nv_conv1d()}} / \code{\link[=nv_conv2d]{nv_conv2d()}} / \code{\link[=nv_conv3d]{nv_conv3d()}} instead.
 }

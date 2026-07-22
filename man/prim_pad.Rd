@@ -20,13 +20,13 @@ Arrayish value of any data type.}
 Scalar value to use for padding. Must have the same dtype as \code{operand}.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
-Amount of padding to add at the start of each dimension.}
+Amount of padding to add at the start of each axis.}
 
 \item{edge_padding_high}{(\code{integer()})\cr
-Amount of padding to add at the end of each dimension.}
+Amount of padding to add at the end of each axis.}
 
 \item{interior_padding}{(\code{integer()})\cr
-Amount of padding to add between elements in each dimension.}
+Amount of padding to add between elements in each axis.}
 }
 \value{
 \code{\link{arrayish}}\cr

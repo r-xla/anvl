@@ -12,11 +12,11 @@ Arrayish value of any data type.}
 
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
-data type and number of dimensions as \code{operand}, with
-\code{nv_shape(update) <= nv_shape(operand)} per dimension.}
+data type and number of axes as \code{operand}, with
+\code{nv_shape(update) <= nv_shape(operand)} per axis.}
 
 \item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per dimension of \code{operand}.
+Scalar start indices, one per axis of \code{operand}.
 Each must be a scalar array.}
 }
 \value{

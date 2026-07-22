@@ -13,8 +13,8 @@ nv_subset(operand, ...)
 \item{x}{(\code{\link{arrayish}})\cr
 Same as \code{operand}; this is the name used by the base R S3 generic.}
 
-\item{...}{Subset specifications, one per dimension. Omitted trailing
-dimensions select all elements. See \code{vignette("subsetting")} for details.}
+\item{...}{Subset specifications, one per axis. Omitted trailing
+axes select all elements. See \code{vignette("subsetting")} for details.}
 
 \item{operand}{(\code{\link{arrayish}})\cr
 Operand.}
@@ -24,9 +24,9 @@ Operand.}
 }
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (\code{a:b}), and \code{array(c(...))} for selecting multiple elements along a
-dimension.
+axis.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

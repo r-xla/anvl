@@ -4,7 +4,7 @@
 \alias{prim_reduce}
 \title{Primitive Generic Reduce}
 \usage{
-prim_reduce(operand, init, dims, drop = TRUE, reductor)
+prim_reduce(operand, init, axes, drop = TRUE, reductor)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -14,11 +14,11 @@ Arrayish value of any data type.}
 Scalar (0-dimensional) initial value. Must have the same data type as
 \code{operand} and be the neutral element w.r.t. \code{reductor}.}
 
-\item{dims}{(\code{integer()})\cr
-Dimensions to reduce over.}
+\item{axes}{(\code{integer()})\cr
+Axes to reduce over.}
 
 \item{drop}{(\code{logical(1)})\cr
-If \code{TRUE} (default) the reduced dimensions are removed; if \code{FALSE}
+If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE}
 they are kept with size 1.}
 
 \item{reductor}{(\verb{function(lhs, rhs)})\cr
@@ -27,11 +27,11 @@ Must be associative (see "Associativity Requirement").}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same data type as \code{operand}. Shape is \code{operand} with \code{dims} removed
+Same data type as \code{operand}. Shape is \code{operand} with \code{axes} removed
 (or set to 1 if \code{drop = FALSE}).
 }
 \description{
-Reduces an array along the specified dimensions using a user-supplied
+Reduces an array along the specified axes using a user-supplied
 associative reducer.
 }
 \section{Associativity Requirement}{
@@ -60,8 +60,8 @@ Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{reductor} 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4))
-prim_reduce(x, init = nv_scalar(0), dims = 1L, reductor = prim_add)
-prim_reduce(x, init = nv_scalar(1), dims = 1L, reductor = prim_mul)
+prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
+prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -13,15 +13,15 @@ test_that("integration: indexing-heavy graph matches PJRT", {
       operand,
       idx,
       slice_sizes = c(1L, 2L, 2L),
-      offset_dims = c(2L, 3L),
-      collapsed_slice_dims = 1L,
-      operand_batching_dims = integer(),
-      start_indices_batching_dims = integer(),
+      offset_axes = c(2L, 3L),
+      collapsed_slice_axes = 1L,
+      operand_batching_axes = integer(),
+      start_indices_batching_axes = integer(),
       start_index_map = 1L,
-      index_vector_dim = 2L
+      index_vector_axis = 2L
     )
 
-    r <- nv_reverse(g, dims = 3L)
+    r <- nv_reverse(g, axes = 3L)
 
     p <- prim_pad(
       r,
@@ -33,19 +33,19 @@ test_that("integration: indexing-heavy graph matches PJRT", {
 
     s <- prim_dynamic_slice(p, s1, s2, 1L, slice_sizes = c(2L, 2L, 2L))
     m <- prim_reshape(s, shape = c(2L, 4L))
-    upd <- prim_reduce_sum(m, dims = 2L, drop = TRUE)
+    upd <- prim_reduce_sum(m, axes = 2L, drop = TRUE)
 
-    base <- nv_iota(dim = 1L, dtype = "i32", shape = 6L, start = 0L)
+    base <- nv_iota(axis = 1L, dtype = "i32", shape = 6L, start = 0L)
     scattered <- prim_scatter(
       base,
       sc_idx,
       upd,
-      update_window_dims = integer(),
-      inserted_window_dims = 1L,
-      input_batching_dims = integer(),
-      scatter_indices_batching_dims = integer(),
-      scatter_dims_to_operand_dims = 1L,
-      index_vector_dim = 2L,
+      update_window_axes = integer(),
+      inserted_window_axes = 1L,
+      input_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_operand_axes = 1L,
+      index_vector_axis = 2L,
       update_computation = function(old, new) old + new
     )
 

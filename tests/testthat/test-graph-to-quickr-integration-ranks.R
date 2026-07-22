@@ -9,10 +9,10 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
   batch_dim <- 2L
 
   matmul_any_rank <- function(A, B) {
-    if (ndims(A) == 1L) {
+    if (naxes(A) == 1L) {
       A <- nv_reshape(A, c(1L, shape(A)))
     }
-    if (ndims(B) == 1L) {
+    if (naxes(B) == 1L) {
       B <- nv_reshape(B, c(shape(B), 1L))
     }
 
@@ -20,10 +20,10 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
       if (identical(shape(x), target_shape)) {
         return(x)
       }
-      if (ndims(x) < length(target_shape)) {
-        x <- nv_reshape(x, c(rep.int(1L, length(target_shape) - ndims(x)), shape(x)))
+      if (naxes(x) < length(target_shape)) {
+        x <- nv_reshape(x, c(rep.int(1L, length(target_shape) - naxes(x)), shape(x)))
       }
-      prim_broadcast_in_dim(x, shape = target_shape, broadcast_dimensions = seq_along(target_shape))
+      prim_broadcast_in_axis(x, shape = target_shape, broadcast_axes = seq_along(target_shape))
     }
 
     shA <- shape(A)

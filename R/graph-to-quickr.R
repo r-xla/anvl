@@ -230,7 +230,7 @@ graph_to_quickr_r_function <- function(graph) {
   r_fun <- prep$r_fun
   # The lowered function is intended to be runnable as plain R code as well as
   # compilable by {quickr}. When {quickr} is installed, its `declare()` can
-  # modify arguments at runtime (e.g. stripping dims), which breaks plain R
+  # modify arguments at runtime (e.g. stripping axes), which breaks plain R
   # execution. Keep the `declare(type(...))` call for compilation, but make it
   # a no-op when evaluating the lowered function in R.
   environment(r_fun)$declare <- function(...) invisible(NULL)

@@ -174,7 +174,7 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
   Z2 <- nv_mul(sqrt_R, cos_Theta)
 
   # concatenate z = (z1, z2)
-  Z <- nv_concatenate(Z1, Z2, dimension = 1L)
+  Z <- nv_concatenate(Z1, Z2, axis = 1L)
 
   # multiply with requested sd:
   # was:    var(Z) = 1
@@ -241,7 +241,7 @@ nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
     nv_reshape(successes, shape = shape)
   } else {
     successes <- nv_reshape(successes, shape = c(n, shape))
-    nv_reduce_sum(successes, dims = 1L, drop = TRUE)
+    nv_reduce_sum(successes, axes = 1L, drop = TRUE)
   }
 
   list(res[[1]], result)
@@ -279,7 +279,7 @@ nv_rdunif <- function(shape, initial_state, n, dtype = "i32") {
   u <- res[[2]]
 
   cp <- nv_div(
-    nv_add(nv_iota_like(initial_state, dim = 1L, shape = n, dtype = "f64"), 1),
+    nv_add(nv_iota_like(initial_state, axis = 1L, shape = n, dtype = "f64"), 1),
     nv_fill_like(initial_state, n, shape = integer(), dtype = "f64")
   )
 
@@ -287,7 +287,7 @@ nv_rdunif <- function(shape, initial_state, n, dtype = "i32") {
   cp_row <- nv_reshape(cp, c(1L, n))
   bc <- nv_broadcast_arrays(u_col, cp_row) # (n_sample, n)
   lt_matrix <- nv_convert(nv_lt(bc[[2L]], bc[[1L]]), dtype = "i32")
-  samples <- nv_add(nv_reduce_sum(lt_matrix, dims = 2L), 1L)
+  samples <- nv_add(nv_reduce_sum(lt_matrix, axes = 2L), 1L)
 
   return(list(res[[1]], nv_convert(nv_reshape(samples, shape), dtype)))
 }

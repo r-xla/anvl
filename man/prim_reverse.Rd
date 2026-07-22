@@ -4,14 +4,14 @@
 \alias{prim_reverse}
 \title{Primitive Reverse}
 \usage{
-prim_reverse(operand, dims)
+prim_reverse(operand, axes)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dims}{(\code{integer()})\cr
-Dimensions to reverse (1-indexed).}
+\item{axes}{(\code{integer()})\cr
+Axes to reverse (1-indexed).}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -19,7 +19,7 @@ Has the same data type and shape as \code{operand}.
 It is ambiguous if the input is ambiguous.
 }
 \description{
-Reverses the order of elements along specified dimensions.
+Reverses the order of elements along specified axes.
 }
 \section{Implemented Rules}{
 
@@ -38,7 +38,7 @@ Lowers to \code{\link[stablehlo:hlo_reverse]{hlo_reverse()}}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))
-prim_reverse(x, dims = 1L)
+prim_reverse(x, axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

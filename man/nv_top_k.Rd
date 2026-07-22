@@ -4,7 +4,7 @@
 \alias{nv_top_k}
 \title{Top-K Elements}
 \usage{
-nv_top_k(operand, k, dim = NULL, with_indices = FALSE)
+nv_top_k(operand, k, axis = NULL, with_indices = FALSE)
 }
 \arguments{
 \item{operand}{(\code{\link{arrayish}})\cr
@@ -12,24 +12,24 @@ Operand.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements to return. Must satisfy
-\verb{1 <= k <= shape(operand)[dim]}.}
+\verb{1 <= k <= shape(operand)[axis]}.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to take the top \code{k}. If \code{NULL} (default),
-uses the last dimension.}
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to take the top \code{k}. If \code{NULL} (default),
+uses the last axis.}
 
 \item{with_indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns just the top-\code{k} values. If \code{TRUE},
 returns \code{list(values = ..., indices = ...)} where \code{indices} is the
-1-based position of each top-\code{k} value along \code{dim} (dtype \code{i32}).}
+1-based position of each top-\code{k} value along \code{axis} (dtype \code{i32}).}
 }
 \value{
 \code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
 arrays (when \code{with_indices = TRUE}). Output shape matches \code{operand} with
-\code{dim} resized to \code{k}; values are sorted decreasing along \code{dim}.
+\code{axis} resized to \code{k}; values are sorted decreasing along \code{axis}.
 }
 \description{
-Returns the \code{k} largest values along a dimension, sorted in decreasing order.
+Returns the \code{k} largest values along an axis, sorted in decreasing order.
 }
 \section{NaN handling}{
 
@@ -45,7 +45,7 @@ nv_top_k(x, k = 3L)
 nv_top_k(x, k = 3L, with_indices = TRUE)
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_top_k(m, k = 2L, dim = 2L)
+nv_top_k(m, k = 2L, axis = 2L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

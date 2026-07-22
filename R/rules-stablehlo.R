@@ -36,18 +36,18 @@ prim_pow[["stablehlo"]] <- function(lhs, rhs, output_types) {
   list(hlo_power(lhs, rhs, output_types = output_types))
 }
 
-prim_broadcast_in_dim[["stablehlo"]] <- function(operand, shape, broadcast_dimensions, output_types) {
-  list(hlo_broadcast_in_dim(operand, broadcast_dimensions - 1L, shape, output_types = output_types))
+prim_broadcast_in_axis[["stablehlo"]] <- function(operand, shape, broadcast_axes, output_types) {
+  list(hlo_broadcast_in_dim(operand, broadcast_axes - 1L, shape, output_types = output_types))
 }
 
-prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_dims, batching_dims, precision, output_types) {
-  contracting_dims <- lapply(contracting_dims, \(x) x - 1L)
-  batching_dims <- lapply(batching_dims, \(x) x - 1L)
+prim_dot_general[["stablehlo"]] <- function(lhs, rhs, contracting_axes, batching_axes, precision, output_types) {
+  contracting_axes <- lapply(contracting_axes, \(x) x - 1L)
+  batching_axes <- lapply(batching_axes, \(x) x - 1L)
   list(hlo_dot_general(
     lhs,
     rhs,
-    contracting_dims,
-    batching_dims,
+    contracting_axes,
+    batching_axes,
     precision_config = toupper(precision),
     output_types = output_types
   ))
@@ -61,8 +61,8 @@ prim_reshape[["stablehlo"]] <- function(operand, shape, output_types) {
   list(hlo_reshape(operand, shape, output_types = output_types))
 }
 
-prim_concatenate[["stablehlo"]] <- function(..., dimension, output_types) {
-  list(hlo_concatenate(..., dimension = dimension - 1L, output_types = output_types))
+prim_concatenate[["stablehlo"]] <- function(..., axis, output_types) {
+  list(hlo_concatenate(..., dimension = axis - 1L, output_types = output_types))
 }
 
 prim_static_slice[["stablehlo"]] <- function(operand, start_indices, limit_indices, strides, output_types) {
@@ -106,80 +106,80 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(operand, update, ..., outpu
 }
 
 
-.stablehlo_apply_reduce <- function(reductor, operand, init, dims, drop) {
+.stablehlo_apply_reduce <- function(reductor, operand, init, axes, drop) {
   local_func("")
   dt <- as.character(operand$value_type$type$dtype)
   f <- hlo_return(reductor(
     hlo_input("x", dt),
     hlo_input("y", dt)
   ))
-  out <- hlo_reduce(list(operand), list(init(operand)), dims - 1L, f)
+  out <- hlo_reduce(list(operand), list(init(operand)), axes - 1L, f)
 
   if (drop) {
     return(list(out))
   }
 
   shape_out <- shape(operand$value_type)
-  shape_out[dims] <- 1L
+  shape_out[axes] <- 1L
   list(hlo_reshape(out, shape_out))
 }
 
-prim_reduce_sum[["stablehlo"]] <- function(operand, dims, drop) {
+prim_reduce_sum[["stablehlo"]] <- function(operand, axes, drop) {
   init <- function(operand) {
     hlo_scalar(0, dtype = dtype(operand), func = operand$func)
   }
-  .stablehlo_apply_reduce(hlo_add, operand, init, dims, drop)
+  .stablehlo_apply_reduce(hlo_add, operand, init, axes, drop)
 }
 
-prim_reduce_prod[["stablehlo"]] <- function(operand, dims, drop) {
+prim_reduce_prod[["stablehlo"]] <- function(operand, axes, drop) {
   init <- function(operand) {
     hlo_scalar(1, dtype = dtype(operand), func = operand$func)
   }
-  .stablehlo_apply_reduce(hlo_multiply, operand, init, dims, drop)
+  .stablehlo_apply_reduce(hlo_multiply, operand, init, axes, drop)
 }
 
 
-prim_reduce_max[["stablehlo"]] <- function(operand, dims, drop) {
+prim_reduce_max[["stablehlo"]] <- function(operand, axes, drop) {
   init <- function(operand) {
     # platform does not matter when we just embed the init value in stablehlo
     hlo_scalar(nv_minval(dtype(operand), "cpu"))
   }
-  .stablehlo_apply_reduce(hlo_maximum, operand, init, dims, drop)
+  .stablehlo_apply_reduce(hlo_maximum, operand, init, axes, drop)
 }
 
-prim_reduce_min[["stablehlo"]] <- function(operand, dims, drop) {
+prim_reduce_min[["stablehlo"]] <- function(operand, axes, drop) {
   init <- function(operand) {
     # platform does not matter when we just embed the init value in stablehlo
     hlo_scalar(nv_maxval(dtype(operand), "cpu"))
   }
-  .stablehlo_apply_reduce(hlo_minimum, operand, init, dims, drop)
+  .stablehlo_apply_reduce(hlo_minimum, operand, init, axes, drop)
 }
 
-prim_reduce_any[["stablehlo"]] <- function(operand, dims, drop) {
+prim_reduce_any[["stablehlo"]] <- function(operand, axes, drop) {
   init <- function(operand) {
     hlo_scalar(FALSE)
   }
-  .stablehlo_apply_reduce(hlo_or, operand, init, dims, drop)
+  .stablehlo_apply_reduce(hlo_or, operand, init, axes, drop)
 }
 
-prim_reduce_all[["stablehlo"]] <- function(operand, dims, drop) {
+prim_reduce_all[["stablehlo"]] <- function(operand, axes, drop) {
   init <- function(operand) {
     hlo_scalar(TRUE)
   }
-  .stablehlo_apply_reduce(hlo_and, operand, init, dims, drop)
+  .stablehlo_apply_reduce(hlo_and, operand, init, axes, drop)
 }
 
 # XLA compiler optimizes this according to JAX comment
 # (there apparently were differences between {C,G,T}PU backend, not no longer it seems)
-.stablehlo_apply_cum <- function(reductor, operand, init, dim) {
+.stablehlo_apply_cum <- function(reductor, operand, init, axis) {
   shp <- shape(operand)
   rank <- length(shp)
-  s_d <- shp[[dim]]
+  s_d <- shp[[axis]]
   window_dimensions <- rep(1L, rank)
-  window_dimensions[[dim]] <- s_d
+  window_dimensions[[axis]] <- s_d
   ones <- rep(1L, rank)
   padding <- matrix(0L, nrow = rank, ncol = 2L)
-  padding[dim, 1L] <- s_d - 1L
+  padding[axis, 1L] <- s_d - 1L
 
   local_func("")
   dt <- as.character(operand$value_type$type$dtype)
@@ -200,33 +200,33 @@ prim_reduce_all[["stablehlo"]] <- function(operand, dims, drop) {
   ))
 }
 
-prim_cumsum[["stablehlo"]] <- function(operand, dim) {
+prim_cumsum[["stablehlo"]] <- function(operand, axis) {
   init <- function(operand) {
     hlo_scalar(0, dtype = dtype(operand), func = operand$func)
   }
-  .stablehlo_apply_cum(hlo_add, operand, init, dim)
+  .stablehlo_apply_cum(hlo_add, operand, init, axis)
 }
 
-prim_cumprod[["stablehlo"]] <- function(operand, dim) {
+prim_cumprod[["stablehlo"]] <- function(operand, axis) {
   init <- function(operand) {
     hlo_scalar(1, dtype = dtype(operand), func = operand$func)
   }
-  .stablehlo_apply_cum(hlo_multiply, operand, init, dim)
+  .stablehlo_apply_cum(hlo_multiply, operand, init, axis)
 }
 
 # Here we also return the indices to simplify reverse rule
-.stablehlo_apply_cum_extreme <- function(operand, dim, is_max) {
+.stablehlo_apply_cum_extreme <- function(operand, axis, is_max) {
   shp <- shape(operand)
   rank <- length(shp)
-  s_d <- shp[[dim]]
+  s_d <- shp[[axis]]
   window_dimensions <- rep(1L, rank)
-  window_dimensions[[dim]] <- s_d
+  window_dimensions[[axis]] <- s_d
   ones <- rep(1L, rank)
   padding <- matrix(0L, nrow = rank, ncol = 2L)
-  padding[dim, 1L] <- s_d - 1L
+  padding[axis, 1L] <- s_d - 1L
 
   v_dtype <- as.character(operand$value_type$type$dtype)
-  iota <- hlo_iota(iota_dimension = dim - 1L, dtype = "i32", shape = shp)
+  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = "i32", shape = shp)
 
   init_v_fn <- if (is_max) nv_minval else nv_maxval
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
@@ -289,27 +289,27 @@ prim_cumprod[["stablehlo"]] <- function(operand, dim) {
   list(values, hlo_add(indices_0, one_bc))
 }
 
-prim_cummax[["stablehlo"]] <- function(operand, dim) {
-  .stablehlo_apply_cum_extreme(operand, dim, is_max = TRUE)
+prim_cummax[["stablehlo"]] <- function(operand, axis) {
+  .stablehlo_apply_cum_extreme(operand, axis, is_max = TRUE)
 }
 
-prim_cummin[["stablehlo"]] <- function(operand, dim) {
-  .stablehlo_apply_cum_extreme(operand, dim, is_max = FALSE)
+prim_cummin[["stablehlo"]] <- function(operand, axis) {
+  .stablehlo_apply_cum_extreme(operand, axis, is_max = FALSE)
 }
 
-prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph, .env) {
+prim_reduce[["stablehlo"]] <- function(operand, init, axes, drop, reductor_graph, .env) {
   red_func <- stablehlo(reductor_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
   out <- hlo_reduce(
     inputs = list(operand),
     init_values = list(init),
-    dimensions = dims - 1L,
+    dimensions = axes - 1L,
     body = red_func
   )
   if (drop) {
     return(list(out))
   }
   shape_out <- shape(operand$value_type)
-  shape_out[dims] <- 1L
+  shape_out[axes] <- 1L
   list(hlo_reshape(out, shape_out))
 }
 
@@ -318,10 +318,10 @@ prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph
   stablehlo(graph, id = "", constants_as_inputs = FALSE)[[1L]]
 }
 
-.stablehlo_arg_extreme <- function(operand, dim, drop, direction, init_v_fn) {
+.stablehlo_arg_extreme <- function(operand, axis, drop, direction, init_v_fn) {
   shp <- shape(operand$value_type)
   v_dtype <- operand$value_type$type$dtype
-  iota <- hlo_iota(iota_dimension = dim - 1L, dtype = "i32", shape = shp)
+  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = "i32", shape = shp)
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
   init_i <- hlo_scalar(0L, dtype = "i32", func = operand$func)
 
@@ -348,7 +348,7 @@ prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph
   out <- hlo_reduce(
     inputs = list(operand, iota),
     init_values = list(init_v, init_i),
-    dimensions = dim - 1L,
+    dimensions = axis - 1L,
     body = body
   )
   # convert to 1-based
@@ -360,16 +360,16 @@ prim_reduce[["stablehlo"]] <- function(operand, init, dims, drop, reductor_graph
     return(list(result))
   }
   shape_out <- shp
-  shape_out[dim] <- 1L
+  shape_out[axis] <- 1L
   list(hlo_reshape(result, shape_out))
 }
 
-prim_argmax[["stablehlo"]] <- function(operand, dim, drop) {
-  .stablehlo_arg_extreme(operand, dim, drop, direction = "GT", init_v_fn = nv_minval)
+prim_argmax[["stablehlo"]] <- function(operand, axis, drop) {
+  .stablehlo_arg_extreme(operand, axis, drop, direction = "GT", init_v_fn = nv_minval)
 }
 
-prim_argmin[["stablehlo"]] <- function(operand, dim, drop) {
-  .stablehlo_arg_extreme(operand, dim, drop, direction = "LT", init_v_fn = nv_maxval)
+prim_argmin[["stablehlo"]] <- function(operand, axis, drop) {
+  .stablehlo_arg_extreme(operand, axis, drop, direction = "LT", init_v_fn = nv_maxval)
 }
 
 # comparison jit rules ----------------------------------------------------------
@@ -592,12 +592,12 @@ prim_clamp[["stablehlo"]] <- function(min_val, operand, max_val, output_types) {
   list(hlo_clamp(min_val, operand, max_val, output_types = output_types))
 }
 
-prim_reverse[["stablehlo"]] <- function(operand, dims, output_types) {
-  list(hlo_reverse(operand, dims - 1L, output_types = output_types))
+prim_reverse[["stablehlo"]] <- function(operand, axes, output_types) {
+  list(hlo_reverse(operand, axes - 1L, output_types = output_types))
 }
 
-prim_iota[["stablehlo"]] <- function(dim, dtype, shape, start, ambiguous) {
-  out <- hlo_iota(iota_dimension = dim - 1L, dtype = dtype, shape = shape)
+prim_iota[["stablehlo"]] <- function(axis, dtype, shape, start, ambiguous) {
+  out <- hlo_iota(iota_dimension = axis - 1L, dtype = dtype, shape = shape)
   if (start != 0L) {
     offset <- hlo_broadcast_in_dim(
       hlo_scalar(start, dtype = dtype, func = out$func),
@@ -688,11 +688,11 @@ prim_while[["stablehlo"]] <- function(..., cond_graph, body_graph, .env) {
   hlo_while(..., cond = cond_func, body = body_func, simplify = FALSE)
 }
 
-prim_sort[["stablehlo"]] <- function(..., dim, descending, is_stable) {
+prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
   ops <- list(...)
   hlo_sort(
     ...,
-    dimension = dim - 1L,
+    dimension = axis - 1L,
     is_stable = is_stable,
     comparator = .build_sort_comparator(ops, descending)
   )
@@ -764,12 +764,12 @@ prim_scatter[["stablehlo"]] <- function(
   input,
   scatter_indices,
   update,
-  update_window_dims,
-  inserted_window_dims,
-  input_batching_dims,
-  scatter_indices_batching_dims,
-  scatter_dims_to_operand_dims,
-  index_vector_dim,
+  update_window_axes,
+  inserted_window_axes,
+  input_batching_axes,
+  scatter_indices_batching_axes,
+  scatter_axes_to_operand_axes,
+  index_vector_axis,
   indices_are_sorted,
   unique_indices,
   update_computation_graph,
@@ -778,12 +778,12 @@ prim_scatter[["stablehlo"]] <- function(
   update_func <- stablehlo(update_computation_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
 
   scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
-    update_window_dims = update_window_dims - 1L,
-    inserted_window_dims = inserted_window_dims - 1L,
-    input_batching_dims = input_batching_dims - 1L,
-    scatter_indices_batching_dims = scatter_indices_batching_dims - 1L,
-    scatter_dims_to_operand_dims = scatter_dims_to_operand_dims - 1L,
-    index_vector_dim = index_vector_dim - 1L
+    update_window_dims = update_window_axes - 1L,
+    inserted_window_dims = inserted_window_axes - 1L,
+    input_batching_dims = input_batching_axes - 1L,
+    scatter_indices_batching_dims = scatter_indices_batching_axes - 1L,
+    scatter_dims_to_operand_dims = scatter_axes_to_operand_axes - 1L,
+    index_vector_dim = index_vector_axis - 1L
   )
 
   one <- hlo_tensor(1L, shape = shape(scatter_indices), dtype = dtype(scatter_indices))
@@ -806,23 +806,23 @@ prim_gather[["stablehlo"]] <- function(
   operand,
   start_indices,
   slice_sizes,
-  offset_dims,
-  collapsed_slice_dims,
-  operand_batching_dims,
-  start_indices_batching_dims,
+  offset_axes,
+  collapsed_slice_axes,
+  operand_batching_axes,
+  start_indices_batching_axes,
   start_index_map,
-  index_vector_dim,
+  index_vector_axis,
   indices_are_sorted,
   unique_indices
 ) {
-  # Convert 1-based dimension numbers to 0-based for stablehlo
+  # Convert 1-based axis numbers to 0-based for stablehlo
   gdn_0based <- stablehlo::GatherDimensionNumbers(
-    offset_dims = offset_dims - 1L,
-    collapsed_slice_dims = collapsed_slice_dims - 1L,
-    operand_batching_dims = operand_batching_dims - 1L,
-    start_indices_batching_dims = start_indices_batching_dims - 1L,
+    offset_dims = offset_axes - 1L,
+    collapsed_slice_dims = collapsed_slice_axes - 1L,
+    operand_batching_dims = operand_batching_axes - 1L,
+    start_indices_batching_dims = start_indices_batching_axes - 1L,
     start_index_map = start_index_map - 1L,
-    index_vector_dim = index_vector_dim - 1L
+    index_vector_dim = index_vector_axis - 1L
   )
 
   one <- hlo_tensor(1L, dtype = dtype(start_indices), shape = shape(start_indices))
@@ -1108,15 +1108,15 @@ prim_eigh[["stablehlo"]] <- function(operand) {
 prim_convolution[["stablehlo"]] <- function(
   lhs,
   rhs,
-  input_batch_dimension,
-  input_feature_dimension,
-  input_spatial_dimensions,
-  kernel_input_feature_dimension,
-  kernel_output_feature_dimension,
-  kernel_spatial_dimensions,
-  output_batch_dimension,
-  output_feature_dimension,
-  output_spatial_dimensions,
+  input_batch_axis,
+  input_feature_axis,
+  input_spatial_axes,
+  kernel_input_feature_axis,
+  kernel_output_feature_axis,
+  kernel_spatial_axes,
+  output_batch_axis,
+  output_feature_axis,
+  output_spatial_axes,
   window_strides,
   padding,
   lhs_dilation,
@@ -1126,15 +1126,15 @@ prim_convolution[["stablehlo"]] <- function(
   precision
 ) {
   shlo_dn <- stablehlo::ConvDimensionNumbers(
-    input_batch_dimension = input_batch_dimension - 1L,
-    input_feature_dimension = input_feature_dimension - 1L,
-    input_spatial_dimensions = input_spatial_dimensions - 1L,
-    kernel_input_feature_dimension = kernel_input_feature_dimension - 1L,
-    kernel_output_feature_dimension = kernel_output_feature_dimension - 1L,
-    kernel_spatial_dimensions = kernel_spatial_dimensions - 1L,
-    output_batch_dimension = output_batch_dimension - 1L,
-    output_feature_dimension = output_feature_dimension - 1L,
-    output_spatial_dimensions = output_spatial_dimensions - 1L
+    input_batch_dimension = input_batch_axis - 1L,
+    input_feature_dimension = input_feature_axis - 1L,
+    input_spatial_dimensions = input_spatial_axes - 1L,
+    kernel_input_feature_dimension = kernel_input_feature_axis - 1L,
+    kernel_output_feature_dimension = kernel_output_feature_axis - 1L,
+    kernel_spatial_dimensions = kernel_spatial_axes - 1L,
+    output_batch_dimension = output_batch_axis - 1L,
+    output_feature_dimension = output_feature_axis - 1L,
+    output_spatial_dimensions = output_spatial_axes - 1L
   )
   list(hlo_convolution(
     lhs,

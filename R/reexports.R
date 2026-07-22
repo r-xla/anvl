@@ -44,7 +44,7 @@ tengen::device
 #'
 #' @description
 #' Transfers array data to R and returns it as an R [`array`].
-#' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 dimensions.
+#' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 axes.
 #'
 #' @details
 #' This is implemented via the generic [`tengen::as_array()`].
@@ -57,7 +57,7 @@ tengen::device
 #' x <- nv_array(1:4, dtype = "f32")
 #' as_array(x)
 #' y <- nv_scalar(1L)
-#' # R arrays can't have 0 dimensions:
+#' # R arrays can't have 0 axes:
 #' as_array(y)
 #' @name as_array
 NULL
@@ -114,25 +114,46 @@ NULL
 #' @export
 tengen::dtype
 
-#' @title Get the number of dimensions of an array
+#' @title Get the number of axes of an array
 #'
-#' @description Returns the number of dimensions (sometimes also refered to as rank) of an array.
+#' @description Returns the number of axes (sometimes also refered to as rank) of an array.
 #' Equivalent to `length(shape(x))`.
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @returns `integer(1)`
-#' @seealso [tengen::ndims()]
-#' @name ndims
+#' @seealso [tengen::naxes()]
+#' @name naxes
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
-#' ndims(x)
+#' naxes(x)
 NULL
 
-#' @rdname ndims
-#' @importFrom tengen ndims
+#' @rdname naxes
+#' @importFrom tengen naxes
 #' @export
-tengen::ndims
+tengen::naxes
+
+#' @title Get the axes of an array
+#'
+#' @description Returns the axis indices of an array, i.e. `seq_len(naxes(x))`.
+#' For a `20x5x3` array, the axes are `1`, `2` and `3`, while its dimensions
+#' are `20`, `5` and `3`.
+#'
+#' @param x ([`arrayish`])\cr
+#'   An array-like object.
+#' @returns `integer()`
+#' @seealso [tengen::axes()], [naxes()]
+#' @name axes
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(array(1:24, dim = c(2, 3, 4)), dtype = "f32")
+#' axes(x)
+NULL
+
+#' @rdname axes
+#' @importFrom tengen axes
+#' @export
+tengen::axes
 
 #' @title Check if an object is a DataType
 #'
@@ -177,9 +198,9 @@ tengen::as_dtype
 
 #' @title Create a Shape object
 #'
-#' @description Constructs a `Shape` representing array dimensions.
+#' @description Constructs a `Shape` representing array axes.
 #'
-#' @param dims An `integer()` vector of dimension sizes (>= 0).
+#' @param axes An `integer()` vector of axis sizes (>= 0).
 #' @returns A `Shape` object.
 #' @seealso [shape()], [stablehlo::Shape()]
 #' @name Shape

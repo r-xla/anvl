@@ -12,8 +12,8 @@ Arrayish value of any data type.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Target data type. If it has the same bit width as the input, the output
-shape is unchanged. If narrower, an extra trailing dimension is added.
-If wider, the last dimension is consumed.}
+shape is unchanged. If narrower, an extra trailing axis is added.
+If wider, the last axis is consumed.}
 }
 \value{
 \code{\link{arrayish}}\cr
