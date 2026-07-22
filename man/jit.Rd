@@ -23,17 +23,11 @@ Names or positions of parameters of \code{f} that are \emph{not} arrays. Static 
 embedded as constants in the compiled program; a new compilation is triggered whenever
 a static value changes. For example useful when you want R control flow in your function.
 
-A static value is part of the compilation cache key and later calls are compared
-against it with \code{\link[=identical]{identical()}}, so it must not have reference semantics: an
-environment (and therefore also an R6 or reference class object) or an external
-pointer is rejected the first time it is traced, as is one nested inside a static
-list. Such a value can be mutated in place while the cache key stays equal, which
-would silently reuse a program compiled from its old contents. Pass it as a regular
-argument instead, or extract the plain values you need from it.
-
-Functions are allowed: a static function is keyed on its formals, body and
-environment, and passing a callback is the point of a static argument in the first
-place. Device objects are allowed too -- they are immutable, interned handles.}
+Note that the values that are passed to static arguments must not have reference semantics.
+Such a value can be mutated in place while the cache key stays equal, which
+would silently reuse a program compiled from its old contents.
+One exception are closures, but there you need to ensure that their
+enclosing environment does not change in a way that modifies their behavior.}
 
 \item{cache_size}{(\code{integer(1)})\cr
 Maximum number of compiled executables to keep in the LRU cache.}
