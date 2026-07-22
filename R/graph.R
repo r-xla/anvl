@@ -643,6 +643,8 @@ trace_fn <- function(
           if (inherits(e, "ErrorStablehlo")) {
             e <- stablehlo::to_one_based(e)
           }
+          # anvl users work with arrays, not with stableHLO tensors
+          e <- stablehlo::to_array_terminology(e)
         }
         rlang::cnd_signal(e)
       }
