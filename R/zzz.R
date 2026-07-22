@@ -24,7 +24,7 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   # The set of active backends is fixed here, once, so that a backend cannot
   # appear or disappear underneath already-jitted functions. Changing
   # `anvl.backends` afterwards has no effect.
-  activate_backends(getOption("anvl.backends", "pjrt"))
+  activate_backends(getOption("anvl.backends", c("pjrt", "quickr")))
 
   # fmt: skip
   globals$ranges_raw <- list(
