@@ -3,13 +3,16 @@ NULL
 
 # Build the native-dispatch compile callback for a jitted function. Invoked by
 # pjrt's dispatcher only on a cache miss, and only for inputs the dispatcher has
-# already validated -- so this traces, lowers, and compiles, and does no
-# checking or classification of its own. `info` carries the tree, the flat
-# leaves, the static mask, and the avals the cache key was built from.
+# already validated -- so this traces, lowers, and compiles, and classifies
+# nothing itself. The one check it does make is check_static_args(): a cache
+# miss is where a static value is first used, and pjrt cannot know which values
+# anvl considers sound to key on. `info` carries the tree, the flat leaves, the
+# static mask, and the avals the cache key was built from.
 # `device` is the jit's device policy: NULL (infer), a concrete device, or a
 # device_arg() whose value is read from the static args.
-jit_xla_compile_cb <- function(f, donate, device = NULL) {
+jit_xla_compile_cb <- function(f, static, donate, device = NULL) {
   function(info) {
+    check_static_args(info$args, static)
     compile_device <- if (is_device_arg(device)) {
       info$args[[device$argname]]
     } else {
@@ -51,7 +54,7 @@ jit_xla_impl <- function(f, static, cache_size, donate, device) {
   # device is the call's device.
   dispatcher <- pjrt::dispatcher(
     cache_size,
-    jit_xla_compile_cb(f, donate, device),
+    jit_xla_compile_cb(f, static, donate, device),
     static = static,
     move_inputs = !is.null(device),
     # Consulted only when a call has no array input to name a device. It reads

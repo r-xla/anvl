@@ -66,6 +66,18 @@
   `` `x` must have dtype FloatType ``.
 
 
+* `jit()` now rejects static arguments with reference semantics -- an
+  environment (and therefore also an R6 or reference class object) or an
+  external pointer, including one nested inside a static list (#17).
+  Such a value can be mutated in place while the compilation cache key stays
+  equal, which silently reused a program compiled from its old contents.
+  Functions and device objects remain valid static values.
+* Errors raised while tracing now speak of arrays instead of tensors (#298).
+  Previously, messages that originated in the `stablehlo` package used the
+  StableHLO spec's terminology, e.g. `` `lhs` and `rhs` must have the same
+  tensor type. x Got tensor<4xi32> and tensor<4xf32>. ``
+
+
 # anvl 0.3.0
 
 ## Breaking Changes
