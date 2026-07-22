@@ -206,8 +206,14 @@ is_valid_r <- function(x) {
 }
 
 cache_size <- function(f) {
-  # All jit paths cache in pjrt's native dispatcher.
-  dispatcher <- environment(f)$dispatcher
+  env <- environment(f)
+  # A `backend = "auto"` wrapper holds one jitted function per backend it has
+  # been called with, so its cache size is their total.
+  if (identical(attr(f, "backend"), "auto")) {
+    return(sum(vapply(env$jit_fns, cache_size, integer(1L))))
+  }
+  # Every concrete backend caches in pjrt's native dispatcher.
+  dispatcher <- env$dispatcher
   if (is.null(dispatcher)) {
     cli_abort("{.arg f} has no dispatcher; is it a jitted function?")
   }
@@ -309,22 +315,20 @@ is_device_arg <- function(x) {
   inherits(x, "AnvlDeviceArg")
 }
 
-# returns list(device | NULL, backend)
+# Pair a jit() call's `device` and `backend` arguments up into a concrete
+# backend and the device to compile for. `jit()` peels off `backend = "auto"`
+# beforehand, so `backend` here is either a concrete backend or NULL.
+# Returns list(device | NULL, backend).
 resolve_device <- function(device, backend) {
   if (is.character(device)) {
     backend <- backend %||% default_backend()
-    device <- if (backend == "auto") {
-      nv_device(device, default_backend())
-    } else {
-      nv_device(device, backend)
-    }
-    return(list(device, backend))
+    return(list(nv_device(device, backend), backend))
   }
   if (is.null(device)) {
     return(list(NULL, backend %||% default_backend()))
   }
   # concrete device
-  if (is.null(backend) || (backend == "auto")) {
+  if (is.null(backend)) {
     return(list(device, backend(device)))
   }
   if (backend(device) != backend) {

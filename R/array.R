@@ -164,7 +164,7 @@ nv_array <- function(
   if (is.null(backend) && is_device(device)) {
     backend <- backend(device)
   }
-  backend <- resolve_eager_backend(backend %||% default_backend())
+  backend <- backend %||% default_backend()
   assert_backend(backend)
   globals$backends[[backend]]$new_data(data, dtype, shape, device, ambiguous)
 }
@@ -380,7 +380,7 @@ nv_empty <- function(dtype, shape, device = NULL, ambiguous = FALSE, backend = N
   if (is.null(backend) && is_device(device)) {
     backend <- backend(device)
   }
-  backend <- resolve_eager_backend(backend %||% default_backend())
+  backend <- backend %||% default_backend()
   assert_backend(backend)
   globals$backends[[backend]]$new_empty(
     dtype = dtype,

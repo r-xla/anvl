@@ -63,10 +63,10 @@ describe("resolve_backends", {
     expect_equal(resolve_backends("quickr"), list(active = "quickr", default = "quickr"))
   })
 
-  it("uses the 'auto' backend as the default when several are active", {
+  it("uses the first active backend as the default when several are active", {
     expect_equal(
-      resolve_backends(c("pjrt", "quickr")),
-      list(active = c("pjrt", "quickr"), default = "auto")
+      resolve_backends(c("quickr", "pjrt")),
+      list(active = c("quickr", "pjrt"), default = "quickr")
     )
   })
 
@@ -126,4 +126,44 @@ describe("inactive backends", {
 test_that("the quickr backend is active in the test suite", {
   skip_if_no_quickr()
   expect_setequal(globals$active_backends, c("pjrt", "quickr"))
+})
+
+describe("the default backend is always concrete", {
+  it("is the first active backend, not 'auto'", {
+    skip_if_no_quickr()
+    expect_equal(globals$active_backends[[1L]], "pjrt")
+    expect_equal(default_backend(), "pjrt")
+    expect_equal(backend(nv_array(1)), "pjrt")
+  })
+
+  it("'auto' is rejected as a default backend", {
+    expect_error(local_backend("auto"), "not a backend")
+    expect_error(with_backend("auto", 1), "backend = \"auto\"")
+    expect_error(nv_array(1, backend = "auto"), "not a backend")
+  })
+})
+
+describe("jit() with backend = NULL", {
+  it("infers the backend per call while several backends are active", {
+    skip_if_no_quickr()
+    f <- jit(identity)
+    expect_equal(backend(f), "auto")
+    expect_equal(backend(f(nv_array(1, backend = "quickr"))), "quickr")
+    expect_equal(backend(f(nv_array(1, backend = "pjrt"))), "pjrt")
+  })
+
+  it("falls back to the default backend when no input names one", {
+    skip_if_no_quickr()
+    expect_equal(backend(jit(identity)(1)), "pjrt")
+    local_backend("quickr")
+    expect_equal(backend(jit(identity)(1)), "quickr")
+  })
+
+  it("pins the only active backend when just one is active", {
+    old <- globals$active_backends
+    withr::defer(activate_backends(old))
+    activate_backends("pjrt")
+    f <- jit(identity)
+    expect_equal(backend(f), "pjrt")
+  })
 })

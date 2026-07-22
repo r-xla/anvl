@@ -168,7 +168,6 @@ nv_unserialize <- function(con, device = NULL, backend = default_backend()) {
     NULL
   }
 
-  backend <- resolve_eager_backend(backend)
   assert_backend(backend)
   result_wrapped <- lapply(names(result), function(name) {
     buf <- result[[name]]

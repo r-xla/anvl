@@ -34,8 +34,10 @@
   over all dimensions and returns a scalar, consistent with the other
   reductions.
 * Supports 1-3d convolutions.
-* Ne optinon: Only the backends listed in the new `anvl.backends` option are active.
-  This is read once when the package is loaded.
+* New option `anvl.backends`: only the backends listed in it are active.
+  This is read once when the package is loaded. Its first entry is the initial
+  `default_backend()`, and while more than one backend is active `jit()` picks
+  the backend per call (as with `backend = "auto"`) unless one is named.
 
 ## Performance
 

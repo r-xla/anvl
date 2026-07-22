@@ -1,14 +1,13 @@
 old_opts <- options(
   warnPartialMatchArgs = TRUE,
   warnPartialMatchAttr = TRUE,
-  warnPartialMatchDollar = TRUE,
-  anvl.default_backend = "pjrt"
+  warnPartialMatchDollar = TRUE
 )
 
-# The `anvl.backends` option is read when the namespace loads, which has
-# already happened by the time this file runs, so the quickr backend the test
-# suite exercises is activated directly. `anvl.default_backend` above keeps the
-# runtime default at "pjrt" (activating two backends makes it "auto").
+# The `anvl.backends` option is read when the namespace loads, which has already
+# happened by the time this file runs, so the backends the test suite exercises
+# are activated directly -- independently of what the developer has in their
+# `.Rprofile`. "pjrt" comes first and is therefore the default backend.
 activate_backends(c("pjrt", if (requireNamespace("quickr", quietly = TRUE)) "quickr"))
 
 # so we can test multiple devices.

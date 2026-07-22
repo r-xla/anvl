@@ -35,7 +35,9 @@ Maximum number of compiled executables to keep in the LRU cache.}
 \item{backend}{(\code{NULL} |  \code{character(1)})\cr
 Compilation backend (e.g. \code{"pjrt"}, \code{"quickr"}).
 The special value \code{"auto"} defers backend selection to call-time.
-\code{NULL} (default) respects \code{device} and otherwise falls back to \code{\link[=default_backend]{default_backend()}}.}
+\code{NULL} (default) takes the backend from \code{device} when that names one, uses
+the only active backend when just one is active (see \code{\link{anvl-package}}), and
+otherwise behaves like \code{"auto"}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}} | \code{device_arg()})\cr
 Target device. When a concrete device is specified, all arrays

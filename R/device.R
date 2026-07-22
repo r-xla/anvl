@@ -10,7 +10,7 @@
 #' @seealso [`nv_device()`], [`default_backend()`]
 #' @export
 default_device <- function(backend = NULL) {
-  backend <- resolve_eager_backend(backend %||% default_backend())
+  backend <- backend %||% default_backend()
   platform <- if (backend == "pjrt") Sys.getenv("PJRT_PLATFORM", "cpu") else "cpu"
   nv_device(platform, backend)
 }
@@ -49,7 +49,7 @@ nv_device <- function(x, backend = NULL) {
     }
     return(x)
   }
-  backend <- resolve_eager_backend(backend %||% default_backend())
+  backend <- backend %||% default_backend()
   assert_backend(backend)
   globals$backends[[backend]]$new_device(x)
 }

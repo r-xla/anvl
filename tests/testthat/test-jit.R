@@ -286,10 +286,11 @@ test_that("hash for cache depends on in_tree (#122)", {
 })
 
 describe("jit: device and backend handling", {
+  # With several backends active, `backend = NULL` defers the choice to the
+  # call; a call with nothing to infer from falls back to default_backend().
   it("backend = NULL, device = NULL uses default_backend()", {
     local_backend("pjrt")
     f <- jit(identity)
-    expect_equal(backend(f), "pjrt")
     expect_equal(backend(f(1)), "pjrt")
   })
 
@@ -297,7 +298,6 @@ describe("jit: device and backend handling", {
     skip_if_no_quickr()
     local_backend("quickr")
     f <- jit(identity)
-    expect_equal(backend(f), "quickr")
     expect_equal(backend(f(1)), "quickr")
   })
 

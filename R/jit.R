@@ -26,7 +26,9 @@
 #' @param backend (`NULL` |  `character(1)`)\cr
 #'   Compilation backend (e.g. `"pjrt"`, `"quickr"`).
 #'   The special value `"auto"` defers backend selection to call-time.
-#'   `NULL` (default) respects `device` and otherwise falls back to [`default_backend()`].
+#'   `NULL` (default) takes the backend from `device` when that names one, uses
+#'   the only active backend when just one is active (see [`anvl-package`]), and
+#'   otherwise behaves like `"auto"`.
 #' @param device (`NULL` | `character(1)` | [`nv_device`] | `device_arg()`)\cr
 #'   Target device. When a concrete device is specified, all arrays
 #'   are moved to it.
@@ -130,11 +132,11 @@ jit <- function(
       i = "Just use a static argument for the device selection"
     ))
   }
-  # `backend = NULL` means "infer": a concrete device names its own backend,
-  # otherwise the default applies -- which is `"auto"` when several backends
-  # are active.
-  if (is.null(backend) && !is_device(device)) {
-    backend <- default_backend()
+  # `backend = NULL` means "infer". Naming a device pins the backend and a
+  # single active backend leaves no choice; only with several active backends
+  # and no device is there something to infer, and then it happens per call.
+  if (is.null(backend) && is.null(device) && length(globals$active_backends) > 1L) {
+    backend <- "auto"
   }
   if (identical(backend, "auto")) {
     if (is_device(device)) {
@@ -244,7 +246,7 @@ jit_auto <- function(f, static, cache_size, device = NULL, device_argname = NULL
     args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
     be <- if (!is.null(device_argname) && !is.null(args[[device_argname]])) {
       dev_val <- args[[device_argname]]
-      if (is.character(dev_val)) resolve_eager_backend(default_backend()) else backend(dev_val)
+      if (is.character(dev_val)) default_backend() else backend(dev_val)
     } else {
       jit_auto_detect_backend(args, static)
     }
@@ -317,7 +319,7 @@ jit_auto_detect_backend <- function(args, static = character()) {
       if (!(nm[[i]] %in% static)) scan(args[[i]])
     }
   }
-  if (is.na(found)) resolve_eager_backend(default_backend()) else found
+  if (is.na(found)) default_backend() else found
 }
 
 

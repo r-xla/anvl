@@ -89,9 +89,9 @@ resolve_backends <- function(backends) {
   }
   list(
     active = backends,
-    # With more than one active backend there is no single sensible default, so
-    # the backend is picked from the call's inputs instead.
-    default = if (length(backends) > 1L) "auto" else backends
+    # The default backend is where an array goes when nothing else names one,
+    # so it is always a concrete backend.
+    default = backends[[1L]]
   )
 }
 
@@ -227,33 +227,31 @@ AnvlBackendPlain <- function() {
 
 #' Get the default backend
 #'
-#' Returns the current default backend, i.e. the value of the
-#' `anvl.default_backend` option. Its initial value is derived from the active
-#' backends (see [`anvl-package`]): the single active backend, or `"auto"` when
-#' several backends are active.
+#' Returns the backend that is used when nothing else names one, i.e. the value
+#' of the `anvl.default_backend` option. It is always a concrete backend; the
+#' option defaults to the first of the active backends (see [`anvl-package`]).
 #'
-#' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`, `"auto"`).
+#' @return `character(1)` — the backend name, e.g. `"pjrt"` or `"quickr"`.
 #' @seealso [local_backend()], [`with_backend()`]
 #' @export
 default_backend <- function() {
   getOption("anvl.default_backend", globals$default_backend)
 }
 
-# `"auto"` defers the backend choice to the call's inputs. A constructor that
-# has neither an array nor a device to infer from falls back to the first
-# active backend.
-resolve_eager_backend <- function(backend) {
-  if (identical(backend, "auto")) globals$active_backends[[1L]] else backend
-}
-
 # Ensure `backend` is one anvl can actually use, with a hint pointing at
 # `anvl.backends` when it is a known but inactive backend.
-assert_backend <- function(backend, auto = FALSE) {
+assert_backend <- function(backend) {
   assert_string(backend)
   # `names(globals$backends)` is the active backends plus the internal "plain"
   # one, which constructors accept for trace-time constants.
-  if (backend %in% c(names(globals$backends), if (auto) "auto")) {
+  if (backend %in% names(globals$backends)) {
     return(invisible(backend))
+  }
+  if (identical(backend, "auto")) {
+    cli_abort(c(
+      "{.val auto} is not a backend, but a {.fn jit} backend policy.",
+      i = "Pass {.code backend = \"auto\"} to {.fn jit} to pick the backend per call."
+    ))
   }
   if (backend %in% names(backend_constructors())) {
     hint <- deparse1(union(globals$active_backends, backend))
@@ -275,13 +273,12 @@ assert_backend <- function(backend, auto = FALSE) {
 #' calling scope. This affects `nv_array()`, `nv_scalar()`, and `jit()`.
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use; one of the active backends (see [`anvl-package`]) or
-#'   `"auto"`.
+#'   Backend to use; one of the active backends (see [`anvl-package`]).
 #' @param envir The environment to scope the change to.
 #' @return The previous value of the option (invisibly).
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
-  assert_backend(backend, auto = TRUE)
+  assert_backend(backend)
   withr::local_options(anvl.default_backend = backend, .local_envir = envir)
 }
 
@@ -291,12 +288,11 @@ local_backend <- function(backend, envir = parent.frame()) {
 #' expression. This affects [`jit()`] and data construction (e.g. via [`nv_array`]).
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use; one of the active backends (see [`anvl-package`]) or
-#'   `"auto"`.
+#'   Backend to use; one of the active backends (see [`anvl-package`]).
 #' @param code An expression to evaluate with the given backend.
 #' @return The result of evaluating `code`.
 #' @export
 with_backend <- function(backend, code) {
-  assert_backend(backend, auto = TRUE)
+  assert_backend(backend)
   withr::with_options(list(anvl.default_backend = backend), code)
 }

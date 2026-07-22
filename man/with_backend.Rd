@@ -8,8 +8,7 @@ with_backend(backend, code)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to use; one of the active backends (see \code{\link{anvl-package}}) or
-\code{"auto"}.}
+Backend to use; one of the active backends (see \code{\link{anvl-package}}).}
 
 \item{code}{An expression to evaluate with the given backend.}
 }

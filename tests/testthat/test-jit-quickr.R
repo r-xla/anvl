@@ -48,7 +48,7 @@ test_that("jit: quickr backend does not support donate", {
   skip_if_no_quickr()
   local_backend("quickr")
   expect_error(
-    jit(function(x) x, donate = "x"),
+    jit(function(x) x, backend = "quickr", donate = "x"),
     "donate",
     fixed = TRUE
   )

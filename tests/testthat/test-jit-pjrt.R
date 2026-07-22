@@ -7,12 +7,18 @@ test_that("error message when using different platforms", {
   expect_error(f(x, y), "lives on a different device")
 })
 
+# `donate` is a pjrt-specific option, so name the backend: with `backend = NULL`
+# and several backends active the choice -- and the validation -- is deferred to
+# the first call.
 test_that("donate: must be formal args of f", {
-  expect_error(jit(function(x) x, donate = "y"), "subset of")
+  expect_error(jit(function(x) x, backend = "pjrt", donate = "y"), "subset of")
 })
 
 test_that("donate: cannot also be static", {
-  expect_error(jit(function(x, y) x, donate = "x", static = "x"), "donate.*static")
+  expect_error(
+    jit(function(x, y) x, backend = "pjrt", donate = "x", static = "x"),
+    "donate.*static"
+  )
 })
 
 test_that("donate: no aliasing with type mismatch", {
