@@ -191,6 +191,21 @@ test_that("error handling", {
   )
 })
 
+test_that("error handling: stablehlo errors speak of arrays, not tensors", {
+  # `cli_abort()` errors from stablehlo (message lives in the condition fields)
+  expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))))
+  err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))), error = identity)
+  expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
+
+  # `ErrorStablehlo` conditions (message is generated lazily) keep their class
+  # and their 1-based indices
+  err <- tryCatch(
+    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = c(2, 2)),
+    error = identity
+  )
+  expect_s3_class(err, "ErrorPermuteIndex")
+})
+
 test_that("can print GraphLiteral if it holds scalar array", {
   expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer(), ambiguous = TRUE)))
 })

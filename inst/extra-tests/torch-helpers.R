@@ -66,7 +66,8 @@ expect_jit_torch_unary <- function(
   dtype = "f32",
   args_list = list(),
   gen = NULL,
-  non_negative = FALSE
+  non_negative = FALSE,
+  tolerance = 1e-6
 ) {
   if (is.null(gen)) {
     vals <- generate_test_data(if (length(shp)) shp else integer(0), dtype = dtype, non_negative = non_negative)
@@ -81,7 +82,7 @@ expect_jit_torch_unary <- function(
   out_nv <- do.call(f, c(list(x_nv), args_list))
   out_th <- do.call(torch_fun, c(list(x_th), args_list))
 
-  testthat::expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = 1e-6)
+  testthat::expect_equal(as_array(out_nv), as_array_torch(out_th), tolerance = tolerance)
 }
 
 expect_jit_torch_binary <- function(
