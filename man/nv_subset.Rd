@@ -14,7 +14,17 @@ nv_subset(operand, ...)
 Same as \code{operand}; this is the name used by the base R S3 generic.}
 
 \item{...}{Subset specifications, one per dimension. Omitted trailing
-dimensions select all elements. See \code{vignette("subsetting")} for details.}
+dimensions select all elements.
+
+A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
+arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
+positions. A mask for one dimension must have as many elements as that
+dimension. A mask that is the only subscript and has the same shape as
+\code{operand} selects across the whole array, yielding a 1-D result. Masks
+whose values come from an array only work in eager mode, because the number
+of selected elements determines the output shape.
+
+See \code{vignette("subsetting")} for details.}
 
 \item{operand}{(\code{\link{arrayish}})\cr
 Operand.}
@@ -25,8 +35,8 @@ Operand.}
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.
 Supports R-style indexing including scalar indices (which drop dimensions),
-ranges (\code{a:b}), and \code{array(c(...))} for selecting multiple elements along a
-dimension.
+ranges (\code{a:b}), \code{array(c(...))} for selecting multiple elements along a
+dimension, and boolean masks.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -37,6 +47,12 @@ x[2, ]
 
 # Select rows 1 to 2, all columns
 x[1:2, ]
+
+# Select rows 1 and 3 with a mask
+x[arr(TRUE, FALSE, TRUE), ]
+
+# Select all elements greater than 6 (eager mode only)
+x[x > 6]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
