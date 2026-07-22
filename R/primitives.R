@@ -322,6 +322,7 @@ prim_dot_general <- new_primitive(
 #' @param permutation (`integer()`)\cr
 #'   Specifies the new ordering of dimensions. Must be a permutation of
 #'   `seq_len(ndims)` where `ndims` is the number of dimensions of `operand`.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape `nv_shape(operand)[permutation]`.
 #'   It is ambiguous if the input is ambiguous.
@@ -337,6 +338,7 @@ prim_dot_general <- new_primitive(
 prim_transpose <- new_primitive(
   "transpose",
   function(operand, permutation) {
+    permutation <- resolve_dims(permutation, ndims_abstract(operand), unique = TRUE)
     infer_fn <- function(operand, permutation) {
       perm_attr <- r_to_constant(
         as.integer(permutation - 1L),
@@ -365,6 +367,8 @@ prim_transpose <- new_primitive(
 #' @template param_prim_operand_any
 #' @param shape (`integer()`)\cr
 #'   Target shape. Must have the same number of elements as `operand`.
+#'   At most one entry may be `-1`, in which case its extent is inferred from
+#'   the remaining entries and the number of elements of `operand`.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and the given `shape`.
 #'   It is ambiguous if the input is ambiguous.
@@ -380,6 +384,7 @@ prim_transpose <- new_primitive(
 prim_reshape <- new_primitive(
   "reshape",
   function(operand, shape) {
+    shape <- resolve_reshape_shape(shape, prod(shape_abstract(operand)), arg = "shape")
     infer_fn <- function(operand, shape) {
       out <- stablehlo::infer_types_reshape(at2vt(operand), shape = shape)[[1L]]
       out <- vt2at(out)
@@ -403,7 +408,8 @@ prim_reshape <- new_primitive(
 #'   Arrays to concatenate. Must all have the same data type, ndims,
 #'   and shape except along `dimension`.
 #' @param dimension (`integer(1)`)\cr
-#'   Dimension along which to concatenate (1-indexed).
+#'   Dimension along which to concatenate.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the inputs.
 #'   The output shape matches the inputs in all dimensions except `dimension`,
@@ -423,6 +429,10 @@ prim_concatenate <- new_primitive(
   "concatenate",
   function(..., dimension) {
     dots <- list(...)
+    if (!length(dots)) {
+      cli_abort("{.fn prim_concatenate} needs at least one operand.")
+    }
+    dimension <- resolve_dim(dimension, ndims_abstract(dots[[1L]]))
     infer_fn <- function(..., dimension) {
       operands <- list(...)
       all_ambiguous <- all(vapply(operands, \(x) x$ambiguous, logical(1L)))
@@ -652,6 +662,7 @@ prim_dynamic_update_slice <- new_primitive(
 make_reduce_op <- function(infer_fn = infer_reduce) {
   force(infer_fn)
   function(operand, dims, drop = TRUE) {
+    dims <- resolve_dims(dims, ndims_abstract(operand), unique = TRUE)
     graph_desc_add(
       self,
       list(operand = operand),
@@ -667,6 +678,7 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @template param_prim_operand_any
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   Whether to drop the reduced dimensions from the output shape.
 #'   If `TRUE`, the reduced dimensions are removed.
@@ -689,6 +701,7 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @template param_prim_operand_any
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   Whether to drop the reduced dimensions from the output shape.
 #'   If `TRUE`, the reduced dimensions are removed.
@@ -711,6 +724,7 @@ prim_reduce_prod <- new_primitive("reduce_prod", make_reduce_op(), static = 2:3)
 #' @template param_prim_operand_any
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   Whether to drop the reduced dimensions from the output shape.
 #'   If `TRUE`, the reduced dimensions are removed.
@@ -733,6 +747,7 @@ prim_reduce_max <- new_primitive("reduce_max", make_reduce_op(), static = 2:3)
 #' @template param_prim_operand_any
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   Whether to drop the reduced dimensions from the output shape.
 #'   If `TRUE`, the reduced dimensions are removed.
@@ -755,6 +770,7 @@ prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 #' @template param_prim_operand_boolean
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   Whether to drop the reduced dimensions from the output shape.
 #'   If `TRUE`, the reduced dimensions are removed.
@@ -777,6 +793,7 @@ prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boole
 #' @template param_prim_operand_boolean
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   Whether to drop the reduced dimensions from the output shape.
 #'   If `TRUE`, the reduced dimensions are removed.
@@ -811,6 +828,7 @@ infer_cum <- function(operand, dim) {
 }
 
 cum_op <- function(operand, dim) {
+  dim <- resolve_dim(dim, ndims_abstract(operand))
   graph_desc_add(self, list(operand = operand), params = list(dim = dim), infer_fn = infer_cum)[[1L]]
 }
 
@@ -837,6 +855,7 @@ infer_cum_extreme <- function(operand, dim) {
 }
 
 cum_extreme_op <- function(operand, dim) {
+  dim <- resolve_dim(dim, ndims_abstract(operand))
   graph_desc_add(self, list(operand = operand), params = list(dim = dim), infer_fn = infer_cum_extreme)
 }
 
@@ -941,6 +960,7 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #'   `operand` and be the neutral element w.r.t. `reductor`.
 #' @param dims (`integer()`)\cr
 #'   Dimensions to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimensions are removed; if `FALSE`
 #'   they are kept with size 1.
@@ -967,9 +987,7 @@ prim_reduce <- new_primitive(
     force(init)
     force(reductor)
 
-    if (!checkmate::test_integerish(dims, lower = 1)) {
-      cli_abort("{.arg dims} must be a positive integer vector")
-    }
+    dims <- resolve_dims(dims, ndims_abstract(operand), unique = TRUE)
     if (!checkmate::test_flag(drop)) {
       cli_abort("{.arg drop} must be a flag")
     }
@@ -1095,6 +1113,7 @@ infer_fn_arg_extreme <- function(operand, dim, drop) {
 #' @template param_prim_operand_any
 #' @param dim (`integer(1)`)\cr
 #'   Dimension along which to find the index of the maximum.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it is
 #'   kept with size 1.
@@ -1113,7 +1132,7 @@ infer_fn_arg_extreme <- function(operand, dim, drop) {
 prim_argmax <- new_primitive(
   "argmax",
   function(operand, dim, drop = TRUE) {
-    assert_integerish(dim, lower = 1, len = 1L)
+    dim <- resolve_dim(dim, ndims_abstract(operand))
     assert_flag(drop)
     graph_desc_add(
       self,
@@ -1146,7 +1165,7 @@ prim_argmax <- new_primitive(
 prim_argmin <- new_primitive(
   "argmin",
   function(operand, dim, drop = TRUE) {
-    assert_integerish(dim, lower = 1, len = 1L)
+    dim <- resolve_dim(dim, ndims_abstract(operand))
     assert_flag(drop)
     graph_desc_add(
       self,
@@ -2134,7 +2153,8 @@ prim_clamp <- new_primitive(
 #' Reverses the order of elements along specified dimensions.
 #' @template param_prim_operand_any
 #' @param dims (`integer()`)\cr
-#'   Dimensions to reverse (1-indexed).
+#'   Dimensions to reverse.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @return [`arrayish`]\cr
 #'   Has the same data type and shape as `operand`.
 #'   It is ambiguous if the input is ambiguous.
@@ -2150,6 +2170,7 @@ prim_clamp <- new_primitive(
 prim_reverse <- new_primitive(
   "reverse",
   function(operand, dims) {
+    dims <- resolve_dims(dims, ndims_abstract(operand), unique = TRUE)
     infer_fn <- function(operand, dims) {
       # stablehlo uses 0-based indexing
       dims_attr <- r_to_constant(dims - 1L, dtype = "i64", shape = length(dims))
@@ -2167,7 +2188,8 @@ prim_reverse <- new_primitive(
 #' @description
 #' Creates an array with values increasing along the specified dimension.
 #' @param dim (`integer(1)`)\cr
-#'   Dimension along which values increase (1-indexed).
+#'   Dimension along which values increase. Negative values count from the end
+#'   of `shape`, i.e. `-1` refers to the last dimension.
 #' @template param_dtype
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
@@ -2188,6 +2210,7 @@ prim_reverse <- new_primitive(
 prim_iota <- new_primitive(
   "iota",
   function(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL) {
+    dim <- resolve_dim(dim, length(shape))
     infer_fn <- function(dim, dtype, shape, start, ambiguous) {
       # stablehlo uses 0-based indexing, anvl uses 1-based
       # Convert dim to Constant as required by stablehlo
@@ -2601,6 +2624,7 @@ prim_while <- new_primitive(
 #'   carried along under the same permutation. All must share the same shape.
 #' @param dim (`integer(1)`)\cr
 #'   Dimension along which to sort.
+#'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @param descending (`logical(1)`)\cr
 #'   If `TRUE`, sort the key in descending order (largest first). Default
 #'   `FALSE`. Additional operands are reordered by the same permutation
@@ -2637,13 +2661,13 @@ prim_while <- new_primitive(
 prim_sort <- new_primitive(
   "sort",
   function(operands, dim = 1L, descending = FALSE, is_stable = FALSE) {
-    assert_integerish(dim, lower = 1, len = 1)
     assert_flag(descending)
     assert_flag(is_stable)
     if (!is.list(operands) || !length(operands)) {
       cli_abort("{.arg operands} must be a non-empty list of arrayish values")
     }
     ref_shape <- shape(operands[[1L]])
+    dim <- resolve_dim(dim, length(ref_shape))
     for (i in seq_along(operands)[-1L]) {
       if (!identical(shape(operands[[i]]), ref_shape)) {
         cli_abort(c(
@@ -2651,12 +2675,6 @@ prim_sort <- new_primitive(
           x = "Operand 1 has shape {xlamisc::shapevec_repr(ref_shape)}, operand {i} has shape {xlamisc::shapevec_repr(shape(operands[[i]]))}."
         ))
       }
-    }
-    if (dim > length(ref_shape)) {
-      cli_abort(c(
-        "{.arg dim} not in valid range.",
-        x = "Operand has {length(ref_shape)} dim(s), got {.arg dim} = {dim}."
-      ))
     }
 
     # Output shape/dtype mirrors each input — sort only permutes along `dim`.

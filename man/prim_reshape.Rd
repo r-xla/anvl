@@ -11,7 +11,9 @@ prim_reshape(operand, shape)
 Arrayish value of any data type.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Must have the same number of elements as \code{operand}.}
+Target shape. Must have the same number of elements as \code{operand}.
+At most one entry may be \code{-1}, in which case its extent is inferred from
+the remaining entries and the number of elements of \code{operand}.}
 }
 \value{
 \code{\link{arrayish}}\cr

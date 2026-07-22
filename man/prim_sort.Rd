@@ -12,7 +12,8 @@ One or more arrays to sort. The first is the sort key; the rest are
 carried along under the same permutation. All must share the same shape.}
 
 \item{dim}{(\code{integer(1)})\cr
-Dimension along which to sort.}
+Dimension along which to sort.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 
 \item{descending}{(\code{logical(1)})\cr
 If \code{TRUE}, sort the key in descending order (largest first). Default

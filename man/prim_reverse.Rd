@@ -11,7 +11,8 @@ prim_reverse(operand, dims)
 Arrayish value of any data type.}
 
 \item{dims}{(\code{integer()})\cr
-Dimensions to reverse (1-indexed).}
+Dimensions to reverse.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 }
 \value{
 \code{\link{arrayish}}\cr

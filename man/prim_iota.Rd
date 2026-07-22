@@ -8,7 +8,8 @@ prim_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 }
 \arguments{
 \item{dim}{(\code{integer(1)})\cr
-Dimension along which values increase (1-indexed).}
+Dimension along which values increase. Negative values count from the end
+of \code{shape}, i.e. \code{-1} refers to the last dimension.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}

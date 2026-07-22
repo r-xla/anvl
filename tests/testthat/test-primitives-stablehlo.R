@@ -92,6 +92,12 @@ test_that("prim_concatenate", {
   )
   expect_equal(dim(as_array(out)), c(2, 5))
 })
+
+test_that("prim_concatenate negative dimension", {
+  x <- nv_array(1:6, dtype = "i32", shape = c(2, 3))
+  expect_equal(prim_concatenate(x, x, dimension = -1L), prim_concatenate(x, x, dimension = 2L))
+})
+
 test_that("prim_fill", {
   f <- jit(function(x) nv_fill(x, shape = c(2, 3), dtype = "f32"), static = "x")
   expect_equal(f(1), nv_array(1, shape = c(2, 3), dtype = "f32"))
@@ -205,6 +211,25 @@ test_that("prim_reduce_all", {
   expect_equal(out, array(rep(FALSE, 3), c(1, 3)))
 })
 
+test_that("reductions accept negative dims", {
+  x <- nv_array(array(1:24, c(2, 3, 4)), dtype = "f32")
+  b <- x > 10
+  expect_equal(prim_reduce_sum(x, dims = -1L), prim_reduce_sum(x, dims = 3L))
+  expect_equal(prim_reduce_prod(x, dims = -2L), prim_reduce_prod(x, dims = 2L))
+  expect_equal(prim_reduce_max(x, dims = -3L), prim_reduce_max(x, dims = 1L))
+  expect_equal(prim_reduce_min(x, dims = c(-1L, -3L)), prim_reduce_min(x, dims = c(3L, 1L)))
+  expect_equal(prim_reduce_any(b, dims = -1L), prim_reduce_any(b, dims = 3L))
+  expect_equal(prim_reduce_all(b, dims = -1L, drop = FALSE), prim_reduce_all(b, dims = 3L, drop = FALSE))
+})
+
+test_that("reductions reject out-of-range and duplicated dims", {
+  x <- nv_array(array(1:6, c(2, 3)), dtype = "f32")
+  expect_error(prim_reduce_sum(x, dims = -3L), "between 1 and 2, or between -2 and -1")
+  expect_error(prim_reduce_sum(x, dims = 3L), "between 1 and 2, or between -2 and -1")
+  expect_error(prim_reduce_sum(x, dims = 0L), "between 1 and 2, or between -2 and -1")
+  expect_error(prim_reduce_sum(x, dims = c(2L, -1L)), "duplicate dimensions")
+})
+
 describe("cumulative ops", {
   # Common semantics across cumsum / cumprod / cummax / cummin.
   # cummax / cummin return list(values, indices); the helper picks values.
@@ -238,6 +263,16 @@ describe("cumulative ops", {
     x <- nv_array(1:4, dtype = "f32")
     expect_error(prim_cumsum(x, dim = 2L), "dim")
     expect_error(prim_cumsum(x, dim = 0L), "dim")
+    expect_error(prim_cumsum(x, dim = -2L), "dim")
+    expect_error(prim_cumsum(x, dim = c(1L, 1L)), "must have length 1")
+  })
+
+  it("cumulative ops accept a negative dim", {
+    xm <- nv_array(matrix(c(3, 1, 4, 1, 5, 9), nrow = 2), dtype = "f32")
+    expect_equal(prim_cumsum(xm, dim = -1L), prim_cumsum(xm, dim = 2L))
+    expect_equal(prim_cumprod(xm, dim = -2L), prim_cumprod(xm, dim = 1L))
+    expect_equal(prim_cummax(xm, dim = -1L)[[1L]], prim_cummax(xm, dim = 2L)[[1L]])
+    expect_equal(prim_cummin(xm, dim = -1L)[[1L]], prim_cummin(xm, dim = 2L)[[1L]])
   })
 
   # Index outputs are unique to cummax / cummin -- not covered by the
@@ -286,12 +321,28 @@ test_that("prim_reshape", {
   )
 })
 
+test_that("prim_reshape infers a -1 dimension", {
+  x <- nv_array(1:6)
+  expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))
+  expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
+  expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
+  expect_error(prim_reshape(x, c(-1, -1)), "at most one")
+  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer dimension")
+  expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
+})
+
 test_that("prim_transpose", {
   x <- array(1:4, c(2, 2))
   expect_equal(
     t(x),
     as_array(prim_transpose(nv_array(x), c(2, 1)))
   )
+})
+
+test_that("prim_transpose accepts a negative permutation", {
+  x <- nv_array(array(1:24, c(2, 3, 4)))
+  expect_equal(prim_transpose(x, c(-1L, -2L, -3L)), prim_transpose(x, c(3L, 2L, 1L)))
+  expect_error(prim_transpose(x, c(1L, -1L, -3L)), "duplicate dimensions")
 })
 
 describe("prim_if", {
@@ -726,6 +777,17 @@ test_that("prim_iota", {
   expect_equal(prim_iota(1L, "i32", c(3L, 2L)), nv_array(expected, dtype = "i32"))
 })
 
+test_that("prim_reverse negative dims", {
+  x <- nv_matrix(1:6, nrow = 2, ncol = 3, dtype = "i32")
+  expect_equal(prim_reverse(x, dims = -1L), prim_reverse(x, dims = 2L))
+  expect_equal(prim_reverse(x, dims = c(-1L, -2L)), prim_reverse(x, dims = c(2L, 1L)))
+})
+
+test_that("prim_iota negative dim", {
+  expect_equal(prim_iota(-1L, "i32", c(3L, 2L)), prim_iota(2L, "i32", c(3L, 2L)))
+  expect_error(prim_iota(-3L, "i32", c(3L, 2L)), "between 1 and 2, or between -2 and -1")
+})
+
 test_that("prim_popcnt", {
   x <- nv_array(c(0L, 1L, 2L, 3L, 7L, 255L), dtype = "i32")
   expect_equal(prim_popcnt(x), nv_array(c(0L, 1L, 1L, 2L, 3L, 8L), dtype = "i32"))
@@ -856,6 +918,12 @@ describe("prim_sort", {
     perm <- as.integer(prim_sort(list(x, idx), dim = 1L, is_stable = TRUE)[[2L]])
     expect_equal(perm, 1:8)
   })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(prim_sort(list(m), dim = -1L)[[1L]], prim_sort(list(m), dim = 2L)[[1L]])
+    expect_error(prim_sort(list(m), dim = -3L), "between 1 and 2, or between -2 and -1")
+  })
 })
 
 describe("prim_top_k", {
@@ -946,6 +1014,12 @@ describe("prim_argmax", {
     expect_equal(shape(out), 0L)
     expect_equal(as.character(dtype(out)), "i32")
   })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(prim_argmax(m, dim = -1L), prim_argmax(m, dim = 2L))
+    expect_error(prim_argmax(m, dim = -3L), "between 1 and 2, or between -2 and -1")
+  })
 })
 
 describe("prim_argmin", {
@@ -967,6 +1041,11 @@ describe("prim_argmin", {
       prim_argmin(nv_array(numeric(0), shape = 0L), dim = 1L),
       "undefined for an empty axis"
     )
+  })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(prim_argmin(m, dim = -2L), prim_argmin(m, dim = 1L))
   })
 })
 
@@ -1004,6 +1083,18 @@ describe("prim_reduce", {
     expect_error(
       prim_reduce(nv_array(c(1, 2, 3)), init = nv_array(c(0, 0)), dims = 1L, reductor = prim_add),
       "scalar"
+    )
+  })
+
+  it("accepts negative dims", {
+    m <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)
+    expect_equal(
+      prim_reduce(m, init = nv_scalar(0), dims = -1L, reductor = prim_add),
+      prim_reduce(m, init = nv_scalar(0), dims = 2L, reductor = prim_add)
+    )
+    expect_error(
+      prim_reduce(m, init = nv_scalar(0), dims = -3L, reductor = prim_add),
+      "between 1 and 2, or between -2 and -1"
     )
   })
 })

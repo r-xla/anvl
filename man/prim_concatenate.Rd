@@ -12,7 +12,8 @@ Arrays to concatenate. Must all have the same data type, ndims,
 and shape except along \code{dimension}.}
 
 \item{dimension}{(\code{integer(1)})\cr
-Dimension along which to concatenate (1-indexed).}
+Dimension along which to concatenate.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 }
 \value{
 \code{\link{arrayish}}\cr

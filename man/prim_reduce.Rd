@@ -15,7 +15,8 @@ Scalar (0-dimensional) initial value. Must have the same data type as
 \code{operand} and be the neutral element w.r.t. \code{reductor}.}
 
 \item{dims}{(\code{integer()})\cr
-Dimensions to reduce over.}
+Dimensions to reduce over.
+Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
 
 \item{drop}{(\code{logical(1)})\cr
 If \code{TRUE} (default) the reduced dimensions are removed; if \code{FALSE}

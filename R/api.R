@@ -222,11 +222,7 @@ nv_convert <- function(operand, dtype) {
 #' @export
 nv_transpose <- function(operand, permutation = NULL) {
   operand <- as_anvl_array(operand)
-  permutation <- if (is.null(permutation)) {
-    rev(seq_len(ndims(operand)))
-  } else {
-    resolve_dims(permutation, ndims(operand), unique = TRUE)
-  }
+  permutation <- permutation %||% rev(seq_len(ndims(operand)))
   prim_transpose(operand, permutation)
 }
 
@@ -253,6 +249,8 @@ nv_transpose <- function(operand, permutation = NULL) {
 #' @export
 nv_reshape <- function(operand, shape) {
   operand <- as_anvl_array(operand)
+  # `prim_reshape()` resolves `-1` itself; resolving here too keeps the
+  # identity shortcut below able to recognize a no-op reshape.
   shape <- resolve_reshape_shape(shape, prod(shape(operand)), arg = "shape")
   if (!identical(shape(operand), shape)) {
     prim_reshape(operand, shape)
@@ -1360,10 +1358,7 @@ nv_clamp <- function(min_val, operand, max_val) {
 #' x <- nv_array(c(1, 2, 3, 4, 5))
 #' nv_reverse(x, dims = 1L)
 #' @export
-nv_reverse <- function(operand, dims) {
-  operand <- as_anvl_array(operand)
-  prim_reverse(operand, dims = resolve_dims(dims, ndims(operand), unique = TRUE))
-}
+nv_reverse <- prim_reverse
 
 #' @title Iota
 #' @description
@@ -1393,16 +1388,7 @@ nv_reverse <- function(operand, dims) {
 #' x <- nv_fill(0L, shape = c(2, 3))
 #' nv_iota_like(x, dim = 1L)
 #' @export
-nv_iota <- function(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL) {
-  prim_iota(
-    dim = resolve_dim(dim, length(shape)),
-    dtype = dtype,
-    shape = shape,
-    start = start,
-    ambiguous = ambiguous,
-    device = device
-  )
-}
+nv_iota <- prim_iota
 
 #' @title Sequence
 #' @description
@@ -2015,6 +2001,9 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
   nv_diag(nv_fill(1, n, dtype = dtype, device = device))
 }
 
+# Expand `dims = NULL` to "all dimensions". Negative dims are resolved here
+# (not just in the primitive) because `nv_mean()` / `nv_var()` / `nv_sd()`
+# index `shape(operand)[dims]` to compute the number of reduced elements.
 .resolve_reduce_dims <- function(operand, dims) {
   if (is.null(dims)) {
     return(seq_len(ndims(operand)))
@@ -2221,8 +2210,6 @@ nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
-  } else {
-    dim <- resolve_dim(dim, ndims(operand))
   }
   if (nan_rm && inherits(dtype(operand), "FloatType")) {
     operand <- nv_ifelse(nv_is_nan(operand), 0, operand)
@@ -2254,8 +2241,6 @@ nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
-  } else {
-    dim <- resolve_dim(dim, ndims(operand))
   }
   if (nan_rm && inherits(dtype(operand), "FloatType")) {
     operand <- nv_ifelse(nv_is_nan(operand), 1, operand)
@@ -2323,8 +2308,6 @@ nv_cummin <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
   if (is.null(dim)) {
     operand <- nv_reshape(operand, prod(shape(operand)))
     dim <- 1L
-  } else {
-    dim <- resolve_dim(dim, ndims(operand))
   }
   if (nan_rm && inherits(dtype(operand), "FloatType")) {
     operand <- nv_ifelse(nv_is_nan(operand), identity_val, operand)
@@ -2943,8 +2926,7 @@ nv_sort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
   if (ndims(operand) == 0L) {
     cli_abort("Cannot sort a 0-dimensional array")
   }
-  dim <- resolve_dim(dim %||% ndims(operand), ndims(operand), arg = "dim")
-  prim_sort(list(operand), dim = dim, descending = decreasing, is_stable = stable)[[1L]]
+  prim_sort(list(operand), dim = dim %||% ndims(operand), descending = decreasing, is_stable = stable)[[1L]]
 }
 
 #' @title Argsort
@@ -2978,7 +2960,7 @@ nv_argsort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) 
   if (ndims(operand) == 0L) {
     cli_abort("Cannot argsort a 0-dimensional array")
   }
-  dim <- resolve_dim(dim %||% ndims(operand), ndims(operand), arg = "dim")
+  dim <- dim %||% ndims(operand)
   idx <- nv_iota_like(operand, dim = dim, dtype = "i32")
   prim_sort(list(operand, idx), dim = dim, descending = decreasing, is_stable = stable)[[2L]]
 }
@@ -3247,7 +3229,7 @@ nv_argmax <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   if (ndims(operand) == 0L) {
     cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
   }
-  dim <- resolve_dim(dim %||% ndims(operand), ndims(operand), arg = "dim")
+  dim <- dim %||% ndims(operand)
   .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmax)
 }
 
@@ -3278,7 +3260,7 @@ nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   if (ndims(operand) == 0L) {
     cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
   }
-  dim <- resolve_dim(dim %||% ndims(operand), ndims(operand), arg = "dim")
+  dim <- dim %||% ndims(operand)
   .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmin)
 }
 
