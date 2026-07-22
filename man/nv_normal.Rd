@@ -61,9 +61,10 @@ nv_pnorm(x, log_p = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \references{
-Abramowitz, M. and Stegun, I.A. (1964) \emph{Handbook of Mathematical Functions
-with Formulas, Graphs, and Mathematical Tables}. Washington, D.C.: National
-Bureau of Standards (Applied Mathematics Series, 55).
+Abramowitz M, Stegun I (1964).
+\emph{Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables},  number 55 series Applied Mathematics Series.
+Dover Publications, New York.
+ISBN 0-486-61272-4.
 }
 \seealso{
 \code{\link[=nv_rnorm]{nv_rnorm()}} for sampling from a normal distribution.

@@ -28,9 +28,7 @@
 #' `nv_pnorm` uses the asymptotic expansion from Abramowitz and Stegun (1964),
 #' equation 26.2.12, in the left tail when `log_p = TRUE` to maintain accuracy.
 #' @references
-#' Abramowitz, M. and Stegun, I.A. (1964) *Handbook of Mathematical Functions
-#' with Formulas, Graphs, and Mathematical Tables*. Washington, D.C.: National
-#' Bureau of Standards (Applied Mathematics Series, 55).
+#' `r xlamisc::format_bib("abramowitz1964handbook")`
 #' @template return_unary
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
 #' @examplesIf pjrt::plugins_downloaded()
