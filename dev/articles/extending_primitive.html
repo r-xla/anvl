@@ -505,7 +505,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     run(args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55dc5e556048&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x561432eb8c00&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"backend")</span></span>
@@ -528,7 +528,7 @@ inputs:</p>
 <span><span class="co">#&gt; [ CPUi32{2} ]</span></span>
 <span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `prim_add()`:</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> `lhs` and `rhs` must have the same tensor type.</span></span>
+<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> `lhs` and `rhs` must have the same array type.</span></span>
 <span><span class="co">#&gt; <span style="color: #BB0000;">✖</span> Got <span style="color: #0000BB;">tensor&lt;i32&gt;</span> and <span style="color: #0000BB;">tensor&lt;2xi32&gt;</span>.</span></span></code></pre></div>
 <p>In our case, no such convenience is needed and the functionality is
 not too low-level (for it to be generally useful), so we can just

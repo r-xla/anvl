@@ -104,6 +104,12 @@
   now errors on non-1-D input instead of silently producing an incorrect
   result.
 
+- Errors raised while tracing now speak of arrays instead of tensors
+  ([\#298](https://github.com/r-xla/anvl/issues/298)). Previously,
+  messages that originated in the `stablehlo` package used the StableHLO
+  spec’s terminology,
+  e.g. `` `lhs` and `rhs` must have the same tensor type. x Got tensor<4xi32> and tensor<4xf32>. ``
+
 ## anvl 0.3.0
 
 ### Breaking Changes

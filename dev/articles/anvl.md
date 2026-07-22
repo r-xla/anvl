@@ -183,7 +183,7 @@ prim_add(y, x)
 ```
 
     ## Error in `prim_add()`:
-    ## ! `lhs` and `rhs` must have the same tensor type.
+    ## ! `lhs` and `rhs` must have the same array type.
     ## ✖ Got tensor<2x3xi32> and tensor<i16>.
 
 ``` r

@@ -397,7 +397,7 @@ prim_repeat_along
 #>     }
 #>     run(args)
 #> }
-#> <environment: 0x55dc5e556048>
+#> <environment: 0x561432eb8c00>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")
@@ -421,7 +421,7 @@ nv_add(1L, nv_array(2:3))
 #> [ CPUi32{2} ]
 prim_add(1L, nv_array(2:3))
 #> Error in `prim_add()`:
-#> ! `lhs` and `rhs` must have the same tensor type.
+#> ! `lhs` and `rhs` must have the same array type.
 #> ✖ Got tensor<i32> and tensor<2xi32>.
 ```
 
