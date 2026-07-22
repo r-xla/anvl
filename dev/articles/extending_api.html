@@ -169,12 +169,12 @@ an example.</p>
 called on an R vector:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
-<span><span class="co"># operand: dynamic, shape: static</span></span>
-<span><span class="va">nv_reshape_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">operand</span>, <span class="va">shape</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span>, <span class="va">shape</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="../reference/prim_reshape.html">prim_reshape</a></span><span class="op">(</span><span class="va">operand</span>, <span class="va">shape</span><span class="op">)</span></span>
+<span><span class="co"># x: dynamic, shape: static</span></span>
+<span><span class="va">nv_reshape_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">shape</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">shape</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="../reference/prim_reshape.html">prim_reshape</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">shape</span><span class="op">)</span></span>
 <span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>    <span class="va">operand</span></span>
+<span>    <span class="va">x</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu">nv_reshape_naive</span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
@@ -189,12 +189,12 @@ dtype (or keeps it as-is if <code>dtype</code> is <code>NULL</code>).
 The problem is that in the no-op case, we return a static R object
 instead of (as intended) an <code>AnvlArray</code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># operand: dynamic, dtype: static</span></span>
-<span><span class="va">nv_convert_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">operand</span>, <span class="va">dtype</span><span class="op">)</span> <span class="op">{</span></span>
+<code class="sourceCode R"><span><span class="co"># x: dynamic, dtype: static</span></span>
+<span><span class="va">nv_convert_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">dtype</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">dtype</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span></span>
+<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span>  <span class="fu"><a href="../reference/prim_convert.html">prim_convert</a></span><span class="op">(</span><span class="va">operand</span>, <span class="va">dtype</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/prim_convert.html">prim_convert</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">dtype</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu">nv_convert_naive</span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i16"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
@@ -220,9 +220,9 @@ arbitrary devices, you need to be careful when creating new constants
 within your function. Let’s say you are creating your function and
 working on GPU:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">nv_add_one_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">operand</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">operand</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span></span>
-<span>  <span class="va">operand</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">nv_add_one_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>As long as you are adding ones on a CUDA GPU, this function will work
 fine! However, if you suddenly use it on the CPU, it will fail, because
@@ -233,18 +233,18 @@ you know that there is only a single device.</p>
 <p>One way to achieve this is to simply pass the input’s device to
 <code><a href="../reference/nv_fill.html">nv_fill()</a></code>:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">nv_add_one1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">operand</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">operand</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span></span>
-<span>  <span class="va">operand</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span>, device <span class="op">=</span> <span class="fu"><a href="../reference/device.html">device</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">nv_add_one1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, device <span class="op">=</span> <span class="fu"><a href="../reference/device.html">device</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Another option is to rely on <code>nv_&lt;op&gt;_like</code>
 functions. These take in another <code>AnvlArray</code> as their first
 input and use its properties as the defaults for their arguments. In
 this case, the created array will assume the data type, shape and device
-from the input operand.</p>
+from the input array.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">nv_add_one2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">operand</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">operand</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">operand</span>, <span class="fl">1L</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">nv_add_one2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Note that when you only want to use a function with
 <code><a href="../reference/jit.html">jit()</a></code>, you can just omit specifying the device at all, as
@@ -292,9 +292,9 @@ one primitive operation with <code>#' @jit</code>:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#' @export</span></span>
 <span><span class="co">#' @jit</span></span>
-<span><span class="va">nv_log2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">operand</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">operand</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/nv_log.html">nv_log</a></span><span class="op">(</span><span class="va">operand</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">nv_log2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/nv_log.html">nv_log</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>If the function has static arguments (anything that is not an
 arrayish input – dims, shape, dtype, control flags, functions used as
@@ -303,7 +303,7 @@ positional indices or argument names:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#' @export</span></span>
 <span><span class="co">#' @jit static = c(2L, 3L)</span></span>
-<span><span class="va">nv_mean</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">operand</span>, <span class="va">dims</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">drop</span> <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="va">nv_mean</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">dims</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">drop</span> <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">}</span></span>
 <span></span>

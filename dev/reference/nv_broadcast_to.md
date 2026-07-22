@@ -6,15 +6,15 @@ rules.
 ## Usage
 
 ``` r
-nv_broadcast_to(operand, shape)
+nv_broadcast_to(x, shape)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - shape:
 
@@ -24,7 +24,7 @@ nv_broadcast_to(operand, shape)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the given `shape` and the same data type as `operand`.
+Has the given `shape` and the same data type as `x`.
 
 ## See also
 

@@ -5,12 +5,12 @@ Element-wise population count (number of set bits).
 ## Usage
 
 ``` r
-prim_popcnt(operand)
+prim_popcnt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type integer or unsigned integer.

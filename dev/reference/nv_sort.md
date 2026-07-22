@@ -7,7 +7,7 @@ You can also use [`sort()`](https://rdrr.io/r/base/sort.html) directly.
 ## Usage
 
 ``` r
-nv_sort(operand, dim = NULL, decreasing = FALSE, stable = FALSE)
+nv_sort(x, dim = NULL, decreasing = FALSE, stable = FALSE)
 
 # S3 method for class 'AnvlArray'
 sort(x, decreasing = FALSE, ..., dim = NULL)
@@ -15,10 +15,10 @@ sort(x, decreasing = FALSE, ..., dim = NULL)
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dim:
 
@@ -40,11 +40,6 @@ sort(x, decreasing = FALSE, ..., dim = NULL)
   (they compare equal under the total order used here); for distinct
   values the result is identical either way.
 
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
-
 - ...:
 
   No additional arguments.
@@ -52,7 +47,7 @@ sort(x, decreasing = FALSE, ..., dim = NULL)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same shape and data type as `operand`.
+Same shape and data type as `x`.
 
 ## NaN handling
 

@@ -5,12 +5,12 @@ Negates an array element-wise.
 ## Usage
 
 ``` r
-prim_negate(operand)
+prim_negate(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type integer or floating-point.

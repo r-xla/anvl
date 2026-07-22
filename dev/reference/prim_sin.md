@@ -5,12 +5,12 @@ Element-wise sine.
 ## Usage
 
 ``` r
-prim_sin(operand)
+prim_sin(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

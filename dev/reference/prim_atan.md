@@ -5,12 +5,12 @@ Element-wise inverse tangent.
 ## Usage
 
 ``` r
-prim_atan(operand)
+prim_atan(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

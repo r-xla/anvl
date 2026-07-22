@@ -5,15 +5,15 @@ Computes the standard deviation along the specified dimensions.
 ## Usage
 
 ``` r
-nv_sd(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_sd(x, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dims:
 

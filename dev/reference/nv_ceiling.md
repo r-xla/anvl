@@ -6,15 +6,15 @@ Element-wise ceiling (round toward positive infinity). You can also use
 ## Usage
 
 ``` r
-nv_ceiling(operand)
+nv_ceiling(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

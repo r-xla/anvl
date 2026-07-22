@@ -5,15 +5,15 @@ Element-wise complementary error function `erfc(x) = 1 - erf(x)`.
 ## Usage
 
 ``` r
-nv_erfc(operand)
+nv_erfc(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

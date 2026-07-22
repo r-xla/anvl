@@ -5,12 +5,12 @@ Element-wise log(1 + x), more accurate for small x.
 ## Usage
 
 ``` r
-prim_log1p(operand)
+prim_log1p(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

@@ -6,15 +6,15 @@ Element-wise absolute value. You can also use
 ## Usage
 
 ``` r
-nv_abs(operand)
+nv_abs(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

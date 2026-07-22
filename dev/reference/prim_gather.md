@@ -1,10 +1,10 @@
 # Primitive Gather
 
-Gathers slices from the `operand` array at positions specified by
+Gathers slices from the `x` array at positions specified by
 `start_indices`. Each index vector in `start_indices` identifies a
-starting position in `operand`, and a slice of size `slice_sizes` is
-extracted from that position. The gathered slices are assembled into the
-output array.
+starting position in `x`, and a slice of size `slice_sizes` is extracted
+from that position. The gathered slices are assembled into the output
+array.
 
 This is the inverse of
 [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md):
@@ -15,12 +15,12 @@ slices into an array at given indices.
 
 ``` r
 prim_gather(
-  operand,
+  x,
   start_indices,
   slice_sizes,
   offset_dims,
   collapsed_slice_dims,
-  operand_batching_dims,
+  x_batching_dims,
   start_indices_batching_dims,
   start_index_map,
   index_vector_dim,
@@ -31,7 +31,7 @@ prim_gather(
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -41,47 +41,47 @@ prim_gather(
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
   of integer type)  
   Array of starting indices. Contains index vectors that map to
-  positions in `operand` via `start_index_map`. The dimension specified
-  by `index_vector_dim` holds the index vectors.
+  positions in `x` via `start_index_map`. The dimension specified by
+  `index_vector_dim` holds the index vectors.
 
 - slice_sizes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Size of the slice to gather from `operand` in each dimension. Must
-  have length equal to `ndims(operand)`.
+  Size of the slice to gather from `x` in each dimension. Must have
+  length equal to `ndims(x)`.
 
 - offset_dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Dimensions in the output that correspond to the non-collapsed slice
-  dimensions of `operand`.
+  dimensions of `x`.
 
 - collapsed_slice_dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions of `operand` that are collapsed (removed) from the slice.
-  The corresponding entries in `slice_sizes` must be `1`. Together with
-  `offset_dims` and `operand_batching_dims`, these must account for all
-  dimensions of `operand`.
+  Dimensions of `x` that are collapsed (removed) from the slice. The
+  corresponding entries in `slice_sizes` must be `1`. Together with
+  `offset_dims` and `x_batching_dims`, these must account for all
+  dimensions of `x`.
 
-- operand_batching_dims:
+- x_batching_dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions of `operand` that are batch dimensions. Use `integer(0)`
-  when there are no batch dimensions.
+  Dimensions of `x` that are batch dimensions. Use `integer(0)` when
+  there are no batch dimensions.
 
 - start_indices_batching_dims:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Dimensions of `start_indices` that correspond to batch dimensions.
-  Must have the same length as `operand_batching_dims`.
+  Must have the same length as `x_batching_dims`.
 
 - start_index_map:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Maps each component of the index vector to an `operand` dimension. For
+  Maps each component of the index vector to an `x` dimension. For
   example, `start_index_map = c(1L)` means each index vector indexes
-  into the first dimension of `operand`.
+  into the first dimension of `x`.
 
 - index_vector_dim:
 
@@ -107,16 +107,16 @@ prim_gather(
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `operand`. The output shape is composed of the
+Has the same data type as `x`. The output shape is composed of the
 offset dimensions (from the slice) and the remaining dimensions from
 `start_indices`. See the underluing stableHLO function for more details.
 
 ## Out Of Bounds Behavior
 
 Start indices are clamped before the slice is extracted:
-`clamp(1, start_index, nv_shape(operand) - slice_sizes + 1)`. This means
-that out-of-bounds indices will not cause an error, but the effective
-start position may differ from the requested one.
+`clamp(1, start_index, nv_shape(x) - slice_sizes + 1)`. This means that
+out-of-bounds indices will not cause an error, but the effective start
+position may differ from the requested one.
 
 ## Implemented Rules
 
@@ -142,14 +142,14 @@ Lowers to
 
 ``` r
 # Gather rows 1 and 3 from a 3x3 matrix
-operand <- nv_matrix(1:9, nrow = 3)
+x <- nv_matrix(1:9, nrow = 3)
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(
-  operand, indices,
+  x, indices,
   slice_sizes = c(1L, 3L),
   offset_dims = 2L,
   collapsed_slice_dims = 1L,
-  operand_batching_dims = integer(0),
+  x_batching_dims = integer(0),
   start_indices_batching_dims = integer(0),
   start_index_map = 1L,
   index_vector_dim = 2L

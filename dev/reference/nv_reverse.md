@@ -5,15 +5,15 @@ Reverses the order of elements along specified dimensions.
 ## Usage
 
 ``` r
-nv_reverse(operand, dims)
+nv_reverse(x, dims)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dims:
 
@@ -23,7 +23,7 @@ nv_reverse(operand, dims)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as `operand`.
+Has the same shape and data type as `x`.
 
 ## See also
 

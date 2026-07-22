@@ -5,15 +5,15 @@ Cumulative sum, optionally along a single dimension.
 ## Usage
 
 ``` r
-nv_cumsum(operand, dim = NULL, nan_rm = FALSE)
+nv_cumsum(x, dim = NULL, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dim:
 

@@ -6,20 +6,20 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Sort — prim_sort"><meta name="description" content="Sorts arrays along the given dimension.
-Sorting is determined by the first operand only: it is the sort key,
-and any additional operands are reordered with the same permutation
+Sorting is determined by the first array only: it is the sort key,
+and any additional arrays are reordered with the same permutation
 that sorts the first. This enables idioms like argsort (sort x
 paired with an iota and read off the second output) and key-value
 sorts (sort keys paired with values).
-All operands must have the same shape; their dtypes may differ.
+All arrays must have the same shape; their dtypes may differ.
 1-dimensional slices along dim are sorted independently; other
 dimensions are preserved."><meta property="og:description" content="Sorts arrays along the given dimension.
-Sorting is determined by the first operand only: it is the sort key,
-and any additional operands are reordered with the same permutation
+Sorting is determined by the first array only: it is the sort key,
+and any additional arrays are reordered with the same permutation
 that sorts the first. This enables idioms like argsort (sort x
 paired with an iota and read off the second output) and key-value
 sorts (sort keys paired with values).
-All operands must have the same shape; their dtypes may differ.
+All arrays must have the same shape; their dtypes may differ.
 1-dimensional slices along dim are sorted independently; other
 dimensions are preserved."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -93,26 +93,26 @@ dimensions are preserved."><meta property="og:image" content="https://r-xla.gith
 
     <div class="ref-description section level2">
     <p>Sorts arrays along the given dimension.</p>
-<p>Sorting is determined by the <em>first operand</em> only: it is the sort key,
-and any additional operands are reordered with the same permutation
+<p>Sorting is determined by the <em>first array</em> only: it is the sort key,
+and any additional arrays are reordered with the same permutation
 that sorts the first. This enables idioms like <em>argsort</em> (sort <code>x</code>
 paired with an <code>iota</code> and read off the second output) and key-value
 sorts (sort <code>keys</code> paired with <code>values</code>).</p>
-<p>All operands must have the same shape; their dtypes may differ.
+<p>All arrays must have the same shape; their dtypes may differ.
 1-dimensional slices along <code>dim</code> are sorted independently; other
 dimensions are preserved.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_sort</span><span class="op">(</span><span class="va">operands</span>, dim <span class="op">=</span> <span class="fl">1L</span>, descending <span class="op">=</span> <span class="cn">FALSE</span>, is_stable <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_sort</span><span class="op">(</span><span class="va">xs</span>, dim <span class="op">=</span> <span class="fl">1L</span>, descending <span class="op">=</span> <span class="cn">FALSE</span>, is_stable <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operands">operands<a class="anchor" aria-label="anchor" href="#arg-operands"></a></dt>
+<dl><dt id="arg-xs">xs<a class="anchor" aria-label="anchor" href="#arg-xs"></a></dt>
 <dd><p>(<code>list</code> of <code><a href="arrayish.html">arrayish</a></code>)<br>
 One or more arrays to sort. The first is the sort key; the rest are
 carried along under the same permutation. All must share the same shape.</p></dd>
@@ -126,7 +126,7 @@ Dimension along which to sort.</p></dd>
 <dt id="arg-descending">descending<a class="anchor" aria-label="anchor" href="#arg-descending"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>TRUE</code>, sort the key in descending order (largest first). Default
-<code>FALSE</code>. Additional operands are reordered by the same permutation
+<code>FALSE</code>. Additional arrays are reordered by the same permutation
 regardless.</p></dd>
 
 
@@ -139,7 +139,7 @@ preserved. Default <code>FALSE</code>.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list</code> of <code><a href="arrayish.html">arrayish</a></code><br>
-One sorted output per element of <code>operands</code>, in the same order. Each
+One sorted output per element of <code>xs</code>, in the same order. Each
 output has the same shape, data type, and ambiguity as the
 corresponding input.</p>
     </div>
@@ -156,7 +156,7 @@ corresponding input.</p>
 
 <p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_sort.html" class="external-link">hlo_sort()</a></code> with a comparator that uses
 <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_compare.html" class="external-link">hlo_compare()</a></code> (<code>LT</code> for ascending, <code>GT</code> for descending) on
-the first operand. For float keys the comparator uses
+the first array. For float keys the comparator uses
 <code>compare_type = "TOTALORDER"</code> and canonicalizes <code>-0</code>/<code>+0</code> and
 <code>-NaN</code>/<code>+NaN</code> to their positive form before comparing, so all <code>NaN</code>
 values land at one end of the result regardless of sign. Integer keys

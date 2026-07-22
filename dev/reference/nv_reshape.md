@@ -6,25 +6,25 @@ Returns the input unchanged if it already has the target shape.
 ## Usage
 
 ``` r
-nv_reshape(operand, shape)
+nv_reshape(x, shape)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Target shape. Must have the same number of elements as `operand`.
+  Target shape. Must have the same number of elements as `x`.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the given `shape` and the same data type as `operand`.
+Has the given `shape` and the same data type as `x`.
 
 ## Details
 

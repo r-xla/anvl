@@ -5,15 +5,15 @@ Computes the variance along the specified dimensions.
 ## Usage
 
 ``` r
-nv_var(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_var(x, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dims:
 

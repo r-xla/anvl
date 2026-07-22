@@ -6,15 +6,15 @@ if all elements are `TRUE`.
 ## Usage
 
 ``` r
-nv_reduce_all(operand, dims = NULL, drop = TRUE)
+nv_reduce_all(x, dims = NULL, drop = TRUE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dims:
 

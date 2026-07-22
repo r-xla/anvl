@@ -6,15 +6,15 @@ broken by returning the smallest index.
 ## Usage
 
 ``` r
-nv_argmin(operand, dim = NULL, drop = TRUE, nan_rm = FALSE)
+nv_argmin(x, dim = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dim:
 
@@ -38,8 +38,7 @@ nv_argmin(operand, dim = NULL, drop = TRUE, nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
 dtype `i32`  
-Same shape as `operand` with `dim` removed (or set to 1 if
-`drop = FALSE`).
+Same shape as `x` with `dim` removed (or set to 1 if `drop = FALSE`).
 
 ## NaN handling
 

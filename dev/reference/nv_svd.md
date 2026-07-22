@@ -1,10 +1,10 @@
 # Singular Value Decomposition
 
 Computes the reduced ("economy") singular value decomposition of a
-matrix `operand` of shape `(m, n)`: \$\$A = u \\ \mathrm{diag}(d) \\
-vt,\$\$ where `u` has orthonormal columns, `vt` has orthonormal rows,
-and `d` is the length-`k` (`k = min(m, n)`) vector of non-negative
-singular values in descending order.
+matrix `x` of shape `(m, n)`: \$\$A = u \\ \mathrm{diag}(d) \\ vt,\$\$
+where `u` has orthonormal columns, `vt` has orthonormal rows, and `d` is
+the length-`k` (`k = min(m, n)`) vector of non-negative singular values
+in descending order.
 
 Note: unlike [`base::svd()`](https://rdrr.io/r/base/svd.html), which
 returns the right singular vectors as `v` of shape `(n, k)` (so that
@@ -19,12 +19,12 @@ transparently via a layout flip for wide matrices.
 ## Usage
 
 ``` r
-nv_svd(operand)
+nv_svd(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Matrix of data type floating-point with exactly 2 dimensions.

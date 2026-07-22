@@ -5,12 +5,12 @@ Element-wise exponential.
 ## Usage
 
 ``` r
-prim_exp(operand)
+prim_exp(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

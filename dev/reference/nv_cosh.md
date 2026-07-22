@@ -6,15 +6,15 @@ Element-wise hyperbolic cosine. You can also use
 ## Usage
 
 ``` r
-nv_cosh(operand)
+nv_cosh(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

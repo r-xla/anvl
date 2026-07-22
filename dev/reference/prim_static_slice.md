@@ -11,12 +11,12 @@ depends on array values).
 ## Usage
 
 ``` r
-prim_static_slice(operand, start_indices, limit_indices, strides)
+prim_static_slice(x, start_indices, limit_indices, strides)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -31,7 +31,7 @@ prim_static_slice(operand, start_indices, limit_indices, strides)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   End indices (inclusive), one per dimension. Must satisfy
-  `limit_indices <= nv_shape(operand)` per dimension.
+  `limit_indices <= nv_shape(x)` per dimension.
 
 - strides:
 

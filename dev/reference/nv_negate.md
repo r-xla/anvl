@@ -5,15 +5,15 @@ Negates an array element-wise. You can also use the unary `-` operator.
 ## Usage
 
 ``` r
-nv_negate(operand)
+nv_negate(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

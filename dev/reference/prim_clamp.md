@@ -1,12 +1,12 @@
 # Primitive Clamp
 
-Clamps every element of `operand` to the range `[min_val, max_val]`,
-i.e. `max(min_val, min(operand, max_val))`.
+Clamps every element of `x` to the range `[min_val, max_val]`, i.e.
+`max(min_val, min(x, max_val))`.
 
 ## Usage
 
 ``` r
-prim_clamp(min_val, operand, max_val)
+prim_clamp(min_val, x, max_val)
 ```
 
 ## Arguments
@@ -14,9 +14,9 @@ prim_clamp(min_val, operand, max_val)
 - min_val:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Minimum value. Must be scalar or the same shape as `operand`.
+  Minimum value. Must be scalar or the same shape as `x`.
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -24,13 +24,13 @@ prim_clamp(min_val, operand, max_val)
 - max_val:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Maximum value. Must be scalar or the same shape as `operand`.
+  Maximum value. Must be scalar or the same shape as `x`.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type and shape as `operand`. It is ambiguous if the
-input is ambiguous.
+Has the same data type and shape as `x`. It is ambiguous if the input is
+ambiguous.
 
 ## Implemented Rules
 

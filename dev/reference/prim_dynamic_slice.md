@@ -12,12 +12,12 @@ support.
 ## Usage
 
 ``` r
-prim_dynamic_slice(operand, ..., slice_sizes)
+prim_dynamic_slice(x, ..., slice_sizes)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -27,14 +27,14 @@ prim_dynamic_slice(operand, ..., slice_sizes)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
   of integer type)  
   Scalar start indices, one per dimension. Each must be a scalar array.
-  Pass one scalar per dimension of `operand`.
+  Pass one scalar per dimension of `x`.
 
 - slice_sizes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Size of the slice in each dimension. Must have length equal to
-  `ndims(operand)` and satisfy `1 <= slice_sizes <= nv_shape(operand)`
-  per dimension.
+  `ndims(x)` and satisfy `1 <= slice_sizes <= nv_shape(x)` per
+  dimension.
 
 ## Value
 
@@ -45,7 +45,7 @@ ambiguous if the input is ambiguous.
 ## Out Of Bounds Behavior
 
 Start indices are clamped before the slice is extracted:
-`adjusted_start_indices = clamp(1, start_indices, nv_shape(operand) - slice_sizes + 1)`.
+`adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)`.
 This means that out-of-bounds indices will not cause an error, but the
 effective start position may differ from the requested one.
 

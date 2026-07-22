@@ -5,12 +5,12 @@ Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
 ## Usage
 
 ``` r
-prim_erf_inv(operand)
+prim_erf_inv(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

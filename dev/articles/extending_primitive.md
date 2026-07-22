@@ -83,27 +83,27 @@ registry. The returned callable becomes the primitive and is bound to a
 library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
-  function(operand, times, dim) {
-    # type of operand is checked by graph_desc_add()
-    infer_fn <- function(operand, times, dim) {
-      if (!checkmate::test_integerish(dim, lower = 1, upper = ndims(operand), len = 1L)) {
-        cli::cli_abort("{.arg dim} must be between 1 and {ndims(operand)}, but is {.val dim}")
+  function(x, times, dim) {
+    # type of `x` is checked by graph_desc_add()
+    infer_fn <- function(x, times, dim) {
+      if (!checkmate::test_integerish(dim, lower = 1, upper = ndims(x), len = 1L)) {
+        cli::cli_abort("{.arg dim} must be between 1 and {ndims(x)}, but is {.val dim}")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
         cli_abort("times must be a positive integer, but is {times}")
       }
-      new_shape <- shape(operand)
+      new_shape <- shape(x)
       new_shape[dim] <- new_shape[dim] * times
       list(AbstractArray(
-        dtype = dtype(operand),
+        dtype = dtype(x),
         shape = Shape(new_shape),
-        ambiguous = operand$ambiguous
+        ambiguous = x$ambiguous
       ))
     }
 
     graph_desc_add(
       self,                       # lexically bound to the AnvlPrimitive
-      list(operand = operand),    # Dynamic inputs (arrays)
+      list(x = x),                # Dynamic inputs (arrays)
       params = list(              # Static parameters
         times = times,
         dim = dim
@@ -233,9 +233,9 @@ lowering pass. We implement `repeat_along` using concatenation:
 
 ``` r
 
-prim_repeat_along[["stablehlo"]] <- function(operand, times, dim) {
-  operands <- rep(list(operand), times)
-  list(rlang::exec(stablehlo::hlo_concatenate, !!!operands, dimension = dim - 1L))
+prim_repeat_along[["stablehlo"]] <- function(x, times, dim) {
+  xs <- rep(list(x), times)
+  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = dim - 1L))
 }
 ```
 
@@ -261,8 +261,8 @@ indexing, so you do not have to worry about that here.
 If the operation should support automatic differentiation, attach a
 reverse rule built with
 [`rule_reverse()`](https://r-xla.github.io/anvl/dev/reference/rule_reverse.md).
-The idea here is the following, where we assume the input `operand` has
-shape `(s_1, ..., s_n)`, which means that the output (and therefore it’s
+The idea here is the following, where we assume the input `x` has shape
+`(s_1, ..., s_n)`, which means that the output (and therefore it’s
 gradient) has shape
 `(s_1, ..., s_{dim-1}, s_dim * times, s_{dim+1}, ..., s_n)`.
 
@@ -278,11 +278,11 @@ prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
   }
 
   grad <- grads[[1L]]
-  operand <- inputs[[1L]]
+  x <- inputs[[1L]]
   dim <- params$dim
   times <- params$times
 
-  old_shape <- shape(operand)
+  old_shape <- shape(x)
   grad_shape <- shape(grad)
 
   new_shape <- grad_shape
@@ -361,7 +361,7 @@ registration step is needed:
 ``` r
 
 prim_repeat_along
-#> function (operand, times, dim) 
+#> function (x, times, dim) 
 #> {
 #>     if (currently_tracing()) {
 #>         cl <- match.call()
@@ -397,7 +397,7 @@ prim_repeat_along
 #>     }
 #>     run(args)
 #> }
-#> <environment: 0x562af29fd5d8>
+#> <environment: 0x55f802a013a0>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")

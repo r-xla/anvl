@@ -6,15 +6,15 @@ Element-wise natural logarithm. You can also use
 ## Usage
 
 ``` r
-nv_log(operand)
+nv_log(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

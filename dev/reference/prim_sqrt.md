@@ -5,12 +5,12 @@ Element-wise square root.
 ## Usage
 
 ``` r
-prim_sqrt(operand)
+prim_sqrt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

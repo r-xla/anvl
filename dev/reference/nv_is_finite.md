@@ -5,7 +5,7 @@ Element-wise check if values are finite (not `Inf`, `-Inf`, or `NaN`).
 ## Usage
 
 ``` r
-nv_is_finite(operand)
+nv_is_finite(x)
 
 # S3 method for class 'AnvlArray'
 is.finite(x)
@@ -13,15 +13,10 @@ is.finite(x)
 
 ## Arguments
 
-- operand:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
-
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  Input array.
 
 ## Value
 

@@ -5,15 +5,15 @@ Removes dimensions of size 1 from an array.
 ## Usage
 
 ``` r
-nv_squeeze(operand, dims = NULL)
+nv_squeeze(x, dims = NULL)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dims:
 
@@ -24,8 +24,7 @@ nv_squeeze(operand, dims = NULL)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `operand` with the specified dimensions
-removed.
+Has the same data type as `x` with the specified dimensions removed.
 
 ## See also
 

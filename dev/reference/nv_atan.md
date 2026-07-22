@@ -6,15 +6,15 @@ Element-wise inverse tangent. You can also use
 ## Usage
 
 ``` r
-nv_atan(operand)
+nv_atan(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

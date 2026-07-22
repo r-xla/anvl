@@ -6,21 +6,21 @@ order.
 ## Usage
 
 ``` r
-nv_top_k(operand, k, dim = NULL, with_indices = FALSE)
+nv_top_k(x, k, dim = NULL, with_indices = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - k:
 
   (`integer(1)`)  
   Number of top elements to return. Must satisfy
-  `1 <= k <= shape(operand)[dim]`.
+  `1 <= k <= shape(x)[dim]`.
 
 - dim:
 
@@ -39,8 +39,8 @@ nv_top_k(operand, k, dim = NULL, with_indices = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 (when `with_indices = FALSE`) or named list of two arrays (when
-`with_indices = TRUE`). Output shape matches `operand` with `dim`
-resized to `k`; values are sorted decreasing along `dim`.
+`with_indices = TRUE`). Output shape matches `x` with `dim` resized to
+`k`; values are sorted decreasing along `dim`.
 
 ## NaN handling
 

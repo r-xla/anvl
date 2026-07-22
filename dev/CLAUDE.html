@@ -106,7 +106,7 @@
 <div class="section level2">
 <h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>
 <p>Anvl’s elementwise binary operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>nv_add</code>, <code>nv_mul</code>, …) only <strong>auto-broadcast scalars</strong> — i.e. operands with <code>shape = integer()</code>. They do <strong>not</strong> do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code> errors like <em>“All non-scalar arrays must have the same shape, … Use <code><a href="reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> for general broadcasting.”</em></p>
-<p>When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(operand, target_shape)</code> / <code><a href="reference/prim_broadcast_in_dim.html">prim_broadcast_in_dim()</a></code> for a one-sided broadcast).</p>
+<p>When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(x, target_shape)</code> / <code><a href="reference/prim_broadcast_in_dim.html">prim_broadcast_in_dim()</a></code> for a one-sided broadcast).</p>
 </div>
 <div class="section level2">
 <h2 id="graph-tracing">Graph Tracing<a class="anchor" aria-label="anchor" href="#graph-tracing"></a></h2>
@@ -135,7 +135,7 @@
 <ul><li>Do not mention “1-based” indexing. Since this is an R package, 1-based indexing is the default.</li>
 <li>Use <code>@templateVar primitive_id &lt;name&gt;</code> with <code>@template section_rules</code> to auto-generate the “Implemented Rules” section.</li>
 <li>Use <code>@rdname</code> or <code>@inheritParams</code> to share documentation between <code>prim_*</code> and <code>nv_*</code> variants.</li>
-<li>Where a <code>man-roxygen/</code> template is too generic for a specific primitive (e.g. the operand has specific dtype constraints), write the <code>@param</code> inline instead.</li>
+<li>Where a <code>man-roxygen/</code> template is too generic for a specific primitive (e.g. the input has specific dtype constraints), write the <code>@param</code> inline instead.</li>
 </ul></div>
 
 

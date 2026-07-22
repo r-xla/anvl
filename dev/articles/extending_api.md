@@ -56,12 +56,12 @@ called on an R vector:
 ``` r
 
 library(anvl)
-# operand: dynamic, shape: static
-nv_reshape_naive <- function(operand, shape) {
-  if (!identical(shape(operand), shape)) {
-    prim_reshape(operand, shape)
+# x: dynamic, shape: static
+nv_reshape_naive <- function(x, shape) {
+  if (!identical(shape(x), shape)) {
+    prim_reshape(x, shape)
   } else {
-    operand
+    x
   }
 }
 nv_reshape_naive(1L, c(2, 2))
@@ -82,12 +82,12 @@ no-op case, we return a static R object instead of (as intended) an
 
 ``` r
 
-# operand: dynamic, dtype: static
-nv_convert_naive <- function(operand, dtype) {
+# x: dynamic, dtype: static
+nv_convert_naive <- function(x, dtype) {
   if (is.null(dtype)) {
-    return(operand)
+    return(x)
   }
-  prim_convert(operand, dtype)
+  prim_convert(x, dtype)
 }
 nv_convert_naive(1L, "i16")
 #> AnvlArray
@@ -118,9 +118,9 @@ function. Let’s say you are creating your function and working on GPU:
 
 ``` r
 
-nv_add_one_naive <- function(operand) {
-  operand <- as_anvl_array(operand)
-  operand + nv_fill(1L, shape(operand), device = "cuda")
+nv_add_one_naive <- function(x) {
+  x <- as_anvl_array(x)
+  x + nv_fill(1L, shape(x), device = "cuda")
 }
 ```
 
@@ -137,21 +137,21 @@ One way to achieve this is to simply pass the input’s device to
 
 ``` r
 
-nv_add_one1 <- function(operand) {
-  operand <- as_anvl_array(operand)
-  operand + nv_fill(1L, shape(operand), device = device(operand))
+nv_add_one1 <- function(x) {
+  x <- as_anvl_array(x)
+  x + nv_fill(1L, shape(x), device = device(x))
 }
 ```
 
 Another option is to rely on `nv_<op>_like` functions. These take in
 another `AnvlArray` as their first input and use its properties as the
 defaults for their arguments. In this case, the created array will
-assume the data type, shape and device from the input operand.
+assume the data type, shape and device from the input array.
 
 ``` r
 
-nv_add_one2 <- function(operand) {
-  operand + nv_fill_like(operand, 1L)
+nv_add_one2 <- function(x) {
+  x + nv_fill_like(x, 1L)
 }
 ```
 
@@ -205,9 +205,9 @@ operation with `#' @jit`:
 
 #' @export
 #' @jit
-nv_log2 <- function(operand) {
-  operand <- as_anvl_array(operand)
-  nv_log(operand) / log(2)
+nv_log2 <- function(x) {
+  x <- as_anvl_array(x)
+  nv_log(x) / log(2)
 }
 ```
 
@@ -220,7 +220,7 @@ argument names:
 
 #' @export
 #' @jit static = c(2L, 3L)
-nv_mean <- function(operand, dims = NULL, drop = TRUE) {
+nv_mean <- function(x, dims = NULL, drop = TRUE) {
   ...
 }
 

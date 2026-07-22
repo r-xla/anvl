@@ -8,15 +8,15 @@ instead.
 ## Usage
 
 ``` r
-nv_static_slice(operand, start_indices, limit_indices, strides)
+nv_static_slice(x, start_indices, limit_indices, strides)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - start_indices:
 
@@ -36,7 +36,7 @@ nv_static_slice(operand, start_indices, limit_indices, strides)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `operand`.
+Has the same data type as `x`.
 
 ## See also
 

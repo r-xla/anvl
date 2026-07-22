@@ -5,12 +5,12 @@ Element-wise logistic sigmoid: 1 / (1 + exp(-x)).
 ## Usage
 
 ``` r
-prim_logistic(operand)
+prim_logistic(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

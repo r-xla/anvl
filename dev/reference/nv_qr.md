@@ -1,14 +1,14 @@
 # QR Decomposition
 
-Computes the reduced QR decomposition of a matrix `operand`: \$\$A = Q
-R,\$\$ where \\Q\\ has orthonormal columns (\\Q^\top Q = I\\) and \\R\\
-is upper triangular. For an \\m \times n\\ input with \\k = \min(m,
-n)\\, \\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\.
+Computes the reduced QR decomposition of a matrix `x`: \$\$A = Q R,\$\$
+where \\Q\\ has orthonormal columns (\\Q^\top Q = I\\) and \\R\\ is
+upper triangular. For an \\m \times n\\ input with \\k = \min(m, n)\\,
+\\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\.
 
 ## Usage
 
 ``` r
-nv_qr(operand)
+nv_qr(x)
 
 # S3 method for class 'AnvlArray'
 qr(x, ...)
@@ -16,15 +16,10 @@ qr(x, ...)
 
 ## Arguments
 
-- operand:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 dimensions.
-
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  Matrix of data type floating-point with exactly 2 dimensions.
 
 - ...:
 
@@ -33,8 +28,8 @@ qr(x, ...)
 ## Value
 
 Named `list` with elements `Q` (shape `(m, k)`) and `R` (shape
-`(k, n)`), where `(m, n) = shape(operand)` and `k = min(m, n)`. Both
-have the same data type as `operand`.
+`(k, n)`), where `(m, n) = shape(x)` and `k = min(m, n)`. Both have the
+same data type as `x`.
 
 ## See also
 

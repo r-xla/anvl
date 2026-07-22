@@ -1,6 +1,6 @@
 # 2D Convolution
 
-Torch-style 2D convolution in NCHW layout: `input` is
+Torch-style 2D convolution in NCHW layout: `x` is
 `[batch, in_channels, height, width]`, `weight` is
 `[out_channels, in_channels / groups, kh, kw]`, output is
 `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
@@ -9,7 +9,7 @@ Torch-style 2D convolution in NCHW layout: `input` is
 
 ``` r
 nv_conv2d(
-  input,
+  x,
   weight,
   stride = 1L,
   padding = 0L,
@@ -21,7 +21,7 @@ nv_conv2d(
 
 ## Arguments
 
-- input:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   `[N, C_in, H, W]`.

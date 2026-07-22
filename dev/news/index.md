@@ -4,6 +4,9 @@
 
 ### Breaking changes
 
+- The primary array argument (previously `operand`) of array
+  transformation functions (`prim_<*>` and `nv_<*>`) is now consistently
+  called `x`.
 - The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it
   uses. Pass `backend = "pjrt"` to
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),

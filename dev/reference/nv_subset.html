@@ -93,7 +93,7 @@ dimension.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="va">x</span><span class="op">[</span><span class="va">...</span><span class="op">]</span></span>
 <span></span>
-<span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">operand</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -102,17 +102,12 @@ dimension.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Same as <code>operand</code>; this is the name used by the base R S3 generic.</p></dd>
+Input array.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Subset specifications, one per dimension. Omitted trailing
 dimensions select all elements. See <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for details.</p></dd>
-
-
-<dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Operand.</p></dd>
 
 </dl></div>
     <div class="section level2">

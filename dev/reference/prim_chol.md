@@ -6,12 +6,12 @@ matrix. Dimensions before the last two are batch dimensions.
 ## Usage
 
 ``` r
-prim_chol(operand, lower = FALSE)
+prim_chol(x, lower = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point with at least 2 dimensions.
@@ -23,9 +23,8 @@ prim_chol(operand, lower = FALSE)
   (`logical(1)`)  
   If `FALSE` (default, matching base R's
   [`base::chol()`](https://rdrr.io/r/base/chol.html)), compute the upper
-  triangular factor `U` such that `operand = t(U) %*% U`. If `TRUE`,
-  compute the lower triangular factor `L` such that
-  `operand = L %*% t(L)`.
+  triangular factor `U` such that `x = t(U) %*% U`. If `TRUE`, compute
+  the lower triangular factor `L` such that `x = L %*% t(L)`.
 
 ## Value
 

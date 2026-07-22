@@ -1,6 +1,6 @@
 # 1D Convolution
 
-Torch-style 1D convolution in NCW layout: `input` is
+Torch-style 1D convolution in NCW layout: `x` is
 `[batch, in_channels, width]`, `weight` is
 `[out_channels, in_channels / groups, kW]`, output is
 `[batch, out_channels, out_w]`. Symmetric zero padding.
@@ -9,7 +9,7 @@ Torch-style 1D convolution in NCW layout: `input` is
 
 ``` r
 nv_conv1d(
-  input,
+  x,
   weight,
   stride = 1L,
   padding = 0L,
@@ -21,7 +21,7 @@ nv_conv1d(
 
 ## Arguments
 
-- input:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   `[N, C_in, W]`.

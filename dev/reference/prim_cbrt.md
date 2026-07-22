@@ -5,12 +5,12 @@ Element-wise cube root.
 ## Usage
 
 ``` r
-prim_cbrt(operand)
+prim_cbrt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

@@ -5,12 +5,12 @@ Element-wise cosine.
 ## Usage
 
 ``` r
-prim_cos(operand)
+prim_cos(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

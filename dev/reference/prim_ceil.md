@@ -5,12 +5,12 @@ Element-wise ceiling.
 ## Usage
 
 ``` r
-prim_ceil(operand)
+prim_ceil(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

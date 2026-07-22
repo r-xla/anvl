@@ -78,8 +78,7 @@ for general broadcasting.”*
 
 When two non-scalar arrays need to be combined and only differ by size-1
 dimensions (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via
-`nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(operand, target_shape)`
-/
+`nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` /
 [`prim_broadcast_in_dim()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_dim.md)
 for a one-sided broadcast).
 
@@ -138,5 +137,5 @@ When writing roxygen2 documentation for primitives or API functions:
 - Use `@rdname` or `@inheritParams` to share documentation between
   `prim_*` and `nv_*` variants.
 - Where a `man-roxygen/` template is too generic for a specific
-  primitive (e.g. the operand has specific dtype constraints), write the
+  primitive (e.g. the input has specific dtype constraints), write the
   `@param` inline instead.

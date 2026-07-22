@@ -5,15 +5,15 @@ Inserts a dimension of size 1 at the specified position.
 ## Usage
 
 ``` r
-nv_unsqueeze(operand, dim)
+nv_unsqueeze(x, dim)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dim:
 
@@ -23,7 +23,7 @@ nv_unsqueeze(operand, dim)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `operand` with an extra dimension of size 1.
+Has the same data type as `x` with an extra dimension of size 1.
 
 ## See also
 

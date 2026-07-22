@@ -5,12 +5,12 @@ Element-wise absolute value.
 ## Usage
 
 ``` r
-prim_abs(operand)
+prim_abs(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type signed integer or floating-point.

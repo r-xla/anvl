@@ -5,12 +5,12 @@ Performs logical AND along the specified dimensions.
 ## Usage
 
 ``` r
-prim_reduce_all(operand, dims, drop = TRUE)
+prim_reduce_all(x, dims, drop = TRUE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of boolean data type.
@@ -31,8 +31,8 @@ prim_reduce_all(operand, dims, drop = TRUE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Boolean array. Never ambiguous. When `drop = TRUE`, the shape is that of
-`operand` with `dims` removed. When `drop = FALSE`, the shape is that of
-`operand` with `dims` set to 1.
+`x` with `dims` removed. When `drop = FALSE`, the shape is that of `x`
+with `dims` set to 1.
 
 ## Implemented Rules
 

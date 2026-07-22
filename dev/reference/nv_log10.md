@@ -6,15 +6,15 @@ Element-wise base-10 logarithm. You can also use
 ## Usage
 
 ``` r
-nv_log10(operand)
+nv_log10(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

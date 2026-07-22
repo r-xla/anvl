@@ -5,12 +5,12 @@ Element-wise inverse hyperbolic tangent.
 ## Usage
 
 ``` r
-prim_atanh(operand)
+prim_atanh(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

@@ -5,12 +5,12 @@ Rounds the elements of an array to the nearest integer.
 ## Usage
 
 ``` r
-prim_round(operand, method = "nearest_even")
+prim_round(x, method = "nearest_even")
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -24,8 +24,8 @@ prim_round(operand, method = "nearest_even")
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same dtype and shape as `operand`. It is ambiguous if the input
-is ambiguous.
+Has the same dtype and shape as `x`. It is ambiguous if the input is
+ambiguous.
 
 ## Implemented Rules
 

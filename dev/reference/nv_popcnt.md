@@ -5,15 +5,15 @@ Element-wise population count (number of set bits).
 ## Usage
 
 ``` r
-nv_popcnt(operand)
+nv_popcnt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

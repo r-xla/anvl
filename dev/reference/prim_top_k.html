@@ -90,14 +90,14 @@ descending order, together with their indices into that dimension.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_top_k</span><span class="op">(</span><span class="va">operand</span>, <span class="va">k</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_top_k</span><span class="op">(</span><span class="va">x</span>, <span class="va">k</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Tensor of integer, unsigned integer, or floating-point dtype with rank &gt;= 1.</p></dd>
 
@@ -105,15 +105,15 @@ Tensor of integer, unsigned integer, or floating-point dtype with rank &gt;= 1.<
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
 Number of top elements. Must satisfy
-<code>1 &lt;= k &lt;= shape(operand)[ndims(operand)]</code>.</p></dd>
+<code>1 &lt;= k &lt;= shape(x)[ndims(x)]</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list</code> of two <code><a href="arrayish.html">arrayish</a></code> values:<br>
-The top-<code>k</code> values (same dtype as <code>operand</code>) and their indices along
+The top-<code>k</code> values (same dtype as <code>x</code>) and their indices along
 the last dimension (dtype <code>i32</code>, matching JAX). Both have the same
-shape as <code>operand</code> with the last dimension replaced by <code>k</code>. Ties are
+shape as <code>x</code> with the last dimension replaced by <code>k</code>. Ties are
 broken by lower index first.</p>
     </div>
     <div class="section level2">

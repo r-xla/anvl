@@ -5,15 +5,15 @@ Finds the maximum of array elements along the specified dimensions.
 ## Usage
 
 ``` r
-nv_reduce_max(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
+nv_reduce_max(x, dims = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dims:
 

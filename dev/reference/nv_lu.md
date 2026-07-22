@@ -1,8 +1,8 @@
 # LU Decomposition
 
-Computes the partial-pivoted LU decomposition of a matrix `operand`:
-\$\$P A = L U,\$\$ where \\P\\ is a permutation matrix, \\L\\ is unit
-lower triangular, and \\U\\ is upper triangular.
+Computes the partial-pivoted LU decomposition of a matrix `x`: \$\$P A =
+L U,\$\$ where \\P\\ is a permutation matrix, \\L\\ is unit lower
+triangular, and \\U\\ is upper triangular.
 
 This function returns `L` and `U` as separate matrices. Use
 [`prim_lu()`](https://r-xla.github.io/anvl/dev/reference/prim_lu.md) to
@@ -11,12 +11,12 @@ get them in packed `LU` form.
 ## Usage
 
 ``` r
-nv_lu(operand)
+nv_lu(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Matrix of data type floating-point with exactly 2 dimensions.
@@ -26,7 +26,7 @@ nv_lu(operand)
 Named `list`:
 
 - `L` – unit lower-triangular factor of shape `(m, k)`, where
-  `(m, n) = shape(operand)` and `k = min(m, n)`.
+  `(m, n) = shape(x)` and `k = min(m, n)`.
 
 - `U` – upper-triangular factor of shape `(k, n)`.
 

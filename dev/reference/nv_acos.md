@@ -6,15 +6,15 @@ Element-wise inverse cosine. You can also use
 ## Usage
 
 ``` r
-nv_acos(operand)
+nv_acos(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

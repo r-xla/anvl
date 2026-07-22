@@ -1,8 +1,8 @@
 # Primitive LU Decomposition
 
-Computes the partial-pivoted LU decomposition of a matrix `operand`:
-\$\$P A = L U,\$\$ where \\P\\ is a permutation matrix, \\L\\ is unit
-lower triangular, and \\U\\ is upper triangular. `L` (with implicit unit
+Computes the partial-pivoted LU decomposition of a matrix `x`: \$\$P A =
+L U,\$\$ where \\P\\ is a permutation matrix, \\L\\ is unit lower
+triangular, and \\U\\ is upper triangular. `L` (with implicit unit
 diagonal) and `U` are packed into a single `LU` output matching LAPACK's
 `getrf` layout. \\P\\ is returned in two equivalent forms: `pivots`
 (LAPACK's sequential row-swap encoding) and `permutation` (an explicit
@@ -11,12 +11,12 @@ permutation vector).
 ## Usage
 
 ``` r
-prim_lu(operand)
+prim_lu(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Matrix of data type floating-point with exactly 2 dimensions.

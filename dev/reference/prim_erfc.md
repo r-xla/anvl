@@ -5,12 +5,12 @@ Element-wise complementary error function `erfc(x) = 1 - erf(x)`.
 ## Usage
 
 ``` r
-prim_erfc(operand)
+prim_erfc(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

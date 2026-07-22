@@ -6,12 +6,12 @@ are broken by returning the smallest index.
 ## Usage
 
 ``` r
-prim_argmax(operand, dim, drop = TRUE)
+prim_argmax(x, dim, drop = TRUE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -31,8 +31,7 @@ prim_argmax(operand, dim, drop = TRUE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
 dtype `i32`  
-Same shape as `operand` with `dim` removed (or set to 1 if
-`drop = FALSE`).
+Same shape as `x` with `dim` removed (or set to 1 if `drop = FALSE`).
 
 ## Implemented Rules
 

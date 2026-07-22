@@ -7,15 +7,15 @@ trailing dimension is added; if wider, the last dimension is consumed.
 ## Usage
 
 ``` r
-nv_bitcast_convert(operand, dtype)
+nv_bitcast_convert(x, dtype)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dtype:
 

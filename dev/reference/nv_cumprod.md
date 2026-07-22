@@ -5,15 +5,15 @@ Cumulative product, optionally along a single dimension.
 ## Usage
 
 ``` r
-nv_cumprod(operand, dim = NULL, nan_rm = FALSE)
+nv_cumprod(x, dim = NULL, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dim:
 

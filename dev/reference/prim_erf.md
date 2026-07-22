@@ -6,12 +6,12 @@ Element-wise error function
 ## Usage
 
 ``` r
-prim_erf(operand)
+prim_erf(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

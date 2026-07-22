@@ -7,7 +7,7 @@ elements.
 
 ``` r
 nv_pad(
-  operand,
+  x,
   padding_value,
   edge_padding_low,
   edge_padding_high,
@@ -17,16 +17,15 @@ nv_pad(
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - padding_value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar value to use for padding. Must have the same dtype as
-  `operand`.
+  Scalar value to use for padding. Must have the same dtype as `x`.
 
 - edge_padding_low:
 
@@ -47,7 +46,7 @@ nv_pad(
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `operand`.
+Has the same data type as `x`.
 
 ## See also
 

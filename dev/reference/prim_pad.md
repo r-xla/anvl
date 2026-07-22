@@ -6,7 +6,7 @@ Pads an array with a given padding value.
 
 ``` r
 prim_pad(
-  operand,
+  x,
   padding_value,
   edge_padding_low,
   edge_padding_high,
@@ -16,7 +16,7 @@ prim_pad(
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -24,8 +24,7 @@ prim_pad(
 - padding_value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar value to use for padding. Must have the same dtype as
-  `operand`.
+  Scalar value to use for padding. Must have the same dtype as `x`.
 
 - edge_padding_low:
 
@@ -45,8 +44,8 @@ prim_pad(
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `operand`. For the output shape see the
-underlying stablehlo documentation
+Has the same data type as `x`. For the output shape see the underlying
+stablehlo documentation
 ([`hlo_pad()`](https://r-xla.github.io/stablehlo/reference/hlo_pad.html)).
 It is ambiguous if the input is ambiguous.
 

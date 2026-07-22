@@ -1,6 +1,6 @@
 # 3D Convolution
 
-Torch-style 3D convolution in NCDHW layout. `input` is
+Torch-style 3D convolution in NCDHW layout. `x` is
 `[batch, in_channels, depth, height, width]`, `weight` is
 `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric padding
 (e.g. causal temporal padding) is available via
@@ -10,7 +10,7 @@ Torch-style 3D convolution in NCDHW layout. `input` is
 
 ``` r
 nv_conv3d(
-  input,
+  x,
   weight,
   stride = 1L,
   padding = 0L,
@@ -22,7 +22,7 @@ nv_conv3d(
 
 ## Arguments
 
-- input:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   `[N, C_in, H, W]`.

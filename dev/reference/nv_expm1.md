@@ -5,15 +5,15 @@ Element-wise `exp(x) - 1`, more accurate for small `x`.
 ## Usage
 
 ``` r
-nv_expm1(operand)
+nv_expm1(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

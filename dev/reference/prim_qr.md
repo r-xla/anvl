@@ -1,19 +1,19 @@
 # Primitive QR Decomposition
 
-Computes the reduced QR decomposition of a matrix `operand`: \$\$A = Q
-R,\$\$ where \\Q\\ has orthonormal columns (\\Q^\top Q = I\\) and \\R\\
-is upper triangular. For an \\m \times n\\ input with \\k = \min(m,
-n)\\, \\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\.
+Computes the reduced QR decomposition of a matrix `x`: \$\$A = Q R,\$\$
+where \\Q\\ has orthonormal columns (\\Q^\top Q = I\\) and \\R\\ is
+upper triangular. For an \\m \times n\\ input with \\k = \min(m, n)\\,
+\\Q\\ has shape \\m \times k\\ and \\R\\ has shape \\k \times n\\.
 
 ## Usage
 
 ``` r
-prim_qr(operand)
+prim_qr(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Matrix of data type floating-point with exactly 2 dimensions.
@@ -21,8 +21,8 @@ prim_qr(operand)
 ## Value
 
 Named `list` with elements `Q` (shape `(m, k)`) and `R` (shape
-`(k, n)`), where `(m, n) = shape(operand)` and `k = min(m, n)`. Both
-have the same data type as `operand`.
+`(k, n)`), where `(m, n) = shape(x)` and `k = min(m, n)`. Both have the
+same data type as `x`.
 
 ## Implemented Rules
 

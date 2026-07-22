@@ -6,12 +6,12 @@ input unchanged. This is useful for debugging JIT-compiled code.
 ## Usage
 
 ``` r
-prim_print(operand)
+prim_print(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -19,7 +19,7 @@ prim_print(operand)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Returns `operand` as-is.
+Returns `x` as-is.
 
 ## Implemented Rules
 

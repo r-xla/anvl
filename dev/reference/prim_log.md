@@ -5,12 +5,12 @@ Element-wise natural logarithm.
 ## Usage
 
 ``` r
-prim_log(operand)
+prim_log(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

@@ -6,7 +6,7 @@ also use [`mean()`](https://rdrr.io/r/base/mean.html).
 ## Usage
 
 ``` r
-nv_mean(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
+nv_mean(x, dims = NULL, drop = TRUE, nan_rm = FALSE)
 
 # S3 method for class 'AnvlArray'
 mean(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
@@ -14,10 +14,10 @@ mean(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dims:
 
@@ -35,11 +35,6 @@ mean(x, trim = 0, na.rm = FALSE, ..., dims = NULL, drop = TRUE)
   (`logical(1)`)  
   How to handle `NaN` values in floating-point inputs. If `FALSE`
   (default), `NaN` propagates. If `TRUE`, `NaN` values are skipped.
-
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
 
 - trim:
 

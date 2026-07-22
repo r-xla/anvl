@@ -84,7 +84,7 @@ You can also use sort() directly."><meta property="og:image" content="https://r-
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">operand</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span>, stable <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">x</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span>, stable <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">x</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span>, dim <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
@@ -94,9 +94,9 @@ You can also use sort() directly."><meta property="og:image" content="https://r-
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Operand.</p></dd>
+Input array.</p></dd>
 
 
 <dt id="arg-dim">dim<a class="anchor" aria-label="anchor" href="#arg-dim"></a></dt>
@@ -118,11 +118,6 @@ observable for floats when <code>-0</code> / <code>+0</code> or <code>-NaN</code
 values the result is identical either way.</p></dd>
 
 
-<dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Same as <code>operand</code>; this is the name used by the base R S3 generic.</p></dd>
-
-
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>No additional arguments.</p></dd>
 
@@ -130,7 +125,7 @@ Same as <code>operand</code>; this is the name used by the base R S3 generic.</p
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code><a href="arrayish.html">arrayish</a></code><br>
-Same shape and data type as <code>operand</code>.</p>
+Same shape and data type as <code>x</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="nan-handling">NaN handling<a class="anchor" aria-label="anchor" href="#nan-handling"></a></h2>

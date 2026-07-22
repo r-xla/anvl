@@ -6,15 +6,15 @@ Element-wise truncation (round toward zero). You can also use
 ## Usage
 
 ``` r
-nv_trunc(operand)
+nv_trunc(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

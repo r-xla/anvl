@@ -7,7 +7,7 @@ batch dimensions.
 ## Usage
 
 ``` r
-nv_chol(operand, lower = FALSE)
+nv_chol(x, lower = FALSE)
 
 # S3 method for class 'AnvlArray'
 chol(x, ..., lower = FALSE)
@@ -15,7 +15,7 @@ chol(x, ..., lower = FALSE)
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Symmetric positive-definite matrix with at least 2 dimensions. The
@@ -26,11 +26,6 @@ chol(x, ..., lower = FALSE)
 
   (`logical(1)`)  
   If `TRUE`, return the lower-triangular factor.
-
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
 
 - ...:
 

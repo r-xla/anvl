@@ -81,16 +81,16 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_argsort</span><span class="op">(</span><span class="va">operand</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span>, stable <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_argsort</span><span class="op">(</span><span class="va">x</span>, dim <span class="op">=</span> <span class="cn">NULL</span>, decreasing <span class="op">=</span> <span class="cn">FALSE</span>, stable <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Operand.</p></dd>
+Input array.</p></dd>
 
 
 <dt id="arg-dim">dim<a class="anchor" aria-label="anchor" href="#arg-dim"></a></dt>
@@ -114,9 +114,9 @@ original relative order. Default <code>FALSE</code>.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code><a href="arrayish.html">arrayish</a></code> of dtype <code>i32</code><br>
-Same shape as <code>operand</code>. For a size-0 axis, the output is an empty <code>i32</code>
+Same shape as <code>x</code>. For a size-0 axis, the output is an empty <code>i32</code>
 array of the same shape (a valid empty permutation).
-<code>as_array(operand)[as_array(nv_argsort(operand))]</code> reproduces the sorted
+<code>as_array(x)[as_array(nv_argsort(x))]</code> reproduces the sorted
 array (for 1-D inputs).</p>
     </div>
     <div class="section level2">

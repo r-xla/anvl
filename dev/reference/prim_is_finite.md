@@ -5,12 +5,12 @@ Element-wise check if values are finite (not Inf, -Inf, or NaN).
 ## Usage
 
 ``` r
-prim_is_finite(operand)
+prim_is_finite(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.

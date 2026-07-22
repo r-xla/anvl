@@ -1,8 +1,8 @@
 # Median
 
 Computes the median along a dimension. Equivalent to
-`nv_quantile(operand, 0.5, dim, interpolation)`; for an even-length axis
-with the default `"linear"` interpolation, the average of the two middle
+`nv_quantile(x, 0.5, dim, interpolation)`; for an even-length axis with
+the default `"linear"` interpolation, the average of the two middle
 values is returned, matching base R's
 [`median()`](https://rdrr.io/r/stats/median.html).
 
@@ -15,7 +15,7 @@ extra arguments (e.g. `interpolation`) are forwarded via `...`.
 ## Usage
 
 ``` r
-nv_median(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_median(x, dim = NULL, interpolation = "linear", nan_rm = FALSE)
 
 # S3 method for class 'AnvlArray'
 median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
@@ -23,10 +23,10 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dim:
 
@@ -49,11 +49,6 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
   [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md).
   See its documentation for details.
 
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
-
 - na.rm:
 
   Forwarded to `nv_median()`'s `nan_rm` argument.
@@ -65,7 +60,7 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same shape as `operand` with `dim` removed.
+Same shape as `x` with `dim` removed.
 
 ## See also
 

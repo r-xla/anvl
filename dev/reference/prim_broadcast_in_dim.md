@@ -6,12 +6,12 @@ size-1 dimensions.
 ## Usage
 
 ``` r
-prim_broadcast_in_dim(operand, shape, broadcast_dimensions)
+prim_broadcast_in_dim(x, shape, broadcast_dimensions)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -20,13 +20,13 @@ prim_broadcast_in_dim(operand, shape, broadcast_dimensions)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Target shape. Each mapped dimension must either match the
-  corresponding operand dimension or the operand dimension must be 1.
+  corresponding dimension of `x`, or that dimension of `x` must be 1.
 
 - broadcast_dimensions:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Maps each dimension of `operand` to a dimension of the output. Must
-  have length equal to the number of dimensions of `operand`.
+  Maps each dimension of `x` to a dimension of the output. Must have
+  length equal to the number of dimensions of `x`.
 
 ## Value
 

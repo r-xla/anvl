@@ -6,12 +6,12 @@ modifying the underlying data.
 ## Usage
 
 ``` r
-prim_bitcast_convert(operand, dtype)
+prim_bitcast_convert(x, dtype)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.

@@ -11,12 +11,12 @@ does this.
 ## Usage
 
 ``` r
-prim_top_k(operand, k)
+prim_top_k(x, k)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Tensor of integer, unsigned integer, or floating-point dtype with rank
@@ -25,18 +25,17 @@ prim_top_k(operand, k)
 - k:
 
   (`integer(1)`)  
-  Number of top elements. Must satisfy
-  `1 <= k <= shape(operand)[ndims(operand)]`.
+  Number of top elements. Must satisfy `1 <= k <= shape(x)[ndims(x)]`.
 
 ## Value
 
 `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 values:  
-The top-`k` values (same dtype as `operand`) and their indices along the
-last dimension (dtype `i32`, matching JAX). Both have the same shape as
-`operand` with the last dimension replaced by `k`. Ties are broken by
-lower index first.
+The top-`k` values (same dtype as `x`) and their indices along the last
+dimension (dtype `i32`, matching JAX). Both have the same shape as `x`
+with the last dimension replaced by `k`. Ties are broken by lower index
+first.
 
 ## Implemented Rules
 

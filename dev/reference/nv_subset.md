@@ -11,7 +11,7 @@ elements along a dimension.
 # S3 method for class 'AnvlArray'
 x[...]
 
-nv_subset(operand, ...)
+nv_subset(x, ...)
 ```
 
 ## Arguments
@@ -19,7 +19,7 @@ nv_subset(operand, ...)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  Input array.
 
 - ...:
 
@@ -27,11 +27,6 @@ nv_subset(operand, ...)
   select all elements. See
   [`vignette("subsetting")`](https://r-xla.github.io/anvl/dev/articles/subsetting.md)
   for details.
-
-- operand:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
 
 ## Value
 

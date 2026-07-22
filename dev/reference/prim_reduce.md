@@ -6,12 +6,12 @@ associative reducer.
 ## Usage
 
 ``` r
-prim_reduce(operand, init, dims, drop = TRUE, reductor)
+prim_reduce(x, init, dims, drop = TRUE, reductor)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -20,7 +20,7 @@ prim_reduce(operand, init, dims, drop = TRUE, reductor)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Scalar (0-dimensional) initial value. Must have the same data type as
-  `operand` and be the neutral element w.r.t. `reductor`.
+  `x` and be the neutral element w.r.t. `reductor`.
 
 - dims:
 
@@ -36,14 +36,14 @@ prim_reduce(operand, init, dims, drop = TRUE, reductor)
 - reductor:
 
   (`function(lhs, rhs)`)  
-  Binary reducer producing a scalar of the same dtype as `operand`. Must
-  be associative (see "Associativity Requirement").
+  Binary reducer producing a scalar of the same dtype as `x`. Must be
+  associative (see "Associativity Requirement").
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same data type as `operand`. Shape is `operand` with `dims` removed (or
-set to 1 if `drop = FALSE`).
+Same data type as `x`. Shape is `x` with `dims` removed (or set to 1 if
+`drop = FALSE`).
 
 ## Associativity Requirement
 

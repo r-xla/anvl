@@ -93,14 +93,14 @@ indices output is the largest <code>i</code> in <code>1:j</code> with
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_cummin</span><span class="op">(</span><span class="va">operand</span>, <span class="va">dim</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_cummin</span><span class="op">(</span><span class="va">x</span>, <span class="va">dim</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Arrayish value of any data type.</p></dd>
 
@@ -113,9 +113,9 @@ Dimension along which to accumulate.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list</code> of two <code><a href="arrayish.html">arrayish</a></code> values:<br>
-The running minimum (same dtype as <code>operand</code>) and the
+The running minimum (same dtype as <code>x</code>) and the
 running argmin (dtype <code>i32</code>, 1-based). Both have
-the same shape as <code>operand</code>.</p>
+the same shape as <code>x</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>

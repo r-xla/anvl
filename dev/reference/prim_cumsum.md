@@ -6,12 +6,12 @@ position `j` along `dim` equals the sum of input positions `1:j`.
 ## Usage
 
 ``` r
-prim_cumsum(operand, dim)
+prim_cumsum(x, dim)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.

@@ -9,12 +9,12 @@ output is the largest `i` in `1:j` with `input[i] == values[j]`
 ## Usage
 
 ``` r
-prim_cummax(operand, dim)
+prim_cummax(x, dim)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -29,8 +29,8 @@ prim_cummax(operand, dim)
 `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 values:  
-The running maximum (same dtype as `operand`) and the running argmax
-(dtype `i32`, 1-based). Both have the same shape as `operand`.
+The running maximum (same dtype as `x`) and the running argmax (dtype
+`i32`, 1-based). Both have the same shape as `x`.
 
 ## Implemented Rules
 

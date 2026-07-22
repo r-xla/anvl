@@ -6,15 +6,15 @@ input unchanged if it already has the target type.
 ## Usage
 
 ``` r
-nv_convert(operand, dtype)
+nv_convert(x, dtype)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dtype:
 
@@ -25,7 +25,7 @@ nv_convert(operand, dtype)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the given `dtype` and the same shape as `operand`.
+Has the given `dtype` and the same shape as `x`.
 
 ## See also
 

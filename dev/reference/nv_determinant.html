@@ -87,7 +87,7 @@ scalar determinant, use <code><a href="nv_det.html">nv_det()</a></code>.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_determinant</span><span class="op">(</span><span class="va">operand</span>, logarithm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_determinant</span><span class="op">(</span><span class="va">x</span>, logarithm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/det.html" class="external-link">determinant</a></span><span class="op">(</span><span class="va">x</span>, logarithm <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
@@ -97,7 +97,7 @@ scalar determinant, use <code><a href="nv_det.html">nv_det()</a></code>.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Square matrix of floating-point data type.</p></dd>
 
@@ -107,11 +107,6 @@ Square matrix of floating-point data type.</p></dd>
 of the absolute determinant.</p></dd>
 
 
-<dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Same as <code>operand</code>; this is the name used by the base R S3 generic.</p></dd>
-
-
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>No additional arguments.</p></dd>
 
@@ -119,7 +114,7 @@ Same as <code>operand</code>; this is the name used by the base R S3 generic.</p
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Named <code>list</code> with elements <code>modulus</code> and <code>sign</code>, both scalar
-<code><a href="arrayish.html">arrayish</a></code> with the same dtype as <code>operand</code>. The full determinant
+<code><a href="arrayish.html">arrayish</a></code> with the same dtype as <code>x</code>. The full determinant
 is <code>sign * exp(modulus)</code> (with <code>logarithm = TRUE</code>) or
 <code>sign * modulus</code> (with <code>logarithm = FALSE</code>).</p>
     </div>

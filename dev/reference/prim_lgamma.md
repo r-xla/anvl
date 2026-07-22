@@ -6,12 +6,12 @@ function.
 ## Usage
 
 ``` r
-prim_lgamma(operand)
+prim_lgamma(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of data type floating-point.
