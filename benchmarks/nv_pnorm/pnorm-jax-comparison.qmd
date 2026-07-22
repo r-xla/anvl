@@ -376,8 +376,8 @@ gold_all <- function(z) {
   phi <- exp(-(zm * zm) / 2) / sqrt(2 * pi_m)
   logPhi <- mpfr(numeric(length(z)), PREC)          # cancellation-free logPhi
   lo <- z <= 0
-  if (any(lo))  logPhi[lo]  <- log(0.5 * erfc(-zm[lo] / s2))
-  if (any(!lo)) logPhi[!lo] <- log1p(-0.5 * erfc(zm[!lo] / s2))
+  if (any(lo))   logPhi[lo]  <- log(0.5 * erfc(-zm[lo] / s2))
+  if (!all(lo))  logPhi[!lo] <- log1p(-0.5 * erfc(zm[!lo] / s2))
   list(value_F = Phi, value_T = logPhi, grad_F = phi, grad_T = phi / Phi)
 }
 ## Cast computed doubles up to mpfr, form the relative error at full precision,

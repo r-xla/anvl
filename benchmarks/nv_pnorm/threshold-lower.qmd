@@ -128,7 +128,9 @@ branch_direct <- function(d) {
 asymp_coef <- function(n) {
   cf <- numeric(n)
   cf[1] <- -1
-  if (n > 1) for (j in 2:n) cf[j] <- cf[j - 1] * (-(2 * j - 1))
+  if (n > 1) {
+    for (j in 2:n) cf[j] <- cf[j - 1] * (-(2 * j - 1))
+  }
   cf
 }
 
@@ -142,7 +144,9 @@ branch_asymp <- function(d, series_terms, use_log1p = TRUE) {
   w <- 1 / d2_asymp
   cf <- asymp_coef(series_terms)
   acc <- cf[series_terms]
-  if (series_terms > 1) for (j in seq(series_terms - 1, 1)) acc <- cf[j] + w * acc
+  if (series_terms > 1) {
+    for (j in seq(series_terms - 1, 1)) acc <- cf[j] + w * acc
+  }
   series_minus_1 <- w * acc
   log_term <- if (use_log1p) nv_log1p(series_minus_1) else series_minus_1
   -0.5 * d2_asymp - 0.5 * base::log(2 * pi) - nv_log(d_asymp) + log_term
@@ -254,7 +258,7 @@ robust_optimum <- function(A, candidates, metric, n, tol = 2) {
   # Find absolute best error, then back off if neear cliff
   floor_val <- min(e[finite])
   near_floor <- finite & e <= tol * floor_val
-  thres_best <- if (any(!finite)) {
+  thres_best <- if (!all(finite)) {
     cliff <- candidates[!finite]
     margin <- vapply(candidates[near_floor], function(L) min(abs(L - cliff)), numeric(1))
     candidates[near_floor][which.max(margin)]

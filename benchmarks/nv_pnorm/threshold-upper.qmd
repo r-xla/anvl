@@ -154,7 +154,7 @@ robust_optimum <- function(A, candidates, upper_branch, tol = 2) {
   if (!any(finite)) return(list(U = NA_real_, val = Inf, grad = Inf, plateau = c(NA, NA)))
   floor_val <- min(e[finite])
   near_floor <- finite & e <= tol * floor_val
-  U_best <- if (any(!finite)) {
+  U_best <- if (!all(finite)) {
     cliff <- candidates[!finite]
     margin <- vapply(candidates[near_floor], function(U) min(abs(U - cliff)), numeric(1))
     candidates[near_floor][which.max(margin)]
