@@ -10,10 +10,6 @@
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
-* Only the backends listed in the new `anvl.backends` option are active; it
-  defaults to `"pjrt"`, so the `"quickr"` backend now has to be opted into via
-  `options(anvl.backends = c("pjrt", "quickr"))` *before* anvl is loaded.
-  Requesting an inactive backend is an error. See `?anvl-package`.
 
 ## Features
 
@@ -38,6 +34,8 @@
   over all dimensions and returns a scalar, consistent with the other
   reductions.
 * Supports 1-3d convolutions.
+* Ne optinon: Only the backends listed in the new `anvl.backends` option are active.
+  This is read once when the package is loaded.
 
 ## Performance
 
