@@ -6,15 +6,17 @@ dtype_from_buffer <- function(x) {
 #' @title Apply a `@jit` registry
 #' @description
 #' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
-#' listed function in `envir` to
-#' `jit(f, backend = "auto", static = entry$static)`.
+#' listed function in `envir` to `jit(f, static = entry$static)`. The backend
+#' is left to [`jit()`]: it binds the only active backend when just one is
+#' active, and otherwise picks one per call.
 #'
-#' Call this from the top level of your package's `R/zzz.R`, right next to
-#' `.onLoad`, so the wrappers are byte-compiled during package install
-#' instead of being rebuilt on every `.onLoad`:
+#' Call this from your package's `.onLoad()`, after the active backends have
+#' been fixed, passing the package namespace explicitly:
 #'
 #' ```r
-#' anvl::apply_jit_registry(.jit_registry)
+#' .onLoad <- function(libname, pkgname) {
+#'   apply_jit_registry(.jit_registry, asNamespace(pkgname))
+#' }
 #' ```
 #'
 #' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
@@ -24,21 +26,16 @@ dtype_from_buffer <- function(x) {
 #'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
 #'   `.jit_registry` object emitted by the roclet.
 #' @param envir (`environment`)\cr
-#'   Environment in which to look up and rebind functions. Defaults to
-#'   `parent.frame()`, which at top-level package source time is the package
+#'   Environment in which to look up and rebind functions; pass the package
 #'   namespace.
 #' @return Invisibly returns `envir`.
 #' @seealso [`jit_roclet()`], [`jit()`]
 #' @export
-apply_jit_registry <- function(registry, envir = parent.frame()) {
+apply_jit_registry <- function(registry, envir) {
   for (entry in registry) {
     assign(
       entry$name,
-      jit(
-        get(entry$name, envir = envir, inherits = FALSE),
-        backend = "auto",
-        static = entry$static
-      ),
+      jit(get(entry$name, envir = envir, inherits = FALSE), static = entry$static),
       envir = envir
     )
   }
@@ -206,8 +203,14 @@ is_valid_r <- function(x) {
 }
 
 cache_size <- function(f) {
-  # All jit paths cache in pjrt's native dispatcher.
-  dispatcher <- environment(f)$dispatcher
+  env <- environment(f)
+  # A `backend = "auto"` wrapper holds one jitted function per backend it has
+  # been called with, so its cache size is their total.
+  if (identical(attr(f, "backend"), "auto")) {
+    return(sum(vapply(env$jit_fns, cache_size, integer(1L))))
+  }
+  # Every concrete backend caches in pjrt's native dispatcher.
+  dispatcher <- env$dispatcher
   if (is.null(dispatcher)) {
     cli_abort("{.arg f} has no dispatcher; is it a jitted function?")
   }
@@ -309,22 +312,20 @@ is_device_arg <- function(x) {
   inherits(x, "AnvlDeviceArg")
 }
 
-# returns list(device | NULL, backend)
+# Pair a jit() call's `device` and `backend` arguments up into a concrete
+# backend and the device to compile for. `jit()` peels off `backend = "auto"`
+# beforehand, so `backend` here is either a concrete backend or NULL.
+# Returns list(device | NULL, backend).
 resolve_device <- function(device, backend) {
   if (is.character(device)) {
     backend <- backend %||% default_backend()
-    device <- if (backend == "auto") {
-      nv_device(device, default_backend())
-    } else {
-      nv_device(device, backend)
-    }
-    return(list(device, backend))
+    return(list(nv_device(device, backend), backend))
   }
   if (is.null(device)) {
     return(list(NULL, backend %||% default_backend()))
   }
   # concrete device
-  if (is.null(backend) || (backend == "auto")) {
+  if (is.null(backend)) {
     return(list(device, backend(device)))
   }
   if (backend(device) != backend) {

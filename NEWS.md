@@ -2,6 +2,11 @@
 
 ## Breaking changes
 
+* The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it uses.
+  Pass `backend = "pjrt"` to `jit()`, `nv_array()`, `local_backend()`, and
+  friends; `backend()` and `default_backend()` now return `"pjrt"`. The
+  constructor `AnvlBackendXla()` is now `AnvlBackendPjrt()` and the internal
+  `compile_xla()` is now `compile_pjrt()`.
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
@@ -29,6 +34,11 @@
   over all dimensions and returns a scalar, consistent with the other
   reductions.
 * Supports 1-3d convolutions.
+* New option `anvl.backends`: only the backends listed in it are active.
+  This is read once when the package is loaded and defaults to
+  `c("pjrt", "quickr")`. Its first entry is the initial `default_backend()`,
+  and while more than one backend is active `jit()` picks the backend per call
+  (as with `backend = "auto"`) unless one is named.
 
 ## Performance
 

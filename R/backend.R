@@ -2,7 +2,7 @@
 #'
 #' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
 #' This should be a `structure()` with at least a `$data` field that contains the actual
-#' underlying data (`PJRTBuffer` for `"xla"` backend, `array()` for `"quickr"` backend).
+#' underlying data (`PJRTBuffer` for `"pjrt"` backend, `array()` for `"quickr"` backend).
 #' @param new_empty (`function`)\cr Constructs an AnvlArray of the given
 #' `dtype` and `shape` with unspecified contents. Called by [`nv_empty()`].
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
@@ -60,8 +60,52 @@ AnvlBackend <- function(
   )
 }
 
-register_backend <- function(name, backend) {
-  globals$backends[[name]] <- backend
+# Every backend anvl ships, as a constructor per name. Which of them are
+# actually registered is decided once at load time from the `anvl.backends`
+# option; see `activate_backends()`. This is a function (not a list built at
+# source time) so it does not depend on the collate order.
+backend_constructors <- function() {
+  list(pjrt = AnvlBackendPjrt, quickr = AnvlBackendQuickr)
+}
+
+# Validate the `anvl.backends` option and derive the initial default backend
+# from it. A plain function of its input so it is testable without reloading
+# the namespace.
+resolve_backends <- function(backends) {
+  known <- names(backend_constructors())
+  if (!is.character(backends) || !length(backends) || anyNA(backends)) {
+    cli_abort(c(
+      "Option {.code anvl.backends} must be a non-empty character vector of backend names.",
+      i = "Known backends: {.val {known}}."
+    ))
+  }
+  backends <- unique(backends)
+  unknown <- setdiff(backends, known)
+  if (length(unknown)) {
+    cli_abort(c(
+      "Option {.code anvl.backends} contains unknown backend{?s} {.val {unknown}}.",
+      i = "Known backends: {.val {known}}."
+    ))
+  }
+  list(
+    active = backends,
+    # The default backend is where an array goes when nothing else names one,
+    # so it is always a concrete backend.
+    default = backends[[1L]]
+  )
+}
+
+# Install the backend registry for the given set of active backends. Called
+# from `.onLoad()` with the value of the `anvl.backends` option.
+activate_backends <- function(backends) {
+  resolved <- resolve_backends(backends)
+  globals$active_backends <- resolved$active
+  globals$default_backend <- resolved$default
+  globals$backends <- c(
+    list(plain = AnvlBackendPlain()),
+    lapply(backend_constructors()[resolved$active], function(ctor) ctor())
+  )
+  invisible(resolved)
 }
 
 # Compare two device objects for equality, returning FALSE when they are of
@@ -108,12 +152,9 @@ print.PlainDeviceCpu <- function(x, ...) {
   invisible(x)
 }
 
-globals$backends <- list()
-
 # The plain backend is merely for capturing constants during jitting in a backend-agnostic way.
-# Otherwise it is unused
-register_backend(
-  "plain",
+# Otherwise it is unused. It is always registered, independently of `anvl.backends`.
+AnvlBackendPlain <- function() {
   AnvlBackend(
     new_data = function(data, dtype, shape, device, ambiguous) {
       if (is.null(dtype)) {
@@ -182,21 +223,48 @@ register_backend(
     },
     await_data = function(x) invisible(NULL)
   )
-)
+}
 
 #' Get the default backend
 #'
-#' Returns the current default backend from `getOption("anvl.default_backend", "xla")`.
+#' Returns the backend that is used when nothing else names one, i.e. the value
+#' of the `anvl.default_backend` option. It is always a concrete backend; the
+#' option defaults to the first of the active backends (see [`anvl-package`]).
 #'
-#' @return `character(1)` — the backend name (e.g. `"xla"`, `"quickr"`).
-#' @seealso [local_backend()]
+#' @return `character(1)` — the backend name, e.g. `"pjrt"` or `"quickr"`.
+#' @seealso [local_backend()], [`with_backend()`]
 #' @export
 default_backend <- function() {
-  getOption("anvl.default_backend", "xla")
+  getOption("anvl.default_backend", globals$default_backend)
 }
 
+# Ensure `backend` is one anvl can actually use, with a hint pointing at
+# `anvl.backends` when it is a known but inactive backend.
 assert_backend <- function(backend) {
-  assert_choice(backend, names(globals$backends))
+  assert_string(backend)
+  # `names(globals$backends)` is the active backends plus the internal "plain"
+  # one, which constructors accept for trace-time constants.
+  if (backend %in% names(globals$backends)) {
+    return(invisible(backend))
+  }
+  if (identical(backend, "auto")) {
+    cli_abort(c(
+      "{.val auto} is not a backend, but a {.fn jit} backend policy.",
+      i = "Pass {.code backend = \"auto\"} to {.fn jit} to pick the backend per call."
+    ))
+  }
+  if (backend %in% names(backend_constructors())) {
+    hint <- deparse1(union(globals$active_backends, backend))
+    cli_abort(c(
+      "Backend {.val {backend}} is not active.",
+      i = "Active backend{?s}: {.val {globals$active_backends}}.",
+      i = "Set {.code options(anvl.backends = {hint})} before loading anvl to activate it."
+    ))
+  }
+  cli_abort(c(
+    "Unknown backend {.val {backend}}.",
+    i = "Active backend{?s}: {.val {globals$active_backends}}."
+  ))
 }
 
 #' Temporarily set the default backend
@@ -205,12 +273,12 @@ assert_backend <- function(backend) {
 #' calling scope. This affects `nv_array()`, `nv_scalar()`, and `jit()`.
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use (`"xla"` or `"quickr"`).
+#'   Backend to use; one of the active backends (see [`anvl-package`]).
 #' @param envir The environment to scope the change to.
 #' @return The previous value of the option (invisibly).
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
-  backend <- assert_backend(backend)
+  assert_backend(backend)
   withr::local_options(anvl.default_backend = backend, .local_envir = envir)
 }
 
@@ -220,11 +288,11 @@ local_backend <- function(backend, envir = parent.frame()) {
 #' expression. This affects [`jit()`] and data construction (e.g. via [`nv_array`]).
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use (`"xla"` or `"quickr"`).
+#'   Backend to use; one of the active backends (see [`anvl-package`]).
 #' @param code An expression to evaluate with the given backend.
 #' @return The result of evaluating `code`.
 #' @export
 with_backend <- function(backend, code) {
-  backend <- assert_backend(backend)
+  assert_backend(backend)
   withr::with_options(list(anvl.default_backend = backend), code)
 }

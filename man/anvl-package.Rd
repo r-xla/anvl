@@ -10,6 +10,38 @@
 
 Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
 }
+\section{Options}{
+
+\itemize{
+\item \code{anvl.backends} (\code{character()}, default \code{c("pjrt", "quickr")}): the
+backends anvl activates; \code{"pjrt"} and \code{"quickr"} are the known ones. This
+option is read \strong{once, when the anvl namespace is loaded}; setting it
+afterwards has no effect, so set it before \code{library(anvl)} (e.g. in your
+\code{.Rprofile}):
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{options(anvl.backends = "pjrt")
+library(anvl)
+}\if{html}{\out{</div>}}
+
+Requesting a backend that is not active (via \code{\link[=jit]{jit()}}, \code{\link[=local_backend]{local_backend()}},
+\code{\link[=nv_array]{nv_array()}}, ...) is an error. The first entry is the initial value of
+\code{anvl.default_backend}, and \code{\link[=jit]{jit()}} infers the backend per call while more
+than one backend is active.
+\item \code{anvl.default_backend} (\code{character(1)}, default: the first entry of
+\code{anvl.backends}): the concrete backend that arrays are created on when
+nothing else names one, see \code{\link[=default_backend]{default_backend()}}. Change it for a scope
+with \code{\link[=local_backend]{local_backend()}} or \code{\link[=with_backend]{with_backend()}}.
+}
+}
+
+\section{Environment Variables}{
+
+\itemize{
+\item \code{PJRT_PLATFORM}: the platform \code{\link[=default_device]{default_device()}} uses for the \code{"pjrt"}
+backend (e.g. \code{"cpu"}, \code{"cuda"}). Defaults to \code{"cpu"}.
+}
+}
+
 \section{Third-Party Licenses}{
 
 The \code{anvl} package itself is MIT-licensed. The CUDA backend dynamically

@@ -4,7 +4,7 @@
 \alias{apply_jit_registry}
 \title{Apply a \verb{@jit} registry}
 \usage{
-apply_jit_registry(registry, envir = parent.frame())
+apply_jit_registry(registry, envir)
 }
 \arguments{
 \item{registry}{(\code{list})\cr
@@ -12,8 +12,7 @@ List of \verb{list(name = <chr>, static = <chr|int>)} entries. Typically the
 \code{.jit_registry} object emitted by the roclet.}
 
 \item{envir}{(\code{environment})\cr
-Environment in which to look up and rebind functions. Defaults to
-\code{parent.frame()}, which at top-level package source time is the package
+Environment in which to look up and rebind functions; pass the package
 namespace.}
 }
 \value{
@@ -21,14 +20,16 @@ Invisibly returns \code{envir}.
 }
 \description{
 Iterates over a registry produced by \code{\link[=jit_roclet]{jit_roclet()}} and rebinds each
-listed function in \code{envir} to
-\code{jit(f, backend = "auto", static = entry$static)}.
+listed function in \code{envir} to \code{jit(f, static = entry$static)}. The backend
+is left to \code{\link[=jit]{jit()}}: it binds the only active backend when just one is
+active, and otherwise picks one per call.
 
-Call this from the top level of your package's \code{R/zzz.R}, right next to
-\code{.onLoad}, so the wrappers are byte-compiled during package install
-instead of being rebuilt on every \code{.onLoad}:
+Call this from your package's \code{.onLoad()}, after the active backends have
+been fixed, passing the package namespace explicitly:
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{anvl::apply_jit_registry(.jit_registry)
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{.onLoad <- function(libname, pkgname) \{
+  apply_jit_registry(.jit_registry, asNamespace(pkgname))
+\}
 }\if{html}{\out{</div>}}
 
 \code{.jit_registry} is the variable defined by \code{R/jit-registry.R}, which is

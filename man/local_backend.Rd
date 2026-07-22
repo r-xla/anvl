@@ -8,7 +8,7 @@ local_backend(backend, envir = parent.frame())
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to use (\code{"xla"} or \code{"quickr"}).}
+Backend to use; one of the active backends (see \code{\link{anvl-package}}).}
 
 \item{envir}{The environment to scope the change to.}
 }

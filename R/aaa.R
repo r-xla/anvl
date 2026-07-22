@@ -1,6 +1,31 @@
 #' @keywords internal
 NULL
 
+#' @section Options:
+#' * `anvl.backends` (`character()`, default `c("pjrt", "quickr")`): the
+#'   backends anvl activates; `"pjrt"` and `"quickr"` are the known ones. This
+#'   option is read **once, when the anvl namespace is loaded**; setting it
+#'   afterwards has no effect, so set it before `library(anvl)` (e.g. in your
+#'   `.Rprofile`):
+#'
+#'   ```r
+#'   options(anvl.backends = "pjrt")
+#'   library(anvl)
+#'   ```
+#'
+#'   Requesting a backend that is not active (via [`jit()`], [`local_backend()`],
+#'   [`nv_array()`], ...) is an error. The first entry is the initial value of
+#'   `anvl.default_backend`, and [`jit()`] infers the backend per call while more
+#'   than one backend is active.
+#' * `anvl.default_backend` (`character(1)`, default: the first entry of
+#'   `anvl.backends`): the concrete backend that arrays are created on when
+#'   nothing else names one, see [`default_backend()`]. Change it for a scope
+#'   with [`local_backend()`] or [`with_backend()`].
+#'
+#' @section Environment Variables:
+#' * `PJRT_PLATFORM`: the platform [`default_device()`] uses for the `"pjrt"`
+#'   backend (e.g. `"cpu"`, `"cuda"`). Defaults to `"cpu"`.
+#'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
 #' loads NVIDIA software which is not bundled with `anvl`, but downloaded

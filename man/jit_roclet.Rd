@@ -11,12 +11,12 @@ A roxygen2 roclet object.
 }
 \description{
 A custom roxygen2 roclet that scans for \verb{@jit} tags on function definitions
-and emits a registry of functions to wrap in \code{\link[=jit]{jit()}} at package build
-time.
+and emits a registry of functions to wrap in \code{\link[=jit]{jit()}} when the package is
+loaded.
 
 Mark a function with \verb{#' @jit} (optionally \verb{#' @jit static = c(...)}) to
 request that the function be replaced in the package namespace by
-\code{jit(f, backend = "auto", static = c(...))}.
+\code{jit(f, static = c(...))}.
 }
 \section{Setting up the roclet in a package}{
 
@@ -29,12 +29,12 @@ request that the function be replaced in the package namespace by
 }\if{html}{\out{</div>}}
 \item Add \code{R/jit-registry.R} to the \code{Collate} field, \strong{before} \code{R/zzz.R}.
 \code{devtools::document()} will (re)generate this file on every run.
-\item In \code{R/zzz.R}, apply the registry at the top level (right next to
-\code{.onLoad}), so the wrapped functions are byte-compiled during install:
+\item In \code{R/zzz.R}, apply the registry from \code{.onLoad()}, so the wrappers see
+the backends that are active in this session:
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{.onLoad <- function(libname, pkgname) \{ ... \}
-
-anvl::apply_jit_registry(.jit_registry)
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{.onLoad <- function(libname, pkgname) \{
+  anvl::apply_jit_registry(.jit_registry, asNamespace(pkgname))
+\}
 }\if{html}{\out{</div>}}
 \item Tag the functions you want jitted:
 

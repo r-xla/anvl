@@ -1,8 +1,7 @@
 old_opts <- options(
   warnPartialMatchArgs = TRUE,
   warnPartialMatchAttr = TRUE,
-  warnPartialMatchDollar = TRUE,
-  anvl.default_backend = "xla"
+  warnPartialMatchDollar = TRUE
 )
 
 # so we can test multiple devices.

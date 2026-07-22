@@ -7,11 +7,13 @@
 default_backend()
 }
 \value{
-\code{character(1)} — the backend name (e.g. \code{"xla"}, \code{"quickr"}).
+\code{character(1)} — the backend name, e.g. \code{"pjrt"} or \code{"quickr"}.
 }
 \description{
-Returns the current default backend from \code{getOption("anvl.default_backend", "xla")}.
+Returns the backend that is used when nothing else names one, i.e. the value
+of the \code{anvl.default_backend} option. It is always a concrete backend; the
+option defaults to the first of the active backends (see \code{\link{anvl-package}}).
 }
 \seealso{
-\code{\link[=local_backend]{local_backend()}}
+\code{\link[=local_backend]{local_backend()}}, \code{\link[=with_backend]{with_backend()}}
 }
