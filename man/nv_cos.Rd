@@ -4,11 +4,11 @@
 \alias{nv_cos}
 \title{Cosine}
 \usage{
-nv_cos(operand)
+nv_cos(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

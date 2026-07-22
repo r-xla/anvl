@@ -4,10 +4,10 @@
 \alias{prim_tanh}
 \title{Primitive Hyperbolic Tangent}
 \usage{
-prim_tanh(operand)
+prim_tanh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

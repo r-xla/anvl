@@ -4,15 +4,15 @@
 \alias{prim_reduce}
 \title{Primitive Generic Reduce}
 \usage{
-prim_reduce(operand, init, dims, drop = TRUE, reductor)
+prim_reduce(x, init, dims, drop = TRUE, reductor)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{init}{(\code{\link{arrayish}})\cr
 Scalar (0-dimensional) initial value. Must have the same data type as
-\code{operand} and be the neutral element w.r.t. \code{reductor}.}
+\code{x} and be the neutral element w.r.t. \code{reductor}.}
 
 \item{dims}{(\code{integer()})\cr
 Dimensions to reduce over.
@@ -23,12 +23,12 @@ If \code{TRUE} (default) the reduced dimensions are removed; if \code{FALSE}
 they are kept with size 1.}
 
 \item{reductor}{(\verb{function(lhs, rhs)})\cr
-Binary reducer producing a scalar of the same dtype as \code{operand}.
+Binary reducer producing a scalar of the same dtype as \code{x}.
 Must be associative (see "Associativity Requirement").}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same data type as \code{operand}. Shape is \code{operand} with \code{dims} removed
+Same data type as \code{x}. Shape is \code{x} with \code{dims} removed
 (or set to 1 if \code{drop = FALSE}).
 }
 \description{

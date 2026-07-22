@@ -4,10 +4,10 @@
 \alias{prim_reverse}
 \title{Primitive Reverse}
 \usage{
-prim_reverse(operand, dims)
+prim_reverse(x, dims)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dims}{(\code{integer()})\cr
@@ -16,7 +16,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last dimension.
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type and shape as \code{operand}.
+Has the same data type and shape as \code{x}.
 It is ambiguous if the input is ambiguous.
 }
 \description{

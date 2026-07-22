@@ -4,10 +4,10 @@
 \alias{prim_reduce_any}
 \title{Primitive Any Reduction}
 \usage{
-prim_reduce_any(operand, dims, drop = TRUE)
+prim_reduce_any(x, dims, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of boolean data type.}
 
 \item{dims}{(\code{integer()})\cr
@@ -22,8 +22,8 @@ If \code{FALSE}, the reduced dimensions are set to 1.}
 \value{
 \code{\link{arrayish}}\cr
 Boolean array. Never ambiguous.
-When \code{drop = TRUE}, the shape is that of \code{operand} with \code{dims} removed.
-When \code{drop = FALSE}, the shape is that of \code{operand} with \code{dims} set to 1.
+When \code{drop = TRUE}, the shape is that of \code{x} with \code{dims} removed.
+When \code{drop = FALSE}, the shape is that of \code{x} with \code{dims} set to 1.
 }
 \description{
 Performs logical OR along the specified dimensions.

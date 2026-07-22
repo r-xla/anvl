@@ -4,10 +4,10 @@
 \alias{prim_argmin}
 \title{Primitive Argmin}
 \usage{
-prim_argmin(operand, dim, drop = TRUE)
+prim_argmin(x, dim, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dim}{(\code{integer(1)})\cr
@@ -20,7 +20,7 @@ kept with size 1.}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{operand} with \code{dim} removed (or set to 1 if
+Same shape as \code{x} with \code{dim} removed (or set to 1 if
 \code{drop = FALSE}).
 }
 \description{

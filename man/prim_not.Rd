@@ -4,10 +4,10 @@
 \alias{prim_not}
 \title{Primitive Not}
 \usage{
-prim_not(operand)
+prim_not(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type boolean, integer, or unsigned integer.}
 }
 \value{

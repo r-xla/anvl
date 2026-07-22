@@ -4,11 +4,11 @@
 \alias{nv_reduce_min}
 \title{Min Reduction}
 \usage{
-nv_reduce_min(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
+nv_reduce_min(x, dims = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dims}{(\code{integer()} | \code{NULL})\cr
 Dimensions to reduce. Negative values count from the end, i.e. \code{-1}

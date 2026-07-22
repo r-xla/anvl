@@ -4,10 +4,10 @@
 \alias{prim_asin}
 \title{Primitive Arc Sine}
 \usage{
-prim_asin(operand)
+prim_asin(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

@@ -4,10 +4,10 @@
 \alias{prim_popcnt}
 \title{Primitive Population Count}
 \usage{
-prim_popcnt(operand)
+prim_popcnt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type integer or unsigned integer.}
 }
 \value{

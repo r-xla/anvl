@@ -4,11 +4,11 @@
 \alias{nv_atanh}
 \title{Inverse Hyperbolic Tangent}
 \usage{
-nv_atanh(operand)
+nv_atanh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

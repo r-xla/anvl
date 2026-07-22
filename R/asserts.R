@@ -121,8 +121,8 @@ assert_float_dtype <- function(x, arg = rlang::caller_arg(x)) {
   dt
 }
 
-assert_linalg_matrix <- function(operand, arg, square = FALSE) {
-  s <- shape(operand)
+assert_linalg_matrix <- function(x, arg, square = FALSE) {
+  s <- shape(x)
   if (length(s) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a 2-D matrix.",
@@ -141,10 +141,10 @@ assert_linalg_matrix <- function(operand, arg, square = FALSE) {
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
     ))
   }
-  if (!inherits(dtype(operand), "FloatType")) {
+  if (!inherits(dtype(x), "FloatType")) {
     cli_abort(c(
       "{.arg {arg}} must have a floating-point dtype.",
-      "x" = "Got dtype {.val {as.character(dtype(operand))}}."
+      "x" = "Got dtype {.val {as.character(dtype(x))}}."
     ))
   }
   invisible(NULL)

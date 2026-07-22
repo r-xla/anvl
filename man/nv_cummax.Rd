@@ -4,11 +4,11 @@
 \alias{nv_cummax}
 \title{Cumulative Maximum}
 \usage{
-nv_cummax(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
+nv_cummax(x, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to accumulate. Negative values count from the end,

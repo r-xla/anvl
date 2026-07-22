@@ -4,11 +4,11 @@
 \alias{nv_var}
 \title{Variance Reduction}
 \usage{
-nv_var(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_var(x, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dims}{(\code{integer()} | \code{NULL})\cr
 Dimensions to reduce. Negative values count from the end, i.e. \code{-1}

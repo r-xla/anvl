@@ -1,4 +1,4 @@
 #' @section Shapes:
-#' - `operand`: any shape
-#' - output (`drop = TRUE`): shape of `operand` with `dims` removed
-#' - output (`drop = FALSE`): shape of `operand` with `dims` set to 1
+#' - `x`: any shape
+#' - output (`drop = TRUE`): shape of `x` with `dims` removed
+#' - output (`drop = FALSE`): shape of `x` with `dims` set to 1

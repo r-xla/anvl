@@ -4,10 +4,10 @@
 \alias{prim_cumprod}
 \title{Primitive Cumulative Product}
 \usage{
-prim_cumprod(operand, dim)
+prim_cumprod(x, dim)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dim}{(\code{integer(1)})\cr

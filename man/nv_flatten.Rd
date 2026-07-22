@@ -4,11 +4,11 @@
 \alias{nv_flatten}
 \title{Flatte}
 \usage{
-nv_flatten(operand)
+nv_flatten(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 (\code{\link{arrayish}})\cr

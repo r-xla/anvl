@@ -4,11 +4,11 @@
 \alias{nv_cummin}
 \title{Cumulative Minimum}
 \usage{
-nv_cummin(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
+nv_cummin(x, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to accumulate. Negative values count from the end,

@@ -4,11 +4,11 @@
 \alias{nv_asinh}
 \title{Inverse Hyperbolic Sine}
 \usage{
-nv_asinh(operand)
+nv_asinh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

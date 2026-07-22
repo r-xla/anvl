@@ -4,11 +4,11 @@
 \alias{nv_select}
 \title{Select Elements Along a Dimension}
 \usage{
-nv_select(operand, dim, index)
+nv_select(x, dim, index)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dim}{(\code{integer(1)})\cr
 Dimension to index into.
@@ -19,10 +19,10 @@ Scalar or 1D arrayish input (integer).}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same data type as \code{operand}. \code{dim} is dropped if \code{index} was scalar.
+Same data type as \code{x}. \code{dim} is dropped if \code{index} was scalar.
 }
 \description{
-Picks one or more elements along dimension \code{dim} of \code{operand}.
+Picks one or more elements along dimension \code{dim} of \code{x}.
 Use this instead of \code{[} or \code{nv_subset} when the index to select is provided
 programmatically.
 }

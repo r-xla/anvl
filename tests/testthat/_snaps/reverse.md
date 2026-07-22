@@ -41,7 +41,7 @@
 # can only compute gradient w.r.t. float arrays
 
     Code
-      gradient(nv_floor, wrt = "operand")(nv_scalar(1L))
+      gradient(nv_floor, wrt = "x")(nv_scalar(1L))
     Condition
       Error in `check_wrt_arrayish()`:
       ! Can only compute gradient with respect to float arrays.
@@ -50,10 +50,10 @@
 # wrt arg passed as plain R literal errors clearly
 
     Code
-      jit(function() gradient(nv_log, wrt = "operand")(1))()
+      jit(function() gradient(nv_log, wrt = "x")(1))()
     Condition
       Error in `compute_requirements()`:
-      ! Cannot compute gradient with respect to `operand`.
+      ! Cannot compute gradient with respect to `x`.
       x It was passed as a plain R value
       i Pass it as an <AnvlArray>.
 

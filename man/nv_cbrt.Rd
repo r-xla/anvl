@@ -4,11 +4,11 @@
 \alias{nv_cbrt}
 \title{Cube Root}
 \usage{
-nv_cbrt(operand)
+nv_cbrt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -4,11 +4,11 @@
 \alias{nv_ceiling}
 \title{Ceiling}
 \usage{
-nv_ceiling(operand)
+nv_ceiling(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

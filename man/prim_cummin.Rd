@@ -4,10 +4,10 @@
 \alias{prim_cummin}
 \title{Primitive Cumulative Minimum}
 \usage{
-prim_cummin(operand, dim)
+prim_cummin(x, dim)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dim}{(\code{integer(1)})\cr
@@ -16,9 +16,9 @@ Negative values count from the end, i.e. \code{-1} refers to the last dimension.
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
-The running minimum (same dtype as \code{operand}) and the
+The running minimum (same dtype as \code{x}) and the
 running argmin (dtype \code{i32}, 1-based). Both have
-the same shape as \code{operand}.
+the same shape as \code{x}.
 }
 \description{
 Running minimum of array elements along a single dimension along with

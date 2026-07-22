@@ -215,18 +215,18 @@ cache_size <- function(f) {
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
-# This ensures that out-of-bounds indices are clamped to [1, operand_size - slice_size + 1]
+# This ensures that out-of-bounds indices are clamped to [1, x_size - slice_size + 1]
 # for each dimension.
 gather_clamp_indices <- function(
   start_indices,
-  operand_shape,
+  x_shape,
   slice_sizes,
   start_index_map,
   index_vector_dim
 ) {
-  # slice_sizes are in the order of the operand_shape, so we need to reverse the start_index_map
-  if (length(operand_shape) != length(slice_sizes)) {
-    cli_abort("operand_shape and slice_sizes must have the same length")
+  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_index_map
+  if (length(x_shape) != length(slice_sizes)) {
+    cli_abort("{.arg x_shape} and {.arg slice_sizes} must have the same length")
   }
 
   indices_shape <- shape(start_indices)
@@ -239,10 +239,10 @@ gather_clamp_indices <- function(
   # Build max bounds for each coordinate
   max_bounds <- integer(n_index_coords)
   for (coord_idx in seq_len(n_index_coords)) {
-    operand_dim <- start_index_map[coord_idx]
-    operand_size <- operand_shape[operand_dim]
-    slice_size_for_dim <- slice_sizes[operand_dim]
-    max_bounds[coord_idx] <- max(1L, operand_size - slice_size_for_dim + 1L)
+    x_dim <- start_index_map[coord_idx]
+    x_size <- x_shape[x_dim]
+    slice_size_for_dim <- slice_sizes[x_dim]
+    max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_dim + 1L)
   }
 
   if (index_vector_dim <= length(indices_shape)) {
@@ -273,21 +273,21 @@ gather_clamp_indices <- function(
 }
 
 # Compute gather slice_sizes from scatter parameters.
-# This inverts a scatter into a gather: for each operand dimension, the slice
+# This inverts a scatter into a gather: for each dimension of `x`, the slice
 # size is 1 for inserted/batching dims, or the update's window size otherwise.
 scatter_to_gather_slice_sizes <- function(
   update_shape,
-  input_shape,
+  x_shape,
   update_window_dims,
   inserted_window_dims,
-  input_batching_dims
+  x_batching_dims
 ) {
-  slice_sizes <- integer(length(input_shape))
+  slice_sizes <- integer(length(x_shape))
   update_window_pos <- 1L
-  for (i in seq_along(input_shape)) {
+  for (i in seq_along(x_shape)) {
     if (i %in% inserted_window_dims) {
       slice_sizes[i] <- 1L
-    } else if (i %in% input_batching_dims) {
+    } else if (i %in% x_batching_dims) {
       slice_sizes[i] <- 1L
     } else {
       slice_sizes[i] <- update_shape[update_window_dims[update_window_pos]]

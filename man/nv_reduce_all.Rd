@@ -4,11 +4,11 @@
 \alias{nv_reduce_all}
 \title{All Reduction}
 \usage{
-nv_reduce_all(operand, dims = NULL, drop = TRUE)
+nv_reduce_all(x, dims = NULL, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dims}{(\code{integer()} | \code{NULL})\cr
 Dimensions to reduce. Negative values count from the end, i.e. \code{-1}

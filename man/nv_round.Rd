@@ -4,11 +4,11 @@
 \alias{nv_round}
 \title{Round}
 \usage{
-nv_round(operand, method = "nearest_even")
+nv_round(x, method = "nearest_even")
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{method}{(\code{character(1)})\cr
 Rounding method.

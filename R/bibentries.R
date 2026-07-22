@@ -20,6 +20,17 @@ bibentries <- c(
     author = "Walter, Sebastian",
     year = "2012",
     school = "Mathematisch-Naturwissenschaftliche Fakult{\"a}t II"
+  ),
+  abramowitz1964handbook = bibentry(
+    bibtype = "book",
+    title = "Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables",
+    author = c(person("Milton", "Abramowitz"), person("Irene A.", "Stegun")),
+    year = "1964",
+    publisher = "Dover Publications",
+    address = "New York",
+    series = "Applied Mathematics Series",
+    number = "55",
+    isbn = "0-486-61272-4"
   )
 )
 # nolint end

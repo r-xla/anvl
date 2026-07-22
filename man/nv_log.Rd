@@ -4,11 +4,11 @@
 \alias{nv_log}
 \title{Natural Logarithm}
 \usage{
-nv_log(operand)
+nv_log(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

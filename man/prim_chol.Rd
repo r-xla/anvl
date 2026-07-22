@@ -4,19 +4,19 @@
 \alias{prim_chol}
 \title{Primitive Cholesky Decomposition}
 \usage{
-prim_chol(operand, lower = FALSE)
+prim_chol(x, lower = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point with at least 2 dimensions.
 The last two dimensions must be equal (square matrix); any leading
 dimensions are batch dimensions.}
 
 \item{lower}{(\code{logical(1)})\cr
 If \code{FALSE} (default, matching base R's \code{\link[base:chol]{base::chol()}}), compute the
-upper triangular factor \code{U} such that \code{operand = t(U) \%*\% U}. If
+upper triangular factor \code{U} such that \code{x = t(U) \%*\% U}. If
 \code{TRUE}, compute the lower triangular factor \code{L} such that
-\code{operand = L \%*\% t(L)}.}
+\code{x = L \%*\% t(L)}.}
 }
 \value{
 \code{\link{arrayish}}\cr

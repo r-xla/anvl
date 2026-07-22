@@ -4,11 +4,11 @@
 \alias{nv_popcnt}
 \title{Population Count}
 \usage{
-nv_popcnt(operand)
+nv_popcnt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

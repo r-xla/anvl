@@ -4,18 +4,18 @@
 \alias{nv_convert}
 \title{Convert Data Type}
 \usage{
-nv_convert(operand, dtype)
+nv_convert(x, dtype)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the given \code{dtype} and the same shape as \code{operand}.
+Has the given \code{dtype} and the same shape as \code{x}.
 }
 \description{
 Converts the elements of an array to a different data type.

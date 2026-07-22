@@ -4,11 +4,11 @@
 \alias{nv_erfc}
 \title{Complementary Error Function}
 \usage{
-nv_erfc(operand)
+nv_erfc(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -4,10 +4,10 @@
 \alias{prim_static_slice}
 \title{Primitive Static Slice}
 \usage{
-prim_static_slice(operand, start_indices, limit_indices, strides)
+prim_static_slice(x, start_indices, limit_indices, strides)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{start_indices}{(\code{integer()})\cr
@@ -16,7 +16,7 @@ Start indices (inclusive), one per dimension. Must satisfy
 
 \item{limit_indices}{(\code{integer()})\cr
 End indices (inclusive), one per dimension. Must satisfy
-\code{limit_indices <= nv_shape(operand)} per dimension.}
+\code{limit_indices <= nv_shape(x)} per dimension.}
 
 \item{strides}{(\code{integer()})\cr
 Step sizes, one per dimension. Must be \verb{>= 1}. A stride of \code{1}

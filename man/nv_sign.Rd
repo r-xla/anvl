@@ -4,11 +4,11 @@
 \alias{nv_sign}
 \title{Sign}
 \usage{
-nv_sign(operand)
+nv_sign(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

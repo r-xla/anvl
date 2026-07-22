@@ -61,23 +61,24 @@ jobs:
           install-torch: ${{ matrix.config.torch == true }}
           as-cran: ${{ matrix.config.torch == true && 'false' || 'true' }}
 
-  R-CMD-check-cuda:
-    needs: R-CMD-check
-    runs-on: ['self-hosted', 'gpu']
-    container:
-      image: 'sebffischer/anvl-cuda-base:latest'
-      options: '--gpus all --runtime=nvidia'
-
-    name: ubuntu - cuda (release)
-
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      R_KEEP_PKG_SOURCE: yes
-      PJRT_PLATFORM: cuda
-      ANVL_TEST: "1"
-      PJRT_INSTALL: "1"
-
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: r-xla/actions/r-check@main
+  # Disabled: the self-hosted GPU runner is currently unavailable.
+  # R-CMD-check-cuda:
+  #   needs: R-CMD-check
+  #   runs-on: ['self-hosted', 'gpu']
+  #   container:
+  #     image: 'sebffischer/anvl-cuda-base:latest'
+  #     options: '--gpus all --runtime=nvidia'
+  #
+  #   name: ubuntu - cuda (release)
+  #
+  #   env:
+  #     GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+  #     R_KEEP_PKG_SOURCE: yes
+  #     PJRT_PLATFORM: cuda
+  #     ANVL_TEST: "1"
+  #     PJRT_INSTALL: "1"
+  #
+  #   steps:
+  #     - uses: actions/checkout@v7
+  #
+  #     - uses: r-xla/actions/r-check@main

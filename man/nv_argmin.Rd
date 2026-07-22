@@ -4,11 +4,11 @@
 \alias{nv_argmin}
 \title{Index of the Minimum}
 \usage{
-nv_argmin(operand, dim = NULL, drop = TRUE, nan_rm = FALSE)
+nv_argmin(x, dim = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dim}{(\code{integer(1)} | \code{NULL})\cr
 Dimension along which to find the index. Negative values count from the
@@ -25,7 +25,7 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{operand} with \code{dim} removed (or set to 1 if \code{drop = FALSE}).
+Same shape as \code{x} with \code{dim} removed (or set to 1 if \code{drop = FALSE}).
 }
 \description{
 Returns the index of the minimum value along a dimension. Ties are broken

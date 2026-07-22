@@ -4,19 +4,19 @@
 \alias{prim_qr}
 \title{Primitive QR Decomposition}
 \usage{
-prim_qr(operand)
+prim_qr(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Matrix of data type floating-point with exactly 2 dimensions.}
 }
 \value{
 Named \code{list} with elements \code{Q} (shape \verb{(m, k)}) and \code{R}
-(shape \verb{(k, n)}), where \verb{(m, n) = shape(operand)} and
-\code{k = min(m, n)}. Both have the same data type as \code{operand}.
+(shape \verb{(k, n)}), where \verb{(m, n) = shape(x)} and
+\code{k = min(m, n)}. Both have the same data type as \code{x}.
 }
 \description{
-Computes the reduced QR decomposition of a matrix \code{operand}:
+Computes the reduced QR decomposition of a matrix \code{x}:
 \deqn{A = Q R,}
 where \eqn{Q} has orthonormal columns (\eqn{Q^\top Q = I}) and
 \eqn{R} is upper triangular.

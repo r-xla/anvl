@@ -4,20 +4,20 @@
 \alias{nv_unsqueeze}
 \title{Unsqueeze}
 \usage{
-nv_unsqueeze(operand, dim)
+nv_unsqueeze(x, dim)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dim}{(\code{integer(1)})\cr
 Position at which to insert the new dimension. Valid positions range from
-1 to \code{ndims(operand) + 1}. Negative values count from the end of the
+1 to \code{ndims(x) + 1}. Negative values count from the end of the
 \emph{result}, i.e. \code{-1} appends the new dimension at the end.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand} with an extra dimension of size 1.
+Has the same data type as \code{x} with an extra dimension of size 1.
 }
 \description{
 Inserts a dimension of size 1 at the specified position.
