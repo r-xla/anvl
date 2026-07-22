@@ -4,11 +4,11 @@
 \alias{nv_acosh}
 \title{Inverse Hyperbolic Cosine}
 \usage{
-nv_acosh(operand)
+nv_acosh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

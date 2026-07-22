@@ -4,10 +4,10 @@
 \alias{prim_erfc}
 \title{Primitive Complementary Error Function}
 \usage{
-prim_erfc(operand)
+prim_erfc(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

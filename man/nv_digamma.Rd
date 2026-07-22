@@ -4,11 +4,11 @@
 \alias{nv_digamma}
 \title{Digamma}
 \usage{
-nv_digamma(operand)
+nv_digamma(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

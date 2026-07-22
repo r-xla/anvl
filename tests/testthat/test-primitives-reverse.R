@@ -444,7 +444,7 @@ test_that("prim_pad reverse with interior padding", {
 })
 
 test_that("prim_dynamic_slice reverse", {
-  # Gradient should scatter the incoming gradient back to the operand position
+  # Gradient should scatter the incoming gradient back to the input position
   f <- jit(gradient(
     function(x, start_i) {
       sliced <- prim_dynamic_slice(x, start_i, slice_sizes = 3L)
@@ -498,8 +498,8 @@ test_that("prim_dynamic_slice reverse with out-of-bounds", {
 })
 
 test_that("prim_dynamic_update_slice reverse", {
-  # Test gradient for operand (zero out the updated region)
-  f_operand <- jit(gradient(
+  # Test gradient for `x` (zero out the updated region)
+  f_x <- jit(gradient(
     function(x, update, start_i) {
       updated <- prim_dynamic_update_slice(x, update, start_i)
       nv_reduce_sum(updated, dims = 1L, drop = TRUE)
@@ -510,7 +510,7 @@ test_that("prim_dynamic_update_slice reverse", {
   x <- nv_array(1:10, dtype = "f64", shape = 10L)
   update <- nv_array(c(100, 200, 300), dtype = "f64", shape = 3L)
   start_i <- nv_scalar(4L, dtype = "i32")
-  grad_x <- f_operand(x, update, start_i)[[1L]]
+  grad_x <- f_x(x, update, start_i)[[1L]]
 
   # Gradient is 0 at positions 4, 5, 6 (the updated region) and 1 elsewhere
   expect_equal(grad_x, nv_array(c(1, 1, 1, 0, 0, 0, 1, 1, 1, 1), dtype = "f64", shape = 10L))
@@ -532,7 +532,7 @@ test_that("prim_dynamic_update_slice reverse", {
 
 test_that("prim_dynamic_update_slice reverse with out-of-bounds", {
   # Test that gradient works correctly when indices are clamped
-  f_operand <- jit(gradient(
+  f_x <- jit(gradient(
     function(x, update, start_i) {
       updated <- prim_dynamic_update_slice(x, update, start_i)
       nv_reduce_sum(updated, dims = 1L, drop = TRUE)
@@ -544,7 +544,7 @@ test_that("prim_dynamic_update_slice reverse with out-of-bounds", {
   update <- nv_array(c(100, 200, 300, 400, 500), dtype = "f64", shape = 5L)
   # Request update at position 8 with size 5, will be clamped to position 6
   start_i <- nv_scalar(8L, dtype = "i32")
-  grad_x <- f_operand(x, update, start_i)[[1L]]
+  grad_x <- f_x(x, update, start_i)[[1L]]
 
   # Gradient is 0 at positions 6-10 (the actual updated region after clamping) and 1 elsewhere
   expect_equal(grad_x, nv_array(c(1, 1, 1, 1, 1, 0, 0, 0, 0, 0), dtype = "f64", shape = 10L))
@@ -705,14 +705,14 @@ describe("prim_scatter", {
     expect_error(
       jit(gradient(function(x) {
         out <- prim_scatter(
-          input = x,
+          x = x,
           scatter_indices = nv_array(2L, dtype = "i64"),
           update = nv_scalar(10, dtype = "f32"),
           update_window_dims = integer(),
           inserted_window_dims = 1L,
-          input_batching_dims = integer(),
+          x_batching_dims = integer(),
           scatter_indices_batching_dims = integer(),
-          scatter_dims_to_operand_dims = 1L,
+          scatter_dims_to_x_dims = 1L,
           index_vector_dim = 1L,
           indices_are_sorted = TRUE,
           unique_indices = TRUE,

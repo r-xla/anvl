@@ -4,21 +4,21 @@
 \alias{prim_top_k}
 \title{Primitive Top-K}
 \usage{
-prim_top_k(operand, k)
+prim_top_k(x, k)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements. Must satisfy
-\verb{1 <= k <= shape(operand)[ndims(operand)]}.}
+\verb{1 <= k <= shape(x)[ndims(x)]}.}
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
-The top-\code{k} values (same dtype as \code{operand}) and their indices along
+The top-\code{k} values (same dtype as \code{x}) and their indices along
 the last dimension (dtype \code{i32}, matching JAX). Both have the same
-shape as \code{operand} with the last dimension replaced by \code{k}. Ties are
+shape as \code{x} with the last dimension replaced by \code{k}. Ties are
 broken by lower index first.
 }
 \description{

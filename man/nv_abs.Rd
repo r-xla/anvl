@@ -4,11 +4,11 @@
 \alias{nv_abs}
 \title{Absolute Value}
 \usage{
-nv_abs(operand)
+nv_abs(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -767,7 +767,7 @@ quickr_emit_gather <- function(
   slice_sizes,
   offset_dims,
   collapsed_slice_dims,
-  operand_batching_dims,
+  x_batching_dims,
   start_indices_batching_dims,
   start_index_map,
   index_vector_dim,
@@ -778,7 +778,7 @@ quickr_emit_gather <- function(
   slice_sizes <- as.integer(slice_sizes)
   offset_dims <- as.integer(offset_dims)
   collapsed_slice_dims <- sort(unique(as.integer(collapsed_slice_dims)))
-  operand_batching_dims <- as.integer(operand_batching_dims)
+  x_batching_dims <- as.integer(x_batching_dims)
   start_indices_batching_dims <- as.integer(start_indices_batching_dims)
   start_index_map <- as.integer(start_index_map)
   index_vector_dim <- as.integer(index_vector_dim)
@@ -794,7 +794,7 @@ quickr_emit_gather <- function(
   if (op_rank > 5L || si_rank > 5L || out_rank > 5L) {
     cli_abort("gather: only arrays up to rank 5 are supported")
   }
-  if (length(operand_batching_dims) || length(start_indices_batching_dims)) {
+  if (length(x_batching_dims) || length(start_indices_batching_dims)) {
     cli_abort("gather: batching dims are not supported by quickr lowering")
   }
   if (!identical(index_vector_dim, si_rank)) {
@@ -1688,7 +1688,7 @@ local({
         params$slice_sizes,
         params$offset_dims,
         params$collapsed_slice_dims,
-        params$operand_batching_dims,
+        params$x_batching_dims,
         params$start_indices_batching_dims,
         params$start_index_map,
         params$index_vector_dim,
@@ -1796,12 +1796,12 @@ local({
 
       update_window_dims <- sort(unique(as.integer(params$update_window_dims)))
       inserted_window_dims <- sort(unique(as.integer(params$inserted_window_dims)))
-      input_batching_dims <- as.integer(params$input_batching_dims)
+      x_batching_dims <- as.integer(params$x_batching_dims)
       scatter_indices_batching_dims <- as.integer(params$scatter_indices_batching_dims)
-      scatter_dims_to_operand_dims <- as.integer(params$scatter_dims_to_operand_dims)
+      scatter_dims_to_x_dims <- as.integer(params$scatter_dims_to_x_dims)
       index_vector_dim <- as.integer(params$index_vector_dim)
 
-      if (length(input_batching_dims) || length(scatter_indices_batching_dims)) {
+      if (length(x_batching_dims) || length(scatter_indices_batching_dims)) {
         cli_abort("scatter: batching dims are not supported by quickr lowering")
       }
       if (length(update_window_dims)) {
@@ -1810,8 +1810,8 @@ local({
       if (!identical(inserted_window_dims, 1L)) {
         cli_abort("scatter: only scalar updates into rank-1 inputs are supported by quickr lowering")
       }
-      if (!identical(scatter_dims_to_operand_dims, 1L)) {
-        cli_abort("scatter: only scatter_dims_to_operand_dims = 1L is supported by quickr lowering")
+      if (!identical(scatter_dims_to_x_dims, 1L)) {
+        cli_abort("scatter: only scatter_dims_to_x_dims = 1L is supported by quickr lowering")
       }
 
       shape_idx <- as.integer(shape(idx_node$aval))

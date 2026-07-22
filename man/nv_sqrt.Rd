@@ -4,11 +4,11 @@
 \alias{nv_sqrt}
 \title{Square Root}
 \usage{
-nv_sqrt(operand)
+nv_sqrt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

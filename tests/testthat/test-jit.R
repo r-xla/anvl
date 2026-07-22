@@ -252,7 +252,7 @@ test_that("... works (#19)", {
 test_that("good error message when passing AbstractArrays", {
   expect_error(
     jit(nv_negate)(nv_aval("f32", c(2, 2))),
-    "invalid input `operand`.*<AbstractArray>"
+    "invalid input `x`.*<AbstractArray>"
   )
 })
 

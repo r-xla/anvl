@@ -4,11 +4,11 @@
 \alias{nv_negate}
 \title{Negation}
 \usage{
-nv_negate(operand)
+nv_negate(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

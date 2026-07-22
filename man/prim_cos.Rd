@@ -4,10 +4,10 @@
 \alias{prim_cos}
 \title{Primitive Cosine}
 \usage{
-prim_cos(operand)
+prim_cos(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

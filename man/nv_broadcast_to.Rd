@@ -4,18 +4,18 @@
 \alias{nv_broadcast_to}
 \title{Broadcast to Shape}
 \usage{
-nv_broadcast_to(operand, shape)
+nv_broadcast_to(x, shape)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. Each existing dimension must either match or be 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the given \code{shape} and the same data type as \code{operand}.
+Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
 Broadcasts an array to a target shape using NumPy-style broadcasting rules.

@@ -4,11 +4,11 @@
 \alias{nv_tanh}
 \title{Hyperbolic Tangent}
 \usage{
-nv_tanh(operand)
+nv_tanh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

@@ -4,10 +4,10 @@
 \alias{prim_expm1}
 \title{Primitive Exponential Minus One}
 \usage{
-prim_expm1(operand)
+prim_expm1(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

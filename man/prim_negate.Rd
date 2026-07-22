@@ -4,10 +4,10 @@
 \alias{prim_negate}
 \title{Primitive Negation}
 \usage{
-prim_negate(operand)
+prim_negate(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type integer or floating-point.}
 }
 \value{

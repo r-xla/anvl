@@ -5,7 +5,7 @@
 \title{2D Convolution}
 \usage{
 nv_conv2d(
-  input,
+  x,
   weight,
   stride = 1L,
   padding = 0L,
@@ -15,7 +15,7 @@ nv_conv2d(
 )
 }
 \arguments{
-\item{input}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}.}
 
 \item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.}
 
@@ -33,7 +33,7 @@ nv_conv2d(
 \code{\link{arrayish}} \verb{[N, C_out, out_H, out_W]}.
 }
 \description{
-Torch-style 2D convolution in NCHW layout: \code{input} is
+Torch-style 2D convolution in NCHW layout: \code{x} is
 \verb{[batch, in_channels, height, width]}, \code{weight} is
 \verb{[out_channels, in_channels / groups, kh, kw]}, output is
 \verb{[batch, out_channels, out_h, out_w]}. Symmetric zero padding.

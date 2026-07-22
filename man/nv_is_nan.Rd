@@ -5,16 +5,13 @@
 \alias{is.nan.AnvlArray}
 \title{Is NaN}
 \usage{
-nv_is_nan(operand)
+nv_is_nan(x)
 
 \method{is.nan}{AnvlArray}(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
-
 \item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

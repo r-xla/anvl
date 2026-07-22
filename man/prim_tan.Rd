@@ -4,10 +4,10 @@
 \alias{prim_tan}
 \title{Primitive Tangent}
 \usage{
-prim_tan(operand)
+prim_tan(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

@@ -4,19 +4,19 @@
 \alias{prim_broadcast_in_dim}
 \title{Primitive Broadcast}
 \usage{
-prim_broadcast_in_dim(operand, shape, broadcast_dimensions)
+prim_broadcast_in_dim(x, shape, broadcast_dimensions)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. Each mapped dimension must either match the corresponding
-operand dimension or the operand dimension must be 1.}
+dimension of \code{x}, or that dimension of \code{x} must be 1.}
 
 \item{broadcast_dimensions}{(\code{integer()})\cr
-Maps each dimension of \code{operand} to a dimension of the output.
-Must have length equal to the number of dimensions of \code{operand}.}
+Maps each dimension of \code{x} to a dimension of the output.
+Must have length equal to the number of dimensions of \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr

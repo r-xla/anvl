@@ -5,7 +5,7 @@
 \title{Pad}
 \usage{
 nv_pad(
-  operand,
+  x,
   padding_value,
   edge_padding_low,
   edge_padding_high,
@@ -13,11 +13,11 @@ nv_pad(
 )
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
-Scalar value to use for padding. Must have the same dtype as \code{operand}.}
+Scalar value to use for padding. Must have the same dtype as \code{x}.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
 Amount of padding to add at the start of each dimension.}
@@ -31,7 +31,7 @@ If \code{NULL} (default), no interior padding is applied.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand}.
+Has the same data type as \code{x}.
 }
 \description{
 Pads an array with a given value at the edges and optionally between elements.

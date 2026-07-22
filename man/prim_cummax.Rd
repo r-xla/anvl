@@ -4,10 +4,10 @@
 \alias{prim_cummax}
 \title{Primitive Cumulative Maximum}
 \usage{
-prim_cummax(operand, dim)
+prim_cummax(x, dim)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dim}{(\code{integer(1)})\cr
@@ -15,9 +15,9 @@ Dimension along which to accumulate.}
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
-The running maximum (same dtype as \code{operand}) and the
+The running maximum (same dtype as \code{x}) and the
 running argmax (dtype \code{i32}, 1-based). Both have
-the same shape as \code{operand}.
+the same shape as \code{x}.
 }
 \description{
 Running maximum of array elements along a single dimension along with

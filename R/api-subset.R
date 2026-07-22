@@ -208,9 +208,9 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 
   start_indices <- subset_specs_start_indices(subsets, like = like)
 
-  # offset_dims: positions in the output for non-collapsed operand dims.
+  # offset_dims: positions in the output for non-collapsed dims of `x`.
   # The output interleaves batch (gather) dims and offset (slice) dims
-  # in the order of the original operand dimensions.
+  # in the order of the original dimensions of `x`.
   subset_index_dims <- which(vapply(subsets, is_subset_index, logical(1L)))
   surviving_dims <- setdiff(seq_len(rank), subset_index_dims)
   multi_among_surviving <- which(surviving_dims %in% multi_index_dims)
@@ -239,7 +239,7 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #'   - scatter_indices: array of scatter indices
 #'   - update_window_dims: integer vector
 #'   - inserted_window_dims: integer vector
-#'   - scatter_dims_to_operand_dims: integer vector
+#'   - scatter_dims_to_x_dims: integer vector
 #'   - index_vector_dim: integer
 #'   - indices_are_sorted: logical
 #'   - unique_indices: logical
@@ -299,7 +299,7 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
     scatter_indices = scatter_indices,
     update_window_dims = update_window_dims,
     inserted_window_dims = inserted_window_dims,
-    scatter_dims_to_operand_dims = seq_len(rank),
+    scatter_dims_to_x_dims = seq_len(rank),
     index_vector_dim = index_vector_dim,
     # TODO: Could improve this
     indices_are_sorted = !multi_index_subset,
@@ -313,24 +313,24 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
 
 #' Parse subset specifications and fill unspecified dimensions
 #' @param quos List of quosures (from enquos)
-#' @param operand_shape Shape of the operand array
+#' @param x_shape Shape of the input array
 #' @return List of SubsetSpec objects
 #' @noRd
-parse_subset_specs <- function(quos, operand_shape) {
-  rank <- length(operand_shape)
+parse_subset_specs <- function(quos, x_shape) {
+  rank <- length(x_shape)
 
   if (length(quos) > rank) {
     cli_abort("Too many subset specifications: got {length(quos)}, expected at most {rank}")
   }
 
   subsets <- lapply(seq_along(quos), function(i) {
-    parse_subset_spec(quos[[i]], operand_shape[i])
+    parse_subset_spec(quos[[i]], x_shape[i])
   })
 
   # Trailing subsets don't need to be specified, so we fill them with full selections
   if (length(subsets) < rank) {
     for (i in seq(length(subsets) + 1L, rank)) {
-      subsets[[i]] <- SubsetFull(operand_shape[i])
+      subsets[[i]] <- SubsetFull(x_shape[i])
     }
   }
 
@@ -443,7 +443,7 @@ parse_subset_spec <- function(quo, dim_size) {
 #' Supports R-style indexing including scalar indices (which drop dimensions),
 #' ranges (`a:b`), and `array(c(...))` for selecting multiple elements along a
 #' dimension.
-#' @template param_operand
+#' @template param_x
 #' @param ... Subset specifications, one per dimension. Omitted trailing
 #'   dimensions select all elements. See `vignette("subsetting")` for details.
 #' @return [`arrayish`]
@@ -458,26 +458,26 @@ parse_subset_spec <- function(quo, dim_size) {
 #' # Select rows 1 to 2, all columns
 #' x[1:2, ]
 #' @export
-nv_subset <- function(operand, ...) {
-  if (!is_arrayish(operand)) {
+nv_subset <- function(x, ...) {
+  if (!is_arrayish(x)) {
     cli_abort(c(
-      "Argument operand must be arrayish",
-      "x" = "Got {.cls {class(operand)[1]}}"
+      "Argument {.arg x} must be arrayish",
+      "x" = "Got {.cls {class(x)[1]}}"
     ))
   }
-  operand_shape <- shape_abstract(operand)
+  x_shape <- shape_abstract(x)
   quos <- rlang::enquos(...)
 
-  subsets <- parse_subset_specs(quos, operand_shape)
-  params <- subset_specs_to_gather(subsets, like = operand)
+  subsets <- parse_subset_specs(quos, x_shape)
+  params <- subset_specs_to_gather(subsets, like = x)
 
   out <- prim_gather(
-    operand = operand,
+    x = x,
     start_indices = params$start_indices,
     slice_sizes = params$slice_sizes,
     offset_dims = params$offset_dims,
     collapsed_slice_dims = params$collapsed_slice_dims,
-    operand_batching_dims = integer(),
+    x_batching_dims = integer(),
     start_indices_batching_dims = integer(),
     start_index_map = params$start_index_map,
     index_vector_dim = params$index_vector_dim,
@@ -496,26 +496,26 @@ nv_subset <- function(operand, ...) {
 # reuse one compiled program; only distinct subset *patterns* recompile.
 subset_scatter_core <- jit(
   function(
-    operand,
+    x,
     value,
     scatter_indices,
     update_window_dims,
     inserted_window_dims,
-    scatter_dims_to_operand_dims,
+    scatter_dims_to_x_dims,
     index_vector_dim,
     indices_are_sorted,
     unique_indices,
     update_shape
   ) {
-    if (dtype(operand) != dtype(value)) {
-      dt_operand <- dtype(operand)
+    if (dtype(x) != dtype(value)) {
+      dt_x <- dtype(x)
       dt_value <- dtype(value)
-      if (!promotable_to(dt_value, dt_operand)) {
+      if (!promotable_to(dt_value, dt_x)) {
         cli_abort(
-          "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_operand)}"
+          "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_x)}"
         )
       }
-      value <- nv_convert(value, dtype = dt_operand)
+      value <- nv_convert(value, dtype = dt_x)
     }
 
     if (!ndims(value)) {
@@ -531,14 +531,14 @@ subset_scatter_core <- jit(
     }
 
     prim_scatter(
-      input = operand,
+      x = x,
       scatter_indices = scatter_indices,
       update = value,
       update_window_dims = update_window_dims,
       inserted_window_dims = inserted_window_dims,
-      input_batching_dims = integer(),
+      x_batching_dims = integer(),
       scatter_indices_batching_dims = integer(),
-      scatter_dims_to_operand_dims = scatter_dims_to_operand_dims,
+      scatter_dims_to_x_dims = scatter_dims_to_x_dims,
       index_vector_dim = index_vector_dim,
       indices_are_sorted = indices_are_sorted,
       unique_indices = unique_indices
@@ -548,7 +548,7 @@ subset_scatter_core <- jit(
   static = c(
     "update_window_dims",
     "inserted_window_dims",
-    "scatter_dims_to_operand_dims",
+    "scatter_dims_to_x_dims",
     "index_vector_dim",
     "indices_are_sorted",
     "unique_indices",
@@ -560,14 +560,14 @@ subset_scatter_core <- jit(
 #' @description
 #' Updates elements of an array at specified positions, returning a new array.
 #' You can also use the `[<-` operator.
-#' @template param_operand
+#' @template param_x
 #' @param ... Subset specifications, one per dimension. See
 #'   `vignette("subsetting")` for details.
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape.
 #'   Non-scalar values must match the subset shape.
 #' @return [`arrayish`]\cr
-#'   A new array with the same shape as `operand` and the subset replaced.
+#'   A new array with the same shape as `x` and the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
@@ -578,31 +578,31 @@ subset_scatter_core <- jit(
 # Not `@jit`-tagged: the `...` subscripts are captured via NSE (`enquos()`),
 # which jit's argument handling cannot trace. The parsing stays here (eager) and
 # the array work is delegated to the jitted [subset_scatter_core()].
-nv_subset_assign <- function(operand, ..., value) {
-  if (!is_arrayish(operand)) {
-    cli_abort("Expected arrayish `operand`, but got {.cls {class(operand)[1]}}")
+nv_subset_assign <- function(x, ..., value) {
+  if (!is_arrayish(x)) {
+    cli_abort("Expected arrayish `x`, but got {.cls {class(x)[1]}}")
   }
   if (!is_arrayish(value)) {
     cli_abort("Expected arrayish `value`, but got {.cls {class(value)[1]}}")
   }
-  aligned <- as_anvl_arrays(operand, value)
-  operand <- aligned[[1L]]
+  aligned <- as_anvl_arrays(x, value)
+  x <- aligned[[1L]]
   value <- aligned[[2L]]
 
-  lhs_shape <- shape_abstract(operand)
+  lhs_shape <- shape_abstract(x)
   # because we do NSE to determine `:`-calls
   quos <- rlang::enquos(...)
 
   subsets <- parse_subset_specs(quos, lhs_shape)
-  params <- subset_specs_to_scatter(subsets, like = operand)
+  params <- subset_specs_to_scatter(subsets, like = x)
 
   subset_scatter_core(
-    operand = operand,
+    x = x,
     value = value,
     scatter_indices = params$scatter_indices,
     update_window_dims = params$update_window_dims,
     inserted_window_dims = params$inserted_window_dims,
-    scatter_dims_to_operand_dims = params$scatter_dims_to_operand_dims,
+    scatter_dims_to_x_dims = params$scatter_dims_to_x_dims,
     index_vector_dim = params$index_vector_dim,
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices,

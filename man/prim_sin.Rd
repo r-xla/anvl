@@ -4,10 +4,10 @@
 \alias{prim_sin}
 \title{Primitive Sine}
 \usage{
-prim_sin(operand)
+prim_sin(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

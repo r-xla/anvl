@@ -4,15 +4,15 @@
 \alias{nv_print}
 \title{Print Array}
 \usage{
-nv_print(operand)
+nv_print(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Returns \code{operand} unchanged.
+Returns \code{x} unchanged.
 }
 \description{
 Prints an array value to the console during JIT execution and returns the

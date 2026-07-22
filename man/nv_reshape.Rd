@@ -4,18 +4,18 @@
 \alias{nv_reshape}
 \title{Reshape}
 \usage{
-nv_reshape(operand, shape)
+nv_reshape(x, shape)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Must have the same number of elements as \code{operand}.}
+Target shape. Must have the same number of elements as \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the given \code{shape} and the same data type as \code{operand}.
+Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
 Reshapes an array to a new shape without changing the underlying data.

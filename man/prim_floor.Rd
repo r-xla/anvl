@@ -4,10 +4,10 @@
 \alias{prim_floor}
 \title{Primitive Floor}
 \usage{
-prim_floor(operand)
+prim_floor(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
