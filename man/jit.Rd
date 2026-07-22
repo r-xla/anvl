@@ -21,7 +21,13 @@ static arguments).}
 \item{static}{(\code{character()} | \code{integer()})\cr
 Names or positions of parameters of \code{f} that are \emph{not} arrays. Static values are
 embedded as constants in the compiled program; a new compilation is triggered whenever
-a static value changes. For example useful when you want R control flow in your function.}
+a static value changes. For example useful when you want R control flow in your function.
+
+Note that the values that are passed to static arguments must not have reference semantics.
+Such a value can be mutated in place while the cache key stays equal, which
+would silently reuse a program compiled from its old contents.
+One exception are closures, but there you need to ensure that their
+enclosing environment does not change in a way that modifies their behavior.}
 
 \item{cache_size}{(\code{integer(1)})\cr
 Maximum number of compiled executables to keep in the LRU cache.}
