@@ -1177,24 +1177,13 @@ prim_argmin <- new_primitive(
 
 # comparison primitives --------------------------------------------------------
 
-infer_compare <- function(lhs, rhs, comparison_direction) {
-  check_dtype <- as.character(dtype(lhs))
-  compare_type <- if ((check_dtype == "bool") || grepl("^ui", check_dtype)) {
-    "UNSIGNED"
-  } else if (grepl("^i", check_dtype)) {
-    "SIGNED"
-  } else {
-    "FLOAT"
-  }
-  out <- stablehlo::infer_types_compare(at2vt(lhs), at2vt(rhs), comparison_direction, compare_type)[[1L]]
-  out <- vt2at(out)
-  out$ambiguous <- lhs$ambiguous && rhs$ambiguous
-  list(out)
-}
-
 make_compare_op <- function(direction) {
   force(direction)
-  infer_fn <- function(lhs, rhs) infer_compare(lhs, rhs, direction)
+  infer_fn <- function(lhs, rhs) {
+    out <- infer_compare(lhs, rhs, direction)
+    out$ambiguous <- lhs$ambiguous && rhs$ambiguous
+    list(out)
+  }
   function(lhs, rhs) {
     graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
   }
@@ -1518,7 +1507,7 @@ prim_bitcast_convert <- new_primitive(
   "bitcast_convert",
   function(x, dtype) {
     infer_fn <- function(x, dtype) {
-      lapply(stablehlo::infer_types_bitcast_convert(at2vt(x), dtype), vt2at)
+      list(infer_bitcast_convert(x, dtype))
     }
     graph_desc_add(self, list(x = x), params = list(dtype = dtype), infer_fn = infer_fn)[[1L]]
   },
@@ -1545,8 +1534,7 @@ prim_abs <- new_primitive(
   "abs",
   function(x) {
     infer_fn <- function(x) {
-      out <- stablehlo::infer_types_abs(at2vt(x))[[1L]]
-      out <- vt2at(out)
+      out <- infer_abs(x)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -1716,8 +1704,7 @@ prim_sign <- new_primitive(
   "sign",
   function(x) {
     infer_fn <- function(x) {
-      out <- stablehlo::infer_types_sign(at2vt(x))[[1L]]
-      out <- vt2at(out)
+      out <- infer_sign(x)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -1989,8 +1976,7 @@ prim_polygamma <- new_primitive(
   function(n, x) {
     infer_fn <- function(n, x) {
       both_ambiguous <- n$ambiguous && x$ambiguous
-      out <- stablehlo::infer_types_polygamma(at2vt(n), at2vt(x))[[1L]]
-      out <- vt2at(out)
+      out <- infer_polygamma(n, x)
       out$ambiguous <- both_ambiguous
       list(out)
     }
@@ -2066,8 +2052,7 @@ prim_is_finite <- new_primitive(
   "is_finite",
   function(x) {
     infer_fn <- function(x) {
-      out <- stablehlo::infer_types_is_finite(at2vt(x))[[1L]]
-      list(vt2at(out))
+      list(infer_is_finite(x))
     }
     graph_desc_add(self, list(x = x), list(), infer_fn = infer_fn)[[1L]]
   }
@@ -2115,8 +2100,7 @@ prim_clamp <- new_primitive(
   "clamp",
   function(min_val, x, max_val) {
     infer_fn <- function(min_val, x, max_val) {
-      out <- stablehlo::infer_types_clamp(at2vt(min_val), at2vt(x), at2vt(max_val))[[1L]]
-      out <- vt2at(out)
+      out <- infer_clamp(min_val, x, max_val)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -2387,12 +2371,7 @@ prim_ifelse <- new_primitive(
   function(pred, true_value, false_value) {
     infer_fn <- function(pred, true_value, false_value) {
       both_ambiguous <- true_value$ambiguous && false_value$ambiguous
-      out <- stablehlo::infer_types_select(
-        at2vt(pred),
-        on_true = at2vt(true_value),
-        on_false = at2vt(false_value)
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_select(pred, true_value, false_value)
       out$ambiguous <- both_ambiguous
       list(out)
     }
