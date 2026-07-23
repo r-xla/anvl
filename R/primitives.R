@@ -2,14 +2,13 @@
 #' @include type-converters.R
 #' @include primitive.R
 #' @include jit.R
+#' @include rules-inference.R
 
-make_binary_op <- function(stablehlo_infer) {
-  force(stablehlo_infer)
+make_binary_op <- function(infer) {
+  force(infer)
   infer_fn <- function(lhs, rhs) {
-    both_ambiguous <- lhs$ambiguous && rhs$ambiguous
-    out <- stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]
-    out <- vt2at(out)
-    out$ambiguous <- both_ambiguous
+    out <- infer(lhs, rhs)
+    out$ambiguous <- lhs$ambiguous && rhs$ambiguous
     list(out)
   }
   function(lhs, rhs) {
@@ -17,11 +16,10 @@ make_binary_op <- function(stablehlo_infer) {
   }
 }
 
-make_unary_op <- function(stablehlo_infer) {
-  force(stablehlo_infer)
+make_unary_op <- function(infer) {
+  force(infer)
   infer_fn <- function(x) {
-    out <- stablehlo_infer(at2vt(x))[[1L]]
-    out <- vt2at(out)
+    out <- infer(x)
     out$ambiguous <- x$ambiguous
     list(out)
   }
@@ -117,7 +115,7 @@ prim_fill <- new_primitive(
 #' y <- nv_array(c(4, 5, 6))
 #' prim_add(x, y)
 #' @export
-prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
+prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Multiplication
 #' @description
@@ -134,7 +132,7 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 #' y <- nv_array(c(4, 5, 6))
 #' prim_mul(x, y)
 #' @export
-prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply))
+prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Subtraction
 #' @description
@@ -151,7 +149,7 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #' y <- nv_array(c(4, 5, 6))
 #' prim_sub(x, y)
 #' @export
-prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract))
+prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Negation
 #' @description
@@ -168,7 +166,7 @@ prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract)
 #' x <- nv_array(c(1, -2, 3))
 #' prim_negate(x)
 #' @export
-prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
+prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 
 #' @title Primitive Division
 #' @description
@@ -185,7 +183,7 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' y <- nv_array(c(2, 5, 10))
 #' prim_div(x, y)
 #' @export
-prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide))
+prim_div <- new_primitive("divide", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Power
 #' @description
@@ -202,7 +200,7 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' y <- nv_array(c(3, 2, 1))
 #' prim_pow(x, y)
 #' @export
-prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
+prim_pow <- new_primitive("power", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Broadcast
 #' @description
@@ -1321,7 +1319,7 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' y <- nv_array(c(4, 2, 6))
 #' prim_max(x, y)
 #' @export
-prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
+prim_max <- new_primitive("maximum", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Minimum
 #' @description
@@ -1338,7 +1336,7 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #' y <- nv_array(c(4, 2, 6))
 #' prim_min(x, y)
 #' @export
-prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
+prim_min <- new_primitive("minimum", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Remainder
 #' @description
@@ -1356,7 +1354,7 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' prim_remainder(1, -3)
 #' 1 %% -3
 #' @export
-prim_remainder <- new_primitive("remainder", make_binary_op(stablehlo::infer_types_remainder))
+prim_remainder <- new_primitive("remainder", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive And
 #' @description
@@ -1373,7 +1371,7 @@ prim_remainder <- new_primitive("remainder", make_binary_op(stablehlo::infer_typ
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_and(x, y)
 #' @export
-prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
+prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Not
 #' @description
@@ -1390,7 +1388,7 @@ prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
 #' prim_not(x)
 #' @export
-prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
+prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni))
 
 #' @title Primitive Or
 #' @description
@@ -1407,7 +1405,7 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_or(x, y)
 #' @export
-prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
+prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Xor
 #' @description
@@ -1424,15 +1422,7 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_xor(x, y)
 #' @export
-prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
-
-infer_shift <- function(lhs, rhs, shift_fn) {
-  both_ambiguous <- lhs$ambiguous && rhs$ambiguous
-  out <- shift_fn(at2vt(lhs), at2vt(rhs))[[1L]]
-  out <- vt2at(out)
-  out$ambiguous <- both_ambiguous
-  list(out)
-}
+prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Shift Left
 #' @description
@@ -1449,13 +1439,7 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #' y <- nv_array(c(1L, 2L, 1L))
 #' prim_shift_left(x, y)
 #' @export
-prim_shift_left <- new_primitive(
-  "shift_left",
-  function(lhs, rhs) {
-    infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_left)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Logical Shift Right
 #' @description
@@ -1472,13 +1456,7 @@ prim_shift_left <- new_primitive(
 #' y <- nv_array(c(1L, 2L, 3L))
 #' prim_shift_right_logical(x, y)
 #' @export
-prim_shift_right_logical <- new_primitive(
-  "shift_right_logical",
-  function(lhs, rhs) {
-    infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_logical)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_shift_right_logical <- new_primitive("shift_right_logical", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Arithmetic Shift Right
 #' @description
@@ -1495,13 +1473,7 @@ prim_shift_right_logical <- new_primitive(
 #' y <- nv_array(c(1L, 2L, 3L))
 #' prim_shift_right_arithmetic(x, y)
 #' @export
-prim_shift_right_arithmetic <- new_primitive(
-  "shift_right_arithmetic",
-  function(lhs, rhs) {
-    infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_arithmetic)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_shift_right_arithmetic <- new_primitive("shift_right_arithmetic", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Atan2
 #' @description
@@ -1518,7 +1490,7 @@ prim_shift_right_arithmetic <- new_primitive(
 #' x <- nv_array(c(0, 1, 0))
 #' prim_atan2(y, x)
 #' @export
-prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2))
+prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv))
 
 #' @title Primitive Bitcast Convert
 #' @description
@@ -1569,7 +1541,18 @@ prim_bitcast_convert <- new_primitive(
 #' x <- nv_array(c(-1, 2, -3))
 #' prim_abs(x)
 #' @export
-prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
+prim_abs <- new_primitive(
+  "abs",
+  function(x) {
+    infer_fn <- function(x) {
+      out <- stablehlo::infer_types_abs(at2vt(x))[[1L]]
+      out <- vt2at(out)
+      out$ambiguous <- x$ambiguous
+      list(out)
+    }
+    graph_desc_add(self, list(x = x), infer_fn = infer_fn)[[1L]]
+  }
+)
 
 #' @title Primitive Square Root
 #' @description
@@ -1585,7 +1568,7 @@ prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
 #' x <- nv_array(c(1, 4, 9))
 #' prim_sqrt(x)
 #' @export
-prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
+prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni))
 
 #' @title Primitive Reciprocal Square Root
 #' @description
@@ -1601,7 +1584,7 @@ prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
 #' x <- nv_array(c(1, 4, 9))
 #' prim_rsqrt(x)
 #' @export
-prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt))
+prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni))
 
 #' @title Primitive Logarithm
 #' @description
@@ -1617,7 +1600,7 @@ prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt)
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' prim_log(x)
 #' @export
-prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
+prim_log <- new_primitive("log", make_unary_op(infer_float_uni))
 
 #' @title Primitive Hyperbolic Tangent
 #' @description
@@ -1633,7 +1616,7 @@ prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_tanh(x)
 #' @export
-prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
+prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Tangent
 #' @description
@@ -1649,7 +1632,7 @@ prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
 #' x <- nv_array(c(0, 0.5, 1))
 #' prim_tan(x)
 #' @export
-prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
+prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
 
 #' @title Primitive Sine
 #' @description
@@ -1665,7 +1648,7 @@ prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_sin(x)
 #' @export
-prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
+prim_sin <- new_primitive("sine", make_unary_op(infer_float_uni))
 
 #' @title Primitive Cosine
 #' @description
@@ -1681,7 +1664,7 @@ prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_cos(x)
 #' @export
-prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine))
+prim_cos <- new_primitive("cosine", make_unary_op(infer_float_uni))
 
 #' @title Primitive Floor
 #' @description
@@ -1697,7 +1680,7 @@ prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine)
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' prim_floor(x)
 #' @export
-prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor))
+prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni))
 
 #' @title Primitive Ceiling
 #' @description
@@ -1713,7 +1696,7 @@ prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor)
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' prim_ceil(x)
 #' @export
-prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
+prim_ceil <- new_primitive("ceil", make_unary_op(infer_float_uni))
 
 #' @title Primitive Sign
 #' @description
@@ -1729,7 +1712,18 @@ prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
 #' x <- nv_array(c(-3, 0, 5))
 #' prim_sign(x)
 #' @export
-prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
+prim_sign <- new_primitive(
+  "sign",
+  function(x) {
+    infer_fn <- function(x) {
+      out <- stablehlo::infer_types_sign(at2vt(x))[[1L]]
+      out <- vt2at(out)
+      out$ambiguous <- x$ambiguous
+      list(out)
+    }
+    graph_desc_add(self, list(x = x), infer_fn = infer_fn)[[1L]]
+  }
+)
 
 #' @title Primitive Exponential
 #' @description
@@ -1745,7 +1739,7 @@ prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
 #' x <- nv_array(c(0, 1, 2))
 #' prim_exp(x)
 #' @export
-prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponential))
+prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni))
 
 #' @title Primitive Exponential Minus One
 #' @description
@@ -1761,7 +1755,7 @@ prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponentia
 #' x <- nv_array(c(0, 0.001, 1))
 #' prim_expm1(x)
 #' @export
-prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_exponential_minus_one))
+prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni))
 
 #' @title Primitive Log Plus One
 #' @description
@@ -1777,7 +1771,7 @@ prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_expone
 #' x <- nv_array(c(0, 0.001, 1))
 #' prim_log1p(x)
 #' @export
-prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_plus_one))
+prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni))
 
 #' @title Primitive Cube Root
 #' @description
@@ -1793,7 +1787,7 @@ prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_pl
 #' x <- nv_array(c(1, 8, 27))
 #' prim_cbrt(x)
 #' @export
-prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
+prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni))
 
 #' @title Primitive Logistic (Sigmoid)
 #' @description
@@ -1809,7 +1803,7 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
 #' x <- nv_array(c(-2, 0, 2))
 #' prim_logistic(x)
 #' @export
-prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_logistic))
+prim_logistic <- new_primitive("logistic", make_unary_op(infer_float_uni))
 
 #' @title Primitive Arc Cosine
 #' @description
@@ -1825,7 +1819,7 @@ prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_acos(x)
 #' @export
-prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
+prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Hyperbolic Cosine
 #' @description
@@ -1841,7 +1835,7 @@ prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
 #' x <- nv_array(c(1, 2, 10))
 #' prim_acosh(x)
 #' @export
-prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh))
+prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Arc Sine
 #' @description
@@ -1857,7 +1851,7 @@ prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh)
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_asin(x)
 #' @export
-prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
+prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Hyperbolic Sine
 #' @description
@@ -1873,7 +1867,7 @@ prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_asinh(x)
 #' @export
-prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh))
+prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Arc Tangent
 #' @description
@@ -1889,7 +1883,7 @@ prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh)
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_atan(x)
 #' @export
-prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
+prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Hyperbolic Tangent
 #' @description
@@ -1905,7 +1899,7 @@ prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' prim_atanh(x)
 #' @export
-prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh))
+prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Hyperbolic Cosine
 #' @description
@@ -1921,7 +1915,7 @@ prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh)
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_cosh(x)
 #' @export
-prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
+prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Hyperbolic Sine
 #' @description
@@ -1937,7 +1931,7 @@ prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_sinh(x)
 #' @export
-prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
+prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Digamma
 #' @description
@@ -1953,7 +1947,7 @@ prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' prim_digamma(x)
 #' @export
-prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_digamma))
+prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni))
 
 #' @title Primitive Log-Gamma
 #' @description
@@ -1969,7 +1963,7 @@ prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_di
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' prim_lgamma(x)
 #' @export
-prim_lgamma <- new_primitive("lgamma", make_unary_op(stablehlo::infer_types_lgamma))
+prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni))
 
 #' @title Primitive Polygamma
 #' @description
@@ -2018,7 +2012,7 @@ prim_polygamma <- new_primitive(
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_erf(x)
 #' @export
-prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
+prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Error Function
 #' @description
@@ -2034,7 +2028,7 @@ prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' prim_erf_inv(x)
 #' @export
-prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_erf_inv))
+prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni))
 
 #' @title Primitive Complementary Error Function
 #' @description
@@ -2050,7 +2044,7 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_er
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_erfc(x)
 #' @export
-prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
+prim_erfc <- new_primitive("erfc", make_unary_op(infer_float_uni))
 
 #' @title Primitive Is Finite
 #' @description
@@ -2094,18 +2088,7 @@ prim_is_finite <- new_primitive(
 #' x <- nv_array(c(7L, 3L, 15L))
 #' prim_popcnt(x)
 #' @export
-prim_popcnt <- new_primitive(
-  "popcnt",
-  function(x) {
-    infer_fn <- function(x) {
-      out <- stablehlo::infer_types_popcnt(at2vt(x))[[1L]]
-      out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
-      list(out)
-    }
-    graph_desc_add(self, list(x = x), list(), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_popcnt <- new_primitive("popcnt", make_unary_op(infer_integer_uni))
 
 #' @title Primitive Clamp
 #' @description
@@ -2324,10 +2307,8 @@ prim_round <- new_primitive(
       cli_abort("method must be one of: 'nearest_even', 'afz', but is {method}")
     }
     infer_fn <- function(x, method) {
-      # both rounding functions have the same inference, so just pick one:
-      stablehlo_infer <- stablehlo::infer_types_round_nearest_even
-      out <- stablehlo_infer(at2vt(x))[[1L]]
-      out <- vt2at(out)
+      # both rounding methods have the same inference
+      out <- infer_float_uni(x)
       out$ambiguous <- x$ambiguous
       list(out)
     }
