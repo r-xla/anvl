@@ -318,7 +318,7 @@ infer_iota <- function(axis, dtype, shape, start, ambiguous) {
     ))
   }
   dt <- as_dtype(dtype)
-  if (!inherits(dt, c("IntegerType", "UIntegerType", "FloatType"))) {
+  if (!(is_dtype_int(dt) || is_dtype_uint(dt) || is_dtype_float(dt))) {
     cli_abort(c(
       "{.arg dtype} must be an integer, unsigned integer, or floating-point type.",
       x = "Got {.val {as.character(dt)}}."
@@ -574,7 +574,7 @@ infer_rng_bit_generator <- function(initial_state, rng_algorithm, dtype, shape) 
     ))
   }
   out_dtype <- as_dtype(dtype)
-  if (!inherits(out_dtype, c("IntegerType", "UIntegerType", "FloatType"))) {
+  if (!(is_dtype_int(out_dtype) || is_dtype_uint(out_dtype) || is_dtype_float(out_dtype))) {
     cli_abort(c(
       "{.arg dtype} must be an integer, unsigned integer, or floating-point type.",
       x = "Got {.val {as.character(out_dtype)}}."
