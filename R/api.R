@@ -2521,7 +2521,7 @@ nv_squeeze <- function(x, axes = NULL) {
     axes <- resolve_axes(axes, length(shp), unique = TRUE)
     for (d in axes) {
       if (shp[d] != 1L) {
-        cli_abort("Cannot squeeze axis {d} with size {shp[d]} (must be 1)")
+        cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
       }
     }
     new_shape <- shp[-axes]

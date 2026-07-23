@@ -11,11 +11,11 @@ prim_broadcast_in_axes(x, shape, broadcast_axes)
 Arrayish value of any data type.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Each mapped axis must either match the corresponding
-axis of \code{x}, or that axis of \code{x} must be 1.}
+Target shape. The size of each mapped axis must either match the size of
+the corresponding axis of \code{x}, or that axis of \code{x} must have size 1.}
 
 \item{broadcast_axes}{(\code{integer()})\cr
-Maps each axis of \code{x} to a axis of the output.
+Maps each axis of \code{x} to an axis of the output.
 Must have length equal to the number of axes of \code{x}.}
 }
 \value{

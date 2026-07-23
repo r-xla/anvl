@@ -209,10 +209,10 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 #' Broadcasts an array to a new shape by replicating the data along new or size-1 axes.
 #' @template param_prim_x_any
 #' @param shape (`integer()`)\cr
-#'   Target shape. Each mapped axis must either match the corresponding
-#'   axis of `x`, or that axis of `x` must be 1.
+#'   Target shape. The size of each mapped axis must either match the size of
+#'   the corresponding axis of `x`, or that axis of `x` must have size 1.
 #' @param broadcast_axes (`integer()`)\cr
-#'   Maps each axis of `x` to a axis of the output.
+#'   Maps each axis of `x` to an axis of the output.
 #'   Must have length equal to the number of axes of `x`.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and the given `shape`.
