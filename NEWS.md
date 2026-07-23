@@ -12,12 +12,6 @@
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
-* Adopted tengen's enum-style `DataType` (tengen >= 0.3.0). The
-  `FloatType()` / `IntegerType()` / `UIntegerType()` / `BooleanType()`
-  constructors are gone; dtype branching now uses `is_dtype_float()`,
-  `is_dtype_int()`, `is_dtype_uint()`, `is_dtype_bool()`, and `dtype_width()`.
-  `as_dtype()` still builds dtypes from strings (e.g. `as_dtype("f32")`), and
-  `as.character()` on a dtype is unchanged.
 * `ndims()` has been renamed to `naxes()`, matching tengen's rename of the
   same generic.
 
