@@ -94,7 +94,7 @@ reference:
       - ambiguous
       - dtype
       - shape
-      - ndims
+      - naxes
       - device
       - starts_with("platform")
 
@@ -382,7 +382,7 @@ reference:
       - IotaArray
       - dtype_abstract
       - shape_abstract
-      - ndims_abstract
+      - naxes_abstract
       - ambiguous_abstract
       - to_abstract
       - arrayish
