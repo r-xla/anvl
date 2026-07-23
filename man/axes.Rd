@@ -15,8 +15,8 @@ An array-like object.}
 }
 \description{
 Returns the axis indices of an array, i.e. \code{seq_len(naxes(x))}.
-For a \verb{20x5x3} array, the axes are \code{1}, \code{2} and \code{3}, while its dimensions
-are \code{20}, \code{5} and \code{3}.
+For a \verb{20x5x3} array, the axes are \code{1}, \code{2} and \code{3}, while the sizes of its
+axes are \code{20}, \code{5} and \code{3}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

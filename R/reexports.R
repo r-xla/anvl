@@ -137,8 +137,8 @@ tengen::naxes
 #' @title Get the axes of an array
 #'
 #' @description Returns the axis indices of an array, i.e. `seq_len(naxes(x))`.
-#' For a `20x5x3` array, the axes are `1`, `2` and `3`, while its dimensions
-#' are `20`, `5` and `3`.
+#' For a `20x5x3` array, the axes are `1`, `2` and `3`, while the sizes of its
+#' axes are `20`, `5` and `3`.
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
