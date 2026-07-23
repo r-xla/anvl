@@ -3,8 +3,7 @@
 ## Breaking changes
 
 * Renamed `dim`/`dims` to `axis`/`axes` throughout the package (an axis is an
-  index, a dimension is a size); `ndims()` is now `naxes()`, with a new `axes()`
-  returning an array's axis indices.
+  index, a dimension is a size); `ndims()` is now `naxes()`.
 * Renamed the primary array argument of `prim_*` / `nv_*` functions from
   `operand` to `x`.
 * Renamed the `"xla"` backend to `"pjrt"`.

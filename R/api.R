@@ -222,7 +222,7 @@ nv_convert <- function(x, dtype) {
 #' @export
 nv_transpose <- function(x, permutation = NULL) {
   x <- as_anvl_array(x)
-  permutation <- permutation %||% rev(axes(x))
+  permutation <- permutation %||% rev(seq_len(naxes(x)))
   prim_transpose(x, permutation)
 }
 
@@ -2006,7 +2006,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 # index `shape(x)[axes]` to compute the number of reduced elements.
 .resolve_reduce_axes <- function(x, axes) {
   if (is.null(axes)) {
-    return(axes(x))
+    return(seq_len(naxes(x)))
   }
   resolve_axes(axes, naxes(x), arg = "axes", unique = TRUE)
 }

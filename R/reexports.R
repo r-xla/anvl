@@ -134,27 +134,6 @@ NULL
 #' @export
 tengen::naxes
 
-#' @title Get the axes of an array
-#'
-#' @description Returns the axis indices of an array, i.e. `seq_len(naxes(x))`.
-#' For a `20x5x3` array, the axes are `1`, `2` and `3`, while the sizes of its
-#' axes are `20`, `5` and `3`.
-#'
-#' @param x ([`arrayish`])\cr
-#'   An array-like object.
-#' @returns `integer()`
-#' @seealso [tengen::axes()], [naxes()]
-#' @name axes
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(array(1:24, dim = c(2, 3, 4)), dtype = "f32")
-#' axes(x)
-NULL
-
-#' @rdname axes
-#' @importFrom tengen axes
-#' @export
-tengen::axes
-
 #' @title Check if an object is a DataType
 #'
 #' @description Tests whether `x` is a `DataType` object.
