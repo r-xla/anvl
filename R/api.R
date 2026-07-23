@@ -222,7 +222,7 @@ nv_convert <- function(x, dtype) {
 #' @export
 nv_transpose <- function(x, permutation = NULL) {
   x <- as_anvl_array(x)
-  permutation <- permutation %||% rev(seq_len(naxes(x)))
+  permutation <- permutation %||% rev(axes(x))
   prim_transpose(x, permutation)
 }
 
@@ -1698,7 +1698,7 @@ nv_triangular_solve <- function(
   if (b_is_vector) {
     n <- if (left_side) a_shape[rank_a - 1L] else a_shape[rank_a]
     if (b_shape[length(b_shape)] != n) {
-      cli_abort("{.arg b} must have length {n} in its last axis to match {.arg a}")
+      cli_abort("{.arg b} must have size {n} in its last axis to match {.arg a}")
     }
     b <- if (left_side) {
       prim_reshape(b, shape = c(b_shape, 1L))
@@ -2006,7 +2006,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 # index `shape(x)[axes]` to compute the number of reduced elements.
 .resolve_reduce_axes <- function(x, axes) {
   if (is.null(axes)) {
-    return(seq_len(naxes(x)))
+    return(axes(x))
   }
   resolve_axes(axes, naxes(x), arg = "axes", unique = TRUE)
 }

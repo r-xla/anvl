@@ -376,7 +376,7 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   # remaining axes
   rem_axes <- function(x, b_axes, c_axes) {
     ii <- c(b_axes, c_axes)
-    seq_len(naxes(x))[if (length(ii)) -ii else TRUE]
+    axes(x)[if (length(ii)) -ii else TRUE]
   }
   rd_lhs <- rem_axes(lhs, bd_lhs, cd_lhs)
   rd_rhs <- rem_axes(rhs, bd_rhs, cd_rhs)
@@ -508,7 +508,7 @@ prim_broadcast_in_axes[["reverse"]] <- rule_reverse(function(inputs, outputs, gr
   list(
     if (required[[1L]]) {
       # Sum grad over the axes that were introduced by broadcasting
-      new_axes <- setdiff(seq_len(naxes(y)), broadcast_axes)
+      new_axes <- setdiff(axes(y), broadcast_axes)
       expand_axes <- broadcast_axes[(shape(y)[broadcast_axes] != 1L) & (shape(x) == 1L)]
       reduce_axes <- c(new_axes, expand_axes)
 

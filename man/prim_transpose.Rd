@@ -12,7 +12,7 @@ Arrayish value of any data type.}
 
 \item{permutation}{(\code{integer()})\cr
 Specifies the new ordering of axes. Must be a permutation of
-\code{seq_len(naxes)} where \code{naxes} is the number of axes of \code{x}.
+\code{axes(x)}, the axis indices of \code{x}.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
