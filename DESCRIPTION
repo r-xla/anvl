@@ -33,7 +33,7 @@ Imports:
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.3.0.902),
-    tengen (>= 0.2.0),
+    tengen (>= 0.3.0),
     withr,
     xlamisc (>= 0.3.0)
 Suggests:

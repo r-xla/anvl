@@ -12,6 +12,12 @@
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
+* Adopted tengen's enum-style `DataType` (tengen >= 0.3.0). The
+  `FloatType()` / `IntegerType()` / `UIntegerType()` / `BooleanType()`
+  constructors are gone; dtype branching now uses `is_dtype_float()`,
+  `is_dtype_int()`, `is_dtype_uint()`, `is_dtype_bool()`, and `dtype_bits()`.
+  `as_dtype()` still builds dtypes from strings (e.g. `as_dtype("f32")`), and
+  `as.character()` on a dtype is unchanged.
 * `ndims()` has been renamed to `naxes()`, matching tengen's rename of the
   same generic.
 
@@ -88,8 +94,8 @@
 * Errors raised while tracing are now phrased in anvl's own vocabulary (#298).
   Messages originating in the `stablehlo` package used the StableHLO spec's
   terminology; they now speak of arrays instead of tensors, and of `x` instead
-  of `operand`. For example, `` `operand` must have dtype FloatType `` became
-  `` `x` must have dtype FloatType ``.
+  of `operand`. For example, `` `operand` must have dtype float `` became
+  `` `x` must have dtype float ``.
 
 
 * `jit()` now rejects static arguments with reference semantics -- an

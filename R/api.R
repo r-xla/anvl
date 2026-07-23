@@ -2029,7 +2029,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 nv_reduce_sum <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   dims <- .resolve_reduce_dims(x, dims)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_reduce_sum(x, dims = dims, drop = drop)
@@ -2055,7 +2055,7 @@ nv_reduce_sum <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_mean <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   dims <- .resolve_reduce_dims(x, dims)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     is_nan <- nv_is_nan(x)
     total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), dims = dims, drop = drop)
     count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), dims = dims, drop = drop)
@@ -2083,7 +2083,7 @@ nv_mean <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_reduce_prod <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   dims <- .resolve_reduce_dims(x, dims)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_reduce_prod(x, dims = dims, drop = drop)
@@ -2137,7 +2137,7 @@ nv_reduce_min <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 # to re-inject NaN — no input substitution can coax the kernel into emitting
 # NaN on output.
 .nv_reduce_extreme <- function(x, dims, drop, nan_rm, identity_val, prim_reduce) {
-  if (!inherits(dtype(x), "FloatType")) {
+  if (!is_dtype_float(dtype(x))) {
     return(prim_reduce(x, dims = dims, drop = drop))
   }
   is_nan <- nv_is_nan(x)
@@ -2211,7 +2211,7 @@ nv_cumsum <- function(x, dim = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     dim <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_cumsum(x, dim = dim)
@@ -2242,7 +2242,7 @@ nv_cumprod <- function(x, dim = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     dim <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_cumprod(x, dim = dim)
@@ -2309,7 +2309,7 @@ nv_cummin <- function(x, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     dim <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, dim = dim)
@@ -2461,7 +2461,7 @@ nv_var <- function(x, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   )
   diff <- x - mean_bc
   ssum <- nv_reduce_sum(diff * diff, dims, drop, nan_rm = nan_rm)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), "i32"), dims, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
@@ -3094,7 +3094,7 @@ nv_quantile <- function(x, probs, dim = NULL, interpolation = "linear", nan_rm =
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- inherits(dtype(x), "FloatType")
+  is_float <- is_dtype_float(dtype(x))
   shp_kd <- replace(shp, dim, 1L)
   shp_K <- replace(shp, dim, K)
 
@@ -3272,7 +3272,7 @@ nv_argmin <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #
 .nv_arg_extreme <- function(x, dim, drop, nan_rm, prim_arg) {
   result <- prim_arg(x, dim = dim, drop = drop)
-  if (nan_rm || !inherits(dtype(x), "FloatType")) {
+  if (nan_rm || !is_dtype_float(dtype(x))) {
     return(result)
   }
   # argmax on the bool mask returns the index of the first TRUE (tie-break:

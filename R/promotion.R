@@ -65,10 +65,10 @@ promote_dt_ambiguous_to_known <- function(adtype, dtype) {
   # there are only two cases where we cast a known type to an amibugous type:
   # 1. the ambiguous type is a float and the known type is not
   # 2. the known type is a bool but ambiguous type is not
-  if (inherits(adtype, "FloatType") && !inherits(dtype, "FloatType")) {
+  if (is_dtype_float(adtype) && !is_dtype_float(dtype)) {
     return(adtype)
   }
-  if (!inherits(adtype, "BooleanType") && inherits(dtype, "BooleanType")) {
+  if (!is_dtype_bool(adtype) && is_dtype_bool(dtype)) {
     return(adtype)
   }
   return(dtype)
@@ -78,55 +78,55 @@ promote_dt_known <- function(dt1, dt2) {
   if (dt1 == dt2) {
     return(dt1)
   }
-  if (inherits(dt1, "BooleanType")) {
+  if (is_dtype_bool(dt1)) {
     return(dt2)
   }
-  if (inherits(dt2, "BooleanType")) {
+  if (is_dtype_bool(dt2)) {
     return(dt1)
   }
-  if (inherits(dt1, "FloatType")) {
-    if (inherits(dt2, "FloatType")) {
-      return(FloatType(max(dt1$value, dt2$value)))
+  if (is_dtype_float(dt1)) {
+    if (is_dtype_float(dt2)) {
+      return(as_dtype(paste0("f", max(dtype_bits(dt1), dtype_bits(dt2)))))
     }
     # bools and integers are cast to the float
     return(dt1)
   }
-  if (inherits(dt2, "FloatType")) {
+  if (is_dtype_float(dt2)) {
     return(dt2)
   }
-  if (inherits(dt1, "IntegerType")) {
-    if (inherits(dt2, "IntegerType")) {
-      return(IntegerType(max(dt1$value, dt2$value)))
+  if (is_dtype_int(dt1)) {
+    if (is_dtype_int(dt2)) {
+      return(as_dtype(paste0("i", max(dtype_bits(dt1), dtype_bits(dt2)))))
     }
-    if (dt2$value < dt1$value) {
+    if (dtype_bits(dt2) < dtype_bits(dt1)) {
       # the int can hold the unsigned int
       return(dt1)
     }
     # int can't hold the unsigned int
     # we use signed int, but increase bits of unsigned int
     # this can lead to overflows then we have uint64 but this can't be avoided
-    return(IntegerType(min(64L, dt2$value * 2L)))
+    return(as_dtype(paste0("i", min(64L, dtype_bits(dt2) * 2L))))
   }
-  if (inherits(dt2, "IntegerType")) {
-    if (inherits(dt1, "UIntegerType")) {
-      if (dt2$value > dt1$value) {
+  if (is_dtype_int(dt2)) {
+    if (is_dtype_uint(dt1)) {
+      if (dtype_bits(dt2) > dtype_bits(dt1)) {
         return(dt2)
       }
-      return(IntegerType(min(64L, dt1$value * 2L)))
+      return(as_dtype(paste0("i", min(64L, dtype_bits(dt1) * 2L))))
     }
     cli_abort("internal error")
   }
   # both are unsigned
-  UIntegerType(max(dt1$value, dt2$value))
+  as_dtype(paste0("ui", max(dtype_bits(dt1), dtype_bits(dt2))))
 }
 
 default_dtype <- function(x) {
   if (is.integer(x)) {
-    IntegerType(32)
+    as_dtype("i32")
   } else if (is.double(x)) {
-    FloatType(32)
+    as_dtype("f32")
   } else if (is.logical(x)) {
-    BooleanType()
+    as_dtype("bool")
   } else {
     cli_abort("No default type for: {.class class(x)[1L]}")
   }

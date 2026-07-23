@@ -112,7 +112,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
 # dtype (f32 or f64). Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x)) {
   dt <- as_dtype(x)
-  if (!inherits(dt, "FloatType")) {
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
       "{.arg {arg}} must be a floating-point dtype (f32 or f64).",
       "x" = "Got {.val {as.character(dt)}}."
@@ -141,7 +141,7 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
     ))
   }
-  if (!inherits(dtype(x), "FloatType")) {
+  if (!is_dtype_float(dtype(x))) {
     cli_abort(c(
       "{.arg {arg}} must have a floating-point dtype.",
       "x" = "Got dtype {.val {as.character(dtype(x))}}."

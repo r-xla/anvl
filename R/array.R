@@ -503,7 +503,7 @@ NULL
 #' @export
 as.double.AnvlArray <- function(x, check = FALSE, ...) {
   dt <- dtype(x)
-  if (!(inherits(dt, "FloatType") || inherits(dt, "IntegerType") || inherits(dt, "UIntegerType"))) {
+  if (!(is_dtype_float(dt) || is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.double} requires a float or integer dtype, but got {.val {as.character(dt)}}.")
   }
   as.double(as_array(x, check = check))
@@ -514,7 +514,7 @@ as.double.AnvlArray <- function(x, check = FALSE, ...) {
 #' @export
 as.integer.AnvlArray <- function(x, check = FALSE, ...) {
   dt <- dtype(x)
-  if (!(inherits(dt, "IntegerType") || inherits(dt, "UIntegerType"))) {
+  if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.integer} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
   }
   as.integer(as_array(x, check = check))
@@ -524,7 +524,7 @@ as.integer.AnvlArray <- function(x, check = FALSE, ...) {
 #' @method as.logical AnvlArray
 #' @export
 as.logical.AnvlArray <- function(x, check = FALSE, ...) {
-  if (!inherits(dtype(x), "BooleanType")) {
+  if (!is_dtype_bool(dtype(x))) {
     cli_abort("{.fn as.logical} requires a {.val bool} dtype, but got {.val {as.character(dtype(x))}}.")
   }
   as.logical(as_array(x, check = check))
