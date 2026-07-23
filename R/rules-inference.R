@@ -9,10 +9,19 @@
 # given tengen dtype classes (e.g. "FloatType", "IntegerType").
 assert_dtype_class <- function(x, ..., arg = rlang::caller_arg(x)) {
   classes <- c(...)
-  if (!inherits(dtype(x), classes)) {
+  spec <- list(
+    FloatType = list(pred = is_dtype_float, label = "float"),
+    IntegerType = list(pred = is_dtype_int, label = "int"),
+    UIntegerType = list(pred = is_dtype_uint, label = "uint"),
+    BooleanType = list(pred = is_dtype_bool, label = "bool")
+  )
+  dt <- dtype(x)
+  ok <- any(vapply(classes, function(cl) spec[[cl]]$pred(dt), logical(1L)))
+  if (!ok) {
+    labels <- vapply(classes, function(cl) spec[[cl]]$label, character(1L))
     cli_abort(c(
-      "{.arg {arg}} must have dtype {.or {classes}}.",
-      x = "Got {.val {as.character(dtype(x))}}."
+      "{.arg {arg}} must have dtype {.or {labels}}.",
+      x = "Got {.val {as.character(dt)}}."
     ))
   }
   invisible(x)
@@ -167,7 +176,7 @@ infer_select <- function(pred, true_value, false_value) {
 # consumed; when narrower, a trailing axis is appended.
 infer_bitcast_convert <- function(x, dtype) {
   dtype <- as.character(dtype)
-  if (inherits(dtype(x), "BooleanType")) {
+  if (is_dtype_bool(dtype(x))) {
     cli_abort(c(
       "Bitcast conversions from and to i1 are not supported.",
       x = "{.arg x} has dtype {.val {as.character(dtype(x))}}."

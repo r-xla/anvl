@@ -274,7 +274,7 @@ prim_dot_general <- new_primitive(
 #' @template param_prim_x_any
 #' @param permutation (`integer()`)\cr
 #'   Specifies the new ordering of axes. Must be a permutation of
-#'   `axes(x)`, the axis indices of `x`.
+#'   `seq_len(naxes(x))`, the axis indices of `x`.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape `nv_shape(x)[permutation]`.

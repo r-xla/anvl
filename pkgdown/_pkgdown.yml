@@ -95,7 +95,6 @@ reference:
       - dtype
       - shape
       - naxes
-      - axes
       - device
       - starts_with("platform")
 

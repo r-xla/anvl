@@ -16,8 +16,8 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 ## Terminology
 
-- **Axis vs. dimension.** An *axis* is an index that identifies a direction of an array; a *dimension* is the *size* (extent) along an axis. For a `20x5x3` array the axes are `1`, `2`, `3` and the dimensions are `20`, `5`, `3`. Name identifiers accordingly: use `axis`/`axes` when the value is an index (or vector of indices), and `dim`/`dims` when it is a size (or shape vector). Helpers reflect this: `naxes(x)` is the number of axes (the rank), `axes(x)` is `seq_len(naxes(x))`, and `shape(x)` / `dim(x)` return the dimensions.
-- Speak of the **size of an axis**, never the "length of an axis" (reserve "length" for vectors and 1-D arrays). Prefer `axes(x)` over the equivalent `seq_len(naxes(x))`.
+- **Axis vs. dimension.** An *axis* is an index that identifies a direction of an array; a *dimension* is the *size* (extent) along an axis. For a `20x5x3` array the axes are `1`, `2`, `3` and the dimensions are `20`, `5`, `3`. Name identifiers accordingly: use `axis`/`axes` when the value is an index (or vector of indices), and `dim`/`dims` when it is a size (or shape vector). Helpers reflect this: `naxes(x)` is the number of axes (the rank), so `seq_len(naxes(x))` is the axis indices, and `shape(x)` / `dim(x)` return the dimensions.
+- Speak of the **size of an axis**, never the "length of an axis" (reserve "length" for vectors and 1-D arrays).
 - Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of "dimensions", so calls into them keep those argument names (e.g. `hlo_reduce(dimensions = axes - 1L)`, `array(dim = ...)`) with the anvl-side axis variable on the right.
 - **Arrays, not tensors.** In anvl-facing docs, messages, and identifiers, say *array* rather than *tensor*. The primary array argument of `nv_*` / `prim_*` functions is called `x`.
 

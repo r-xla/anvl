@@ -10,7 +10,7 @@ nv_unif_rand <- function(
   # 2. We use these as mantissa bits for float, where we set the exponent to 1.0
   # 3. Because we have an implicit leading 1, we get a number in [1, 2) -> need to shift to [0, 1)
 
-  ui_dtype <- UIntegerType(dtype$value)
+  ui_dtype <- as_dtype(paste0("ui", dtype_width(dtype)))
 
   # generate random bits
   # use THREE_FRY as rng algorithm: JAX default

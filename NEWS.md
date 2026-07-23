@@ -3,8 +3,7 @@
 ## Breaking changes
 
 * Renamed `dim`/`dims` to `axis`/`axes` throughout the package (an axis is an
-  index, a dimension is a size); `ndims()` is now `naxes()`, with a new `axes()`
-  returning an array's axis indices.
+  index, a dimension is a size); `ndims()` is now `naxes()`.
 * Renamed the primary array argument of `prim_*` / `nv_*` functions from
   `operand` to `x`.
 * Renamed the `"xla"` backend to `"pjrt"`.
@@ -83,8 +82,8 @@
 * Errors raised while tracing are now phrased in anvl's own vocabulary (#298).
   Messages originating in the `stablehlo` package used the StableHLO spec's
   terminology; they now speak of arrays instead of tensors, and of `x` instead
-  of `operand`. For example, `` `operand` must have dtype FloatType `` became
-  `` `x` must have dtype FloatType ``.
+  of `operand`. For example, `` `operand` must have dtype float `` became
+  `` `x` must have dtype float ``.
 
 
 * `jit()` now rejects static arguments with reference semantics -- an

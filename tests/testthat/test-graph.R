@@ -194,7 +194,7 @@ test_that("error handling", {
 test_that("error handling: inference errors use anvl's terminology", {
   # anvl's own dtype check names the argument `x`, never `operand`
   err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
-  expect_match(conditionMessage(err), "`x` must have dtype FloatType", fixed = TRUE)
+  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
 
   # dtype mismatches speak of arrays, never "tensor"
   expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))))

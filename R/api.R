@@ -222,7 +222,7 @@ nv_convert <- function(x, dtype) {
 #' @export
 nv_transpose <- function(x, permutation = NULL) {
   x <- as_anvl_array(x)
-  permutation <- permutation %||% rev(axes(x))
+  permutation <- permutation %||% rev(seq_len(naxes(x)))
   prim_transpose(x, permutation)
 }
 
@@ -2006,7 +2006,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 # index `shape(x)[axes]` to compute the number of reduced elements.
 .resolve_reduce_axes <- function(x, axes) {
   if (is.null(axes)) {
-    return(axes(x))
+    return(seq_len(naxes(x)))
   }
   resolve_axes(axes, naxes(x), arg = "axes", unique = TRUE)
 }
@@ -2029,7 +2029,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_reduce_sum(x, axes = axes, drop = drop)
@@ -2055,7 +2055,7 @@ nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     is_nan <- nv_is_nan(x)
     total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
     count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
@@ -2083,7 +2083,7 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_reduce_prod(x, axes = axes, drop = drop)
@@ -2137,7 +2137,7 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 # to re-inject NaN — no input substitution can coax the kernel into emitting
 # NaN on output.
 .nv_reduce_extreme <- function(x, axes, drop, nan_rm, identity_val, prim_reduce) {
-  if (!inherits(dtype(x), "FloatType")) {
+  if (!is_dtype_float(dtype(x))) {
     return(prim_reduce(x, axes = axes, drop = drop))
   }
   is_nan <- nv_is_nan(x)
@@ -2211,7 +2211,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_cumsum(x, axis = axis)
@@ -2242,7 +2242,7 @@ nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_cumprod(x, axis = axis)
@@ -2309,7 +2309,7 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
@@ -2461,7 +2461,7 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   )
   diff <- x - mean_bc
   ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), "i32"), axes, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
@@ -3094,7 +3094,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- inherits(dtype(x), "FloatType")
+  is_float <- is_dtype_float(dtype(x))
   shp_kd <- replace(shp, axis, 1L)
   shp_K <- replace(shp, axis, K)
 
@@ -3272,7 +3272,7 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #
 .nv_arg_extreme <- function(x, axis, drop, nan_rm, prim_arg) {
   result <- prim_arg(x, axis = axis, drop = drop)
-  if (nan_rm || !inherits(dtype(x), "FloatType")) {
+  if (nan_rm || !is_dtype_float(dtype(x))) {
     return(result)
   }
   # argmax on the bool mask returns the index of the first TRUE (tie-break:
