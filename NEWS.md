@@ -2,26 +2,13 @@
 
 ## Breaking changes
 
-* The primary array argument (previously `operand`) of array transformation
-  functions (`prim_<*>` and `nv_<*>`) is now consistently called `x`.
-* Renamed `dim`/`dims` to `axis`/`axes` throughout the package: for a `20x5x3`
-  array, the axes are `1`, `2` and `3`, while its dimensions are `20`, `5` and
-  `3`. This affects arguments such as `nv_reduce_sum(axes = )`,
-  `nv_cumsum(axis = )`, `nv_sort(axis = )`, `nv_squeeze(axes = )`,
-  `nv_concatenate(axis = )` and the `prim_gather()` / `prim_scatter()` /
-  `prim_conv()` axis parameters. `prim_broadcast_in_dim()` is now
-  `prim_broadcast_in_axes()` and `ndims()` / `ndims_abstract()` are now
-  `naxes()` / `naxes_abstract()`.
-* New `axes()` re-export (from tengen) returning the axis indices of an array,
-  i.e. `seq_len(naxes(x))`.
-* The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it uses.
-  Pass `backend = "pjrt"` to `jit()`, `nv_array()`, `local_backend()`, and
-  friends; `backend()` and `default_backend()` now return `"pjrt"`. The
-  constructor `AnvlBackendXla()` is now `AnvlBackendPjrt()` and the internal
-  `compile_xla()` is now `compile_pjrt()`.
-* `xla()` has been removed. Use `jit()` instead: it compiles through the same
-  pipeline, lazily on the first call. Warm a jitted function up by calling it
-  once with representative inputs.
+* Renamed `dim`/`dims` to `axis`/`axes` throughout the package (an axis is an
+  index, a dimension is a size); `ndims()` is now `naxes()`, with a new `axes()`
+  returning an array's axis indices.
+* Renamed the primary array argument of `prim_*` / `nv_*` functions from
+  `operand` to `x`.
+* Renamed the `"xla"` backend to `"pjrt"`.
+* `xla()` has been removed; use `jit()` instead.
 
 ## Features
 
