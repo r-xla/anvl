@@ -321,7 +321,7 @@ prim_dot_general <- new_primitive(
 #' @template param_prim_x_any
 #' @param permutation (`integer()`)\cr
 #'   Specifies the new ordering of dimensions. Must be a permutation of
-#'   `seq_len(ndims)` where `ndims` is the number of dimensions of `x`.
+#'   `seq_len(naxes)` where `naxes` is the number of dimensions of `x`.
 #'   Negative values count from the end, i.e. `-1` refers to the last dimension.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape `nv_shape(x)[permutation]`.
@@ -405,7 +405,7 @@ prim_reshape <- new_primitive(
 #' @description
 #' Concatenates arrays along a dimension.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to concatenate. Must all have the same data type, ndims,
+#'   Arrays to concatenate. Must all have the same data type, naxes,
 #'   and shape except along `dimension`.
 #' @param dimension (`integer(1)`)\cr
 #'   Dimension along which to concatenate.
@@ -543,7 +543,7 @@ prim_static_slice <- new_primitive(
 #'   scalar array. Pass one scalar per dimension of `x`.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each dimension. Must have length equal to
-#'   `ndims(x)` and satisfy `1 <= slice_sizes <= nv_shape(x)`
+#'   `naxes(x)` and satisfy `1 <= slice_sizes <= nv_shape(x)`
 #'   per dimension.
 #' @section Out Of Bounds Behavior:
 #' Start indices are clamped before the slice is extracted:
@@ -1003,7 +1003,7 @@ prim_reduce <- new_primitive(
         x = "Got {.arg x} dtype {.field {repr(op_dtype)}} and init dtype {.field {repr(init_dtype)}}."
       ))
     }
-    if (ndims(init) != 0L) {
+    if (naxes(init) != 0L) {
       cli_abort("{.arg init} must be a scalar (0-dimensional)")
     }
 
@@ -2710,7 +2710,7 @@ prim_sort <- new_primitive(
 #'   Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
-#'   `1 <= k <= shape(x)[ndims(x)]`.
+#'   `1 <= k <= shape(x)[naxes(x)]`.
 #' @return `list` of two [`arrayish`] values:\cr
 #'   The top-`k` values (same dtype as `x`) and their indices along
 #'   the last dimension (dtype `i32`, matching JAX). Both have the same
@@ -2866,7 +2866,7 @@ prim_rng_bit_generator <- new_primitive(
 #'   index vector indexes into the first dimension of `x`.
 #' @param index_vector_dim (`integer(1)`)\cr
 #'   Dimension of `scatter_indices` that contains the index vectors.
-#'   If set to `ndims(scatter_indices) + 1`, each scalar element of
+#'   If set to `naxes(scatter_indices) + 1`, each scalar element of
 #'   `scatter_indices` is treated as a length-1 index vector.
 #' @param indices_are_sorted (`logical(1)`)\cr
 #'   Whether indices are guaranteed to be sorted. Setting to `TRUE`
@@ -3045,7 +3045,7 @@ prim_scatter <- new_primitive(
 #'   specified by `index_vector_dim` holds the index vectors.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice to gather from `x` in each dimension.
-#'   Must have length equal to `ndims(x)`.
+#'   Must have length equal to `naxes(x)`.
 #' @param offset_dims (`integer()`)\cr
 #'   Dimensions in the output that correspond to the non-collapsed
 #'   slice dimensions of `x`.
@@ -3066,7 +3066,7 @@ prim_scatter <- new_primitive(
 #'   index vector indexes into the first dimension of `x`.
 #' @param index_vector_dim (`integer(1)`)\cr
 #'   Dimension of `start_indices` that contains the index vectors.
-#'   If set to `ndims(start_indices) + 1`, each scalar element of
+#'   If set to `naxes(start_indices) + 1`, each scalar element of
 #'   `start_indices` is treated as a length-1 index vector.
 #' @param indices_are_sorted (`logical(1)`)\cr
 #'   Whether indices are guaranteed to be sorted. Setting to `TRUE`

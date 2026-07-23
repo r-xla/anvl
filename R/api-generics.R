@@ -181,7 +181,7 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #' @method t AnvlArray
 #' @export
 t.AnvlArray <- function(x) {
-  nd <- ndims(x)
+  nd <- naxes(x)
   if (nd != 2L) {
     cli_abort("{.fn t} requires a 2-D array, but got a {nd}-D array.")
   }

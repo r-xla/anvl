@@ -56,7 +56,7 @@ index vector indexes into the first dimension of \code{x}.}
 
 \item{index_vector_dim}{(\code{integer(1)})\cr
 Dimension of \code{scatter_indices} that contains the index vectors.
-If set to \code{ndims(scatter_indices) + 1}, each scalar element of
+If set to \code{naxes(scatter_indices) + 1}, each scalar element of
 \code{scatter_indices} is treated as a length-1 index vector.}
 
 \item{indices_are_sorted}{(\code{logical(1)})\cr

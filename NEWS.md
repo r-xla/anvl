@@ -12,6 +12,8 @@
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
+* `ndims()` has been renamed to `naxes()`, matching tengen's rename of the
+  same generic.
 
 ## Features
 

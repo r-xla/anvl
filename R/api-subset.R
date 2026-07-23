@@ -518,7 +518,7 @@ subset_scatter_core <- jit(
       value <- nv_convert(value, dtype = dt_x)
     }
 
-    if (!ndims(value)) {
+    if (!naxes(value)) {
       value <- nv_broadcast_to(value, update_shape)
     } else {
       value_shape <- shape(value)

@@ -29,7 +29,7 @@ specified by \code{index_vector_dim} holds the index vectors.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice to gather from \code{x} in each dimension.
-Must have length equal to \code{ndims(x)}.}
+Must have length equal to \code{naxes(x)}.}
 
 \item{offset_dims}{(\code{integer()})\cr
 Dimensions in the output that correspond to the non-collapsed
@@ -56,7 +56,7 @@ index vector indexes into the first dimension of \code{x}.}
 
 \item{index_vector_dim}{(\code{integer(1)})\cr
 Dimension of \code{start_indices} that contains the index vectors.
-If set to \code{ndims(start_indices) + 1}, each scalar element of
+If set to \code{naxes(start_indices) + 1}, each scalar element of
 \code{start_indices} is treated as a length-1 index vector.}
 
 \item{indices_are_sorted}{(\code{logical(1)})\cr

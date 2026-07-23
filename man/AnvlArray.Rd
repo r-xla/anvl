@@ -140,7 +140,7 @@ The following generic functions can be used to extract information from an \code
 \itemize{
 \item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
 \item \code{\link[tengen:shape]{shape()}}: Get the shape (dimensions) of the array.
-\item \code{\link[tengen:ndims]{ndims()}}: Get the number of dimensions.
+\item \code{\link[tengen:naxes]{naxes()}}: Get the number of dimensions.
 \item \code{\link[tengen:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
 \item \code{\link[=ambiguous]{ambiguous()}}: Get whether the dtype is ambiguous.
@@ -183,7 +183,7 @@ nv_empty("f32", shape = c(2L, 3L))
 x <- nv_array(1:6, shape = c(2L, 3L))
 dtype(x)
 shape(x)
-ndims(x)
+naxes(x)
 device(x)
 platform(x)
 ambiguous(x)

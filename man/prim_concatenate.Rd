@@ -8,7 +8,7 @@ prim_concatenate(..., dimension)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to concatenate. Must all have the same data type, ndims,
+Arrays to concatenate. Must all have the same data type, naxes,
 and shape except along \code{dimension}.}
 
 \item{dimension}{(\code{integer(1)})\cr

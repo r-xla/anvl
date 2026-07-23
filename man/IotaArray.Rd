@@ -43,7 +43,7 @@ x <- IotaArray(shape = 4L, dtype = "i32", dimension = 1L)
 x
 ambiguous(x)
 shape(x)
-ndims(x)
+naxes(x)
 dtype(x)
 # How it appears during tracing:
 graph <- trace_fn(function() nv_iota(dim = 1L, dtype = "i32", shape = 4L), list())
