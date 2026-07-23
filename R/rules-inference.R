@@ -577,3 +577,870 @@ infer_rng_bit_generator <- function(initial_state, rng_algorithm, dtype, shape) 
     AbstractArray(out_dtype, out_shape)
   )
 }
+
+# --- DimensionNumbers ops ----------------------------------------------------
+#
+# gather / scatter / convolution / dot_general carry the densest axis logic.
+# All axis-set parameters are 1-based here (validated `1 <= axis <= rank`); the
+# output shape is assembled by placing sizes at 1-based positions directly.
+# The 0-based `- 1L` conversion for the StableHLO DimensionNumbers structs lives
+# only in the lowering rules (`R/rules-stablehlo.R`).
+
+# TRUE if any entry of `axes` is outside the 1-based axis range `1:rank`.
+axes_out_of_range <- function(axes, rank) {
+  length(axes) > 0L && (any(axes < 1L) || any(axes > rank))
+}
+
+# gather(x, start_indices, ...): read slices from `x` at the positions given by
+# `start_indices`. The output is assembled from the batch axes (the axes of
+# `start_indices` other than `index_vector_axis`) interleaved with the offset
+# axes (the non-collapsed, non-batching slice axes of `x`).
+infer_gather <- function(
+  x,
+  start_indices,
+  slice_sizes,
+  offset_axes,
+  collapsed_slice_axes,
+  x_batching_axes,
+  start_indices_batching_axes,
+  start_index_map,
+  index_vector_axis
+) {
+  x_shape <- shape(x)
+  x_rank <- naxes(x)
+  si_shape <- shape(start_indices)
+  si_rank <- naxes(start_indices)
+  slice_sizes <- as.integer(slice_sizes)
+
+  # (C1)
+  expected_rank <- length(offset_axes) +
+    length(collapsed_slice_axes) +
+    length(x_batching_axes)
+  if (x_rank != expected_rank) {
+    cli_abort(c(
+      "The number of axes of {.arg x} must equal length(offset_axes) + length(collapsed_slice_axes) + length(x_batching_axes).",
+      x = "Got {x_rank}, but expected {expected_rank} (= {length(offset_axes)} + {length(collapsed_slice_axes)} + {length(x_batching_axes)})."
+    ))
+  }
+
+  # (C2)
+  if (index_vector_axis < 1L || index_vector_axis > si_rank + 1L) {
+    cli_abort(c(
+      "{.arg index_vector_axis} must be between 1 and {si_rank + 1L}.",
+      x = "Got {.val {index_vector_axis}}."
+    ))
+  }
+
+  # (C3)
+  expected_start_index_map_size <- if (index_vector_axis <= si_rank) {
+    si_shape[index_vector_axis]
+  } else {
+    1L
+  }
+  if (length(start_index_map) != expected_start_index_map_size) {
+    cli_abort(c(
+      "length(start_index_map) must equal the index vector size.",
+      x = "Got {length(start_index_map)}, but expected {expected_start_index_map_size}."
+    ))
+  }
+
+  # (C4)
+  if (anyDuplicated(offset_axes)) {
+    cli_abort(c(
+      "{.arg offset_axes} must not contain duplicate axes.",
+      x = "Got {.val {offset_axes}}."
+    ))
+  }
+  if (is.unsorted(offset_axes)) {
+    cli_abort(c(
+      "{.arg offset_axes} must be sorted in increasing order.",
+      x = "Got {.val {offset_axes}}."
+    ))
+  }
+
+  # Output shape components (for C5 and C22).
+  batch_dim_sizes <- if (index_vector_axis == si_rank + 1L) {
+    si_shape
+  } else {
+    without(si_shape, index_vector_axis)
+  }
+  offset_dim_sizes <- without(
+    slice_sizes,
+    c(collapsed_slice_axes, x_batching_axes)
+  )
+  result_rank <- length(batch_dim_sizes) + length(offset_dim_sizes)
+
+  # (C5)
+  if (axes_out_of_range(offset_axes, result_rank)) {
+    cli_abort(c(
+      "{.arg offset_axes} must be between 1 and {result_rank}.",
+      x = "Got {.val {offset_axes}}."
+    ))
+  }
+
+  # (C6)
+  if (anyDuplicated(c(collapsed_slice_axes, x_batching_axes))) {
+    cli_abort(c(
+      "{.arg collapsed_slice_axes} and {.arg x_batching_axes} must not share axes or contain duplicates.",
+      x = "Got {.val {collapsed_slice_axes}} and {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C7)
+  if (is.unsorted(collapsed_slice_axes)) {
+    cli_abort(c(
+      "{.arg collapsed_slice_axes} must be sorted in increasing order.",
+      x = "Got {.val {collapsed_slice_axes}}."
+    ))
+  }
+
+  # (C8)
+  if (axes_out_of_range(collapsed_slice_axes, x_rank)) {
+    cli_abort(c(
+      "{.arg collapsed_slice_axes} must be between 1 and {x_rank}.",
+      x = "Got {.val {collapsed_slice_axes}}."
+    ))
+  }
+
+  # (C9)
+  if (length(collapsed_slice_axes)) {
+    collapsed_sizes <- slice_sizes[collapsed_slice_axes]
+    if (any(collapsed_sizes > 1L)) {
+      cli_abort(c(
+        "{.arg slice_sizes} at {.arg collapsed_slice_axes} must be <= 1.",
+        x = "Got {.val {collapsed_sizes}}."
+      ))
+    }
+  }
+
+  # (C10)
+  if (is.unsorted(x_batching_axes)) {
+    cli_abort(c(
+      "{.arg x_batching_axes} must be sorted in increasing order.",
+      x = "Got {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C11)
+  if (axes_out_of_range(x_batching_axes, x_rank)) {
+    cli_abort(c(
+      "{.arg x_batching_axes} must be between 1 and {x_rank}.",
+      x = "Got {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C12)
+  if (length(x_batching_axes)) {
+    batching_sizes <- slice_sizes[x_batching_axes]
+    if (any(batching_sizes > 1L)) {
+      cli_abort(c(
+        "{.arg slice_sizes} at {.arg x_batching_axes} must be <= 1.",
+        x = "Got {.val {batching_sizes}}."
+      ))
+    }
+  }
+
+  # (C13)
+  if (anyDuplicated(start_indices_batching_axes)) {
+    cli_abort(c(
+      "{.arg start_indices_batching_axes} must not contain duplicate axes.",
+      x = "Got {.val {start_indices_batching_axes}}."
+    ))
+  }
+
+  # (C14)
+  if (axes_out_of_range(start_indices_batching_axes, si_rank)) {
+    cli_abort(c(
+      "{.arg start_indices_batching_axes} must be between 1 and {si_rank}.",
+      x = "Got {.val {start_indices_batching_axes}}."
+    ))
+  }
+
+  # (C15)
+  if (index_vector_axis %in% start_indices_batching_axes) {
+    cli_abort(c(
+      "{.arg index_vector_axis} must not be in {.arg start_indices_batching_axes}.",
+      x = "Got index_vector_axis = {.val {index_vector_axis}} and start_indices_batching_axes = {.val {start_indices_batching_axes}}."
+    ))
+  }
+
+  # (C16)
+  if (length(x_batching_axes) != length(start_indices_batching_axes)) {
+    cli_abort(c(
+      "{.arg x_batching_axes} and {.arg start_indices_batching_axes} must have the same length.",
+      x = "Got {length(x_batching_axes)} and {length(start_indices_batching_axes)}."
+    ))
+  }
+
+  # (C17)
+  if (length(x_batching_axes)) {
+    batch_shape_x <- x_shape[x_batching_axes]
+    batch_shape_si <- si_shape[start_indices_batching_axes]
+    if (!identical(batch_shape_x, batch_shape_si)) {
+      cli_abort(c(
+        "The batch axes of {.arg x} and {.arg start_indices} must have matching sizes.",
+        x = "Got {xlamisc::shapevec_repr(batch_shape_x)} and {xlamisc::shapevec_repr(batch_shape_si)}."
+      ))
+    }
+  }
+
+  # (C18)
+  if (anyDuplicated(c(start_index_map, x_batching_axes))) {
+    cli_abort(c(
+      "{.arg start_index_map} and {.arg x_batching_axes} must not share axes or contain duplicates.",
+      x = "Got {.val {start_index_map}} and {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C19)
+  if (axes_out_of_range(start_index_map, x_rank)) {
+    cli_abort(c(
+      "{.arg start_index_map} must be between 1 and {x_rank}.",
+      x = "Got {.val {start_index_map}}."
+    ))
+  }
+
+  # (C20)
+  if (length(slice_sizes) != x_rank) {
+    cli_abort(c(
+      "length(slice_sizes) must equal the number of axes of {.arg x} ({x_rank}).",
+      x = "Got {length(slice_sizes)}."
+    ))
+  }
+
+  # (C21)
+  if (any(slice_sizes < 0L) || any(slice_sizes > x_shape)) {
+    cli_abort(c(
+      "{.arg slice_sizes} must satisfy 0 <= slice_sizes <= shape(x).",
+      x = "Got {.val {slice_sizes}}, but {.arg x} has shape {xlamisc::shapevec_repr(x_shape)}."
+    ))
+  }
+
+  # (C22)
+  batch_axes <- setdiff(seq_len(result_rank), offset_axes)
+  result_shape <- integer(result_rank)
+  if (length(batch_axes) > 0L) {
+    result_shape[batch_axes] <- batch_dim_sizes
+  }
+  if (length(offset_axes) > 0L) {
+    result_shape[offset_axes] <- offset_dim_sizes
+  }
+
+  AbstractArray(dtype(x), result_shape)
+}
+
+# scatter(x, scatter_indices, update, ...): write `update` slices into `x` at
+# the positions given by `scatter_indices`. The result has the same shape and
+# dtype as `x`; the axis sets partition the `update` and `x` axes. anvl only
+# supports a single input / update.
+infer_scatter <- function(
+  x,
+  scatter_indices,
+  update,
+  update_window_axes,
+  inserted_window_axes,
+  x_batching_axes,
+  scatter_indices_batching_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis
+) {
+  x_shape <- shape(x)
+  x_rank <- naxes(x)
+  si_shape <- shape(scatter_indices)
+  si_rank <- naxes(scatter_indices)
+  updates_shape <- shape(update)
+  updates_rank <- naxes(update)
+
+  # (C6)
+  if (dtype(x) != dtype(update)) {
+    cli_abort(c(
+      "{.arg x} and {.arg update} must have the same dtype.",
+      x = "Got {.val {as.character(dtype(x))}} and {.val {as.character(dtype(update))}}."
+    ))
+  }
+
+  # (C2)
+  expected_rank <- length(update_window_axes) +
+    length(inserted_window_axes) +
+    length(x_batching_axes)
+  if (x_rank != expected_rank) {
+    cli_abort(c(
+      "The number of axes of {.arg x} must equal length(update_window_axes) + length(inserted_window_axes) + length(x_batching_axes).",
+      x = "Got {x_rank}, but expected {expected_rank} (= {length(update_window_axes)} + {length(inserted_window_axes)} + {length(x_batching_axes)})."
+    ))
+  }
+
+  # (C7)
+  if (anyDuplicated(update_window_axes)) {
+    cli_abort(c(
+      "{.arg update_window_axes} must not contain duplicate axes.",
+      x = "Got {.val {update_window_axes}}."
+    ))
+  }
+  if (is.unsorted(update_window_axes)) {
+    cli_abort(c(
+      "{.arg update_window_axes} must be sorted in increasing order.",
+      x = "Got {.val {update_window_axes}}."
+    ))
+  }
+
+  # (C8)
+  if (axes_out_of_range(update_window_axes, updates_rank)) {
+    cli_abort(c(
+      "{.arg update_window_axes} must be between 1 and {updates_rank}.",
+      x = "Got {.val {update_window_axes}}."
+    ))
+  }
+
+  # (C9)
+  if (anyDuplicated(c(inserted_window_axes, x_batching_axes))) {
+    cli_abort(c(
+      "{.arg inserted_window_axes} and {.arg x_batching_axes} must not share axes or contain duplicates.",
+      x = "Got {.val {inserted_window_axes}} and {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C10)
+  if (is.unsorted(inserted_window_axes)) {
+    cli_abort(c(
+      "{.arg inserted_window_axes} must be sorted in increasing order.",
+      x = "Got {.val {inserted_window_axes}}."
+    ))
+  }
+
+  # (C11)
+  if (axes_out_of_range(inserted_window_axes, x_rank)) {
+    cli_abort(c(
+      "{.arg inserted_window_axes} must be between 1 and {x_rank}.",
+      x = "Got {.val {inserted_window_axes}}."
+    ))
+  }
+
+  # (C12)
+  if (is.unsorted(x_batching_axes)) {
+    cli_abort(c(
+      "{.arg x_batching_axes} must be sorted in increasing order.",
+      x = "Got {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C13)
+  if (axes_out_of_range(x_batching_axes, x_rank)) {
+    cli_abort(c(
+      "{.arg x_batching_axes} must be between 1 and {x_rank}.",
+      x = "Got {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C14)
+  if (anyDuplicated(scatter_indices_batching_axes)) {
+    cli_abort(c(
+      "{.arg scatter_indices_batching_axes} must not contain duplicate axes.",
+      x = "Got {.val {scatter_indices_batching_axes}}."
+    ))
+  }
+
+  # (C15)
+  if (axes_out_of_range(scatter_indices_batching_axes, si_rank)) {
+    cli_abort(c(
+      "{.arg scatter_indices_batching_axes} must be between 1 and {si_rank}.",
+      x = "Got {.val {scatter_indices_batching_axes}}."
+    ))
+  }
+
+  # (C16)
+  if (index_vector_axis %in% scatter_indices_batching_axes) {
+    cli_abort(c(
+      "{.arg index_vector_axis} must not be in {.arg scatter_indices_batching_axes}.",
+      x = "Got index_vector_axis = {.val {index_vector_axis}} and scatter_indices_batching_axes = {.val {scatter_indices_batching_axes}}."
+    ))
+  }
+
+  # (C17)
+  if (length(x_batching_axes) != length(scatter_indices_batching_axes)) {
+    cli_abort(c(
+      "{.arg x_batching_axes} and {.arg scatter_indices_batching_axes} must have the same length.",
+      x = "Got {length(x_batching_axes)} and {length(scatter_indices_batching_axes)}."
+    ))
+  }
+
+  # (C18)
+  batch_shape_x <- x_shape[x_batching_axes]
+  batch_shape_si <- si_shape[scatter_indices_batching_axes]
+  if (!identical(batch_shape_x, batch_shape_si)) {
+    cli_abort(c(
+      "The batch axes of {.arg x} and {.arg scatter_indices} must have matching sizes.",
+      x = "Got {xlamisc::shapevec_repr(batch_shape_x)} and {xlamisc::shapevec_repr(batch_shape_si)}."
+    ))
+  }
+
+  # (C22)
+  if (index_vector_axis < 1L || index_vector_axis > si_rank + 1L) {
+    cli_abort(c(
+      "{.arg index_vector_axis} must be between 1 and {si_rank + 1L}.",
+      x = "Got {.val {index_vector_axis}}."
+    ))
+  }
+
+  # (C19)
+  expected_scatter_dims_size <- if (index_vector_axis <= si_rank) {
+    si_shape[index_vector_axis]
+  } else {
+    1L
+  }
+  if (length(scatter_axes_to_x_axes) != expected_scatter_dims_size) {
+    cli_abort(c(
+      "length(scatter_axes_to_x_axes) must equal the index vector size.",
+      x = "Got {length(scatter_axes_to_x_axes)}, but expected {expected_scatter_dims_size}."
+    ))
+  }
+
+  # (C20)
+  if (anyDuplicated(c(scatter_axes_to_x_axes, x_batching_axes))) {
+    cli_abort(c(
+      "{.arg scatter_axes_to_x_axes} and {.arg x_batching_axes} must not share axes or contain duplicates.",
+      x = "Got {.val {scatter_axes_to_x_axes}} and {.val {x_batching_axes}}."
+    ))
+  }
+
+  # (C21)
+  if (axes_out_of_range(scatter_axes_to_x_axes, x_rank)) {
+    cli_abort(c(
+      "{.arg scatter_axes_to_x_axes} must be between 1 and {x_rank}.",
+      x = "Got {.val {scatter_axes_to_x_axes}}."
+    ))
+  }
+
+  update_scatter_axes <- setdiff(seq_len(updates_rank), update_window_axes)
+
+  update_scatter_dim_sizes <- if (index_vector_axis == si_rank + 1L) {
+    si_shape
+  } else {
+    without(si_shape, index_vector_axis)
+  }
+
+  update_window_dim_sizes <- without(
+    x_shape,
+    c(inserted_window_axes, x_batching_axes)
+  )
+
+  # (C4) - rank part
+  expanded_si_rank <- if (index_vector_axis == si_rank + 1L) {
+    si_rank + 1L
+  } else {
+    si_rank
+  }
+  expected_updates_rank <- expanded_si_rank - 1L + length(update_window_axes)
+  if (updates_rank != expected_updates_rank) {
+    cli_abort(c(
+      "{.arg update} must have {expected_updates_rank} ax{?is/es}.",
+      x = "Got {updates_rank}."
+    ))
+  }
+
+  # (C4) - window sizes part
+  actual_window_sizes <- updates_shape[update_window_axes]
+  if (any(actual_window_sizes > update_window_dim_sizes)) {
+    cli_abort(c(
+      "The update window sizes must not exceed the corresponding axes of {.arg x}.",
+      x = "Got {.val {actual_window_sizes}}, but the maximum allowed is {.val {update_window_dim_sizes}}."
+    ))
+  }
+
+  # (C4) - scatter sizes part
+  if (length(update_scatter_axes) > 0L) {
+    actual_scatter_sizes <- updates_shape[update_scatter_axes]
+    if (!identical(actual_scatter_sizes, update_scatter_dim_sizes)) {
+      cli_abort(c(
+        "The update scatter sizes must match the shape of {.arg scatter_indices} (excluding the index vector axis).",
+        x = "Got {.val {actual_scatter_sizes}}, but expected {.val {update_scatter_dim_sizes}}."
+      ))
+    }
+  }
+
+  AbstractArray(dtype(x), x_shape)
+}
+
+# convolution(lhs, rhs, ...): compute dot products between windows of `lhs` and
+# slices of `rhs`. The batch / feature / spatial axes of the input, kernel, and
+# output each partition `1:rank`. The output shape places the batch size at
+# `output_batch_axis`, the kernel output-feature size at `output_feature_axis`,
+# and the per-spatial window counts at `output_spatial_axes`.
+infer_convolution <- function(
+  lhs,
+  rhs,
+  input_batch_axis,
+  input_feature_axis,
+  input_spatial_axes,
+  kernel_input_feature_axis,
+  kernel_output_feature_axis,
+  kernel_spatial_axes,
+  output_batch_axis,
+  output_feature_axis,
+  output_spatial_axes,
+  window_strides,
+  padding,
+  lhs_dilation,
+  rhs_dilation,
+  feature_group_count,
+  batch_group_count
+) {
+  lhs_shape <- shape(lhs)
+  rhs_shape <- shape(rhs)
+  rank_lhs <- naxes(lhs)
+  rank_rhs <- naxes(rhs)
+
+  # (C1)
+  if (rank_lhs != rank_rhs) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have the same number of axes.",
+      x = "Got {rank_lhs} and {rank_rhs}."
+    ))
+  }
+  if (rank_lhs < 2L) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have at least 2 axes.",
+      x = "Got {rank_lhs}."
+    ))
+  }
+  rank <- rank_lhs
+  n_spatial <- rank - 2L
+
+  strides <- as.integer(window_strides)
+  pad <- padding
+  storage.mode(pad) <- "integer"
+  lhs_dil <- as.integer(lhs_dilation)
+  rhs_dil <- as.integer(rhs_dilation)
+  fg_count <- as.integer(feature_group_count)
+  bg_count <- as.integer(batch_group_count)
+
+  # (C2)
+  if (length(strides) != n_spatial) {
+    cli_abort(c(
+      "{.arg window_strides} must have length {n_spatial} (= number of spatial axes).",
+      x = "Got {length(strides)}."
+    ))
+  }
+  # (C3)
+  if (any(strides <= 0L)) {
+    cli_abort(c(
+      "{.arg window_strides} must be positive.",
+      x = "Got {.val {strides}}."
+    ))
+  }
+  # (C4)
+  if (nrow(pad) != n_spatial || ncol(pad) != 2L) {
+    cli_abort(c(
+      "{.arg padding} must have shape [{n_spatial}, 2].",
+      x = "Got [{nrow(pad)}, {ncol(pad)}]."
+    ))
+  }
+  # (C5)
+  if (length(lhs_dil) != n_spatial) {
+    cli_abort(c(
+      "{.arg lhs_dilation} must have length {n_spatial} (= number of spatial axes).",
+      x = "Got {length(lhs_dil)}."
+    ))
+  }
+  # (C6)
+  if (any(lhs_dil <= 0L)) {
+    cli_abort(c(
+      "{.arg lhs_dilation} must be positive.",
+      x = "Got {.val {lhs_dil}}."
+    ))
+  }
+  # (C7)
+  if (length(rhs_dil) != n_spatial) {
+    cli_abort(c(
+      "{.arg rhs_dilation} must have length {n_spatial} (= number of spatial axes).",
+      x = "Got {length(rhs_dil)}."
+    ))
+  }
+  # (C8)
+  if (any(rhs_dil <= 0L)) {
+    cli_abort(c(
+      "{.arg rhs_dilation} must be positive.",
+      x = "Got {.val {rhs_dil}}."
+    ))
+  }
+
+  # (C21)
+  if (fg_count <= 0L) {
+    cli_abort(c(
+      "{.arg feature_group_count} must be positive.",
+      x = "Got {fg_count}."
+    ))
+  }
+  # (C22)
+  if (bg_count <= 0L) {
+    cli_abort(c(
+      "{.arg batch_group_count} must be positive.",
+      x = "Got {bg_count}."
+    ))
+  }
+  # (C23)
+  if (fg_count != 1L && bg_count != 1L) {
+    cli_abort(c(
+      "At least one of {.arg feature_group_count} or {.arg batch_group_count} must be 1.",
+      x = "Got feature_group_count = {fg_count} and batch_group_count = {bg_count}."
+    ))
+  }
+
+  # (C12)
+  if (length(input_spatial_axes) != n_spatial) {
+    cli_abort(c(
+      "{.arg input_spatial_axes} must have length {n_spatial}.",
+      x = "Got {length(input_spatial_axes)}."
+    ))
+  }
+  # (C17)
+  if (length(kernel_spatial_axes) != n_spatial) {
+    cli_abort(c(
+      "{.arg kernel_spatial_axes} must have length {n_spatial}.",
+      x = "Got {length(kernel_spatial_axes)}."
+    ))
+  }
+  # (C19)
+  if (length(output_spatial_axes) != n_spatial) {
+    cli_abort(c(
+      "{.arg output_spatial_axes} must have length {n_spatial}.",
+      x = "Got {length(output_spatial_axes)}."
+    ))
+  }
+
+  # (C13)
+  input_axes <- c(input_batch_axis, input_spatial_axes, input_feature_axis)
+  if (anyDuplicated(input_axes)) {
+    cli_abort(c(
+      "The input batch, spatial, and feature axes must be distinct.",
+      x = "Got {.val {input_axes}}."
+    ))
+  }
+  if (axes_out_of_range(input_axes, rank)) {
+    cli_abort(c(
+      "The input batch, spatial, and feature axes must be between 1 and {rank}.",
+      x = "Got {.val {input_axes}}."
+    ))
+  }
+
+  # (C18)
+  kernel_axes <- c(
+    kernel_spatial_axes,
+    kernel_input_feature_axis,
+    kernel_output_feature_axis
+  )
+  if (anyDuplicated(kernel_axes)) {
+    cli_abort(c(
+      "The kernel spatial, input-feature, and output-feature axes must be distinct.",
+      x = "Got {.val {kernel_axes}}."
+    ))
+  }
+  if (axes_out_of_range(kernel_axes, rank)) {
+    cli_abort(c(
+      "The kernel spatial, input-feature, and output-feature axes must be between 1 and {rank}.",
+      x = "Got {.val {kernel_axes}}."
+    ))
+  }
+
+  # (C20)
+  output_axes <- c(output_batch_axis, output_spatial_axes, output_feature_axis)
+  if (anyDuplicated(output_axes)) {
+    cli_abort(c(
+      "The output batch, spatial, and feature axes must be distinct.",
+      x = "Got {.val {output_axes}}."
+    ))
+  }
+  if (axes_out_of_range(output_axes, rank)) {
+    cli_abort(c(
+      "The output batch, spatial, and feature axes must be between 1 and {rank}.",
+      x = "Got {.val {output_axes}}."
+    ))
+  }
+
+  input_batch_size <- lhs_shape[input_batch_axis]
+  input_feature_size <- lhs_shape[input_feature_axis]
+  kernel_input_feature_size <- rhs_shape[kernel_input_feature_axis]
+  kernel_output_feature_size <- rhs_shape[kernel_output_feature_axis]
+
+  # (C10)
+  if (input_batch_size %% bg_count != 0L) {
+    cli_abort(c(
+      "The size of {.arg lhs} at {.arg input_batch_axis} must be divisible by {.arg batch_group_count}.",
+      x = "Got size {input_batch_size} and batch_group_count {bg_count}."
+    ))
+  }
+  # (C11)
+  if (input_feature_size %% fg_count != 0L) {
+    cli_abort(c(
+      "The size of {.arg lhs} at {.arg input_feature_axis} must be divisible by {.arg feature_group_count}.",
+      x = "Got size {input_feature_size} and feature_group_count {fg_count}."
+    ))
+  }
+  # (C14)
+  if (kernel_input_feature_size != input_feature_size %/% fg_count) {
+    cli_abort(c(
+      "The size of {.arg rhs} at {.arg kernel_input_feature_axis} must equal the input feature size divided by {.arg feature_group_count}.",
+      x = "Got {kernel_input_feature_size}, but expected {input_feature_size %/% fg_count}."
+    ))
+  }
+  # (C15)
+  if (kernel_output_feature_size %% bg_count != 0L) {
+    cli_abort(c(
+      "The size of {.arg rhs} at {.arg kernel_output_feature_axis} must be divisible by {.arg batch_group_count}.",
+      x = "Got size {kernel_output_feature_size} and batch_group_count {bg_count}."
+    ))
+  }
+  # (C16)
+  if (kernel_output_feature_size %% fg_count != 0L) {
+    cli_abort(c(
+      "The size of {.arg rhs} at {.arg kernel_output_feature_axis} must be divisible by {.arg feature_group_count}.",
+      x = "Got size {kernel_output_feature_size} and feature_group_count {fg_count}."
+    ))
+  }
+
+  # (C27)
+  if (dtype(lhs) != dtype(rhs)) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have the same dtype.",
+      x = "Got {.val {as.character(dtype(lhs))}} and {.val {as.character(dtype(rhs))}}."
+    ))
+  }
+
+  # (C25, C26): compute the result shape.
+  result_shape <- integer(rank)
+  result_shape[output_batch_axis] <- input_batch_size %/% bg_count
+  result_shape[output_feature_axis] <- kernel_output_feature_size
+
+  for (sd in seq_len(n_spatial)) {
+    lhs_size <- lhs_shape[input_spatial_axes[sd]]
+    rhs_size <- rhs_shape[kernel_spatial_axes[sd]]
+
+    dilated_input <- if (lhs_size == 0L) {
+      0L
+    } else {
+      (lhs_size - 1L) * lhs_dil[sd] + 1L
+    }
+    padded_input <- pad[sd, 1L] + dilated_input + pad[sd, 2L]
+    dilated_window <- if (rhs_size == 0L) {
+      0L
+    } else {
+      (rhs_size - 1L) * rhs_dil[sd] + 1L
+    }
+    num_windows <- if (padded_input == 0L || dilated_window > padded_input) {
+      0L
+    } else {
+      as.integer(floor((padded_input - dilated_window) / strides[sd]) + 1L)
+    }
+    result_shape[output_spatial_axes[sd]] <- num_windows
+  }
+
+  AbstractArray(dtype(lhs), result_shape)
+}
+
+# dot_general(lhs, rhs, ...): batched matrix-multiply-like contraction.
+# `contracting_axes` / `batching_axes` are each a list of two 1-based axis
+# vectors (lhs, rhs). The output axes are the shared batch axes, followed by the
+# free axes of `lhs`, followed by the free axes of `rhs`.
+infer_dot_general <- function(lhs, rhs, contracting_axes, batching_axes) {
+  dim_lhs <- shape(lhs)
+  dim_rhs <- shape(rhs)
+  rank_lhs <- naxes(lhs)
+  rank_rhs <- naxes(rhs)
+
+  lhs_contracting <- contracting_axes[[1L]]
+  rhs_contracting <- contracting_axes[[2L]]
+  lhs_batching <- batching_axes[[1L]]
+  rhs_batching <- batching_axes[[2L]]
+
+  # (C13)
+  if (dtype(lhs) != dtype(rhs)) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have the same dtype.",
+      x = "Got {.val {as.character(dtype(lhs))}} and {.val {as.character(dtype(rhs))}}."
+    ))
+  }
+
+  # (C1)
+  if (length(lhs_batching) != length(rhs_batching)) {
+    cli_abort(c(
+      "{.arg batching_axes} must have equal length for {.arg lhs} and {.arg rhs}.",
+      x = "Got lengths {length(lhs_batching)} and {length(rhs_batching)}."
+    ))
+  }
+  # (C2)
+  if (length(lhs_contracting) != length(rhs_contracting)) {
+    cli_abort(c(
+      "{.arg contracting_axes} must have equal length for {.arg lhs} and {.arg rhs}.",
+      x = "Got lengths {length(lhs_contracting)} and {length(rhs_contracting)}."
+    ))
+  }
+  # (C3)
+  if (anyDuplicated(c(lhs_batching, lhs_contracting))) {
+    cli_abort(c(
+      "The {.arg lhs} batching and contracting axes must be distinct.",
+      x = "Got {.val {c(lhs_batching, lhs_contracting)}}."
+    ))
+  }
+  # (C4)
+  if (anyDuplicated(c(rhs_batching, rhs_contracting))) {
+    cli_abort(c(
+      "The {.arg rhs} batching and contracting axes must be distinct.",
+      x = "Got {.val {c(rhs_batching, rhs_contracting)}}."
+    ))
+  }
+  # (C5)
+  if (axes_out_of_range(lhs_batching, rank_lhs)) {
+    cli_abort(c(
+      "The {.arg lhs} batching axes must be between 1 and {rank_lhs}.",
+      x = "Got {.val {lhs_batching}}."
+    ))
+  }
+  # (C6)
+  if (axes_out_of_range(lhs_contracting, rank_lhs)) {
+    cli_abort(c(
+      "The {.arg lhs} contracting axes must be between 1 and {rank_lhs}.",
+      x = "Got {.val {lhs_contracting}}."
+    ))
+  }
+  # (C7)
+  if (axes_out_of_range(rhs_batching, rank_rhs)) {
+    cli_abort(c(
+      "The {.arg rhs} batching axes must be between 1 and {rank_rhs}.",
+      x = "Got {.val {rhs_batching}}."
+    ))
+  }
+  # (C8)
+  if (axes_out_of_range(rhs_contracting, rank_rhs)) {
+    cli_abort(c(
+      "The {.arg rhs} contracting axes must be between 1 and {rank_rhs}.",
+      x = "Got {.val {rhs_contracting}}."
+    ))
+  }
+
+  dim_merge1 <- dim_lhs[lhs_contracting]
+  dim_merge2 <- dim_rhs[rhs_contracting]
+  dim_batch1 <- dim_lhs[lhs_batching]
+  dim_batch2 <- dim_rhs[rhs_batching]
+
+  # (C10)
+  if (!identical(dim_merge1, dim_merge2)) {
+    cli_abort(c(
+      "The sizes of the contracting axes of {.arg lhs} and {.arg rhs} must match.",
+      x = "Got {.val {dim_merge1}} for {.arg lhs} and {.val {dim_merge2}} for {.arg rhs}."
+    ))
+  }
+  # (C9)
+  if (!identical(dim_batch1, dim_batch2)) {
+    cli_abort(c(
+      "The sizes of the batching axes of {.arg lhs} and {.arg rhs} must match.",
+      x = "Got {.val {dim_batch1}} for {.arg lhs} and {.val {dim_batch2}} for {.arg rhs}."
+    ))
+  }
+
+  dim_lhs_remaining <- without(dim_lhs, c(lhs_contracting, lhs_batching))
+  dim_rhs_remaining <- without(dim_rhs, c(rhs_contracting, rhs_batching))
+  # (C12)
+  out_dim <- c(dim_batch1, dim_lhs_remaining, dim_rhs_remaining)
+
+  AbstractArray(dtype(lhs), out_dim)
+}

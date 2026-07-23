@@ -282,12 +282,7 @@ prim_dot_general <- new_primitive(
   function(lhs, rhs, contracting_axes, batching_axes, precision = "highest") {
     precision <- match.arg(precision, c("default", "high", "highest"))
     infer_fn <- function(lhs, rhs, contracting_axes, batching_axes, precision) {
-      ddn <- stablehlo::DotDimensionNumbers(
-        contracting_dims = lapply(contracting_axes, \(x) x - 1L),
-        batching_dims = lapply(batching_axes, \(x) x - 1L)
-      )
-      out <- stablehlo::infer_types_dot_general(at2vt(lhs), at2vt(rhs), dot_dimension_numbers = ddn)[[1L]]
-      list(vt2at(out))
+      list(infer_dot_general(lhs, rhs, contracting_axes, batching_axes))
     }
     graph_desc_add(
       self,
@@ -2846,32 +2841,17 @@ prim_scatter <- new_primitive(
       unique_indices,
       update_computation_graph
     ) {
-      # Convert 1-based axis numbers to 0-based
-      # StableHLO's ScatterDimensionNumbers() follows the spec naming, so the
-      # anvl-side argument names are mapped back here.
-      scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
-        update_window_dims = update_window_axes - 1L,
-        inserted_window_dims = inserted_window_axes - 1L,
-        input_batching_dims = x_batching_axes - 1L,
-        scatter_indices_batching_dims = scatter_indices_batching_axes - 1L,
-        scatter_dims_to_operand_dims = scatter_axes_to_x_axes - 1L,
-        index_vector_dim = index_vector_axis - 1L
+      out <- infer_scatter(
+        x,
+        scatter_indices,
+        update,
+        update_window_axes = update_window_axes,
+        inserted_window_axes = inserted_window_axes,
+        x_batching_axes = x_batching_axes,
+        scatter_indices_batching_axes = scatter_indices_batching_axes,
+        scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+        index_vector_axis = index_vector_axis
       )
-
-      indices_sorted_attr <- r_to_constant(indices_are_sorted, dtype = "bool", shape = integer())
-      unique_indices_attr <- r_to_constant(unique_indices, dtype = "bool", shape = integer())
-
-      out <- stablehlo::infer_types_scatter(
-        inputs = list(at2vt(x)),
-        scatter_indices = at2vt(scatter_indices),
-        updates = list(at2vt(update)),
-        scatter_dimension_numbers = scatter_dimension_numbers,
-        indices_are_sorted = indices_sorted_attr,
-        unique_indices = unique_indices_attr,
-        update_computation = stablehlo(update_computation_graph, id = "", constants_as_inputs = FALSE)[[1L]]
-      )[[1L]]
-
-      out <- vt2at(out)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -3007,29 +2987,17 @@ prim_gather <- new_primitive(
       indices_are_sorted,
       unique_indices
     ) {
-      # StableHLO's GatherDimensionNumbers() follows the spec naming, so the
-      # anvl-side `x_batching_axes` is mapped back here.
-      gather_dimension_numbers <- stablehlo::GatherDimensionNumbers(
-        offset_dims = offset_axes - 1L,
-        collapsed_slice_dims = collapsed_slice_axes - 1L,
-        operand_batching_dims = x_batching_axes - 1L,
-        start_indices_batching_dims = start_indices_batching_axes - 1L,
-        start_index_map = start_index_map - 1L,
-        index_vector_dim = index_vector_axis - 1L
+      out <- infer_gather(
+        x,
+        start_indices,
+        slice_sizes = slice_sizes,
+        offset_axes = offset_axes,
+        collapsed_slice_axes = collapsed_slice_axes,
+        x_batching_axes = x_batching_axes,
+        start_indices_batching_axes = start_indices_batching_axes,
+        start_index_map = start_index_map,
+        index_vector_axis = index_vector_axis
       )
-
-      slice_sizes_attr <- r_to_constant(slice_sizes, dtype = "i64", shape = length(slice_sizes))
-      indices_sorted_attr <- r_to_constant(indices_are_sorted, dtype = "bool", shape = integer())
-
-      out <- stablehlo::infer_types_gather(
-        at2vt(x),
-        at2vt(start_indices),
-        gather_dimension_numbers = gather_dimension_numbers,
-        slice_sizes = slice_sizes_attr,
-        indices_are_sorted = indices_sorted_attr
-      )[[1L]]
-
-      out <- vt2at(out)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -3440,34 +3408,26 @@ prim_convolution <- new_primitive(
       batch_group_count,
       precision
     ) {
-      shlo_dn <- stablehlo::ConvDimensionNumbers(
-        input_batch_dimension = input_batch_axis - 1L,
-        input_feature_dimension = input_feature_axis - 1L,
-        input_spatial_dimensions = input_spatial_axes - 1L,
-        kernel_input_feature_dimension = kernel_input_feature_axis - 1L,
-        kernel_output_feature_dimension = kernel_output_feature_axis - 1L,
-        kernel_spatial_dimensions = kernel_spatial_axes - 1L,
-        output_batch_dimension = output_batch_axis - 1L,
-        output_feature_dimension = output_feature_axis - 1L,
-        output_spatial_dimensions = output_spatial_axes - 1L
+      out <- infer_convolution(
+        lhs,
+        rhs,
+        input_batch_axis = input_batch_axis,
+        input_feature_axis = input_feature_axis,
+        input_spatial_axes = input_spatial_axes,
+        kernel_input_feature_axis = kernel_input_feature_axis,
+        kernel_output_feature_axis = kernel_output_feature_axis,
+        kernel_spatial_axes = kernel_spatial_axes,
+        output_batch_axis = output_batch_axis,
+        output_feature_axis = output_feature_axis,
+        output_spatial_axes = output_spatial_axes,
+        window_strides = window_strides,
+        padding = padding,
+        lhs_dilation = lhs_dilation,
+        rhs_dilation = rhs_dilation,
+        feature_group_count = feature_group_count,
+        batch_group_count = batch_group_count
       )
-      n <- length(input_spatial_axes)
-      pad <- padding
-      storage.mode(pad) <- "integer"
-      out <- stablehlo::infer_types_convolution(
-        at2vt(lhs),
-        at2vt(rhs),
-        dimension_numbers = shlo_dn,
-        precision_config = rep(toupper(precision), 2L),
-        window_strides = r_to_constant(as.integer(window_strides), dtype = "i64", shape = length(window_strides)),
-        padding = r_to_constant(pad, dtype = "i64", shape = dim(pad)),
-        lhs_dilation = r_to_constant(as.integer(lhs_dilation), dtype = "i64", shape = length(lhs_dilation)),
-        rhs_dilation = r_to_constant(as.integer(rhs_dilation), dtype = "i64", shape = length(rhs_dilation)),
-        window_reversal = r_to_constant(rep(FALSE, n), dtype = "i1", shape = n),
-        feature_group_count = r_to_constant(as.integer(feature_group_count), dtype = "i64", shape = integer()),
-        batch_group_count = r_to_constant(as.integer(batch_group_count), dtype = "i64", shape = integer())
-      )[[1L]]
-      list(vt2at(out))
+      list(out)
     }
     graph_desc_add(
       self,
