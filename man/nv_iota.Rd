@@ -5,11 +5,11 @@
 \alias{nv_iota_like}
 \title{Iota}
 \usage{
-nv_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+nv_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 
 nv_iota_like(
   like,
-  dim,
+  axis,
   shape = NULL,
   start = 1L,
   dtype = NULL,
@@ -18,10 +18,10 @@ nv_iota_like(
 )
 }
 \arguments{
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which values increase.
+\item{axis}{(\code{integer(1)})\cr
+Axis along which values increase.
 Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
-last dimension.}
+last axis.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
@@ -49,7 +49,7 @@ Existing array whose attributes are used as defaults
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
-Creates an array with values increasing along the specified dimension,
+Creates an array with values increasing along the specified axis,
 starting from \code{start}.
 
 \code{nv_iota_like()} is a variant where \code{dtype}, \code{shape}, \code{ambiguous}, and
@@ -57,9 +57,9 @@ starting from \code{start}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_iota(dim = 1L, dtype = "i32", shape = 5L)
+nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 x <- nv_fill(0L, shape = c(2, 3))
-nv_iota_like(x, dim = 1L)
+nv_iota_like(x, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

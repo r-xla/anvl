@@ -4,29 +4,29 @@
 \alias{nv_unsqueeze}
 \title{Unsqueeze}
 \usage{
-nv_unsqueeze(x, dim)
+nv_unsqueeze(x, axis)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dim}{(\code{integer(1)})\cr
-Position at which to insert the new dimension. Valid positions range from
+\item{axis}{(\code{integer(1)})\cr
+Position at which to insert the new axis. Valid positions range from
 1 to \code{naxes(x) + 1}. Negative values count from the end of the
-\emph{result}, i.e. \code{-1} appends the new dimension at the end.}
+\emph{result}, i.e. \code{-1} appends the new axis at the end.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{x} with an extra dimension of size 1.
+Has the same data type as \code{x} with an extra axis of size 1.
 }
 \description{
-Inserts a dimension of size 1 at the specified position.
+Inserts an axis of size 1 at the specified position.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
-nv_unsqueeze(x, dim = 1L)
-nv_unsqueeze(x, dim = -1L)
+nv_unsqueeze(x, axis = 1L)
+nv_unsqueeze(x, axis = -1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

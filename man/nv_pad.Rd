@@ -20,13 +20,13 @@ Input array.}
 Scalar value to use for padding. Must have the same dtype as \code{x}.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
-Amount of padding to add at the start of each dimension.}
+Amount of padding to add at the start of each axis.}
 
 \item{edge_padding_high}{(\code{integer()})\cr
-Amount of padding to add at the end of each dimension.}
+Amount of padding to add at the end of each axis.}
 
 \item{interior_padding}{(\code{integer()} | \code{NULL})\cr
-Amount of padding to add between elements in each dimension.
+Amount of padding to add between elements in each axis.
 If \code{NULL} (default), no interior padding is applied.}
 }
 \value{

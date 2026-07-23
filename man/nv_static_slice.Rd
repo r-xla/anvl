@@ -11,13 +11,13 @@ nv_static_slice(x, start_indices, limit_indices, strides)
 Input array.}
 
 \item{start_indices}{(\code{integer()})\cr
-Start indices (inclusive), one per dimension.}
+Start indices (inclusive), one per axis.}
 
 \item{limit_indices}{(\code{integer()})\cr
-End indices (inclusive), one per dimension.}
+End indices (inclusive), one per axis.}
 
 \item{strides}{(\code{integer()})\cr
-Step sizes, one per dimension. A stride of 1 selects every element.}
+Step sizes, one per axis. A stride of 1 selects every element.}
 }
 \value{
 \code{\link{arrayish}}\cr

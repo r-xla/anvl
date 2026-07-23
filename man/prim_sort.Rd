@@ -4,16 +4,16 @@
 \alias{prim_sort}
 \title{Primitive Sort}
 \usage{
-prim_sort(xs, dim = 1L, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
 }
 \arguments{
 \item{xs}{(\code{list} of \code{\link{arrayish}})\cr
 One or more arrays to sort. The first is the sort key; the rest are
 carried along under the same permutation. All must share the same shape.}
 
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which to sort.
-Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which to sort.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{descending}{(\code{logical(1)})\cr
 If \code{TRUE}, sort the key in descending order (largest first). Default
@@ -31,7 +31,7 @@ output has the same shape, data type, and ambiguity as the
 corresponding input.
 }
 \description{
-Sorts arrays along the given dimension.
+Sorts arrays along the given axis.
 
 Sorting is determined by the \emph{first array} only: it is the sort key,
 and any additional arrays are reordered with the same permutation
@@ -40,8 +40,8 @@ paired with an \code{iota} and read off the second output) and key-value
 sorts (sort \code{keys} paired with \code{values}).
 
 All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along \code{dim} are sorted independently; other
-dimensions are preserved.
+1-dimensional slices along \code{axis} are sorted independently; other
+axes are preserved.
 }
 \section{Implemented Rules}{
 
@@ -65,12 +65,12 @@ use \code{SIGNED} / \code{UNSIGNED} as appropriate.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5))
-prim_sort(list(x), dim = 1L)[[1L]]
+prim_sort(list(x), axis = 1L)[[1L]]
 
 # Sort indices by the values (argsort): pair x with iota and read off
 # the second result.
-idx <- nv_iota(dim = 1L, dtype = "i64", shape = 5L)
-out <- prim_sort(list(x, idx), dim = 1L)
+idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
+out <- prim_sort(list(x, idx), axis = 1L)
 out[[1L]] # sorted x
 out[[2L]] # permutation indices
 \dontshow{\}) # examplesIf}

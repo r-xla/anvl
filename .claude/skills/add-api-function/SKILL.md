@@ -68,7 +68,7 @@ For ops needing custom logic, write a function that normalizes its array inputs 
 - `as_anvl_array(x)` for a single array input.
 - `as_anvl_arrays(...)` for multiple array inputs (infers a common device, errors on mismatched backends/devices).
 
-After conversion, use `shape()`, `ndims()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`.
+After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`.
 
 ### Constants and the `_like` pattern
 
@@ -97,8 +97,8 @@ If the underlying primitive requires all its inputs to share a dtype (e.g. `nvl_
 
 ### Static arguments
 
-Any argument the function body *inspects* -- branches on, validates with `assert_*`, uses to compute shape/dims -- must be declared `static =` on the outer `jit()` call (and forwarded via `static =` to `check_eager()` in tests).
-Typical candidates: `dims`, `shape`, `dim`, flags, mode strings, dtype specifiers.
+Any argument the function body *inspects* -- branches on, validates with `assert_*`, uses to compute shape/axes -- must be declared `static =` on the outer `jit()` call (and forwarded via `static =` to `check_eager()` in tests).
+Typical candidates: `axes`, `shape`, `axis`, flags, mode strings, dtype specifiers.
 Arrayish inputs (the actual data) should never be static.
 
 ## Roxygen2 Documentation
@@ -131,7 +131,7 @@ If no proper template for a parameter or the return value exist, write the docum
   - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
   - `param_dtype`, `param_shape`, `param_ambiguous` — common params
   - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
-  - `params_reduce` — dims + drop params for reductions
+  - `params_reduce` — axes + drop params for reductions
 - **`@param`**: write inline for parameters not covered by templates
 - **`@seealso`**: always link to the underlying `nvl_*` primitive. Optionally link to related `nv_*` functions.
 - **`@examplesIf pjrt::plugins_downloaded()`**: wrap examples in this guard. Since all `nvl_*` functions are auto-jitted and `nv_*` functions call into `nvl_*` functions, examples can call them directly.
@@ -192,7 +192,7 @@ it("nv_foo", {
 
 # For a function with a static argument, forward it via `static =`:
 it("nv_reduce_foo", {
-  check_eager(nv_reduce_foo, vec_f, dims = 1L, static = "dims")
+  check_eager(nv_reduce_foo, vec_f, axes = 1L, static = "axes")
 })
 ```
 
@@ -215,7 +215,7 @@ devtools::test()
 - [ ] No-op shortcuts return the input unchanged (e.g. identity reshape / convert / broadcast)
 - [ ] Constants created inside the function use `nv_<op>_like()` so they live on the right backend/device
 - [ ] If the function is an array creator, a matching `nv_<name>_like()` variant is provided
-- [ ] Arguments that the body inspects (shape, dims, flags, mode strings, dtype specifiers) are declared `static =` on every `jit()` / `check_eager()` call
+- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are declared `static =` on every `jit()` / `check_eager()` call
 - [ ] `_pkgdown.yml`: added to appropriate semantic section
 - [ ] Forward-pass test in `tests/testthat/test-api.R` covers the wrapper's convenience behavior
 - [ ] `check_eager()` entry in the "cross-device eager (check_eager)" `describe` block, with any `static =` arguments forwarded

@@ -4,15 +4,15 @@
 \alias{nv_cummax}
 \title{Cumulative Maximum}
 \usage{
-nv_cummax(x, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
+nv_cummax(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to accumulate. Negative values count from the end,
-i.e. \code{-1} refers to the last dimension. If \code{NULL} (default), the input
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to accumulate. Negative values count from the end,
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}}.}
 
 \item{with_indices}{(\code{logical(1)})\cr
@@ -20,7 +20,7 @@ If \code{FALSE} (default), returns the running-maximum array.
 If \code{TRUE}, returns \code{list(values = ..., indices = ...)} where \code{indices}
 is the 1-based index of the last occurrence of the running
 maximum at each position (dtype \code{i32}, matching torch).
-When \code{dim = NULL}, indices refer to the flattened input.}
+When \code{axis = NULL}, indices refer to the flattened input.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
@@ -34,14 +34,14 @@ contributes nothing to the running value.}
 arrays (when \code{with_indices = TRUE}).
 }
 \description{
-Running maximum, optionally along a single dimension.
+Running maximum, optionally along a single axis.
 }
 \section{Relation to base R}{
 
-Both \code{nv_cummax()} (with \code{dim = NULL}) and \code{\link[base:cummax]{base::cummax()}}
+Both \code{nv_cummax()} (with \code{axis = NULL}) and \code{\link[base:cummax]{base::cummax()}}
 flatten a multi-dimensional input to 1-D before accumulating, but the
 flatten order differs: anvl arrays are row-major (C order), so the
-flattened sequence iterates the last dim fastest, whereas base R uses
+flattened sequence iterates the last axis fastest, whereas base R uses
 column-major (Fortran) order. The two agree on 1-D inputs.
 }
 
@@ -49,8 +49,8 @@ column-major (Fortran) order. The two agree on 1-D inputs.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummax(x)
-nv_cummax(x, dim = 1L)
-nv_cummax(x, dim = 1L, with_indices = TRUE)
+nv_cummax(x, axis = 1L)
+nv_cummax(x, axis = 1L, with_indices = TRUE)
 nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 \dontshow{\}) # examplesIf}

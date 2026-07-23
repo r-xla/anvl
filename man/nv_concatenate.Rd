@@ -4,24 +4,24 @@
 \alias{nv_concatenate}
 \title{Concatenate}
 \usage{
-nv_concatenate(..., dimension = NULL)
+nv_concatenate(..., axis = NULL)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to concatenate. Must have the same shape except along \code{dimension}.}
+Arrays to concatenate. Must have the same shape except along \code{axis}.}
 
-\item{dimension}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to concatenate.
-Negative values count from the end, i.e. \code{-1} refers to the last dimension.
-If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along dimension 1.}
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to concatenate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.
+If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along axis 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the common data type and a shape matching the inputs in all
-dimensions except \code{dimension}, which is the sum of input sizes.
+axes except \code{axis}, which is the sum of input sizes.
 }
 \description{
-Concatenates arrays along a dimension. Operands are promoted to a common
+Concatenates arrays along an axis. Operands are promoted to a common
 data type and scalars are broadcast before concatenation.
 }
 \examples{

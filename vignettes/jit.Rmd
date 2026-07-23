@@ -170,7 +170,7 @@ linear_repeated <- function(x, w, b, n) {
 trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3, n = 2L))
 ```
 
-The graph contains a single `broadcast_in_dim` (lifting the scalar `x` to `f32[3]`) followed by two `mul`/`add` pairs in sequence -- not a loop construct.
+The graph contains a single `broadcast_in_axes` (lifting the scalar `x` to `f32[3]`) followed by two `mul`/`add` pairs in sequence -- not a loop construct.
 The broadcast happens only once because by the second iteration `x` is already an `f32[3]` and matches `w` and `b` directly.
 The compiled executable will contain those five operations laid out one after another.
 For a different value of `n`, the loop would get unrolled for this specific iteration number.

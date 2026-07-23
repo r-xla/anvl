@@ -4,27 +4,27 @@
 \alias{nv_reverse}
 \title{Reverse}
 \usage{
-nv_reverse(x, dims)
+nv_reverse(x, axes)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dims}{(\code{integer()})\cr
-Dimensions to reverse.
-Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
+\item{axes}{(\code{integer()})\cr
+Axes to reverse.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as \code{x}.
 }
 \description{
-Reverses the order of elements along specified dimensions.
+Reverses the order of elements along specified axes.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))
-nv_reverse(x, dims = 1L)
+nv_reverse(x, axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

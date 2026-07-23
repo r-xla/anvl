@@ -4,23 +4,23 @@
 \alias{nv_squeeze}
 \title{Squeeze}
 \usage{
-nv_squeeze(x, dims = NULL)
+nv_squeeze(x, axes = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to squeeze. Negative values count from the end, i.e. \code{-1}
-refers to the last dimension.
-If \code{NULL} (default), all dimensions of size 1 are removed.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to squeeze. Negative values count from the end, i.e. \code{-1}
+refers to the last axis.
+If \code{NULL} (default), all axes of size 1 are removed.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{x} with the specified dimensions removed.
+Has the same data type as \code{x} with the specified axes removed.
 }
 \description{
-Removes dimensions of size 1 from an array.
+Removes axes of size 1 from an array.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

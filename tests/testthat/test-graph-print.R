@@ -50,7 +50,7 @@ test_that("sub-graphs (while)", {
 
 test_that("params", {
   f <- function(x) {
-    nv_reduce_max(x, dims = 1, drop = TRUE)
+    nv_reduce_max(x, axes = 1, drop = TRUE)
   }
   graph <- trace_fn(f, list(x = nv_array(1:10)))
   expect_snapshot(graph)

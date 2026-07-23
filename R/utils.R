@@ -169,7 +169,7 @@ shape_abstract <- function(x) {
 
 #' @rdname abstract_properties
 #' @export
-ndims_abstract <- function(x) {
+naxes_abstract <- function(x) {
   length(shape_abstract(x))
 }
 
@@ -216,13 +216,13 @@ cache_size <- function(f) {
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
 # This ensures that out-of-bounds indices are clamped to [1, x_size - slice_size + 1]
-# for each dimension.
+# for each axis.
 gather_clamp_indices <- function(
   start_indices,
   x_shape,
   slice_sizes,
   start_index_map,
-  index_vector_dim
+  index_vector_axis
 ) {
   # slice_sizes are in the order of `x_shape`, so we need to reverse the start_index_map
   if (length(x_shape) != length(slice_sizes)) {
@@ -239,24 +239,24 @@ gather_clamp_indices <- function(
   # Build max bounds for each coordinate
   max_bounds <- integer(n_index_coords)
   for (coord_idx in seq_len(n_index_coords)) {
-    x_dim <- start_index_map[coord_idx]
-    x_size <- x_shape[x_dim]
-    slice_size_for_dim <- slice_sizes[x_dim]
-    max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_dim + 1L)
+    x_axis <- start_index_map[coord_idx]
+    x_size <- x_shape[x_axis]
+    slice_size_for_axis <- slice_sizes[x_axis]
+    max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_axis + 1L)
   }
 
-  if (index_vector_dim <= length(indices_shape)) {
-    # Explicit index vector dimension - build bounds arrays
+  if (index_vector_axis <= length(indices_shape)) {
+    # Explicit index vector axis - build bounds arrays
     bounds_shape <- rep(1L, length(indices_shape))
-    bounds_shape[index_vector_dim] <- n_index_coords
+    bounds_shape[index_vector_axis] <- n_index_coords
 
-    min_tensor <- prim_broadcast_in_dim(
+    min_tensor <- prim_broadcast_in_axes(
       prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
       indices_shape,
       integer()
     )
 
-    # The max bound is the same for a given slice along the index_vector_dim
+    # The max bound is the same for a given slice along the index_vector_axis
     max_tensor_vals <- prim_reshape(
       nv_convert(nv_array(max_bounds, dtype = "i64"), dtype = dtype(start_indices)),
       bounds_shape
@@ -273,32 +273,32 @@ gather_clamp_indices <- function(
 }
 
 # Compute gather slice_sizes from scatter parameters.
-# This inverts a scatter into a gather: for each dimension of `x`, the slice
-# size is 1 for inserted/batching dims, or the update's window size otherwise.
+# This inverts a scatter into a gather: for each axis of `x`, the slice
+# size is 1 for inserted/batching axes, or the update's window size otherwise.
 scatter_to_gather_slice_sizes <- function(
   update_shape,
   x_shape,
-  update_window_dims,
-  inserted_window_dims,
-  x_batching_dims
+  update_window_axes,
+  inserted_window_axes,
+  x_batching_axes
 ) {
   slice_sizes <- integer(length(x_shape))
   update_window_pos <- 1L
   for (i in seq_along(x_shape)) {
-    if (i %in% inserted_window_dims) {
+    if (i %in% inserted_window_axes) {
       slice_sizes[i] <- 1L
-    } else if (i %in% x_batching_dims) {
+    } else if (i %in% x_batching_axes) {
       slice_sizes[i] <- 1L
     } else {
-      slice_sizes[i] <- update_shape[update_window_dims[update_window_pos]]
+      slice_sizes[i] <- update_shape[update_window_axes[update_window_pos]]
       update_window_pos <- update_window_pos + 1L
     }
   }
   slice_sizes
 }
 
-col_major_layout <- function(ndim) {
-  as.integer(seq.int(0L, ndim - 1L))
+col_major_layout <- function(naxes) {
+  as.integer(seq.int(0L, naxes - 1L))
 }
 
 col_major_layouts <- function(...) {

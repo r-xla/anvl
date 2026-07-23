@@ -5,18 +5,18 @@
 \alias{median.AnvlArray}
 \title{Median}
 \usage{
-nv_median(x, dim = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_median(x, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 
-\method{median}{AnvlArray}(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
+\method{median}{AnvlArray}(x, na.rm = FALSE, ..., axis = NULL, interpolation = "linear")
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to compute the median. Negative values count from
-the end, i.e. \code{-1} refers to the last dimension. If \code{NULL} (default),
-uses the last dimension.}
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to compute the median. Negative values count from
+the end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
+uses the last axis.}
 
 \item{interpolation}{(\code{character(1)})\cr
 Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. One of \code{"linear"} (default), \code{"lower"},
@@ -31,11 +31,11 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation fo
 }
 \value{
 \code{\link{arrayish}}\cr
-Same shape as \code{x} with \code{dim} removed.
+Same shape as \code{x} with \code{axis} removed.
 }
 \description{
-Computes the median along a dimension. Equivalent to
-\code{nv_quantile(x, 0.5, dim, interpolation)}; for an even-length axis
+Computes the median along an axis. Equivalent to
+\code{nv_quantile(x, 0.5, axis, interpolation)}; for an even-length axis
 with the default \code{"linear"} interpolation, the average of the two middle
 values is returned, matching base R's \code{median()}.
 
@@ -47,7 +47,7 @@ extra arguments (e.g. \code{interpolation}) are forwarded via \code{...}.
 nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 nv_median(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-  dim = 2L
+  axis = 2L
 )
 # forwards through the S3 generic via `...`
 median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")

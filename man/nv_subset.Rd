@@ -13,17 +13,17 @@ nv_subset(x, ...)
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{...}{Subset specifications, one per dimension. Omitted trailing
-dimensions select all elements. See \code{vignette("subsetting")} for details.}
+\item{...}{Subset specifications, one per axis. Omitted trailing
+axes select all elements. See \code{vignette("subsetting")} for details.}
 }
 \value{
 \code{\link{arrayish}}
 }
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (\code{a:b}), and \code{array(c(...))} for selecting multiple elements along a
-dimension.
+axis.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

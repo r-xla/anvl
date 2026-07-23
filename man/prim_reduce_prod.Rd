@@ -4,30 +4,30 @@
 \alias{prim_reduce_prod}
 \title{Primitive Product Reduction}
 \usage{
-prim_reduce_prod(x, dims, drop = TRUE)
+prim_reduce_prod(x, axes, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dims}{(\code{integer()})\cr
-Dimensions to reduce over.
-Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
+\item{axes}{(\code{integer()})\cr
+Axes to reduce over.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop the reduced dimensions from the output shape.
-If \code{TRUE}, the reduced dimensions are removed.
-If \code{FALSE}, the reduced dimensions are set to 1.}
+Whether to drop the reduced axes from the output shape.
+If \code{TRUE}, the reduced axes are removed.
+If \code{FALSE}, the reduced axes are set to 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input.
-When \code{drop = TRUE}, the shape is that of \code{x} with \code{dims} removed.
-When \code{drop = FALSE}, the shape is that of \code{x} with \code{dims} set to 1.
+When \code{drop = TRUE}, the shape is that of \code{x} with \code{axes} removed.
+When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 1.
 It is ambiguous if the input is ambiguous.
 }
 \description{
-Multiplies array elements along the specified dimensions.
+Multiplies array elements along the specified axes.
 }
 \section{Implemented Rules}{
 
@@ -46,7 +46,7 @@ Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stab
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-prim_reduce_prod(x, dims = 1L)
+prim_reduce_prod(x, axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

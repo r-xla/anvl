@@ -4,19 +4,19 @@
 \alias{nv_reduce_min}
 \title{Min Reduction}
 \usage{
-nv_reduce_min(x, dims = NULL, drop = TRUE, nan_rm = FALSE)
+nv_reduce_min(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to reduce. Negative values count from the end, i.e. \code{-1}
-refers to the last dimension. If \code{NULL} (default), reduces over all
-dimensions, returning a scalar.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
+axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced dimensions.}
+Whether to drop reduced axes.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
@@ -25,17 +25,17 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input.
-When \code{drop = TRUE}, the reduced dimensions are removed.
-When \code{drop = FALSE}, the reduced dimensions are set to 1.
+When \code{drop = TRUE}, the reduced axes are removed.
+When \code{drop = FALSE}, the reduced axes are set to 1.
 }
 \description{
-Finds the minimum of array elements along the specified dimensions.
+Finds the minimum of array elements along the specified axes.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_reduce_min(x)            # all dims -> scalar
-nv_reduce_min(x, dims = 1L)
+nv_reduce_min(x)            # all axes -> scalar
+nv_reduce_min(x, axes = 1L)
 nv_reduce_min(nv_array(c(1, NaN, 3)))
 nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}

@@ -19,7 +19,7 @@ test_that("MLP forward and reverse", {
   matmul_nv <- function(a, b) a %*% b
   matmul_torch <- function(a, b) a$matmul(b)
 
-  # Input dim: 4, hidden dim: 6, output dim: 2 (x, y, biases are column vectors)
+  # Input axis: 4, hidden axis: 6, output axis: 2 (x, y, biases are column vectors)
   x_data <- array(rnorm(4), dim = c(4L, 1L))
   y_data <- array(rnorm(2), dim = c(2L, 1L))
   W1_data <- array(rnorm(24), dim = c(6L, 4L))

@@ -14,15 +14,15 @@ nv_transpose(x, permutation = NULL)
 Input array.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
-New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.
-Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
+New ordering of axes. If \code{NULL} (default), reverses the axes.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as \code{x} and shape \code{nv_shape(x)[permutation]}.
 }
 \description{
-Permutes the dimensions of an array. You can also use \code{t()} for matrices.
+Permutes the axes of an array. You can also use \code{t()} for matrices.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

@@ -90,7 +90,7 @@ This can be changed by setting the \code{PJRT_PLATFORM} environment variable.}
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-To create a "scalar" with dimension \verb{()}, use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
+To create a "scalar" with axis \verb{()}, use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
 \item{ambiguous}{(\code{NULL} | \code{logical(1)})\cr
 Whether the dtype should be marked as ambiguous.
@@ -103,7 +103,7 @@ Must not be specified inside \code{\link[=jit]{jit()}}.}
 
 \item{byrow}{(\code{logical(1)})\cr
 When constructing from an R object and the result has at least two
-dimensions, fill the array in row-major order rather than the
+axes, fill the array in row-major order rather than the
 default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'s \code{byrow}.
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
@@ -139,8 +139,8 @@ Its type is determined by a data type and a shape.
 The following generic functions can be used to extract information from an \code{AnvlArray}:
 \itemize{
 \item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (dimensions) of the array.
-\item \code{\link[tengen:naxes]{naxes()}}: Get the number of dimensions.
+\item \code{\link[tengen:shape]{shape()}}: Get the shape (axes) of the array.
+\item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
 \item \code{\link[tengen:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
 \item \code{\link[=ambiguous]{ambiguous()}}: Get whether the dtype is ambiguous.

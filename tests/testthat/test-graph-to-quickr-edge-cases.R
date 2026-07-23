@@ -98,32 +98,32 @@ test_that("graph_to_quickr_function rejects reshape ranks > 5", {
   testthat::expect_error(graph_to_quickr_function(graph), "reshape: only arrays up to rank 5", fixed = FALSE)
 })
 
-test_that("graph_to_quickr_function rejects broadcast_in_dim ranks > 5", {
+test_that("graph_to_quickr_function rejects broadcast_in_axes ranks > 5", {
   skip_if_no_quickr()
 
   graph <- trace_fn(
-    function(x) prim_broadcast_in_dim(x, shape = rep(1L, 6L), broadcast_dimensions = 6L),
+    function(x) prim_broadcast_in_axes(x, shape = rep(1L, 6L), broadcast_axes = 6L),
     list(x = nv_array(1L, dtype = "i32", shape = 1L))
   )
-  expect_error(graph_to_quickr_function(graph), "broadcast_in_dim: only arrays up to rank 5", fixed = FALSE)
+  expect_error(graph_to_quickr_function(graph), "broadcast_in_axes: only arrays up to rank 5", fixed = FALSE)
 })
 
-test_that("graph_to_quickr_function rejects reductions over empty dimensions", {
+test_that("graph_to_quickr_function rejects reductions over empty axes", {
   skip_if_no_quickr()
 
   templ <- list(x = nv_aval("f64", c(2L, 0L)))
-  graph <- trace_fn(function(x) prim_reduce_max(x, dims = 2L, drop = TRUE), templ)
-  expect_error(graph_to_quickr_function(graph), "empty dimensions", fixed = FALSE)
+  graph <- trace_fn(function(x) prim_reduce_max(x, axes = 2L, drop = TRUE), templ)
+  expect_error(graph_to_quickr_function(graph), "empty axes", fixed = FALSE)
 })
 
 test_that("graph_to_quickr_function rejects unsupported reduce_sum variants", {
   skip_if_no_quickr()
 
   # The lowering's other guards (scalar / rank-1 / rank-2 with out-of-range
-  # dims) are unreachable through `prim_reduce_sum()`, which validates `dims`
-  # against the operand rank at trace time -- see test-primitives-stablehlo.R.
+  # axes) are unreachable through `prim_reduce_sum()`, which validates `axes`
+  # against the input rank at trace time -- see test-primitives-stablehlo.R.
   graph <- trace_fn(
-    function(x) prim_reduce_sum(x, dims = 2L, drop = TRUE),
+    function(x) prim_reduce_sum(x, axes = 2L, drop = TRUE),
     list(x = nv_array(1:8, shape = c(2L, 2L, 2L), dtype = "i32"))
   )
   expect_error(graph_to_quickr_function(graph), "for rank > 2, only full reductions", fixed = FALSE)

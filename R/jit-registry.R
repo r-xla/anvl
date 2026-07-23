@@ -7,7 +7,7 @@
   list(name = "nv_dnorm", static = "log"),
   list(name = "nv_pnorm", static = c("lower_tail", "log_p")),
   list(name = "nv_broadcast_arrays", static = character(0)),
-  list(name = "nv_concatenate", static = "dimension"),
+  list(name = "nv_concatenate", static = "axis"),
   list(name = "nv_rbind", static = character(0)),
   list(name = "nv_cbind", static = character(0)),
   list(name = "nv_ifelse", static = character(0)),

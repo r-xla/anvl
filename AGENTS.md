@@ -14,6 +14,13 @@ When adding new functionality, decide which layer it belongs to. Most new operat
 
 Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`.
 
+## Terminology
+
+- **Axis vs. dimension.** An *axis* is an index that identifies a direction of an array; a *dimension* is the *size* (extent) along an axis. For a `20x5x3` array the axes are `1`, `2`, `3` and the dimensions are `20`, `5`, `3`. Name identifiers accordingly: use `axis`/`axes` when the value is an index (or vector of indices), and `dim`/`dims` when it is a size (or shape vector). Helpers reflect this: `naxes(x)` is the number of axes (the rank), so `seq_len(naxes(x))` is the axis indices, and `shape(x)` / `dim(x)` return the dimensions.
+- Speak of the **size of an axis**, never the "length of an axis" (reserve "length" for vectors and 1-D arrays).
+- Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of "dimensions", so calls into them keep those argument names (e.g. `hlo_reduce(dimensions = axes - 1L)`, `array(dim = ...)`) with the anvl-side axis variable on the right.
+- **Arrays, not tensors.** In anvl-facing docs, messages, and identifiers, say *array* rather than *tensor*. The primary array argument of `nv_*` / `prim_*` functions is called `x`.
+
 ## Supported dtypes
 
 - there is currently no support for complex numbers.
@@ -30,7 +37,7 @@ Primitives are `JitPrimitive` callables constructed by `new_primitive()` (define
 
 Anvl's elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises `nv_broadcast_scalars()` errors like *"All non-scalar arrays must have the same shape, ... Use `nv_broadcast_arrays()` for general broadcasting."*
 
-When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_dim()` for a one-sided broadcast).
+When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
 
 ## Graph Tracing
 

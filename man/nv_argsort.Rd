@@ -4,16 +4,16 @@
 \alias{nv_argsort}
 \title{Argsort}
 \usage{
-nv_argsort(x, dim = NULL, decreasing = FALSE, stable = FALSE)
+nv_argsort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to compute the sort permutation. Negative values
-count from the end, i.e. \code{-1} refers to the last dimension. If \code{NULL}
-(default), uses the last dimension.}
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to compute the sort permutation. Negative values
+count from the end, i.e. \code{-1} refers to the last axis. If \code{NULL}
+(default), uses the last axis.}
 
 \item{decreasing}{(\code{logical(1)})\cr
 If \code{TRUE}, returns indices that produce a decreasing sort. Default
@@ -31,7 +31,7 @@ array of the same shape (a valid empty permutation).
 array (for 1-D inputs).
 }
 \description{
-Returns the indices that would sort the array along a dimension.
+Returns the indices that would sort the array along an axis.
 }
 \section{NaN handling}{
 

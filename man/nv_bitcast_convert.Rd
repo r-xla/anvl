@@ -20,7 +20,7 @@ Has the given \code{dtype}.
 \description{
 Reinterprets the bits of an array as a different data type without modifying
 the underlying data. If the target type is narrower, an extra trailing
-dimension is added; if wider, the last dimension is consumed.
+axis is added; if wider, the last axis is consumed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

@@ -196,12 +196,12 @@ test_that("prim_convert", {
   expect_jit_torch_unary(nv_fun, th_fun, c(2, 3))
 })
 
-test_that("prim_broadcast_in_dim", {
+test_that("prim_broadcast_in_axes", {
   input_shape <- c(2L, 3L)
   target_shape <- c(4L, 2L, 3L)
-  bdims <- c(2L, 3L)
+  baxes <- c(2L, 3L)
   x <- generate_test_data(input_shape, dtype = "f32")
-  f <- jit(function(a) prim_broadcast_in_dim(a, target_shape, bdims))
+  f <- jit(function(a) prim_broadcast_in_axes(a, target_shape, baxes))
   out_nv <- f(nv_array(x))
   out_th <- torch::torch_tensor(x)$unsqueeze(1)$expand(target_shape)
   testthat::expect_equal(sum(as_array(out_nv)), as.numeric(torch::as_array(out_th$sum())), tolerance = 1e-5)
@@ -223,7 +223,7 @@ test_that("prim_dot_general", {
   x <- nv_array(rnorm(4), dtype = "f32")
   y <- nv_array(rnorm(4), dtype = "f32")
   out <- jit(function(a, b) {
-    prim_dot_general(a, b, contracting_dims = list(1L, 1L), batching_dims = list(integer(), integer()))
+    prim_dot_general(a, b, contracting_axes = list(1L, 1L), batching_axes = list(integer(), integer()))
   })(x, y)
   tx <- torch::torch_tensor(as_array(x))
   ty <- torch::torch_tensor(as_array(y))
@@ -233,7 +233,7 @@ test_that("prim_dot_general", {
   A <- nv_matrix(rnorm(6), nrow = 3, ncol = 2, dtype = "f32")
   v <- nv_array(rnorm(2), dtype = "f32")
   out2 <- jit(function(a, b) {
-    prim_dot_general(a, b, contracting_dims = list(2L, 1L), batching_dims = list(integer(), integer()))
+    prim_dot_general(a, b, contracting_axes = list(2L, 1L), batching_axes = list(integer(), integer()))
   })(A, v)
   tA <- torch::torch_tensor(as_array(A))
   tv <- torch::torch_tensor(as_array(v))
@@ -243,7 +243,7 @@ test_that("prim_dot_general", {
   X <- nv_array(rnorm(2 * 3 * 4), shape = c(2, 3, 4), dtype = "f32")
   Y <- nv_array(rnorm(2 * 4 * 5), shape = c(2, 4, 5), dtype = "f32")
   out3 <- jit(function(a, b) {
-    prim_dot_general(a, b, contracting_dims = list(3L, 2L), batching_dims = list(1L, 1L))
+    prim_dot_general(a, b, contracting_axes = list(3L, 2L), batching_axes = list(1L, 1L))
   })(X, Y)
   tX <- torch::torch_tensor(as_array(X))
   tY <- torch::torch_tensor(as_array(Y))
@@ -430,48 +430,48 @@ test_that("prim_pad rejects non-scalar padding_value", {
   )
 })
 
-# R torch is 1-based for both dim args and returned indices, matching
+# R torch is 1-based for both axis args and returned indices, matching
 # anvl's convention. Both break ties on the smallest index, so direct
 # equality holds.
-.argmax_argmin_compare <- function(arr, dtype, dim_anvl) {
+.argmax_argmin_compare <- function(arr, dtype, axis_anvl) {
   arr_nv <- nv_array(arr, dtype = dtype)
   arr_th <- torch::torch_tensor(arr, dtype = str_to_torch_dtype(dtype))
   for (op in list(
     list(anvl = prim_argmax, torch = torch::torch_argmax),
     list(anvl = prim_argmin, torch = torch::torch_argmin)
   )) {
-    out_nv <- op$anvl(arr_nv, dim = dim_anvl)
-    out_th <- op$torch(arr_th, dim = dim_anvl)
+    out_nv <- op$anvl(arr_nv, axis = axis_anvl)
+    out_th <- op$torch(arr_th, dim = axis_anvl)
     expect_equal(as_array(out_nv), as_array_torch(out_th))
   }
 }
 
 describe("prim_argmax / prim_argmin", {
   it("(forward) match torch on 1D", {
-    .argmax_argmin_compare(c(3, 1, 4, 1.5, 5), "f32", dim_anvl = 1L)
+    .argmax_argmin_compare(c(3, 1, 4, 1.5, 5), "f32", axis_anvl = 1L)
   })
 
   it("tie-break: smallest index wins", {
     # All-equal: both anvl and torch should pick index 1.
-    .argmax_argmin_compare(c(7, 7, 7, 7), "f32", dim_anvl = 1L)
+    .argmax_argmin_compare(c(7, 7, 7, 7), "f32", axis_anvl = 1L)
     # Duplicate max in middle.
-    .argmax_argmin_compare(c(1, 5, 5, 3, 5), "f32", dim_anvl = 1L)
+    .argmax_argmin_compare(c(1, 5, 5, 3, 5), "f32", axis_anvl = 1L)
     # Duplicate min at multiple positions.
-    .argmax_argmin_compare(c(2, 1, 1, 4, 1), "f32", dim_anvl = 1L)
+    .argmax_argmin_compare(c(2, 1, 1, 4, 1), "f32", axis_anvl = 1L)
   })
 
   it("match torch on 2D inputs", {
     m <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    .argmax_argmin_compare(m, "f32", dim_anvl = 2L)
-    .argmax_argmin_compare(m, "f32", dim_anvl = 1L)
+    .argmax_argmin_compare(m, "f32", axis_anvl = 2L)
+    .argmax_argmin_compare(m, "f32", axis_anvl = 1L)
 
     # 2D with duplicates per row/column.
     m2 <- matrix(c(1, 5, 5, 3, 2, 2), nrow = 2, byrow = TRUE)
-    .argmax_argmin_compare(m2, "f32", dim_anvl = 2L)
+    .argmax_argmin_compare(m2, "f32", axis_anvl = 2L)
   })
 
   it("match torch on integer inputs", {
-    .argmax_argmin_compare(c(5L, 2L, 8L, 1L, 8L), "i32", dim_anvl = 1L)
+    .argmax_argmin_compare(c(5L, 2L, 8L, 1L, 8L), "i32", axis_anvl = 1L)
   })
 })
 
@@ -536,15 +536,15 @@ describe("prim_convolution", {
       prim_convolution(
         a,
         b,
-        input_batch_dimension = 1L,
-        input_feature_dimension = 2L,
-        input_spatial_dimensions = 3L,
-        kernel_input_feature_dimension = 2L,
-        kernel_output_feature_dimension = 1L,
-        kernel_spatial_dimensions = 3L,
-        output_batch_dimension = 1L,
-        output_feature_dimension = 2L,
-        output_spatial_dimensions = 3L,
+        input_batch_axis = 1L,
+        input_feature_axis = 2L,
+        input_spatial_axes = 3L,
+        kernel_input_feature_axis = 2L,
+        kernel_output_feature_axis = 1L,
+        kernel_spatial_axes = 3L,
+        output_batch_axis = 1L,
+        output_feature_axis = 2L,
+        output_spatial_axes = 3L,
         window_strides = 1L,
         padding = matrix(c(2L, 0L), nrow = 1L),
         lhs_dilation = 1L,

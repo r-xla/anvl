@@ -40,9 +40,9 @@ To convert a \code{\link{arrayish}} value to an abstract array, use \code{\link[
 The following extractors are available on \code{AbstractArray} objects:
 \itemize{
 \item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (dimensions) of the array.
+\item \code{\link[tengen:shape]{shape()}}: Get the shape (axes) of the array.
 \item \code{\link[=ambiguous]{ambiguous()}}: Get whether the dtype is ambiguous.
-\item \code{\link[tengen:naxes]{naxes()}}: Get the number of dimensions.
+\item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
 }
 }
 

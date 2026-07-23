@@ -8,12 +8,12 @@ prim_scatter(
   x,
   scatter_indices,
   update,
-  update_window_dims,
-  inserted_window_dims,
-  x_batching_dims,
-  scatter_indices_batching_dims,
-  scatter_dims_to_x_dims,
-  index_vector_dim,
+  update_window_axes,
+  inserted_window_axes,
+  x_batching_axes,
+  scatter_indices_batching_axes,
+  scatter_axes_to_x_axes,
+  index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
   update_computation = NULL
@@ -25,37 +25,37 @@ Arrayish value of any data type. The base array to scatter into.}
 
 \item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of indices. Contains index vectors that map to positions in
-\code{x} via \code{scatter_dims_to_x_dims}. The dimension specified
-by \code{index_vector_dim} holds the index vectors.}
+\code{x} via \code{scatter_axes_to_x_axes}. The axis specified
+by \code{index_vector_axis} holds the index vectors.}
 
 \item{update}{(\code{\link{arrayish}})\cr
 Update values array. Must have the same data type as \code{x}.}
 
-\item{update_window_dims}{(\code{integer()})\cr
-Dimensions of \code{update} that are window dimensions, i.e. they
+\item{update_window_axes}{(\code{integer()})\cr
+Axes of \code{update} that are window axes, i.e. they
 correspond to the slice being written into \code{x}.}
 
-\item{inserted_window_dims}{(\code{integer()})\cr
-Dimensions of \code{x} whose slices have size 1 and are inserted
+\item{inserted_window_axes}{(\code{integer()})\cr
+Axes of \code{x} whose slices have size 1 and are inserted
 (not present) in the \code{update} window. Together with
-\code{update_window_dims} and \code{x_batching_dims}, these must account
-for all dimensions of \code{x}.}
+\code{update_window_axes} and \code{x_batching_axes}, these must account
+for all axes of \code{x}.}
 
-\item{x_batching_dims}{(\code{integer()})\cr
-Dimensions of \code{x} that are batch dimensions.
-Use \code{integer(0)} when there are no batch dimensions.}
+\item{x_batching_axes}{(\code{integer()})\cr
+Axes of \code{x} that are batch axes.
+Use \code{integer(0)} when there are no batch axes.}
 
-\item{scatter_indices_batching_dims}{(\code{integer()})\cr
-Dimensions of \code{scatter_indices} that correspond to batch
-dimensions. Must have the same length as \code{x_batching_dims}.}
+\item{scatter_indices_batching_axes}{(\code{integer()})\cr
+Axes of \code{scatter_indices} that correspond to batch
+axes. Must have the same length as \code{x_batching_axes}.}
 
-\item{scatter_dims_to_x_dims}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{x} dimension.
-For example, \code{scatter_dims_to_x_dims = c(1L)} means each
-index vector indexes into the first dimension of \code{x}.}
+\item{scatter_axes_to_x_axes}{(\code{integer()})\cr
+Maps each component of the index vector to an \code{x} axis.
+For example, \code{scatter_axes_to_x_axes = c(1L)} means each
+index vector indexes into the first axis of \code{x}.}
 
-\item{index_vector_dim}{(\code{integer(1)})\cr
-Dimension of \code{scatter_indices} that contains the index vectors.
+\item{index_vector_axis}{(\code{integer(1)})\cr
+Axis of \code{scatter_indices} that contains the index vectors.
 If set to \code{naxes(scatter_indices) + 1}, each scalar element of
 \code{scatter_indices} is treated as a length-1 index vector.}
 
@@ -125,12 +125,12 @@ indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))
 prim_scatter(
   x, indices, updates,
-  update_window_dims = integer(0),
-  inserted_window_dims = 1L,
-  x_batching_dims = integer(0),
-  scatter_indices_batching_dims = integer(0),
-  scatter_dims_to_x_dims = 1L,
-  index_vector_dim = 2L
+  update_window_axes = integer(0),
+  inserted_window_axes = 1L,
+  x_batching_axes = integer(0),
+  scatter_indices_batching_axes = integer(0),
+  scatter_axes_to_x_axes = 1L,
+  index_vector_axis = 2L
 )
 \dontshow{\}) # examplesIf}
 }

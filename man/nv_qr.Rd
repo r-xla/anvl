@@ -11,7 +11,7 @@ nv_qr(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 dimensions.}
+Matrix of data type floating-point with exactly 2 axes.}
 
 \item{...}{No additional arguments.}
 }

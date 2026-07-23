@@ -4,35 +4,35 @@
 \alias{nv_reduce_all}
 \title{All Reduction}
 \usage{
-nv_reduce_all(x, dims = NULL, drop = TRUE)
+nv_reduce_all(x, axes = NULL, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dims}{(\code{integer()} | \code{NULL})\cr
-Dimensions to reduce. Negative values count from the end, i.e. \code{-1}
-refers to the last dimension. If \code{NULL} (default), reduces over all
-dimensions, returning a scalar.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
+axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced dimensions.}
+Whether to drop reduced axes.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Boolean array.
-When \code{drop = TRUE}, the reduced dimensions are removed.
-When \code{drop = FALSE}, the reduced dimensions are set to 1.
+When \code{drop = TRUE}, the reduced axes are removed.
+When \code{drop = FALSE}, the reduced axes are set to 1.
 }
 \description{
-Performs logical AND along the specified dimensions.
+Performs logical AND along the specified axes.
 Returns \code{TRUE} only if all elements are \code{TRUE}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-nv_reduce_all(x)            # all dims -> scalar
-nv_reduce_all(x, dims = 1L)
+nv_reduce_all(x)            # all axes -> scalar
+nv_reduce_all(x, axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

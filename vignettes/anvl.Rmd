@@ -64,7 +64,7 @@ Note that such subset assignment always copies -- unlike plain R, where `y[i] <-
 This only applies to *eager* execution. Inside a jit-compiled function (covered later), the compiler can optimize reallocations away, similar to R's copy-on-write.
 
 The `as_array()` function allows to convert `AnvlArray`s back to R objects, which involves copying the data.
-Note that for 0-dimensional arrays, the result is an R vector of length 1, as R arrays cannot have 0 dimensions.
+Note that for 0-dimensional arrays, the result is an R vector of length 1, as R arrays cannot have 0 axes.
 
 ```{r}
 as_array(y)

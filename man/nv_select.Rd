@@ -2,36 +2,36 @@
 % Please edit documentation in R/api.R
 \name{nv_select}
 \alias{nv_select}
-\title{Select Elements Along a Dimension}
+\title{Select Elements Along an Axis}
 \usage{
-nv_select(x, dim, index)
+nv_select(x, axis, index)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{dim}{(\code{integer(1)})\cr
-Dimension to index into.
-Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
+\item{axis}{(\code{integer(1)})\cr
+Axis to index into.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{index}{(\code{\link{arrayish}})\cr
 Scalar or 1D arrayish input (integer).}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same data type as \code{x}. \code{dim} is dropped if \code{index} was scalar.
+Same data type as \code{x}. \code{axis} is dropped if \code{index} was scalar.
 }
 \description{
-Picks one or more elements along dimension \code{dim} of \code{x}.
+Picks one or more elements along axis \code{axis} of \code{x}.
 Use this instead of \code{[} or \code{nv_subset} when the index to select is provided
 programmatically.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 m <- nv_matrix(1:6, nrow = 2)
-nv_select(m, dim = 2L, index = 2L)
-nv_select(m, dim = 1L, index = 1L)
-nv_select(m, dim = 2L, index = array(c(1L, 3L)))
+nv_select(m, axis = 2L, index = 2L)
+nv_select(m, axis = 1L, index = 1L)
+nv_select(m, axis = 2L, index = array(c(1L, 3L)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -29,7 +29,7 @@ An R \code{\link{array}} or \code{vector} of length 1.
 }
 \description{
 Transfers array data to R and returns it as an R \code{\link{array}}.
-Only in the case of scalars is the result a vector of length 1, as R \code{arrays} cannot have 0 dimensions.
+Only in the case of scalars is the result a vector of length 1, as R \code{arrays} cannot have 0 axes.
 }
 \details{
 This is implemented via the generic \code{\link[tengen:as_array]{tengen::as_array()}}.
@@ -39,7 +39,7 @@ This is implemented via the generic \code{\link[tengen:as_array]{tengen::as_arra
 x <- nv_array(1:4, dtype = "f32")
 as_array(x)
 y <- nv_scalar(1L)
-# R arrays can't have 0 dimensions:
+# R arrays can't have 0 axes:
 as_array(y)
 \dontshow{\}) # examplesIf}
 }

@@ -11,7 +11,7 @@ SubsetIndex <- function(index) {
   if (static) {
     if (length(index) != 1L) cli_abort("Internal error")
   } else {
-    if (ndims_abstract(index) != 0L) cli_abort("Internal error")
+    if (naxes_abstract(index) != 0L) cli_abort("Internal error")
   }
   structure(list(index = index, size = 1L, static = static), class = "SubsetIndex")
 }
@@ -21,7 +21,7 @@ SubsetIndices <- function(indices) {
   if (static) {
     size <- length(indices)
   } else {
-    nd <- ndims_abstract(indices)
+    nd <- naxes_abstract(indices)
     if (nd != 1L) {
       cli_abort("Internal error")
     }
@@ -65,27 +65,27 @@ subset_start_positions <- function(subsets) {
   lapply(subsets, subset_start_position)
 }
 
-# Takes a list of 1-D start arrays (one per dim). Scalar dims have length 1,
-# multi-index dims have length > 1.
+# Takes a list of 1-D start arrays (one per axis). Scalar axes have length 1,
+# multi-index axes have length > 1.
 # Returns an array where each row is one index tuple into the original array,
-# covering all combinations of the multi-index dims (cartesian product).
+# covering all combinations of the multi-index axes (cartesian product).
 # Shape [rank] if all scalar, or [multi_index_sizes..., rank] otherwise.
 dynamic_start_indices <- function(starts) {
   rank <- length(starts)
   sizes <- vapply(starts, function(s) shape_abstract(s)[1L], integer(1L))
-  multi_index_dims <- which(sizes > 1L)
+  multi_index_axes <- which(sizes > 1L)
 
-  if (length(multi_index_dims) == 0L) {
-    start <- do.call(nv_concatenate, c(starts, list(dimension = 1L)))
+  if (length(multi_index_axes) == 0L) {
+    start <- do.call(nv_concatenate, c(starts, list(axis = 1L)))
     return(start)
   }
 
   # Each "row" (last axis) is an index tuple [d1, d2, ..., d_rank].
-  # Scalar dims contribute the same value to every row.
-  # Multi-index dims vary across their own axis, forming the cartesian product.
+  # Scalar axes contribute the same value to every row.
+  # Multi-index axes vary across their own axis, forming the cartesian product.
 
-  multi_index_sizes <- sizes[multi_index_dims]
-  n_gather <- length(multi_index_dims)
+  multi_index_sizes <- sizes[multi_index_axes]
+  n_gather <- length(multi_index_axes)
 
   slices <- vector("list", rank)
   multi_index_i <- 1L
@@ -93,18 +93,18 @@ dynamic_start_indices <- function(starts) {
     if (identical(shape_abstract(starts[[d]]), 1L)) {
       slices[[d]] <- nv_broadcast_to(starts[[d]], c(multi_index_sizes, 1L))
     } else {
-      slices[[d]] <- prim_broadcast_in_dim(starts[[d]], c(multi_index_sizes, 1L), multi_index_i)
+      slices[[d]] <- prim_broadcast_in_axes(starts[[d]], c(multi_index_sizes, 1L), multi_index_i)
       multi_index_i <- multi_index_i + 1L
     }
   }
-  out <- do.call(nv_concatenate, c(slices, list(dimension = n_gather + 1L)))
+  out <- do.call(nv_concatenate, c(slices, list(axis = n_gather + 1L)))
   out
 }
 
 static_start_indices <- function(starts, like = NULL) {
   sizes <- lengths(starts)
-  multi_index_dims <- which(sizes > 1L)
-  if (length(multi_index_dims) == 0L) {
+  multi_index_axes <- which(sizes > 1L)
+  if (length(multi_index_axes) == 0L) {
     data <- unlist(starts)
     if (is.null(like)) {
       return(nv_array(data, dtype = "i32"))
@@ -112,7 +112,7 @@ static_start_indices <- function(starts, like = NULL) {
     return(nv_array_like(like, data, dtype = "i32", shape = length(data), ambiguous = FALSE))
   }
   grid <- as.matrix(do.call(expand.grid, starts))
-  out <- array(grid, dim = c(sizes[multi_index_dims], length(starts)))
+  out <- array(grid, dim = c(sizes[multi_index_axes], length(starts)))
   if (is.null(like)) {
     return(nv_array(out, dtype = "i32"))
   }
@@ -127,9 +127,9 @@ static_start_indices <- function(starts, like = NULL) {
 #' integer type present among dynamic array indices. Conversion is only performed
 #' when at least one subset is dynamic.
 #'
-#' - Without multi_index_dims: returns a 1D array of shape `(rank)` (all starts are scalar).
-#' - With multi_index_dims: returns an array of shape `(gather_shape..., rank)` where the
-#'   gather dimensions' indices are broadcast across the cartesian product.
+#' - Without multi_index_axes: returns a 1D array of shape `(rank)` (all starts are scalar).
+#' - With multi_index_axes: returns an array of shape `(gather_shape..., rank)` where the
+#'   gather axes' indices are broadcast across the cartesian product.
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
 #' @return An array of start indices
@@ -148,7 +148,7 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
         } else {
           nv_array_like(like, s, dtype = "i32", shape = length(s), ambiguous = FALSE)
         }
-      } else if (ndims_abstract(s) == 0L) {
+      } else if (naxes_abstract(s) == 0L) {
         nv_reshape(s, 1L)
       } else {
         s
@@ -164,10 +164,10 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
 #' @return A list with all parameters needed for prim_gather:
 #'   - start_indices: array of start indices (shape `(gather_shape..., rank)` or `(1, rank)`)
 #'   - slice_sizes: integer vector
-#'   - offset_dims: integer vector
-#'   - collapsed_slice_dims: integer vector
+#'   - offset_axes: integer vector
+#'   - collapsed_slice_axes: integer vector
 #'   - start_index_map: integer vector
-#'   - index_vector_dim: integer
+#'   - index_vector_axis: integer
 #'   - indices_are_sorted: logical
 #'   - unique_indices: logical
 #'   - multi_index_subset: logical
@@ -175,8 +175,8 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
 subset_specs_to_gather <- function(subsets, like = NULL) {
   rank <- length(subsets)
 
-  # Identify gather dimensions (SubsetIndices with multiple elements)
-  multi_index_dims <- which(vapply(
+  # Identify gather axes (SubsetIndices with multiple elements)
+  multi_index_axes <- which(vapply(
     subsets,
     function(s) {
       is_subset_indices(s) && s$size > 1L
@@ -184,23 +184,23 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
     logical(1L)
   ))
 
-  multi_index_subset <- length(multi_index_dims) > 0L
+  multi_index_subset <- length(multi_index_axes) > 0L
 
-  # slice_sizes: 1 for multi_index_dims, the size for others
+  # slice_sizes: 1 for multi_index_axes, the size for others
   slice_sizes <- vapply(
     seq_len(rank),
     function(i) {
-      if (i %in% multi_index_dims) 1L else subsets[[i]]$size
+      if (i %in% multi_index_axes) 1L else subsets[[i]]$size
     },
     integer(1L)
   )
 
-  collapsed_slice_dims <- sort(c(
-    multi_index_dims,
+  collapsed_slice_axes <- sort(c(
+    multi_index_axes,
     which(vapply(
       seq_len(rank),
       function(i) {
-        !(i %in% multi_index_dims) && is_subset_index(subsets[[i]])
+        !(i %in% multi_index_axes) && is_subset_index(subsets[[i]])
       },
       logical(1L)
     ))
@@ -208,23 +208,23 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 
   start_indices <- subset_specs_start_indices(subsets, like = like)
 
-  # offset_dims: positions in the output for non-collapsed dims of `x`.
-  # The output interleaves batch (gather) dims and offset (slice) dims
-  # in the order of the original dimensions of `x`.
-  subset_index_dims <- which(vapply(subsets, is_subset_index, logical(1L)))
-  surviving_dims <- setdiff(seq_len(rank), subset_index_dims)
-  multi_among_surviving <- which(surviving_dims %in% multi_index_dims)
-  offset_dims <- setdiff(seq_along(surviving_dims), multi_among_surviving)
+  # offset_axes: positions in the output for non-collapsed axes of `x`.
+  # The output interleaves batch (gather) axes and offset (slice) axes
+  # in the order of the original axes of `x`.
+  subset_index_axes <- which(vapply(subsets, is_subset_index, logical(1L)))
+  surviving_axes <- setdiff(seq_len(rank), subset_index_axes)
+  multi_among_surviving <- which(surviving_axes %in% multi_index_axes)
+  offset_axes <- setdiff(seq_along(surviving_axes), multi_among_surviving)
 
-  index_vector_dim <- length(multi_index_dims) + 1L
+  index_vector_axis <- length(multi_index_axes) + 1L
 
   list(
     start_indices = start_indices,
     slice_sizes = slice_sizes,
-    offset_dims = offset_dims,
-    collapsed_slice_dims = collapsed_slice_dims,
+    offset_axes = offset_axes,
+    collapsed_slice_axes = collapsed_slice_axes,
     start_index_map = seq_len(rank),
-    index_vector_dim = index_vector_dim,
+    index_vector_axis = index_vector_axis,
     indices_are_sorted = !multi_index_subset,
     # TODO: Could improve this
     unique_indices = !multi_index_subset,
@@ -237,10 +237,10 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
 #' @return A list with all parameters needed for prim_scatter:
 #'   - scatter_indices: array of scatter indices
-#'   - update_window_dims: integer vector
-#'   - inserted_window_dims: integer vector
-#'   - scatter_dims_to_x_dims: integer vector
-#'   - index_vector_dim: integer
+#'   - update_window_axes: integer vector
+#'   - inserted_window_axes: integer vector
+#'   - scatter_axes_to_x_axes: integer vector
+#'   - index_vector_axis: integer
 #'   - indices_are_sorted: logical
 #'   - unique_indices: logical
 #'   - update_shape: integer vector (expected shape of the update array)
@@ -248,7 +248,7 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 subset_specs_to_scatter <- function(subsets, like = NULL) {
   rank <- length(subsets)
 
-  multi_index_dims <- which(vapply(
+  multi_index_axes <- which(vapply(
     subsets,
     function(s) {
       is_subset_indices(s) && s$size > 1L
@@ -256,51 +256,51 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
     logical(1L)
   ))
 
-  multi_index_subset <- length(multi_index_dims) > 0L
+  multi_index_subset <- length(multi_index_axes) > 0L
 
-  # slice_sizes: 1 for gather dims (individually addressed), normal for others
+  # slice_sizes: 1 for gather axes (individually addressed), normal for others
   slice_sizes <- vapply(
     seq_len(rank),
     function(i) {
-      if (i %in% multi_index_dims) 1L else subsets[[i]]$size
+      if (i %in% multi_index_axes) 1L else subsets[[i]]$size
     },
     integer(1L)
   )
 
   scatter_indices <- subset_specs_start_indices(subsets, like = like)
 
-  # SubsetIndex dims are individually addressed (dropped from update),
-  # just like collapsed_slice_dims in the gather path.
-  index_dims <- which(vapply(subsets, is_subset_index, logical(1L)))
-  inserted_window_dims <- sort(c(multi_index_dims, index_dims))
-  surviving_dims <- setdiff(seq_len(rank), index_dims)
+  # SubsetIndex axes are individually addressed (dropped from update),
+  # just like collapsed_slice_axes in the gather path.
+  index_axes <- which(vapply(subsets, is_subset_index, logical(1L)))
+  inserted_window_axes <- sort(c(multi_index_axes, index_axes))
+  surviving_axes <- setdiff(seq_len(rank), index_axes)
 
   if (multi_index_subset) {
     # scatter_indices shape: [gather_shape..., rank]
-    n_gather <- length(multi_index_dims)
-    multi_among_surviving <- which(surviving_dims %in% multi_index_dims)
-    update_window_dims <- setdiff(seq_along(surviving_dims), multi_among_surviving)
+    n_gather <- length(multi_index_axes)
+    multi_among_surviving <- which(surviving_axes %in% multi_index_axes)
+    update_window_axes <- setdiff(seq_along(surviving_axes), multi_among_surviving)
     update_shape <- vapply(
-      surviving_dims,
+      surviving_axes,
       function(i) {
-        if (i %in% multi_index_dims) subsets[[i]]$size else slice_sizes[i]
+        if (i %in% multi_index_axes) subsets[[i]]$size else slice_sizes[i]
       },
       integer(1L)
     )
-    index_vector_dim <- n_gather + 1L
+    index_vector_axis <- n_gather + 1L
   } else {
-    # scatter_indices shape: [rank] (no batch dims)
-    update_window_dims <- seq_along(surviving_dims)
-    update_shape <- slice_sizes[surviving_dims]
-    index_vector_dim <- 1L
+    # scatter_indices shape: [rank] (no batch axes)
+    update_window_axes <- seq_along(surviving_axes)
+    update_shape <- slice_sizes[surviving_axes]
+    index_vector_axis <- 1L
   }
 
   list(
     scatter_indices = scatter_indices,
-    update_window_dims = update_window_dims,
-    inserted_window_dims = inserted_window_dims,
-    scatter_dims_to_x_dims = seq_len(rank),
-    index_vector_dim = index_vector_dim,
+    update_window_axes = update_window_axes,
+    inserted_window_axes = inserted_window_axes,
+    scatter_axes_to_x_axes = seq_len(rank),
+    index_vector_axis = index_vector_axis,
     # TODO: Could improve this
     indices_are_sorted = !multi_index_subset,
     unique_indices = !multi_index_subset,
@@ -311,7 +311,7 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
 
 # Helper functions for subset operations ======================================
 
-#' Parse subset specifications and fill unspecified dimensions
+#' Parse subset specifications and fill unspecified axes
 #' @param quos List of quosures (from enquos)
 #' @param x_shape Shape of the input array
 #' @return List of SubsetSpec objects
@@ -339,17 +339,17 @@ parse_subset_specs <- function(quos, x_shape) {
 
 #' Parse a single subset specification
 #' @param quo Quosure to parse
-#' @param dim_size Size of the dimension being indexed
+#' @param axis_size Size of the axis being indexed
 #' @return A SubsetSpec object (SubsetFull, SubsetRange, or SubsetIndices)
 #' @noRd
-parse_subset_spec <- function(quo, dim_size) {
+parse_subset_spec <- function(quo, axis_size) {
   is_integerish <- function(x) {
     is.null(dim(x)) && test_integerish(x, len = 1L, any.missing = FALSE)
   }
 
   # Missing argument - select all
   if (rlang::quo_is_missing(quo)) {
-    return(SubsetFull(dim_size))
+    return(SubsetFull(axis_size))
   }
 
   e <- rlang::quo_get_expr(quo)
@@ -367,8 +367,8 @@ parse_subset_spec <- function(quo, dim_size) {
     start <- as.integer(start)
     end <- as.integer(end)
 
-    if (start < 1L || end > dim_size) {
-      cli_abort("Range {start}:{end} is out of bounds for dimension of size {dim_size}")
+    if (start < 1L || end > axis_size) {
+      cli_abort("Range {start}:{end} is out of bounds for axis of size {axis_size}")
     }
 
     return(SubsetRange(start, end))
@@ -377,17 +377,17 @@ parse_subset_spec <- function(quo, dim_size) {
   # Evaluate the quosure
   e <- rlang::eval_tidy(quo)
 
-  # Single integer - drops dimension. `array(i)` (length-1, with dim attr)
-  # falls through to the array branch below so the dim is kept.
+  # Single integer - drops axis. `array(i)` (length-1, with axis attr)
+  # falls through to the array branch below so the axis is kept.
   if (is_integerish(e)) {
     idx <- as.integer(e)
-    if (idx < 1L || idx > dim_size) {
-      cli_abort("Index {idx} is out of bounds for dimension of size {dim_size}")
+    if (idx < 1L || idx > axis_size) {
+      cli_abort("Index {idx} is out of bounds for axis of size {axis_size}")
     }
     return(SubsetIndex(idx))
   }
 
-  # R vectors of length > 1 without dim - not allowed (ambiguous shape)
+  # R vectors of length > 1 without a dim attribute - not allowed (ambiguous shape)
   if (is.numeric(e) && length(e) > 1L && is.null(dim(e))) {
     cli_abort(c(
       "Vectors of length > 1 are not allowed as subset indices.",
@@ -395,16 +395,16 @@ parse_subset_spec <- function(quo, dim_size) {
     ))
   }
 
-  # Atomic numeric array - static indices (preserves dim)
+  # Atomic numeric array - static indices (preserves axis)
   if (is.array(e) && is.numeric(e)) {
     if (length(dim(e)) != 1L) {
       cli_abort("Array indices must be 1D, but got {length(dim(e))}D")
     }
     indices <- as.integer(e)
-    oob <- indices < 1L | indices > dim_size
+    oob <- indices < 1L | indices > axis_size
     if (any(oob)) {
       bad <- indices[oob][1L] # nolint
-      cli_abort("Index {bad} is out of bounds for dimension of size {dim_size}")
+      cli_abort("Index {bad} is out of bounds for axis of size {axis_size}")
     }
     return(SubsetIndices(indices))
   }
@@ -423,11 +423,11 @@ parse_subset_spec <- function(quo, dim_size) {
     if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
       cli_abort("Dynamic indices must be integers, but got {.val {as.character(dt)}}")
     }
-    nd <- ndims_abstract(e)
+    nd <- naxes_abstract(e)
     if (nd > 1L) {
       cli_abort("Dynamic indices must be at most 1D, but got {nd}D array")
     }
-    # Scalar array drops dimension, 1D array preserves
+    # Scalar array drops axis, 1D array preserves
     if (nd == 0L) {
       return(SubsetIndex(e))
     }
@@ -440,12 +440,12 @@ parse_subset_spec <- function(quo, dim_size) {
 #' @title Subset an Array
 #' @description
 #' Extracts a subset from an array. You can also use the `[` operator.
-#' Supports R-style indexing including scalar indices (which drop dimensions),
+#' Supports R-style indexing including scalar indices (which drop axes),
 #' ranges (`a:b`), and `array(c(...))` for selecting multiple elements along a
-#' dimension.
+#' axis.
 #' @template param_x
-#' @param ... Subset specifications, one per dimension. Omitted trailing
-#'   dimensions select all elements. See `vignette("subsetting")` for details.
+#' @param ... Subset specifications, one per axis. Omitted trailing
+#'   axes select all elements. See `vignette("subsetting")` for details.
 #' @return [`arrayish`]
 #' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
 #'   for a comprehensive guide.
@@ -475,12 +475,12 @@ nv_subset <- function(x, ...) {
     x = x,
     start_indices = params$start_indices,
     slice_sizes = params$slice_sizes,
-    offset_dims = params$offset_dims,
-    collapsed_slice_dims = params$collapsed_slice_dims,
-    x_batching_dims = integer(),
-    start_indices_batching_dims = integer(),
+    offset_axes = params$offset_axes,
+    collapsed_slice_axes = params$collapsed_slice_axes,
+    x_batching_axes = integer(),
+    start_indices_batching_axes = integer(),
     start_index_map = params$start_index_map,
-    index_vector_dim = params$index_vector_dim,
+    index_vector_axis = params$index_vector_axis,
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices
   )
@@ -499,10 +499,10 @@ subset_scatter_core <- jit(
     x,
     value,
     scatter_indices,
-    update_window_dims,
-    inserted_window_dims,
-    scatter_dims_to_x_dims,
-    index_vector_dim,
+    update_window_axes,
+    inserted_window_axes,
+    scatter_axes_to_x_axes,
+    index_vector_axis,
     indices_are_sorted,
     unique_indices,
     update_shape
@@ -534,22 +534,22 @@ subset_scatter_core <- jit(
       x = x,
       scatter_indices = scatter_indices,
       update = value,
-      update_window_dims = update_window_dims,
-      inserted_window_dims = inserted_window_dims,
-      x_batching_dims = integer(),
-      scatter_indices_batching_dims = integer(),
-      scatter_dims_to_x_dims = scatter_dims_to_x_dims,
-      index_vector_dim = index_vector_dim,
+      update_window_axes = update_window_axes,
+      inserted_window_axes = inserted_window_axes,
+      x_batching_axes = integer(),
+      scatter_indices_batching_axes = integer(),
+      scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+      index_vector_axis = index_vector_axis,
       indices_are_sorted = indices_are_sorted,
       unique_indices = unique_indices
     )
   },
   backend = "auto",
   static = c(
-    "update_window_dims",
-    "inserted_window_dims",
-    "scatter_dims_to_x_dims",
-    "index_vector_dim",
+    "update_window_axes",
+    "inserted_window_axes",
+    "scatter_axes_to_x_axes",
+    "index_vector_axis",
     "indices_are_sorted",
     "unique_indices",
     "update_shape"
@@ -561,7 +561,7 @@ subset_scatter_core <- jit(
 #' Updates elements of an array at specified positions, returning a new array.
 #' You can also use the `[<-` operator.
 #' @template param_x
-#' @param ... Subset specifications, one per dimension. See
+#' @param ... Subset specifications, one per axis. See
 #'   `vignette("subsetting")` for details.
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape.
@@ -600,10 +600,10 @@ nv_subset_assign <- function(x, ..., value) {
     x = x,
     value = value,
     scatter_indices = params$scatter_indices,
-    update_window_dims = params$update_window_dims,
-    inserted_window_dims = params$inserted_window_dims,
-    scatter_dims_to_x_dims = params$scatter_dims_to_x_dims,
-    index_vector_dim = params$index_vector_dim,
+    update_window_axes = params$update_window_axes,
+    inserted_window_axes = params$inserted_window_axes,
+    scatter_axes_to_x_axes = params$scatter_axes_to_x_axes,
+    index_vector_axis = params$index_vector_axis,
     indices_are_sorted = params$indices_are_sorted,
     unique_indices = params$unique_indices,
     update_shape = params$update_shape

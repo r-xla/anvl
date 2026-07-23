@@ -4,15 +4,15 @@
 \alias{prim_cumprod}
 \title{Primitive Cumulative Product}
 \usage{
-prim_cumprod(x, dim)
+prim_cumprod(x, axis)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which to accumulate.
-Negative values count from the end, i.e. \code{-1} refers to the last dimension.}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which to accumulate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -20,8 +20,8 @@ Has the same shape and data type as the input.
 It is ambiguous if the input is ambiguous.
 }
 \description{
-Cumulative product of array elements along a single dimension.
-Output position \code{j} along \code{dim} equals the product of input positions \code{1:j}.
+Cumulative product of array elements along a single axis.
+Output position \code{j} along \code{axis} equals the product of input positions \code{1:j}.
 }
 \section{Implemented Rules}{
 
@@ -38,7 +38,7 @@ Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} with \c
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-prim_cumprod(x, dim = 1L)
+prim_cumprod(x, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

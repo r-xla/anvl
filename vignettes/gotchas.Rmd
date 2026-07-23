@@ -65,7 +65,7 @@ But combining two non-scalar arrays of different shapes errors, even when one sh
 nv_array(1:4) + nv_array(1:2)
 ```
 
-When two non-scalar arrays differ only by size-1 dimensions (numpy-style broadcasting, e.g. shape `(2, 3)` and `(1, 3)`), use `nv_broadcast_arrays()` to align them explicitly first:
+When two non-scalar arrays differ only by size-1 axes (numpy-style broadcasting, e.g. shape `(2, 3)` and `(1, 3)`), use `nv_broadcast_arrays()` to align them explicitly first:
 
 ```{r}
 a <- nv_matrix(1:6, nrow = 2)

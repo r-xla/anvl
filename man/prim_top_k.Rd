@@ -17,15 +17,15 @@ Number of top elements. Must satisfy
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
 The top-\code{k} values (same dtype as \code{x}) and their indices along
-the last dimension (dtype \code{i32}, matching JAX). Both have the same
-shape as \code{x} with the last dimension replaced by \code{k}. Ties are
+the last axis (dtype \code{i32}, matching JAX). Both have the same
+shape as \code{x} with the last axis replaced by \code{k}. Ties are
 broken by lower index first.
 }
 \description{
-Returns the \code{k} largest values along the last dimension, sorted in
-descending order, together with their indices into that dimension.
+Returns the \code{k} largest values along the last axis, sorted in
+descending order, together with their indices into that axis.
 
-For other dimensions, transpose so the target dimension is last, call
+For other axes, transpose so the target axis is last, call
 \code{prim_top_k()}, then transpose back. \code{\link[=nv_top_k]{nv_top_k()}} does this.
 }
 \section{Implemented Rules}{

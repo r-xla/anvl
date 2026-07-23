@@ -6,8 +6,8 @@
 #' @section Extractors:
 #' The following generic functions can be used to extract information from an `AnvlArray`:
 #' - [`dtype()`][tengen::dtype]: Get the data type of the array.
-#' - [`shape()`][tengen::shape]: Get the shape (dimensions) of the array.
-#' - [`naxes()`][tengen::naxes]: Get the number of dimensions.
+#' - [`shape()`][tengen::shape]: Get the shape (axes) of the array.
+#' - [`naxes()`][tengen::naxes]: Get the number of axes.
 #' - [`device()`][tengen::device]: Get the device of the array.
 #' - [`platform()`]: Get the platform (e.g. `"cpu"`, `"cuda"`).
 #' - [`ambiguous()`]: Get whether the dtype is ambiguous.
@@ -36,7 +36,7 @@
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
-#'   To create a "scalar" with dimension `()`, use [`nv_scalar`] or explicitly specify `shape = c()`.
+#'   To create a "scalar" with axis `()`, use [`nv_scalar`] or explicitly specify `shape = c()`.
 #' @param ambiguous (`NULL` | `logical(1)`)\cr
 #'   Whether the dtype should be marked as ambiguous.
 #'   Defaults to `FALSE` for new arrays.
@@ -46,7 +46,7 @@
 #'   Must not be specified inside [`jit()`].
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
-#'   dimensions, fill the array in row-major order rather than the
+#'   axes, fill the array in row-major order rather than the
 #'   default column-major order, mirroring [`base::matrix()`]'s `byrow`.
 #'   Only allowed when `data` is an R object — passing an existing
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
@@ -588,9 +588,9 @@ backend.QuickrDevice <- function(x, ...) {
 #' @section Extractors:
 #' The following extractors are available on `AbstractArray` objects:
 #' - [`dtype()`][tengen::dtype]: Get the data type of the array.
-#' - [`shape()`][tengen::shape]: Get the shape (dimensions) of the array.
+#' - [`shape()`][tengen::shape]: Get the shape (axes) of the array.
 #' - [`ambiguous()`]: Get whether the dtype is ambiguous.
-#' - [`naxes()`][tengen::naxes]: Get the number of dimensions.
+#' - [`naxes()`][tengen::naxes]: Get the number of axes.
 #'
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
 #'   The data type of the array.
@@ -772,33 +772,33 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data), ambiguous) {
 #'   The shape of the array.
 #' @param dtype ([`tengen::DataType`])\cr
 #'   The data type.
-#' @param dimension (`integer(1)`)\cr
-#'   The dimension along which values increase.
+#' @param axis (`integer(1)`)\cr
+#'   The axis along which values increase.
 #' @param start (`integer(1)`)\cr
 #'   The starting value.
 #' @template param_ambiguous
 #'
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- IotaArray(shape = 4L, dtype = "i32", dimension = 1L)
+#' x <- IotaArray(shape = 4L, dtype = "i32", axis = 1L)
 #' x
 #' ambiguous(x)
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
 #' # How it appears during tracing:
-#' graph <- trace_fn(function() nv_iota(dim = 1L, dtype = "i32", shape = 4L), list())
+#' graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 #' graph
 #' graph$outputs[[1]]$aval
 #' @export
-IotaArray <- function(shape, dtype, dimension, start = 1L, ambiguous = FALSE) {
+IotaArray <- function(shape, dtype, axis, start = 1L, ambiguous = FALSE) {
   shape <- as_shape(shape)
   dtype <- as_dtype(dtype)
   assert_flag(ambiguous)
   # stablehlo::Shape is a wrapper object; its rank is length(shape$dims), not length(shape)
-  assert_int(dimension, lower = 1L, upper = length(shape$dims))
+  assert_int(axis, lower = 1L, upper = length(shape$dims))
   assert_int(start)
   structure(
-    list(shape = shape, dtype = dtype, dimension = dimension, start = start, ambiguous = ambiguous),
+    list(shape = shape, dtype = dtype, axis = axis, start = start, ambiguous = ambiguous),
     class = c("IotaArray", "AbstractArray")
   )
 }
@@ -806,10 +806,10 @@ IotaArray <- function(shape, dtype, dimension, start = 1L, ambiguous = FALSE) {
 #' @export
 format.IotaArray <- function(x, ...) {
   sprintf(
-    "IotaArray(shape=%s, dtype=%s, dimension=%s, start=%s)",
+    "IotaArray(shape=%s, dtype=%s, axis=%s, start=%s)",
     shape2string(x$shape),
     dtype2string(x$dtype, x$ambiguous),
-    x$dimension,
+    x$axis,
     x$start
   )
 }

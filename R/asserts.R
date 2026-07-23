@@ -27,49 +27,49 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   as.integer(x)
 }
 
-# Normalize possibly-negative dimension indices.
+# Normalize possibly-negative axis indices.
 #
-# Negative values count from the end: `-1` is the last dimension, `-2` the
-# second-to-last. `max_dim` is the largest admissible dimension. It is the rank
+# Negative values count from the end: `-1` is the last axis, `-2` the
+# second-to-last. `max_axis` is the largest admissible axis. It is the rank
 # of the array for most operations, but `rank + 1` for operations that insert a
-# new dimension (e.g. `nv_unsqueeze()`).
-# Returns the resolved (positive) dimensions as an integer vector.
-resolve_dims <- function(dims, max_dim, arg = rlang::caller_arg(dims), unique = FALSE) {
-  if (!test_integerish(dims, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(dims)}}")
+# new axis (e.g. `nv_unsqueeze()`).
+# Returns the resolved (positive) axes as an integer vector.
+resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique = FALSE) {
+  if (!test_integerish(axes, any.missing = FALSE, null.ok = FALSE)) {
+    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(axes)}}")
   }
-  original <- as.integer(dims)
+  original <- as.integer(axes)
   resolved <- original
   negative <- original < 0L
-  resolved[negative] <- max_dim + 1L + resolved[negative]
-  invalid <- resolved < 1L | resolved > max_dim
+  resolved[negative] <- max_axis + 1L + resolved[negative]
+  invalid <- resolved < 1L | resolved > max_axis
   if (any(invalid)) {
-    if (max_dim < 1L) {
+    if (max_axis < 1L) {
       cli_abort(c(
-        "{.arg {arg}} cannot be used, there is no dimension to select.",
+        "{.arg {arg}} cannot be used, there is no axis to select.",
         x = "Got {.val {original[invalid]}}."
       ))
     }
     cli_abort(c(
-      "{.arg {arg}} must be between 1 and {max_dim}, or between {-max_dim} and -1 to count from the end.",
+      "{.arg {arg}} must be between 1 and {max_axis}, or between {-max_axis} and -1 to count from the end.",
       x = "Got {.val {original[invalid]}}."
     ))
   }
   if (unique && anyDuplicated(resolved)) {
     cli_abort(c(
-      "{.arg {arg}} must not contain duplicate dimensions.",
+      "{.arg {arg}} must not contain duplicate axes.",
       x = "Got {.val {original}}."
     ))
   }
   resolved
 }
 
-# Like `resolve_dims()`, but for a single dimension.
-resolve_dim <- function(dim, max_dim, arg = rlang::caller_arg(dim)) {
-  if (length(dim) != 1L) {
-    cli_abort("{.arg {arg}} must have length 1, not {length(dim)}")
+# Like `resolve_axes()`, but for a single axis.
+resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
+  if (length(axis) != 1L) {
+    cli_abort("{.arg {arg}} must have length 1, not {length(axis)}")
   }
-  resolve_dims(dim, max_dim, arg = arg)
+  resolve_axes(axis, max_axis, arg = arg)
 }
 
 # Resolve a `-1` placeholder in a reshape target shape by inferring the
@@ -133,7 +133,7 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
   }
   if (any(s == 0L)) {
     cli_abort(c(
-      "{.arg {arg}} must not have any zero-sized dimension.",
+      "{.arg {arg}} must not have any zero-sized axis.",
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
     ))
   }

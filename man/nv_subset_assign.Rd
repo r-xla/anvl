@@ -13,7 +13,7 @@ nv_subset_assign(x, ..., value)
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{...}{Subset specifications, one per dimension. See
+\item{...}{Subset specifications, one per axis. See
 \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr

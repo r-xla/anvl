@@ -8,12 +8,12 @@ prim_gather(
   x,
   start_indices,
   slice_sizes,
-  offset_dims,
-  collapsed_slice_dims,
-  x_batching_dims,
-  start_indices_batching_dims,
+  offset_axes,
+  collapsed_slice_axes,
+  x_batching_axes,
+  start_indices_batching_axes,
   start_index_map,
-  index_vector_dim,
+  index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE
 )
@@ -24,38 +24,38 @@ Arrayish value of any data type.}
 
 \item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of starting indices. Contains index vectors that map to
-positions in \code{x} via \code{start_index_map}. The dimension
-specified by \code{index_vector_dim} holds the index vectors.}
+positions in \code{x} via \code{start_index_map}. The axis
+specified by \code{index_vector_axis} holds the index vectors.}
 
 \item{slice_sizes}{(\code{integer()})\cr
-Size of the slice to gather from \code{x} in each dimension.
+Size of the slice to gather from \code{x} in each axis.
 Must have length equal to \code{naxes(x)}.}
 
-\item{offset_dims}{(\code{integer()})\cr
-Dimensions in the output that correspond to the non-collapsed
-slice dimensions of \code{x}.}
+\item{offset_axes}{(\code{integer()})\cr
+Axes in the output that correspond to the non-collapsed
+slice axes of \code{x}.}
 
-\item{collapsed_slice_dims}{(\code{integer()})\cr
-Dimensions of \code{x} that are collapsed (removed) from the
+\item{collapsed_slice_axes}{(\code{integer()})\cr
+Axes of \code{x} that are collapsed (removed) from the
 slice. The corresponding entries in \code{slice_sizes} must be \code{1}.
-Together with \code{offset_dims} and \code{x_batching_dims}, these
-must account for all dimensions of \code{x}.}
+Together with \code{offset_axes} and \code{x_batching_axes}, these
+must account for all axes of \code{x}.}
 
-\item{x_batching_dims}{(\code{integer()})\cr
-Dimensions of \code{x} that are batch dimensions.
-Use \code{integer(0)} when there are no batch dimensions.}
+\item{x_batching_axes}{(\code{integer()})\cr
+Axes of \code{x} that are batch axes.
+Use \code{integer(0)} when there are no batch axes.}
 
-\item{start_indices_batching_dims}{(\code{integer()})\cr
-Dimensions of \code{start_indices} that correspond to batch
-dimensions. Must have the same length as \code{x_batching_dims}.}
+\item{start_indices_batching_axes}{(\code{integer()})\cr
+Axes of \code{start_indices} that correspond to batch
+axes. Must have the same length as \code{x_batching_axes}.}
 
 \item{start_index_map}{(\code{integer()})\cr
 Maps each component of the index vector to an \code{x}
-dimension. For example, \code{start_index_map = c(1L)} means each
-index vector indexes into the first dimension of \code{x}.}
+axis. For example, \code{start_index_map = c(1L)} means each
+index vector indexes into the first axis of \code{x}.}
 
-\item{index_vector_dim}{(\code{integer(1)})\cr
-Dimension of \code{start_indices} that contains the index vectors.
+\item{index_vector_axis}{(\code{integer(1)})\cr
+Axis of \code{start_indices} that contains the index vectors.
 If set to \code{naxes(start_indices) + 1}, each scalar element of
 \code{start_indices} is treated as a length-1 index vector.}
 
@@ -72,8 +72,8 @@ behavior if the indices are not actually unique. Default \code{FALSE}.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as \code{x}. The output shape is composed
-of the offset dimensions (from the slice) and the remaining
-dimensions from \code{start_indices}. See the underluing stableHLO function
+of the offset axes (from the slice) and the remaining
+axes from \code{start_indices}. See the underluing stableHLO function
 for more details.
 }
 \description{
@@ -117,12 +117,12 @@ indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(
   x, indices,
   slice_sizes = c(1L, 3L),
-  offset_dims = 2L,
-  collapsed_slice_dims = 1L,
-  x_batching_dims = integer(0),
-  start_indices_batching_dims = integer(0),
+  offset_axes = 2L,
+  collapsed_slice_axes = 1L,
+  x_batching_axes = integer(0),
+  start_indices_batching_axes = integer(0),
   start_index_map = 1L,
-  index_vector_dim = 2L
+  index_vector_axis = 2L
 )
 \dontshow{\}) # examplesIf}
 }

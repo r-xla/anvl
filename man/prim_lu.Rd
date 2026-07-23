@@ -8,7 +8,7 @@ prim_lu(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 dimensions.}
+Matrix of data type floating-point with exactly 2 axes.}
 }
 \value{
 \code{list} of three \code{\link{arrayish}} values: \code{LU} \verb{(m, n)} with the same

@@ -363,25 +363,25 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   rhs <- inputs[[2L]]
   grad <- grads[[1L]]
 
-  contracting_dims <- params$contracting_dims
-  batching_dims <- params$batching_dims
+  contracting_axes <- params$contracting_axes
+  batching_axes <- params$batching_axes
   precision <- params$precision
 
-  # batching dimensions
-  bd_lhs <- batching_dims[[1L]]
-  bd_rhs <- batching_dims[[2L]]
-  # contracting dimensions
-  cd_lhs <- contracting_dims[[1L]]
-  cd_rhs <- contracting_dims[[2L]]
-  # remaining dimensions
-  rem_dims <- function(x, b_dims, c_dims) {
-    ii <- c(b_dims, c_dims)
+  # batching axes
+  bd_lhs <- batching_axes[[1L]]
+  bd_rhs <- batching_axes[[2L]]
+  # contracting axes
+  cd_lhs <- contracting_axes[[1L]]
+  cd_rhs <- contracting_axes[[2L]]
+  # remaining axes
+  rem_axes <- function(x, b_axes, c_axes) {
+    ii <- c(b_axes, c_axes)
     seq_len(naxes(x))[if (length(ii)) -ii else TRUE]
   }
-  rd_lhs <- rem_dims(lhs, bd_lhs, cd_lhs)
-  rd_rhs <- rem_dims(rhs, bd_rhs, cd_rhs)
+  rd_lhs <- rem_axes(lhs, bd_lhs, cd_lhs)
+  rd_rhs <- rem_axes(rhs, bd_rhs, cd_rhs)
 
-  # output dimensions
+  # output axes
   bd_out <- seq_along(bd_lhs)
   d_lhs_out <- seq_along(rd_lhs) +
     if (length(bd_out)) bd_out[length(bd_out)] else 0L
@@ -407,8 +407,8 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
       grad_lhs <- prim_dot_general(
         grad,
         rhs,
-        contracting_dims = list(d_rhs_out, rd_rhs),
-        batching_dims = list(bd_out, bd_rhs),
+        contracting_axes = list(d_rhs_out, rd_rhs),
+        batching_axes = list(bd_out, bd_rhs),
         precision = precision
       )
       prim_transpose(grad_lhs, perm_lhs)
@@ -417,8 +417,8 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
       grad_rhs <- prim_dot_general(
         grad,
         lhs,
-        contracting_dims = list(d_lhs_out, rd_lhs),
-        batching_dims = list(bd_out, bd_lhs),
+        contracting_axes = list(d_lhs_out, rd_lhs),
+        batching_axes = list(bd_out, bd_lhs),
         precision = precision
       )
       prim_transpose(grad_rhs, perm_rhs)
@@ -447,18 +447,18 @@ prim_reshape[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 })
 
 prim_reduce_sum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  dims <- params$dims
+  axes <- params$axes
   drop <- params$drop
   x <- inputs[[1L]]
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) {
-      bdims <- if (drop) {
-        without(seq_along(shape(x)), dims)
+      baxes <- if (drop) {
+        without(seq_along(shape(x)), axes)
       } else {
         seq_along(shape(grad))
       }
-      prim_broadcast_in_dim(grad, shape(x), bdims)
+      prim_broadcast_in_axes(grad, shape(x), baxes)
     }
   )
 })
@@ -470,37 +470,37 @@ prim_reduce_max[["reverse"]] <- prim_reduce_min[["reverse"]] <- rule_reverse(fun
   params,
   required
 ) {
-  dims <- params$dims
+  axes <- params$axes
   drop <- params$drop
   x <- inputs[[1L]]
   grad <- grads[[1L]]
 
   list(
     if (required[[1L]]) {
-      bdims <- if (drop) {
-        without(seq_along(shape(x)), dims)
+      baxes <- if (drop) {
+        without(seq_along(shape(x)), axes)
       } else {
         seq_along(shape(grad))
       }
 
       y <- outputs[[1L]]
-      y_bc <- prim_broadcast_in_dim(y, shape(x), bdims)
+      y_bc <- prim_broadcast_in_axes(y, shape(x), baxes)
 
-      grad_bc <- prim_broadcast_in_dim(grad, shape(x), bdims)
+      grad_bc <- prim_broadcast_in_axes(grad, shape(x), baxes)
       mask <- prim_eq(x, y_bc)
       mask_f <- prim_convert(mask, dtype = dtype(grad_bc))
 
-      count <- prim_reduce_sum(mask_f, dims = dims, drop = drop)
-      count_bc <- prim_broadcast_in_dim(count, shape(x), bdims)
+      count <- prim_reduce_sum(mask_f, axes = axes, drop = drop)
+      count_bc <- prim_broadcast_in_axes(count, shape(x), baxes)
 
       prim_div(prim_mul(grad_bc, mask_f), count_bc)
     }
   )
 })
 
-prim_broadcast_in_dim[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+prim_broadcast_in_axes[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   shape <- params$shape
-  broadcast_dimensions <- params$broadcast_dimensions
+  broadcast_axes <- params$broadcast_axes
   x <- inputs[[1L]]
   y <- outputs[[1L]]
   grad <- grads[[1L]]
@@ -508,23 +508,23 @@ prim_broadcast_in_dim[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
   list(
     if (required[[1L]]) {
       # Sum grad over the axes that were introduced by broadcasting
-      new_dims <- setdiff(seq_len(naxes(y)), broadcast_dimensions)
-      expand_dims <- broadcast_dimensions[(shape(y)[broadcast_dimensions] != 1L) & (shape(x) == 1L)]
-      reduce_dims <- c(new_dims, expand_dims)
+      new_axes <- setdiff(seq_len(naxes(y)), broadcast_axes)
+      expand_axes <- broadcast_axes[(shape(y)[broadcast_axes] != 1L) & (shape(x) == 1L)]
+      reduce_axes <- c(new_axes, expand_axes)
 
-      g <- if (length(reduce_dims)) prim_reduce_sum(grad, dims = reduce_dims, drop = FALSE) else grad
+      g <- if (length(reduce_axes)) prim_reduce_sum(grad, axes = reduce_axes, drop = FALSE) else grad
 
-      # Drop the singular added dimensions
-      if (length(new_dims)) {
+      # Drop the singular added axes
+      if (length(new_axes)) {
         reshape_dims <- shape(g)
-        reshape_dims <- reshape_dims[-new_dims]
+        reshape_dims <- reshape_dims[-new_axes]
         g <- prim_reshape(g, reshape_dims)
       }
 
-      # If broadcast_dimensions are not in increasing order, reorder the
+      # If broadcast_axes are not in increasing order, reorder the
       # remaining axes back to the original input axis order.
-      if (is.unsorted(broadcast_dimensions)) {
-        g <- prim_transpose(g, order(broadcast_dimensions))
+      if (is.unsorted(broadcast_axes)) {
+        g <- prim_transpose(g, order(broadcast_axes))
       }
       g
     }
@@ -663,10 +663,10 @@ prim_clamp[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   # this is an inconsistency in stablehlo, as it broadcasts scalars in clamp, but not in eq
   # (and most other functions)
   if (naxes(min_val) == 0L) {
-    min_val <- prim_broadcast_in_dim(min_val, shape(x), integer())
+    min_val <- prim_broadcast_in_axes(min_val, shape(x), integer())
   }
   if (naxes(max_val) == 0L) {
-    max_val <- prim_broadcast_in_dim(max_val, shape(x), integer())
+    max_val <- prim_broadcast_in_axes(max_val, shape(x), integer())
   }
 
   # the points where `x` is equal to min_val or max_val are non differentiable,
@@ -681,11 +681,11 @@ prim_clamp[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
 })
 
 prim_reverse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  dims <- params$dims
+  axes <- params$axes
   grad <- grads[[1L]]
   list(
-    # Reverse the gradient along the same dimensions
-    if (required[[1L]]) prim_reverse(grad, dims)
+    # Reverse the gradient along the same axes
+    if (required[[1L]]) prim_reverse(grad, axes)
   )
 })
 
@@ -762,15 +762,15 @@ prim_atan2[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
 # (π, grad) ascending — the second output is grad permuted by argsort(π) = σ,
 # which is exactly the input gradient.
 prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
-  dim <- params$dim
+  axis <- params$axis
   descending <- params$descending
   is_stable <- params$is_stable
 
   key <- inputs[[1L]]
-  iota <- prim_iota(dim = dim, dtype = "i64", shape = shape(key), start = 1L)
+  iota <- prim_iota(axis = axis, dtype = "i64", shape = shape(key), start = 1L)
   sorted <- prim_sort(
     c(inputs, list(iota)),
-    dim = dim,
+    axis = axis,
     descending = descending,
     is_stable = is_stable
   )
@@ -787,7 +787,7 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
       required_idx <- which(required)
       inv <- prim_sort(
         c(list(perm), grads[required_idx]),
-        dim = dim,
+        axis = axis,
         descending = FALSE,
         is_stable = FALSE
       )
@@ -805,7 +805,7 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # zero buffer of the input shape. Using the actual forward indices (rather
 # than recomputing a permutation) is correct by construction even when
 # `x` has duplicate values — top-k indices are pairwise unique along
-# the last dim.
+# the last axis.
 prim_top_k[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   if (!required[[1L]]) {
     return(list(NULL))
@@ -824,27 +824,27 @@ prim_top_k[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
     ambiguous = FALSE
   )
 
-  # All dimensions are iteration dimensions and we have a single index vector dimension that
-  # indicates the position to write to (in the last dimension of the input)
+  # All axes are iteration axes and we have a single index vector axis that
+  # indicates the position to write to (in the last axis of the input)
   list(prim_scatter(
     x = zero_input,
-    # index vectors selecting positions along the last dim of `x`
+    # index vectors selecting positions along the last axis of `x`
     scatter_indices = indices,
     update = grad_values,
-    update_window_dims = integer(0),
-    inserted_window_dims = rank,
-    x_batching_dims = batching,
-    scatter_indices_batching_dims = batching,
-    scatter_dims_to_x_dims = rank,
-    # we sort along a single dimension -> all dims are iteration dims
-    index_vector_dim = rank + 1L,
+    update_window_axes = integer(0),
+    inserted_window_axes = rank,
+    x_batching_axes = batching,
+    scatter_indices_batching_axes = batching,
+    scatter_axes_to_x_axes = rank,
+    # we sort along a single axis -> all axes are iteration axes
+    index_vector_axis = rank + 1L,
     unique_indices = TRUE
   ))
 })
 
-# concatenate reverse: split the gradient back along the concatenation dimension
+# concatenate reverse: split the gradient back along the concatenation axis
 prim_concatenate[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  dimension <- params$dimension
+  axis <- params$axis
   grad <- grads[[1L]]
   n_inputs <- length(inputs)
   input_grads <- vector("list", n_inputs)
@@ -854,14 +854,14 @@ prim_concatenate[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   start_indices <- rep(1L, length(shape(inputs[[1]])))
   for (i in seq_len(n_inputs)) {
     input_shape <- shape(inputs[[i]])
-    dim_size <- input_shape[dimension]
+    axis_size <- input_shape[axis]
     if (required[[i]]) {
       strides <- rep(1L, length(input_shape))
-      start_indices[dimension] <- offset
-      limit_indices[dimension] <- offset + dim_size - 1L
+      start_indices[axis] <- offset
+      limit_indices[axis] <- offset + axis_size - 1L
       input_grads[[i]] <- prim_static_slice(grad, start_indices, limit_indices, strides)
     }
-    offset <- offset + dim_size
+    offset <- offset + axis_size
   }
   input_grads
 })
@@ -871,7 +871,7 @@ prim_reduce_prod[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   if (!required[[1L]]) {
     return(list(NULL))
   }
-  dims <- params$dims
+  axes <- params$axes
   drop <- params$drop
   x <- inputs[[1L]]
   grad <- grads[[1L]]
@@ -879,15 +879,15 @@ prim_reduce_prod[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   # Move reduced axes to the end and collapse them, so the safe formula
   # below operates along a single trailing axis.
   s <- shape(x)
-  non_reduced <- without(seq_along(s), dims)
-  perm <- c(non_reduced, dims)
-  reduced_size <- as.integer(prod(s[dims]))
+  non_reduced <- without(seq_along(s), axes)
+  perm <- c(non_reduced, axes)
+  reduced_size <- as.integer(prod(s[axes]))
   collapsed_shape <- c(s[non_reduced], reduced_size)
   rank <- length(collapsed_shape)
 
   operand_c <- prim_reshape(prim_transpose(x, perm), collapsed_shape)
   grad_squeezed <- if (drop) grad else prim_reshape(grad, s[non_reduced])
-  grad_bc <- prim_broadcast_in_dim(grad_squeezed, collapsed_shape, seq_len(rank - 1L))
+  grad_bc <- prim_broadcast_in_axes(grad_squeezed, collapsed_shape, seq_len(rank - 1L))
 
   out_c <- if (reduced_size <= 1L) {
     grad_bc
@@ -907,19 +907,19 @@ prim_reduce_prod[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
     limits_n[rank] <- n - 1L
     narrow_n <- prim_static_slice(operand_c, starts_n, limits_n, full_strides)
     exclusive_normal <- prim_cumprod(
-      prim_concatenate(ones, narrow_n, dimension = rank),
-      dim = rank
+      prim_concatenate(ones, narrow_n, axis = rank),
+      axis = rank
     )
 
     starts_r <- rep(1L, rank)
     starts_r[rank] <- 2L
     narrow_r <- prim_reverse(
       prim_static_slice(operand_c, starts_r, collapsed_shape, full_strides),
-      dims = rank
+      axes = rank
     )
     exclusive_reverse <- prim_reverse(
-      prim_cumprod(prim_concatenate(ones, narrow_r, dimension = rank), dim = rank),
-      dims = rank
+      prim_cumprod(prim_concatenate(ones, narrow_r, axis = rank), axis = rank),
+      axes = rank
     )
 
     prim_mul(grad_bc, prim_mul(exclusive_normal, exclusive_reverse))
@@ -932,12 +932,12 @@ prim_reduce_prod[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 # cumulative (scan) reverse rules ----------------------------------------------
 
 prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  dim <- params$dim
+  axis <- params$axis
   grad <- grads[[1L]]
   list(
     # d/dx_i sum_{k<=j} x_k = 1[i<=j], so grad_i = sum_{j>=i} grad_out_j
-    # which is reverse-cumsum of grad_out along dim.
-    if (required[[1L]]) prim_reverse(prim_cumsum(prim_reverse(grad, dim), dim), dim)
+    # which is reverse-cumsum of grad_out along axis.
+    if (required[[1L]]) prim_reverse(prim_cumsum(prim_reverse(grad, axis), axis), axis)
   )
 })
 
@@ -948,23 +948,23 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   if (!required[[1L]]) {
     return(list(NULL))
   }
-  dim <- params$dim
+  axis <- params$axis
   x <- inputs[[1L]]
   indices <- outputs[[2L]]
   grad <- grads[[1L]]
   rank <- length(shape(x))
 
-  batching <- seq_len(rank)[-dim]
+  batching <- seq_len(rank)[-axis]
   list(prim_scatter(
     x = zeros_like(x),
     scatter_indices = indices,
     update = grad,
-    update_window_dims = integer(0),
-    inserted_window_dims = dim,
-    x_batching_dims = batching,
-    scatter_indices_batching_dims = batching,
-    scatter_dims_to_x_dims = dim,
-    index_vector_dim = rank + 1L,
+    update_window_axes = integer(0),
+    inserted_window_axes = axis,
+    x_batching_axes = batching,
+    scatter_indices_batching_axes = batching,
+    scatter_axes_to_x_axes = axis,
+    index_vector_axis = rank + 1L,
     unique_indices = FALSE,
     update_computation = prim_add
   ))
@@ -1038,12 +1038,12 @@ prim_dynamic_update_slice[["reverse"]] <- rule_reverse(function(inputs, outputs,
 
 prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   slice_sizes <- params$slice_sizes
-  offset_dims <- params$offset_dims
-  collapsed_slice_dims <- params$collapsed_slice_dims
-  x_batching_dims <- params$x_batching_dims
-  start_indices_batching_dims <- params$start_indices_batching_dims
+  offset_axes <- params$offset_axes
+  collapsed_slice_axes <- params$collapsed_slice_axes
+  x_batching_axes <- params$x_batching_axes
+  start_indices_batching_axes <- params$start_indices_batching_axes
   start_index_map <- params$start_index_map
-  index_vector_dim <- params$index_vector_dim
+  index_vector_axis <- params$index_vector_axis
   indices_are_sorted <- params$indices_are_sorted
   unique_indices <- params$unique_indices
 
@@ -1071,19 +1071,19 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
         x_shape = shape(x),
         slice_sizes = slice_sizes,
         start_index_map = start_index_map,
-        index_vector_dim = index_vector_dim
+        index_vector_axis = index_vector_axis
       )
 
       prim_scatter(
         x = zeros_like(x),
         scatter_indices = scatter_indices,
         update = grad,
-        update_window_dims = offset_dims,
-        inserted_window_dims = collapsed_slice_dims,
-        x_batching_dims = x_batching_dims,
-        scatter_indices_batching_dims = start_indices_batching_dims,
-        scatter_dims_to_x_dims = start_index_map,
-        index_vector_dim = index_vector_dim,
+        update_window_axes = offset_axes,
+        inserted_window_axes = collapsed_slice_axes,
+        x_batching_axes = x_batching_axes,
+        scatter_indices_batching_axes = start_indices_batching_axes,
+        scatter_axes_to_x_axes = start_index_map,
+        index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
         # Use addition to accumulate gradients when multiple gather positions
@@ -1097,12 +1097,12 @@ prim_gather[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
 
 
 prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  update_window_dims <- params$update_window_dims
-  inserted_window_dims <- params$inserted_window_dims
-  x_batching_dims <- params$x_batching_dims
-  scatter_indices_batching_dims <- params$scatter_indices_batching_dims
-  scatter_dims_to_x_dims <- params$scatter_dims_to_x_dims
-  index_vector_dim <- params$index_vector_dim
+  update_window_axes <- params$update_window_axes
+  inserted_window_axes <- params$inserted_window_axes
+  x_batching_axes <- params$x_batching_axes
+  scatter_indices_batching_axes <- params$scatter_indices_batching_axes
+  scatter_axes_to_x_axes <- params$scatter_axes_to_x_axes
+  index_vector_axis <- params$index_vector_axis
   indices_are_sorted <- params$indices_are_sorted
   unique_indices <- params$unique_indices
   update_computation_graph <- params$update_computation_graph
@@ -1130,9 +1130,9 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   slice_sizes <- scatter_to_gather_slice_sizes(
     update_shape = update_shape,
     x_shape = x_shape,
-    update_window_dims = update_window_dims,
-    inserted_window_dims = inserted_window_dims,
-    x_batching_dims = x_batching_dims
+    update_window_axes = update_window_axes,
+    inserted_window_axes = inserted_window_axes,
+    x_batching_axes = x_batching_axes
   )
 
   list(
@@ -1143,12 +1143,12 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
         x = grad,
         scatter_indices = scatter_indices,
         update = zeros_like(update),
-        update_window_dims = update_window_dims,
-        inserted_window_dims = inserted_window_dims,
-        x_batching_dims = x_batching_dims,
-        scatter_indices_batching_dims = scatter_indices_batching_dims,
-        scatter_dims_to_x_dims = scatter_dims_to_x_dims,
-        index_vector_dim = index_vector_dim,
+        update_window_axes = update_window_axes,
+        inserted_window_axes = inserted_window_axes,
+        x_batching_axes = x_batching_axes,
+        scatter_indices_batching_axes = scatter_indices_batching_axes,
+        scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+        index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
         update_computation = function(old, new) new
@@ -1163,12 +1163,12 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           x = grad,
           start_indices = scatter_indices,
           slice_sizes = slice_sizes,
-          offset_dims = update_window_dims,
-          collapsed_slice_dims = inserted_window_dims,
-          x_batching_dims = x_batching_dims,
-          start_indices_batching_dims = scatter_indices_batching_dims,
-          start_index_map = scatter_dims_to_x_dims,
-          index_vector_dim = index_vector_dim,
+          offset_axes = update_window_axes,
+          collapsed_slice_axes = inserted_window_axes,
+          x_batching_axes = x_batching_axes,
+          start_indices_batching_axes = scatter_indices_batching_axes,
+          start_index_map = scatter_axes_to_x_axes,
+          index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = TRUE
         )
@@ -1185,23 +1185,23 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 
         # a) Create unique positive IDs for each update "batch" position
         ids_shape <- update_shape
-        ids_shape[update_window_dims] <- 1L
+        ids_shape[update_window_axes] <- 1L
         num_ids <- prod(ids_shape)
         id_dtype <- "i64"
         update_ids <- prim_reshape(prim_iota(1L, id_dtype, num_ids, start = 1L), ids_shape)
-        update_ids <- prim_broadcast_in_dim(update_ids, update_shape, seq_along(update_shape))
+        update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
 
         # b) Scatter IDs to see which update "wins" at each position
         scattered_ids <- prim_scatter(
           x = prim_fill(0L, dtype = id_dtype, shape = x_shape),
           scatter_indices = scatter_indices,
           update = update_ids,
-          update_window_dims = update_window_dims,
-          inserted_window_dims = inserted_window_dims,
-          x_batching_dims = x_batching_dims,
-          scatter_indices_batching_dims = scatter_indices_batching_dims,
-          scatter_dims_to_x_dims = scatter_dims_to_x_dims,
-          index_vector_dim = index_vector_dim,
+          update_window_axes = update_window_axes,
+          inserted_window_axes = inserted_window_axes,
+          x_batching_axes = x_batching_axes,
+          scatter_indices_batching_axes = scatter_indices_batching_axes,
+          scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+          index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE,
           update_computation = function(old, new) new
@@ -1212,12 +1212,12 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           x = scattered_ids,
           start_indices = scatter_indices,
           slice_sizes = slice_sizes,
-          offset_dims = update_window_dims,
-          collapsed_slice_dims = inserted_window_dims,
-          x_batching_dims = x_batching_dims,
-          start_indices_batching_dims = scatter_indices_batching_dims,
-          start_index_map = scatter_dims_to_x_dims,
-          index_vector_dim = index_vector_dim,
+          offset_axes = update_window_axes,
+          collapsed_slice_axes = inserted_window_axes,
+          x_batching_axes = x_batching_axes,
+          start_indices_batching_axes = scatter_indices_batching_axes,
+          start_index_map = scatter_axes_to_x_axes,
+          index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE
         )
@@ -1227,12 +1227,12 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
           x = grad,
           start_indices = scatter_indices,
           slice_sizes = slice_sizes,
-          offset_dims = update_window_dims,
-          collapsed_slice_dims = inserted_window_dims,
-          x_batching_dims = x_batching_dims,
-          start_indices_batching_dims = scatter_indices_batching_dims,
-          start_index_map = scatter_dims_to_x_dims,
-          index_vector_dim = index_vector_dim,
+          offset_axes = update_window_axes,
+          collapsed_slice_axes = inserted_window_axes,
+          x_batching_axes = x_batching_axes,
+          start_indices_batching_axes = scatter_indices_batching_axes,
+          start_index_map = scatter_axes_to_x_axes,
+          index_vector_axis = index_vector_axis,
           indices_are_sorted = indices_are_sorted,
           unique_indices = FALSE
         )
@@ -1244,8 +1244,8 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 })
 
 diag_mask <- function(n) {
-  prim_iota(dim = 1L, dtype = "i32", shape = c(n, n), start = 0L) ==
-    prim_iota(dim = 2L, dtype = "i32", shape = c(n, n), start = 0L)
+  prim_iota(axis = 1L, dtype = "i32", shape = c(n, n), start = 0L) ==
+    prim_iota(axis = 2L, dtype = "i32", shape = c(n, n), start = 0L)
 }
 
 triangular_mask <- function(n, lower, unit_diagonal) {

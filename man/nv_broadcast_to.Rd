@@ -11,7 +11,7 @@ nv_broadcast_to(x, shape)
 Input array.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Each existing dimension must either match or be 1.}
+Target shape. Each existing axis must either match or be 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -28,5 +28,5 @@ nv_broadcast_to(x, shape = c(2, 3))
 }
 \seealso{
 \code{\link[=nv_broadcast_arrays]{nv_broadcast_arrays()}}, \code{\link[=nv_broadcast_scalars]{nv_broadcast_scalars()}},
-\code{\link[=prim_broadcast_in_dim]{prim_broadcast_in_dim()}} for the underlying primitive.
+\code{\link[=prim_broadcast_in_axes]{prim_broadcast_in_axes()}} for the underlying primitive.
 }
