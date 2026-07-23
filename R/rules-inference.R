@@ -1444,3 +1444,103 @@ infer_dot_general <- function(lhs, rhs, contracting_axes, batching_axes) {
 
   AbstractArray(dtype(lhs), out_dim)
 }
+
+# --- Reduction / cumulative / arg-extreme (native, moved from primitives.R) ---
+
+infer_reduce <- function(x, axes, drop) {
+  old_shape <- shape(x)
+  if (drop) {
+    new_shape <- old_shape[-axes]
+  } else {
+    new_shape <- old_shape
+    new_shape[axes] <- 1L
+  }
+  list(AbstractArray(
+    dtype = dtype(x),
+    shape = Shape(new_shape),
+    ambiguous = x$ambiguous
+  ))
+}
+
+infer_reduce_boolean <- function(x, axes, drop) {
+  old_shape <- shape(x)
+  if (drop) {
+    new_shape <- old_shape[-axes]
+  } else {
+    new_shape <- old_shape
+    new_shape[axes] <- 1L
+  }
+  list(AbstractArray(
+    dtype = "bool",
+    shape = Shape(new_shape),
+    ambiguous = FALSE
+  ))
+}
+
+infer_cum <- function(x, axis) {
+  rank <- length(shape(x))
+  if (rank == 0L) {
+    cli_abort("cumulative ops require at least a 1-dimensional {.arg x}, but it is a scalar")
+  }
+  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
+    cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
+  }
+  list(AbstractArray(
+    dtype = dtype(x),
+    shape = Shape(shape(x)),
+    ambiguous = x$ambiguous
+  ))
+}
+
+infer_cum_extreme <- function(x, axis) {
+  rank <- length(shape(x))
+  if (rank == 0L) {
+    cli_abort("cumulative ops require at least a 1-dimensional {.arg x}, but it is a scalar")
+  }
+  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
+    cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
+  }
+  list(
+    AbstractArray(
+      dtype = dtype(x),
+      shape = Shape(shape(x)),
+      ambiguous = x$ambiguous
+    ),
+    AbstractArray(
+      dtype = "i32",
+      shape = Shape(shape(x)),
+      ambiguous = FALSE
+    )
+  )
+}
+
+infer_fn_arg_extreme <- function(x, axis, drop) {
+  shp <- shape(x)
+  if (axis > length(shp)) {
+    cli_abort(c(
+      "{.arg axis} is out of bounds.",
+      x = "`x` has {length(shp)} axes, got {.arg axis} = {axis}."
+    ))
+  }
+  # The reduction lowering uses `init_v = +/-Inf` and `init_i = 0`. Reducing
+  # along a size-0 axis would silently emit those sentinels (i.e. index 1)
+  # rather than failing. Argmax/argmin of an empty axis is undefined, so
+  # reject it here at trace time.
+  if (shp[axis] == 0L) {
+    cli_abort(c(
+      "argmax/argmin is undefined for an empty axis.",
+      x = "`x` has shape {xlamisc::shapevec_repr(shp)}; {.arg axis} = {axis} has size 0."
+    ))
+  }
+  if (drop) {
+    new_shape <- shp[-axis]
+  } else {
+    new_shape <- shp
+    new_shape[axis] <- 1L
+  }
+  list(AbstractArray(
+    dtype = "i32",
+    shape = Shape(new_shape),
+    ambiguous = FALSE
+  ))
+}
