@@ -112,7 +112,9 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
 # dtype (f32 or f64). Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x)) {
   dt <- as_dtype(x)
-  if (!is_dtype_float(dt)) {
+  # Deliberately narrower than is_dtype_float(): the callers (rng, sampling)
+  # assume 32/64-bit float layouts.
+  if (dt != "f32" && dt != "f64") {
     cli_abort(c(
       "{.arg {arg}} must be a floating-point dtype (f32 or f64).",
       "x" = "Got {.val {as.character(dt)}}."
