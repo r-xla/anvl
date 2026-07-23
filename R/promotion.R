@@ -86,7 +86,7 @@ promote_dt_known <- function(dt1, dt2) {
   }
   if (is_dtype_float(dt1)) {
     if (is_dtype_float(dt2)) {
-      return(as_dtype(paste0("f", max(dtype_bits(dt1), dtype_bits(dt2)))))
+      return(as_dtype(paste0("f", max(dtype_width(dt1), dtype_width(dt2)))))
     }
     # bools and integers are cast to the float
     return(dt1)
@@ -96,28 +96,28 @@ promote_dt_known <- function(dt1, dt2) {
   }
   if (is_dtype_int(dt1)) {
     if (is_dtype_int(dt2)) {
-      return(as_dtype(paste0("i", max(dtype_bits(dt1), dtype_bits(dt2)))))
+      return(as_dtype(paste0("i", max(dtype_width(dt1), dtype_width(dt2)))))
     }
-    if (dtype_bits(dt2) < dtype_bits(dt1)) {
+    if (dtype_width(dt2) < dtype_width(dt1)) {
       # the int can hold the unsigned int
       return(dt1)
     }
     # int can't hold the unsigned int
     # we use signed int, but increase bits of unsigned int
     # this can lead to overflows then we have uint64 but this can't be avoided
-    return(as_dtype(paste0("i", min(64L, dtype_bits(dt2) * 2L))))
+    return(as_dtype(paste0("i", min(64L, dtype_width(dt2) * 2L))))
   }
   if (is_dtype_int(dt2)) {
     if (is_dtype_uint(dt1)) {
-      if (dtype_bits(dt2) > dtype_bits(dt1)) {
+      if (dtype_width(dt2) > dtype_width(dt1)) {
         return(dt2)
       }
-      return(as_dtype(paste0("i", min(64L, dtype_bits(dt1) * 2L))))
+      return(as_dtype(paste0("i", min(64L, dtype_width(dt1) * 2L))))
     }
     cli_abort("internal error")
   }
   # both are unsigned
-  as_dtype(paste0("ui", max(dtype_bits(dt1), dtype_bits(dt2))))
+  as_dtype(paste0("ui", max(dtype_width(dt1), dtype_width(dt2))))
 }
 
 default_dtype <- function(x) {
