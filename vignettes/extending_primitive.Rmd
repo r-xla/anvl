@@ -66,8 +66,8 @@ prim_repeat_along <- new_primitive(
   function(x, times, dim) {
     # type of `x` is checked by graph_desc_add()
     infer_fn <- function(x, times, dim) {
-      if (!checkmate::test_integerish(dim, lower = 1, upper = ndims(x), len = 1L)) {
-        cli::cli_abort("{.arg dim} must be between 1 and {ndims(x)}, but is {.val dim}")
+      if (!checkmate::test_integerish(dim, lower = 1, upper = naxes(x), len = 1L)) {
+        cli::cli_abort("{.arg dim} must be between 1 and {naxes(x)}, but is {.val dim}")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
         cli_abort("times must be a positive integer, but is {times}")
