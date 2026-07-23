@@ -1,11 +1,11 @@
 # Primitive Reverse
 
-Reverses the order of elements along specified dimensions.
+Reverses the order of elements along specified axes.
 
 ## Usage
 
 ``` r
-prim_reverse(x, dims)
+prim_reverse(x, axes)
 ```
 
 ## Arguments
@@ -15,11 +15,11 @@ prim_reverse(x, dims)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reverse. Negative values count from the end, i.e. `-1`
-  refers to the last dimension.
+  Axes to reverse. Negative values count from the end, i.e. `-1` refers
+  to the last axis.
 
 ## Value
 
@@ -48,7 +48,7 @@ Lowers to
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4, 5))
-prim_reverse(x, dims = 1L)
+prim_reverse(x, axes = 1L)
 #> AnvlArray
 #>  5
 #>  4

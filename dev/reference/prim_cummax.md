@@ -1,15 +1,15 @@
 # Primitive Cumulative Maximum
 
-Running maximum of array elements along a single dimension along with
-the index of the last occurrence of the running maximum. At output
-position `j`, the values output is `max(input[1:j])` and the indices
-output is the largest `i` in `1:j` with `input[i] == values[j]`
-(last-occurrence tiebreak).
+Running maximum of array elements along a single axis along with the
+index of the last occurrence of the running maximum. At output position
+`j`, the values output is `max(input[1:j])` and the indices output is
+the largest `i` in `1:j` with `input[i] == values[j]` (last-occurrence
+tiebreak).
 
 ## Usage
 
 ``` r
-prim_cummax(x, dim)
+prim_cummax(x, axis)
 ```
 
 ## Arguments
@@ -19,11 +19,11 @@ prim_cummax(x, dim)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to accumulate. Negative values count from the
-  end, i.e. `-1` refers to the last dimension.
+  Axis along which to accumulate. Negative values count from the end,
+  i.e. `-1` refers to the last axis.
 
 ## Value
 
@@ -53,7 +53,7 @@ over `(values, iota)`.
 
 ``` r
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
-prim_cummax(x, dim = 1L)
+prim_cummax(x, axis = 1L)
 #> [[1]]
 #> AnvlArray
 #>  3 4 5

@@ -51,7 +51,7 @@ rbf_kernel_matrix <- function(X1, X2, lengthscale, signal_var) {
     nv_reshape(X2, c(1L, m, d))
   )
   diff <- diff[[1L]] - diff[[2L]]
-  sq_dist <- nv_reduce_sum(diff * diff, dims = 3L)
+  sq_dist <- nv_reduce_sum(diff * diff, axes = 3L)
   signal_var * exp(-sq_dist / (2 * lengthscale^2))
 }
 ```
@@ -265,11 +265,11 @@ neg_log_marginal_likelihood <- function(kernel, X, y, lengthscale, signal_var, n
   )
 
   # Data fit term: 0.5 * y^T %*% alpha
-  data_fit <- 0.5 * nv_reduce_sum(y * alpha, dims = c(1L, 2L))
+  data_fit <- 0.5 * nv_reduce_sum(y * alpha, axes = c(1L, 2L))
 
   # Log determinant: sum(log(diag(L)))
-  diag_L <- nv_reduce_sum(L * eye, dims = 2L)
-  log_det <- nv_reduce_sum(log(diag_L), dims = 1L)
+  diag_L <- nv_reduce_sum(L * eye, axes = 2L)
+  log_det <- nv_reduce_sum(log(diag_L), axes = 1L)
 
   data_fit + log_det
 }

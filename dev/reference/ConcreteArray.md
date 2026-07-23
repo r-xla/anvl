@@ -39,7 +39,7 @@ ambiguous(x)
 #> [1] FALSE
 shape(x)
 #> [1] 2
-ndims(x)
+naxes(x)
 #> [1] 1
 dtype(x)
 #> <f32>

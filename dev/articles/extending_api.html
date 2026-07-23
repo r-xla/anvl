@@ -297,19 +297,19 @@ one primitive operation with <code>#' @jit</code>:</p>
 <span>  <span class="fu"><a href="../reference/nv_log.html">nv_log</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>If the function has static arguments (anything that is not an
-arrayish input – dims, shape, dtype, control flags, functions used as
+arrayish input – axes, shape, dtype, control flags, functions used as
 templates, …), list them with <code>static = c(...)</code> using either
 positional indices or argument names:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#' @export</span></span>
 <span><span class="co">#' @jit static = c(2L, 3L)</span></span>
-<span><span class="va">nv_mean</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">dims</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">drop</span> <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="va">nv_mean</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">axes</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">drop</span> <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co">#' @export</span></span>
-<span><span class="co">#' @jit static = c("dimension")</span></span>
-<span><span class="va">nv_concatenate</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">dimension</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="co">#' @jit static = c("axis")</span></span>
+<span><span class="va">nv_concatenate</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span>, <span class="va">axis</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Use names rather than positions whenever an argument lives after

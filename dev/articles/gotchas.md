@@ -103,7 +103,7 @@ nv_array(1:4) + nv_array(1:2)
     ## ! All non-scalar arrays must have the same shape, but got (4), (2). Use
     ##   `nv_broadcast_arrays()` for general broadcasting.
 
-When two non-scalar arrays differ only by size-1 dimensions (numpy-style
+When two non-scalar arrays differ only by size-1 axes (numpy-style
 broadcasting, e.g. shape `(2, 3)` and `(1, 3)`), use
 [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
 to align them explicitly first:

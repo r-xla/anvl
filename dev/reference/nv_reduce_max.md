@@ -1,11 +1,11 @@
 # Max Reduction
 
-Finds the maximum of array elements along the specified dimensions.
+Finds the maximum of array elements along the specified axes.
 
 ## Usage
 
 ``` r
-nv_reduce_max(x, dims = NULL, drop = TRUE, nan_rm = FALSE)
+nv_reduce_max(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -15,17 +15,17 @@ nv_reduce_max(x, dims = NULL, drop = TRUE, nan_rm = FALSE)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Input array.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Dimensions to reduce. Negative values count from the end, i.e. `-1`
-  refers to the last dimension. If `NULL` (default), reduces over all
-  dimensions, returning a scalar.
+  Axes to reduce. Negative values count from the end, i.e. `-1` refers
+  to the last axis. If `NULL` (default), reduces over all axes,
+  returning a scalar.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced dimensions.
+  Whether to drop reduced axes.
 
 - nan_rm:
 
@@ -37,8 +37,7 @@ nv_reduce_max(x, dims = NULL, drop = TRUE, nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as the input. When `drop = TRUE`, the reduced
-dimensions are removed. When `drop = FALSE`, the reduced dimensions are
-set to 1.
+axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
 
 ## See also
 
@@ -49,11 +48,11 @@ for the underlying primitive.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-nv_reduce_max(x)            # all dims -> scalar
+nv_reduce_max(x)            # all axes -> scalar
 #> AnvlArray
 #>  6
 #> [ CPUi32{} ] 
-nv_reduce_max(x, dims = 1L)
+nv_reduce_max(x, axes = 1L)
 #> AnvlArray
 #>  2
 #>  4

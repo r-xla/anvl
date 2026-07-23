@@ -19,7 +19,7 @@ because it does not apply for a specific primitive.
 | atan2                  |     ✓     |   ✗    |    ✓    |
 | atanh                  |     ✓     |   ✗    |    ✓    |
 | bitcast_convert        |     ✓     |   ✗    |    ✓    |
-| broadcast_in_dim       |     ✓     |   ✓    |    ✓    |
+| broadcast_in_axes      |     ✓     |   ✓    |    ✓    |
 | cbrt                   |     ✓     |   ✗    |    ✓    |
 | ceil                   |     ✓     |   ✓    |    ✓    |
 | cholesky               |     ✓     |   ✗    |    ✓    |

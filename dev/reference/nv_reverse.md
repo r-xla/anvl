@@ -1,11 +1,11 @@
 # Reverse
 
-Reverses the order of elements along specified dimensions.
+Reverses the order of elements along specified axes.
 
 ## Usage
 
 ``` r
-nv_reverse(x, dims)
+nv_reverse(x, axes)
 ```
 
 ## Arguments
@@ -15,11 +15,11 @@ nv_reverse(x, dims)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Input array.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reverse. Negative values count from the end, i.e. `-1`
-  refers to the last dimension.
+  Axes to reverse. Negative values count from the end, i.e. `-1` refers
+  to the last axis.
 
 ## Value
 
@@ -35,7 +35,7 @@ for the underlying primitive.
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4, 5))
-nv_reverse(x, dims = 1L)
+nv_reverse(x, axes = 1L)
 #> AnvlArray
 #>  5
 #>  4

@@ -23,14 +23,14 @@ prim_dynamic_update_slice(x, update, ...)
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   The values to write at the specified position. Must have the same data
-  type and number of dimensions as `x`, with
-  `nv_shape(update) <= nv_shape(x)` per dimension.
+  type and number of axes as `x`, with `nv_shape(update) <= nv_shape(x)`
+  per axis.
 
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
   of integer type)  
-  Scalar start indices, one per dimension of `x`. Each must be a scalar
+  Scalar start indices, one per axis of `x`. Each must be a scalar
   array.
 
 ## Value

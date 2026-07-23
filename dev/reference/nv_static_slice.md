@@ -21,17 +21,17 @@ nv_static_slice(x, start_indices, limit_indices, strides)
 - start_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Start indices (inclusive), one per dimension.
+  Start indices (inclusive), one per axis.
 
 - limit_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  End indices (inclusive), one per dimension.
+  End indices (inclusive), one per axis.
 
 - strides:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Step sizes, one per dimension. A stride of 1 selects every element.
+  Step sizes, one per axis. A stride of 1 selects every element.
 
 ## Value
 

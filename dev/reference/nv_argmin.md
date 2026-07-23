@@ -1,12 +1,12 @@
 # Index of the Minimum
 
-Returns the index of the minimum value along a dimension. Ties are
-broken by returning the smallest index.
+Returns the index of the minimum value along an axis. Ties are broken by
+returning the smallest index.
 
 ## Usage
 
 ``` r
-nv_argmin(x, dim = NULL, drop = TRUE, nan_rm = FALSE)
+nv_argmin(x, axis = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -16,18 +16,18 @@ nv_argmin(x, dim = NULL, drop = TRUE, nan_rm = FALSE)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Input array.
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to find the index. Negative values count from
-  the end, i.e. `-1` refers to the last dimension. If `NULL` (default),
-  uses the last dimension.
+  Axis along which to find the index. Negative values count from the
+  end, i.e. `-1` refers to the last axis. If `NULL` (default), uses the
+  last axis.
 
 - drop:
 
   (`logical(1)`)  
-  If `TRUE` (default) the reduced dimension is removed; if `FALSE` it is
-  kept with size 1.
+  If `TRUE` (default) the reduced axis is removed; if `FALSE` it is kept
+  with size 1.
 
 - nan_rm:
 
@@ -39,7 +39,7 @@ nv_argmin(x, dim = NULL, drop = TRUE, nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
 dtype `i32`  
-Same shape as `x` with `dim` removed (or set to 1 if `drop = FALSE`).
+Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 
 ## NaN handling
 

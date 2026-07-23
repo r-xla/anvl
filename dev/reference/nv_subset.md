@@ -1,9 +1,9 @@
 # Subset an Array
 
 Extracts a subset from an array. You can also use the `[` operator.
-Supports R-style indexing including scalar indices (which drop
-dimensions), ranges (`a:b`), and `array(c(...))` for selecting multiple
-elements along a dimension.
+Supports R-style indexing including scalar indices (which drop axes),
+ranges (`a:b`), and `array(c(...))` for selecting multiple elements
+along a axis.
 
 ## Usage
 
@@ -23,8 +23,8 @@ nv_subset(x, ...)
 
 - ...:
 
-  Subset specifications, one per dimension. Omitted trailing dimensions
-  select all elements. See
+  Subset specifications, one per axis. Omitted trailing axes select all
+  elements. See
   [`vignette("subsetting")`](https://r-xla.github.io/anvl/dev/articles/subsetting.md)
   for details.
 

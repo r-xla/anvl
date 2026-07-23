@@ -1,8 +1,8 @@
 # Cholesky Decomposition
 
 Computes the Cholesky decomposition of a symmetric positive-definite
-matrix. Supports batched inputs: dimensions before the last two are
-batch dimensions.
+matrix. Supports batched inputs: axes before the last two are batch
+axes.
 
 ## Usage
 
@@ -18,9 +18,8 @@ chol(x, ..., lower = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Symmetric positive-definite matrix with at least 2 dimensions. The
-  last two dimensions form the square matrix; any leading dimensions are
-  batch dimensions.
+  Symmetric positive-definite matrix with at least 2 axes. The last two
+  axes form the square matrix; any leading axes are batch axes.
 
 - lower:
 

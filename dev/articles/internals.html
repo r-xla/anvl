@@ -536,9 +536,9 @@ below:</p>
 <span><span class="co">##     %c1: f32[1000000]</span></span>
 <span><span class="co">##   Body:</span></span>
 <span><span class="co">##     %1: f32[] = convert [dtype = f32, ambiguous = FALSE] (%x1)</span></span>
-<span><span class="co">##     %2: f32[1000000] = broadcast_in_dim [shape = 1000000, broadcast_dimensions = &lt;any&gt;] (%1)</span></span>
+<span><span class="co">##     %2: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = &lt;any&gt;] (%1)</span></span>
 <span><span class="co">##     %3: f32[1000000] = add(%2, %c1)</span></span>
-<span><span class="co">##     %4: f32?[1000000] = broadcast_in_dim [shape = 1000000, broadcast_dimensions = &lt;any&gt;] (1:f32?)</span></span>
+<span><span class="co">##     %4: f32?[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = &lt;any&gt;] (1:f32?)</span></span>
 <span><span class="co">##     %5: f32[1000000] = add(%3, %4)</span></span>
 <span><span class="co">##   Outputs:</span></span>
 <span><span class="co">##     %5: f32[1000000]</span></span></code></pre>

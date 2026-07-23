@@ -2,7 +2,7 @@
 
 Matrix multiplication of two arrays. You can also use the `%*%`
 operator. Supports batched matrix multiplication when inputs have more
-than 2 dimensions.
+than 2 axes.
 
 ## Usage
 
@@ -15,8 +15,7 @@ nv_matmul(lhs, rhs, precision = "highest")
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrays with at least 2 dimensions. Operands are [promoted to a common
-  data
+  Arrays with at least 2 axes. Operands are [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
 
 - precision:

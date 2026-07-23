@@ -1,7 +1,7 @@
 # Primitive Cholesky Decomposition
 
 Computes the Cholesky decomposition of a symmetric positive-definite
-matrix. Dimensions before the last two are batch dimensions.
+matrix. Axes before the last two are batch axes.
 
 ## Usage
 
@@ -14,9 +14,9 @@ prim_chol(x, lower = FALSE)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrayish value of data type floating-point with at least 2 dimensions.
-  The last two dimensions must be equal (square matrix); any leading
-  dimensions are batch dimensions.
+  Arrayish value of data type floating-point with at least 2 axes. The
+  last two axes must be equal (square matrix); any leading axes are
+  batch axes.
 
 - lower:
 

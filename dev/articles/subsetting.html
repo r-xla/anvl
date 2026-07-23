@@ -178,7 +178,7 @@ subset-assignment.</p>
 </h3>
 <p>Let’s start with some simple examples of selecting individual
 elements from a 1-dimensional array. The index can be either static or
-dynamic and we can drop or keep the dimension:</p>
+dynamic and we can drop or keep the axis:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
@@ -229,10 +229,10 @@ array without having to wrap the values in <code><a href="https://rdrr.io/r/base
 <p>Below, we perform almost the same operation as above, except that we
 use an array of shape <code>(1)</code> instead of a scalar with shape
 <code>()</code>. The difference is that subsetting with the former will
-preserve the dimension, while the latter will drop it, as we have seen
-above. This ensures that the dimensionality of the result is the same
-for any 1D subset specification, and does not suddenly “simplify” the
-result to 0D.</p>
+preserve the axis, while the latter will drop it, as we have seen above.
+This ensures that the dimensionality of the result is the same for any
+1D subset specification, and does not suddenly “simplify” the result to
+0D.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -266,8 +266,8 @@ between static and dynamic indices.</p>
 </ul>
 <p>We use <code><a href="../reference/arr.html">arr()</a></code> (or equivalently <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>)
 instead of a bare R vector, because otherwise the case where we use a
-length-1 vector would be ambiguous (do we drop or keep the dimension?).
-This allows us to do without a <code>drop</code> parameter.</p>
+length-1 vector would be ambiguous (do we drop or keep the axis?). This
+allows us to do without a <code>drop</code> parameter.</p>
 <p>We can also use a range that can be specified either canonically via
 <code>a:b</code> or using <code><a href="../reference/nv_seq.html">nv_seq()</a></code>.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">

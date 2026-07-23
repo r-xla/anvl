@@ -122,7 +122,7 @@ graph
 #>   Constants:
 #>     %c1: f32[2]
 #>   Body:
-#>     %1: f32[2] = broadcast_in_dim [shape = 2, broadcast_dimensions = <any>] (%x1)
+#>     %1: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = <any>] (%x1)
 #>     %2: f32[2] = add(%1, %c1)
 #>   Outputs:
 #>     %2: f32[2] 

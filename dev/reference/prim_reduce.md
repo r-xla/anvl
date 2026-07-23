@@ -1,12 +1,12 @@
 # Primitive Generic Reduce
 
-Reduces an array along the specified dimensions using a user-supplied
+Reduces an array along the specified axes using a user-supplied
 associative reducer.
 
 ## Usage
 
 ``` r
-prim_reduce(x, init, dims, drop = TRUE, reductor)
+prim_reduce(x, init, axes, drop = TRUE, reductor)
 ```
 
 ## Arguments
@@ -22,17 +22,17 @@ prim_reduce(x, init, dims, drop = TRUE, reductor)
   Scalar (0-dimensional) initial value. Must have the same data type as
   `x` and be the neutral element w.r.t. `reductor`.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reduce over. Negative values count from the end, i.e.
-  `-1` refers to the last dimension.
+  Axes to reduce over. Negative values count from the end, i.e. `-1`
+  refers to the last axis.
 
 - drop:
 
   (`logical(1)`)  
-  If `TRUE` (default) the reduced dimensions are removed; if `FALSE`
-  they are kept with size 1.
+  If `TRUE` (default) the reduced axes are removed; if `FALSE` they are
+  kept with size 1.
 
 - reductor:
 
@@ -43,7 +43,7 @@ prim_reduce(x, init, dims, drop = TRUE, reductor)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same data type as `x`. Shape is `x` with `dims` removed (or set to 1 if
+Same data type as `x`. Shape is `x` with `axes` removed (or set to 1 if
 `drop = FALSE`).
 
 ## Associativity Requirement
@@ -74,11 +74,11 @@ with `reductor` as the body.
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4))
-prim_reduce(x, init = nv_scalar(0), dims = 1L, reductor = prim_add)
+prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
 #> AnvlArray
 #>  10
 #> [ CPUf32{} ] 
-prim_reduce(x, init = nv_scalar(1), dims = 1L, reductor = prim_mul)
+prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)
 #> AnvlArray
 #>  24
 #> [ CPUf32{} ] 

@@ -185,10 +185,10 @@ when one shape is a “tile” of the other:</p>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `nv_broadcast_scalars()`:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> All non-scalar arrays must have the same shape, but got (4), (2). Use</span></span>
 <span><span class="co">##   `nv_broadcast_arrays()` for general broadcasting.</span></span></code></pre>
-<p>When two non-scalar arrays differ only by size-1 dimensions
-(numpy-style broadcasting, e.g. shape <code>(2, 3)</code> and
-<code>(1, 3)</code>), use <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> to align
-them explicitly first:</p>
+<p>When two non-scalar arrays differ only by size-1 axes (numpy-style
+broadcasting, e.g. shape <code>(2, 3)</code> and <code>(1, 3)</code>),
+use <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> to align them explicitly
+first:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">a</span><span class="op">)</span></span></code></pre></div>

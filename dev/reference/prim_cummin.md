@@ -1,15 +1,15 @@
 # Primitive Cumulative Minimum
 
-Running minimum of array elements along a single dimension along with
-the index of the last occurrence of the running minimum. At output
-position `j`, the values output is `min(input[1:j])` and the indices
-output is the largest `i` in `1:j` with `input[i] == values[j]`
-(last-occurrence tiebreak).
+Running minimum of array elements along a single axis along with the
+index of the last occurrence of the running minimum. At output position
+`j`, the values output is `min(input[1:j])` and the indices output is
+the largest `i` in `1:j` with `input[i] == values[j]` (last-occurrence
+tiebreak).
 
 ## Usage
 
 ``` r
-prim_cummin(x, dim)
+prim_cummin(x, axis)
 ```
 
 ## Arguments
@@ -19,11 +19,11 @@ prim_cummin(x, dim)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to accumulate. Negative values count from the
-  end, i.e. `-1` refers to the last dimension.
+  Axis along which to accumulate. Negative values count from the end,
+  i.e. `-1` refers to the last axis.
 
 ## Value
 
@@ -53,7 +53,7 @@ over `(values, iota)`.
 
 ``` r
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
-prim_cummin(x, dim = 1L)
+prim_cummin(x, axis = 1L)
 #> [[1]]
 #> AnvlArray
 #>  3 4 5

@@ -107,15 +107,15 @@ Arrayish value of any data type.</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code> of integer type)<br>
-Scalar start indices, one per dimension. Each must be a
-scalar array. Pass one scalar per dimension of <code>x</code>.</p></dd>
+Scalar start indices, one per axis. Each must be a
+scalar array. Pass one scalar per axis of <code>x</code>.</p></dd>
 
 
 <dt id="arg-slice-sizes">slice_sizes<a class="anchor" aria-label="anchor" href="#arg-slice-sizes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Size of the slice in each dimension. Must have length equal to
-<code>ndims(x)</code> and satisfy <code>1 &lt;= slice_sizes &lt;= nv_shape(x)</code>
-per dimension.</p></dd>
+Size of the slice in each axis. Must have length equal to
+<code>naxes(x)</code> and satisfy <code>1 &lt;= slice_sizes &lt;= nv_shape(x)</code>
+per axis.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -5,12 +5,12 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Top-K — prim_top_k"><meta name="description" content="Returns the k largest values along the last dimension, sorted in
-descending order, together with their indices into that dimension.
-For other dimensions, transpose so the target dimension is last, call
-prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:description" content="Returns the k largest values along the last dimension, sorted in
-descending order, together with their indices into that dimension.
-For other dimensions, transpose so the target dimension is last, call
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Top-K — prim_top_k"><meta name="description" content="Returns the k largest values along the last axis, sorted in
+descending order, together with their indices into that axis.
+For other axes, transpose so the target axis is last, call
+prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:description" content="Returns the k largest values along the last axis, sorted in
+descending order, together with their indices into that axis.
+For other axes, transpose so the target axis is last, call
 prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -82,9 +82,9 @@ prim_top_k(), then transpose back. nv_top_k() does this."><meta property="og:ima
     </div>
 
     <div class="ref-description section level2">
-    <p>Returns the <code>k</code> largest values along the last dimension, sorted in
-descending order, together with their indices into that dimension.</p>
-<p>For other dimensions, transpose so the target dimension is last, call
+    <p>Returns the <code>k</code> largest values along the last axis, sorted in
+descending order, together with their indices into that axis.</p>
+<p>For other axes, transpose so the target axis is last, call
 <code>prim_top_k()</code>, then transpose back. <code><a href="nv_top_k.html">nv_top_k()</a></code> does this.</p>
     </div>
 
@@ -105,15 +105,15 @@ Tensor of integer, unsigned integer, or floating-point dtype with rank &gt;= 1.<
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
 Number of top elements. Must satisfy
-<code>1 &lt;= k &lt;= shape(x)[ndims(x)]</code>.</p></dd>
+<code>1 &lt;= k &lt;= shape(x)[naxes(x)]</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list</code> of two <code><a href="arrayish.html">arrayish</a></code> values:<br>
 The top-<code>k</code> values (same dtype as <code>x</code>) and their indices along
-the last dimension (dtype <code>i32</code>, matching JAX). Both have the same
-shape as <code>x</code> with the last dimension replaced by <code>k</code>. Ties are
+the last axis (dtype <code>i32</code>, matching JAX). Both have the same
+shape as <code>x</code> with the last axis replaced by <code>k</code>. Ties are
 broken by lower index first.</p>
     </div>
     <div class="section level2">

@@ -16,7 +16,7 @@ prim_qr(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 dimensions.
+  Matrix of data type floating-point with exactly 2 axes.
 
 ## Value
 

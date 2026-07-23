@@ -65,7 +65,7 @@ ambiguous(x)
 #> [1] TRUE
 shape(x)
 #> integer(0)
-ndims(x)
+naxes(x)
 #> [1] 0
 dtype(x)
 #> <i32>

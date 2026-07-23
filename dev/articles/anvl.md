@@ -119,7 +119,7 @@ The
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 function allows to convert `AnvlArray`s back to R objects, which
 involves copying the data. Note that for 0-dimensional arrays, the
-result is an R vector of length 1, as R arrays cannot have 0 dimensions.
+result is an R vector of length 1, as R arrays cannot have 0 axes.
 
 ``` r
 

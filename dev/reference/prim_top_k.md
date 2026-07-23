@@ -1,9 +1,9 @@
 # Primitive Top-K
 
-Returns the `k` largest values along the last dimension, sorted in
-descending order, together with their indices into that dimension.
+Returns the `k` largest values along the last axis, sorted in descending
+order, together with their indices into that axis.
 
-For other dimensions, transpose so the target dimension is last, call
+For other axes, transpose so the target axis is last, call
 `prim_top_k()`, then transpose back.
 [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md)
 does this.
@@ -25,7 +25,7 @@ prim_top_k(x, k)
 - k:
 
   (`integer(1)`)  
-  Number of top elements. Must satisfy `1 <= k <= shape(x)[ndims(x)]`.
+  Number of top elements. Must satisfy `1 <= k <= shape(x)[naxes(x)]`.
 
 ## Value
 
@@ -33,9 +33,8 @@ prim_top_k(x, k)
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 values:  
 The top-`k` values (same dtype as `x`) and their indices along the last
-dimension (dtype `i32`, matching JAX). Both have the same shape as `x`
-with the last dimension replaced by `k`. Ties are broken by lower index
-first.
+axis (dtype `i32`, matching JAX). Both have the same shape as `x` with
+the last axis replaced by `k`. Ties are broken by lower index first.
 
 ## Implemented Rules
 

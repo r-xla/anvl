@@ -136,9 +136,9 @@ See the <code><a href="../articles/type-promotion.html">vignette("type-promotion
 
 
 <p>The following extractors are available on <code>AbstractArray</code> objects:</p><ul><li><p><code><a href="https://r-xla.github.io/tengen/reference/dtype.html" class="external-link">dtype()</a></code>: Get the data type of the array.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (dimensions) of the array.</p></li>
+<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (axes) of the array.</p></li>
 <li><p><code><a href="ambiguous.html">ambiguous()</a></code>: Get whether the dtype is ambiguous.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/ndims.html" class="external-link">ndims()</a></code>: Get the number of dimensions.</p></li>
+<li><p><code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code>: Get the number of axes.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -170,7 +170,7 @@ See the <code><a href="../articles/type-promotion.html">vignette("type-promotion
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %x1: i32[4]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Body:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %1: f32?[4] = convert [dtype = f32, ambiguous = TRUE] (%x1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32?[4] = broadcast_in_dim [shape = 4, broadcast_dimensions = &lt;any&gt;] (1:f32?)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32?[4] = broadcast_in_axes [shape = 4, broadcast_axes = &lt;any&gt;] (1:f32?)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %3: f32?[4] = add(%1, %2)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %3: f32?[4] </span>

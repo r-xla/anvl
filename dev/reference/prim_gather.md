@@ -18,12 +18,12 @@ prim_gather(
   x,
   start_indices,
   slice_sizes,
-  offset_dims,
-  collapsed_slice_dims,
-  x_batching_dims,
-  start_indices_batching_dims,
+  offset_axes,
+  collapsed_slice_axes,
+  x_batching_axes,
+  start_indices_batching_axes,
   start_index_map,
-  index_vector_dim,
+  index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE
 )
@@ -41,54 +41,54 @@ prim_gather(
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
   of integer type)  
   Array of starting indices. Contains index vectors that map to
-  positions in `x` via `start_index_map`. The dimension specified by
-  `index_vector_dim` holds the index vectors.
+  positions in `x` via `start_index_map`. The axis specified by
+  `index_vector_axis` holds the index vectors.
 
 - slice_sizes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Size of the slice to gather from `x` in each dimension. Must have
-  length equal to `ndims(x)`.
+  Size of the slice to gather from `x` in each axis. Must have length
+  equal to `naxes(x)`.
 
-- offset_dims:
-
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions in the output that correspond to the non-collapsed slice
-  dimensions of `x`.
-
-- collapsed_slice_dims:
+- offset_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions of `x` that are collapsed (removed) from the slice. The
+  Axes in the output that correspond to the non-collapsed slice axes of
+  `x`.
+
+- collapsed_slice_axes:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Axes of `x` that are collapsed (removed) from the slice. The
   corresponding entries in `slice_sizes` must be `1`. Together with
-  `offset_dims` and `x_batching_dims`, these must account for all
-  dimensions of `x`.
+  `offset_axes` and `x_batching_axes`, these must account for all axes
+  of `x`.
 
-- x_batching_dims:
-
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions of `x` that are batch dimensions. Use `integer(0)` when
-  there are no batch dimensions.
-
-- start_indices_batching_dims:
+- x_batching_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions of `start_indices` that correspond to batch dimensions.
-  Must have the same length as `x_batching_dims`.
+  Axes of `x` that are batch axes. Use `integer(0)` when there are no
+  batch axes.
+
+- start_indices_batching_axes:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Axes of `start_indices` that correspond to batch axes. Must have the
+  same length as `x_batching_axes`.
 
 - start_index_map:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Maps each component of the index vector to an `x` dimension. For
-  example, `start_index_map = c(1L)` means each index vector indexes
-  into the first dimension of `x`.
+  Maps each component of the index vector to an `x` axis. For example,
+  `start_index_map = c(1L)` means each index vector indexes into the
+  first axis of `x`.
 
-- index_vector_dim:
+- index_vector_axis:
 
   (`integer(1)`)  
-  Dimension of `start_indices` that contains the index vectors. If set
-  to `ndims(start_indices) + 1`, each scalar element of `start_indices`
-  is treated as a length-1 index vector.
+  Axis of `start_indices` that contains the index vectors. If set to
+  `naxes(start_indices) + 1`, each scalar element of `start_indices` is
+  treated as a length-1 index vector.
 
 - indices_are_sorted:
 
@@ -108,7 +108,7 @@ prim_gather(
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as `x`. The output shape is composed of the
-offset dimensions (from the slice) and the remaining dimensions from
+offset axes (from the slice) and the remaining axes from
 `start_indices`. See the underluing stableHLO function for more details.
 
 ## Out Of Bounds Behavior
@@ -147,12 +147,12 @@ indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(
   x, indices,
   slice_sizes = c(1L, 3L),
-  offset_dims = 2L,
-  collapsed_slice_dims = 1L,
-  x_batching_dims = integer(0),
-  start_indices_batching_dims = integer(0),
+  offset_axes = 2L,
+  collapsed_slice_axes = 1L,
+  x_batching_axes = integer(0),
+  start_indices_batching_axes = integer(0),
   start_index_map = 1L,
-  index_vector_dim = 2L
+  index_vector_axis = 2L
 )
 #> AnvlArray
 #>  1 4 7

@@ -21,8 +21,8 @@ prim_bitcast_convert(x, dtype)
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Target data type. If it has the same bit width as the input, the
-  output shape is unchanged. If narrower, an extra trailing dimension is
-  added. If wider, the last dimension is consumed.
+  output shape is unchanged. If narrower, an extra trailing axis is
+  added. If wider, the last axis is consumed.
 
 ## Value
 

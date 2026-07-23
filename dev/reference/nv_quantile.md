@@ -1,16 +1,16 @@
 # Quantile
 
-Computes the `probs` quantile(s) of an array along a dimension.
+Computes the `probs` quantile(s) of an array along an axis.
 
 `probs` follows the same scalar-vs-array convention as
 [`nv_select()`](https://r-xla.github.io/anvl/dev/reference/nv_select.md)'s
 `index`:
 
 - a length-1 numeric (e.g. `0.5`) treats `probs` as scalar — the output
-  has `dim` removed, like a reduction;
+  has `axis` removed, like a reduction;
 
 - a 1-D R array (e.g. `array(c(0.25, 0.5, 0.75))`) prepends a leading
-  dimension of size `length(probs)`.
+  axis of size `length(probs)`.
 
 Plain length-K (K \> 1) vectors are rejected; wrap with
 [`array()`](https://rdrr.io/r/base/array.html) to make the array intent
@@ -19,7 +19,7 @@ explicit.
 ## Usage
 
 ``` r
-nv_quantile(x, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -33,16 +33,16 @@ nv_quantile(x, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE)
 
   (`numeric(1)` \| 1-D `array`)  
   One or more probabilities in `[0, 1]`. Either a length-1 numeric
-  (scalar; `dim` is dropped) or a 1-D `array` (a leading dim of size
+  (scalar; `axis` is dropped) or a 1-D `array` (a leading axis of size
   `length(probs)` is prepended). Plain length-K (K \> 1) vectors are
   rejected — wrap with [`array()`](https://rdrr.io/r/base/array.html).
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to compute the quantile. Negative values count
-  from the end, i.e. `-1` refers to the last dimension. If `NULL`
-  (default), uses the last dimension.
+  Axis along which to compute the quantile. Negative values count from
+  the end, i.e. `-1` refers to the last axis. If `NULL` (default), uses
+  the last axis.
 
 - interpolation:
 
@@ -59,8 +59,8 @@ nv_quantile(x, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-For scalar `probs`: same shape as `x` with `dim` removed. For array
-`probs`: a **leading** dimension of size `length(probs)` is prepended.
+For scalar `probs`: same shape as `x` with `axis` removed. For array
+`probs`: a **leading** axis of size `length(probs)` is prepended.
 
 ## Interpolation modes
 

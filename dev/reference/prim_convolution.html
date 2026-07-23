@@ -6,10 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Convolution — prim_convolution"><meta name="description" content="General N-D windowed convolution, lowering to StableHLO's
-convolution op. Dimension numbers are given 1-based (anvl
+convolution op. Axis numbers are given 1-based (anvl
 convention) and converted to StableHLO's 0-based layout internally.
 Most users want nv_conv1d() / nv_conv2d() / nv_conv3d() instead."><meta property="og:description" content="General N-D windowed convolution, lowering to StableHLO's
-convolution op. Dimension numbers are given 1-based (anvl
+convolution op. Axis numbers are given 1-based (anvl
 convention) and converted to StableHLO's 0-based layout internally.
 Most users want nv_conv1d() / nv_conv2d() / nv_conv3d() instead."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -83,7 +83,7 @@ Most users want nv_conv1d() / nv_conv2d() / nv_conv3d() instead."><meta property
 
     <div class="ref-description section level2">
     <p>General N-D windowed convolution, lowering to StableHLO's
-<code>convolution</code> op. Dimension numbers are given 1-based (anvl
+<code>convolution</code> op. Axis numbers are given 1-based (anvl
 convention) and converted to StableHLO's 0-based layout internally.
 Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="nv_conv3d.html">nv_conv3d()</a></code> instead.</p>
     </div>
@@ -93,15 +93,15 @@ Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_convolution</span><span class="op">(</span></span>
 <span>  <span class="va">lhs</span>,</span>
 <span>  <span class="va">rhs</span>,</span>
-<span>  <span class="va">input_batch_dimension</span>,</span>
-<span>  <span class="va">input_feature_dimension</span>,</span>
-<span>  <span class="va">input_spatial_dimensions</span>,</span>
-<span>  <span class="va">kernel_input_feature_dimension</span>,</span>
-<span>  <span class="va">kernel_output_feature_dimension</span>,</span>
-<span>  <span class="va">kernel_spatial_dimensions</span>,</span>
-<span>  <span class="va">output_batch_dimension</span>,</span>
-<span>  <span class="va">output_feature_dimension</span>,</span>
-<span>  <span class="va">output_spatial_dimensions</span>,</span>
+<span>  <span class="va">input_batch_axis</span>,</span>
+<span>  <span class="va">input_feature_axis</span>,</span>
+<span>  <span class="va">input_spatial_axes</span>,</span>
+<span>  <span class="va">kernel_input_feature_axis</span>,</span>
+<span>  <span class="va">kernel_output_feature_axis</span>,</span>
+<span>  <span class="va">kernel_spatial_axes</span>,</span>
+<span>  <span class="va">output_batch_axis</span>,</span>
+<span>  <span class="va">output_feature_axis</span>,</span>
+<span>  <span class="va">output_spatial_axes</span>,</span>
 <span>  <span class="va">window_strides</span>,</span>
 <span>  <span class="va">padding</span>,</span>
 <span>  <span class="va">lhs_dilation</span>,</span>
@@ -124,36 +124,36 @@ Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br> Kernel, e.g. <code>[out_ch, in_ch/groups, *spatial]</code>.</p></dd>
 
 
-<dt id="arg-input-batch-dimension-input-feature-dimension">input_batch_dimension, input_feature_dimension<a class="anchor" aria-label="anchor" href="#arg-input-batch-dimension-input-feature-dimension"></a></dt>
+<dt id="arg-input-batch-axis-input-feature-axis">input_batch_axis, input_feature_axis<a class="anchor" aria-label="anchor" href="#arg-input-batch-axis-input-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-1-based batch/feature dimension of <code>lhs</code>.</p></dd>
+1-based batch/feature axis of <code>lhs</code>.</p></dd>
 
 
-<dt id="arg-input-spatial-dimensions">input_spatial_dimensions<a class="anchor" aria-label="anchor" href="#arg-input-spatial-dimensions"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial dims of <code>lhs</code>.</p></dd>
+<dt id="arg-input-spatial-axes">input_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-input-spatial-axes"></a></dt>
+<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial axes of <code>lhs</code>.</p></dd>
 
 
-<dt id="arg-kernel-input-feature-dimension-kernel-output-feature-dimension">kernel_input_feature_dimension, kernel_output_feature_dimension<a class="anchor" aria-label="anchor" href="#arg-kernel-input-feature-dimension-kernel-output-feature-dimension"></a></dt>
+<dt id="arg-kernel-input-feature-axis-kernel-output-feature-axis">kernel_input_feature_axis, kernel_output_feature_axis<a class="anchor" aria-label="anchor" href="#arg-kernel-input-feature-axis-kernel-output-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-1-based input/output feature dimension of <code>rhs</code>.</p></dd>
+1-based input/output feature axis of <code>rhs</code>.</p></dd>
 
 
-<dt id="arg-kernel-spatial-dimensions">kernel_spatial_dimensions<a class="anchor" aria-label="anchor" href="#arg-kernel-spatial-dimensions"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial dims of <code>rhs</code>.</p></dd>
+<dt id="arg-kernel-spatial-axes">kernel_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-kernel-spatial-axes"></a></dt>
+<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial axes of <code>rhs</code>.</p></dd>
 
 
-<dt id="arg-output-batch-dimension-output-feature-dimension">output_batch_dimension, output_feature_dimension<a class="anchor" aria-label="anchor" href="#arg-output-batch-dimension-output-feature-dimension"></a></dt>
+<dt id="arg-output-batch-axis-output-feature-axis">output_batch_axis, output_feature_axis<a class="anchor" aria-label="anchor" href="#arg-output-batch-axis-output-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-1-based batch/feature dimension of the output.</p></dd>
+1-based batch/feature axis of the output.</p></dd>
 
 
-<dt id="arg-output-spatial-dimensions">output_spatial_dimensions<a class="anchor" aria-label="anchor" href="#arg-output-spatial-dimensions"></a></dt>
+<dt id="arg-output-spatial-axes">output_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-output-spatial-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-1-based spatial dims of the output.</p></dd>
+1-based spatial axes of the output.</p></dd>
 
 
 <dt id="arg-window-strides">window_strides<a class="anchor" aria-label="anchor" href="#arg-window-strides"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> Stride per spatial dim.</p></dd>
+<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> Stride per spatial axis.</p></dd>
 
 
 <dt id="arg-padding">padding<a class="anchor" aria-label="anchor" href="#arg-padding"></a></dt>

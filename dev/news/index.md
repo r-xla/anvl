@@ -4,26 +4,14 @@
 
 ### Breaking changes
 
-- The primary array argument (previously `operand`) of array
-  transformation functions (`prim_<*>` and `nv_<*>`) is now consistently
-  called `x`.
-- The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it
-  uses. Pass `backend = "pjrt"` to
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md),
-  [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
-  [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
-  and friends;
-  [`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md)
-  and
-  [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md)
-  now return `"pjrt"`. The constructor `AnvlBackendXla()` is now
-  [`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/dev/reference/AnvlBackendPjrt.md)
-  and the internal `compile_xla()` is now
-  [`compile_pjrt()`](https://r-xla.github.io/anvl/dev/reference/compile_pjrt.md).
-- `xla()` has been removed. Use
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) instead:
-  it compiles through the same pipeline, lazily on the first call. Warm
-  a jitted function up by calling it once with representative inputs.
+- Renamed `dim`/`dims` to `axis`/`axes` throughout the package (an axis
+  is an index, a dimension is a size); `ndims()` is now
+  [`naxes()`](https://r-xla.github.io/anvl/dev/reference/naxes.md).
+- Renamed the primary array argument of `prim_*` / `nv_*` functions from
+  `operand` to `x`.
+- Renamed the `"xla"` backend to `"pjrt"`.
+- `xla()` has been removed; use
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) instead.
 
 ### Features
 
@@ -167,8 +155,8 @@
   originating in the `stablehlo` package used the StableHLO spec’s
   terminology; they now speak of arrays instead of tensors, and of `x`
   instead of `operand`. For example,
-  `` `operand` must have dtype FloatType `` became
-  `` `x` must have dtype FloatType ``.
+  `` `operand` must have dtype float `` became
+  `` `x` must have dtype float ``.
 
 - [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) now
   rejects static arguments with reference semantics – an environment

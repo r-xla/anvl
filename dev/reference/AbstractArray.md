@@ -67,13 +67,13 @@ The following extractors are available on `AbstractArray` objects:
   the data type of the array.
 
 - [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
-  the shape (dimensions) of the array.
+  the shape (axes) of the array.
 
 - [`ambiguous()`](https://r-xla.github.io/anvl/dev/reference/ambiguous.md):
   Get whether the dtype is ambiguous.
 
-- [`ndims()`](https://r-xla.github.io/tengen/reference/ndims.html): Get
-  the number of dimensions.
+- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
+  the number of axes.
 
 ## See also
 
@@ -110,7 +110,7 @@ graph
 #>     %x1: i32[4]
 #>   Body:
 #>     %1: f32?[4] = convert [dtype = f32, ambiguous = TRUE] (%x1)
-#>     %2: f32?[4] = broadcast_in_dim [shape = 4, broadcast_dimensions = <any>] (1:f32?)
+#>     %2: f32?[4] = broadcast_in_axes [shape = 4, broadcast_axes = <any>] (1:f32?)
 #>     %3: f32?[4] = add(%1, %2)
 #>   Outputs:
 #>     %3: f32?[4] 

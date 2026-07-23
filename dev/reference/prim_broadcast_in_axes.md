@@ -1,12 +1,12 @@
 # Primitive Broadcast
 
 Broadcasts an array to a new shape by replicating the data along new or
-size-1 dimensions.
+size-1 axes.
 
 ## Usage
 
 ``` r
-prim_broadcast_in_dim(x, shape, broadcast_dimensions)
+prim_broadcast_in_axes(x, shape, broadcast_axes)
 ```
 
 ## Arguments
@@ -19,14 +19,15 @@ prim_broadcast_in_dim(x, shape, broadcast_dimensions)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Target shape. Each mapped dimension must either match the
-  corresponding dimension of `x`, or that dimension of `x` must be 1.
+  Target shape. The size of each mapped axis must either match the size
+  of the corresponding axis of `x`, or that axis of `x` must have size
+  1.
 
-- broadcast_dimensions:
+- broadcast_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Maps each dimension of `x` to a dimension of the output. Must have
-  length equal to the number of dimensions of `x`.
+  Maps each axis of `x` to an axis of the output. Must have length equal
+  to the number of axes of `x`.
 
 ## Value
 
@@ -55,7 +56,7 @@ Lowers to
 
 ``` r
 x <- nv_array(c(1, 2, 3))
-prim_broadcast_in_dim(x, shape = c(2, 3), broadcast_dimensions = 2L)
+prim_broadcast_in_axes(x, shape = c(2, 3), broadcast_axes = 2L)
 #> AnvlArray
 #>  1 2 3
 #>  1 2 3

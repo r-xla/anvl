@@ -100,8 +100,8 @@ nv_empty_like(
   (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
   The output shape of the array. The default (`NULL`) is to infer it
   from the data if possible. Note that `nv_array` interprets length 1
-  vectors as having shape `(1)`. To create a "scalar" with dimension
-  `()`, use `nv_scalar` or explicitly specify `shape = c()`.
+  vectors as having shape `(1)`. To create a "scalar" with axis `()`,
+  use `nv_scalar` or explicitly specify `shape = c()`.
 
 - ambiguous:
 
@@ -121,7 +121,7 @@ nv_empty_like(
 
   (`logical(1)`)  
   When constructing from an R object and the result has at least two
-  dimensions, fill the array in row-major order rather than the default
+  axes, fill the array in row-major order rather than the default
   column-major order, mirroring
   [`base::matrix()`](https://rdrr.io/r/base/matrix.html)'s `byrow`. Only
   allowed when `data` is an R object — passing an existing `AnvlArray`
@@ -167,10 +167,10 @@ an `AnvlArray`:
   the data type of the array.
 
 - [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
-  the shape (dimensions) of the array.
+  the shape (axes) of the array.
 
-- [`ndims()`](https://r-xla.github.io/tengen/reference/ndims.html): Get
-  the number of dimensions.
+- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
+  the number of axes.
 
 - [`device()`](https://r-xla.github.io/tengen/reference/device.html):
   Get the device of the array.
@@ -247,8 +247,8 @@ nv_scalar(3.14)
 # placeholder for outputs of jitted functions when donating buffers.
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  -3.6287e+21  3.0721e-41 -3.6290e+21
-#>   3.0721e-41 -3.6294e+21  3.0721e-41
+#>  -8.8742e+20  3.0914e-41 -5.8353e+24
+#>   3.0914e-41 -2.6315e+22  3.0914e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
@@ -257,7 +257,7 @@ dtype(x)
 #> <i32>
 shape(x)
 #> [1] 2 3
-ndims(x)
+naxes(x)
 #> [1] 2
 device(x)
 #> <CpuDevice(id=0)>

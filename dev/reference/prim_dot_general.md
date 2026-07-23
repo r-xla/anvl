@@ -1,7 +1,7 @@
 # Primitive Dot General
 
 General dot product of two arrays, supporting contraction over arbitrary
-dimensions and batching.
+axes and batching.
 
 ## Usage
 
@@ -9,8 +9,8 @@ dimensions and batching.
 prim_dot_general(
   lhs,
   rhs,
-  contracting_dims,
-  batching_dims,
+  contracting_axes,
+  batching_axes,
   precision = "highest"
 )
 ```
@@ -26,18 +26,17 @@ prim_dot_general(
   [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
   to the shape of the other operand.
 
-- contracting_dims:
+- contracting_axes:
 
   (`list(integer(), integer())`)  
-  A list of two integer vectors specifying which dimensions of `lhs` and
-  `rhs` to contract over. The contracted dimensions must have matching
-  sizes.
+  A list of two integer vectors specifying which axes of `lhs` and `rhs`
+  to contract over. The contracted axes must have matching sizes.
 
-- batching_dims:
+- batching_axes:
 
   (`list(integer(), integer())`)  
-  A list of two integer vectors specifying which dimensions of `lhs` and
-  `rhs` are batch dimensions. These must have matching sizes.
+  A list of two integer vectors specifying which axes of `lhs` and `rhs`
+  are batch axes. These must have matching sizes.
 
 - precision:
 
@@ -50,8 +49,8 @@ prim_dot_general(
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-The output shape is the batch dimensions followed by the remaining
-(non-contracted, non-batched) dimensions of `lhs`, then `rhs`.
+The output shape is the batch axes followed by the remaining
+(non-contracted, non-batched) axes of `lhs`, then `rhs`.
 
 ## Implemented Rules
 
@@ -77,8 +76,8 @@ Lowers to
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,
-  contracting_dims = list(2L, 1L),
-  batching_dims = list(integer(0), integer(0))
+  contracting_axes = list(2L, 1L),
+  batching_axes = list(integer(0), integer(0))
 )
 #> AnvlArray
 #>  22 49

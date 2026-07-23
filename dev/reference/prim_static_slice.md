@@ -24,19 +24,19 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 - start_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Start indices (inclusive), one per dimension. Must satisfy
-  `1 <= start_indices <= limit_indices` per dimension.
+  Start indices (inclusive), one per axis. Must satisfy
+  `1 <= start_indices <= limit_indices` per axis.
 
 - limit_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  End indices (inclusive), one per dimension. Must satisfy
-  `limit_indices <= nv_shape(x)` per dimension.
+  End indices (inclusive), one per axis. Must satisfy
+  `limit_indices <= nv_shape(x)` per axis.
 
 - strides:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Step sizes, one per dimension. Must be `>= 1`. A stride of `1` selects
+  Step sizes, one per axis. Must be `>= 1`. A stride of `1` selects
   every element; a stride of `2` selects every other element, etc.
 
 ## Value

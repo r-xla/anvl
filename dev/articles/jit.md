@@ -191,9 +191,9 @@ trace_fn(linear, args = list(x = f32_vec3, w = f32_scalar, b = f32_scalar))
 #>     %x2: f32[]
 #>     %x3: f32[]
 #>   Body:
-#>     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = <any>] (%x2)
+#>     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x2)
 #>     %2: f32[3] = mul(%x1, %1)
-#>     %3: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = <any>] (%x3)
+#>     %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x3)
 #>     %4: f32[3] = add(%2, %3)
 #>   Outputs:
 #>     %4: f32[3]
@@ -250,7 +250,7 @@ trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3
 #>     %x2: f32[3]
 #>     %x3: f32[3]
 #>   Body:
-#>     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = <any>] (%x1)
+#>     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x1)
 #>     %2: f32[3] = mul(%1, %x2)
 #>     %3: f32[3] = add(%2, %x3)
 #>     %4: f32[3] = mul(%3, %x2)
@@ -259,7 +259,7 @@ trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3
 #>     %5: f32[3]
 ```
 
-The graph contains a single `broadcast_in_dim` (lifting the scalar `x`
+The graph contains a single `broadcast_in_axes` (lifting the scalar `x`
 to `f32[3]`) followed by two `mul`/`add` pairs in sequence – not a loop
 construct. The broadcast happens only once because by the second
 iteration `x` is already an `f32[3]` and matches `w` and `b` directly.

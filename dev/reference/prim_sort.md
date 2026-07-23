@@ -1,6 +1,6 @@
 # Primitive Sort
 
-Sorts arrays along the given dimension.
+Sorts arrays along the given axis.
 
 Sorting is determined by the *first array* only: it is the sort key, and
 any additional arrays are reordered with the same permutation that sorts
@@ -9,13 +9,13 @@ the first. This enables idioms like *argsort* (sort `x` paired with an
 paired with `values`).
 
 All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along `dim` are sorted independently; other
-dimensions are preserved.
+1-dimensional slices along `axis` are sorted independently; other axes
+are preserved.
 
 ## Usage
 
 ``` r
-prim_sort(xs, dim = 1L, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
 ```
 
 ## Arguments
@@ -28,11 +28,11 @@ prim_sort(xs, dim = 1L, descending = FALSE, is_stable = FALSE)
   carried along under the same permutation. All must share the same
   shape.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to sort. Negative values count from the end,
-  i.e. `-1` refers to the last dimension.
+  Axis along which to sort. Negative values count from the end, i.e.
+  `-1` refers to the last axis.
 
 - descending:
 
@@ -83,7 +83,7 @@ Integer keys use `SIGNED` / `UNSIGNED` as appropriate.
 
 ``` r
 x <- nv_array(c(3, 1, 4, 1, 5))
-prim_sort(list(x), dim = 1L)[[1L]]
+prim_sort(list(x), axis = 1L)[[1L]]
 #> AnvlArray
 #>  1
 #>  1
@@ -94,8 +94,8 @@ prim_sort(list(x), dim = 1L)[[1L]]
 
 # Sort indices by the values (argsort): pair x with iota and read off
 # the second result.
-idx <- nv_iota(dim = 1L, dtype = "i64", shape = 5L)
-out <- prim_sort(list(x, idx), dim = 1L)
+idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
+out <- prim_sort(list(x, idx), axis = 1L)
 out[[1L]] # sorted x
 #> AnvlArray
 #>  1

@@ -59,13 +59,13 @@ are various scenarios:
 
 Let’s add a new primitive step by step. We’ll implement
 `prim_repeat_along` – a primitive that repeats an array multiple times
-along a specified dimension.
+along a specified axis.
 
-For example, repeating `c(1, 2, 3)` twice along dimension 1 gives
+For example, repeating `c(1, 2, 3)` twice along axis 1 gives
 `c(1, 2, 3, 1, 2, 3)`.
 
 This primitive has a *dynamic* input (an array) and two *static*
-parameters (how many times to repeat and which dimension).
+parameters (how many times to repeat and which axis).
 
 ### Step 1: Define the Primitive
 
@@ -83,17 +83,17 @@ registry. The returned callable becomes the primitive and is bound to a
 library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
-  function(x, times, dim) {
+  function(x, times, axis) {
     # type of `x` is checked by graph_desc_add()
-    infer_fn <- function(x, times, dim) {
-      if (!checkmate::test_integerish(dim, lower = 1, upper = ndims(x), len = 1L)) {
-        cli::cli_abort("{.arg dim} must be between 1 and {ndims(x)}, but is {.val dim}")
+    infer_fn <- function(x, times, axis) {
+      if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(x), len = 1L)) {
+        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val axis}")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
         cli_abort("times must be a positive integer, but is {times}")
       }
       new_shape <- shape(x)
-      new_shape[dim] <- new_shape[dim] * times
+      new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
         dtype = dtype(x),
         shape = Shape(new_shape),
@@ -106,17 +106,17 @@ prim_repeat_along <- new_primitive(
       list(x = x),                # Dynamic inputs (arrays)
       params = list(              # Static parameters
         times = times,
-        dim = dim
+        axis = axis
       ),
       infer_fn = infer_fn
     )[[1L]]  # Extract single output from list
   },
-  static = c("times", "dim")
+  static = c("times", "axis")
 )
 ```
 
 The primitive is now callable directly as
-`prim_repeat_along(x, times, dim)`.
+`prim_repeat_along(x, times, axis)`.
 
 Key points:
 
@@ -204,7 +204,7 @@ factories that generate the body for you:
   `prim_negate`).
 - `make_binary_op(stablehlo_infer)` – elementwise binary
   (e.g. `prim_add`, `prim_mul`).
-- `make_reduce_op(infer_fn)` – reductions with `dims` / `drop`
+- `make_reduce_op(infer_fn)` – reductions with `axes` / `drop`
   parameters (e.g. `prim_reduce_sum`).
 - `make_compare_op(direction)` – comparison ops with a fixed `direction`
   string (e.g. `prim_eq`, `prim_lt`).
@@ -233,9 +233,9 @@ lowering pass. We implement `repeat_along` using concatenation:
 
 ``` r
 
-prim_repeat_along[["stablehlo"]] <- function(x, times, dim) {
+prim_repeat_along[["stablehlo"]] <- function(x, times, axis) {
   xs <- rep(list(x), times)
-  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = dim - 1L))
+  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = axis - 1L))
 }
 ```
 
@@ -250,8 +250,8 @@ It must return a list of
 even if there is only one output.
 
 **Important**: StableHLO uses 0-based indexing, while {anvl} uses R’s
-1-based indexing. Always convert dimension indices by subtracting 1.
-Also note that in
+1-based indexing. Always convert axis indices by subtracting 1. Also
+note that in
 [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
 we are converting the error messages from stablehlo to our 1-based
 indexing, so you do not have to worry about that here.
@@ -264,11 +264,11 @@ reverse rule built with
 The idea here is the following, where we assume the input `x` has shape
 `(s_1, ..., s_n)`, which means that the output (and therefore it’s
 gradient) has shape
-`(s_1, ..., s_{dim-1}, s_dim * times, s_{dim+1}, ..., s_n)`.
+`(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
 
 1.  Reshape the gradient to
-    `(s_1, ..., s_{dim-1}, s_dim, times, s_{dim+1}, ..., s_n)`.
-2.  Sum over the `times` dimension and drop the `times` dimension.
+    `(s_1, ..., s_{axis-1}, s_axis, times, s_{axis+1}, ..., s_n)`.
+2.  Sum over the `times` axis and drop the `times` axis.
 
 ``` r
 
@@ -279,18 +279,18 @@ prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
 
   grad <- grads[[1L]]
   x <- inputs[[1L]]
-  dim <- params$dim
+  axis <- params$axis
   times <- params$times
 
   old_shape <- shape(x)
   grad_shape <- shape(grad)
 
   new_shape <- grad_shape
-  new_shape[dim] <- old_shape[dim]
-  new_shape <- append(new_shape, times, after = dim - 1L)
+  new_shape[axis] <- old_shape[axis]
+  new_shape <- append(new_shape, times, after = axis - 1L)
 
   grad_reshaped <- prim_reshape(grad, new_shape)
-  grad_summed <- prim_reduce_sum(grad_reshaped, dims = dim, drop = TRUE)
+  grad_summed <- prim_reduce_sum(grad_reshaped, axes = axis, drop = TRUE)
   list(grad_summed)
 })
 ```
@@ -301,7 +301,7 @@ The wrapped backward receives:
 - `outputs`: Output `GraphValue`s from the forward pass
 - `grads`: Gradients flowing back from downstream (one per output)
 - `params`: Named list of the call’s static parameters (here:
-  `params$dim`, `params$times`)
+  `params$axis`, `params$times`)
 - `required`: Logical vector indicating which input gradients are needed
 
 It returns a list with one gradient per input (or `NULL` if not
@@ -361,7 +361,7 @@ registration step is needed:
 ``` r
 
 prim_repeat_along
-#> function (x, times, dim) 
+#> function (x, times, axis) 
 #> {
 #>     if (currently_tracing()) {
 #>         cl <- match.call()
@@ -397,7 +397,7 @@ prim_repeat_along
 #>     }
 #>     run(args)
 #> }
-#> <environment: 0x560b87c60848>
+#> <environment: 0x55f38160ca08>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")
@@ -438,7 +438,7 @@ Note that in the `nv_*` wrapper function, you can only access certain
 properties of the input arrayish values via:
 
 - [`shape_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-- [`ndims_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
+- [`naxes_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
 - [`dtype_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
 - [`ambiguous_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
 
@@ -459,14 +459,14 @@ JIT-compiled function:
 
 x <- nv_array(c(1, 2, 3), shape = c(3, 1))
 # Eager call -- works because prim_repeat_along is itself jit-compiled.
-prim_repeat_along(x, times = 2L, dim = 2L)
+prim_repeat_along(x, times = 2L, axis = 2L)
 #> AnvlArray
 #>  1 1
 #>  2 2
 #>  3 3
 #> [ CPUf32{3,2} ]
 # Traced into the outer graph when composed with another jit-compiled function.
-jit(function(x) prim_repeat_along(x, times = 2L, dim = 2L))(x)
+jit(function(x) prim_repeat_along(x, times = 2L, axis = 2L))(x)
 #> AnvlArray
 #>  1 1
 #>  2 2
@@ -479,7 +479,7 @@ And compute gradients through it.
 ``` r
 
 f <- function(x) {
-  repeated <- prim_repeat_along(x, times = 2L, dim = 2L)
+  repeated <- prim_repeat_along(x, times = 2L, axis = 2L)
   sum(repeated)
 }
 

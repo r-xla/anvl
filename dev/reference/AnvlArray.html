@@ -173,7 +173,7 @@ This can be changed by setting the <code>PJRT_PLATFORM</code> environment variab
 The output shape of the array.
 The default (<code>NULL</code>) is to infer it from the data if possible.
 Note that <code>nv_array</code> interprets length 1 vectors as having shape <code>(1)</code>.
-To create a "scalar" with dimension <code>()</code>, use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
+To create a "scalar" with axis <code>()</code>, use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
 
 
 <dt id="arg-ambiguous">ambiguous<a class="anchor" aria-label="anchor" href="#arg-ambiguous"></a></dt>
@@ -192,7 +192,7 @@ Must not be specified inside <code><a href="jit.html">jit()</a></code>.</p></dd>
 <dt id="arg-byrow">byrow<a class="anchor" aria-label="anchor" href="#arg-byrow"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 When constructing from an R object and the result has at least two
-dimensions, fill the array in row-major order rather than the
+axes, fill the array in row-major order rather than the
 default column-major order, mirroring <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">base::matrix()</a></code>'s <code>byrow</code>.
 Only allowed when <code>data</code> is an R object — passing an existing
 <code>AnvlArray</code> together with <code>byrow = TRUE</code> is an error.</p></dd>
@@ -234,8 +234,8 @@ An existing array. Any of <code>dtype</code>, <code>device</code>, <code>shape</
 
 
 <p>The following generic functions can be used to extract information from an <code>AnvlArray</code>:</p><ul><li><p><code><a href="https://r-xla.github.io/tengen/reference/dtype.html" class="external-link">dtype()</a></code>: Get the data type of the array.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (dimensions) of the array.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/ndims.html" class="external-link">ndims()</a></code>: Get the number of dimensions.</p></li>
+<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (axes) of the array.</p></li>
+<li><p><code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code>: Get the number of axes.</p></li>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/device.html" class="external-link">device()</a></code>: Get the device of the array.</p></li>
 <li><p><code><a href="platform.html">platform()</a></code>: Get the platform (e.g. <code>"cpu"</code>, <code>"cuda"</code>).</p></li>
 <li><p><code><a href="ambiguous.html">ambiguous()</a></code>: Get whether the dtype is ambiguous.</p></li>
@@ -297,8 +297,8 @@ Serialize/deserialize arrays to/from raw vectors.</p></li>
 <span class="r-in"><span><span class="co"># placeholder for outputs of jitted functions when donating buffers.</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -3.6287e+21  3.0721e-41 -3.6290e+21</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0721e-41 -3.6294e+21  3.0721e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -8.8742e+20  3.0914e-41 -5.8353e+24</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0914e-41 -2.6315e+22  3.0914e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>
@@ -307,7 +307,7 @@ Serialize/deserialize arrays to/from raw vectors.</p></li>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;i32&gt;</span>
 <span class="r-in"><span><span class="fu"><a href="shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2 3</span>
-<span class="r-in"><span><span class="fu"><a href="ndims.html">ndims</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="naxes.html">naxes</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 2</span>
 <span class="r-in"><span><span class="fu"><a href="device.html">device</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;CpuDevice(id=0)&gt;</span>

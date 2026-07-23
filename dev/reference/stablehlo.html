@@ -189,7 +189,7 @@ allocate. Empty when no phantoms were added.</p></li>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Constants:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %c1: f32[2]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Body:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: f32[2] = broadcast_in_dim [shape = 2, broadcast_dimensions = &lt;any&gt;] (%x1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = &lt;any&gt;] (%x1)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32[2] = add(%1, %c1)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32[2] </span>

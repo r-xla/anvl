@@ -1,6 +1,6 @@
 # Transpose
 
-Permutes the dimensions of an array. You can also use
+Permutes the axes of an array. You can also use
 [`t()`](https://rdrr.io/r/base/t.html) for matrices.
 
 ## Usage
@@ -22,9 +22,8 @@ t(x)
 - permutation:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  New ordering of dimensions. If `NULL` (default), reverses the
-  dimensions. Negative values count from the end, i.e. `-1` refers to
-  the last dimension.
+  New ordering of axes. If `NULL` (default), reverses the axes. Negative
+  values count from the end, i.e. `-1` refers to the last axis.
 
 ## Value
 

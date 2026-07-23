@@ -1,16 +1,16 @@
 # Sort
 
-Sorts an array along a dimension.
+Sorts an array along an axis.
 
 You can also use [`sort()`](https://rdrr.io/r/base/sort.html) directly.
 
 ## Usage
 
 ``` r
-nv_sort(x, dim = NULL, decreasing = FALSE, stable = FALSE)
+nv_sort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 
 # S3 method for class 'AnvlArray'
-sort(x, decreasing = FALSE, ..., dim = NULL)
+sort(x, decreasing = FALSE, ..., axis = NULL)
 ```
 
 ## Arguments
@@ -20,12 +20,11 @@ sort(x, decreasing = FALSE, ..., dim = NULL)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Input array.
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to sort. Negative values count from the end,
-  i.e. `-1` refers to the last dimension. If `NULL` (default), uses the
-  last dimension.
+  Axis along which to sort. Negative values count from the end, i.e.
+  `-1` refers to the last axis. If `NULL` (default), uses the last axis.
 
 - decreasing:
 
@@ -36,7 +35,7 @@ sort(x, decreasing = FALSE, ..., dim = NULL)
 
   (`logical(1)`)  
   If `TRUE`, the sort is stable: equal values keep their original
-  relative order along `dim`. Default `FALSE`. Stability is only
+  relative order along `axis`. Default `FALSE`. Stability is only
   observable for floats when `-0` / `+0` or `-NaN` / `+NaN` are mixed
   (they compare equal under the total order used here); for distinct
   values the result is identical either way.
@@ -104,7 +103,7 @@ nv_sort(x, decreasing = TRUE)
 #> [ CPUf32{8} ] 
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_sort(m, dim = 2L)
+nv_sort(m, axis = 2L)
 #> AnvlArray
 #>  1 3 5
 #>  0 2 4

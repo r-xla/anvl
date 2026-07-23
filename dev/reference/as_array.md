@@ -3,7 +3,7 @@
 Transfers array data to R and returns it as an R
 [`array`](https://rdrr.io/r/base/array.html). Only in the case of
 scalars is the result a vector of length 1, as R `arrays` cannot have 0
-dimensions.
+axes.
 
 ## Usage
 
@@ -55,7 +55,7 @@ x <- nv_array(1:4, dtype = "f32")
 as_array(x)
 #> [1] 1 2 3 4
 y <- nv_scalar(1L)
-# R arrays can't have 0 dimensions:
+# R arrays can't have 0 axes:
 as_array(y)
 #> [1] 1
 ```

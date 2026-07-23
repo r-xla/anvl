@@ -296,9 +296,9 @@ the hood. Below, we trace <code>linear</code> with a length-3 vector for
 <span><span class="co">#&gt;     %x2: f32[]</span></span>
 <span><span class="co">#&gt;     %x3: f32[]</span></span>
 <span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = &lt;any&gt;] (%x2)</span></span>
+<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x2)</span></span>
 <span><span class="co">#&gt;     %2: f32[3] = mul(%x1, %1)</span></span>
-<span><span class="co">#&gt;     %3: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = &lt;any&gt;] (%x3)</span></span>
+<span><span class="co">#&gt;     %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x3)</span></span>
 <span><span class="co">#&gt;     %4: f32[3] = add(%2, %3)</span></span>
 <span><span class="co">#&gt;   Outputs:</span></span>
 <span><span class="co">#&gt;     %4: f32[3]</span></span></code></pre></div>
@@ -353,14 +353,14 @@ recorded in the graph. Here we apply the <code>linear</code> function
 <span><span class="co">#&gt;     %x2: f32[3]</span></span>
 <span><span class="co">#&gt;     %x3: f32[3]</span></span>
 <span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = &lt;any&gt;] (%x1)</span></span>
+<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x1)</span></span>
 <span><span class="co">#&gt;     %2: f32[3] = mul(%1, %x2)</span></span>
 <span><span class="co">#&gt;     %3: f32[3] = add(%2, %x3)</span></span>
 <span><span class="co">#&gt;     %4: f32[3] = mul(%3, %x2)</span></span>
 <span><span class="co">#&gt;     %5: f32[3] = add(%4, %x3)</span></span>
 <span><span class="co">#&gt;   Outputs:</span></span>
 <span><span class="co">#&gt;     %5: f32[3]</span></span></code></pre></div>
-<p>The graph contains a single <code>broadcast_in_dim</code> (lifting
+<p>The graph contains a single <code>broadcast_in_axes</code> (lifting
 the scalar <code>x</code> to <code>f32[3]</code>) followed by two
 <code>mul</code>/<code>add</code> pairs in sequence – not a loop
 construct. The broadcast happens only once because by the second

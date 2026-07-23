@@ -6,12 +6,12 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Subset an Array — [.AnvlArray"><meta name="description" content="Extracts a subset from an array. You can also use the [ operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (a:b), and array(c(...)) for selecting multiple elements along a
-dimension."><meta property="og:description" content="Extracts a subset from an array. You can also use the [ operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+axis."><meta property="og:description" content="Extracts a subset from an array. You can also use the [ operator.
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (a:b), and array(c(...)) for selecting multiple elements along a
-dimension."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+axis."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -83,9 +83,9 @@ dimension."><meta property="og:image" content="https://r-xla.github.io/anvl/logo
 
     <div class="ref-description section level2">
     <p>Extracts a subset from an array. You can also use the <code>[</code> operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (<code>a:b</code>), and <code>array(c(...))</code> for selecting multiple elements along a
-dimension.</p>
+axis.</p>
     </div>
 
     <div class="section level2">
@@ -106,8 +106,8 @@ Input array.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Subset specifications, one per dimension. Omitted trailing
-dimensions select all elements. See <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for details.</p></dd>
+<dd><p>Subset specifications, one per axis. Omitted trailing
+axes select all elements. See <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for details.</p></dd>
 
 </dl></div>
     <div class="section level2">

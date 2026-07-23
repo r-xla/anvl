@@ -173,8 +173,8 @@ Functions for querying array properties
   the data type of an array
 - [`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) : Get
   the shape of an array
-- [`ndims()`](https://r-xla.github.io/anvl/dev/reference/ndims.md) : Get
-  the number of dimensions of an array
+- [`naxes()`](https://r-xla.github.io/anvl/dev/reference/naxes.md) : Get
+  the number of axes of an array
 - [`device()`](https://r-xla.github.io/anvl/dev/reference/device.md) :
   Get the device of an array
 - [`platform()`](https://r-xla.github.io/anvl/dev/reference/platform.md)
@@ -257,7 +257,7 @@ Functions for reshaping and rearranging arrays
 - [`nv_static_slice()`](https://r-xla.github.io/anvl/dev/reference/nv_static_slice.md)
   : Static Slice
 - [`nv_select()`](https://r-xla.github.io/anvl/dev/reference/nv_select.md)
-  : Select Elements Along a Dimension
+  : Select Elements Along an Axis
 - [`nv_pad()`](https://r-xla.github.io/anvl/dev/reference/nv_pad.md) :
   Pad
 - [`nv_reverse()`](https://r-xla.github.io/anvl/dev/reference/nv_reverse.md)
@@ -400,7 +400,7 @@ Mathematical and trigonometric functions
 
 ### Reduction Operations
 
-Operations that reduce array dimensions
+Operations that reduce array axes
 
 - [`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md)
   : Sum Reduction
@@ -417,7 +417,7 @@ Operations that reduce array dimensions
 
 ### Statistical Summaries
 
-Summary statistics over array dimensions
+Summary statistics over array axes
 
 - [`nv_mean()`](https://r-xla.github.io/anvl/dev/reference/nv_mean.md)
   [`mean(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_mean.md)
@@ -434,7 +434,7 @@ Summary statistics over array dimensions
 
 ### Cumulative Operations
 
-Cumulative (scan) operations along a single dimension
+Cumulative (scan) operations along a single axis
 
 - [`nv_cumsum()`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md)
   : Cumulative Sum
@@ -690,7 +690,7 @@ Internal data structures and functions
 - [`IotaArray()`](https://r-xla.github.io/anvl/dev/reference/IotaArray.md)
   : Iota Array Class
 - [`shape_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-  [`ndims_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
+  [`naxes_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
   [`dtype_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
   [`ambiguous_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
   : Abstract Properties
@@ -793,7 +793,7 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Inverse Hyperbolic Tangent
 - [`prim_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_bitcast_convert.md)
   : Primitive Bitcast Convert
-- [`prim_broadcast_in_dim()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_dim.md)
+- [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_axes.md)
   : Primitive Broadcast
 - [`prim_cbrt()`](https://r-xla.github.io/anvl/dev/reference/prim_cbrt.md)
   : Primitive Cube Root

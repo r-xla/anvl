@@ -19,7 +19,7 @@ nv_broadcast_to(x, shape)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Target shape. Each existing dimension must either match or be 1.
+  Target shape. Each existing axis must either match or be 1.
 
 ## Value
 
@@ -30,7 +30,7 @@ Has the given `shape` and the same data type as `x`.
 
 [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md),
 [`nv_broadcast_scalars()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md),
-[`prim_broadcast_in_dim()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_dim.md)
+[`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_axes.md)
 for the underlying primitive.
 
 ## Examples

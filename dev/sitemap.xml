@@ -80,7 +80,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit_roclet.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_descriptor.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/ndims.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/naxes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/new_primitive.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_abs.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_acos.html</loc></url>
@@ -241,7 +241,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_atan2.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_atanh.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_bitcast_convert.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_dim.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_axes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_cbrt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_ceil.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_chol.html</loc></url>

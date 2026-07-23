@@ -13,7 +13,7 @@ internally. Inherits from
 ## Usage
 
 ``` r
-IotaArray(shape, dtype, dimension, start = 1L, ambiguous = FALSE)
+IotaArray(shape, dtype, axis, start = 1L, ambiguous = FALSE)
 ```
 
 ## Arguments
@@ -29,10 +29,10 @@ IotaArray(shape, dtype, dimension, start = 1L, ambiguous = FALSE)
   ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   The data type.
 
-- dimension:
+- axis:
 
   (`integer(1)`)  
-  The dimension along which values increase.
+  The axis along which values increase.
 
 - start:
 
@@ -60,26 +60,26 @@ optionally shifting the starting value via
 ## Examples
 
 ``` r
-x <- IotaArray(shape = 4L, dtype = "i32", dimension = 1L)
+x <- IotaArray(shape = 4L, dtype = "i32", axis = 1L)
 x
-#> IotaArray(shape=(4), dtype=i32, dimension=1, start=1) 
+#> IotaArray(shape=(4), dtype=i32, axis=1, start=1) 
 ambiguous(x)
 #> [1] FALSE
 shape(x)
 #> [1] 4
-ndims(x)
+naxes(x)
 #> [1] 1
 dtype(x)
 #> <i32>
 # How it appears during tracing:
-graph <- trace_fn(function() nv_iota(dim = 1L, dtype = "i32", shape = 4L), list())
+graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 graph
 #> <AnvlGraph>
 #>   Inputs: (none)
 #>   Body:
-#>     %1: i32[4] = iota [dim = 1, dtype = i32, shape = 4, start = 1, ambiguous = FALSE] ()
+#>     %1: i32[4] = iota [axis = 1, dtype = i32, shape = 4, start = 1, ambiguous = FALSE] ()
 #>   Outputs:
 #>     %1: i32[4] 
 graph$outputs[[1]]$aval
-#> IotaArray(shape=(4), dtype=i32, dimension=1, start=1) 
+#> IotaArray(shape=(4), dtype=i32, axis=1, start=1) 
 ```

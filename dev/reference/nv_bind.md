@@ -1,13 +1,12 @@
 # Combine arrays by rows or columns
 
-Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`)
-dimension. Arguments are first promoted to a common data type (see
+Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
+Arguments are first promoted to a common data type (see
 [`nv_promote_to_common()`](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md)).
 
 Each input is then handled according to its rank:
 
-- 0-D: broadcast to match the non-stacked dimensions of the other
-  inputs.
+- 0-D: broadcast to match the non-stacked axes of the other inputs.
 
 - 1-D: treated as a single row/column.
 
@@ -49,11 +48,10 @@ cbind(..., deparse.level = 1)
 [`base::rbind()`](https://rdrr.io/r/base/cbind.html) and
 [`base::cbind()`](https://rdrr.io/r/base/cbind.html) applied to an
 [`array()`](https://rdrr.io/r/base/array.html) of rank \> 2 flatten the
-trailing dimensions into the column axis (so a `c(2, 3, 4)` array
-becomes a `2 x 12` matrix). `nv_rbind` and `nv_cbind` instead preserve
-all non-stacked dimensions: combining two `c(2, 3, 4)` arrays with
-`nv_rbind` produces a `c(4, 3, 4)` array, and with `nv_cbind` a
-`c(2, 6, 4)` array.
+trailing axes into the column axis (so a `c(2, 3, 4)` array becomes a
+`2 x 12` matrix). `nv_rbind` and `nv_cbind` instead preserve all
+non-stacked axes: combining two `c(2, 3, 4)` arrays with `nv_rbind`
+produces a `c(4, 3, 4)` array, and with `nv_cbind` a `c(2, 6, 4)` array.
 
 ## See also
 
@@ -83,7 +81,7 @@ nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #>  0 0 0
 #> [ CPUf32{3,3} ] 
 
-# Rank-3 arrays preserve trailing dimensions
+# Rank-3 arrays preserve trailing axes
 a <- nv_array(1:24, shape = c(2, 3, 4))
 shape(nv_rbind(a, a)) # c(4, 3, 4)
 #> [1] 4 3 4

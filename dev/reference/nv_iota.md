@@ -1,6 +1,6 @@
 # Iota
 
-Creates an array with values increasing along the specified dimension,
+Creates an array with values increasing along the specified axis,
 starting from `start`.
 
 `nv_iota_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
@@ -9,11 +9,11 @@ starting from `start`.
 ## Usage
 
 ``` r
-nv_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+nv_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 
 nv_iota_like(
   like,
-  dim,
+  axis,
   shape = NULL,
   start = 1L,
   dtype = NULL,
@@ -24,11 +24,11 @@ nv_iota_like(
 
 ## Arguments
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which values increase. Negative values count from the
-  end of `shape`, i.e. `-1` refers to the last dimension.
+  Axis along which values increase. Negative values count from the end
+  of `shape`, i.e. `-1` refers to the last axis.
 
 - dtype:
 
@@ -83,7 +83,7 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-nv_iota(dim = 1L, dtype = "i32", shape = 5L)
+nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 #> AnvlArray
 #>  1
 #>  2
@@ -92,7 +92,7 @@ nv_iota(dim = 1L, dtype = "i32", shape = 5L)
 #>  5
 #> [ CPUi32{5} ] 
 x <- nv_fill(0L, shape = c(2, 3))
-nv_iota_like(x, dim = 1L)
+nv_iota_like(x, axis = 1L)
 #> AnvlArray
 #>  1 1 1
 #>  2 2 2

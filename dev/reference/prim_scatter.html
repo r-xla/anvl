@@ -106,12 +106,12 @@ indices.</p>
 <span>  <span class="va">x</span>,</span>
 <span>  <span class="va">scatter_indices</span>,</span>
 <span>  <span class="va">update</span>,</span>
-<span>  <span class="va">update_window_dims</span>,</span>
-<span>  <span class="va">inserted_window_dims</span>,</span>
-<span>  <span class="va">x_batching_dims</span>,</span>
-<span>  <span class="va">scatter_indices_batching_dims</span>,</span>
-<span>  <span class="va">scatter_dims_to_x_dims</span>,</span>
-<span>  <span class="va">index_vector_dim</span>,</span>
+<span>  <span class="va">update_window_axes</span>,</span>
+<span>  <span class="va">inserted_window_axes</span>,</span>
+<span>  <span class="va">x_batching_axes</span>,</span>
+<span>  <span class="va">scatter_indices_batching_axes</span>,</span>
+<span>  <span class="va">scatter_axes_to_x_axes</span>,</span>
+<span>  <span class="va">index_vector_axis</span>,</span>
 <span>  indices_are_sorted <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  unique_indices <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  update_computation <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -130,8 +130,8 @@ Arrayish value of any data type. The base array to scatter into.</p></dd>
 <dt id="arg-scatter-indices">scatter_indices<a class="anchor" aria-label="anchor" href="#arg-scatter-indices"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code> of integer type)<br>
 Array of indices. Contains index vectors that map to positions in
-<code>x</code> via <code>scatter_dims_to_x_dims</code>. The dimension specified
-by <code>index_vector_dim</code> holds the index vectors.</p></dd>
+<code>x</code> via <code>scatter_axes_to_x_axes</code>. The axis specified
+by <code>index_vector_axis</code> holds the index vectors.</p></dd>
 
 
 <dt id="arg-update">update<a class="anchor" aria-label="anchor" href="#arg-update"></a></dt>
@@ -139,43 +139,43 @@ by <code>index_vector_dim</code> holds the index vectors.</p></dd>
 Update values array. Must have the same data type as <code>x</code>.</p></dd>
 
 
-<dt id="arg-update-window-dims">update_window_dims<a class="anchor" aria-label="anchor" href="#arg-update-window-dims"></a></dt>
+<dt id="arg-update-window-axes">update_window_axes<a class="anchor" aria-label="anchor" href="#arg-update-window-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions of <code>update</code> that are window dimensions, i.e. they
+Axes of <code>update</code> that are window axes, i.e. they
 correspond to the slice being written into <code>x</code>.</p></dd>
 
 
-<dt id="arg-inserted-window-dims">inserted_window_dims<a class="anchor" aria-label="anchor" href="#arg-inserted-window-dims"></a></dt>
+<dt id="arg-inserted-window-axes">inserted_window_axes<a class="anchor" aria-label="anchor" href="#arg-inserted-window-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions of <code>x</code> whose slices have size 1 and are inserted
+Axes of <code>x</code> whose slices have size 1 and are inserted
 (not present) in the <code>update</code> window. Together with
-<code>update_window_dims</code> and <code>x_batching_dims</code>, these must account
-for all dimensions of <code>x</code>.</p></dd>
+<code>update_window_axes</code> and <code>x_batching_axes</code>, these must account
+for all axes of <code>x</code>.</p></dd>
 
 
-<dt id="arg-x-batching-dims">x_batching_dims<a class="anchor" aria-label="anchor" href="#arg-x-batching-dims"></a></dt>
+<dt id="arg-x-batching-axes">x_batching_axes<a class="anchor" aria-label="anchor" href="#arg-x-batching-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions of <code>x</code> that are batch dimensions.
-Use <code>integer(0)</code> when there are no batch dimensions.</p></dd>
+Axes of <code>x</code> that are batch axes.
+Use <code>integer(0)</code> when there are no batch axes.</p></dd>
 
 
-<dt id="arg-scatter-indices-batching-dims">scatter_indices_batching_dims<a class="anchor" aria-label="anchor" href="#arg-scatter-indices-batching-dims"></a></dt>
+<dt id="arg-scatter-indices-batching-axes">scatter_indices_batching_axes<a class="anchor" aria-label="anchor" href="#arg-scatter-indices-batching-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions of <code>scatter_indices</code> that correspond to batch
-dimensions. Must have the same length as <code>x_batching_dims</code>.</p></dd>
+Axes of <code>scatter_indices</code> that correspond to batch
+axes. Must have the same length as <code>x_batching_axes</code>.</p></dd>
 
 
-<dt id="arg-scatter-dims-to-x-dims">scatter_dims_to_x_dims<a class="anchor" aria-label="anchor" href="#arg-scatter-dims-to-x-dims"></a></dt>
+<dt id="arg-scatter-axes-to-x-axes">scatter_axes_to_x_axes<a class="anchor" aria-label="anchor" href="#arg-scatter-axes-to-x-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Maps each component of the index vector to an <code>x</code> dimension.
-For example, <code>scatter_dims_to_x_dims = c(1L)</code> means each
-index vector indexes into the first dimension of <code>x</code>.</p></dd>
+Maps each component of the index vector to an <code>x</code> axis.
+For example, <code>scatter_axes_to_x_axes = c(1L)</code> means each
+index vector indexes into the first axis of <code>x</code>.</p></dd>
 
 
-<dt id="arg-index-vector-dim">index_vector_dim<a class="anchor" aria-label="anchor" href="#arg-index-vector-dim"></a></dt>
+<dt id="arg-index-vector-axis">index_vector_axis<a class="anchor" aria-label="anchor" href="#arg-index-vector-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Dimension of <code>scatter_indices</code> that contains the index vectors.
-If set to <code>ndims(scatter_indices) + 1</code>, each scalar element of
+Axis of <code>scatter_indices</code> that contains the index vectors.
+If set to <code>naxes(scatter_indices) + 1</code>, each scalar element of
 <code>scatter_indices</code> is treated as a length-1 index vector.</p></dd>
 
 
@@ -248,12 +248,12 @@ implementation-defined and may vary between plugins ("cpu", "cuda").</p>
 <span class="r-in"><span><span class="va">updates</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_scatter</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  <span class="va">x</span>, <span class="va">indices</span>, <span class="va">updates</span>,</span></span>
-<span class="r-in"><span>  update_window_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  inserted_window_dims <span class="op">=</span> <span class="fl">1L</span>,</span></span>
-<span class="r-in"><span>  x_batching_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  scatter_indices_batching_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  scatter_dims_to_x_dims <span class="op">=</span> <span class="fl">1L</span>,</span></span>
-<span class="r-in"><span>  index_vector_dim <span class="op">=</span> <span class="fl">2L</span></span></span>
+<span class="r-in"><span>  update_window_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  inserted_window_axes <span class="op">=</span> <span class="fl">1L</span>,</span></span>
+<span class="r-in"><span>  x_batching_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  scatter_indices_batching_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  scatter_axes_to_x_axes <span class="op">=</span> <span class="fl">1L</span>,</span></span>
+<span class="r-in"><span>  index_vector_axis <span class="op">=</span> <span class="fl">2L</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  10</span>

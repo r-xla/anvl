@@ -1,12 +1,12 @@
 # Primitive Cumulative Product
 
-Cumulative product of array elements along a single dimension. Output
-position `j` along `dim` equals the product of input positions `1:j`.
+Cumulative product of array elements along a single axis. Output
+position `j` along `axis` equals the product of input positions `1:j`.
 
 ## Usage
 
 ``` r
-prim_cumprod(x, dim)
+prim_cumprod(x, axis)
 ```
 
 ## Arguments
@@ -16,11 +16,11 @@ prim_cumprod(x, dim)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to accumulate. Negative values count from the
-  end, i.e. `-1` refers to the last dimension.
+  Axis along which to accumulate. Negative values count from the end,
+  i.e. `-1` refers to the last axis.
 
 ## Value
 
@@ -48,7 +48,7 @@ as the reducer.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-prim_cumprod(x, dim = 1L)
+prim_cumprod(x, axis = 1L)
 #> AnvlArray
 #>   1  3  5
 #>   2 12 30

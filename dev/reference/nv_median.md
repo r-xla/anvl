@@ -1,7 +1,7 @@
 # Median
 
-Computes the median along a dimension. Equivalent to
-`nv_quantile(x, 0.5, dim, interpolation)`; for an even-length axis with
+Computes the median along an axis. Equivalent to
+`nv_quantile(x, 0.5, axis, interpolation)`; for an even-length axis with
 the default `"linear"` interpolation, the average of the two middle
 values is returned, matching base R's
 [`median()`](https://rdrr.io/r/stats/median.html).
@@ -15,10 +15,10 @@ extra arguments (e.g. `interpolation`) are forwarded via `...`.
 ## Usage
 
 ``` r
-nv_median(x, dim = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_median(x, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 
 # S3 method for class 'AnvlArray'
-median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
+median(x, na.rm = FALSE, ..., axis = NULL, interpolation = "linear")
 ```
 
 ## Arguments
@@ -28,12 +28,12 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Input array.
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to compute the median. Negative values count
-  from the end, i.e. `-1` refers to the last dimension. If `NULL`
-  (default), uses the last dimension.
+  Axis along which to compute the median. Negative values count from the
+  end, i.e. `-1` refers to the last axis. If `NULL` (default), uses the
+  last axis.
 
 - interpolation:
 
@@ -61,7 +61,7 @@ median(x, na.rm = FALSE, ..., dim = NULL, interpolation = "linear")
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same shape as `x` with `dim` removed.
+Same shape as `x` with `axis` removed.
 
 ## See also
 
@@ -81,7 +81,7 @@ median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #>  3.5000
 #> [ CPUf32{} ] 
 nv_median(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-  dim = 2L
+  axis = 2L
 )
 #> AnvlArray
 #>  3

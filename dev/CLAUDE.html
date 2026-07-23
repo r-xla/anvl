@@ -90,6 +90,15 @@
 <p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>.</p>
 </div>
 <div class="section level2">
+<h2 id="terminology">Terminology<a class="anchor" aria-label="anchor" href="#terminology"></a></h2>
+<ul><li>
+<strong>Axis vs. dimension.</strong> An <em>axis</em> is an index that identifies a direction of an array; a <em>dimension</em> is the <em>size</em> (extent) along an axis. For a <code>20x5x3</code> array the axes are <code>1</code>, <code>2</code>, <code>3</code> and the dimensions are <code>20</code>, <code>5</code>, <code>3</code>. Name identifiers accordingly: use <code>axis</code>/<code>axes</code> when the value is an index (or vector of indices), and <code>dim</code>/<code>dims</code> when it is a size (or shape vector). Helpers reflect this: <code>naxes(x)</code> is the number of axes (the rank), so <code>seq_len(naxes(x))</code> is the axis indices, and <code>shape(x)</code> / <code>dim(x)</code> return the dimensions.</li>
+<li>Speak of the <strong>size of an axis</strong>, never the “length of an axis” (reserve “length” for vectors and 1-D arrays).</li>
+<li>Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of “dimensions”, so calls into them keep those argument names (e.g. <code>hlo_reduce(dimensions = axes - 1L)</code>, <code>array(dim = ...)</code>) with the anvl-side axis variable on the right.</li>
+<li>
+<strong>Arrays, not tensors.</strong> In anvl-facing docs, messages, and identifiers, say <em>array</em> rather than <em>tensor</em>. The primary array argument of <code>nv_*</code> / <code>prim_*</code> functions is called <code>x</code>.</li>
+</ul></div>
+<div class="section level2">
 <h2 id="supported-dtypes">Supported dtypes<a class="anchor" aria-label="anchor" href="#supported-dtypes"></a></h2>
 <ul><li>there is currently no support for complex numbers.</li>
 </ul></div>
@@ -106,7 +115,7 @@
 <div class="section level2">
 <h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>
 <p>Anvl’s elementwise binary operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>nv_add</code>, <code>nv_mul</code>, …) only <strong>auto-broadcast scalars</strong> — i.e. operands with <code>shape = integer()</code>. They do <strong>not</strong> do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code> errors like <em>“All non-scalar arrays must have the same shape, … Use <code><a href="reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> for general broadcasting.”</em></p>
-<p>When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(x, target_shape)</code> / <code><a href="reference/prim_broadcast_in_dim.html">prim_broadcast_in_dim()</a></code> for a one-sided broadcast).</p>
+<p>When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(x, target_shape)</code> / <code><a href="reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> for a one-sided broadcast).</p>
 </div>
 <div class="section level2">
 <h2 id="graph-tracing">Graph Tracing<a class="anchor" aria-label="anchor" href="#graph-tracing"></a></h2>

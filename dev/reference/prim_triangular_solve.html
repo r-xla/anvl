@@ -8,12 +8,12 @@
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Triangular Solve — prim_triangular_solve"><meta name="description" content="Solves a system of linear equations with a triangular coefficient matrix.
 When left_side is TRUE, solves op(a) %*% x = b for x.
 When left_side is FALSE, solves x %*% op(a) = b for x.
-Dimensions before the last two are batch dimensions and must match
+Axes before the last two are batch axes and must match
 between a and b (no broadcasting).
 Here op is A or A^T depending on transpose_a."><meta property="og:description" content="Solves a system of linear equations with a triangular coefficient matrix.
 When left_side is TRUE, solves op(a) %*% x = b for x.
 When left_side is FALSE, solves x %*% op(a) = b for x.
-Dimensions before the last two are batch dimensions and must match
+Axes before the last two are batch axes and must match
 between a and b (no broadcasting).
 Here op is A or A^T depending on transpose_a."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -89,7 +89,7 @@ Here op is A or A^T depending on transpose_a."><meta property="og:image" content
     <p>Solves a system of linear equations with a triangular coefficient matrix.
 When <code>left_side</code> is <code>TRUE</code>, solves <code>op(a) %*% x = b</code> for <code>x</code>.
 When <code>left_side</code> is <code>FALSE</code>, solves <code>x %*% op(a) = b</code> for <code>x</code>.
-Dimensions before the last two are batch dimensions and must match
+Axes before the last two are batch axes and must match
 between <code>a</code> and <code>b</code> (no broadcasting).
 Here <code>op</code> is <code>A</code> or <code>A^T</code> depending on <code>transpose_a</code>.</p>
     </div>
@@ -106,16 +106,16 @@ Here <code>op</code> is <code>A</code> or <code>A^T</code> depending on <code>tr
 <dl><dt id="arg-a">a<a class="anchor" aria-label="anchor" href="#arg-a"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Triangular coefficient matrix of data type floating-point with at least 2
-dimensions. The last two dimensions must be equal (square matrix); any
-leading dimensions are batch dimensions.</p></dd>
+axes. The last two axes must be equal (square matrix); any
+leading axes are batch axes.</p></dd>
 
 
 <dt id="arg-b">b<a class="anchor" aria-label="anchor" href="#arg-b"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Right-hand side. Same data type and rank as <code>a</code> (rank &gt;= 2), with
-matching leading batch dimensions. The size of <code>a</code>'s last two (square)
-dimensions must equal <code>b</code>'s second-to-last dimension when
-<code>left_side = TRUE</code>, or <code>b</code>'s last dimension when <code>left_side = FALSE</code>.</p></dd>
+matching leading batch axes. The size of <code>a</code>'s last two (square)
+axes must equal <code>b</code>'s second-to-last axis when
+<code>left_side = TRUE</code>, or <code>b</code>'s last axis when <code>left_side = FALSE</code>.</p></dd>
 
 
 <dt id="arg-left-side">left_side<a class="anchor" aria-label="anchor" href="#arg-left-side"></a></dt>

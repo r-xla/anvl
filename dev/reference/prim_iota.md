@@ -1,20 +1,20 @@
 # Primitive Iota
 
-Creates an array with values increasing along the specified dimension.
+Creates an array with values increasing along the specified axis.
 
 ## Usage
 
 ``` r
-prim_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 ```
 
 ## Arguments
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which values increase. Negative values count from the
-  end of `shape`, i.e. `-1` refers to the last dimension.
+  Axis along which values increase. Negative values count from the end
+  of `shape`, i.e. `-1` refers to the last axis.
 
 - dtype:
 
@@ -71,7 +71,7 @@ Lowers to
 ## Examples
 
 ``` r
-prim_iota(dim = 1L, dtype = "i32", shape = 5L)
+prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 #> AnvlArray
 #>  1
 #>  2

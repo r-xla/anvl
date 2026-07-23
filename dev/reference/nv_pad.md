@@ -30,17 +30,17 @@ nv_pad(
 - edge_padding_low:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Amount of padding to add at the start of each dimension.
+  Amount of padding to add at the start of each axis.
 
 - edge_padding_high:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Amount of padding to add at the end of each dimension.
+  Amount of padding to add at the end of each axis.
 
 - interior_padding:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Amount of padding to add between elements in each dimension. If `NULL`
+  Amount of padding to add between elements in each axis. If `NULL`
   (default), no interior padding is applied.
 
 ## Value

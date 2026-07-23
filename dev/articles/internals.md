@@ -496,9 +496,9 @@ graph
     ##     %c1: f32[1000000]
     ##   Body:
     ##     %1: f32[] = convert [dtype = f32, ambiguous = FALSE] (%x1)
-    ##     %2: f32[1000000] = broadcast_in_dim [shape = 1000000, broadcast_dimensions = <any>] (%1)
+    ##     %2: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = <any>] (%1)
     ##     %3: f32[1000000] = add(%2, %c1)
-    ##     %4: f32?[1000000] = broadcast_in_dim [shape = 1000000, broadcast_dimensions = <any>] (1:f32?)
+    ##     %4: f32?[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = <any>] (1:f32?)
     ##     %5: f32[1000000] = add(%3, %4)
     ##   Outputs:
     ##     %5: f32[1000000]

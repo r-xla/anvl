@@ -1,11 +1,11 @@
 # Argsort
 
-Returns the indices that would sort the array along a dimension.
+Returns the indices that would sort the array along an axis.
 
 ## Usage
 
 ``` r
-nv_argsort(x, dim = NULL, decreasing = FALSE, stable = FALSE)
+nv_argsort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 ```
 
 ## Arguments
@@ -15,12 +15,12 @@ nv_argsort(x, dim = NULL, decreasing = FALSE, stable = FALSE)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Input array.
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to compute the sort permutation. Negative values
-  count from the end, i.e. `-1` refers to the last dimension. If `NULL`
-  (default), uses the last dimension.
+  Axis along which to compute the sort permutation. Negative values
+  count from the end, i.e. `-1` refers to the last axis. If `NULL`
+  (default), uses the last axis.
 
 - decreasing:
 

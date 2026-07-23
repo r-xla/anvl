@@ -6,8 +6,8 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Cholesky Decomposition — nv_chol"><meta name="description" content="Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Supports batched inputs: dimensions before the last two are batch dimensions."><meta property="og:description" content="Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Supports batched inputs: dimensions before the last two are batch dimensions."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+Supports batched inputs: axes before the last two are batch axes."><meta property="og:description" content="Computes the Cholesky decomposition of a symmetric positive-definite matrix.
+Supports batched inputs: axes before the last two are batch axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -79,7 +79,7 @@ Supports batched inputs: dimensions before the last two are batch dimensions."><
 
     <div class="ref-description section level2">
     <p>Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Supports batched inputs: dimensions before the last two are batch dimensions.</p>
+Supports batched inputs: axes before the last two are batch axes.</p>
     </div>
 
     <div class="section level2">
@@ -96,9 +96,9 @@ Supports batched inputs: dimensions before the last two are batch dimensions.</p
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Symmetric positive-definite matrix with at least 2 dimensions.
-The last two dimensions form the square matrix; any leading dimensions
-are batch dimensions.</p></dd>
+Symmetric positive-definite matrix with at least 2 axes.
+The last two axes form the square matrix; any leading axes
+are batch axes.</p></dd>
 
 
 <dt id="arg-lower">lower<a class="anchor" aria-label="anchor" href="#arg-lower"></a></dt>

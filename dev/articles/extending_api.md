@@ -212,7 +212,7 @@ nv_log2 <- function(x) {
 ```
 
 If the function has static arguments (anything that is not an arrayish
-input – dims, shape, dtype, control flags, functions used as templates,
+input – axes, shape, dtype, control flags, functions used as templates,
 …), list them with `static = c(...)` using either positional indices or
 argument names:
 
@@ -220,13 +220,13 @@ argument names:
 
 #' @export
 #' @jit static = c(2L, 3L)
-nv_mean <- function(x, dims = NULL, drop = TRUE) {
+nv_mean <- function(x, axes = NULL, drop = TRUE) {
   ...
 }
 
 #' @export
-#' @jit static = c("dimension")
-nv_concatenate <- function(..., dimension = NULL) {
+#' @jit static = c("axis")
+nv_concatenate <- function(..., axis = NULL) {
   ...
 }
 ```
