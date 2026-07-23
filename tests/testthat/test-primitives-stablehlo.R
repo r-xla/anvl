@@ -267,9 +267,9 @@ describe("cumulative ops", {
   })
 })
 
-test_that("prim_broadcast_in_axis", {
+test_that("prim_broadcast_in_axes", {
   x <- 1L
-  f <- jit(prim_broadcast_in_axis, static = c("shape", "broadcast_axes"))
+  f <- jit(prim_broadcast_in_axes, static = c("shape", "broadcast_axes"))
   expect_equal(
     f(nv_scalar(1L), c(1, 2), integer()),
     nv_array(1L, shape = c(1, 2)),

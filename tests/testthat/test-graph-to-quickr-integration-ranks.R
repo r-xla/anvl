@@ -23,7 +23,7 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
       if (naxes(x) < length(target_shape)) {
         x <- nv_reshape(x, c(rep.int(1L, length(target_shape) - naxes(x)), shape(x)))
       }
-      prim_broadcast_in_axis(x, shape = target_shape, broadcast_axes = seq_along(target_shape))
+      prim_broadcast_in_axes(x, shape = target_shape, broadcast_axes = seq_along(target_shape))
     }
 
     shA <- shape(A)

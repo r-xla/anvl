@@ -8,7 +8,7 @@
   `nv_cumsum(axis = )`, `nv_sort(axis = )`, `nv_squeeze(axes = )`,
   `nv_concatenate(axis = )` and the `prim_gather()` / `prim_scatter()` /
   `prim_conv()` axis parameters. `prim_broadcast_in_dim()` is now
-  `prim_broadcast_in_axis()` and `ndims()` / `ndims_abstract()` are now
+  `prim_broadcast_in_axes()` and `ndims()` / `ndims_abstract()` are now
   `naxes()` / `naxes_abstract()`.
 * New `axes()` re-export (from tengen) returning the axis indices of an array,
   i.e. `seq_len(naxes(x))`.

@@ -522,9 +522,9 @@ test_that("quickr pipeline matches PJRT: fill/iota/reverse/concatenate/convert/b
     i32_f64 <- prim_convert(x_i32, dtype = "f64")
 
     b0 <- nv_broadcast_to(s, shape = c(2L, 1L, 3L))
-    b1 <- prim_broadcast_in_axis(x_i32, shape = c(2L, 3L), broadcast_axes = c(1L, 2L))
+    b1 <- prim_broadcast_in_axes(x_i32, shape = c(2L, 3L), broadcast_axes = c(1L, 2L))
     b2 <- nv_broadcast_to(x21_i32, shape = c(2L, 3L))
-    b3 <- prim_broadcast_in_axis(x_i32, shape = c(2L, 3L, 1L), broadcast_axes = c(1L, 2L))
+    b3 <- prim_broadcast_in_axes(x_i32, shape = c(2L, 3L, 1L), broadcast_axes = c(1L, 2L))
 
     t0 <- nv_transpose(x_i32, permutation = c(2L, 1L))
     t1 <- nv_transpose(x_i32, permutation = c(1L, 2L))

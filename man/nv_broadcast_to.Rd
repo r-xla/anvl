@@ -28,5 +28,5 @@ nv_broadcast_to(x, shape = c(2, 3))
 }
 \seealso{
 \code{\link[=nv_broadcast_arrays]{nv_broadcast_arrays()}}, \code{\link[=nv_broadcast_scalars]{nv_broadcast_scalars()}},
-\code{\link[=prim_broadcast_in_axis]{prim_broadcast_in_axis()}} for the underlying primitive.
+\code{\link[=prim_broadcast_in_axes]{prim_broadcast_in_axes()}} for the underlying primitive.
 }

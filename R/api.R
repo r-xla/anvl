@@ -179,7 +179,7 @@ nv_broadcast_arrays <- function(...) {
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and the same data type as `operand`.
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
-#'   [prim_broadcast_in_axis()] for the underlying primitive.
+#'   [prim_broadcast_in_axes()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' nv_broadcast_to(x, shape = c(2, 3))
@@ -189,7 +189,7 @@ nv_broadcast_to <- function(operand, shape) {
   shape_op <- shape(operand)
   if (!identical(shape_op, shape)) {
     broadcast_axes <- make_broadcast_axes(shape_op, shape)
-    prim_broadcast_in_axis(operand, shape, broadcast_axes)
+    prim_broadcast_in_axes(operand, shape, broadcast_axes)
   } else {
     operand
   }

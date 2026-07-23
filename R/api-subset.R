@@ -93,7 +93,7 @@ dynamic_start_indices <- function(starts) {
     if (identical(shape_abstract(starts[[d]]), 1L)) {
       slices[[d]] <- nv_broadcast_to(starts[[d]], c(multi_index_sizes, 1L))
     } else {
-      slices[[d]] <- prim_broadcast_in_axis(starts[[d]], c(multi_index_sizes, 1L), multi_index_i)
+      slices[[d]] <- prim_broadcast_in_axes(starts[[d]], c(multi_index_sizes, 1L), multi_index_i)
       multi_index_i <- multi_index_i + 1L
     }
   }

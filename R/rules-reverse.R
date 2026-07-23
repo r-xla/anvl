@@ -458,7 +458,7 @@ prim_reduce_sum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, pa
       } else {
         seq_along(shape(grad))
       }
-      prim_broadcast_in_axis(grad, shape(operand), baxes)
+      prim_broadcast_in_axes(grad, shape(operand), baxes)
     }
   )
 })
@@ -484,21 +484,21 @@ prim_reduce_max[["reverse"]] <- prim_reduce_min[["reverse"]] <- rule_reverse(fun
       }
 
       y <- outputs[[1L]]
-      y_bc <- prim_broadcast_in_axis(y, shape(operand), baxes)
+      y_bc <- prim_broadcast_in_axes(y, shape(operand), baxes)
 
-      grad_bc <- prim_broadcast_in_axis(grad, shape(operand), baxes)
+      grad_bc <- prim_broadcast_in_axes(grad, shape(operand), baxes)
       mask <- prim_eq(operand, y_bc)
       mask_f <- prim_convert(mask, dtype = dtype(grad_bc))
 
       count <- prim_reduce_sum(mask_f, axes = axes, drop = drop)
-      count_bc <- prim_broadcast_in_axis(count, shape(operand), baxes)
+      count_bc <- prim_broadcast_in_axes(count, shape(operand), baxes)
 
       prim_div(prim_mul(grad_bc, mask_f), count_bc)
     }
   )
 })
 
-prim_broadcast_in_axis[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
+prim_broadcast_in_axes[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   shape <- params$shape
   broadcast_axes <- params$broadcast_axes
   operand <- inputs[[1L]]
@@ -663,10 +663,10 @@ prim_clamp[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   # this is an inconsistency in stablehlo, as it broadcasts scalars in clamp, but not in eq
   # (and most other functions)
   if (naxes(min_val) == 0L) {
-    min_val <- prim_broadcast_in_axis(min_val, shape(operand), integer())
+    min_val <- prim_broadcast_in_axes(min_val, shape(operand), integer())
   }
   if (naxes(max_val) == 0L) {
-    max_val <- prim_broadcast_in_axis(max_val, shape(operand), integer())
+    max_val <- prim_broadcast_in_axes(max_val, shape(operand), integer())
   }
 
   # the points where operand is equal to min_val or max_val are non differentiable,
@@ -887,7 +887,7 @@ prim_reduce_prod[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 
   operand_c <- prim_reshape(prim_transpose(operand, perm), collapsed_shape)
   grad_squeezed <- if (drop) grad else prim_reshape(grad, s[non_reduced])
-  grad_bc <- prim_broadcast_in_axis(grad_squeezed, collapsed_shape, seq_len(rank - 1L))
+  grad_bc <- prim_broadcast_in_axes(grad_squeezed, collapsed_shape, seq_len(rank - 1L))
 
   out_c <- if (reduced_size <= 1L) {
     grad_bc
@@ -1189,7 +1189,7 @@ prim_scatter[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
         num_ids <- prod(ids_shape)
         id_dtype <- "i64"
         update_ids <- prim_reshape(prim_iota(1L, id_dtype, num_ids, start = 1L), ids_shape)
-        update_ids <- prim_broadcast_in_axis(update_ids, update_shape, seq_along(update_shape))
+        update_ids <- prim_broadcast_in_axes(update_ids, update_shape, seq_along(update_shape))
 
         # b) Scatter IDs to see which update "wins" at each position
         scattered_ids <- prim_scatter(

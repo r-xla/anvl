@@ -1022,7 +1022,7 @@ quickr_emit_transpose <- function(out_sym, operand_expr, permutation, out_shape,
   quickr_emit_assign(out_sym, rlang::call2("t", operand_expr))
 }
 
-quickr_emit_broadcast_in_axis <- function(out_sym, operand_expr, shape_in, shape_out, broadcast_axes, out_aval) {
+quickr_emit_broadcast_in_axes <- function(out_sym, operand_expr, shape_in, shape_out, broadcast_axes, out_aval) {
   broadcast_axes <- as.integer(broadcast_axes)
   if (identical(shape_in, shape_out)) {
     return(quickr_emit_assign(out_sym, operand_expr))
@@ -1036,7 +1036,7 @@ quickr_emit_broadcast_in_axis <- function(out_sym, operand_expr, shape_in, shape
   }
 
   if (rank_in > 5L || rank_out > 5L) {
-    cli_abort("broadcast_in_axis: only arrays up to rank 5 are supported")
+    cli_abort("broadcast_in_axes: only arrays up to rank 5 are supported")
   }
   aligned_shape <- rep.int(1L, rank_out)
   for (d_in in seq_len(rank_in)) {
@@ -2095,12 +2095,12 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_broadcast_in_axis,
+    prim_broadcast_in_axes,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       operand_node <- input_nodes[[1L]]
-      quickr_emit_broadcast_in_axis(
+      quickr_emit_broadcast_in_axes(
         out_sym,
         inputs[[1L]],
         shape(operand_node$aval),

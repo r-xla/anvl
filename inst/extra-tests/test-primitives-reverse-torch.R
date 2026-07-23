@@ -452,7 +452,7 @@ describe("prim_cumsum", {
   })
 })
 
-test_that("prim_broadcast_in_axis", {
+test_that("prim_broadcast_in_axes", {
   input_shape <- c(2L, 1L, 3L)
   target_shape <- c(4L, 2L, 5L, 3L)
 

@@ -218,17 +218,17 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 #'   Has the same data type as the input and the given `shape`.
 #'   It is ambiguous if the input is ambiguous.
 #' @importFrom stablehlo r_to_constant
-#' @templateVar primitive_id broadcast_in_axis
+#' @templateVar primitive_id broadcast_in_axes
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_broadcast_in_dim()].
 #' @seealso [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
-#' prim_broadcast_in_axis(x, shape = c(2, 3), broadcast_axes = 2L)
+#' prim_broadcast_in_axes(x, shape = c(2, 3), broadcast_axes = 2L)
 #' @export
-prim_broadcast_in_axis <- new_primitive(
-  "broadcast_in_axis",
+prim_broadcast_in_axes <- new_primitive(
+  "broadcast_in_axes",
   function(operand, shape, broadcast_axes) {
     infer_fn <- function(operand, shape, broadcast_axes) {
       bd_attr <- r_to_constant(

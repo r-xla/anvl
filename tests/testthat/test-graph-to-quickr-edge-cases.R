@@ -98,14 +98,14 @@ test_that("graph_to_quickr_function rejects reshape ranks > 5", {
   testthat::expect_error(graph_to_quickr_function(graph), "reshape: only arrays up to rank 5", fixed = FALSE)
 })
 
-test_that("graph_to_quickr_function rejects broadcast_in_axis ranks > 5", {
+test_that("graph_to_quickr_function rejects broadcast_in_axes ranks > 5", {
   skip_if_no_quickr()
 
   graph <- trace_fn(
-    function(x) prim_broadcast_in_axis(x, shape = rep(1L, 6L), broadcast_axes = 6L),
+    function(x) prim_broadcast_in_axes(x, shape = rep(1L, 6L), broadcast_axes = 6L),
     list(x = nv_array(1L, dtype = "i32", shape = 1L))
   )
-  expect_error(graph_to_quickr_function(graph), "broadcast_in_axis: only arrays up to rank 5", fixed = FALSE)
+  expect_error(graph_to_quickr_function(graph), "broadcast_in_axes: only arrays up to rank 5", fixed = FALSE)
 })
 
 test_that("graph_to_quickr_function rejects reductions over empty axes", {

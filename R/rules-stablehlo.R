@@ -36,7 +36,7 @@ prim_pow[["stablehlo"]] <- function(lhs, rhs, output_types) {
   list(hlo_power(lhs, rhs, output_types = output_types))
 }
 
-prim_broadcast_in_axis[["stablehlo"]] <- function(operand, shape, broadcast_axes, output_types) {
+prim_broadcast_in_axes[["stablehlo"]] <- function(operand, shape, broadcast_axes, output_types) {
   list(hlo_broadcast_in_dim(operand, broadcast_axes - 1L, shape, output_types = output_types))
 }
 

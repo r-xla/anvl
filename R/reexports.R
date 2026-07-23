@@ -198,9 +198,9 @@ tengen::as_dtype
 
 #' @title Create a Shape object
 #'
-#' @description Constructs a `Shape` representing array axes.
+#' @description Constructs a `Shape` representing array dimensions.
 #'
-#' @param axes An `integer()` vector of axis sizes (>= 0).
+#' @param dims An `integer()` vector of dimension sizes (>= 0).
 #' @returns A `Shape` object.
 #' @seealso [shape()], [stablehlo::Shape()]
 #' @name Shape

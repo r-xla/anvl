@@ -196,12 +196,12 @@ test_that("prim_convert", {
   expect_jit_torch_unary(nv_fun, th_fun, c(2, 3))
 })
 
-test_that("prim_broadcast_in_axis", {
+test_that("prim_broadcast_in_axes", {
   input_shape <- c(2L, 3L)
   target_shape <- c(4L, 2L, 3L)
   baxes <- c(2L, 3L)
   x <- generate_test_data(input_shape, dtype = "f32")
-  f <- jit(function(a) prim_broadcast_in_axis(a, target_shape, baxes))
+  f <- jit(function(a) prim_broadcast_in_axes(a, target_shape, baxes))
   out_nv <- f(nv_array(x))
   out_th <- torch::torch_tensor(x)$unsqueeze(1)$expand(target_shape)
   testthat::expect_equal(sum(as_array(out_nv)), as.numeric(torch::as_array(out_th$sum())), tolerance = 1e-5)

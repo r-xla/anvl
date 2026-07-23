@@ -250,7 +250,7 @@ gather_clamp_indices <- function(
     bounds_shape <- rep(1L, length(indices_shape))
     bounds_shape[index_vector_axis] <- n_index_coords
 
-    min_tensor <- prim_broadcast_in_axis(
+    min_tensor <- prim_broadcast_in_axes(
       prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
       indices_shape,
       integer()
