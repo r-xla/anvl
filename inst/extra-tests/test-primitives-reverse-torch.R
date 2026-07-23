@@ -434,7 +434,7 @@ describe("prim_cumsum", {
       prim_cumsum,
       torch::torch_cumsum,
       shape = 5L,
-      args_f = \(shp, dtype) list(list(axis = 1L), list(axis = 1L))
+      args_f = \(shp, dtype) list(list(axis = 1L), list(dim = 1L))
     )
   })
   it("matrix gradient along each axis", {
@@ -445,7 +445,7 @@ describe("prim_cumsum", {
         shape = c(3L, 4L),
         args_f = local({
           dl <- d
-          \(shp, dtype) list(list(axis = dl), list(axis = dl))
+          \(shp, dtype) list(list(axis = dl), list(dim = dl))
         })
       )
     }
@@ -729,7 +729,7 @@ test_that("prim_reverse", {
       axes_to_reverse <- sample(seq_along(shp), size = sample.int(length(shp), 1L))
       list(
         list(axes = axes_to_reverse),
-        list(axes = axes_to_reverse)
+        list(dims = axes_to_reverse)
       )
     },
     tol = 1e-5,
