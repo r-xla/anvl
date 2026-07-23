@@ -3388,6 +3388,7 @@ prim_convolution <- new_primitive(
     batch_group_count = 1L,
     precision = "highest"
   ) {
+    precision <- match.arg(precision, c("default", "high", "highest"))
     infer_fn <- function(
       lhs,
       rhs,
