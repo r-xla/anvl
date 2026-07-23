@@ -420,8 +420,8 @@ parse_subset_spec <- function(quo, dim_size) {
   # Array indices (AnvlArray or GraphBox)
   if (is_arrayish(e) && !is.atomic(e)) {
     dt <- dtype_abstract(e)
-    if (!(inherits(dt, "IntegerType") || inherits(dt, "UIntegerType"))) {
-      cli_abort("Dynamic indices must be integers, but got {.cls {class(dt)[1]}}")
+    if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
+      cli_abort("Dynamic indices must be integers, but got {.val {as.character(dt)}}")
     }
     nd <- ndims_abstract(e)
     if (nd > 1L) {
@@ -518,7 +518,7 @@ subset_scatter_core <- jit(
       value <- nv_convert(value, dtype = dt_x)
     }
 
-    if (!ndims(value)) {
+    if (!naxes(value)) {
       value <- nv_broadcast_to(value, update_shape)
     } else {
       value_shape <- shape(value)

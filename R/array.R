@@ -7,7 +7,7 @@
 #' The following generic functions can be used to extract information from an `AnvlArray`:
 #' - [`dtype()`][tengen::dtype]: Get the data type of the array.
 #' - [`shape()`][tengen::shape]: Get the shape (dimensions) of the array.
-#' - [`ndims()`][tengen::ndims]: Get the number of dimensions.
+#' - [`naxes()`][tengen::naxes]: Get the number of dimensions.
 #' - [`device()`][tengen::device]: Get the device of the array.
 #' - [`platform()`]: Get the platform (e.g. `"cpu"`, `"cuda"`).
 #' - [`ambiguous()`]: Get whether the dtype is ambiguous.
@@ -81,7 +81,7 @@
 #' x <- nv_array(1:6, shape = c(2L, 3L))
 #' dtype(x)
 #' shape(x)
-#' ndims(x)
+#' naxes(x)
 #' device(x)
 #' platform(x)
 #' ambiguous(x)
@@ -449,7 +449,7 @@ as.array.AnvlArray <- function(x, ...) {
 #' @method as.matrix AnvlArray
 #' @export
 as.matrix.AnvlArray <- function(x, ...) {
-  nd <- ndims(x)
+  nd <- naxes(x)
   if (nd != 2L) {
     cli_abort("{.fn as.matrix} requires a 2-D array, but got a {nd}-D array.")
   }
@@ -503,7 +503,7 @@ NULL
 #' @export
 as.double.AnvlArray <- function(x, check = FALSE, ...) {
   dt <- dtype(x)
-  if (!(inherits(dt, "FloatType") || inherits(dt, "IntegerType") || inherits(dt, "UIntegerType"))) {
+  if (!(is_dtype_float(dt) || is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.double} requires a float or integer dtype, but got {.val {as.character(dt)}}.")
   }
   as.double(as_array(x, check = check))
@@ -514,7 +514,7 @@ as.double.AnvlArray <- function(x, check = FALSE, ...) {
 #' @export
 as.integer.AnvlArray <- function(x, check = FALSE, ...) {
   dt <- dtype(x)
-  if (!(inherits(dt, "IntegerType") || inherits(dt, "UIntegerType"))) {
+  if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.integer} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
   }
   as.integer(as_array(x, check = check))
@@ -524,7 +524,7 @@ as.integer.AnvlArray <- function(x, check = FALSE, ...) {
 #' @method as.logical AnvlArray
 #' @export
 as.logical.AnvlArray <- function(x, check = FALSE, ...) {
-  if (!inherits(dtype(x), "BooleanType")) {
+  if (!is_dtype_bool(dtype(x))) {
     cli_abort("{.fn as.logical} requires a {.val bool} dtype, but got {.val {as.character(dtype(x))}}.")
   }
   as.logical(as_array(x, check = check))
@@ -590,7 +590,7 @@ backend.QuickrDevice <- function(x, ...) {
 #' - [`dtype()`][tengen::dtype]: Get the data type of the array.
 #' - [`shape()`][tengen::shape]: Get the shape (dimensions) of the array.
 #' - [`ambiguous()`]: Get whether the dtype is ambiguous.
-#' - [`ndims()`][tengen::ndims]: Get the number of dimensions.
+#' - [`naxes()`][tengen::naxes]: Get the number of dimensions.
 #'
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
 #'   The data type of the array.
@@ -669,7 +669,7 @@ shape.AbstractArray <- function(x, ...) {
 #' x
 #' ambiguous(x)
 #' shape(x)
-#' ndims(x)
+#' naxes(x)
 #' dtype(x)
 #'
 #' # How it appears during tracing
@@ -721,7 +721,7 @@ ConcreteArray <- function(data) {
 #' x
 #' ambiguous(x)
 #' shape(x)
-#' ndims(x)
+#' naxes(x)
 #' dtype(x)
 #' # How it appears during tracing:
 #' # 1. via R literals
@@ -783,7 +783,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data), ambiguous) {
 #' x
 #' ambiguous(x)
 #' shape(x)
-#' ndims(x)
+#' naxes(x)
 #' dtype(x)
 #' # How it appears during tracing:
 #' graph <- trace_fn(function() nv_iota(dim = 1L, dtype = "i32", shape = 4L), list())

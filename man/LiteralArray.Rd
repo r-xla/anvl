@@ -45,7 +45,7 @@ x <- LiteralArray(1L, shape = integer(), ambiguous = TRUE)
 x
 ambiguous(x)
 shape(x)
-ndims(x)
+naxes(x)
 dtype(x)
 # How it appears during tracing:
 # 1. via R literals

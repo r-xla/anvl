@@ -122,17 +122,17 @@ tengen::dtype
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @returns `integer(1)`
-#' @seealso [tengen::ndims()]
-#' @name ndims
+#' @seealso [tengen::naxes()]
+#' @name naxes
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
-#' ndims(x)
+#' naxes(x)
 NULL
 
-#' @rdname ndims
-#' @importFrom tengen ndims
+#' @rdname naxes
+#' @importFrom tengen naxes
 #' @export
-tengen::ndims
+tengen::naxes
 
 #' @title Check if an object is a DataType
 #'

@@ -376,7 +376,7 @@ prim_dot_general[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
   # remaining dimensions
   rem_dims <- function(x, b_dims, c_dims) {
     ii <- c(b_dims, c_dims)
-    seq_len(ndims(x))[if (length(ii)) -ii else TRUE]
+    seq_len(naxes(x))[if (length(ii)) -ii else TRUE]
   }
   rd_lhs <- rem_dims(lhs, bd_lhs, cd_lhs)
   rd_rhs <- rem_dims(rhs, bd_rhs, cd_rhs)
@@ -508,7 +508,7 @@ prim_broadcast_in_dim[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
   list(
     if (required[[1L]]) {
       # Sum grad over the axes that were introduced by broadcasting
-      new_dims <- setdiff(seq_len(ndims(y)), broadcast_dimensions)
+      new_dims <- setdiff(seq_len(naxes(y)), broadcast_dimensions)
       expand_dims <- broadcast_dimensions[(shape(y)[broadcast_dimensions] != 1L) & (shape(x) == 1L)]
       reduce_dims <- c(new_dims, expand_dims)
 
@@ -662,10 +662,10 @@ prim_clamp[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   # because stablehlo.clamp broadcasts scalars, we need to handle this here before the eq call
   # this is an inconsistency in stablehlo, as it broadcasts scalars in clamp, but not in eq
   # (and most other functions)
-  if (ndims(min_val) == 0L) {
+  if (naxes(min_val) == 0L) {
     min_val <- prim_broadcast_in_dim(min_val, shape(x), integer())
   }
-  if (ndims(max_val) == 0L) {
+  if (naxes(max_val) == 0L) {
     max_val <- prim_broadcast_in_dim(max_val, shape(x), integer())
   }
 

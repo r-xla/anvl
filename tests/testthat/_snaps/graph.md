@@ -11,7 +11,7 @@
       jit(prim_ceil)(nv_array(1:4))
     Condition
       Error in `prim_ceil()`:
-      ! `x` must have dtype FloatType.
+      ! `x` must have dtype float.
       x Got i32.
 
 ---

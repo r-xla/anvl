@@ -222,7 +222,7 @@ nv_convert <- function(x, dtype) {
 #' @export
 nv_transpose <- function(x, permutation = NULL) {
   x <- as_anvl_array(x)
-  permutation <- permutation %||% rev(seq_len(ndims(x)))
+  permutation <- permutation %||% rev(seq_len(naxes(x)))
   prim_transpose(x, permutation)
 }
 
@@ -271,7 +271,7 @@ nv_reshape <- function(x, shape) {
 #' nv_flatten(matrix(1:4, nrow = 2))
 nv_flatten <- function(x) {
   x <- as_anvl_array(x)
-  if (ndims(x) == 0) {
+  if (naxes(x) == 0) {
     cli_abort("Cannot flatten a scalar array.")
   }
   nv_reshape(x, prod(shape(x)))
@@ -333,7 +333,7 @@ nv_concatenate <- function(..., dimension = NULL) {
   out_shape_dim_is_one <- out_shape
   out_shape_dim_is_one[dimension] <- 1L
   args <- lapply(args, \(arg) {
-    if (ndims(arg) == 0L) {
+    if (naxes(arg) == 0L) {
       nv_broadcast_to(arg, out_shape_dim_is_one)
     } else {
       arg
@@ -1468,7 +1468,7 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
   args <- as_anvl_arrays(x, padding_value)
   x <- args[[1L]]
   padding_value <- args[[2L]]
-  rank <- ndims(x)
+  rank <- naxes(x)
   if (is.null(interior_padding)) {
     interior_padding <- rep(0L, rank)
   }
@@ -1519,17 +1519,17 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   args <- nv_promote_to_common(lhs, rhs)
   lhs <- args[[1L]]
   rhs <- args[[2L]]
-  if (ndims(lhs) < 2L) {
+  if (naxes(lhs) < 2L) {
     cli_abort("lhs of matmul must have at least 2 dimensions")
   }
-  if (ndims(rhs) < 2L) {
+  if (naxes(rhs) < 2L) {
     cli_abort("rhs of matmul must have at least 2 dimensions")
   }
-  nbatch <- ndims(lhs) - 2L
+  nbatch <- naxes(lhs) - 2L
   prim_dot_general(
     lhs,
     rhs,
-    contracting_dims = list(ndims(lhs), ndims(rhs) - 1L),
+    contracting_dims = list(naxes(lhs), naxes(rhs) - 1L),
     batching_dims = list(seq_len(nbatch), seq_len(nbatch)),
     precision = precision
   )
@@ -1951,7 +1951,7 @@ nv_eigh <- prim_eigh
 #' @jit
 nv_diag <- function(x) {
   x <- as_anvl_array(x)
-  if (ndims(x) != 1L) {
+  if (naxes(x) != 1L) {
     cli_abort(c(
       "{.arg x} must be a 1-D array.",
       x = "Got shape {xlamisc::shapevec_repr(shape(x))}."
@@ -2006,9 +2006,9 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 # index `shape(x)[dims]` to compute the number of reduced elements.
 .resolve_reduce_dims <- function(x, dims) {
   if (is.null(dims)) {
-    return(seq_len(ndims(x)))
+    return(seq_len(naxes(x)))
   }
-  resolve_dims(dims, ndims(x), arg = "dims", unique = TRUE)
+  resolve_dims(dims, naxes(x), arg = "dims", unique = TRUE)
 }
 
 #' @title Sum Reduction
@@ -2029,7 +2029,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 nv_reduce_sum <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   dims <- .resolve_reduce_dims(x, dims)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_reduce_sum(x, dims = dims, drop = drop)
@@ -2055,7 +2055,7 @@ nv_reduce_sum <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_mean <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   dims <- .resolve_reduce_dims(x, dims)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     is_nan <- nv_is_nan(x)
     total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), dims = dims, drop = drop)
     count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), dims = dims, drop = drop)
@@ -2083,7 +2083,7 @@ nv_mean <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_reduce_prod <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   dims <- .resolve_reduce_dims(x, dims)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_reduce_prod(x, dims = dims, drop = drop)
@@ -2137,7 +2137,7 @@ nv_reduce_min <- function(x, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 # to re-inject NaN — no input substitution can coax the kernel into emitting
 # NaN on output.
 .nv_reduce_extreme <- function(x, dims, drop, nan_rm, identity_val, prim_reduce) {
-  if (!inherits(dtype(x), "FloatType")) {
+  if (!is_dtype_float(dtype(x))) {
     return(prim_reduce(x, dims = dims, drop = drop))
   }
   is_nan <- nv_is_nan(x)
@@ -2211,7 +2211,7 @@ nv_cumsum <- function(x, dim = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     dim <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_cumsum(x, dim = dim)
@@ -2242,7 +2242,7 @@ nv_cumprod <- function(x, dim = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     dim <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_cumprod(x, dim = dim)
@@ -2309,7 +2309,7 @@ nv_cummin <- function(x, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     dim <- 1L
   }
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, dim = dim)
@@ -2461,7 +2461,7 @@ nv_var <- function(x, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   )
   diff <- x - mean_bc
   ssum <- nv_reduce_sum(diff * diff, dims, drop, nan_rm = nan_rm)
-  if (nan_rm && inherits(dtype(x), "FloatType")) {
+  if (nan_rm && is_dtype_float(dtype(x))) {
     count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), "i32"), dims, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
@@ -2538,7 +2538,7 @@ nv_squeeze <- function(x, dims = NULL) {
 #' @template param_x
 #' @param dim (`integer(1)`)\cr
 #'   Position at which to insert the new dimension. Valid positions range from
-#'   1 to `ndims(x) + 1`. Negative values count from the end of the
+#'   1 to `naxes(x) + 1`. Negative values count from the end of the
 #'   *result*, i.e. `-1` appends the new dimension at the end.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as `x` with an extra dimension of size 1.
@@ -2575,10 +2575,10 @@ nv_outer <- function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
   lhs <- args[[1L]]
   rhs <- args[[2L]]
-  if (ndims(lhs) != 1L) {
+  if (naxes(lhs) != 1L) {
     cli_abort("lhs must be a 1-D array")
   }
-  if (ndims(rhs) != 1L) {
+  if (naxes(rhs) != 1L) {
     cli_abort("rhs must be a 1-D array")
   }
   lhs_exp <- nv_unsqueeze(lhs, dim = 2L)
@@ -2601,7 +2601,7 @@ nv_outer <- function(lhs, rhs) {
 #' @jit
 nv_extract_diag <- function(x) {
   x <- as_anvl_array(x)
-  if (ndims(x) != 2L) {
+  if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
   shp <- shape(x)
@@ -2733,7 +2733,7 @@ nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
 #' @jit static 2L
 nv_tril <- function(x, diagonal = 0L) {
   x <- as_anvl_array(x)
-  if (ndims(x) != 2L) {
+  if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
   nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
@@ -2757,7 +2757,7 @@ nv_tril <- function(x, diagonal = 0L) {
 #' @jit static 2L
 nv_triu <- function(x, diagonal = 0L) {
   x <- as_anvl_array(x)
-  if (ndims(x) != 2L) {
+  if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
   nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
@@ -2839,7 +2839,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
 #' @export
 nv_select <- function(x, dim, index) {
   x <- as_anvl_array(x)
-  rank <- ndims(x)
+  rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("Cannot select along a 0-dimensional array")
   }
@@ -2923,10 +2923,10 @@ nv_select <- function(x, dim, index) {
 #' @export
 nv_sort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
   x <- as_anvl_array(x)
-  if (ndims(x) == 0L) {
+  if (naxes(x) == 0L) {
     cli_abort("Cannot sort a 0-dimensional array")
   }
-  prim_sort(list(x), dim = dim %||% ndims(x), descending = decreasing, is_stable = stable)[[1L]]
+  prim_sort(list(x), dim = dim %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
 }
 
 #' @title Argsort
@@ -2957,10 +2957,10 @@ nv_sort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
 #' @jit static 2:4
 nv_argsort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
   x <- as_anvl_array(x)
-  if (ndims(x) == 0L) {
+  if (naxes(x) == 0L) {
     cli_abort("Cannot argsort a 0-dimensional array")
   }
-  dim <- dim %||% ndims(x)
+  dim <- dim %||% naxes(x)
   idx <- nv_iota_like(x, dim = dim, dtype = "i32")
   prim_sort(list(x, idx), dim = dim, descending = decreasing, is_stable = stable)[[2L]]
 }
@@ -2999,7 +2999,7 @@ nv_argsort <- function(x, dim = NULL, decreasing = FALSE, stable = FALSE) {
 #' @jit static 2:4
 nv_top_k <- function(x, k, dim = NULL, with_indices = FALSE) {
   x <- as_anvl_array(x)
-  rank <- ndims(x)
+  rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("Cannot take top-k of a 0-dimensional array")
   }
@@ -3079,7 +3079,7 @@ nv_top_k <- function(x, k, dim = NULL, with_indices = FALSE) {
 #' @jit static 2:5
 nv_quantile <- function(x, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
   x <- as_anvl_array(x)
-  rank <- ndims(x)
+  rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("Cannot compute quantile of a 0-dimensional array")
   }
@@ -3094,7 +3094,7 @@ nv_quantile <- function(x, probs, dim = NULL, interpolation = "linear", nan_rm =
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- inherits(dtype(x), "FloatType")
+  is_float <- is_dtype_float(dtype(x))
   shp_kd <- replace(shp, dim, 1L)
   shp_K <- replace(shp, dim, K)
 
@@ -3226,10 +3226,10 @@ nv_median <- function(x, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
 #' @export
 nv_argmax <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
-  if (ndims(x) == 0L) {
+  if (naxes(x) == 0L) {
     cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
   }
-  dim <- dim %||% ndims(x)
+  dim <- dim %||% naxes(x)
   .nv_arg_extreme(x, dim, drop, nan_rm, prim_argmax)
 }
 
@@ -3257,10 +3257,10 @@ nv_argmax <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 nv_argmin <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
-  if (ndims(x) == 0L) {
+  if (naxes(x) == 0L) {
     cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
   }
-  dim <- dim %||% ndims(x)
+  dim <- dim %||% naxes(x)
   .nv_arg_extreme(x, dim, drop, nan_rm, prim_argmin)
 }
 
@@ -3272,7 +3272,7 @@ nv_argmin <- function(x, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #
 .nv_arg_extreme <- function(x, dim, drop, nan_rm, prim_arg) {
   result <- prim_arg(x, dim = dim, drop = drop)
-  if (nan_rm || !inherits(dtype(x), "FloatType")) {
+  if (nan_rm || !is_dtype_float(dtype(x))) {
     return(result)
   }
   # argmax on the bool mask returns the index of the first TRUE (tie-break:

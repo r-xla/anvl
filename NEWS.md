@@ -12,6 +12,8 @@
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
+* `ndims()` has been renamed to `naxes()`, matching tengen's rename of the
+  same generic.
 
 ## Features
 
@@ -86,8 +88,8 @@
 * Errors raised while tracing are now phrased in anvl's own vocabulary (#298).
   Messages originating in the `stablehlo` package used the StableHLO spec's
   terminology; they now speak of arrays instead of tensors, and of `x` instead
-  of `operand`. For example, `` `operand` must have dtype FloatType `` became
-  `` `x` must have dtype FloatType ``.
+  of `operand`. For example, `` `operand` must have dtype float `` became
+  `` `x` must have dtype float ``.
 
 
 * `jit()` now rejects static arguments with reference semantics -- an

@@ -12,7 +12,7 @@ Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements. Must satisfy
-\verb{1 <= k <= shape(x)[ndims(x)]}.}
+\verb{1 <= k <= shape(x)[naxes(x)]}.}
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr

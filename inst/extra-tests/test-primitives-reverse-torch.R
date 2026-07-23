@@ -705,7 +705,7 @@ test_that("prim_clamp", {
 
   f_nv <- function(x) {
     y <- prim_clamp(min_val, x, max_val)
-    nv_reduce_sum(y, dims = seq_len(ndims(y)), drop = TRUE)
+    nv_reduce_sum(y, dims = seq_len(naxes(y)), drop = TRUE)
   }
 
   grads_nv <- jit(gradient(f_nv))(x_nv)
@@ -758,7 +758,7 @@ test_that("prim_concatenate", {
     f_nv <- function(...) {
       args <- list(...)
       out <- do.call(prim_concatenate, c(args, list(dimension = dimension)))
-      nv_reduce_sum(out, dims = seq_len(ndims(out)), drop = TRUE)
+      nv_reduce_sum(out, dims = seq_len(naxes(out)), drop = TRUE)
     }
 
     grads_nv <- do.call(jit(gradient(f_nv)), nvs)
@@ -829,7 +829,7 @@ describe("prim_static_slice", {
 
     f_nv <- function(x) {
       out <- prim_static_slice(x, start_indices, limit_indices, strides)
-      nv_reduce_sum(out, dims = seq_len(ndims(out)), drop = TRUE)
+      nv_reduce_sum(out, dims = seq_len(naxes(out)), drop = TRUE)
     }
 
     grads_nv <- jit(gradient(f_nv))(x_nv)

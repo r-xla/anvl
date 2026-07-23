@@ -282,7 +282,7 @@ descriptor_to_graph <- function(descriptor) {
 #' @section Extractors:
 #' - [`dtype()`][tengen::dtype]
 #' - [`shape()`][tengen::shape]
-#' - [`ndims()`][tengen::ndims]
+#' - [`naxes()`][tengen::naxes]
 #' - [`ambiguous()`]
 #'
 #' @param gnode ([`GraphNode`])\cr
