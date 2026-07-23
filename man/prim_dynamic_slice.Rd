@@ -4,19 +4,19 @@
 \alias{prim_dynamic_slice}
 \title{Primitive Dynamic Slice}
 \usage{
-prim_dynamic_slice(operand, ..., slice_sizes)
+prim_dynamic_slice(x, ..., slice_sizes)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{...}{(\code{\link{arrayish}} of integer type)\cr
 Scalar start indices, one per axis. Each must be a
-scalar array. Pass one scalar per axis of \code{operand}.}
+scalar array. Pass one scalar per axis of \code{x}.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice in each axis. Must have length equal to
-\code{naxes(operand)} and satisfy \verb{1 <= slice_sizes <= nv_shape(operand)}
+\code{naxes(x)} and satisfy \verb{1 <= slice_sizes <= nv_shape(x)}
 per axis.}
 }
 \value{
@@ -35,7 +35,7 @@ time and you need stride support.
 \section{Out Of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
-\code{adjusted_start_indices = clamp(1, start_indices, nv_shape(operand) - slice_sizes + 1)}.
+\code{adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)}.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.
 }

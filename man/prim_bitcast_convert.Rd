@@ -4,10 +4,10 @@
 \alias{prim_bitcast_convert}
 \title{Primitive Bitcast Convert}
 \usage{
-prim_bitcast_convert(operand, dtype)
+prim_bitcast_convert(x, dtype)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr

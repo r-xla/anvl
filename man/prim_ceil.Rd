@@ -4,10 +4,10 @@
 \alias{prim_ceil}
 \title{Primitive Ceiling}
 \usage{
-prim_ceil(operand)
+prim_ceil(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

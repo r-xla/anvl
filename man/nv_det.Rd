@@ -4,14 +4,14 @@
 \alias{nv_det}
 \title{Determinant}
 \usage{
-nv_det(operand)
+nv_det(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Square matrix of floating-point data type.}
 }
 \value{
-Scalar \code{\link{arrayish}} with the same dtype as \code{operand}.
+Scalar \code{\link{arrayish}} with the same dtype as \code{x}.
 }
 \description{
 Computes the determinant of a square matrix via \code{\link[=nv_determinant]{nv_determinant()}}.

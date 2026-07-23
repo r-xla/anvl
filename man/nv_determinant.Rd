@@ -5,25 +5,22 @@
 \alias{determinant.AnvlArray}
 \title{Determinant in modulus/sign form}
 \usage{
-nv_determinant(operand, logarithm = TRUE)
+nv_determinant(x, logarithm = TRUE)
 
 \method{determinant}{AnvlArray}(x, logarithm = TRUE, ...)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Square matrix of floating-point data type.}
 
 \item{logarithm}{(\code{logical(1)})\cr If \code{TRUE} (default), return the log
 of the absolute determinant.}
 
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
-
 \item{...}{No additional arguments.}
 }
 \value{
 Named \code{list} with elements \code{modulus} and \code{sign}, both scalar
-\code{\link{arrayish}} with the same dtype as \code{operand}. The full determinant
+\code{\link{arrayish}} with the same dtype as \code{x}. The full determinant
 is \code{sign * exp(modulus)} (with \code{logarithm = TRUE}) or
 \code{sign * modulus} (with \code{logarithm = FALSE}).
 }

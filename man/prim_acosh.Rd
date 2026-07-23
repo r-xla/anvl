@@ -4,10 +4,10 @@
 \alias{prim_acosh}
 \title{Primitive Inverse Hyperbolic Cosine}
 \usage{
-prim_acosh(operand)
+prim_acosh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

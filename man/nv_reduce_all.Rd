@@ -4,14 +4,15 @@
 \alias{nv_reduce_all}
 \title{All Reduction}
 \usage{
-nv_reduce_all(operand, axes = NULL, drop = TRUE)
+nv_reduce_all(x, axes = NULL, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. If \code{NULL} (default), reduces over all
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
 axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr

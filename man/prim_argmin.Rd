@@ -4,14 +4,15 @@
 \alias{prim_argmin}
 \title{Primitive Argmin}
 \usage{
-prim_argmin(operand, axis, drop = TRUE)
+prim_argmin(x, axis, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis along which to find the index of the maximum.}
+Axis along which to find the index of the maximum.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
 If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
@@ -19,7 +20,7 @@ kept with size 1.}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{operand} with \code{axis} removed (or set to 1 if
+Same shape as \code{x} with \code{axis} removed (or set to 1 if
 \code{drop = FALSE}).
 }
 \description{

@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+* The primary array argument (previously `operand`) of array transformation
+  functions (`prim_<*>` and `nv_<*>`) is now consistently called `x`.
 * Renamed `dim`/`dims` to `axis`/`axes` throughout the package: for a `20x5x3`
   array, the axes are `1`, `2` and `3`, while its dimensions are `20`, `5` and
   `3`. This affects arguments such as `nv_reduce_sum(axes = )`,
@@ -12,12 +14,31 @@
   `naxes()` / `naxes_abstract()`.
 * New `axes()` re-export (from tengen) returning the axis indices of an array,
   i.e. `seq_len(naxes(x))`.
+* The `"xla"` backend has been renamed to `"pjrt"`, after the runtime it uses.
+  Pass `backend = "pjrt"` to `jit()`, `nv_array()`, `local_backend()`, and
+  friends; `backend()` and `default_backend()` now return `"pjrt"`. The
+  constructor `AnvlBackendXla()` is now `AnvlBackendPjrt()` and the internal
+  `compile_xla()` is now `compile_pjrt()`.
 * `xla()` has been removed. Use `jit()` instead: it compiles through the same
   pipeline, lazily on the first call. Warm a jitted function up by calling it
   once with representative inputs.
 
 ## Features
 
+* Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now accept
+  negative values that count from the end, so `-1` refers to the last
+  dimension. This works at both layers: in the `prim_*` primitives
+  (`prim_transpose()`, `prim_concatenate()`, `prim_reduce_*()`,
+  `prim_reduce()`, `prim_cumsum()` / `prim_cumprod()` / `prim_cummax()` /
+  `prim_cummin()`, `prim_argmax()`, `prim_argmin()`, `prim_reverse()`,
+  `prim_iota()`, `prim_sort()`) and in the `nv_*` functions built on top of
+  them, including `nv_squeeze()`, `nv_unsqueeze()`, `nv_select()`,
+  `nv_top_k()`, `nv_quantile()` and `nv_median()` (#396).
+* `nv_reshape()` and `prim_reshape()` accept a single `-1` in `shape`, whose
+  extent is then inferred from the number of elements of the input, e.g.
+  `nv_reshape(x, c(2, -1))` (#396).
+* Reductions now reject dimensions that are out of range for the operand
+  instead of silently ignoring them (#396).
 * New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /
   `nv_upper_tri_like()`) return a boolean triangular mask for a given shape,
   mirroring base R's `lower.tri()` / `upper.tri()`. As in base R, the main
@@ -30,6 +51,9 @@
   passes enabled.
 * New `nv_dnorm()` computes the normal distribution's probability density
   function (or, with `log = TRUE`, its log-density).
+* New `nv_pnorm()` computes the normal distribution's cumulative distribution
+  function (`lower_tail = FALSE` for the upper tail, `log_p = TRUE` for the
+  log-probability, staying accurate far into either tail).
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for
   `AnvlArray` gained a `check` argument that opts into scanning for
@@ -68,6 +92,12 @@
 
 * `nv_diag()` now errors on non-1-D input instead of silently producing an
   incorrect result.
+
+* Errors raised while tracing are now phrased in anvl's own vocabulary (#298).
+  Messages originating in the `stablehlo` package used the StableHLO spec's
+  terminology; they now speak of arrays instead of tensors, and of `x` instead
+  of `operand`. For example, `` `operand` must have dtype FloatType `` became
+  `` `x` must have dtype FloatType ``.
 
 
 * `jit()` now rejects static arguments with reference semantics -- an

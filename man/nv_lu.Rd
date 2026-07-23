@@ -4,17 +4,17 @@
 \alias{nv_lu}
 \title{LU Decomposition}
 \usage{
-nv_lu(operand)
+nv_lu(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Matrix of data type floating-point with exactly 2 axes.}
 }
 \value{
 Named \code{list}:
 \itemize{
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
-\verb{(m, n) = shape(operand)} and \code{k = min(m, n)}.
+\verb{(m, n) = shape(x)} and \code{k = min(m, n)}.
 \item \code{U} -- upper-triangular factor of shape \verb{(k, n)}.
 \item \code{pivots} -- length \code{k}, dtype \code{i32}. LAPACK-style sequential
 1-based row swaps as returned by \code{getrf}.
@@ -23,7 +23,7 @@ vector representing \eqn{P}.
 }
 }
 \description{
-Computes the partial-pivoted LU decomposition of a matrix \code{operand}:
+Computes the partial-pivoted LU decomposition of a matrix \code{x}:
 \deqn{P A = L U,}
 where \eqn{P} is a permutation matrix, \eqn{L} is unit lower
 triangular, and \eqn{U} is upper triangular.

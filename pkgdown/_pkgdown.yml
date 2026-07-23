@@ -341,7 +341,7 @@ reference:
       - is_device
       - quickr_device
       - AnvlBackend
-      - AnvlBackendXla
+      - AnvlBackendPjrt
       - AnvlBackendQuickr
 
   - title: Miscellaneous
@@ -397,7 +397,7 @@ reference:
       - rule_reverse
       - graph_to_quickr_r_function
       - jit_eval
-      - compile_xla
+      - compile_pjrt
       - stablehlo
       - current_platform
       - local_platform

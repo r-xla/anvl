@@ -4,18 +4,19 @@
 \alias{nv_top_k}
 \title{Top-K Elements}
 \usage{
-nv_top_k(operand, k, axis = NULL, with_indices = FALSE)
+nv_top_k(x, k, axis = NULL, with_indices = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements to return. Must satisfy
-\verb{1 <= k <= shape(operand)[axis]}.}
+\verb{1 <= k <= shape(x)[axis]}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to take the top \code{k}. If \code{NULL} (default),
+Axis along which to take the top \code{k}. Negative values count from the
+end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
 uses the last axis.}
 
 \item{with_indices}{(\code{logical(1)})\cr
@@ -25,7 +26,7 @@ returns \code{list(values = ..., indices = ...)} where \code{indices} is the
 }
 \value{
 \code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
-arrays (when \code{with_indices = TRUE}). Output shape matches \code{operand} with
+arrays (when \code{with_indices = TRUE}). Output shape matches \code{x} with
 \code{axis} resized to \code{k}; values are sorted decreasing along \code{axis}.
 }
 \description{

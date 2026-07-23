@@ -4,10 +4,10 @@
 \alias{prim_asinh}
 \title{Primitive Inverse Hyperbolic Sine}
 \usage{
-prim_asinh(operand)
+prim_asinh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

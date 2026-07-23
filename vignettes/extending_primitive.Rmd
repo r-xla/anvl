@@ -63,27 +63,27 @@ Primitives are created with `new_primitive()`: it builds the `AnvlPrimitive` met
 library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
-  function(operand, times, axis) {
-    # type of operand is checked by graph_desc_add()
-    infer_fn <- function(operand, times, axis) {
-      if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(operand), len = 1L)) {
-        cli::cli_abort("{.arg axis} must be between 1 and {naxes(operand)}, but is {.val axis}")
+  function(x, times, axis) {
+    # type of `x` is checked by graph_desc_add()
+    infer_fn <- function(x, times, axis) {
+      if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(x), len = 1L)) {
+        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val axis}")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
         cli_abort("times must be a positive integer, but is {times}")
       }
-      new_shape <- shape(operand)
+      new_shape <- shape(x)
       new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
-        dtype = dtype(operand),
+        dtype = dtype(x),
         shape = Shape(new_shape),
-        ambiguous = operand$ambiguous
+        ambiguous = x$ambiguous
       ))
     }
 
     graph_desc_add(
       self,                       # lexically bound to the AnvlPrimitive
-      list(operand = operand),    # Dynamic inputs (arrays)
+      list(x = x),                # Dynamic inputs (arrays)
       params = list(              # Static parameters
         times = times,
         axis = axis
@@ -161,9 +161,9 @@ The StableHLO rule defines how to lower this primitive to actual operations, whi
 We implement `repeat_along` using concatenation:
 
 ```{r}
-prim_repeat_along[["stablehlo"]] <- function(operand, times, axis) {
-  operands <- rep(list(operand), times)
-  list(rlang::exec(stablehlo::hlo_concatenate, !!!operands, dimension = axis - 1L))
+prim_repeat_along[["stablehlo"]] <- function(x, times, axis) {
+  xs <- rep(list(x), times)
+  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = axis - 1L))
 }
 ```
 
@@ -181,7 +181,7 @@ Also note that in `graph_desc_add()` we are converting the error messages from s
 ### Step 3: Add the Reverse Rule
 
 If the operation should support automatic differentiation, attach a reverse rule built with `rule_reverse()`.
-The idea here is the following, where we assume the input `operand` has shape `(s_1, ..., s_n)`, which means that the output (and therefore it's gradient) has shape `(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
+The idea here is the following, where we assume the input `x` has shape `(s_1, ..., s_n)`, which means that the output (and therefore it's gradient) has shape `(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
 
 1. Reshape the gradient to `(s_1, ..., s_{axis-1}, s_axis, times, s_{axis+1}, ..., s_n)`.
 2. Sum over the `times` axis and drop the `times` axis.
@@ -193,11 +193,11 @@ prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
   }
 
   grad <- grads[[1L]]
-  operand <- inputs[[1L]]
+  x <- inputs[[1L]]
   axis <- params$axis
   times <- params$times
 
-  old_shape <- shape(operand)
+  old_shape <- shape(x)
   grad_shape <- shape(grad)
 
   new_shape <- grad_shape
@@ -253,7 +253,7 @@ The forward must return one output box per original call output, with matching s
 
 `prim_<name>[["stablehlo"]]` and `prim_<name>[["reverse"]]` are the two rules you almost always want.
 A primitive can optionally also carry a `quickr` rule, which lowers it to plain R code for the quickr backend (see `R/rules-quickr.R`).
-The quickr rule is only required if you want the primitive to run under `local_backend("quickr")`; if you skip it, the primitive will still work on the xla backend.
+The quickr rule is only required if you want the primitive to run under `local_backend("quickr")`; if you skip it, the primitive will still work on the pjrt backend.
 
 ### Step 4: Verify the Registration
 

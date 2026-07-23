@@ -4,30 +4,31 @@
 \alias{prim_reduce}
 \title{Primitive Generic Reduce}
 \usage{
-prim_reduce(operand, init, axes, drop = TRUE, reductor)
+prim_reduce(x, init, axes, drop = TRUE, reductor)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{init}{(\code{\link{arrayish}})\cr
 Scalar (0-dimensional) initial value. Must have the same data type as
-\code{operand} and be the neutral element w.r.t. \code{reductor}.}
+\code{x} and be the neutral element w.r.t. \code{reductor}.}
 
 \item{axes}{(\code{integer()})\cr
-Axes to reduce over.}
+Axes to reduce over.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
 If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE}
 they are kept with size 1.}
 
 \item{reductor}{(\verb{function(lhs, rhs)})\cr
-Binary reducer producing a scalar of the same dtype as \code{operand}.
+Binary reducer producing a scalar of the same dtype as \code{x}.
 Must be associative (see "Associativity Requirement").}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same data type as \code{operand}. Shape is \code{operand} with \code{axes} removed
+Same data type as \code{x}. Shape is \code{x} with \code{axes} removed
 (or set to 1 if \code{drop = FALSE}).
 }
 \description{

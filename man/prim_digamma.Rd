@@ -4,10 +4,10 @@
 \alias{prim_digamma}
 \title{Primitive Digamma}
 \usage{
-prim_digamma(operand)
+prim_digamma(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

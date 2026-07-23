@@ -4,24 +4,25 @@
 \alias{nv_select}
 \title{Select Elements Along an Axis}
 \usage{
-nv_select(operand, axis, index)
+nv_select(x, axis, index)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis to index into.}
+Axis to index into.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{index}{(\code{\link{arrayish}})\cr
 Scalar or 1D arrayish input (integer).}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same data type as \code{operand}. \code{axis} is dropped if \code{index} was scalar.
+Same data type as \code{x}. \code{axis} is dropped if \code{index} was scalar.
 }
 \description{
-Picks one or more elements along axis \code{axis} of \code{operand}.
+Picks one or more elements along axis \code{axis} of \code{x}.
 Use this instead of \code{[} or \code{nv_subset} when the index to select is provided
 programmatically.
 }

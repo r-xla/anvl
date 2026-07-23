@@ -643,8 +643,7 @@ trace_fn <- function(
           if (inherits(e, "ErrorStablehlo")) {
             e <- stablehlo::to_one_based(e)
           }
-          # anvl users work with arrays, not with stableHLO tensors
-          e <- stablehlo::to_array_terminology(e)
+          e <- to_user_terminology(e)
         }
         rlang::cnd_signal(e)
       }
@@ -813,6 +812,41 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
 
 print_call_repr <- function(prim) {
   rlang::exec(call, paste0("prim_", prim$name))
+}
+
+# Restate a type-inference error in anvl's own vocabulary: stablehlo speaks of
+# "tensors" and names its primary argument `operand`, anvl speaks of arrays and
+# names it `x`. Both message paths have to be covered: `ErrorStablehlo`
+# subclasses build their message lazily in `conditionMessage()` methods, while
+# `cli_abort()` conditions store an already formatted message in the `message`
+# and `body` fields, which `rlang::cnd_message()` reads without dispatching on
+# `conditionMessage()`.
+to_user_terminology <- function(x) {
+  if (!inherits(x, "condition")) {
+    return(x)
+  }
+  if (is.character(x$message)) {
+    x$message <- user_terminology(x$message)
+  }
+  if (is.character(x$body)) {
+    x$body <- user_terminology(x$body)
+  }
+  class(x) <- c("AnvlErrorTerminology", class(x))
+  x
+}
+
+#' @export
+conditionMessage.AnvlErrorTerminology <- function(c, ...) {
+  user_terminology(NextMethod())
+}
+
+# The substitutions are anchored on word boundaries. `_` is a word character,
+# so identifiers such as `TensorType`, `hlo_tensor()` or `operand_batching_dims`
+# contain no boundary around the word and are left alone.
+user_terminology <- function(x) {
+  x <- gsub("\\btensor(s?)\\b", "array\\1", x)
+  x <- gsub("\\bTensor(s?)\\b", "Array\\1", x)
+  gsub("\\boperand\\b", "x", x)
 }
 
 

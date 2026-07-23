@@ -4,18 +4,19 @@
 \alias{prim_reverse}
 \title{Primitive Reverse}
 \usage{
-prim_reverse(operand, axes)
+prim_reverse(x, axes)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{axes}{(\code{integer()})\cr
-Axes to reverse (1-indexed).}
+Axes to reverse.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type and shape as \code{operand}.
+Has the same data type and shape as \code{x}.
 It is ambiguous if the input is ambiguous.
 }
 \description{

@@ -767,7 +767,7 @@ quickr_emit_gather <- function(
   slice_sizes,
   offset_axes,
   collapsed_slice_axes,
-  operand_batching_axes,
+  x_batching_axes,
   start_indices_batching_axes,
   start_index_map,
   index_vector_axis,
@@ -778,7 +778,7 @@ quickr_emit_gather <- function(
   slice_sizes <- as.integer(slice_sizes)
   offset_axes <- as.integer(offset_axes)
   collapsed_slice_axes <- sort(unique(as.integer(collapsed_slice_axes)))
-  operand_batching_axes <- as.integer(operand_batching_axes)
+  x_batching_axes <- as.integer(x_batching_axes)
   start_indices_batching_axes <- as.integer(start_indices_batching_axes)
   start_index_map <- as.integer(start_index_map)
   index_vector_axis <- as.integer(index_vector_axis)
@@ -794,7 +794,7 @@ quickr_emit_gather <- function(
   if (op_rank > 5L || si_rank > 5L || out_rank > 5L) {
     cli_abort("gather: only arrays up to rank 5 are supported")
   }
-  if (length(operand_batching_axes) || length(start_indices_batching_axes)) {
+  if (length(x_batching_axes) || length(start_indices_batching_axes)) {
     cli_abort("gather: batching axes are not supported by quickr lowering")
   }
   if (!identical(index_vector_axis, si_rank)) {
@@ -1688,7 +1688,7 @@ local({
         params$slice_sizes,
         params$offset_axes,
         params$collapsed_slice_axes,
-        params$operand_batching_axes,
+        params$x_batching_axes,
         params$start_indices_batching_axes,
         params$start_index_map,
         params$index_vector_axis,
@@ -1796,12 +1796,12 @@ local({
 
       update_window_axes <- sort(unique(as.integer(params$update_window_axes)))
       inserted_window_axes <- sort(unique(as.integer(params$inserted_window_axes)))
-      input_batching_axes <- as.integer(params$input_batching_axes)
+      x_batching_axes <- as.integer(params$x_batching_axes)
       scatter_indices_batching_axes <- as.integer(params$scatter_indices_batching_axes)
-      scatter_axes_to_operand_axes <- as.integer(params$scatter_axes_to_operand_axes)
+      scatter_axes_to_x_axes <- as.integer(params$scatter_axes_to_x_axes)
       index_vector_axis <- as.integer(params$index_vector_axis)
 
-      if (length(input_batching_axes) || length(scatter_indices_batching_axes)) {
+      if (length(x_batching_axes) || length(scatter_indices_batching_axes)) {
         cli_abort("scatter: batching axes are not supported by quickr lowering")
       }
       if (length(update_window_axes)) {
@@ -1810,8 +1810,8 @@ local({
       if (!identical(inserted_window_axes, 1L)) {
         cli_abort("scatter: only scalar updates into rank-1 inputs are supported by quickr lowering")
       }
-      if (!identical(scatter_axes_to_operand_axes, 1L)) {
-        cli_abort("scatter: only scatter_axes_to_operand_axes = 1L is supported by quickr lowering")
+      if (!identical(scatter_axes_to_x_axes, 1L)) {
+        cli_abort("scatter: only scatter_axes_to_x_axes = 1L is supported by quickr lowering")
       }
 
       shape_idx <- as.integer(shape(idx_node$aval))

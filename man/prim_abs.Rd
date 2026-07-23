@@ -4,10 +4,10 @@
 \alias{prim_abs}
 \title{Primitive Absolute Value}
 \usage{
-prim_abs(operand)
+prim_abs(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type signed integer or floating-point.}
 }
 \value{

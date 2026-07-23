@@ -4,11 +4,11 @@
 \alias{nv_expm1}
 \title{Exponential Minus One}
 \usage{
-nv_expm1(operand)
+nv_expm1(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

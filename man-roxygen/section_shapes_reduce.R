@@ -1,4 +1,4 @@
 #' @section Shapes:
-#' - `operand`: any shape
-#' - output (`drop = TRUE`): shape of `operand` with `axes` removed
-#' - output (`drop = FALSE`): shape of `operand` with `axes` set to 1
+#' - `x`: any shape
+#' - output (`drop = TRUE`): shape of `x` with `axes` removed
+#' - output (`drop = FALSE`): shape of `x` with `axes` set to 1

@@ -5,16 +5,17 @@
 \alias{mean.AnvlArray}
 \title{Mean}
 \usage{
-nv_mean(operand, axes = NULL, drop = TRUE, nan_rm = FALSE)
+nv_mean(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 
 \method{mean}{AnvlArray}(x, trim = 0, na.rm = FALSE, ..., axes = NULL, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. If \code{NULL} (default), reduces over all
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
 axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
@@ -23,9 +24,6 @@ Whether to drop reduced axes.}
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
-
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
 
 \item{trim}{Currently not supported.}
 

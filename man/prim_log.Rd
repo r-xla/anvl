@@ -4,10 +4,10 @@
 \alias{prim_log}
 \title{Primitive Logarithm}
 \usage{
-prim_log(operand)
+prim_log(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

@@ -12,6 +12,7 @@ Arrays to concatenate. Must have the same shape except along \code{axis}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to concatenate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.
 If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along axis 1.}
 }
 \value{

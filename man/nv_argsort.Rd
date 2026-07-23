@@ -4,14 +4,15 @@
 \alias{nv_argsort}
 \title{Argsort}
 \usage{
-nv_argsort(operand, axis = NULL, decreasing = FALSE, stable = FALSE)
+nv_argsort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to compute the sort permutation. If \code{NULL}
+Axis along which to compute the sort permutation. Negative values
+count from the end, i.e. \code{-1} refers to the last axis. If \code{NULL}
 (default), uses the last axis.}
 
 \item{decreasing}{(\code{logical(1)})\cr
@@ -24,9 +25,9 @@ original relative order. Default \code{FALSE}.}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{operand}. For a size-0 axis, the output is an empty \code{i32}
+Same shape as \code{x}. For a size-0 axis, the output is an empty \code{i32}
 array of the same shape (a valid empty permutation).
-\code{as_array(operand)[as_array(nv_argsort(operand))]} reproduces the sorted
+\code{as_array(x)[as_array(nv_argsort(x))]} reproduces the sorted
 array (for 1-D inputs).
 }
 \description{

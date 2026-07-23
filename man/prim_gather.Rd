@@ -5,12 +5,12 @@
 \title{Primitive Gather}
 \usage{
 prim_gather(
-  operand,
+  x,
   start_indices,
   slice_sizes,
   offset_axes,
   collapsed_slice_axes,
-  operand_batching_axes,
+  x_batching_axes,
   start_indices_batching_axes,
   start_index_map,
   index_vector_axis,
@@ -19,40 +19,40 @@ prim_gather(
 )
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of starting indices. Contains index vectors that map to
-positions in \code{operand} via \code{start_index_map}. The axis
+positions in \code{x} via \code{start_index_map}. The axis
 specified by \code{index_vector_axis} holds the index vectors.}
 
 \item{slice_sizes}{(\code{integer()})\cr
-Size of the slice to gather from \code{operand} in each axis.
-Must have length equal to \code{naxes(operand)}.}
+Size of the slice to gather from \code{x} in each axis.
+Must have length equal to \code{naxes(x)}.}
 
 \item{offset_axes}{(\code{integer()})\cr
 Axes in the output that correspond to the non-collapsed
-slice axes of \code{operand}.}
+slice axes of \code{x}.}
 
 \item{collapsed_slice_axes}{(\code{integer()})\cr
-Axes of \code{operand} that are collapsed (removed) from the
+Axes of \code{x} that are collapsed (removed) from the
 slice. The corresponding entries in \code{slice_sizes} must be \code{1}.
-Together with \code{offset_axes} and \code{operand_batching_axes}, these
-must account for all axes of \code{operand}.}
+Together with \code{offset_axes} and \code{x_batching_axes}, these
+must account for all axes of \code{x}.}
 
-\item{operand_batching_axes}{(\code{integer()})\cr
-Axes of \code{operand} that are batch axes.
+\item{x_batching_axes}{(\code{integer()})\cr
+Axes of \code{x} that are batch axes.
 Use \code{integer(0)} when there are no batch axes.}
 
 \item{start_indices_batching_axes}{(\code{integer()})\cr
 Axes of \code{start_indices} that correspond to batch
-axes. Must have the same length as \code{operand_batching_axes}.}
+axes. Must have the same length as \code{x_batching_axes}.}
 
 \item{start_index_map}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{operand}
+Maps each component of the index vector to an \code{x}
 axis. For example, \code{start_index_map = c(1L)} means each
-index vector indexes into the first axis of \code{operand}.}
+index vector indexes into the first axis of \code{x}.}
 
 \item{index_vector_axis}{(\code{integer(1)})\cr
 Axis of \code{start_indices} that contains the index vectors.
@@ -71,15 +71,15 @@ behavior if the indices are not actually unique. Default \code{FALSE}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand}. The output shape is composed
+Has the same data type as \code{x}. The output shape is composed
 of the offset axes (from the slice) and the remaining
 axes from \code{start_indices}. See the underluing stableHLO function
 for more details.
 }
 \description{
-Gathers slices from the \code{operand} array at positions specified by
+Gathers slices from the \code{x} array at positions specified by
 \code{start_indices}. Each index vector in \code{start_indices} identifies a
-starting position in \code{operand}, and a slice of size \code{slice_sizes} is
+starting position in \code{x}, and a slice of size \code{slice_sizes} is
 extracted from that position. The gathered slices are assembled into
 the output array.
 
@@ -90,7 +90,7 @@ given indices.
 \section{Out Of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
-\code{clamp(1, start_index, nv_shape(operand) - slice_sizes + 1)}.
+\code{clamp(1, start_index, nv_shape(x) - slice_sizes + 1)}.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.
 }
@@ -112,14 +112,14 @@ Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Gather rows 1 and 3 from a 3x3 matrix
-operand <- nv_matrix(1:9, nrow = 3)
+x <- nv_matrix(1:9, nrow = 3)
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(
-  operand, indices,
+  x, indices,
   slice_sizes = c(1L, 3L),
   offset_axes = 2L,
   collapsed_slice_axes = 1L,
-  operand_batching_axes = integer(0),
+  x_batching_axes = integer(0),
   start_indices_batching_axes = integer(0),
   start_index_map = 1L,
   index_vector_axis = 2L

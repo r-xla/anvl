@@ -4,14 +4,15 @@
 \alias{prim_cumprod}
 \title{Primitive Cumulative Product}
 \usage{
-prim_cumprod(operand, axis)
+prim_cumprod(x, axis)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis along which to accumulate.}
+Axis along which to accumulate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr

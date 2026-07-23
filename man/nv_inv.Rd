@@ -4,19 +4,19 @@
 \alias{nv_inv}
 \title{Matrix Inverse}
 \usage{
-nv_inv(operand)
+nv_inv(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Square non-singular matrix.}
 }
 \value{
 \code{\link{arrayish}}\cr
-The inverse, same shape and dtype as \code{operand}.
+The inverse, same shape and dtype as \code{x}.
 }
 \description{
-Computes \code{operand^-1}, the inverse of a square non-singular matrix, by
-solving \code{operand \%*\% x = I}.
+Computes \code{x^-1}, the inverse of a square non-singular matrix \code{x}, by
+solving \code{x \%*\% y = I} for \code{y}.
 
 For most use cases prefer \code{\link[=nv_solve]{nv_solve()}} directly: forming the explicit
 inverse is both slower and less numerically stable than solving against

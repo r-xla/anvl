@@ -4,11 +4,11 @@
 \alias{nv_log10}
 \title{Base-10 Logarithm}
 \usage{
-nv_log10(operand)
+nv_log10(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

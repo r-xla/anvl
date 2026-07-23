@@ -4,14 +4,15 @@
 \alias{nv_argmax}
 \title{Index of the Maximum}
 \usage{
-nv_argmax(operand, axis = NULL, drop = TRUE, nan_rm = FALSE)
+nv_argmax(x, axis = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to find the index. If \code{NULL} (default), uses
+Axis along which to find the index. Negative values count from the
+end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses
 the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
@@ -24,7 +25,7 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{operand} with \code{axis} removed (or set to 1 if \code{drop = FALSE}).
+Same shape as \code{x} with \code{axis} removed (or set to 1 if \code{drop = FALSE}).
 }
 \description{
 Returns the index of the maximum value along an axis. Ties are broken

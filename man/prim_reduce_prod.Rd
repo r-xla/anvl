@@ -4,14 +4,15 @@
 \alias{prim_reduce_prod}
 \title{Primitive Product Reduction}
 \usage{
-prim_reduce_prod(operand, axes, drop = TRUE)
+prim_reduce_prod(x, axes, drop = TRUE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{axes}{(\code{integer()})\cr
-Axes to reduce over.}
+Axes to reduce over.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop the reduced axes from the output shape.
@@ -21,8 +22,8 @@ If \code{FALSE}, the reduced axes are set to 1.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input.
-When \code{drop = TRUE}, the shape is that of \code{operand} with \code{axes} removed.
-When \code{drop = FALSE}, the shape is that of \code{operand} with \code{axes} set to 1.
+When \code{drop = TRUE}, the shape is that of \code{x} with \code{axes} removed.
+When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 1.
 It is ambiguous if the input is ambiguous.
 }
 \description{

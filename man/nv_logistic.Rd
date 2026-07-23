@@ -4,11 +4,11 @@
 \alias{nv_logistic}
 \title{Logistic (Sigmoid)}
 \usage{
-nv_logistic(operand)
+nv_logistic(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

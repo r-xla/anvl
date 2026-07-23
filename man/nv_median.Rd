@@ -5,16 +5,17 @@
 \alias{median.AnvlArray}
 \title{Median}
 \usage{
-nv_median(operand, axis = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_median(x, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 
 \method{median}{AnvlArray}(x, na.rm = FALSE, ..., axis = NULL, interpolation = "linear")
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to compute the median. If \code{NULL} (default),
+Axis along which to compute the median. Negative values count from
+the end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
 uses the last axis.}
 
 \item{interpolation}{(\code{character(1)})\cr
@@ -24,20 +25,17 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. One of \code{"linear"} (
 \item{nan_rm}{(\code{logical(1)})\cr
 Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation for details.}
 
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
-
 \item{na.rm}{Forwarded to \code{\link[=nv_median]{nv_median()}}'s \code{nan_rm} argument.}
 
 \item{...}{No additional arguments.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same shape as \code{operand} with \code{axis} removed.
+Same shape as \code{x} with \code{axis} removed.
 }
 \description{
 Computes the median along an axis. Equivalent to
-\code{nv_quantile(operand, 0.5, axis, interpolation)}; for an even-length axis
+\code{nv_quantile(x, 0.5, axis, interpolation)}; for an even-length axis
 with the default \code{"linear"} interpolation, the average of the two middle
 values is returned, matching base R's \code{median()}.
 

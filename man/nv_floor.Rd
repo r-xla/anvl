@@ -4,11 +4,11 @@
 \alias{nv_floor}
 \title{Floor}
 \usage{
-nv_floor(operand)
+nv_floor(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

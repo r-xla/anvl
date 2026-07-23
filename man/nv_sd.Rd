@@ -4,14 +4,15 @@
 \alias{nv_sd}
 \title{Standard Deviation Reduction}
 \usage{
-nv_sd(operand, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_sd(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. If \code{NULL} (default), reduces over all
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
 axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr

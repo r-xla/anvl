@@ -16,11 +16,29 @@ Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with 
 3. If the op doesn't exist in stablehlo, stop and tell the user — it must be added there first.
 4. Read the StableHLO SPEC (`../stablehlo/SPEC.md`) for the operation's semantics and constraints.
 
+## Argument Naming
+
+The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always named **`x`** — never `operand`, `input`, `a`, or anything else. This holds even when StableHLO's own spec calls it `operand` or `input`.
+
+- Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
+- Two symmetric operands of a binary op: `lhs` / `rhs`.
+- Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
+- Dimension-number arguments derived from `x` follow it: `x_batching_dims`, `scatter_dims_to_x_dims`.
+
+When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.
+
+```r
+stablehlo::GatherDimensionNumbers(
+  operand_batching_dims = x_batching_dims - 1L,  # spec name on the left
+  ...
+)
+```
+
 ## Roxygen Documentation
 
 Use templates from `man-roxygen/` where applicable:
 
-- **Unary ops:** `@template param_prim_operand_any` (or `_float`, `_signed_numeric`)
+- **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
 - **Binary ops:** `@template params_prim_lhs_rhs_any` (or `_numeric`, `_float`)
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
@@ -49,7 +67,7 @@ Beyond what the vignette covers:
 
 ## Optional: Quickr Rule
 
-If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the xla backend — the quickr meta test simply excludes it from coverage.
+If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend — the quickr meta test simply excludes it from coverage.
 
 ## API Wrapper (`nv_*`)
 

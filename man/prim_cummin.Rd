@@ -4,20 +4,21 @@
 \alias{prim_cummin}
 \title{Primitive Cumulative Minimum}
 \usage{
-prim_cummin(operand, axis)
+prim_cummin(x, axis)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis along which to accumulate.}
+Axis along which to accumulate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
-The running minimum (same dtype as \code{operand}) and the
+The running minimum (same dtype as \code{x}) and the
 running argmin (dtype \code{i32}, 1-based). Both have
-the same shape as \code{operand}.
+the same shape as \code{x}.
 }
 \description{
 Running minimum of array elements along a single axis along with

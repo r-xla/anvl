@@ -7,11 +7,11 @@
 \usage{
 \method{[}{AnvlArray}(x, ...) <- value
 
-nv_subset_assign(operand, ..., value)
+nv_subset_assign(x, ..., value)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+Input array.}
 
 \item{...}{Subset specifications, one per axis. See
 \code{vignette("subsetting")} for details.}
@@ -19,13 +19,10 @@ Same as \code{operand}; this is the name used by the base R S3 generic.}
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape.
 Non-scalar values must match the subset shape.}
-
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
 }
 \value{
 \code{\link{arrayish}}\cr
-A new array with the same shape as \code{operand} and the subset replaced.
+A new array with the same shape as \code{x} and the subset replaced.
 }
 \description{
 Updates elements of an array at specified positions, returning a new array.

@@ -19,7 +19,9 @@ nv_iota_like(
 }
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
-Axis along which values increase.}
+Axis along which values increase.
+Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
+last axis.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}

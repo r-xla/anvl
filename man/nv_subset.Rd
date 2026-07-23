@@ -7,17 +7,14 @@
 \usage{
 \method{[}{AnvlArray}(x, ...)
 
-nv_subset(operand, ...)
+nv_subset(x, ...)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+Input array.}
 
 \item{...}{Subset specifications, one per axis. Omitted trailing
 axes select all elements. See \code{vignette("subsetting")} for details.}
-
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
 }
 \value{
 \code{\link{arrayish}}

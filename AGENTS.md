@@ -30,7 +30,7 @@ Primitives are `JitPrimitive` callables constructed by `new_primitive()` (define
 
 Anvl's elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises `nv_broadcast_scalars()` errors like *"All non-scalar arrays must have the same shape, ... Use `nv_broadcast_arrays()` for general broadcasting."*
 
-When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(operand, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
+When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. `[2, 3] * [1, 3]`), explicitly broadcast first via `nv_broadcast_arrays(a, b)` (or `nv_broadcast_to(x, target_shape)` / `prim_broadcast_in_axes()` for a one-sided broadcast).
 
 ## Graph Tracing
 
@@ -62,4 +62,4 @@ When writing roxygen2 documentation for primitives or API functions:
 - Do not mention "1-based" indexing. Since this is an R package, 1-based indexing is the default.
 - Use `@templateVar primitive_id <name>` with `@template section_rules` to auto-generate the "Implemented Rules" section.
 - Use `@rdname` or `@inheritParams` to share documentation between `prim_*` and `nv_*` variants.
-- Where a `man-roxygen/` template is too generic for a specific primitive (e.g. the operand has specific dtype constraints), write the `@param` inline instead.
+- Where a `man-roxygen/` template is too generic for a specific primitive (e.g. the input has specific dtype constraints), write the `@param` inline instead.

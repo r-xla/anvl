@@ -5,14 +5,14 @@
 \title{Primitive Scatter}
 \usage{
 prim_scatter(
-  input,
+  x,
   scatter_indices,
   update,
   update_window_axes,
   inserted_window_axes,
-  input_batching_axes,
+  x_batching_axes,
   scatter_indices_batching_axes,
-  scatter_axes_to_operand_axes,
+  scatter_axes_to_x_axes,
   index_vector_axis,
   indices_are_sorted = FALSE,
   unique_indices = FALSE,
@@ -20,39 +20,39 @@ prim_scatter(
 )
 }
 \arguments{
-\item{input}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type. The base array to scatter into.}
 
 \item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of indices. Contains index vectors that map to positions in
-\code{input} via \code{scatter_axes_to_operand_axes}. The axis specified
+\code{x} via \code{scatter_axes_to_x_axes}. The axis specified
 by \code{index_vector_axis} holds the index vectors.}
 
 \item{update}{(\code{\link{arrayish}})\cr
-Update values array. Must have the same data type as \code{input}.}
+Update values array. Must have the same data type as \code{x}.}
 
 \item{update_window_axes}{(\code{integer()})\cr
 Axes of \code{update} that are window axes, i.e. they
-correspond to the slice being written into \code{input}.}
+correspond to the slice being written into \code{x}.}
 
 \item{inserted_window_axes}{(\code{integer()})\cr
-Axes of \code{input} whose slices have size 1 and are inserted
+Axes of \code{x} whose slices have size 1 and are inserted
 (not present) in the \code{update} window. Together with
-\code{update_window_axes} and \code{input_batching_axes}, these must account
-for all axes of \code{input}.}
+\code{update_window_axes} and \code{x_batching_axes}, these must account
+for all axes of \code{x}.}
 
-\item{input_batching_axes}{(\code{integer()})\cr
-Axes of \code{input} that are batch axes.
+\item{x_batching_axes}{(\code{integer()})\cr
+Axes of \code{x} that are batch axes.
 Use \code{integer(0)} when there are no batch axes.}
 
 \item{scatter_indices_batching_axes}{(\code{integer()})\cr
 Axes of \code{scatter_indices} that correspond to batch
-axes. Must have the same length as \code{input_batching_axes}.}
+axes. Must have the same length as \code{x_batching_axes}.}
 
-\item{scatter_axes_to_operand_axes}{(\code{integer()})\cr
-Maps each component of the index vector to an \code{input} axis.
-For example, \code{scatter_axes_to_operand_axes = c(1L)} means each
-index vector indexes into the first axis of \code{input}.}
+\item{scatter_axes_to_x_axes}{(\code{integer()})\cr
+Maps each component of the index vector to an \code{x} axis.
+For example, \code{scatter_axes_to_x_axes = c(1L)} means each
+index vector indexes into the first axis of \code{x}.}
 
 \item{index_vector_axis}{(\code{integer(1)})\cr
 Axis of \code{scatter_indices} that contains the index vectors.
@@ -71,16 +71,16 @@ behavior if the indices are not actually unique. Default \code{FALSE}.}
 
 \item{update_computation}{(\code{function})\cr
 Binary function \code{f(old, new)} that combines the existing value in
-\code{input} with the value from \code{update}. The default (\code{NULL}) uses
+\code{x} with the value from \code{update}. The default (\code{NULL}) uses
 \code{function(old, new) new}, which replaces the old value.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type and shape as \code{input}.
-It is ambiguous if \code{input} is ambiguous.
+Has the same data type and shape as \code{x}.
+It is ambiguous if \code{x} is ambiguous.
 }
 \description{
-Produces a result array identical to \code{input} except that slices at
+Produces a result array identical to \code{x} except that slices at
 positions specified by \code{scatter_indices} are updated with values from
 the \code{update} array. When multiple indices point to the same location,
 the \code{update_computation} function determines how to combine the values
@@ -92,14 +92,14 @@ indices.
 }
 \section{Out Of Bounds Behavior}{
 
-If a computed result index falls outside the bounds of \code{input}, the
+If a computed result index falls outside the bounds of \code{x}, the
 update for that index is silently ignored.
 }
 
 \section{Update Order}{
 
 When multiple indices in \code{scatter_indices} map to the same element
-of \code{input}, the order in which \code{update_computation} is applied is
+of \code{x}, the order in which \code{update_computation} is applied is
 implementation-defined and may vary between plugins ("cpu", "cuda").
 }
 
@@ -120,16 +120,16 @@ Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Scatter values 10 and 30 into positions 1 and 3 of a zero vector
-input <- nv_array(c(0, 0, 0, 0, 0))
+x <- nv_array(c(0, 0, 0, 0, 0))
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))
 prim_scatter(
-  input, indices, updates,
+  x, indices, updates,
   update_window_axes = integer(0),
   inserted_window_axes = 1L,
-  input_batching_axes = integer(0),
+  x_batching_axes = integer(0),
   scatter_indices_batching_axes = integer(0),
-  scatter_axes_to_operand_axes = 1L,
+  scatter_axes_to_x_axes = 1L,
   index_vector_axis = 2L
 )
 \dontshow{\}) # examplesIf}

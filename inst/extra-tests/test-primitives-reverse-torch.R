@@ -7,27 +7,27 @@ build_extra_args <- function(args_f, shp, dtype) {
 
 wrap_uni_anvl <- function(.f, args_anvl, shp) {
   if (identical(shp, integer())) {
-    return(\(operand) {
-      do.call(.f, c(list(operand), args_anvl))
+    return(\(x) {
+      do.call(.f, c(list(x), args_anvl))
     })
   }
 
-  \(operand) {
-    x <- do.call(.f, c(list(operand), args_anvl))
-    nv_reduce_sum(x, axes = seq_along(shape(x)), drop = TRUE)
+  \(x) {
+    res <- do.call(.f, c(list(x), args_anvl))
+    nv_reduce_sum(res, axes = seq_along(shape(res)), drop = TRUE)
   }
 }
 
 wrap_uni_torch <- function(.g, args_torch, shp) {
   if (identical(shp, integer())) {
-    return(\(operand) {
-      do.call(.g, c(list(operand), args_torch))
+    return(\(x) {
+      do.call(.g, c(list(x), args_torch))
     })
   }
 
-  \(operand) {
-    x <- do.call(.g, c(list(operand), args_torch))
-    torch::torch_sum(x, dim = seq_along(x$shape), keepdim = FALSE)
+  \(x) {
+    res <- do.call(.g, c(list(x), args_torch))
+    torch::torch_sum(res, dim = seq_along(res$shape), keepdim = FALSE)
   }
 }
 
@@ -66,37 +66,37 @@ verify_grad_uni_scalar <- function(
   shp <- integer()
 
   if (is.null(gen)) {
-    operand <- generate_test_data(integer(), dtype, non_negative = non_negative)
+    x <- generate_test_data(integer(), dtype, non_negative = non_negative)
   } else {
-    operand <- gen(shp, dtype)
+    x <- gen(shp, dtype)
   }
 
-  operand_anvl <- nv_scalar(operand, dtype = dtype)
+  x_anvl <- nv_scalar(x, dtype = dtype)
 
   # I think there is a bug in torch, so we can't use torch_scalar_tensor
-  operand_torch <- torch::torch_scalar_tensor(operand, requires_grad = TRUE, dtype = str_to_torch_dtype(dtype))
-  operand_torch$retain_grad()
+  x_torch <- torch::torch_scalar_tensor(x, requires_grad = TRUE, dtype = str_to_torch_dtype(dtype))
+  x_torch$retain_grad()
 
   args <- build_extra_args(args_f, shp, dtype)
   args_anvl <- args[[1L]]
   args_torch <- args[[2L]]
 
-  .f_anvl <- \(operand) {
-    do.call(.f, c(list(operand), args_anvl))
+  .f_anvl <- \(x) {
+    do.call(.f, c(list(x), args_anvl))
   }
-  .g_torch <- \(operand) {
-    do.call(.g, c(list(operand), args_torch))
+  .g_torch <- \(x) {
+    do.call(.g, c(list(x), args_torch))
   }
 
-  grads_anvl <- jit(gradient(.f_anvl))(operand_anvl)
-  out <- .g_torch(operand_torch)
+  grads_anvl <- jit(gradient(.f_anvl))(x_anvl)
+  out <- .g_torch(x_torch)
   out$backward(retrain_graph = TRUE)
 
-  expect_equal(to_abstract(grads_anvl[[1L]], TRUE), to_abstract(operand_anvl, TRUE))
+  expect_equal(to_abstract(grads_anvl[[1L]], TRUE), to_abstract(x_anvl, TRUE))
 
   testthat::expect_equal(
     tengen::as_array(grads_anvl[[1L]]),
-    as_array_torch(operand_torch$grad),
+    as_array_torch(x_torch$grad),
     tolerance = tol
   )
 }
@@ -116,18 +116,18 @@ verify_grad_uni_tensor <- function(
   dtype <- sample(dtypes, 1L)
 
   if (is.null(gen)) {
-    operand <- array(
+    x <- array(
       generate_test_data(shp, dtype = dtype, non_negative = non_negative),
       shp
     )
   } else {
-    operand <- gen(shp, dtype)
+    x <- gen(shp, dtype)
   }
 
-  operand_anvl <- nv_array(operand, dtype = dtype)
+  x_anvl <- nv_array(x, dtype = dtype)
 
-  operand_torch <- torch::torch_tensor(
-    operand,
+  x_torch <- torch::torch_tensor(
+    x,
     requires_grad = TRUE,
     dtype = str_to_torch_dtype(dtype)
   )
@@ -139,14 +139,14 @@ verify_grad_uni_tensor <- function(
   .f_anvl <- wrap_uni_anvl(.f, args_anvl, shp)
   .g_torch <- wrap_uni_torch(.g, args_torch, shp)
 
-  grads_anvl <- jit(gradient(.f_anvl))(operand_anvl)
-  .g_torch(operand_torch)$backward()
+  grads_anvl <- jit(gradient(.f_anvl))(x_anvl)
+  .g_torch(x_torch)$backward()
 
-  expect_equal(to_abstract(grads_anvl[[1L]], TRUE), to_abstract(operand_anvl, TRUE))
+  expect_equal(to_abstract(grads_anvl[[1L]], TRUE), to_abstract(x_anvl, TRUE))
 
   testthat::expect_equal(
     tengen::as_array(grads_anvl[[1L]]),
-    as_array_torch(operand_torch$grad),
+    as_array_torch(x_torch$grad),
     tolerance = tol
   )
 }
@@ -456,9 +456,9 @@ test_that("prim_broadcast_in_axes", {
   input_shape <- c(2L, 1L, 3L)
   target_shape <- c(4L, 2L, 5L, 3L)
 
-  f <- function(operand, shape) {
-    x <- nv_broadcast_to(operand, shape)
-    nv_reduce_sum(x, axes = seq_along(shape), drop = TRUE)
+  f <- function(x, shape) {
+    res <- nv_broadcast_to(x, shape)
+    nv_reduce_sum(res, axes = seq_along(shape), drop = TRUE)
   }
 
   verify_grad_uni_tensor(
@@ -514,7 +514,7 @@ test_that("prim_reshape", {
 test_that("prim_convert", {
   target_dtype <- "f64"
   verify_grad_uni_tensor(
-    \(operand, dtype) prim_convert(operand, dtype = dtype, ambiguous = FALSE),
+    \(x, dtype) prim_convert(x, dtype = dtype, ambiguous = FALSE),
     function(x, dtype) x$to(dtype = dtype),
     dtypes = "f32",
     args_f = function(shp, dtype) {

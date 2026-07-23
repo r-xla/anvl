@@ -5,7 +5,7 @@
 \title{3D Convolution}
 \usage{
 nv_conv3d(
-  input,
+  x,
   weight,
   stride = 1L,
   padding = 0L,
@@ -15,7 +15,7 @@ nv_conv3d(
 )
 }
 \arguments{
-\item{input}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}.}
 
 \item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.}
 
@@ -29,7 +29,7 @@ nv_conv3d(
 \code{\link{arrayish}} \verb{[N, C_out, out_D, out_H, out_W]}.
 }
 \description{
-Torch-style 3D convolution in NCDHW layout. \code{input} is
+Torch-style 3D convolution in NCDHW layout. \code{x} is
 \verb{[batch, in_channels, depth, height, width]}, \code{weight} is
 \verb{[out_channels, in_channels / groups, kD, kH, kW]}. Asymmetric
 padding (e.g. causal temporal padding) is available via

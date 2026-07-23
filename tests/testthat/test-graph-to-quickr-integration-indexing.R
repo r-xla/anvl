@@ -1,21 +1,21 @@
 test_that("integration: indexing-heavy graph matches PJRT", {
   skip_if_no_quickr_or_pjrt()
 
-  operand <- array(sample.int(50, 24, replace = TRUE), dim = c(3L, 4L, 2L))
+  x <- array(sample.int(50, 24, replace = TRUE), dim = c(3L, 4L, 2L))
   idx <- matrix(c(0L, 4L), ncol = 1L) # gather clamps out-of-bounds
   padv <- 0L
   s1 <- 0L
   s2 <- 100L
   sc_idx <- matrix(c(2L, 6L), ncol = 1L)
 
-  fn <- function(operand, idx, padv, s1, s2, sc_idx) {
+  fn <- function(x, idx, padv, s1, s2, sc_idx) {
     g <- prim_gather(
-      operand,
+      x,
       idx,
       slice_sizes = c(1L, 2L, 2L),
       offset_axes = c(2L, 3L),
       collapsed_slice_axes = 1L,
-      operand_batching_axes = integer(),
+      x_batching_axes = integer(),
       start_indices_batching_axes = integer(),
       start_index_map = 1L,
       index_vector_axis = 2L
@@ -42,9 +42,9 @@ test_that("integration: indexing-heavy graph matches PJRT", {
       upd,
       update_window_axes = integer(),
       inserted_window_axes = 1L,
-      input_batching_axes = integer(),
+      x_batching_axes = integer(),
       scatter_indices_batching_axes = integer(),
-      scatter_axes_to_operand_axes = 1L,
+      scatter_axes_to_x_axes = 1L,
       index_vector_axis = 2L,
       update_computation = function(old, new) old + new
     )
@@ -54,7 +54,7 @@ test_that("integration: indexing-heavy graph matches PJRT", {
   }
 
   templates <- list(
-    operand = nv_array(operand, dtype = "i32", shape = dim(operand)),
+    x = nv_array(x, dtype = "i32", shape = dim(x)),
     idx = nv_array(idx, dtype = "i32", shape = dim(idx)),
     padv = nv_scalar(0L, dtype = "i32"),
     s1 = nv_scalar(0L, dtype = "i32"),
@@ -64,7 +64,7 @@ test_that("integration: indexing-heavy graph matches PJRT", {
 
   run <- list(
     args = list(
-      operand = operand,
+      x = x,
       idx = idx,
       padv = padv,
       s1 = s1,

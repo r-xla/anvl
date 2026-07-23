@@ -35,11 +35,11 @@ test_that("shape_abstract", {
 
 describe("gather_clamp_indices", {
   it("clamps indices that exceed upper bound (implicit index vector)", {
-    # operand axis=10, slice_size=3, so max valid start = 10-3+1 = 8
+    # `x` axis=10, slice_size=3, so max valid start = 10-3+1 = 8
     idx <- nv_array(c(9L, 10L, 5L), dtype = "i32")
     result <- gather_clamp_indices(
       start_indices = idx,
-      operand_shape = c(10L),
+      x_shape = c(10L),
       slice_sizes = 3L,
       start_index_map = 1L,
       index_vector_axis = 2L # implicit
@@ -51,7 +51,7 @@ describe("gather_clamp_indices", {
     idx <- nv_array(c(0L, -2L, 3L), dtype = "i32")
     result <- gather_clamp_indices(
       start_indices = idx,
-      operand_shape = c(10L),
+      x_shape = c(10L),
       slice_sizes = 1L,
       start_index_map = 1L,
       index_vector_axis = 2L
@@ -63,7 +63,7 @@ describe("gather_clamp_indices", {
     idx <- nv_array(c(1L, 5L, 8L), dtype = "i32")
     result <- gather_clamp_indices(
       start_indices = idx,
-      operand_shape = c(10L),
+      x_shape = c(10L),
       slice_sizes = c(3L),
       start_index_map = 1L,
       index_vector_axis = 2L
@@ -72,13 +72,13 @@ describe("gather_clamp_indices", {
   })
 
   it("clamps with explicit index vector axis (multiple coordinates)", {
-    # Shape [2]: two coordinates, one per operand axis
-    # operand_shape = c(5, 8), slice_sizes = c(2, 3)
+    # Shape [2]: two coordinates, one per axis of `x`
+    # x_shape = c(5, 8), slice_sizes = c(2, 3)
     # max for axis1 = 5-2+1 = 4, max for axis2 = 8-3+1 = 6
     idx <- nv_array(c(10L, 10L), dtype = "i32")
     result <- gather_clamp_indices(
       start_indices = idx,
-      operand_shape = c(5L, 8L),
+      x_shape = c(5L, 8L),
       slice_sizes = c(2L, 3L),
       start_index_map = c(1L, 2L),
       index_vector_axis = 1L
@@ -87,7 +87,7 @@ describe("gather_clamp_indices", {
   })
 
   it("clamps batch of indices with explicit index vector axis and reverse start_index_map", {
-    # operand_shape = c(8, 5), slice_sizes = c(2, 3)
+    # x_shape = c(8, 5), slice_sizes = c(2, 3)
     # because we reverse the start_index_map, we clamp:
     # clamp(1, coord_1, max(1, 5 - 3 + 1) = 3)
     # clamp(1, coord_2, max(1, 8 - 2 + 1) = 7)
@@ -108,7 +108,7 @@ describe("gather_clamp_indices", {
     )
     result <- gather_clamp_indices(
       start_indices = idx,
-      operand_shape = c(8L, 5L),
+      x_shape = c(8L, 5L),
       slice_sizes = c(2L, 3L),
       start_index_map = c(2L, 1L),
       index_vector_axis = 2L
@@ -133,7 +133,7 @@ describe("gather_clamp_indices", {
     idx <- nv_array(c(0L, 5L), dtype = "i32")
     result <- gather_clamp_indices(
       start_indices = idx,
-      operand_shape = 10L,
+      x_shape = 10L,
       slice_sizes = 10L,
       start_index_map = 1L,
       index_vector_axis = 2L
@@ -165,10 +165,10 @@ describe("scatter_to_gather_slice_sizes", {
     # update_shape = c(4), one window axis covering the range
     result <- scatter_to_gather_slice_sizes(
       update_shape = c(4L),
-      input_shape = c(10L),
+      x_shape = c(10L),
       update_window_axes = 1L,
       inserted_window_axes = integer(),
-      input_batching_axes = integer()
+      x_batching_axes = integer()
     )
     expect_equal(result, 4L)
   })
@@ -177,10 +177,10 @@ describe("scatter_to_gather_slice_sizes", {
     # update_shape = c(5), inserted axis 1, window axis 2
     result <- scatter_to_gather_slice_sizes(
       update_shape = c(5L),
-      input_shape = c(4L, 5L),
+      x_shape = c(4L, 5L),
       update_window_axes = 1L,
       inserted_window_axes = 1L,
-      input_batching_axes = integer()
+      x_batching_axes = integer()
     )
     expect_equal(result, c(1L, 5L))
   })
@@ -189,10 +189,10 @@ describe("scatter_to_gather_slice_sizes", {
     # update_shape = c(4), inserted axis 2, window axis 1
     result <- scatter_to_gather_slice_sizes(
       update_shape = c(4L),
-      input_shape = c(4L, 5L),
+      x_shape = c(4L, 5L),
       update_window_axes = 1L,
       inserted_window_axes = 2L,
-      input_batching_axes = integer()
+      x_batching_axes = integer()
     )
     expect_equal(result, c(4L, 1L))
   })
@@ -201,10 +201,10 @@ describe("scatter_to_gather_slice_sizes", {
     # update_shape = c(2, 3), both axes are windows
     result <- scatter_to_gather_slice_sizes(
       update_shape = c(2L, 3L),
-      input_shape = c(4L, 5L),
+      x_shape = c(4L, 5L),
       update_window_axes = c(1L, 2L),
       inserted_window_axes = integer(),
-      input_batching_axes = integer()
+      x_batching_axes = integer()
     )
     expect_equal(result, c(2L, 3L))
   })
@@ -212,10 +212,10 @@ describe("scatter_to_gather_slice_sizes", {
   it("x[2, 3] on 2D array: both axes inserted (scalar update)", {
     result <- scatter_to_gather_slice_sizes(
       update_shape = integer(),
-      input_shape = c(4L, 5L),
+      x_shape = c(4L, 5L),
       update_window_axes = integer(),
       inserted_window_axes = c(1L, 2L),
-      input_batching_axes = integer()
+      x_batching_axes = integer()
     )
     expect_equal(result, c(1L, 1L))
   })
@@ -224,10 +224,10 @@ describe("scatter_to_gather_slice_sizes", {
     # update_shape = c(3, 6)
     result <- scatter_to_gather_slice_sizes(
       update_shape = c(3L, 6L),
-      input_shape = c(4L, 5L, 6L),
+      x_shape = c(4L, 5L, 6L),
       update_window_axes = c(1L, 2L),
       inserted_window_axes = 1L,
-      input_batching_axes = integer()
+      x_batching_axes = integer()
     )
     expect_equal(result, c(1L, 3L, 6L))
   })

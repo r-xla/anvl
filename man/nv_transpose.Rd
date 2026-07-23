@@ -5,23 +5,21 @@
 \alias{t.AnvlArray}
 \title{Transpose}
 \usage{
-nv_transpose(operand, permutation = NULL)
+nv_transpose(x, permutation = NULL)
 
 \method{t}{AnvlArray}(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
-New ordering of axes. If \code{NULL} (default), reverses the axes.}
-
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+New ordering of axes. If \code{NULL} (default), reverses the axes.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand} and shape \code{nv_shape(operand)[permutation]}.
+Has the same data type as \code{x} and shape \code{nv_shape(x)[permutation]}.
 }
 \description{
 Permutes the axes of an array. You can also use \code{t()} for matrices.

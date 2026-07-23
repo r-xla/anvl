@@ -4,10 +4,10 @@
 \alias{prim_sign}
 \title{Primitive Sign}
 \usage{
-prim_sign(operand)
+prim_sign(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type signed integer or floating-point.}
 }
 \value{

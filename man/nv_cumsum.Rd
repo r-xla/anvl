@@ -4,14 +4,15 @@
 \alias{nv_cumsum}
 \title{Cumulative Sum}
 \usage{
-nv_cumsum(operand, axis = NULL, nan_rm = FALSE)
+nv_cumsum(x, axis = NULL, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to accumulate. If \code{NULL} (default), the input
+Axis along which to accumulate. Negative values count from the end,
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cumsum]{base::cumsum()}}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr

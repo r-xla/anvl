@@ -4,17 +4,11 @@
 \alias{nv_quantile}
 \title{Quantile}
 \usage{
-nv_quantile(
-  operand,
-  probs,
-  axis = NULL,
-  interpolation = "linear",
-  nan_rm = FALSE
-)
+nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{probs}{(\code{numeric(1)} | 1-D \code{array})\cr
 One or more probabilities in \verb{[0, 1]}. Either a length-1 numeric
@@ -23,7 +17,8 @@ One or more probabilities in \verb{[0, 1]}. Either a length-1 numeric
 rejected — wrap with \code{array()}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to compute the quantile. If \code{NULL} (default),
+Axis along which to compute the quantile. Negative values count from
+the end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
 uses the last axis.}
 
 \item{interpolation}{(\code{character(1)})\cr

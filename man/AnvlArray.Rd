@@ -78,7 +78,7 @@ nv_empty_like(
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
 The default (\code{NULL}) uses the current backend's default dtype:
-\code{f32} for numeric data on \code{"xla"}, \code{f64} for numeric data on \code{"quickr"},
+\code{f32} for numeric data on \code{"pjrt"}, \code{f64} for numeric data on \code{"quickr"},
 \code{i32} for integer data, and \code{bool} for logical data.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
@@ -97,7 +97,7 @@ Whether the dtype should be marked as ambiguous.
 Defaults to \code{FALSE} for new arrays.}
 
 \item{backend}{(\code{NULL} | \code{character(1)})\cr
-Backend to use (\code{"xla"} or \code{"quickr"}).
+Backend to use (\code{"pjrt"} or \code{"quickr"}).
 Defaults to \code{default_backend()}.
 Must not be specified inside \code{\link[=jit]{jit()}}.}
 

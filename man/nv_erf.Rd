@@ -4,11 +4,11 @@
 \alias{nv_erf}
 \title{Error Function}
 \usage{
-nv_erf(operand)
+nv_erf(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

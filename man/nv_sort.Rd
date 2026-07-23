@@ -5,16 +5,17 @@
 \alias{sort.AnvlArray}
 \title{Sort}
 \usage{
-nv_sort(operand, axis = NULL, decreasing = FALSE, stable = FALSE)
+nv_sort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 
 \method{sort}{AnvlArray}(x, decreasing = FALSE, ..., axis = NULL)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to sort. If \code{NULL} (default), uses the last
+Axis along which to sort. Negative values count from the end,
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses the last
 axis.}
 
 \item{decreasing}{(\code{logical(1)})\cr If \code{TRUE}, sort in decreasing order.}
@@ -26,14 +27,11 @@ observable for floats when \code{-0} / \code{+0} or \code{-NaN} / \code{+NaN} ar
 (they compare equal under the total order used here); for distinct
 values the result is identical either way.}
 
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
-
 \item{...}{No additional arguments.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same shape and data type as \code{operand}.
+Same shape and data type as \code{x}.
 }
 \description{
 Sorts an array along an axis.

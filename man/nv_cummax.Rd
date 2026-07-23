@@ -4,14 +4,15 @@
 \alias{nv_cummax}
 \title{Cumulative Maximum}
 \usage{
-nv_cummax(operand, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
+nv_cummax(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to accumulate. If \code{NULL} (default), the input
+Axis along which to accumulate. Negative values count from the end,
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}}.}
 
 \item{with_indices}{(\code{logical(1)})\cr

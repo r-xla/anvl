@@ -4,18 +4,19 @@
 \alias{nv_reverse}
 \title{Reverse}
 \usage{
-nv_reverse(operand, axes)
+nv_reverse(x, axes)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axes}{(\code{integer()})\cr
-Axes to reverse.}
+Axes to reverse.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as \code{operand}.
+Has the same shape and data type as \code{x}.
 }
 \description{
 Reverses the order of elements along specified axes.

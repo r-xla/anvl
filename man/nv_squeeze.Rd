@@ -4,18 +4,20 @@
 \alias{nv_squeeze}
 \title{Squeeze}
 \usage{
-nv_squeeze(operand, axes = NULL)
+nv_squeeze(x, axes = NULL)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to squeeze. If \code{NULL} (default), all axes of size 1 are removed.}
+Axes to squeeze. Negative values count from the end, i.e. \code{-1}
+refers to the last axis.
+If \code{NULL} (default), all axes of size 1 are removed.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand} with the specified axes removed.
+Has the same data type as \code{x} with the specified axes removed.
 }
 \description{
 Removes axes of size 1 from an array.

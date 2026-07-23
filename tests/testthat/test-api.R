@@ -81,7 +81,7 @@ test_that("promote to common", {
   )
 })
 
-test_that("nv_clamp converts min and max to operand dtype", {
+test_that("nv_clamp converts min and max to the input dtype", {
   expect_equal(
     nv_clamp(nv_scalar(0L), nv_array(c(-1, 0.5, 2), dtype = "f32"), nv_scalar(1L)),
     nv_array(c(0, 0.5, 1), dtype = "f32")
@@ -126,6 +126,14 @@ describe("nv_concatenate", {
   it("fails when axis is out of bounds", {
     expect_error(
       nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), axis = 3L)
+    )
+  })
+  it("accepts a negative dimension", {
+    x <- nv_array(1:6, shape = c(2, 3))
+    expect_equal(nv_concatenate(x, x, axis = -1L), nv_concatenate(x, x, axis = 2L))
+    expect_error(
+      nv_concatenate(x, x, axis = -3L),
+      "between 1 and 2, or between -2 and -1"
     )
   })
   it("can concatenate 2d arrays", {
@@ -179,7 +187,7 @@ describe("nv_rbind", {
     )
   })
 
-  it("treats 1-D operand as a row when mixed with a matrix", {
+  it("treats a 1-D input as a row when mixed with a matrix", {
     a <- matrix(1:6, nrow = 2)
     v <- c(7, 8, 9)
     expect_equal(
@@ -201,7 +209,7 @@ describe("nv_rbind", {
     )
   })
 
-  it("promotes operands to a common dtype", {
+  it("promotes inputs to a common dtype", {
     x <- nv_array(c(1L, 2L, 3L))
     y <- nv_array(c(4, 5, 6))
     out <- rbind(x, y)
@@ -272,7 +280,7 @@ describe("nv_cbind", {
     )
   })
 
-  it("treats 1-D operand as a column when mixed with a matrix", {
+  it("treats a 1-D input as a column when mixed with a matrix", {
     a <- matrix(1:6, nrow = 3)
     v <- c(7, 8, 9)
     expect_equal(
@@ -433,6 +441,25 @@ describe("nv_is_infinite", {
   })
 })
 
+describe("reductions with negative dims", {
+  it("count from the end", {
+    x <- nv_array(array(as.numeric(1:24), c(2, 3, 4)))
+    b <- x > 10
+    expect_equal(nv_reduce_sum(x, axes = -1L), nv_reduce_sum(x, axes = 3L))
+    expect_equal(nv_reduce_prod(x, axes = -2L), nv_reduce_prod(x, axes = 2L))
+    expect_equal(nv_reduce_max(x, axes = -3L), nv_reduce_max(x, axes = 1L))
+    expect_equal(nv_reduce_min(x, axes = -1L), nv_reduce_min(x, axes = 3L))
+    expect_equal(nv_reduce_any(b, axes = -1L), nv_reduce_any(b, axes = 3L))
+    expect_equal(nv_reduce_all(b, axes = -1L), nv_reduce_all(b, axes = 3L))
+  })
+  it("reject out-of-range and duplicated dims", {
+    m <- nv_matrix(as.numeric(1:6), nrow = 2)
+    expect_error(nv_reduce_sum(m, axes = -3L), "between 1 and 2, or between -2 and -1")
+    expect_error(nv_reduce_sum(m, axes = 0L), "between 1 and 2, or between -2 and -1")
+    expect_error(nv_reduce_sum(m, axes = c(2L, -1L)), "duplicate axes")
+  })
+})
+
 describe("nv_reduce_sum / nv_reduce_prod / nv_mean nan_rm", {
   it("propagate NaN by default", {
     x <- nv_array(c(1, NaN, 3, 5))
@@ -550,6 +577,17 @@ describe("nv_reduce_max / nv_reduce_min nan_rm", {
     x <- nv_array(c(1L, 5L, 3L))
     expect_equal(as_array(nv_reduce_max(x)), as_array(nv_reduce_max(x, nan_rm = TRUE)))
     expect_equal(as_array(nv_reduce_min(x)), as_array(nv_reduce_min(x, nan_rm = TRUE)))
+  })
+})
+
+describe("cumulative ops with a negative dim", {
+  it("count from the end", {
+    m <- nv_matrix(as.numeric(c(3, 1, 4, 1, 5, 9)), nrow = 2)
+    expect_equal(nv_cumsum(m, axis = -1L), nv_cumsum(m, axis = 2L))
+    expect_equal(nv_cumprod(m, axis = -2L), nv_cumprod(m, axis = 1L))
+    expect_equal(nv_cummax(m, axis = -1L), nv_cummax(m, axis = 2L))
+    expect_equal(nv_cummin(m, axis = -1L), nv_cummin(m, axis = 2L))
+    expect_error(nv_cumsum(m, axis = 3L), "between 1 and 2, or between -2 and -1")
   })
 })
 
@@ -686,6 +724,11 @@ describe("nv_var", {
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = 5L))
     expect_error(nv_var(nv_array(c(1, 2, 3, 4)), axes = c(1L, 1L)))
   })
+  it("accepts negative dims", {
+    m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
+    expect_equal(nv_var(m, axes = -1L), nv_var(m, axes = 2L))
+    expect_error(nv_var(m, axes = c(2L, -1L)), "duplicate axes")
+  })
 })
 
 describe("nv_sd", {
@@ -709,6 +752,10 @@ describe("nv_sd", {
       nv_scalar(sd(vals)),
       tolerance = 1e-5
     )
+  })
+  it("accepts negative dims", {
+    m <- nv_matrix(c(2, 4, 4, 4, 5, 5), nrow = 2)
+    expect_equal(nv_sd(m, axes = -1L), nv_sd(m, axes = 2L))
   })
 })
 
@@ -742,6 +789,11 @@ describe("nv_squeeze", {
       nv_squeeze(nv_array(1:6, shape = c(1, 6, 1)), axes = c(1L, 1L))
     )
   })
+  it("accepts negative dims", {
+    x <- nv_array(1:6, shape = c(1, 6, 1))
+    expect_equal(nv_squeeze(x, axes = -1L), nv_squeeze(x, axes = 3L))
+    expect_error(nv_squeeze(x, axes = -4L), "between 1 and 3, or between -3 and -1")
+  })
 })
 
 describe("nv_unsqueeze", {
@@ -769,6 +821,17 @@ describe("nv_unsqueeze", {
     expect_equal(shape(result), c(2L, 1L, 3L))
     roundtrip <- nv_squeeze(nv_unsqueeze(x, axis = 2L), axes = 2L)
     expect_equal(roundtrip, x)
+  })
+  it("counts negative dims from the end of the result", {
+    x <- nv_array(c(1, 2, 3))
+    expect_equal(shape(nv_unsqueeze(x, axis = -1L)), c(3L, 1L))
+    expect_equal(shape(nv_unsqueeze(x, axis = -2L)), c(1L, 3L))
+  })
+  it("allows inserting one past the end but no further", {
+    m <- nv_array(1:6, shape = c(2, 3))
+    expect_equal(shape(nv_unsqueeze(m, axis = 3L)), c(2L, 3L, 1L))
+    expect_error(nv_unsqueeze(m, axis = 4L), "between 1 and 3")
+    expect_error(nv_unsqueeze(m, axis = c(1L, 2L)), "must have length 1")
   })
 })
 
@@ -964,7 +1027,7 @@ describe("nv_triu", {
 })
 
 describe("nv_tril with quickr backend", {
-  it("works when operand is quickr", {
+  it("works when the input is quickr", {
     skip_if_no_quickr()
     x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
     result <- nv_tril(x)
@@ -974,7 +1037,7 @@ describe("nv_tril with quickr backend", {
 })
 
 describe("nv_triu with quickr backend", {
-  it("works when operand is quickr", {
+  it("works when the input is quickr", {
     skip_if_no_quickr()
     x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
     result <- nv_triu(x)
@@ -1084,6 +1147,11 @@ describe("nv_iota_like", {
     expect_equal(shape(out), 4L)
     expect_equal(dtype(out), as_dtype("i32"))
   })
+
+  it("accepts a negative dim", {
+    like <- nv_fill(0L, shape = c(2, 3), dtype = "i16")
+    expect_equal(nv_iota_like(like, axis = -1L), nv_iota_like(like, axis = 2L))
+  })
 })
 
 describe("nv_seq_like", {
@@ -1139,6 +1207,12 @@ describe("nv_select", {
   it("errors on a 0-dimensional input", {
     expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "0-dimensional")
   })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(1:6, nrow = 2)
+    expect_equal(nv_select(m, axis = -1L, index = 2L), nv_select(m, axis = 2L, index = 2L))
+    expect_error(nv_select(m, axis = -3L, index = 1L), "between 1 and 2, or between -2 and -1")
+  })
 })
 
 describe("nv_sort", {
@@ -1172,6 +1246,12 @@ describe("nv_sort", {
     expect_equal(as.vector(sort(x, decreasing = TRUE)), c(5, 4, 3, 1, 1))
     expect_equal(as.vector(jit(function(x) sort(x))(x)), c(1, 1, 3, 4, 5))
   })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(nv_sort(m, axis = -2L), nv_sort(m, axis = 1L))
+    expect_error(nv_sort(m, axis = 0L), "between 1 and 2, or between -2 and -1")
+  })
 })
 
 describe("nv_argsort", {
@@ -1189,6 +1269,11 @@ describe("nv_argsort", {
 
   it("returns i32 dtype", {
     expect_equal(as.character(dtype(nv_argsort(nv_array(c(1, 2))))), "i32")
+  })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(nv_argsort(m, axis = -2L), nv_argsort(m, axis = 1L))
   })
 })
 
@@ -1209,6 +1294,12 @@ describe("nv_top_k", {
 
   it("errors when k > size of axis", {
     expect_error(nv_top_k(nv_array(c(1, 2, 3)), k = 5L))
+  })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(nv_top_k(m, k = 2L, axis = -1L), nv_top_k(m, k = 2L, axis = 2L))
+    expect_equal(nv_top_k(m, k = 2L, axis = -2L), nv_top_k(m, k = 2L, axis = 1L))
   })
 })
 
@@ -1316,6 +1407,11 @@ describe("nv_median", {
     expect_equal(as_array(median(x, interpolation = "lower")), as_array(nv_scalar(2)))
     expect_equal(as_array(median(x, interpolation = "higher")), as_array(nv_scalar(3)))
   })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(nv_median(m, axis = -1L), nv_median(m, axis = 2L))
+  })
 })
 
 describe("nv_quantile", {
@@ -1402,12 +1498,26 @@ describe("nv_quantile", {
   it("errors on a 0-dimensional input", {
     expect_error(nv_quantile(nv_scalar(1), 0.5), "0-dimensional")
   })
+
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(nv_quantile(m, 0.5, axis = -1L), nv_quantile(m, 0.5, axis = 2L))
+    expect_equal(
+      nv_quantile(m, array(c(0.25, 0.75)), axis = -1L),
+      nv_quantile(m, array(c(0.25, 0.75)), axis = 2L)
+    )
+  })
 })
 
 describe("mean()", {
   it("errors when trim is non-zero", {
     x <- nv_array(c(1, 2, 3, 4))
     expect_error(mean(x, trim = 0.1), "trim")
+  })
+  it("accepts negative dims", {
+    m <- nv_matrix(as.numeric(1:6), nrow = 2)
+    expect_equal(nv_mean(m, axes = -1L), nv_mean(m, axes = 2L))
+    expect_equal(mean(m, axes = -1L), mean(m, axes = 2L))
   })
 })
 
@@ -1421,12 +1531,17 @@ describe("nv_argmax / nv_argmin", {
     expect_error(nv_argmax(nv_scalar(3)))
     expect_error(nv_argmin(nv_scalar(3)))
   })
+  it("accepts a negative dim", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(nv_argmax(m, axis = -1L), nv_argmax(m, axis = 2L))
+    expect_equal(nv_argmin(m, axis = -1L), nv_argmin(m, axis = 2L))
+  })
 })
 
 # Regression for r-xla/anvl#343: R literals must adopt the device of their
 # AnvlArray siblings rather than being placed on the default device.
 describe("literals adopt device of array siblings", {
-  dev1 <- nv_device("cpu:1", "xla")
+  dev1 <- nv_device("cpu:1", "pjrt")
 
   it("nv_ifelse with literal branches", {
     pred <- nv_array(c(TRUE, FALSE), device = dev1)
@@ -1621,6 +1736,41 @@ describe("nv_inv", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f64")
     out <- nv_inv(empty)
     expect_equal(shape(out), c(0L, 0L))
+  })
+})
+
+describe("nv_transpose", {
+  it("reverses the dimensions by default", {
+    x <- nv_array(array(1:24, c(2, 3, 4)))
+    expect_equal(nv_transpose(x), prim_transpose(x, c(3L, 2L, 1L)))
+  })
+  it("accepts a negative permutation", {
+    x <- nv_array(array(1:24, c(2, 3, 4)))
+    expect_equal(nv_transpose(x, c(-1L, -2L, -3L)), nv_transpose(x, c(3L, 2L, 1L)))
+    expect_error(nv_transpose(x, c(1L, 2L, -4L)), "between 1 and 3, or between -3 and -1")
+  })
+})
+
+describe("nv_reshape", {
+  it("infers a single -1 entry from the number of elements", {
+    x <- nv_array(1:6)
+    expect_equal(shape(nv_reshape(x, c(2, -1))), c(2L, 3L))
+    expect_equal(shape(nv_reshape(x, c(-1, 3))), c(2L, 3L))
+    expect_equal(shape(nv_reshape(nv_array(1:12), c(2, -1, 2))), c(2L, 3L, 2L))
+  })
+  it("flattens with a lone -1", {
+    x <- nv_array(1:6, shape = c(2, 3))
+    expect_equal(nv_reshape(x, -1), nv_flatten(x))
+    expect_equal(shape(nv_reshape(nv_scalar(1), -1)), 1L)
+  })
+  it("rejects more than one -1", {
+    expect_error(nv_reshape(nv_array(1:6), c(-1, -1)), "at most one")
+  })
+  it("rejects a shape that does not divide evenly", {
+    expect_error(nv_reshape(nv_array(1:6), c(4, -1)), "Cannot infer dimension")
+  })
+  it("rejects negative values other than -1", {
+    expect_error(nv_reshape(nv_array(1:6), c(2, -2)), "must contain only non-negative")
   })
 })
 

@@ -4,10 +4,10 @@
 \alias{prim_is_finite}
 \title{Primitive Is Finite}
 \usage{
-prim_is_finite(operand)
+prim_is_finite(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

@@ -4,10 +4,10 @@
 \alias{prim_erf_inv}
 \title{Primitive Inverse Error Function}
 \usage{
-prim_erf_inv(operand)
+prim_erf_inv(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{

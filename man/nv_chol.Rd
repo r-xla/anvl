@@ -5,20 +5,17 @@
 \alias{chol.AnvlArray}
 \title{Cholesky Decomposition}
 \usage{
-nv_chol(operand, lower = FALSE)
+nv_chol(x, lower = FALSE)
 
 \method{chol}{AnvlArray}(x, ..., lower = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Symmetric positive-definite matrix with at least 2 axes.
 The last two axes form the square matrix; any leading axes
 are batch axes.}
 
 \item{lower}{(\code{logical(1)})\cr If \code{TRUE}, return the lower-triangular factor.}
-
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
 
 \item{...}{No additional arguments.}
 }

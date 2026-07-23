@@ -191,19 +191,34 @@ test_that("error handling", {
   )
 })
 
-test_that("error handling: stablehlo errors speak of arrays, not tensors", {
-  # `cli_abort()` errors from stablehlo (message lives in the condition fields)
+test_that("error handling: stablehlo errors use anvl's terminology", {
+  # `cli_abort()` errors from stablehlo store an already formatted message in
+  # the condition's fields
   expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))))
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
-  # `ErrorStablehlo` conditions (message is generated lazily) keep their class
-  # and their 1-based indices
+  # stablehlo's `operand` is anvl's `x`
+  err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
+  expect_match(conditionMessage(err), "`x` must have dtype FloatType", fixed = TRUE)
+
+  # `ErrorStablehlo` conditions build their message lazily in a
+  # `conditionMessage()` method; they keep their class and their 1-based indices.
+  # A too-short `permutation` passes anvl's own checks (every entry is a valid,
+  # non-duplicated dimension) and is only rejected by stablehlo.
   err <- tryCatch(
-    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = c(2, 2)),
+    jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = 1L),
     error = identity
   )
   expect_s3_class(err, "ErrorPermuteIndex")
+  expect_match(conditionMessage(err), "must be a permutation of c(1, 2)", fixed = TRUE)
+})
+
+test_that("user_terminology() rewrites words but not identifiers", {
+  expect_equal(
+    user_terminology("hlo_tensor() returns a TensorType; rank(operand) and operand_batching_dims are tensors"),
+    "hlo_tensor() returns a TensorType; rank(x) and operand_batching_dims are arrays"
+  )
 })
 
 test_that("can print GraphLiteral if it holds scalar array", {

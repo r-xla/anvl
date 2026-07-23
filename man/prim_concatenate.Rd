@@ -12,7 +12,8 @@ Arrays to concatenate. Must all have the same data type, naxes,
 and shape except along \code{axis}.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis along which to concatenate (1-indexed).}
+Axis along which to concatenate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr

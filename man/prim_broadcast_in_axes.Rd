@@ -4,19 +4,19 @@
 \alias{prim_broadcast_in_axes}
 \title{Primitive Broadcast}
 \usage{
-prim_broadcast_in_axes(operand, shape, broadcast_axes)
+prim_broadcast_in_axes(x, shape, broadcast_axes)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. Each mapped axis must either match the corresponding
-operand axis or the operand axis must be 1.}
+axis of \code{x}, or that axis of \code{x} must be 1.}
 
 \item{broadcast_axes}{(\code{integer()})\cr
-Maps each axis of \code{operand} to an axis of the output.
-Must have length equal to the number of axes of \code{operand}.}
+Maps each axis of \code{x} to a axis of the output.
+Must have length equal to the number of axes of \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr

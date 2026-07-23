@@ -4,19 +4,20 @@
 \alias{prim_sort}
 \title{Primitive Sort}
 \usage{
-prim_sort(operands, axis = 1L, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
 }
 \arguments{
-\item{operands}{(\code{list} of \code{\link{arrayish}})\cr
+\item{xs}{(\code{list} of \code{\link{arrayish}})\cr
 One or more arrays to sort. The first is the sort key; the rest are
 carried along under the same permutation. All must share the same shape.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis along which to sort.}
+Axis along which to sort.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{descending}{(\code{logical(1)})\cr
 If \code{TRUE}, sort the key in descending order (largest first). Default
-\code{FALSE}. Additional operands are reordered by the same permutation
+\code{FALSE}. Additional arrays are reordered by the same permutation
 regardless.}
 
 \item{is_stable}{(\code{logical(1)})\cr
@@ -25,20 +26,20 @@ preserved. Default \code{FALSE}.}
 }
 \value{
 \code{list} of \code{\link{arrayish}}\cr
-One sorted output per element of \code{operands}, in the same order. Each
+One sorted output per element of \code{xs}, in the same order. Each
 output has the same shape, data type, and ambiguity as the
 corresponding input.
 }
 \description{
 Sorts arrays along the given axis.
 
-Sorting is determined by the \emph{first operand} only: it is the sort key,
-and any additional operands are reordered with the same permutation
+Sorting is determined by the \emph{first array} only: it is the sort key,
+and any additional arrays are reordered with the same permutation
 that sorts the first. This enables idioms like \emph{argsort} (sort \code{x}
 paired with an \code{iota} and read off the second output) and key-value
 sorts (sort \code{keys} paired with \code{values}).
 
-All operands must have the same shape; their dtypes may differ.
+All arrays must have the same shape; their dtypes may differ.
 1-dimensional slices along \code{axis} are sorted independently; other
 axes are preserved.
 }
@@ -54,7 +55,7 @@ axes are preserved.
 
 Lowers to \code{\link[stablehlo:hlo_sort]{hlo_sort()}} with a comparator that uses
 \code{\link[stablehlo:hlo_compare]{hlo_compare()}} (\code{LT} for ascending, \code{GT} for descending) on
-the first operand. For float keys the comparator uses
+the first array. For float keys the comparator uses
 \code{compare_type = "TOTALORDER"} and canonicalizes \code{-0}/\code{+0} and
 \code{-NaN}/\code{+NaN} to their positive form before comparing, so all \code{NaN}
 values land at one end of the result regardless of sign. Integer keys

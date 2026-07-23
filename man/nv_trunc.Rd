@@ -4,11 +4,11 @@
 \alias{nv_trunc}
 \title{Truncate}
 \usage{
-nv_trunc(operand)
+nv_trunc(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

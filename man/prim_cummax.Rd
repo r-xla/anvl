@@ -4,20 +4,21 @@
 \alias{prim_cummax}
 \title{Primitive Cumulative Maximum}
 \usage{
-prim_cummax(operand, axis)
+prim_cummax(x, axis)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis along which to accumulate.}
+Axis along which to accumulate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
-The running maximum (same dtype as \code{operand}) and the
+The running maximum (same dtype as \code{x}) and the
 running argmax (dtype \code{i32}, 1-based). Both have
-the same shape as \code{operand}.
+the same shape as \code{x}.
 }
 \description{
 Running maximum of array elements along a single axis along with

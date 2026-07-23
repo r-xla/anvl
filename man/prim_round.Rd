@@ -4,10 +4,10 @@
 \alias{prim_round}
 \title{Primitive Round}
 \usage{
-prim_round(operand, method = "nearest_even")
+prim_round(x, method = "nearest_even")
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 
 \item{method}{(\code{character(1)})\cr
@@ -16,7 +16,7 @@ integer on a tie, \code{"afz"} rounds away from zero on a tie.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same dtype and shape as \code{operand}.
+Has the same dtype and shape as \code{x}.
 It is ambiguous if the input is ambiguous.
 }
 \description{
