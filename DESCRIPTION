@@ -33,7 +33,7 @@ Imports:
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.3.0.903),
-    tengen (>= 0.3.0),
+    tengen (>= 0.2.0),
     withr,
     xlamisc (>= 0.3.0)
 Suggests:
@@ -44,7 +44,8 @@ Suggests:
     testthat (>= 3.0.0)
 Remotes:
     r-xla/pjrt,
-    r-xla/stablehlo
+    r-xla/stablehlo,
+    r-xla/tengen
 Additional_repositories:
     https://r-xla.r-universe.dev
 VignetteBuilder:
