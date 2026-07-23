@@ -24,6 +24,18 @@ test_that("nv_rnorm", {
   expect_equal(dtype(out[[2]]), as_dtype("f64"))
 })
 
+test_that("rng rejects non-f32/f64 dtypes", {
+  key <- nv_array(c(1, 2), dtype = "ui64")
+  expect_error(
+    nv_rnorm(key, dtype = "bf16", shape = 2L),
+    "must be a floating-point dtype \\(f32 or f64\\)"
+  )
+  expect_error(
+    nv_rnorm(key, dtype = "i32", shape = 2L),
+    "must be a floating-point dtype \\(f32 or f64\\)"
+  )
+})
+
 test_that("nv_runif", {
   # statistical validity checks are in inst/random
   out <- nv_runif(

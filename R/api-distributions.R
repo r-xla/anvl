@@ -100,7 +100,7 @@ nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
 
   # Thresholds between direct computation of erfc and the asymptotic expansion,
   # Q, for f32 and f64. These differ from JAX for accuracy.
-  is_f32 <- inherits(op_dtype, "FloatType") && op_dtype$value == 32L
+  is_f32 <- op_dtype == "f32"
   lower_threshold <- if (is_f32) -11.9 else -20
   upper_threshold <- 0
 

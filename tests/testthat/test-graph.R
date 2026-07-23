@@ -200,7 +200,7 @@ test_that("error handling: stablehlo errors use anvl's terminology", {
 
   # stablehlo's `operand` is anvl's `x`
   err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
-  expect_match(conditionMessage(err), "`x` must have dtype FloatType", fixed = TRUE)
+  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
 
   # `ErrorStablehlo` conditions build their message lazily in a
   # `conditionMessage()` method; they keep their class and their 1-based indices.

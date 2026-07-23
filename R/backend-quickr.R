@@ -157,7 +157,7 @@ AnvlBackendQuickr <- function() {
         }
       }
       if (is.null(dtype)) {
-        dtype <- if (is.double(data)) FloatType(64) else default_dtype(data)
+        dtype <- if (is.double(data)) as_dtype("f64") else default_dtype(data)
       }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)

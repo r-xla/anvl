@@ -28,7 +28,7 @@ test_that("nv_scalar", {
 
 test_that("AbstractArray", {
   x <- AbstractArray(
-    FloatType(32),
+    as_dtype("f32"),
     Shape(c(2, 3))
   )
   expect_snapshot(x)
@@ -39,7 +39,7 @@ test_that("AbstractArray", {
     eq_type(
       x,
       AbstractArray(
-        FloatType(32),
+        as_dtype("f32"),
         Shape(c(2, 1))
       ),
       ambiguity = TRUE
@@ -50,7 +50,7 @@ test_that("AbstractArray", {
     eq_type(
       x,
       AbstractArray(
-        FloatType(64),
+        as_dtype("f64"),
         Shape(c(2, 3))
       ),
       ambiguity = TRUE

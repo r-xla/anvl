@@ -233,7 +233,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   init_i <- hlo_scalar(0L, dtype = "i32", func = x$func)
 
   cmp <- if (is_max) prim_gt else prim_lt
-  is_float <- inherits(x$value_type$type$dtype, "FloatType")
+  is_float <- is_dtype_float(x$value_type$type$dtype)
   # Last-occurrence tiebreak: on equal values pick the larger index. XLA's
   # reduce_window is associative but applied in an implementation-defined order
   # (and is not commutative), so we cannot assume the rhs holds the larger
@@ -376,11 +376,11 @@ prim_argmin[["stablehlo"]] <- function(x, axis, drop) {
 
 .compare_type_for <- function(vt) {
   dt <- vt$value_type$type$dtype
-  if (inherits(dt, "FloatType")) {
+  if (is_dtype_float(dt)) {
     "FLOAT"
-  } else if (inherits(dt, "IntegerType")) {
+  } else if (is_dtype_int(dt)) {
     "SIGNED"
-  } else if (inherits(dt, "UIntegerType") || inherits(dt, "BooleanType")) {
+  } else if (is_dtype_uint(dt) || is_dtype_bool(dt)) {
     "UNSIGNED"
   } else {
     cli_abort("Unsupported dtype for compare")
@@ -707,7 +707,7 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
 # Mirrors JAX _sort_lt_comparator, _canonicalize_float_for_sort).
 .build_sort_comparator <- function(ops, descending) {
   key_dtype <- ops[[1L]]$value_type$type$dtype
-  key_is_float <- inherits(key_dtype, "FloatType")
+  key_is_float <- is_dtype_float(key_dtype)
   direction <- if (descending) "GT" else "LT"
 
   cmp_func <- stablehlo::local_func("")
@@ -731,7 +731,7 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
     b <- .canonicalize_float_for_sort(b, key_dtype)
     result <- hlo_compare(a, b, comparison_direction = direction, compare_type = "TOTALORDER")
   } else {
-    ct <- if (inherits(key_dtype, "IntegerType")) "SIGNED" else "UNSIGNED"
+    ct <- if (is_dtype_int(key_dtype)) "SIGNED" else "UNSIGNED"
     result <- hlo_compare(a, b, comparison_direction = direction, compare_type = ct)
   }
   hlo_return(result)
