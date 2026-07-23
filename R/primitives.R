@@ -229,17 +229,7 @@ prim_broadcast_in_axes <- new_primitive(
   "broadcast_in_axes",
   function(x, shape, broadcast_axes) {
     infer_fn <- function(x, shape, broadcast_axes) {
-      bd_attr <- r_to_constant(
-        as.integer(broadcast_axes - 1L),
-        dtype = "i64",
-        shape = length(broadcast_axes)
-      )
-      out <- stablehlo::infer_types_broadcast_in_dim(
-        at2vt(x),
-        broadcast_dimensions = bd_attr,
-        shape = shape
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_broadcast_in_axes(x, shape, broadcast_axes)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -338,13 +328,7 @@ prim_transpose <- new_primitive(
   function(x, permutation) {
     permutation <- resolve_axes(permutation, naxes_abstract(x), unique = TRUE)
     infer_fn <- function(x, permutation) {
-      perm_attr <- r_to_constant(
-        as.integer(permutation - 1L),
-        dtype = "i64",
-        shape = length(permutation)
-      )
-      out <- stablehlo::infer_types_transpose(at2vt(x), permutation = perm_attr)[[1L]]
-      out <- vt2at(out)
+      out <- infer_transpose(x, permutation)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -384,8 +368,7 @@ prim_reshape <- new_primitive(
   function(x, shape) {
     shape <- resolve_reshape_shape(shape, prod(shape_abstract(x)), arg = "shape")
     infer_fn <- function(x, shape) {
-      out <- stablehlo::infer_types_reshape(at2vt(x), shape = shape)[[1L]]
-      out <- vt2at(out)
+      out <- infer_reshape(x, shape)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -434,15 +417,7 @@ prim_concatenate <- new_primitive(
     infer_fn <- function(..., axis) {
       xs <- list(...)
       all_ambiguous <- all(vapply(xs, \(x) x$ambiguous, logical(1L)))
-      vts <- lapply(xs, at2vt)
-      # Convert axis to Constant as required by stablehlo
-      axis_const <- stablehlo::r_to_constant(
-        as.integer(axis - 1L),
-        dtype = "i64",
-        shape = integer(0)
-      )
-      out <- rlang::exec(stablehlo::infer_types_concatenate, !!!vts, dimension = axis_const)[[1L]]
-      out <- vt2at(out)
+      out <- infer_concatenate(xs, axis)
       out$ambiguous <- all_ambiguous
       list(out)
     }
@@ -503,11 +478,7 @@ prim_static_slice <- new_primitive(
   "static_slice",
   function(x, start_indices, limit_indices, strides) {
     infer_fn <- function(x, start_indices, limit_indices, strides) {
-      start_attr <- r_to_constant(start_indices - 1L, dtype = "i64", shape = length(start_indices))
-      limit_attr <- r_to_constant(limit_indices, dtype = "i64", shape = length(limit_indices))
-      strides_attr <- r_to_constant(strides, dtype = "i64", shape = length(strides))
-      out <- stablehlo::infer_types_slice(at2vt(x), start_attr, limit_attr, strides_attr)[[1L]]
-      out <- vt2at(out)
+      out <- infer_slice(x, start_indices, limit_indices, strides)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -1033,30 +1004,7 @@ prim_reduce <- new_primitive(
     }
 
     infer_fn <- function(x, init, axes, drop, reductor_graph) {
-      stub_body <- stablehlo(reductor_graph)[[1L]]
-      axes0 <- as.integer(axes) - 1L
-      vts <- stablehlo::infer_types_reduce(
-        inputs = list(at2vt(x)),
-        init_values = list(at2vt(init)),
-        body = stub_body,
-        dimensions = stablehlo::r_to_constant(
-          axes0,
-          dtype = "i64",
-          shape = length(axes0)
-        )
-      )
-      out <- vt2at(vts[[1L]])
-      out$ambiguous <- x$ambiguous
-      if (!drop) {
-        new_shape <- shape(x)
-        new_shape[axes] <- 1L
-        out <- AbstractArray(
-          dtype = out$dtype,
-          shape = Shape(new_shape),
-          ambiguous = out$ambiguous
-        )
-      }
-      list(out)
+      infer_reduce(x, axes, drop)
     }
 
     graph_desc_add(
@@ -2139,10 +2087,7 @@ prim_reverse <- new_primitive(
   function(x, axes) {
     axes <- resolve_axes(axes, naxes_abstract(x), unique = TRUE)
     infer_fn <- function(x, axes) {
-      # stablehlo uses 0-based indexing
-      axes_attr <- r_to_constant(axes - 1L, dtype = "i64", shape = length(axes))
-      out <- stablehlo::infer_types_reverse(at2vt(x), dimensions = axes_attr)[[1L]]
-      out <- vt2at(out)
+      out <- infer_reverse(x, axes)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -2178,19 +2123,7 @@ prim_iota <- new_primitive(
   "iota",
   function(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL) {
     axis <- resolve_axis(axis, length(shape))
-    infer_fn <- function(axis, dtype, shape, start, ambiguous) {
-      # stablehlo uses 0-based indexing, anvl uses 1-based
-      # Convert axis to Constant as required by stablehlo
-      iota_axis_const <- stablehlo::r_to_constant(
-        as.integer(axis - 1L),
-        dtype = "i64",
-        shape = integer(0)
-      )
-      # Just for the checks
-      stablehlo::infer_types_iota(iota_dimension = iota_axis_const, dtype = dtype, shape = shape)[[1L]]
-
-      list(IotaArray(shape = shape, dtype = dtype, axis = axis, start = start, ambiguous = ambiguous))
-    }
+    infer_fn <- infer_iota
     result <- graph_desc_add(
       self,
       list(),
@@ -2234,18 +2167,7 @@ prim_pad <- new_primitive(
   "pad",
   function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
     infer_fn <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
-      rank <- naxes_abstract(x)
-      low_attr <- r_to_constant(edge_padding_low, dtype = "i64", shape = rank)
-      high_attr <- r_to_constant(edge_padding_high, dtype = "i64", shape = rank)
-      interior_attr <- r_to_constant(interior_padding, dtype = "i64", shape = rank)
-      out <- stablehlo::infer_types_pad(
-        at2vt(x),
-        at2vt(padding_value),
-        edge_padding_low = low_attr,
-        edge_padding_high = high_attr,
-        interior_padding = interior_attr
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_pad(x, padding_value, edge_padding_low, edge_padding_high, interior_padding)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -2692,17 +2614,10 @@ prim_top_k <- new_primitive(
     k <- as.integer(k)
 
     infer_fn <- function(x, k) {
-      k_const <- stablehlo::r_to_constant(
-        k,
-        dtype = "i64",
-        shape = integer()
-      )
-      vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
-      values <- vt2at(vts[[1L]])
-      values$ambiguous <- x$ambiguous
-      indices <- vt2at(vts[[2L]])
-      indices$ambiguous <- FALSE
-      list(values, indices)
+      out <- infer_top_k(x, k)
+      out[[1L]]$ambiguous <- x$ambiguous
+      out[[2L]]$ambiguous <- FALSE
+      out
     }
 
     graph_desc_add(
@@ -2774,9 +2689,7 @@ prim_print <- new_primitive(
 prim_rng_bit_generator <- new_primitive(
   "rng_bit_generator",
   function(initial_state, rng_algorithm = "THREE_FRY", dtype, shape) {
-    infer_fn <- function(initial_state, rng_algorithm, dtype, shape) {
-      lapply(stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape), vt2at)
-    }
+    infer_fn <- infer_rng_bit_generator
     graph_desc_add(
       self,
       list(initial_state = initial_state),
@@ -3234,18 +3147,7 @@ prim_triangular_solve <- new_primitive(
   "triangular_solve",
   function(a, b, left_side, lower, unit_diagonal, transpose_a) {
     infer_fn <- function(a, b, left_side, lower, unit_diagonal, transpose_a) {
-      left_side_attr <- r_to_constant(as.logical(left_side), dtype = "bool", shape = integer())
-      lower_attr <- r_to_constant(as.logical(lower), dtype = "bool", shape = integer())
-      unit_diagonal_attr <- r_to_constant(as.logical(unit_diagonal), dtype = "bool", shape = integer())
-      out <- stablehlo::infer_types_triangular_solve(
-        at2vt(a),
-        at2vt(b),
-        left_side = left_side_attr,
-        lower = lower_attr,
-        unit_diagonal = unit_diagonal_attr,
-        transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE"
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
       out$ambiguous <- a$ambiguous && b$ambiguous
       list(out)
     }

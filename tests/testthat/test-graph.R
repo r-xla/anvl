@@ -210,8 +210,7 @@ test_that("error handling: stablehlo errors use anvl's terminology", {
     jit(prim_transpose, static = "permutation")(nv_array(1:4, shape = c(2, 2)), permutation = 1L),
     error = identity
   )
-  expect_s3_class(err, "ErrorPermuteIndex")
-  expect_match(conditionMessage(err), "must be a permutation of c(1, 2)", fixed = TRUE)
+  expect_match(conditionMessage(err), "must be a permutation of the axes", fixed = TRUE)
 })
 
 test_that("user_terminology() rewrites words but not identifiers", {
