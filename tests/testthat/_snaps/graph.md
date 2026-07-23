@@ -24,7 +24,7 @@
       ! `permutation` must not contain duplicate axes.
       x Got 2 and 2.
 
-# error handling: stablehlo errors use anvl's terminology
+# error handling: inference errors use anvl's terminology
 
     Code
       jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4)))
