@@ -54,9 +54,9 @@ The Normal distribution has probability density function: \$\$f(x) =
 mean and \\\sigma\\ is the standard deviation. The `mean` and `sd` are
 converted to the data type of `x`/`q`.
 
-`nv_pnorm` uses the asymptotic expansion from Abramowitz (1964),
-equation 26.2.12, in the left tail when `log_p = TRUE` to maintain
-accuracy.
+`nv_pnorm` uses the asymptotic expansion from Abramowitz & Stegun
+(1964), equation 26.2.12, in the left tail when `log_p = TRUE` to
+maintain accuracy.
 
 ## References
 

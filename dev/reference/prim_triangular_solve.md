@@ -70,9 +70,9 @@ Lowers to
 
 ## References
 
-Giles, Mike (2008). “An extended collection of matrix derivative results
-for forward and reverse mode automatic differentiation.” Oxford
-University Computing Laboratory.
+Giles M (2008). “An extended collection of matrix derivative results for
+forward and reverse mode automatic differentiation.” Oxford University
+Computing Laboratory.
 
 ## See also
 

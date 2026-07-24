@@ -46,13 +46,12 @@ Lowers to
 
 ## References
 
-Murray, Iain (2016). “Differentiation of the Cholesky decomposition.”
-*arXiv preprint arXiv:1602.07527*.
+Murray I (2016). “Differentiation of the Cholesky decomposition.” *arXiv
+preprint arXiv:1602.07527*.
 
-Walter, Sebastian (2012). *Structured higher-order algorithmic
-differentiation in the forward and reverse mode with application in
-optimum experimental design*. Ph.D. thesis,
-Mathematisch-Naturwissenschaftliche Fakult"at II.
+Walter S (2012). *Structured higher-order algorithmic differentiation in
+the forward and reverse mode with application in optimum experimental
+design*. Ph.D. thesis, Mathematisch-Naturwissenschaftliche Fakult"at II.
 
 ## See also
 
