@@ -2,14 +2,13 @@
 #' @include type-converters.R
 #' @include primitive.R
 #' @include jit.R
+#' @include rules-inference.R
 
-make_binary_op <- function(stablehlo_infer) {
-  force(stablehlo_infer)
+make_binary_op <- function(infer) {
+  force(infer)
   infer_fn <- function(lhs, rhs) {
-    both_ambiguous <- lhs$ambiguous && rhs$ambiguous
-    out <- stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]
-    out <- vt2at(out)
-    out$ambiguous <- both_ambiguous
+    out <- infer(lhs, rhs)
+    out$ambiguous <- lhs$ambiguous && rhs$ambiguous
     list(out)
   }
   function(lhs, rhs) {
@@ -17,11 +16,10 @@ make_binary_op <- function(stablehlo_infer) {
   }
 }
 
-make_unary_op <- function(stablehlo_infer) {
-  force(stablehlo_infer)
+make_unary_op <- function(infer) {
+  force(infer)
   infer_fn <- function(x) {
-    out <- stablehlo_infer(at2vt(x))[[1L]]
-    out <- vt2at(out)
+    out <- infer(x)
     out$ambiguous <- x$ambiguous
     list(out)
   }
@@ -30,36 +28,6 @@ make_unary_op <- function(stablehlo_infer) {
   }
 }
 
-
-infer_reduce <- function(x, axes, drop) {
-  old_shape <- shape(x)
-  if (drop) {
-    new_shape <- old_shape[-axes]
-  } else {
-    new_shape <- old_shape
-    new_shape[axes] <- 1L
-  }
-  list(AbstractArray(
-    dtype = dtype(x),
-    shape = Shape(new_shape),
-    ambiguous = x$ambiguous
-  ))
-}
-
-infer_reduce_boolean <- function(x, axes, drop) {
-  old_shape <- shape(x)
-  if (drop) {
-    new_shape <- old_shape[-axes]
-  } else {
-    new_shape <- old_shape
-    new_shape[axes] <- 1L
-  }
-  list(AbstractArray(
-    dtype = "bool",
-    shape = Shape(new_shape),
-    ambiguous = FALSE
-  ))
-}
 
 #' @title Primitive Fill
 #' @description
@@ -117,7 +85,7 @@ prim_fill <- new_primitive(
 #' y <- nv_array(c(4, 5, 6))
 #' prim_add(x, y)
 #' @export
-prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
+prim_add <- new_primitive("add", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Multiplication
 #' @description
@@ -134,7 +102,7 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 #' y <- nv_array(c(4, 5, 6))
 #' prim_mul(x, y)
 #' @export
-prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply))
+prim_mul <- new_primitive("mul", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Subtraction
 #' @description
@@ -151,7 +119,7 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #' y <- nv_array(c(4, 5, 6))
 #' prim_sub(x, y)
 #' @export
-prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract))
+prim_sub <- new_primitive("sub", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Negation
 #' @description
@@ -168,7 +136,7 @@ prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract)
 #' x <- nv_array(c(1, -2, 3))
 #' prim_negate(x)
 #' @export
-prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
+prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 
 #' @title Primitive Division
 #' @description
@@ -185,7 +153,7 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' y <- nv_array(c(2, 5, 10))
 #' prim_div(x, y)
 #' @export
-prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide))
+prim_div <- new_primitive("divide", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Power
 #' @description
@@ -202,7 +170,7 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' y <- nv_array(c(3, 2, 1))
 #' prim_pow(x, y)
 #' @export
-prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
+prim_pow <- new_primitive("power", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Broadcast
 #' @description
@@ -231,17 +199,7 @@ prim_broadcast_in_axes <- new_primitive(
   "broadcast_in_axes",
   function(x, shape, broadcast_axes) {
     infer_fn <- function(x, shape, broadcast_axes) {
-      bd_attr <- r_to_constant(
-        as.integer(broadcast_axes - 1L),
-        dtype = "i64",
-        shape = length(broadcast_axes)
-      )
-      out <- stablehlo::infer_types_broadcast_in_dim(
-        at2vt(x),
-        broadcast_dimensions = bd_attr,
-        shape = shape
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_broadcast_in_axes(x, shape, broadcast_axes)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -294,12 +252,7 @@ prim_dot_general <- new_primitive(
   function(lhs, rhs, contracting_axes, batching_axes, precision = "highest") {
     precision <- match.arg(precision, c("default", "high", "highest"))
     infer_fn <- function(lhs, rhs, contracting_axes, batching_axes, precision) {
-      ddn <- stablehlo::DotDimensionNumbers(
-        contracting_dims = lapply(contracting_axes, \(x) x - 1L),
-        batching_dims = lapply(batching_axes, \(x) x - 1L)
-      )
-      out <- stablehlo::infer_types_dot_general(at2vt(lhs), at2vt(rhs), dot_dimension_numbers = ddn)[[1L]]
-      list(vt2at(out))
+      list(infer_dot_general(lhs, rhs, contracting_axes, batching_axes))
     }
     graph_desc_add(
       self,
@@ -340,13 +293,7 @@ prim_transpose <- new_primitive(
   function(x, permutation) {
     permutation <- resolve_axes(permutation, naxes_abstract(x), unique = TRUE)
     infer_fn <- function(x, permutation) {
-      perm_attr <- r_to_constant(
-        as.integer(permutation - 1L),
-        dtype = "i64",
-        shape = length(permutation)
-      )
-      out <- stablehlo::infer_types_transpose(at2vt(x), permutation = perm_attr)[[1L]]
-      out <- vt2at(out)
+      out <- infer_transpose(x, permutation)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -386,8 +333,7 @@ prim_reshape <- new_primitive(
   function(x, shape) {
     shape <- resolve_reshape_shape(shape, prod(shape_abstract(x)), arg = "shape")
     infer_fn <- function(x, shape) {
-      out <- stablehlo::infer_types_reshape(at2vt(x), shape = shape)[[1L]]
-      out <- vt2at(out)
+      out <- infer_reshape(x, shape)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -436,15 +382,7 @@ prim_concatenate <- new_primitive(
     infer_fn <- function(..., axis) {
       xs <- list(...)
       all_ambiguous <- all(vapply(xs, \(x) x$ambiguous, logical(1L)))
-      vts <- lapply(xs, at2vt)
-      # Convert axis to Constant as required by stablehlo
-      axis_const <- stablehlo::r_to_constant(
-        as.integer(axis - 1L),
-        dtype = "i64",
-        shape = integer(0)
-      )
-      out <- rlang::exec(stablehlo::infer_types_concatenate, !!!vts, dimension = axis_const)[[1L]]
-      out <- vt2at(out)
+      out <- infer_concatenate(xs, axis)
       out$ambiguous <- all_ambiguous
       list(out)
     }
@@ -505,11 +443,7 @@ prim_static_slice <- new_primitive(
   "static_slice",
   function(x, start_indices, limit_indices, strides) {
     infer_fn <- function(x, start_indices, limit_indices, strides) {
-      start_attr <- r_to_constant(start_indices - 1L, dtype = "i64", shape = length(start_indices))
-      limit_attr <- r_to_constant(limit_indices, dtype = "i64", shape = length(limit_indices))
-      strides_attr <- r_to_constant(strides, dtype = "i64", shape = length(strides))
-      out <- stablehlo::infer_types_slice(at2vt(x), start_attr, limit_attr, strides_attr)[[1L]]
-      out <- vt2at(out)
+      out <- infer_slice(x, start_indices, limit_indices, strides)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -812,46 +746,9 @@ prim_reduce_all <- new_primitive("reduce_all", make_reduce_op(infer_reduce_boole
 
 # cumulative (scan) primitives -------------------------------------------------
 
-infer_cum <- function(x, axis) {
-  rank <- length(shape(x))
-  if (rank == 0L) {
-    cli_abort("cumulative ops require at least a 1-dimensional {.arg x}, but it is a scalar")
-  }
-  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
-    cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
-  }
-  list(AbstractArray(
-    dtype = dtype(x),
-    shape = Shape(shape(x)),
-    ambiguous = x$ambiguous
-  ))
-}
-
 cum_op <- function(x, axis) {
   axis <- resolve_axis(axis, naxes_abstract(x))
   graph_desc_add(self, list(x = x), params = list(axis = axis), infer_fn = infer_cum)[[1L]]
-}
-
-infer_cum_extreme <- function(x, axis) {
-  rank <- length(shape(x))
-  if (rank == 0L) {
-    cli_abort("cumulative ops require at least a 1-dimensional {.arg x}, but it is a scalar")
-  }
-  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
-    cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
-  }
-  list(
-    AbstractArray(
-      dtype = dtype(x),
-      shape = Shape(shape(x)),
-      ambiguous = x$ambiguous
-    ),
-    AbstractArray(
-      dtype = "i32",
-      shape = Shape(shape(x)),
-      ambiguous = FALSE
-    )
-  )
 }
 
 cum_extreme_op <- function(x, axis) {
@@ -1035,30 +932,7 @@ prim_reduce <- new_primitive(
     }
 
     infer_fn <- function(x, init, axes, drop, reductor_graph) {
-      stub_body <- stablehlo(reductor_graph)[[1L]]
-      axes0 <- as.integer(axes) - 1L
-      vts <- stablehlo::infer_types_reduce(
-        inputs = list(at2vt(x)),
-        init_values = list(at2vt(init)),
-        body = stub_body,
-        dimensions = stablehlo::r_to_constant(
-          axes0,
-          dtype = "i64",
-          shape = length(axes0)
-        )
-      )
-      out <- vt2at(vts[[1L]])
-      out$ambiguous <- x$ambiguous
-      if (!drop) {
-        new_shape <- shape(x)
-        new_shape[axes] <- 1L
-        out <- AbstractArray(
-          dtype = out$dtype,
-          shape = Shape(new_shape),
-          ambiguous = out$ambiguous
-        )
-      }
-      list(out)
+      infer_reduce(x, axes, drop)
     }
 
     graph_desc_add(
@@ -1075,37 +949,6 @@ prim_reduce <- new_primitive(
 
 # Shared shape inference for prim_argmax / prim_argmin: x -> i32
 # with `axis` dropped (or kept as size 1).
-infer_fn_arg_extreme <- function(x, axis, drop) {
-  shp <- shape(x)
-  if (axis > length(shp)) {
-    cli_abort(c(
-      "{.arg axis} is out of bounds.",
-      x = "Operand has {length(shp)} axes, got {.arg axis} = {axis}."
-    ))
-  }
-  # The reduction lowering uses `init_v = +/-Inf` and `init_i = 0`. Reducing
-  # along a size-0 axis would silently emit those sentinels (i.e. index 1)
-  # rather than failing. Argmax/argmin of an empty axis is undefined, so
-  # reject it here at trace time.
-  if (shp[axis] == 0L) {
-    cli_abort(c(
-      "argmax/argmin is undefined for an empty axis.",
-      x = "Operand has shape {xlamisc::shapevec_repr(shp)}; {.arg axis} = {axis} has size 0."
-    ))
-  }
-  if (drop) {
-    new_shape <- shp[-axis]
-  } else {
-    new_shape <- shp
-    new_shape[axis] <- 1L
-  }
-  list(AbstractArray(
-    dtype = "i32",
-    shape = Shape(new_shape),
-    ambiguous = FALSE
-  ))
-}
-
 #' @title Primitive Argmax
 #' @description
 #' Returns the index of the maximum value along a single axis. Ties
@@ -1179,24 +1022,13 @@ prim_argmin <- new_primitive(
 
 # comparison primitives --------------------------------------------------------
 
-infer_compare <- function(lhs, rhs, comparison_direction) {
-  check_dtype <- as.character(dtype(lhs))
-  compare_type <- if ((check_dtype == "bool") || grepl("^ui", check_dtype)) {
-    "UNSIGNED"
-  } else if (grepl("^i", check_dtype)) {
-    "SIGNED"
-  } else {
-    "FLOAT"
-  }
-  out <- stablehlo::infer_types_compare(at2vt(lhs), at2vt(rhs), comparison_direction, compare_type)[[1L]]
-  out <- vt2at(out)
-  out$ambiguous <- lhs$ambiguous && rhs$ambiguous
-  list(out)
-}
-
 make_compare_op <- function(direction) {
   force(direction)
-  infer_fn <- function(lhs, rhs) infer_compare(lhs, rhs, direction)
+  infer_fn <- function(lhs, rhs) {
+    out <- infer_compare(lhs, rhs, direction)
+    out$ambiguous <- lhs$ambiguous && rhs$ambiguous
+    list(out)
+  }
   function(lhs, rhs) {
     graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
   }
@@ -1321,7 +1153,7 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' y <- nv_array(c(4, 2, 6))
 #' prim_max(x, y)
 #' @export
-prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
+prim_max <- new_primitive("maximum", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Minimum
 #' @description
@@ -1338,7 +1170,7 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #' y <- nv_array(c(4, 2, 6))
 #' prim_min(x, y)
 #' @export
-prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
+prim_min <- new_primitive("minimum", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Remainder
 #' @description
@@ -1356,7 +1188,7 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' prim_remainder(1, -3)
 #' 1 %% -3
 #' @export
-prim_remainder <- new_primitive("remainder", make_binary_op(stablehlo::infer_types_remainder))
+prim_remainder <- new_primitive("remainder", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive And
 #' @description
@@ -1373,7 +1205,7 @@ prim_remainder <- new_primitive("remainder", make_binary_op(stablehlo::infer_typ
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_and(x, y)
 #' @export
-prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
+prim_and <- new_primitive("and", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Not
 #' @description
@@ -1390,7 +1222,7 @@ prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
 #' prim_not(x)
 #' @export
-prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
+prim_not <- new_primitive("not", make_unary_op(infer_integerish_uni))
 
 #' @title Primitive Or
 #' @description
@@ -1407,7 +1239,7 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_or(x, y)
 #' @export
-prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
+prim_or <- new_primitive("or", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Xor
 #' @description
@@ -1424,15 +1256,7 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_xor(x, y)
 #' @export
-prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
-
-infer_shift <- function(lhs, rhs, shift_fn) {
-  both_ambiguous <- lhs$ambiguous && rhs$ambiguous
-  out <- shift_fn(at2vt(lhs), at2vt(rhs))[[1L]]
-  out <- vt2at(out)
-  out$ambiguous <- both_ambiguous
-  list(out)
-}
+prim_xor <- new_primitive("xor", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Shift Left
 #' @description
@@ -1449,13 +1273,7 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #' y <- nv_array(c(1L, 2L, 1L))
 #' prim_shift_left(x, y)
 #' @export
-prim_shift_left <- new_primitive(
-  "shift_left",
-  function(lhs, rhs) {
-    infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_left)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_shift_left <- new_primitive("shift_left", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Logical Shift Right
 #' @description
@@ -1472,13 +1290,7 @@ prim_shift_left <- new_primitive(
 #' y <- nv_array(c(1L, 2L, 3L))
 #' prim_shift_right_logical(x, y)
 #' @export
-prim_shift_right_logical <- new_primitive(
-  "shift_right_logical",
-  function(lhs, rhs) {
-    infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_logical)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_shift_right_logical <- new_primitive("shift_right_logical", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Arithmetic Shift Right
 #' @description
@@ -1495,13 +1307,7 @@ prim_shift_right_logical <- new_primitive(
 #' y <- nv_array(c(1L, 2L, 3L))
 #' prim_shift_right_arithmetic(x, y)
 #' @export
-prim_shift_right_arithmetic <- new_primitive(
-  "shift_right_arithmetic",
-  function(lhs, rhs) {
-    infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_arithmetic)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_shift_right_arithmetic <- new_primitive("shift_right_arithmetic", make_binary_op(infer_integerish_biv))
 
 #' @title Primitive Atan2
 #' @description
@@ -1518,7 +1324,7 @@ prim_shift_right_arithmetic <- new_primitive(
 #' x <- nv_array(c(0, 1, 0))
 #' prim_atan2(y, x)
 #' @export
-prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2))
+prim_atan2 <- new_primitive("atan2", make_binary_op(infer_float_biv))
 
 #' @title Primitive Bitcast Convert
 #' @description
@@ -1546,7 +1352,7 @@ prim_bitcast_convert <- new_primitive(
   "bitcast_convert",
   function(x, dtype) {
     infer_fn <- function(x, dtype) {
-      lapply(stablehlo::infer_types_bitcast_convert(at2vt(x), dtype), vt2at)
+      list(infer_bitcast_convert(x, dtype))
     }
     graph_desc_add(self, list(x = x), params = list(dtype = dtype), infer_fn = infer_fn)[[1L]]
   },
@@ -1569,7 +1375,17 @@ prim_bitcast_convert <- new_primitive(
 #' x <- nv_array(c(-1, 2, -3))
 #' prim_abs(x)
 #' @export
-prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
+prim_abs <- new_primitive(
+  "abs",
+  function(x) {
+    infer_fn <- function(x) {
+      out <- infer_abs(x)
+      out$ambiguous <- x$ambiguous
+      list(out)
+    }
+    graph_desc_add(self, list(x = x), infer_fn = infer_fn)[[1L]]
+  }
+)
 
 #' @title Primitive Square Root
 #' @description
@@ -1585,7 +1401,7 @@ prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
 #' x <- nv_array(c(1, 4, 9))
 #' prim_sqrt(x)
 #' @export
-prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
+prim_sqrt <- new_primitive("sqrt", make_unary_op(infer_float_uni))
 
 #' @title Primitive Reciprocal Square Root
 #' @description
@@ -1601,7 +1417,7 @@ prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
 #' x <- nv_array(c(1, 4, 9))
 #' prim_rsqrt(x)
 #' @export
-prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt))
+prim_rsqrt <- new_primitive("rsqrt", make_unary_op(infer_float_uni))
 
 #' @title Primitive Logarithm
 #' @description
@@ -1617,7 +1433,7 @@ prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt)
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' prim_log(x)
 #' @export
-prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
+prim_log <- new_primitive("log", make_unary_op(infer_float_uni))
 
 #' @title Primitive Hyperbolic Tangent
 #' @description
@@ -1633,7 +1449,7 @@ prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_tanh(x)
 #' @export
-prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
+prim_tanh <- new_primitive("tanh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Tangent
 #' @description
@@ -1649,7 +1465,7 @@ prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
 #' x <- nv_array(c(0, 0.5, 1))
 #' prim_tan(x)
 #' @export
-prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
+prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
 
 #' @title Primitive Sine
 #' @description
@@ -1665,7 +1481,7 @@ prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_sin(x)
 #' @export
-prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
+prim_sin <- new_primitive("sine", make_unary_op(infer_float_uni))
 
 #' @title Primitive Cosine
 #' @description
@@ -1681,7 +1497,7 @@ prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_cos(x)
 #' @export
-prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine))
+prim_cos <- new_primitive("cosine", make_unary_op(infer_float_uni))
 
 #' @title Primitive Floor
 #' @description
@@ -1697,7 +1513,7 @@ prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine)
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' prim_floor(x)
 #' @export
-prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor))
+prim_floor <- new_primitive("floor", make_unary_op(infer_float_uni))
 
 #' @title Primitive Ceiling
 #' @description
@@ -1713,7 +1529,7 @@ prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor)
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' prim_ceil(x)
 #' @export
-prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
+prim_ceil <- new_primitive("ceil", make_unary_op(infer_float_uni))
 
 #' @title Primitive Sign
 #' @description
@@ -1729,7 +1545,17 @@ prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
 #' x <- nv_array(c(-3, 0, 5))
 #' prim_sign(x)
 #' @export
-prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
+prim_sign <- new_primitive(
+  "sign",
+  function(x) {
+    infer_fn <- function(x) {
+      out <- infer_sign(x)
+      out$ambiguous <- x$ambiguous
+      list(out)
+    }
+    graph_desc_add(self, list(x = x), infer_fn = infer_fn)[[1L]]
+  }
+)
 
 #' @title Primitive Exponential
 #' @description
@@ -1745,7 +1571,7 @@ prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
 #' x <- nv_array(c(0, 1, 2))
 #' prim_exp(x)
 #' @export
-prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponential))
+prim_exp <- new_primitive("exp", make_unary_op(infer_float_uni))
 
 #' @title Primitive Exponential Minus One
 #' @description
@@ -1761,7 +1587,7 @@ prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponentia
 #' x <- nv_array(c(0, 0.001, 1))
 #' prim_expm1(x)
 #' @export
-prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_exponential_minus_one))
+prim_expm1 <- new_primitive("expm1", make_unary_op(infer_float_uni))
 
 #' @title Primitive Log Plus One
 #' @description
@@ -1777,7 +1603,7 @@ prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_expone
 #' x <- nv_array(c(0, 0.001, 1))
 #' prim_log1p(x)
 #' @export
-prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_plus_one))
+prim_log1p <- new_primitive("log1p", make_unary_op(infer_float_uni))
 
 #' @title Primitive Cube Root
 #' @description
@@ -1793,7 +1619,7 @@ prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_pl
 #' x <- nv_array(c(1, 8, 27))
 #' prim_cbrt(x)
 #' @export
-prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
+prim_cbrt <- new_primitive("cbrt", make_unary_op(infer_float_uni))
 
 #' @title Primitive Logistic (Sigmoid)
 #' @description
@@ -1809,7 +1635,7 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
 #' x <- nv_array(c(-2, 0, 2))
 #' prim_logistic(x)
 #' @export
-prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_logistic))
+prim_logistic <- new_primitive("logistic", make_unary_op(infer_float_uni))
 
 #' @title Primitive Arc Cosine
 #' @description
@@ -1825,7 +1651,7 @@ prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_acos(x)
 #' @export
-prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
+prim_acos <- new_primitive("acos", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Hyperbolic Cosine
 #' @description
@@ -1841,7 +1667,7 @@ prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
 #' x <- nv_array(c(1, 2, 10))
 #' prim_acosh(x)
 #' @export
-prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh))
+prim_acosh <- new_primitive("acosh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Arc Sine
 #' @description
@@ -1857,7 +1683,7 @@ prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh)
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_asin(x)
 #' @export
-prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
+prim_asin <- new_primitive("asin", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Hyperbolic Sine
 #' @description
@@ -1873,7 +1699,7 @@ prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_asinh(x)
 #' @export
-prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh))
+prim_asinh <- new_primitive("asinh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Arc Tangent
 #' @description
@@ -1889,7 +1715,7 @@ prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh)
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_atan(x)
 #' @export
-prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
+prim_atan <- new_primitive("atan", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Hyperbolic Tangent
 #' @description
@@ -1905,7 +1731,7 @@ prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' prim_atanh(x)
 #' @export
-prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh))
+prim_atanh <- new_primitive("atanh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Hyperbolic Cosine
 #' @description
@@ -1921,7 +1747,7 @@ prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh)
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_cosh(x)
 #' @export
-prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
+prim_cosh <- new_primitive("cosh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Hyperbolic Sine
 #' @description
@@ -1937,7 +1763,7 @@ prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_sinh(x)
 #' @export
-prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
+prim_sinh <- new_primitive("sinh", make_unary_op(infer_float_uni))
 
 #' @title Primitive Digamma
 #' @description
@@ -1953,7 +1779,7 @@ prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' prim_digamma(x)
 #' @export
-prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_digamma))
+prim_digamma <- new_primitive("digamma", make_unary_op(infer_float_uni))
 
 #' @title Primitive Log-Gamma
 #' @description
@@ -1969,7 +1795,7 @@ prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_di
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' prim_lgamma(x)
 #' @export
-prim_lgamma <- new_primitive("lgamma", make_unary_op(stablehlo::infer_types_lgamma))
+prim_lgamma <- new_primitive("lgamma", make_unary_op(infer_float_uni))
 
 #' @title Primitive Polygamma
 #' @description
@@ -1995,8 +1821,7 @@ prim_polygamma <- new_primitive(
   function(n, x) {
     infer_fn <- function(n, x) {
       both_ambiguous <- n$ambiguous && x$ambiguous
-      out <- stablehlo::infer_types_polygamma(at2vt(n), at2vt(x))[[1L]]
-      out <- vt2at(out)
+      out <- infer_polygamma(n, x)
       out$ambiguous <- both_ambiguous
       list(out)
     }
@@ -2018,7 +1843,7 @@ prim_polygamma <- new_primitive(
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_erf(x)
 #' @export
-prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
+prim_erf <- new_primitive("erf", make_unary_op(infer_float_uni))
 
 #' @title Primitive Inverse Error Function
 #' @description
@@ -2034,7 +1859,7 @@ prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' prim_erf_inv(x)
 #' @export
-prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_erf_inv))
+prim_erf_inv <- new_primitive("erf_inv", make_unary_op(infer_float_uni))
 
 #' @title Primitive Complementary Error Function
 #' @description
@@ -2050,7 +1875,7 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_er
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_erfc(x)
 #' @export
-prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
+prim_erfc <- new_primitive("erfc", make_unary_op(infer_float_uni))
 
 #' @title Primitive Is Finite
 #' @description
@@ -2072,8 +1897,7 @@ prim_is_finite <- new_primitive(
   "is_finite",
   function(x) {
     infer_fn <- function(x) {
-      out <- stablehlo::infer_types_is_finite(at2vt(x))[[1L]]
-      list(vt2at(out))
+      list(infer_is_finite(x))
     }
     graph_desc_add(self, list(x = x), list(), infer_fn = infer_fn)[[1L]]
   }
@@ -2094,18 +1918,7 @@ prim_is_finite <- new_primitive(
 #' x <- nv_array(c(7L, 3L, 15L))
 #' prim_popcnt(x)
 #' @export
-prim_popcnt <- new_primitive(
-  "popcnt",
-  function(x) {
-    infer_fn <- function(x) {
-      out <- stablehlo::infer_types_popcnt(at2vt(x))[[1L]]
-      out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
-      list(out)
-    }
-    graph_desc_add(self, list(x = x), list(), infer_fn = infer_fn)[[1L]]
-  }
-)
+prim_popcnt <- new_primitive("popcnt", make_unary_op(infer_integer_uni))
 
 #' @title Primitive Clamp
 #' @description
@@ -2132,8 +1945,7 @@ prim_clamp <- new_primitive(
   "clamp",
   function(min_val, x, max_val) {
     infer_fn <- function(min_val, x, max_val) {
-      out <- stablehlo::infer_types_clamp(at2vt(min_val), at2vt(x), at2vt(max_val))[[1L]]
-      out <- vt2at(out)
+      out <- infer_clamp(min_val, x, max_val)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -2172,10 +1984,7 @@ prim_reverse <- new_primitive(
   function(x, axes) {
     axes <- resolve_axes(axes, naxes_abstract(x), unique = TRUE)
     infer_fn <- function(x, axes) {
-      # stablehlo uses 0-based indexing
-      axes_attr <- r_to_constant(axes - 1L, dtype = "i64", shape = length(axes))
-      out <- stablehlo::infer_types_reverse(at2vt(x), dimensions = axes_attr)[[1L]]
-      out <- vt2at(out)
+      out <- infer_reverse(x, axes)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -2211,19 +2020,7 @@ prim_iota <- new_primitive(
   "iota",
   function(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL) {
     axis <- resolve_axis(axis, length(shape))
-    infer_fn <- function(axis, dtype, shape, start, ambiguous) {
-      # stablehlo uses 0-based indexing, anvl uses 1-based
-      # Convert axis to Constant as required by stablehlo
-      iota_axis_const <- stablehlo::r_to_constant(
-        as.integer(axis - 1L),
-        dtype = "i64",
-        shape = integer(0)
-      )
-      # Just for the checks
-      stablehlo::infer_types_iota(iota_dimension = iota_axis_const, dtype = dtype, shape = shape)[[1L]]
-
-      list(IotaArray(shape = shape, dtype = dtype, axis = axis, start = start, ambiguous = ambiguous))
-    }
+    infer_fn <- infer_iota
     result <- graph_desc_add(
       self,
       list(),
@@ -2267,18 +2064,7 @@ prim_pad <- new_primitive(
   "pad",
   function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
     infer_fn <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
-      rank <- naxes_abstract(x)
-      low_attr <- r_to_constant(edge_padding_low, dtype = "i64", shape = rank)
-      high_attr <- r_to_constant(edge_padding_high, dtype = "i64", shape = rank)
-      interior_attr <- r_to_constant(interior_padding, dtype = "i64", shape = rank)
-      out <- stablehlo::infer_types_pad(
-        at2vt(x),
-        at2vt(padding_value),
-        edge_padding_low = low_attr,
-        edge_padding_high = high_attr,
-        interior_padding = interior_attr
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_pad(x, padding_value, edge_padding_low, edge_padding_high, interior_padding)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -2324,10 +2110,8 @@ prim_round <- new_primitive(
       cli_abort("method must be one of: 'nearest_even', 'afz', but is {method}")
     }
     infer_fn <- function(x, method) {
-      # both rounding functions have the same inference, so just pick one:
-      stablehlo_infer <- stablehlo::infer_types_round_nearest_even
-      out <- stablehlo_infer(at2vt(x))[[1L]]
-      out <- vt2at(out)
+      # both rounding methods have the same inference
+      out <- infer_float_uni(x)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -2406,12 +2190,7 @@ prim_ifelse <- new_primitive(
   function(pred, true_value, false_value) {
     infer_fn <- function(pred, true_value, false_value) {
       both_ambiguous <- true_value$ambiguous && false_value$ambiguous
-      out <- stablehlo::infer_types_select(
-        at2vt(pred),
-        on_true = at2vt(true_value),
-        on_false = at2vt(false_value)
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_select(pred, true_value, false_value)
       out$ambiguous <- both_ambiguous
       list(out)
     }
@@ -2732,17 +2511,10 @@ prim_top_k <- new_primitive(
     k <- as.integer(k)
 
     infer_fn <- function(x, k) {
-      k_const <- stablehlo::r_to_constant(
-        k,
-        dtype = "i64",
-        shape = integer()
-      )
-      vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
-      values <- vt2at(vts[[1L]])
-      values$ambiguous <- x$ambiguous
-      indices <- vt2at(vts[[2L]])
-      indices$ambiguous <- FALSE
-      list(values, indices)
+      out <- infer_top_k(x, k)
+      out[[1L]]$ambiguous <- x$ambiguous
+      out[[2L]]$ambiguous <- FALSE
+      out
     }
 
     graph_desc_add(
@@ -2814,9 +2586,7 @@ prim_print <- new_primitive(
 prim_rng_bit_generator <- new_primitive(
   "rng_bit_generator",
   function(initial_state, rng_algorithm = "THREE_FRY", dtype, shape) {
-    infer_fn <- function(initial_state, rng_algorithm, dtype, shape) {
-      lapply(stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape), vt2at)
-    }
+    infer_fn <- infer_rng_bit_generator
     graph_desc_add(
       self,
       list(initial_state = initial_state),
@@ -2973,32 +2743,17 @@ prim_scatter <- new_primitive(
       unique_indices,
       update_computation_graph
     ) {
-      # Convert 1-based axis numbers to 0-based
-      # StableHLO's ScatterDimensionNumbers() follows the spec naming, so the
-      # anvl-side argument names are mapped back here.
-      scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
-        update_window_dims = update_window_axes - 1L,
-        inserted_window_dims = inserted_window_axes - 1L,
-        input_batching_dims = x_batching_axes - 1L,
-        scatter_indices_batching_dims = scatter_indices_batching_axes - 1L,
-        scatter_dims_to_operand_dims = scatter_axes_to_x_axes - 1L,
-        index_vector_dim = index_vector_axis - 1L
+      out <- infer_scatter(
+        x,
+        scatter_indices,
+        update,
+        update_window_axes = update_window_axes,
+        inserted_window_axes = inserted_window_axes,
+        x_batching_axes = x_batching_axes,
+        scatter_indices_batching_axes = scatter_indices_batching_axes,
+        scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+        index_vector_axis = index_vector_axis
       )
-
-      indices_sorted_attr <- r_to_constant(indices_are_sorted, dtype = "bool", shape = integer())
-      unique_indices_attr <- r_to_constant(unique_indices, dtype = "bool", shape = integer())
-
-      out <- stablehlo::infer_types_scatter(
-        inputs = list(at2vt(x)),
-        scatter_indices = at2vt(scatter_indices),
-        updates = list(at2vt(update)),
-        scatter_dimension_numbers = scatter_dimension_numbers,
-        indices_are_sorted = indices_sorted_attr,
-        unique_indices = unique_indices_attr,
-        update_computation = stablehlo(update_computation_graph, id = "", constants_as_inputs = FALSE)[[1L]]
-      )[[1L]]
-
-      out <- vt2at(out)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -3134,29 +2889,17 @@ prim_gather <- new_primitive(
       indices_are_sorted,
       unique_indices
     ) {
-      # StableHLO's GatherDimensionNumbers() follows the spec naming, so the
-      # anvl-side `x_batching_axes` is mapped back here.
-      gather_dimension_numbers <- stablehlo::GatherDimensionNumbers(
-        offset_dims = offset_axes - 1L,
-        collapsed_slice_dims = collapsed_slice_axes - 1L,
-        operand_batching_dims = x_batching_axes - 1L,
-        start_indices_batching_dims = start_indices_batching_axes - 1L,
-        start_index_map = start_index_map - 1L,
-        index_vector_dim = index_vector_axis - 1L
+      out <- infer_gather(
+        x,
+        start_indices,
+        slice_sizes = slice_sizes,
+        offset_axes = offset_axes,
+        collapsed_slice_axes = collapsed_slice_axes,
+        x_batching_axes = x_batching_axes,
+        start_indices_batching_axes = start_indices_batching_axes,
+        start_index_map = start_index_map,
+        index_vector_axis = index_vector_axis
       )
-
-      slice_sizes_attr <- r_to_constant(slice_sizes, dtype = "i64", shape = length(slice_sizes))
-      indices_sorted_attr <- r_to_constant(indices_are_sorted, dtype = "bool", shape = integer())
-
-      out <- stablehlo::infer_types_gather(
-        at2vt(x),
-        at2vt(start_indices),
-        gather_dimension_numbers = gather_dimension_numbers,
-        slice_sizes = slice_sizes_attr,
-        indices_are_sorted = indices_sorted_attr
-      )[[1L]]
-
-      out <- vt2at(out)
       out$ambiguous <- x$ambiguous
       list(out)
     }
@@ -3274,18 +3017,7 @@ prim_triangular_solve <- new_primitive(
   "triangular_solve",
   function(a, b, left_side, lower, unit_diagonal, transpose_a) {
     infer_fn <- function(a, b, left_side, lower, unit_diagonal, transpose_a) {
-      left_side_attr <- r_to_constant(as.logical(left_side), dtype = "bool", shape = integer())
-      lower_attr <- r_to_constant(as.logical(lower), dtype = "bool", shape = integer())
-      unit_diagonal_attr <- r_to_constant(as.logical(unit_diagonal), dtype = "bool", shape = integer())
-      out <- stablehlo::infer_types_triangular_solve(
-        at2vt(a),
-        at2vt(b),
-        left_side = left_side_attr,
-        lower = lower_attr,
-        unit_diagonal = unit_diagonal_attr,
-        transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE"
-      )[[1L]]
-      out <- vt2at(out)
+      out <- infer_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
       out$ambiguous <- a$ambiguous && b$ambiguous
       list(out)
     }
@@ -3558,6 +3290,7 @@ prim_convolution <- new_primitive(
     batch_group_count = 1L,
     precision = "highest"
   ) {
+    precision <- match.arg(precision, c("default", "high", "highest"))
     infer_fn <- function(
       lhs,
       rhs,
@@ -3578,34 +3311,26 @@ prim_convolution <- new_primitive(
       batch_group_count,
       precision
     ) {
-      shlo_dn <- stablehlo::ConvDimensionNumbers(
-        input_batch_dimension = input_batch_axis - 1L,
-        input_feature_dimension = input_feature_axis - 1L,
-        input_spatial_dimensions = input_spatial_axes - 1L,
-        kernel_input_feature_dimension = kernel_input_feature_axis - 1L,
-        kernel_output_feature_dimension = kernel_output_feature_axis - 1L,
-        kernel_spatial_dimensions = kernel_spatial_axes - 1L,
-        output_batch_dimension = output_batch_axis - 1L,
-        output_feature_dimension = output_feature_axis - 1L,
-        output_spatial_dimensions = output_spatial_axes - 1L
+      out <- infer_convolution(
+        lhs,
+        rhs,
+        input_batch_axis = input_batch_axis,
+        input_feature_axis = input_feature_axis,
+        input_spatial_axes = input_spatial_axes,
+        kernel_input_feature_axis = kernel_input_feature_axis,
+        kernel_output_feature_axis = kernel_output_feature_axis,
+        kernel_spatial_axes = kernel_spatial_axes,
+        output_batch_axis = output_batch_axis,
+        output_feature_axis = output_feature_axis,
+        output_spatial_axes = output_spatial_axes,
+        window_strides = window_strides,
+        padding = padding,
+        lhs_dilation = lhs_dilation,
+        rhs_dilation = rhs_dilation,
+        feature_group_count = feature_group_count,
+        batch_group_count = batch_group_count
       )
-      n <- length(input_spatial_axes)
-      pad <- padding
-      storage.mode(pad) <- "integer"
-      out <- stablehlo::infer_types_convolution(
-        at2vt(lhs),
-        at2vt(rhs),
-        dimension_numbers = shlo_dn,
-        precision_config = rep(toupper(precision), 2L),
-        window_strides = r_to_constant(as.integer(window_strides), dtype = "i64", shape = length(window_strides)),
-        padding = r_to_constant(pad, dtype = "i64", shape = dim(pad)),
-        lhs_dilation = r_to_constant(as.integer(lhs_dilation), dtype = "i64", shape = length(lhs_dilation)),
-        rhs_dilation = r_to_constant(as.integer(rhs_dilation), dtype = "i64", shape = length(rhs_dilation)),
-        window_reversal = r_to_constant(rep(FALSE, n), dtype = "i1", shape = n),
-        feature_group_count = r_to_constant(as.integer(feature_group_count), dtype = "i64", shape = integer()),
-        batch_group_count = r_to_constant(as.integer(batch_group_count), dtype = "i64", shape = integer())
-      )[[1L]]
-      list(vt2at(out))
+      list(out)
     }
     graph_desc_add(
       self,

@@ -12,7 +12,7 @@
     Condition
       Error in `prim_ceil()`:
       ! `x` must have dtype float.
-      x Got i32.
+      x Got "i32".
 
 ---
 
@@ -24,14 +24,14 @@
       ! `permutation` must not contain duplicate axes.
       x Got 2 and 2.
 
-# error handling: stablehlo errors use anvl's terminology
+# error handling: inference errors use anvl's terminology
 
     Code
       jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4)))
     Condition
       Error in `prim_add()`:
-      ! `lhs` and `rhs` must have the same array type.
-      x Got array<4xi32> and array<4xf32>.
+      ! `lhs` and `rhs` must have the same dtype.
+      x Got "i32" and "f32".
 
 # can print GraphLiteral if it holds scalar array
 

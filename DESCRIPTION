@@ -63,6 +63,7 @@ Collate:
     'primitive.R'
     'type-converters.R'
     'utils.R'
+    'rules-inference.R'
     'primitives.R'
     'api.R'
     'api-generics.R'
