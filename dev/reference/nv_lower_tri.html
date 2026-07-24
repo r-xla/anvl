@@ -109,8 +109,15 @@ include it, matching <code>lower.tri(diag = TRUE)</code>.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
-<dd><p>( <code>character(1)</code> | <code>PJRTDevice</code> | <code><a href="quickr_device.html">quickr_device</a></code> | <code>NULL</code>)<br>
-Device for data to live on.</p></dd>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <a href="nv_device.html">device</a>)<br>
+The device the data lives on, given either as:</p><ul><li><p>a <em>device string</em> naming the platform (e.g. <code>"cpu"</code>, <code>"cuda"</code>,
+<code>"cuda:&lt;n&gt;"</code>), which is resolved against the backend in use, or</p></li>
+<li><p>a <em>device object</em> as returned by <code><a href="nv_device.html">nv_device()</a></code>: a
+<code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code> for the <code>"pjrt"</code> backend or a
+<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
+is backend-specific, it also determines the backend.</p></li>
+</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>: the CPU, or the platform
+named by the <code>PJRT_PLATFORM</code> environment variable on the <code>"pjrt"</code> backend.</p></dd>
 
 
 <dt id="arg-like">like<a class="anchor" aria-label="anchor" href="#arg-like"></a></dt>

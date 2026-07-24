@@ -90,18 +90,33 @@ nv_empty_like(
 - device:
 
   (`NULL` \| `character(1)` \|
-  [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html))  
-  The device for the array (`"cpu"`, `"cuda"`). Default is to use the
-  CPU for new arrays. This can be changed by setting the `PJRT_PLATFORM`
-  environment variable.
+  [device](https://r-xla.github.io/anvl/dev/reference/nv_device.md))  
+  The device the data lives on, given either as:
+
+  - a *device string* naming the platform (e.g. `"cpu"`, `"cuda"`,
+    `"cuda:<n>"`), which is resolved against the backend in use, or
+
+  - a *device object* as returned by
+    [`nv_device()`](https://r-xla.github.io/anvl/dev/reference/nv_device.md):
+    a
+    [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
+    for the `"pjrt"` backend or a
+    [`quickr_device`](https://r-xla.github.io/anvl/dev/reference/quickr_device.md)
+    for the `"quickr"` backend. Because a device object is
+    backend-specific, it also determines the backend.
+
+  The default (`NULL`) uses
+  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md):
+  the CPU, or the platform named by the `PJRT_PLATFORM` environment
+  variable on the `"pjrt"` backend.
 
 - shape:
 
   (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
   The output shape of the array. The default (`NULL`) is to infer it
   from the data if possible. Note that `nv_array` interprets length 1
-  vectors as having shape `(1)`. To create a "scalar" with axis `()`,
-  use `nv_scalar` or explicitly specify `shape = c()`.
+  vectors as having shape `(1)`. To create a "scalar" with no axes
+  (shape `()`), use `nv_scalar` or explicitly specify `shape = c()`.
 
 - ambiguous:
 
@@ -112,7 +127,9 @@ nv_empty_like(
 - backend:
 
   (`NULL` \| `character(1)`)  
-  Backend to use (`"pjrt"` or `"quickr"`). Defaults to
+  Backend the array belongs to (`"pjrt"` or `"quickr"`). The default
+  (`NULL`) is inferred from `device` when `device` is a backend-specific
+  device object, and otherwise falls back to
   [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).
   Must not be specified inside
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
@@ -158,6 +175,21 @@ nv_empty_like(
 
 (`AnvlArray`)
 
+## Terminology
+
+An array's **axes** are the indices that identify its directions,
+numbered `1`, `2`, `3`, ... The **size** of an axis (its *axis size*) is
+the extent along that axis, and the **shape** is the vector of all axis
+sizes. For example, `nv_array(1:6, shape = c(2, 3))` has two axes; the
+size of axis `1` is `2` and the size of axis `2` is `3`, so its shape is
+`c(2, 3)`. Use
+[`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html) for the
+number of axes and
+[`shape()`](https://r-xla.github.io/tengen/reference/shape.html) for the
+axis sizes. We speak of the *size of an axis* rather than an array's
+"dimensions", as the latter is generally overloaded as it is used to
+refer to both the axis and it's size.
+
 ## Extractors
 
 The following generic functions can be used to extract information from
@@ -167,7 +199,7 @@ an `AnvlArray`:
   the data type of the array.
 
 - [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
-  the shape (axes) of the array.
+  the shape (axis sizes) of the array.
 
 - [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
   the number of axes.
@@ -194,6 +226,12 @@ Arrays can be serialized to and from the
   /
   [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_unserialize.md):
   Serialize/deserialize arrays to/from raw vectors.
+
+## Backend
+
+An `AnvlArray` is backend-dependent: it belongs to exactly one backend
+(`"pjrt"` or the experimental `"quickr"`) and lives on a device of that
+backend. The supported data types and devices differ between backends.
 
 ## See also
 
@@ -243,12 +281,11 @@ nv_scalar(3.14)
 #>  3.1400
 #> [ CPUf32{} ] 
 
-# An uninitialized 2x3 array (contents are unspecified). Useful as a
-# placeholder for outputs of jitted functions when donating buffers.
+# An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  1.8439e+35 3.0782e-41 1.8397e+35
-#>  3.0782e-41 1.8439e+35 3.0782e-41
+#>  -4.0220e-20  3.0896e-41 -4.0220e-20
+#>   3.0896e-41 -4.0220e-20  3.0896e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

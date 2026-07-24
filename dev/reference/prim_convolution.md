@@ -14,8 +14,8 @@ instead.
 
 ``` r
 prim_convolution(
-  lhs,
-  rhs,
+  x,
+  kernel,
   input_batch_axis,
   input_feature_axis,
   input_spatial_axes,
@@ -27,8 +27,8 @@ prim_convolution(
   output_spatial_axes,
   window_strides,
   padding,
-  lhs_dilation,
-  rhs_dilation,
+  x_dilation,
+  kernel_dilation,
   feature_group_count = 1L,
   batch_group_count = 1L,
   precision = "highest"
@@ -37,12 +37,12 @@ prim_convolution(
 
 ## Arguments
 
-- lhs:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Input, e.g. `[batch, channels, *spatial]`.
 
-- rhs:
+- kernel:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
@@ -50,22 +50,22 @@ prim_convolution(
 - input_batch_axis, input_feature_axis:
 
   (`integer(1)`)  
-  1-based batch/feature axis of `lhs`.
+  1-based batch/feature axis of `x`.
 
 - input_spatial_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  1-based spatial axes of `lhs`.
+  1-based spatial axes of `x`.
 
 - kernel_input_feature_axis, kernel_output_feature_axis:
 
   (`integer(1)`)  
-  1-based input/output feature axis of `rhs`.
+  1-based input/output feature axis of `kernel`.
 
 - kernel_spatial_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  1-based spatial axes of `rhs`.
+  1-based spatial axes of `kernel`.
 
 - output_batch_axis, output_feature_axis:
 
@@ -87,7 +87,7 @@ prim_convolution(
   (`matrix`)  
   `[n_spatial, 2]` of `(low, high)` padding.
 
-- lhs_dilation, rhs_dilation:
+- x_dilation, kernel_dilation:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Input/kernel dilation.

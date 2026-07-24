@@ -67,7 +67,7 @@ The following extractors are available on `AbstractArray` objects:
   the data type of the array.
 
 - [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
-  the shape (axes) of the array.
+  the shape (axis sizes) of the array.
 
 - [`ambiguous()`](https://r-xla.github.io/anvl/dev/reference/ambiguous.md):
   Get whether the dtype is ambiguous.

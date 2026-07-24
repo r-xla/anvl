@@ -91,8 +91,8 @@ Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_convolution</span><span class="op">(</span></span>
-<span>  <span class="va">lhs</span>,</span>
-<span>  <span class="va">rhs</span>,</span>
+<span>  <span class="va">x</span>,</span>
+<span>  <span class="va">kernel</span>,</span>
 <span>  <span class="va">input_batch_axis</span>,</span>
 <span>  <span class="va">input_feature_axis</span>,</span>
 <span>  <span class="va">input_spatial_axes</span>,</span>
@@ -104,8 +104,8 @@ Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a
 <span>  <span class="va">output_spatial_axes</span>,</span>
 <span>  <span class="va">window_strides</span>,</span>
 <span>  <span class="va">padding</span>,</span>
-<span>  <span class="va">lhs_dilation</span>,</span>
-<span>  <span class="va">rhs_dilation</span>,</span>
+<span>  <span class="va">x_dilation</span>,</span>
+<span>  <span class="va">kernel_dilation</span>,</span>
 <span>  feature_group_count <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  batch_group_count <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  precision <span class="op">=</span> <span class="st">"highest"</span></span>
@@ -116,30 +116,30 @@ Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-lhs">lhs<a class="anchor" aria-label="anchor" href="#arg-lhs"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br> Input, e.g. <code>[batch, channels, *spatial]</code>.</p></dd>
 
 
-<dt id="arg-rhs">rhs<a class="anchor" aria-label="anchor" href="#arg-rhs"></a></dt>
+<dt id="arg-kernel">kernel<a class="anchor" aria-label="anchor" href="#arg-kernel"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br> Kernel, e.g. <code>[out_ch, in_ch/groups, *spatial]</code>.</p></dd>
 
 
 <dt id="arg-input-batch-axis-input-feature-axis">input_batch_axis, input_feature_axis<a class="anchor" aria-label="anchor" href="#arg-input-batch-axis-input-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-1-based batch/feature axis of <code>lhs</code>.</p></dd>
+1-based batch/feature axis of <code>x</code>.</p></dd>
 
 
 <dt id="arg-input-spatial-axes">input_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-input-spatial-axes"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial axes of <code>lhs</code>.</p></dd>
+<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial axes of <code>x</code>.</p></dd>
 
 
 <dt id="arg-kernel-input-feature-axis-kernel-output-feature-axis">kernel_input_feature_axis, kernel_output_feature_axis<a class="anchor" aria-label="anchor" href="#arg-kernel-input-feature-axis-kernel-output-feature-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-1-based input/output feature axis of <code>rhs</code>.</p></dd>
+1-based input/output feature axis of <code>kernel</code>.</p></dd>
 
 
 <dt id="arg-kernel-spatial-axes">kernel_spatial_axes<a class="anchor" aria-label="anchor" href="#arg-kernel-spatial-axes"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial axes of <code>rhs</code>.</p></dd>
+<dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> 1-based spatial axes of <code>kernel</code>.</p></dd>
 
 
 <dt id="arg-output-batch-axis-output-feature-axis">output_batch_axis, output_feature_axis<a class="anchor" aria-label="anchor" href="#arg-output-batch-axis-output-feature-axis"></a></dt>
@@ -160,7 +160,7 @@ Most users want <code><a href="nv_conv1d.html">nv_conv1d()</a></code> / <code><a
 <dd><p>(<code>matrix</code>)<br><code>[n_spatial, 2]</code> of <code>(low, high)</code> padding.</p></dd>
 
 
-<dt id="arg-lhs-dilation-rhs-dilation">lhs_dilation, rhs_dilation<a class="anchor" aria-label="anchor" href="#arg-lhs-dilation-rhs-dilation"></a></dt>
+<dt id="arg-x-dilation-kernel-dilation">x_dilation, kernel_dilation<a class="anchor" aria-label="anchor" href="#arg-x-dilation-kernel-dilation"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br> Input/kernel dilation.</p></dd>
 
 

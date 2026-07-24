@@ -162,10 +162,15 @@ The default (<code>NULL</code>) uses the current backend's default dtype:
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
-<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code>)<br>
-The device for the array (<code>"cpu"</code>, <code>"cuda"</code>).
-Default is to use the CPU for new arrays.
-This can be changed by setting the <code>PJRT_PLATFORM</code> environment variable.</p></dd>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <a href="nv_device.html">device</a>)<br>
+The device the data lives on, given either as:</p><ul><li><p>a <em>device string</em> naming the platform (e.g. <code>"cpu"</code>, <code>"cuda"</code>,
+<code>"cuda:&lt;n&gt;"</code>), which is resolved against the backend in use, or</p></li>
+<li><p>a <em>device object</em> as returned by <code><a href="nv_device.html">nv_device()</a></code>: a
+<code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code> for the <code>"pjrt"</code> backend or a
+<code><a href="quickr_device.html">quickr_device</a></code> for the <code>"quickr"</code> backend. Because a device object
+is backend-specific, it also determines the backend.</p></li>
+</ul><p>The default (<code>NULL</code>) uses <code><a href="default_device.html">default_device()</a></code>: the CPU, or the platform
+named by the <code>PJRT_PLATFORM</code> environment variable on the <code>"pjrt"</code> backend.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>
@@ -173,7 +178,7 @@ This can be changed by setting the <code>PJRT_PLATFORM</code> environment variab
 The output shape of the array.
 The default (<code>NULL</code>) is to infer it from the data if possible.
 Note that <code>nv_array</code> interprets length 1 vectors as having shape <code>(1)</code>.
-To create a "scalar" with axis <code>()</code>, use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
+To create a "scalar" with no axes (shape <code>()</code>), use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
 
 
 <dt id="arg-ambiguous">ambiguous<a class="anchor" aria-label="anchor" href="#arg-ambiguous"></a></dt>
@@ -184,8 +189,10 @@ Defaults to <code>FALSE</code> for new arrays.</p></dd>
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
-Backend to use (<code>"pjrt"</code> or <code>"quickr"</code>).
-Defaults to <code><a href="default_backend.html">default_backend()</a></code>.
+Backend the array belongs to (<code>"pjrt"</code> or <code>"quickr"</code>).
+The default (<code>NULL</code>) is inferred from <code>device</code> when <code>device</code> is a
+backend-specific device object, and otherwise falls back to
+<code><a href="default_backend.html">default_backend()</a></code>.
 Must not be specified inside <code><a href="jit.html">jit()</a></code>.</p></dd>
 
 
@@ -230,11 +237,25 @@ An existing array. Any of <code>dtype</code>, <code>device</code>, <code>shape</
     <p>(<code>AnvlArray</code>)</p>
     </div>
     <div class="section level2">
+    <h2 id="terminology">Terminology<a class="anchor" aria-label="anchor" href="#terminology"></a></h2>
+
+
+<p>An array's <strong>axes</strong> are the indices that identify its directions, numbered
+<code>1</code>, <code>2</code>, <code>3</code>, ... The <strong>size</strong> of an axis (its <em>axis size</em>) is the extent
+along that axis, and the <strong>shape</strong> is the vector of all axis sizes. For
+example, <code>nv_array(1:6, shape = c(2, 3))</code> has two axes; the size of axis <code>1</code>
+is <code>2</code> and the size of axis <code>2</code> is <code>3</code>, so its shape is <code>c(2, 3)</code>. Use
+<code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code> for the number of axes and
+<code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code> for the axis sizes. We speak of the <em>size of an
+axis</em> rather than an array's "dimensions", as the latter is generally
+overloaded as it is used to refer to both the axis and it's size.</p>
+    </div>
+    <div class="section level2">
     <h2 id="extractors">Extractors<a class="anchor" aria-label="anchor" href="#extractors"></a></h2>
 
 
 <p>The following generic functions can be used to extract information from an <code>AnvlArray</code>:</p><ul><li><p><code><a href="https://r-xla.github.io/tengen/reference/dtype.html" class="external-link">dtype()</a></code>: Get the data type of the array.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (axes) of the array.</p></li>
+<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (axis sizes) of the array.</p></li>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code>: Get the number of axes.</p></li>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/device.html" class="external-link">device()</a></code>: Get the device of the array.</p></li>
 <li><p><code><a href="platform.html">platform()</a></code>: Get the platform (e.g. <code>"cpu"</code>, <code>"cuda"</code>).</p></li>
@@ -249,6 +270,14 @@ An existing array. Any of <code>dtype</code>, <code>device</code>, <code>shape</
 <li><p><code><a href="nv_serialize.html">nv_serialize()</a></code> / <code><a href="nv_unserialize.html">nv_unserialize()</a></code>:
 Serialize/deserialize arrays to/from raw vectors.</p></li>
 </ul></div>
+    <div class="section level2">
+    <h2 id="backend">Backend<a class="anchor" aria-label="anchor" href="#backend"></a></h2>
+
+
+<p>An <code>AnvlArray</code> is backend-dependent: it belongs to exactly one backend
+(<code>"pjrt"</code> or the experimental <code>"quickr"</code>) and lives on a device of that backend.
+The supported data types and devices differ between backends.</p>
+    </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><a href="nv_fill.html">nv_fill</a>, <a href="nv_iota.html">nv_iota</a>, <a href="nv_seq.html">nv_seq</a>, <a href="as_array.html">as_array</a>, <a href="nv_serialize.html">nv_serialize</a></p></div>
@@ -293,12 +322,11 @@ Serialize/deserialize arrays to/from raw vectors.</p></li>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3.1400</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified). Useful as a</span></span></span>
-<span class="r-in"><span><span class="co"># placeholder for outputs of jitted functions when donating buffers.</span></span></span>
+<span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.8439e+35 3.0782e-41 1.8397e+35</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0782e-41 1.8439e+35 3.0782e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -4.0220e-20  3.0896e-41 -4.0220e-20</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0896e-41 -4.0220e-20  3.0896e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>
