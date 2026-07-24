@@ -1,10 +1,5 @@
 # The `author` field of every `bibentry()` below MUST be given as `person()`
-# objects (a single `person()`, or several combined with `c()`) -- never as a
-# free-text string such as "Murray, Iain" or "Giles, Mike and Walter, Sebastian".
-# Only `person()` lets R parse given and family names reliably, which is what
-# citation rendering (`format()` / `print(style = ...)` and anything downstream
-# that renders these references) relies on to produce correctly formatted names.
-# When adding a new reference, follow this convention.
+# objects (a single `person()`, or several combined with `c()`)
 # nolint start
 bibentries <- c(
   murray2016differentiation = bibentry(

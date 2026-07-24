@@ -68,7 +68,7 @@ prim_triangular_solve(L, b,
 \dontshow{\}) # examplesIf}
 }
 \references{
-Giles, Mike (2008).
+Giles M (2008).
 \dQuote{An extended collection of matrix derivative results for forward and reverse mode automatic differentiation.}
 Oxford University Computing Laboratory.
 }
