@@ -196,12 +196,12 @@ test_rbinom_statistical <- function() {
   cat("  PASS\n")
 }
 
-test_rdunif_statistical <- function() {
-  cat("Testing nv_rdunif statistical properties...\n")
+test_sample_statistical <- function() {
+  cat("Testing nv_sample statistical properties...\n")
 
   cat("  Testing equal probabilities...\n")
   f1 <- function() {
-    nv_rdunif(
+    nv_sample(
       n = 6L,
       shape = 60000L,
       initial_state = nv_array(c(1, 2), dtype = "ui64")
@@ -229,7 +229,7 @@ run_all_tests <- function() {
   test_rnorm_mean_sd()
   test_runif_statistical()
   test_rbinom_statistical()
-  test_rdunif_statistical()
+  test_sample_statistical()
 
   cat("\nAll expensive RNG tests passed!\n")
 }

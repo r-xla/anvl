@@ -41,7 +41,7 @@ state
 Other rng:
 \code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
-\code{\link[=nv_rdunif]{nv_rdunif()}},
-\code{\link[=nv_runif]{nv_runif()}}
+\code{\link[=nv_runif]{nv_runif()}},
+\code{\link[=nv_sample]{nv_sample()}}
 }
 \concept{rng}

@@ -77,5 +77,5 @@
   list(name = "nv_runif", static = c(1L, 3L, 4L, 5L)),
   list(name = "nv_rnorm", static = c(1L, 3L, 4L, 5L)),
   list(name = "nv_rbinom", static = c(1L, 3L, 4L, 5L)),
-  list(name = "nv_rdunif", static = c(1L, 3L, 4L))
+  list(name = "nv_sample", static = c(1L, 3L, 4L))
 )

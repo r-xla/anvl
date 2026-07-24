@@ -309,13 +309,9 @@ reference:
     desc: Densities, distribution functions, and samplers for probability distributions
     contents:
       - nv_normal
-
-  - subtitle: Random Number Generation
-    desc: Functions for generating random numbers
-    contents:
       - nv_runif
       - nv_rbinom
-      - nv_rdunif
+      - nv_sample
 
   - subtitle: Utilities
     desc: Helpers supporting the API functions

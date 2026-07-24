@@ -254,11 +254,11 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
 #' # Roll 6 dice
-#' result <- nv_rdunif(6, state, n = 6L)
+#' result <- nv_sample(6, state, n = 6L)
 #' result[[2]]
 #' @export
 #' @jit static c(1L, 3L, 4L)
-nv_rdunif <- function(shape, initial_state, n, dtype = "i32") {
+nv_sample <- function(shape, initial_state, n, dtype = "i32") {
   dtype <- as_dtype(dtype)
   checkmate::assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)

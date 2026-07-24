@@ -74,11 +74,11 @@ test_that("nv_rbinom", {
   expect_equal(shape(out3[[2]]), c(3L, 3L))
 })
 
-test_that("nv_rdunif", {
+test_that("nv_sample", {
   # statistical validity checks are in inst/random
 
   # Test with equal probabilities
-  out1 <- nv_rdunif(n = 6L, shape = 10L, initial_state = nv_array(c(1, 2), dtype = "ui64"))
+  out1 <- nv_sample(n = 6L, shape = 10L, initial_state = nv_array(c(1, 2), dtype = "ui64"))
 
   expect_equal(shape(out1[[1]]), 2L)
   expect_equal(shape(out1[[2]]), 10L)
@@ -89,7 +89,7 @@ test_that("nv_rdunif", {
   expect_true(all(values1 >= 1L & values1 <= 6L))
 
   # Test 2D output shape
-  out3 <- nv_rdunif(n = 4L, shape = c(2L, 3L), initial_state = nv_array(c(1, 2), dtype = "ui64"))
+  out3 <- nv_sample(n = 4L, shape = c(2L, 3L), initial_state = nv_array(c(1, 2), dtype = "ui64"))
   expect_equal(shape(out3[[2]]), c(2L, 3L))
 })
 
