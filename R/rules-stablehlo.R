@@ -1110,8 +1110,8 @@ prim_eigh[["stablehlo"]] <- function(x) {
 }
 
 prim_convolution[["stablehlo"]] <- function(
-  lhs,
-  rhs,
+  x,
+  kernel,
   input_batch_axis,
   input_feature_axis,
   input_spatial_axes,
@@ -1123,8 +1123,8 @@ prim_convolution[["stablehlo"]] <- function(
   output_spatial_axes,
   window_strides,
   padding,
-  lhs_dilation,
-  rhs_dilation,
+  x_dilation,
+  kernel_dilation,
   feature_group_count,
   batch_group_count,
   precision
@@ -1141,13 +1141,13 @@ prim_convolution[["stablehlo"]] <- function(
     output_spatial_dimensions = output_spatial_axes - 1L
   )
   list(hlo_convolution(
-    lhs,
-    rhs,
+    x,
+    kernel,
     dimension_numbers = shlo_dn,
     window_strides = window_strides,
     padding = padding,
-    lhs_dilation = lhs_dilation,
-    rhs_dilation = rhs_dilation,
+    lhs_dilation = x_dilation,
+    rhs_dilation = kernel_dilation,
     feature_group_count = feature_group_count,
     batch_group_count = batch_group_count,
     precision_config = rep(toupper(precision), 2L)

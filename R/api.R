@@ -3380,8 +3380,8 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
       list(
         window_strides = stride,
         padding = cbind(pad, pad), # symmetric [n, 2]
-        lhs_dilation = rep(1L, n),
-        rhs_dilation = dilation,
+        x_dilation = rep(1L, n),
+        kernel_dilation = dilation,
         feature_group_count = as.integer(groups),
         batch_group_count = 1L,
         precision = precision

@@ -3516,21 +3516,21 @@ prim_eigh <- new_primitive(
 #' `convolution` op. Axis numbers are given 1-based (anvl
 #' convention) and converted to StableHLO's 0-based layout internally.
 #' Most users want [nv_conv1d()] / [nv_conv2d()] / [nv_conv3d()] instead.
-#' @param lhs ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
-#' @param rhs ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
+#' @param x ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
+#' @param kernel ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
 #' @param input_batch_axis,input_feature_axis (`integer(1)`)\cr
-#'   1-based batch/feature axis of `lhs`.
-#' @param input_spatial_axes (`integer()`)\cr 1-based spatial axes of `lhs`.
+#'   1-based batch/feature axis of `x`.
+#' @param input_spatial_axes (`integer()`)\cr 1-based spatial axes of `x`.
 #' @param kernel_input_feature_axis,kernel_output_feature_axis (`integer(1)`)\cr
-#'   1-based input/output feature axis of `rhs`.
-#' @param kernel_spatial_axes (`integer()`)\cr 1-based spatial axes of `rhs`.
+#'   1-based input/output feature axis of `kernel`.
+#' @param kernel_spatial_axes (`integer()`)\cr 1-based spatial axes of `kernel`.
 #' @param output_batch_axis,output_feature_axis (`integer(1)`)\cr
 #'   1-based batch/feature axis of the output.
 #' @param output_spatial_axes (`integer()`)\cr
 #'   1-based spatial axes of the output.
 #' @param window_strides (`integer()`)\cr Stride per spatial axis.
 #' @param padding (`matrix`)\cr `[n_spatial, 2]` of `(low, high)` padding.
-#' @param lhs_dilation,rhs_dilation (`integer()`)\cr Input/kernel dilation.
+#' @param x_dilation,kernel_dilation (`integer()`)\cr Input/kernel dilation.
 #' @param feature_group_count,batch_group_count (`integer(1)`)\cr Grouping.
 #' @param precision (`character(1)`)\cr One of `"highest"`, `"high"`,
 #'   `"default"`.
@@ -3539,8 +3539,8 @@ prim_eigh <- new_primitive(
 prim_convolution <- new_primitive(
   "convolution",
   function(
-    lhs,
-    rhs,
+    x,
+    kernel,
     input_batch_axis,
     input_feature_axis,
     input_spatial_axes,
@@ -3552,15 +3552,15 @@ prim_convolution <- new_primitive(
     output_spatial_axes,
     window_strides,
     padding,
-    lhs_dilation,
-    rhs_dilation,
+    x_dilation,
+    kernel_dilation,
     feature_group_count = 1L,
     batch_group_count = 1L,
     precision = "highest"
   ) {
     infer_fn <- function(
-      lhs,
-      rhs,
+      x,
+      kernel,
       input_batch_axis,
       input_feature_axis,
       input_spatial_axes,
@@ -3572,8 +3572,8 @@ prim_convolution <- new_primitive(
       output_spatial_axes,
       window_strides,
       padding,
-      lhs_dilation,
-      rhs_dilation,
+      x_dilation,
+      kernel_dilation,
       feature_group_count,
       batch_group_count,
       precision
@@ -3593,14 +3593,14 @@ prim_convolution <- new_primitive(
       pad <- padding
       storage.mode(pad) <- "integer"
       out <- stablehlo::infer_types_convolution(
-        at2vt(lhs),
-        at2vt(rhs),
+        at2vt(x),
+        at2vt(kernel),
         dimension_numbers = shlo_dn,
         precision_config = rep(toupper(precision), 2L),
         window_strides = r_to_constant(as.integer(window_strides), dtype = "i64", shape = length(window_strides)),
         padding = r_to_constant(pad, dtype = "i64", shape = dim(pad)),
-        lhs_dilation = r_to_constant(as.integer(lhs_dilation), dtype = "i64", shape = length(lhs_dilation)),
-        rhs_dilation = r_to_constant(as.integer(rhs_dilation), dtype = "i64", shape = length(rhs_dilation)),
+        lhs_dilation = r_to_constant(as.integer(x_dilation), dtype = "i64", shape = length(x_dilation)),
+        rhs_dilation = r_to_constant(as.integer(kernel_dilation), dtype = "i64", shape = length(kernel_dilation)),
         window_reversal = r_to_constant(rep(FALSE, n), dtype = "i1", shape = n),
         feature_group_count = r_to_constant(as.integer(feature_group_count), dtype = "i64", shape = integer()),
         batch_group_count = r_to_constant(as.integer(batch_group_count), dtype = "i64", shape = integer())
@@ -3609,7 +3609,7 @@ prim_convolution <- new_primitive(
     }
     graph_desc_add(
       self,
-      list(lhs = lhs, rhs = rhs),
+      list(x = x, kernel = kernel),
       list(
         input_batch_axis = input_batch_axis,
         input_feature_axis = input_feature_axis,
@@ -3622,8 +3622,8 @@ prim_convolution <- new_primitive(
         output_spatial_axes = output_spatial_axes,
         window_strides = window_strides,
         padding = padding,
-        lhs_dilation = lhs_dilation,
-        rhs_dilation = rhs_dilation,
+        x_dilation = x_dilation,
+        kernel_dilation = kernel_dilation,
         feature_group_count = feature_group_count,
         batch_group_count = batch_group_count,
         precision = precision

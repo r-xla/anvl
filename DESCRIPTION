@@ -86,6 +86,7 @@ Collate:
     'quickr.R'
     'reexports.R'
     'reverse.R'
+    'roxygen.R'
     'rules-reverse.R'
     'rules-stablehlo.R'
     'serialize.R'

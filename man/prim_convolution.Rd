@@ -5,8 +5,8 @@
 \title{Primitive Convolution}
 \usage{
 prim_convolution(
-  lhs,
-  rhs,
+  x,
+  kernel,
   input_batch_axis,
   input_feature_axis,
   input_spatial_axes,
@@ -18,27 +18,27 @@ prim_convolution(
   output_spatial_axes,
   window_strides,
   padding,
-  lhs_dilation,
-  rhs_dilation,
+  x_dilation,
+  kernel_dilation,
   feature_group_count = 1L,
   batch_group_count = 1L,
   precision = "highest"
 )
 }
 \arguments{
-\item{lhs}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.}
+\item{x}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.}
 
-\item{rhs}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
+\item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
 
 \item{input_batch_axis, input_feature_axis}{(\code{integer(1)})\cr
-1-based batch/feature axis of \code{lhs}.}
+1-based batch/feature axis of \code{x}.}
 
-\item{input_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{lhs}.}
+\item{input_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{x}.}
 
 \item{kernel_input_feature_axis, kernel_output_feature_axis}{(\code{integer(1)})\cr
-1-based input/output feature axis of \code{rhs}.}
+1-based input/output feature axis of \code{kernel}.}
 
-\item{kernel_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{rhs}.}
+\item{kernel_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{kernel}.}
 
 \item{output_batch_axis, output_feature_axis}{(\code{integer(1)})\cr
 1-based batch/feature axis of the output.}
@@ -50,7 +50,7 @@ prim_convolution(
 
 \item{padding}{(\code{matrix})\cr \verb{[n_spatial, 2]} of \verb{(low, high)} padding.}
 
-\item{lhs_dilation, rhs_dilation}{(\code{integer()})\cr Input/kernel dilation.}
+\item{x_dilation, kernel_dilation}{(\code{integer()})\cr Input/kernel dilation.}
 
 \item{feature_group_count, batch_group_count}{(\code{integer(1)})\cr Grouping.}
 
