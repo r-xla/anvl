@@ -49,11 +49,11 @@ prim_chol(x, lower = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \references{
-Murray, Iain (2016).
+Murray I (2016).
 \dQuote{Differentiation of the Cholesky decomposition.}
 \emph{arXiv preprint arXiv:1602.07527}.
 
-Walter, Sebastian (2012).
+Walter S (2012).
 \emph{Structured higher-order algorithmic differentiation in the forward and reverse mode with application in optimum experimental design}.
 Ph.D. thesis, Mathematisch-Naturwissenschaftliche Fakult"at II.
 }
