@@ -3,10 +3,22 @@
 #' The main array object.
 #' Its type is determined by a data type and a shape.
 #'
+#' @section Terminology:
+#' An array's **axes** are the indices that identify its directions, numbered
+#' `1`, `2`, `3`, ... The **size** of an axis (its *axis size*) is the extent
+#' along that axis, and the **shape** is the vector of all axis sizes. For
+#' example, `nv_array(1:6, shape = c(2, 3))` has two axes; the size of axis `1`
+#' is `2` and the size of axis `2` is `3`, so its shape is `c(2, 3)`. Use
+#' [`naxes()`][tengen::naxes] for the number of axes and
+#' [`shape()`][tengen::shape] for the axis sizes. We speak of the *size of an
+#' axis* rather than an array's "dimensions", as the latter is generally
+#' overloaded as it is used to refer to both the axis and it's size.
+#'
+#'
 #' @section Extractors:
 #' The following generic functions can be used to extract information from an `AnvlArray`:
 #' - [`dtype()`][tengen::dtype]: Get the data type of the array.
-#' - [`shape()`][tengen::shape]: Get the shape (axes) of the array.
+#' - [`shape()`][tengen::shape]: Get the shape (axis sizes) of the array.
 #' - [`naxes()`][tengen::naxes]: Get the number of axes.
 #' - [`device()`][tengen::device]: Get the device of the array.
 #' - [`platform()`]: Get the platform (e.g. `"cpu"`, `"cuda"`).
@@ -19,30 +31,34 @@
 #' - [`nv_serialize()`] / [`nv_unserialize()`]:
 #'   Serialize/deserialize arrays to/from raw vectors.
 #'
+#' @section Backend:
+#' An `AnvlArray` is backend-dependent: it belongs to exactly one backend
+#' (`"pjrt"` or the experimental `"quickr"`) and lives on a device of that backend.
+#' The supported data types and devices differ between backends.
+#'
 #' @seealso [nv_fill], [nv_iota], [nv_seq], [as_array], [nv_serialize]
 #'
 #' @param data (any)\cr
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   One of `r stablehlo:::roxy_dtypes()` or a [`tengen::DataType`].
+#'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
 #'   The default (`NULL`) uses the current backend's default dtype:
 #'   `f32` for numeric data on `"pjrt"`, `f64` for numeric data on `"quickr"`,
 #'   `i32` for integer data, and `bool` for logical data.
-#' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
-#'   The device for the array (`"cpu"`, `"cuda"`).
-#'   Default is to use the CPU for new arrays.
-#'   This can be changed by setting the `PJRT_PLATFORM` environment variable.
+#' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
-#'   To create a "scalar" with axis `()`, use [`nv_scalar`] or explicitly specify `shape = c()`.
+#'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
 #' @param ambiguous (`NULL` | `logical(1)`)\cr
 #'   Whether the dtype should be marked as ambiguous.
 #'   Defaults to `FALSE` for new arrays.
 #' @param backend (`NULL` | `character(1)`)\cr
-#'   Backend to use (`"pjrt"` or `"quickr"`).
-#'   Defaults to `default_backend()`.
+#'   Backend the array belongs to (`"pjrt"` or `"quickr"`).
+#'   The default (`NULL`) is inferred from `device` when `device` is a
+#'   backend-specific device object, and otherwise falls back to
+#'   [`default_backend()`].
 #'   Must not be specified inside [`jit()`].
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
@@ -73,8 +89,7 @@
 #' # A scalar array.
 #' nv_scalar(3.14)
 #'
-#' # An uninitialized 2x3 array (contents are unspecified). Useful as a
-#' # placeholder for outputs of jitted functions when donating buffers.
+#' # An uninitialized 2x3 array (contents are unspecified)
 #' nv_empty("f32", shape = c(2L, 3L))
 #'
 #' # --- Extractors ---
@@ -588,7 +603,7 @@ backend.QuickrDevice <- function(x, ...) {
 #' @section Extractors:
 #' The following extractors are available on `AbstractArray` objects:
 #' - [`dtype()`][tengen::dtype]: Get the data type of the array.
-#' - [`shape()`][tengen::shape]: Get the shape (axes) of the array.
+#' - [`shape()`][tengen::shape]: Get the shape (axis sizes) of the array.
 #' - [`ambiguous()`]: Get whether the dtype is ambiguous.
 #' - [`naxes()`][tengen::naxes]: Get the number of axes.
 #'

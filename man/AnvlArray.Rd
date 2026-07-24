@@ -81,24 +81,35 @@ The default (\code{NULL}) uses the current backend's default dtype:
 \code{f32} for numeric data on \code{"pjrt"}, \code{f64} for numeric data on \code{"quickr"},
 \code{i32} for integer data, and \code{bool} for logical data.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
-The device for the array (\code{"cpu"}, \code{"cuda"}).
-Default is to use the CPU for new arrays.
-This can be changed by setting the \code{PJRT_PLATFORM} environment variable.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
+
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
+named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 
 \item{shape}{(\code{NULL} | \code{integer()})\cr
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-To create a "scalar" with axis \verb{()}, use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
 \item{ambiguous}{(\code{NULL} | \code{logical(1)})\cr
 Whether the dtype should be marked as ambiguous.
 Defaults to \code{FALSE} for new arrays.}
 
 \item{backend}{(\code{NULL} | \code{character(1)})\cr
-Backend to use (\code{"pjrt"} or \code{"quickr"}).
-Defaults to \code{default_backend()}.
+Backend the array belongs to (\code{"pjrt"} or \code{"quickr"}).
+The default (\code{NULL}) is inferred from \code{device} when \code{device} is a
+backend-specific device object, and otherwise falls back to
+\code{\link[=default_backend]{default_backend()}}.
 Must not be specified inside \code{\link[=jit]{jit()}}.}
 
 \item{byrow}{(\code{logical(1)})\cr
@@ -134,12 +145,25 @@ An existing array. Any of \code{dtype}, \code{device}, \code{shape}, \code{ambig
 The main array object.
 Its type is determined by a data type and a shape.
 }
+\section{Terminology}{
+
+An array's \strong{axes} are the indices that identify its directions, numbered
+\code{1}, \code{2}, \code{3}, ... The \strong{size} of an axis (its \emph{axis size}) is the extent
+along that axis, and the \strong{shape} is the vector of all axis sizes. For
+example, \code{nv_array(1:6, shape = c(2, 3))} has two axes; the size of axis \code{1}
+is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2, 3)}. Use
+\code{\link[tengen:naxes]{naxes()}} for the number of axes and
+\code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
+axis} rather than an array's "dimensions", as the latter is generally
+overloaded as it is used to refer to both the axis and it's size.
+}
+
 \section{Extractors}{
 
 The following generic functions can be used to extract information from an \code{AnvlArray}:
 \itemize{
 \item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (axes) of the array.
+\item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
 \item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
 \item \code{\link[tengen:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
@@ -156,6 +180,13 @@ Arrays can be serialized to and from the
 \item \code{\link[=nv_serialize]{nv_serialize()}} / \code{\link[=nv_unserialize]{nv_unserialize()}}:
 Serialize/deserialize arrays to/from raw vectors.
 }
+}
+
+\section{Backend}{
+
+An \code{AnvlArray} is backend-dependent: it belongs to exactly one backend
+(\code{"pjrt"} or the experimental \code{"quickr"}) and lives on a device of that backend.
+The supported data types and devices differ between backends.
 }
 
 \examples{
@@ -175,8 +206,7 @@ nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 # A scalar array.
 nv_scalar(3.14)
 
-# An uninitialized 2x3 array (contents are unspecified). Useful as a
-# placeholder for outputs of jitted functions when donating buffers.
+# An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 
 # --- Extractors ---

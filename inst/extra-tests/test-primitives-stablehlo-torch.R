@@ -547,8 +547,8 @@ describe("prim_convolution", {
         output_spatial_axes = 3L,
         window_strides = 1L,
         padding = matrix(c(2L, 0L), nrow = 1L),
-        lhs_dilation = 1L,
-        rhs_dilation = 1L
+        x_dilation = 1L,
+        kernel_dilation = 1L
       )
     })(nv_array(x, dtype = "f32"), nv_array(w, dtype = "f32")))
     x_th <- torch::torch_tensor(x, dtype = torch::torch_float32())
