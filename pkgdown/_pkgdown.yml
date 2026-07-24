@@ -205,7 +205,6 @@ reference:
       - nv_erf
       - nv_erfc
       - nv_erf_inv
-      - nv_dnorm
       - nv_digamma
       - nv_lgamma
       - nv_polygamma
@@ -306,13 +305,21 @@ reference:
       - nv_while
       - nv_ifelse
 
+  - subtitle: Distributions
+    desc: Densities, distribution functions, and samplers for probability distributions
+    contents:
+      - nv_normal
+
   - subtitle: Random Number Generation
     desc: Functions for generating random numbers
     contents:
       - nv_runif
-      - nv_rnorm
       - nv_rbinom
       - nv_rdunif
+
+  - subtitle: Utilities
+    desc: Helpers supporting the API functions
+    contents:
       - nv_rng_state
 
   - title: Transformations

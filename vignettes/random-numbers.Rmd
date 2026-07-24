@@ -56,7 +56,7 @@ result[[2]]  # random numbers
 For normally distributed random numbers:
 
 ```{r}
-result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mu = 0, sigma = 1)
+result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mean = 0, sd = 1)
 result[[2]]
 ```
 

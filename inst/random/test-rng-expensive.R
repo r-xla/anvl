@@ -35,8 +35,8 @@ test_rnorm_mean_sd <- function() {
       nv_array(c(3, 83), dtype = "ui64"),
       dtype = "f64",
       shape = c(10L, 10L, 10L, 10L, 10L),
-      mu = 10,
-      sigma = 9
+      mean = 10,
+      sd = 9
     )
   }
   g <- jit(f)
@@ -63,8 +63,8 @@ test_runif_statistical <- function() {
       nv_array(c(1, 2), dtype = "ui64"),
       dtype = "f32",
       shape = c(10, 20, 30, 40, 50),
-      lower = -1,
-      upper = 1
+      min = -1,
+      max = 1
     )
   }
   g <- jit(f)
@@ -90,7 +90,7 @@ test_runif_statistical <- function() {
 test_rbinom_statistical <- function() {
   cat("Testing nv_rbinom statistical properties...\n")
 
-  # Test Bernoulli case (n = 1)
+  # Test Bernoulli case (size = 1)
   cat("  Testing Bernoulli (n=1)...\n")
   f <- function() {
     nv_rbinom(
@@ -114,13 +114,13 @@ test_rbinom_statistical <- function() {
   cat(sprintf("    Sample variance: %.5f (expected 0.25)\n", sample_var))
   stopifnot(abs(sample_var - 0.25) < 0.005)
 
-  # Test Binomial case (n = 20, prob = 0.5)
+  # Test Binomial case (size = 20, prob = 0.5)
   # For Binomial(n=20, p=0.5): mean = 10, variance = 5
   cat("  Testing Binomial (n=20, prob=0.5)...\n")
   f2 <- function() {
     nv_rbinom(
       nv_array(c(3, 4), dtype = "ui64"),
-      n = 20L,
+      size = 20L,
       dtype = "i32",
       shape = c(100L, 100L, 100L)
     )
@@ -146,7 +146,7 @@ test_rbinom_statistical <- function() {
   f3 <- function() {
     nv_rbinom(
       nv_array(c(5, 6), dtype = "ui64"),
-      n = 10L,
+      size = 10L,
       prob = 0.3,
       dtype = "i32",
       shape = c(100L, 100L, 100L)

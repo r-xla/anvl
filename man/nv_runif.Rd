@@ -4,7 +4,7 @@
 \alias{nv_runif}
 \title{Sample from a Uniform Distribution}
 \usage{
-nv_runif(shape, initial_state, dtype = "f32", lower = 0, upper = 1)
+nv_runif(shape, initial_state, dtype = "f32", min = 0, max = 1)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -16,7 +16,7 @@ RNG state (\code{ui64[2]}).}
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
 
-\item{lower, upper}{(\code{numeric(1)})\cr
+\item{min, max}{(\code{numeric(1)})\cr
 Lower and upper bound.}
 }
 \value{
@@ -24,7 +24,7 @@ Lower and upper bound.}
 List of two elements: the updated RNG state and the sampled values.
 }
 \description{
-Samples from a uniform distribution in the open interval \verb{(lower, upper)}.
+Samples from a uniform distribution in the open interval \verb{(min, max)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -35,9 +35,9 @@ result[[2]]
 }
 \seealso{
 Other rng:
+\code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rdunif]{nv_rdunif()}},
-\code{\link[=nv_rng_state]{nv_rng_state()}},
-\code{\link[=nv_rnorm]{nv_rnorm()}}
+\code{\link[=nv_rng_state]{nv_rng_state()}}
 }
 \concept{rng}

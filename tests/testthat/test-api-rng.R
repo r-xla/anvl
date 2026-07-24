@@ -10,13 +10,13 @@ test_that("nv_rnorm", {
   out <- nv_rnorm(nv_array(c(1, 2), dtype = "ui64"), dtype = "f32", shape = c(3, 3))
   expect_equal(shape(out[[2]]), c(3L, 3L))
 
-  # test mu/sigma parameters with small sample
+  # test mean/sd parameters with small sample
   out <- nv_rnorm(
     nv_array(c(3, 83), dtype = "ui64"),
     dtype = "f64",
     shape = c(2L, 3L),
-    mu = 10,
-    sigma = 9
+    mean = 10,
+    sd = 9
   )
   expect_equal(dtype(out[[1]]), as_dtype("ui64"))
   expect_equal(shape(out[[1]]), 2L)
@@ -42,8 +42,8 @@ test_that("nv_runif", {
     nv_array(c(1, 2), dtype = "ui64"),
     dtype = "f32",
     shape = c(3, 4),
-    lower = -1,
-    upper = 1
+    min = -1,
+    max = 1
   )
 
   expect_equal(dtype(out[[1]]), as_dtype("ui64"))

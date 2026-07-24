@@ -51,11 +51,11 @@ nv_unif_rand <- function(
 
 #' @title Sample from a Uniform Distribution
 #' @description
-#' Samples from a uniform distribution in the open interval `(lower, upper)`.
+#' Samples from a uniform distribution in the open interval `(min, max)`.
 #' @template param_shape
 #' @template param_initial_state
 #' @template param_dtype
-#' @param lower,upper (`numeric(1)`)\cr
+#' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound.
 #' @return (`list()` of [`arrayish`])\cr
 #'   List of two elements: the updated RNG state and the sampled values.
@@ -70,19 +70,19 @@ nv_runif <- function(
   shape,
   initial_state,
   dtype = "f32",
-  lower = 0,
-  upper = 1
+  min = 0,
+  max = 1
 ) {
   dtype <- assert_float_dtype(dtype)
-  checkmate::assertNumeric(lower, len = 1, any.missing = FALSE, upper = upper)
-  checkmate::assertNumeric(upper, len = 1, any.missing = FALSE, lower = lower)
+  checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
+  checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
   shape <- assert_shapevec(shape)
 
-  if (upper == lower) {
-    return(nv_fill_like(initial_state, upper, shape = shape, dtype = dtype))
+  if (max == min) {
+    return(nv_fill_like(initial_state, max, shape = shape, dtype = dtype))
   }
 
-  .range <- upper - lower
+  .range <- max - min
 
   # generate samples in [0, 1)
   Unif <- nv_unif_rand(initial_state = initial_state, shape = shape, dtype = dtype)
@@ -108,26 +108,18 @@ nv_runif <- function(
   # expand to range
   U <- nv_mul(U, .range)
   # shift to interval
-  Y <- U + lower
+  Y <- U + min
 
   return(list(Unif[[1]], Y))
 }
 
-#' @title Sample from a Normal Distribution
-#' @description
-#' Samples from a normal distribution with mean \eqn{\mu} and standard deviation \eqn{\sigma}
-#' using the Box-Muller transform.
+#' @rdname nv_normal
 #' @template param_shape
 #' @template param_initial_state
 #' @template param_dtype
-#' @param mu ([`arrayish`])\cr
-#'   Mean.
-#' @param sigma ([`arrayish`])\cr
-#'   Standard deviation. Must be positive, otherwise results are invalid.
-#' @return (`list()` of [`arrayish`])\cr
-#'   List of two elements: the updated RNG state and the sampled values.
-#' @section Covariance:
-#' To implement a covariance structure use Cholesky decomposition.
+#' @section Random generation:
+#' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
+#' structure, use a Cholesky decomposition.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
@@ -135,10 +127,10 @@ nv_runif <- function(
 #' result[[2]]
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
-nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
+nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
   dtype <- assert_float_dtype(dtype)
-  checkmate::assertNumeric(mu, len = 1, any.missing = FALSE)
-  checkmate::assertNumeric(sigma, len = 1, any.missing = FALSE, lower = 0)
+  checkmate::assertNumeric(mean, len = 1, any.missing = FALSE)
+  checkmate::assertNumeric(sd, len = 1, any.missing = FALSE, lower = 0)
   shape <- assert_shapevec(shape)
   # n: amount of rvs needed
   n <- prod(shape)
@@ -179,12 +171,12 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
   # multiply with requested sd:
   # was:    var(Z) = 1
   # now:    var(Z) = sd^2
-  N <- Z * sigma
+  N <- Z * sd
 
-  # add requested mu:
+  # add requested mean:
   # was:    mean(Z) = 0
-  # now:    mean(Z) = mu
-  N <- N + mu
+  # now:    mean(Z) = mean
+  N <- N + mean
 
   # if n is uneven, only keep N(1,...,n), i.e. discard last entry of N
   if (n %% 2 == 1) {
@@ -201,10 +193,10 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
 #' @title Sample from a Binomial Distribution
 #' @description
 #' Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
-#' When `n = 1` (the default), this is a Bernoulli distribution.
+#' When `size = 1` (the default), this is a Bernoulli distribution.
 #' @template param_shape
 #' @template param_initial_state
-#' @param n (`integer(1)`)\cr
+#' @param size (`integer(1)`)\cr
 #'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
@@ -219,14 +211,14 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mu = 0, sigma = 1) {
 #' result[[2]]
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
-nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
+nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32") {
   dtype <- as_dtype(dtype)
-  checkmate::assert_int(n, lower = 1)
+  checkmate::assert_int(size, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
   shape <- assert_shapevec(shape)
 
   n_samples <- prod(shape)
-  n_trials <- n_samples * n
+  n_trials <- n_samples * size
 
   # Generate uniform samples in [0, 1) and compare to prob
   # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
@@ -237,10 +229,10 @@ nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
   # Success if U < prob
   successes <- nv_convert(nv_lt(U, prob), dtype = dtype)
 
-  result <- if (n == 1L) {
+  result <- if (size == 1L) {
     nv_reshape(successes, shape = shape)
   } else {
-    successes <- nv_reshape(successes, shape = c(n, shape))
+    successes <- nv_reshape(successes, shape = c(size, shape))
     nv_reduce_sum(successes, axes = 1L, drop = TRUE)
   }
 

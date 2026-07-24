@@ -3,16 +3,19 @@
 #' @title The Normal Distribution
 #' @name nv_normal
 #' @description
-#' Density (`nv_dnorm`) and distribution function (`nv_pnorm`) of the Normal
-#' distribution with mean `mean` and standard deviation `sd`.
+#' Density (`nv_dnorm`), distribution function (`nv_pnorm`) and random
+#' generation (`nv_rnorm`) for the Normal distribution with mean `mean` and
+#' standard deviation `sd`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
 #'   function (`q`).
 #' @param mean ([`arrayish`])\cr
-#'   Mean of the distribution (scalar or same shape as `x`/`q`).
+#'   Mean of the distribution. For `nv_dnorm`/`nv_pnorm` a scalar or the same
+#'   shape as `x`/`q`; for `nv_rnorm` a `numeric(1)`.
 #' @param sd ([`arrayish`])\cr
-#'   Standard deviation of the distribution (scalar or same shape as
-#'   `x`/`q`). Must be positive, otherwise results are invalid.
+#'   Standard deviation of the distribution. For `nv_dnorm`/`nv_pnorm` a scalar
+#'   or the same shape as `x`/`q`; for `nv_rnorm` a `numeric(1)`.
+#'   Must be positive, otherwise results are invalid.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms.
 #' @param lower_tail (`logical(1)`)\cr
@@ -30,8 +33,12 @@
 #' left tail when `log_p = TRUE` to maintain accuracy.
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook")`
-#' @template return_unary
-#' @seealso [nv_rnorm()] for sampling from a normal distribution.
+#' @return
+#' `nv_dnorm()` and `nv_pnorm()` return an [`arrayish`] with the same shape and
+#' data type as `x`/`q`.
+#'
+#' `nv_rnorm()` returns a `list()` of two [`arrayish`] elements: the updated
+#' RNG state and the sampled values.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_dnorm(x)
