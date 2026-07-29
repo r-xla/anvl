@@ -42,7 +42,7 @@ Install CUDA support on linux amd64:
 install.packages("cuda12.8", repos = "https://mlverse.r-universe.dev")
 ```
 
-See the [Installation guide](https://r-xla.github.io/anvl/articles/installation.html) for more details, including prebuilt Docker images.
+See the [installation guide](https://r-xla.github.io/anvl/articles/installation.html) for more details, including prebuilt Docker images.
 
 ## Why anvl
 
