@@ -45,7 +45,8 @@ Suggests:
 Remotes:
     r-xla/pjrt,
     r-xla/stablehlo,
-    r-xla/tengen
+    r-xla/tengen,
+    r-xla/xlamisc
 Additional_repositories:
     https://r-xla.r-universe.dev
 VignetteBuilder:
