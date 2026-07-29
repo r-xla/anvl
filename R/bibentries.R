@@ -33,6 +33,14 @@ bibentries <- c(
     series = "Applied Mathematics Series",
     number = "55",
     isbn = "0-486-61272-4"
+  ),
+  moshier1989methods = bibentry(
+    bibtype = "book",
+    title = "Methods and Programs for Mathematical Functions",
+    author = person("Stephen L.", "Moshier"),
+    year = "1989",
+    publisher = "Ellis Horwood",
+    isbn = "0-7458-0289-3"
   )
 )
 # nolint end
