@@ -57,10 +57,10 @@ The \code{mean} and \code{sd} are converted to the data type of \code{x}/\code{q
 Abramowitz & Stegun (1964), equation 26.2.12, in the
 left tail when \code{log_p = TRUE} to maintain accuracy.
 
-\code{nv_qnorm} uses the minimax rational approximations of
-Moshier (1989) (the \code{ndtri} of the Cephes
-library), which are branchless enough to suit XLA and accurate to a few ulp
-over the whole range reachable from a bare probability.
+\code{nv_qnorm} uses the same minimax rational approximation as
+Moshier (1989) (this is \code{ndtri} in the Cephes
+library as used by JAX) for \code{f64}, and uses a new lower degree Remez minimax
+rational approximation on the same intervals for \code{f32}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -89,7 +89,8 @@ ISBN 0-486-61272-4.
 
 Moshier S (1989).
 \emph{Methods and Programs for Mathematical Functions}.
-Ellis Horwood, Chichester.
+Ellis Horwood.
+ISBN 0-7458-0289-3.
 }
 \seealso{
 \code{\link[=nv_rnorm]{nv_rnorm()}} for sampling from a normal distribution.
