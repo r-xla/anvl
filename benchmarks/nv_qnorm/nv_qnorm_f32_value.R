@@ -2,7 +2,7 @@ source("f32-sweep.R")
 
 library("anvl")
 
-f <- function(x) ifelse(x >= 0.0 & x <= 1.0, as.double(nv_qnorm(nv_array(x, dtype="f32"))), 0.0)
+f <- function(x) ifelse(x >= 0.0 & x <= 1.0, as.double(nv_qnorm(nv_array(x, dtype = "f32"))), 0.0)
 g <- function(x) ifelse(x >= 0.0 & x <= 1.0, qnorm(x), 0.0)
 
 f32_sweep(f, g, "nv_qnorm_f32_value.txt")

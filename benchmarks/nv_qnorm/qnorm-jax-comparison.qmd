@@ -1258,7 +1258,7 @@ gold_eval <- function(input, log_p) {
     m <- sum(ok)
     Q <- mpfr(rep(0, m), PREC); gr <- mpfr(rep(0, m), PREC); res <- numeric(m)
     deep <- lp < -(Q_ERFC_MAX^2 / 2)                  # same split as logPhi_m
-    if (any(!deep)) {
+    if (!all(deep)) {
       pin <- input[ok][!deep]
       seed <- if (log_p) stats::qnorm(pin, log.p = TRUE) else stats::qnorm(pin)
       q <- solve_q(lp[!deep], seed)
