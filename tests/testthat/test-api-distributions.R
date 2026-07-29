@@ -192,3 +192,161 @@ describe("nv_pnorm", {
     expect_equal(dtype(out), as_dtype("f32"))
   })
 })
+
+describe("nv_qnorm", {
+  it("matches base R qnorm() with default mean/sd", {
+    p <- c(0.001, 0.025, 0.1, 0.5, 0.9, 0.975, 0.999)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(p))),
+      qnorm(p),
+      tolerance = 1e-6
+    )
+  })
+
+  it("matches base R qnorm() with custom mean/sd", {
+    p <- c(0.001, 0.025, 0.5, 0.975)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(p), mean = 1, sd = 2)),
+      qnorm(p, mean = 1, sd = 2),
+      tolerance = 1e-6
+    )
+  })
+
+  it("lower_tail = FALSE matches base R qnorm(..., lower.tail = FALSE)", {
+    p <- c(0.001, 0.025, 0.5, 0.975)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(p), lower_tail = FALSE)),
+      qnorm(p, lower.tail = FALSE),
+      tolerance = 1e-6
+    )
+  })
+
+  it("matches base R across both rational regimes and their crossover", {
+    # exp(-2) is the central <-> tail threshold and exp(-32) the near <-> far
+    # tail one; the near-1 values exercise the upper reflection.
+    p <- c(1e-300, exp(-32), 1e-5, exp(-2), 0.3, 1 - exp(-2), 1 - 1e-10)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(p, dtype = "f64"))),
+      qnorm(p),
+      tolerance = 1e-6
+    )
+  })
+
+  it("log_p = TRUE matches base R qnorm(..., log.p = TRUE)", {
+    lp <- c(-729, -100, -32, -25, -2, -0.7, -0.1, -1e-10)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(lp, dtype = "f64"), log_p = TRUE)),
+      qnorm(lp, log.p = TRUE),
+      tolerance = 1e-6
+    )
+  })
+
+  it("log_p = TRUE reaches quantiles a bare probability cannot express", {
+    expect_equal(as.vector(nv_qnorm(nv_array(0, dtype = "f64"))), -Inf)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(-1000, dtype = "f64"), log_p = TRUE)),
+      qnorm(-1000, log.p = TRUE),
+      tolerance = 1e-6
+    )
+  })
+
+  it("log_p = TRUE and lower_tail = FALSE compose correctly", {
+    lp <- c(-100, -2, -0.7, -0.1)
+    expect_equal(
+      as.vector(nv_qnorm(
+        nv_array(lp, dtype = "f64"),
+        lower_tail = FALSE,
+        log_p = TRUE
+      )),
+      qnorm(lp, lower.tail = FALSE, log.p = TRUE),
+      tolerance = 1e-6
+    )
+  })
+
+  it("returns the infinite boundaries and NaN outside [0, 1]", {
+    p <- c(0, 1, -0.25, 1.25, NaN)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(p, dtype = "f64"))),
+      c(-Inf, Inf, NaN, NaN, NaN)
+    )
+    lp <- c(-Inf, 0, 0.5, NaN)
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(lp, dtype = "f64"), log_p = TRUE)),
+      c(-Inf, Inf, NaN, NaN)
+    )
+  })
+
+  it("gradient matches 1 / dnorm(qnorm(p))", {
+    p <- c(0.001, 0.025, 0.1, 0.5, 0.9)
+    f <- function(p) nv_reduce_sum(nv_qnorm(p))
+    g <- as.vector(jit(gradient(f, wrt = "p"))(nv_array(p, dtype = "f64"))[[1L]])
+    expect_equal(g, 1 / dnorm(qnorm(p)), tolerance = 1e-6)
+  })
+
+  it("gradient is not halved at the central/tail threshold", {
+    f <- function(p) nv_reduce_sum(nv_qnorm(p))
+    g <- as.vector(jit(gradient(f, wrt = "p"))(
+      nv_array(exp(-2), dtype = "f64")
+    )[[1L]])
+    expect_equal(g, 1 / dnorm(qnorm(exp(-2))), tolerance = 1e-6)
+
+    flog <- function(p) nv_reduce_sum(nv_qnorm(p, log_p = TRUE))
+    glog <- as.vector(jit(gradient(flog, wrt = "p"))(
+      nv_array(-2, dtype = "f64")
+    )[[1L]])
+    expect_equal(
+      glog,
+      exp(-2) / dnorm(qnorm(-2, log.p = TRUE)),
+      tolerance = 1e-6
+    )
+  })
+
+  it("gradient stays finite deep in the log tail", {
+    f <- function(p) nv_reduce_sum(nv_qnorm(p, log_p = TRUE))
+    g <- as.vector(jit(gradient(f, wrt = "p"))(
+      nv_array(c(-1e4, -1e5), dtype = "f64")
+    )[[1L]])
+    expect_true(all(is.finite(g)))
+  })
+
+  it("gradients wrt mean/sd are exact", {
+    p <- c(0.025, 0.9)
+    f <- function(p, mean, sd) nv_reduce_sum(nv_qnorm(p, mean, sd))
+    g <- jit(gradient(f, wrt = c("mean", "sd")))(
+      nv_array(p, dtype = "f64"),
+      nv_array(c(1, 1), dtype = "f64"),
+      nv_array(c(2, 2), dtype = "f64")
+    )
+    expect_equal(as.vector(g[[1L]]), c(1, 1))
+    expect_equal(as.vector(g[[2L]]), qnorm(p), tolerance = 1e-6)
+  })
+
+  it("inverts nv_pnorm", {
+    x <- c(-4, -1, 0, 1, 4)
+    expect_equal(
+      as.vector(nv_qnorm(nv_pnorm(nv_array(x, dtype = "f64")))),
+      x,
+      tolerance = 1e-6
+    )
+  })
+
+  it("non-scalar mean/sd works", {
+    p <- c(0.1, 0.5, 0.9)
+    mean <- c(-1, 0, 1)
+    sd <- c(1, 2, 3)
+    expect_equal(
+      as.vector(nv_qnorm(
+        nv_array(p),
+        mean = nv_array(mean),
+        sd = nv_array(sd)
+      )),
+      qnorm(p, mean = mean, sd = sd),
+      tolerance = 1e-6
+    )
+  })
+
+  it("converts mean/sd to the dtype of p", {
+    out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
+    expect_equal(dtype(out), as_dtype("f32"))
+  })
+})
