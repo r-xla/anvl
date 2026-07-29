@@ -1,0 +1,1923 @@
+---
+title: "`nv_qnorm` vs JAX vs R — performance & accuracy"
+subtitle: "Standard normal quantile: value & gradient, `log_p` on/off, 32- & 64-bit"
+date: today
+author: Opus 5 supervised by Louis Aslett
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: true
+    code-tools: true
+    code-summary: "Show code"
+    embed-resources: true
+    theme: cosmo
+    fig-width: 9
+    fig-height: 7
+    tbl-cap-location: top
+execute:
+  warning: false
+  message: false
+  cache: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+## Everything regenerates on `quarto render`; no result is hard-coded, and the
+## document is self-contained -- it sources no local file and depends on nothing
+## but installed packages.
+##
+## Portable configuration -- no machine-specific path is baked in. Override on
+## the render line, e.g.
+##   QNORM_PY=/path/to/venv/bin/python quarto render qnorm-jax-comparison.qmd
+##
+##   QNORM_PY     Python interpreter providing jax, numpy and google-benchmark.
+##                Default: this repo's uv venv at
+##                ../../../py-benchmarks/.venv/bin/python, else python3 on PATH.
+##   QNORM_FULL   "0" for a fast reduced-grid preview; default runs the full grid.
+##   QNORM_PERF   "0" skips the performance report entirely (it renders blank);
+##                accuracy still runs. Independent of QNORM_FULL -- use it when
+##                iterating on the accuracy panels without waiting on timings.
+##   QNORM_JAX    "0" drops the JAX series (no Python needed at all).
+##   QNORM_DENSE  random targets per variant in the dense sweep (default 2000).
+##   DEVICE       Compute device for BOTH anvl and JAX: "cpu" (default) or "cuda"
+##                for GPU. GPU needs the matching PJRT plugin (anvl) and a
+##                CUDA-enabled jaxlib (JAX) installed on the target machine.
+env_or <- function(var, default = "") {
+  v <- Sys.getenv(var, unset = ""); if (nzchar(v)) v else default
+}
+FULL    <- env_or("QNORM_FULL", "1") != "0"
+PERF    <- env_or("QNORM_PERF", "1") != "0"
+USEJAX  <- env_or("QNORM_JAX",  "1") != "0"
+DENSE_N <- as.integer(env_or("QNORM_DENSE", if (FULL) "2000" else "60"))
+DEVICE  <- env_or("DEVICE", "cpu")
+## anvl reads PJRT_PLATFORM in default_device(); nv_array()/jit() then place and
+## compile on it. JAX is steered per-subprocess via JAX_PLATFORMS (run_py_chunk).
+Sys.setenv(PJRT_PLATFORM = DEVICE)
+
+suppressPackageStartupMessages({
+  library(anvl)
+  library(Rmpfr)
+  library(jsonlite)
+  library(bench)
+  library(ggplot2)
+  library(plotly)
+  library(dplyr)
+  library(tidyr)
+  library(DT)
+  library(htmltools)
+})
+
+WORK <- tempfile("qnorm_jax_"); dir.create(WORK)
+
+## Python interpreter (needs jax, numpy, google-benchmark); env-overridable.
+PY_BIN <- ""
+if (USEJAX) {
+  PY_BIN <- env_or("QNORM_PY")
+  if (!nzchar(PY_BIN)) {
+    repo_py <- "../../../py-benchmarks/.venv/bin/python"
+    PY_BIN <- if (file.exists(repo_py)) repo_py else unname(Sys.which("python3"))
+  }
+  if (!nzchar(PY_BIN) || !file.exists(PY_BIN))
+    stop("No Python interpreter found. Set QNORM_PY=/path/to/venv/bin/python ",
+         "(needs jax, numpy, google-benchmark), or set QNORM_JAX=0.")
+  if (!identical(0L, suppressWarnings(system2(PY_BIN,
+        c("-c", shQuote("import jax, numpy, google_benchmark")),
+        stdout = FALSE, stderr = FALSE))))
+    stop("Python at '", PY_BIN, "' lacks jax / numpy / google-benchmark; ",
+         "point QNORM_PY at an environment that has all three.")
+}
+
+## --- run an embedded (eval:false) python chunk in the project venv ----------
+## system2() pastes `env` into the shell command unquoted, so any value with a
+## space in it is parsed as a separate word and the call silently runs something
+## else entirely. Quote the value half of each NAME=value pair.
+quote_env <- function(kv) {
+  i <- regexpr("=", kv, fixed = TRUE)
+  paste0(substr(kv, 1L, i), shQuote(substring(kv, i + 1L)))
+}
+run_py_chunk <- function(label, envvars = character()) {
+  src <- knitr::knit_code$get(label)
+  py  <- file.path(WORK, paste0(label, ".py"))
+  writeLines(src, py)
+  status <- system2(PY_BIN, shQuote(py),
+                    env = quote_env(c(envvars, paste0("JAX_PLATFORMS=", DEVICE))),
+                    stdout = TRUE, stderr = TRUE)
+  st <- attr(status, "status")
+  if (!is.null(st) && st != 0)
+    stop("python chunk '", label, "' failed:\n", paste(status, collapse = "\n"))
+  invisible(status)
+}
+
+## --- shared configuration --------------------------------------------------
+DTYPES <- c("f64", "f32")
+SIZES  <- if (FULL) c(1, 10, 100, 1e3, 1e4, 1e5, 1e6, 1e7) else c(1, 100, 1e4)
+SEED   <- 1L
+PREC   <- 512L                 # bits of mpfr ground-truth precision
+PERF_PASSES <- 3L              # interleaved randomised timing passes
+REGIME_N <- if (FULL) 1e6 else 1e4        # size used by the regime panel
+COMPILE_N <- if (FULL) 30011L else 3011L  # base length for fresh-shape compiles
+
+## The two static-flag settings under test. `log_p` describes the *input*: a bare
+## probability, or its logarithm. They are separate compiled programs (`log_p` is
+## a static jit argument), and they reach very different parts of the domain, so
+## every panel is faceted by them rather than pooled.
+VARIANTS <- list(
+  list(id = "value", log_p = FALSE, label = "log_p = FALSE"),
+  list(id = "log",   log_p = TRUE,  label = "log_p = TRUE")
+)
+VAR_LABEL <- vapply(VARIANTS, `[[`, "", "label")
+names(VAR_LABEL) <- vapply(VARIANTS, `[[`, "", "id")
+
+M_ANVL <- "anvl nv_qnorm"
+M_JAX  <- "JAX ndtri"
+M_R    <- "R qnorm"
+PAL <- c("#2c7fb8", "#d95f0e", "#444444")
+names(PAL) <- c(M_ANVL, M_JAX, M_R)
+METHODS <- if (USEJAX) c(M_ANVL, M_JAX, M_R) else c(M_ANVL, M_R)
+```
+
+```{python}
+#| label: perf-jax-src
+#| eval: false
+
+# JAX performance for one (dtype, size, input regime): times the quantile value
+# and value+grad, for both `log_p` settings, with google-benchmark. Parameters
+# arrive via environment variables; a google-benchmark JSON is written for R.
+import os
+import jax
+jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
+import numpy as np
+import google_benchmark as gb
+from jax.scipy.special import ndtri
+
+DT = {"f64": jnp.float64, "f32": jnp.float32}
+
+
+# What JAX ships: jax.scipy.special.ndtri, a transcription of Cephes ndtri.
+# There is no log-probability entry point anywhere in JAX (no `logppf`, no
+# `ndtri_exp`), so the log variant can only be served by composing ndtri(exp(lp)).
+def qfun(a, log_p):
+    return ndtri(jnp.exp(a)) if log_p else ndtri(a)
+
+
+# Input recipe, mirrored exactly by gen_inputs() on the R side. For timing only
+# the *distribution* has to match, not the draws, so each language samples
+# locally from the same band with a fixed seed.
+def gen(regime, log_p, n, rng):
+    if regime == "uniform":
+        p = rng.uniform(0.0, 1.0, n)
+    elif regime == "central":
+        p = rng.uniform(0.2, 0.8, n)
+    elif regime == "tail":
+        p = 10.0 ** rng.uniform(-30.0, -3.0, n)
+    elif regime == "deep tail":
+        p = 10.0 ** rng.uniform(-300.0, -100.0, n)
+    elif regime == "mixed":
+        p = 10.0 ** rng.uniform(-300.0, 0.0, n)
+    else:
+        raise ValueError(regime)
+    return np.log(p) if log_p else p
+
+
+dt = DT[os.environ["PJ_DTYPE"]]
+size = int(os.environ["PJ_SIZE"])
+regime = os.environ["PJ_REGIME"]
+rng = np.random.default_rng(int(os.environ["PJ_SEED"]))
+
+
+def make_bench(fn, arr, pair):
+    def b(state):
+        while state:
+            out = fn(arr)
+            if pair:                        # (value, grad): materialise both
+                np.asarray(out[0]); np.asarray(out[1])
+            else:
+                np.asarray(out)             # force host materialisation
+    return b
+
+
+for vid, log_p in (("value", False), ("log", True)):
+    arr = jnp.asarray(gen(regime, log_p, size, rng), dtype=dt)
+    # value+grad, not grad alone: reverse mode yields both from one forward pass,
+    # so that is what a sampler step or an optimiser iteration actually costs.
+    fns = (
+        ("value", jax.jit(lambda z, lp=log_p: qfun(z, lp)), False),
+        ("vgrad", jax.jit(jax.value_and_grad(
+            lambda z, lp=log_p: jnp.sum(qfun(z, lp)))), True),
+    )
+    for op, fn, pair in fns:
+        out = fn(arr)                       # warm up / compile
+        np.asarray(out[0] if pair else out)
+        gb.register(make_bench(fn, arr, pair), name=f"{vid}|{op}")
+
+# `<n>x` fixes the iterations per repetition rather than letting a time budget
+# choose it, so each repetition's real_time is a mean over a known, small batch
+# and the minimum over repetitions is the same statistic the R side reports.
+gb.main([
+    "perf_jax", "--benchmark_format=json",
+    f"--benchmark_out={os.environ['PJ_OUT']}", "--benchmark_out_format=json",
+    f"--benchmark_min_time={os.environ['PJ_ITERS']}x",
+    f"--benchmark_repetitions={os.environ['PJ_REPS']}",
+])
+```
+
+```{python}
+#| label: compile-jax-src
+#| eval: false
+
+# Wall-clock of the very first call on a shape never traced before: trace, lower,
+# XLA compile, plus one (negligible) execution. Minimum over several distinct
+# fresh shapes -- a single measurement varies by tens of percent and the first is
+# systematically the highest.
+import os, json, time
+import jax
+jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
+import numpy as np
+from jax.scipy.special import ndtri
+
+DT = {"f64": jnp.float64, "f32": jnp.float32}
+
+
+def qfun(a, log_p):
+    return ndtri(jnp.exp(a)) if log_p else ndtri(a)
+
+
+rng = np.random.default_rng(int(os.environ["PJ_SEED"]))
+sizes = [int(s) for s in os.environ["PJ_SIZES"].split(",")]
+rows = []
+for dname, dt in DT.items():
+    for vid, log_p in (("value", False), ("log", True)):
+        for op in ("value", "vgrad"):
+            best = None
+            for n in sizes:                 # each a shape never compiled before
+                u = rng.uniform(0.0, 1.0, n)
+                arr = jnp.asarray(np.log(u) if log_p else u, dtype=dt)
+                if op == "value":
+                    fn = jax.jit(lambda z, lp=log_p: qfun(z, lp))
+                else:
+                    fn = jax.jit(jax.value_and_grad(
+                        lambda z, lp=log_p: jnp.sum(qfun(z, lp))))
+                t0 = time.perf_counter()
+                out = fn(arr)
+                jax.block_until_ready(out)
+                t = (time.perf_counter() - t0) * 1000.0
+                best = t if best is None else min(best, t)
+            rows.append({"dtype": dname, "variant": vid, "op": op, "ms": best})
+json.dump(rows, open(os.environ["PJ_OUT"], "w"))
+```
+
+```{python}
+#| label: opcount-jax-src
+#| eval: false
+
+# StableHLO for the JAX side. `.lower(x).as_text()` is the same dialect anvl
+# emits and at the same stage -- what the stack hands to XLA, before XLA's own
+# inlining, CSE and fusion. The *text* is handed back to R, which counts both
+# stacks with one parser, so neither can be counted by a rule the other isn't.
+import os, json
+import jax
+jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
+import numpy as np
+from jax.scipy.special import ndtri
+
+DT = {"f64": jnp.float64, "f32": jnp.float32}
+
+
+def qfun(a, log_p):
+    return ndtri(jnp.exp(a)) if log_p else ndtri(a)
+
+
+n = int(os.environ["PJ_N"])
+rows = []
+for dname, dt in DT.items():
+    for vid, log_p in (("value", False), ("log", True)):
+        p = np.full(n, 0.3)
+        arr = jnp.asarray(np.log(p) if log_p else p, dtype=dt)
+        fns = (
+            ("value", jax.jit(lambda z, l=log_p: qfun(z, l))),
+            ("value+grad", jax.jit(jax.value_and_grad(
+                lambda z, l=log_p: jnp.sum(qfun(z, l))))),
+        )
+        for op, fn in fns:
+            lowered = fn.lower(arr)
+            rows.append({"dtype": dname, "variant": vid, "op": op,
+                         # what the stack hands to XLA ...
+                         "mlir": lowered.as_text(),
+                         # ... and what XLA made of it: the optimised, scheduled
+                         # HLO of the executable that actually runs.
+                         "hlo": lowered.compile().as_text()})
+json.dump(rows, open(os.environ["PJ_OUT"], "w"))
+```
+
+```{python}
+#| label: acc-jax-src
+#| eval: false
+
+# JAX on inputs supplied by R: the quantile and its elementwise derivative, for
+# every requested (variant, dtype). Reads a spec JSON from PJ_SPEC, writes
+# results to PJ_OUT. Everything is cast to float64 for lossless transport (f32 is
+# a subset of f64); non-finite values become JSON null, which R reads as NA.
+import os, json
+import jax
+jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
+import numpy as np
+from jax.scipy.special import ndtri
+
+DT = {"f64": jnp.float64, "f32": jnp.float32}
+
+
+def qfun(a, log_p):
+    return ndtri(jnp.exp(a)) if log_p else ndtri(a)
+
+
+def clean(a):
+    """JSON has no Inf/NaN. Emit them as tagged strings rather than null: which
+    one came back matters at the boundaries (silent +-Inf where NaN is correct is
+    the worst outcome there is, because nothing downstream notices)."""
+    a = np.asarray(a, np.float64)
+    return [float(v) if np.isfinite(v)
+            else ("nan" if np.isnan(v) else ("inf" if v > 0 else "-inf"))
+            for v in a]
+
+
+spec = json.load(open(os.environ["PJ_SPEC"]))
+out = {"meta": {"jax": jax.__version__}, "data": {}}
+for var in spec["variants"]:
+    vid, log_p = var["id"], bool(var["log_p"])
+    inputs = np.atleast_1d(np.asarray(var["inputs"], np.float64))
+    out["data"][vid] = {}
+    for dname in spec["dtypes"]:
+        # R has already rounded the inputs to this dtype, so both stacks receive
+        # bit-identical values; asarray here is exact.
+        z = jnp.asarray(inputs, dtype=DT[dname])
+        val = jax.jit(lambda a, lp=log_p: qfun(a, lp))(z)
+        # grad of the summed output is the per-element derivative, since the
+        # function is elementwise -- the same construction anvl differentiates.
+        gr = jax.jit(jax.grad(lambda a, lp=log_p: jnp.sum(qfun(a, lp))))(z)
+        out["data"][vid][dname] = {"value": clean(val), "grad": clean(gr)}
+json.dump(out, open(os.environ["PJ_OUT"], "w"))
+```
+
+This document validates the new anvl `nv_qnorm()` against JAX's
+`jax.scipy.special.ndtri` and base R's `stats::qnorm`, on
+`r toupper(DEVICE)`. Every combination of **dtype** (32-/64-bit), **`log_p`**
+(the input is a probability $p$, or its logarithm $\log p$) and **quantity** (the
+value, or its derivative with respect to the input) is measured, for the standard
+normal (`mean = 0`, `sd = 1`, `lower_tail = TRUE`).
+
+Performance uses the R [`bench`](https://bench.r-lib.org) package and Python
+[`google-benchmark`](https://github.com/google/benchmark); accuracy uses `Rmpfr`
+at `r PREC`-bit precision as ground truth, obtained by a Newton solve in log
+space (below). Three points of asymmetry between the implementations are worth
+knowing before reading any panel:
+
+* **JAX has no log-probability quantile at all** — no `logppf`, no `ndtri_exp` —
+  so its `log_p = TRUE` series can only be `ndtri(exp(lp))`, which stops
+  wherever `exp` does (around $\log p = -745$, i.e. $x \approx -38.5$).
+* **base R has no automatic differentiation**, so its gradient series is the
+  analytic derivative composed from native R: $\mathrm{d}x/\mathrm{d}p = 1/\phi(x)$,
+  written `1 / dnorm(qnorm(p))`, and its log-input counterpart
+  $\mathrm{d}x/\mathrm{d}\log p = p/\phi(x)$, written
+  `exp(lp - dnorm(qnorm(lp, log.p = TRUE), log = TRUE))`.
+* **base R is double precision only**, so it appears in the 64-bit panels and not
+  the 32-bit ones.
+
+```{r}
+#| label: helpers
+
+## --- input recipes, mirrored by gen() in the python chunks -----------------
+gen_inputs <- function(regime, log_p, n) {
+  p <- switch(regime,
+    uniform     = runif(n),
+    central     = runif(n, 0.2, 0.8),
+    tail        = 10^runif(n, -30, -3),
+    `deep tail` = 10^runif(n, -300, -100),
+    mixed       = 10^runif(n, -300, 0),
+    stop("unknown regime ", regime))
+  if (log_p) base::log(p) else p
+}
+REGIMES <- c("central", "tail", "deep tail", "mixed")
+
+## --- the three implementations, as timed and as evaluated -----------------
+## nv_qnorm is tagged `@jit static c("lower_tail", "log_p")`, so it is already
+## jit-compiled: calling it directly exercises the compiled path, and wrapping it
+## in jit() again would measure something the user never runs.
+anvl_value <- function(arr, log_p) as.vector(nv_qnorm(arr, log_p = log_p))
+anvl_grad_fn <- function(log_p) {
+  jit(gradient(function(p) nv_reduce_sum(nv_qnorm(p, log_p = log_p)), wrt = "p"))
+}
+anvl_value_grad_fn <- function(log_p) {
+  jit(value_and_gradient(function(p) nv_reduce_sum(nv_qnorm(p, log_p = log_p)),
+                         wrt = "p"))
+}
+
+r_value <- function(p, log_p) {
+  if (log_p) stats::qnorm(p, log.p = TRUE) else stats::qnorm(p)
+}
+## No AD in base R: the derivative is the analytic one, composed from qnorm and
+## dnorm, which is what an R user actually writes.
+r_grad <- function(p, log_p, q = r_value(p, log_p)) {
+  if (log_p) exp(p - stats::dnorm(q, log = TRUE)) else 1 / stats::dnorm(q)
+}
+
+## --- dtype arithmetic ------------------------------------------------------
+DTYPE_EPS    <- c(f64 = 2^-52,  f32 = 2^-23)
+DTYPE_BYTES  <- c(f64 = 8L,     f32 = 4L)
+DTYPE_MINEXP <- c(f64 = -1022L, f32 = -126L)   # exponent of the smallest normal
+
+## Round a double vector to `dtype` and back, i.e. exactly the value the kernel
+## will receive. The reference must be evaluated *here* rather than at the f64
+## input: the double->float rounding is the caller's, not the algorithm's, and
+## charging it to the algorithm makes every implementation report the same error.
+round_to_dtype <- function(x, dtype) {
+  sz <- DTYPE_BYTES[[dtype]]
+  if (sz == 8L) return(x)
+  readBin(writeBin(x, raw(), size = sz), "double", size = sz, n = length(x))
+}
+
+## Relative error at full mpfr precision: promote the computed double, difference
+## in mpfr, and only then collapse to a double.
+rel_err <- function(computed, gold_m) {
+  re <- rep(NA_real_, length(computed))
+  ok <- is.finite(computed)
+  if (any(ok))
+    re[ok] <- as.numeric(abs(mpfr(computed[ok], PREC) - gold_m[ok]) / abs(gold_m[ok]))
+  re
+}
+
+## Error in ulps of `dtype`. Relative error cannot distinguish "correctly
+## rounded" from "sloppy"; <= 0.5 ulp is correctly rounded, <= 1 ulp faithful,
+## and that is the currency a special function's accuracy is normally claimed in.
+## Both the difference and the ulp size are formed in mpfr, so a reference too
+## large for a double (dx/dp overflows f64 past |x| ~ 38) still gives a count.
+ulp_vs_gold <- function(computed, gold_m, dtype) {
+  out <- rep(NA_real_, length(computed))
+  ok <- is.finite(computed)
+  if (any(ok)) {
+    e <- pmax(floor(as.numeric(log2(abs(gold_m[ok])))), DTYPE_MINEXP[[dtype]])
+    ulp <- mpfr(2, PREC)^e * DTYPE_EPS[[dtype]]
+    out[ok] <- as.numeric(abs(mpfr(computed[ok], PREC) - gold_m[ok]) / ulp)
+  }
+  out
+}
+
+slog <- function(z) sign(z) * log10(1 + abs(z))
+size_label <- function(n) {
+  ifelse(n >= 1e6, paste0(n / 1e6, "M"),
+         ifelse(n >= 1e3, paste0(n / 1e3, "k"),
+                format(n, scientific = FALSE, trim = TRUE)))
+}
+legend_below <- function(p) {
+  plotly::layout(p, legend = list(orientation = "h", x = 0, xanchor = "left",
+                                  y = -0.18, yanchor = "top"),
+                 margin = list(b = 130))
+}
+```
+
+# Performance
+
+```{r}
+#| label: perf-fns
+
+## Robust minimum wall-clock per call, in ms. The minimum, not the mean or
+## median: it is the statistic least contaminated by GC and scheduler noise.
+## Host materialisation is forced by the caller.
+bench_ms <- function(call_fn, min_time = 0.02, min_iterations = 2L,
+                     max_iterations = 200L) {
+  b <- bench::mark(call_fn(), min_iterations = min_iterations,
+                   min_time = min_time, max_iterations = max_iterations,
+                   check = FALSE, memory = FALSE, filter_gc = FALSE)
+  as.numeric(b$min) * 1000
+}
+
+## Time a group of cells in several interleaved passes, in a fresh random order
+## each pass, and keep each cell's minimum. The point is not more samples but
+## *unconfounded* ones: measuring every cell once in a fixed order spreads a long
+## render across the cells systematically, so the method that sorts first is
+## always measured first and the largest size always last and hottest. `spread`
+## (max/min across passes) comes back with the estimate, so a reader can tell a
+## 10% difference between two methods from a 10% difference between two
+## measurements of the same one.
+bench_cells <- function(cells, passes = PERF_PASSES) {
+  n <- length(cells)
+  if (!n) return(list(min = numeric(), spread = numeric()))
+  for (cl in cells) invisible(cl())          # compile + warm every cell first
+  t <- matrix(NA_real_, nrow = n, ncol = passes)
+  for (p in seq_len(passes)) for (i in sample.int(n)) t[i, p] <- bench_ms(cells[[i]])
+  list(min = apply(t, 1L, min), spread = apply(t, 1L, max) / apply(t, 1L, min))
+}
+
+## Every R-side cell for one (dtype, size, regime): anvl value and value+grad for
+## both variants, plus base R's (f64 only, since R has no single precision).
+r_side_cells <- function(dt, n, regime) {
+  meta <- list(); cells <- list()
+  add <- function(md, fn) {
+    meta[[length(meta) + 1L]] <<- md
+    cells[[length(cells) + 1L]] <<- fn
+  }
+  for (v in VARIANTS) {
+    set.seed(SEED)
+    vec <- gen_inputs(regime, v$log_p, n)
+    arr <- nv_array(vec, dtype = dt)
+    local({
+      a <- arr; lp <- v$log_p; vid <- v$id
+      add(data.frame(dtype = dt, size = n, regime = regime, variant = vid,
+                     method = M_ANVL, op = "value"),
+          function() anvl_value(a, lp))
+      vg <- anvl_value_grad_fn(lp)
+      add(data.frame(dtype = dt, size = n, regime = regime, variant = vid,
+                     method = M_ANVL, op = "value+grad"),
+          function() { r <- vg(a); as.vector(r$value) + as.vector(r$grad[[1L]]) })
+    })
+    if (identical(dt, "f64")) local({
+      p <- vec; lp <- v$log_p; vid <- v$id
+      add(data.frame(dtype = dt, size = n, regime = regime, variant = vid,
+                     method = M_R, op = "value"),
+          function() r_value(p, lp))
+      add(data.frame(dtype = dt, size = n, regime = regime, variant = vid,
+                     method = M_R, op = "value+grad"),
+          function() { q <- r_value(p, lp); q + r_grad(p, lp, q) })
+    })
+  }
+  list(meta = dplyr::bind_rows(meta), cells = cells)
+}
+
+## One JAX subprocess per (dtype, size, regime); all four cells inside it.
+jax_perf_rows <- function(dt, n, regime) {
+  if (!USEJAX) return(NULL)
+  out_json <- file.path(WORK, sprintf("perf_%s_%s_%d.json", dt,
+                                      gsub(" ", "_", regime), n))
+  ## Repetitions scale down with size, so the small-n cells -- where one call is
+  ## microseconds -- still get a decent sample without the 1e7 cells taking all day.
+  reps <- max(2L * PERF_PASSES, min(60L, as.integer(2e6 / max(n, 1L))))
+  run_py_chunk("perf-jax-src", c(
+    sprintf("PJ_DTYPE=%s", dt), sprintf("PJ_SIZE=%d", n),
+    sprintf("PJ_REGIME=%s", regime), sprintf("PJ_SEED=%d", SEED),
+    sprintf("PJ_OUT=%s", out_json), "PJ_ITERS=1", sprintf("PJ_REPS=%d", reps)))
+  pj <- fromJSON(out_json, simplifyVector = FALSE)$benchmarks
+  ## google-benchmark reports its own time_unit; do not assume ns.
+  to_ms <- c(ns = 1e-6, us = 1e-3, ms = 1)
+  it <- Filter(function(b) b$run_type == "iteration", pj)
+  tms <- vapply(it, function(b) b$real_time * to_ms[[b$time_unit]], numeric(1))
+  key <- vapply(it, function(b) b$run_name, character(1))
+  tmin <- tapply(tms, key, min)
+  ## Spread must describe the *estimator*, not the raw samples, or it is not
+  ## comparable across stacks: the R-side figure is already a minimum over many
+  ## iterations, so chunk JAX's repetitions into the same number of groups and
+  ## take max/min of those minima.
+  tspr <- tapply(tms, key, function(z) {
+    g <- vapply(split(z, cut(seq_along(z), PERF_PASSES, labels = FALSE)), min, 0)
+    max(g) / min(g)
+  })
+  do.call(rbind, lapply(names(tmin), function(k) {
+    parts <- strsplit(k, "|", fixed = TRUE)[[1L]]
+    data.frame(dtype = dt, size = n, regime = regime, variant = parts[1],
+               method = M_JAX,
+               op = if (parts[2] == "value") "value" else "value+grad",
+               time_ms = tmin[[k]], spread = tspr[[k]])
+  }))
+}
+
+perf_block <- function(dt, n, regime) {
+  rs <- r_side_cells(dt, n, regime)
+  timed <- bench_cells(rs$cells)
+  md <- rs$meta
+  md$time_ms <- timed$min
+  md$spread <- timed$spread
+  out <- dplyr::bind_rows(md, jax_perf_rows(dt, as.integer(n), regime))
+  gc(FALSE)
+  out
+}
+```
+
+```{r}
+#| label: perf-run
+
+perf_df <- NULL
+if (PERF) {
+  rows <- list()
+  for (dt in DTYPES) for (size in SIZES) {
+    rows[[length(rows) + 1L]] <- perf_block(dt, as.integer(size), "uniform")
+  }
+  perf_df <- dplyr::bind_rows(rows)
+  perf_df$variant_label <- VAR_LABEL[perf_df$variant]
+}
+```
+
+```{r}
+#| label: perf-intro
+#| echo: false
+#| results: asis
+if (PERF) cat(sprintf(
+  "Minimum wall-clock time **per call** over %d interleaved passes, as the input grows from a single element to %s. Within each (dtype, size) every R-side cell is timed once per pass in a fresh random order, so no implementation is systematically measured before another or later in the render; the JAX side reports the same statistic, a minimum over individual timings. Host materialisation is forced on all three (`as.vector()` in anvl, `np.asarray()` in JAX; base R is already on the host).\n\nInputs here are `runif(n)` — passed through `log()` for the `log_p = TRUE` variant — which is the call pattern of inverse-transform sampling. That never reaches past $x \\approx -5.4$ at any practical $n$, so it exercises only the central branch; the [regime panel](#sec-regimes) below feeds each branch directly instead of assuming the cost is the same.\n\nThe derivative row is **`value+grad`**, not the gradient alone: reverse mode produces both from one forward pass, so that is what a sampler step or an optimiser iteration actually costs, and the marginal cost of the derivative is that row minus the value row. Hover any point for exact values.\n",
+  PERF_PASSES, format(max(SIZES), big.mark = ",", scientific = FALSE)))
+if (!PERF) cat("*Performance report disabled (`QNORM_PERF=0`). Set `QNORM_PERF=1` to include it.*\n")
+```
+
+```{r}
+#| label: perf-plot-fn
+
+perf_plot <- function(dt) {
+  d <- dplyr::filter(perf_df, dtype == dt)
+  d$tt <- sprintf("%s | %s | %s\nsize %s: %.4g ms  (spread %.2fx)",
+                  d$method, d$variant_label, d$op,
+                  format(d$size, big.mark = ",", scientific = FALSE),
+                  d$time_ms, d$spread)
+  g <- ggplot(d, aes(size, time_ms, colour = method, group = method, text = tt)) +
+    geom_line(linewidth = 0.5) + geom_point(size = 1.3) +
+    facet_grid(variant_label ~ op, scales = "free_y") +
+    scale_x_log10(breaks = SIZES, labels = size_label(SIZES)) +
+    scale_y_log10() +
+    scale_colour_manual(values = PAL) +
+    labs(x = "input length", y = "time per call (ms)", colour = NULL,
+         title = sprintf("%s-bit — time per call", sub("f", "", dt))) +
+    theme_minimal(base_size = 12)
+  ggplotly(g, tooltip = "text") |> legend_below()
+}
+```
+
+## 64-bit
+
+```{r}
+#| label: perf-f64
+if (PERF) perf_plot("f64")
+```
+
+## 32-bit
+
+```{r}
+#| label: perf-f32
+if (PERF) perf_plot("f32")
+```
+
+## Input regime {#sec-regimes}
+
+```{r}
+#| label: perf-regimes-run
+
+regime_df <- NULL
+if (PERF) {
+  rows <- list()
+  for (dt in DTYPES) for (rg in REGIMES) {
+    rows[[length(rows) + 1L]] <- perf_block(dt, as.integer(REGIME_N), rg)
+  }
+  regime_df <- dplyr::bind_rows(rows)
+  regime_df$variant_label <- VAR_LABEL[regime_df$variant]
+  regime_df$regime <- factor(regime_df$regime, levels = REGIMES)
+}
+```
+
+```{r}
+#| label: perf-regimes-intro
+#| echo: false
+#| results: asis
+if (PERF) cat(sprintf(
+  "All three implementations claim that their cost does not depend on where in the distribution the input lands — anvl and JAX because the kernel is branchless (every regime is evaluated and selected between), base R because its branches are cheap. Each panel holds the size fixed at %s elements and puts every element squarely in one regime: `central` ($p \\in [0.2, 0.8]$), `tail` ($p \\in [10^{-30}, 10^{-3}]$), `deep tail` ($p \\in [10^{-300}, 10^{-100}]$, reachable only with `log_p = TRUE` in 32-bit) and `mixed` ($p$ log-uniform over the whole range).\n",
+  format(REGIME_N, big.mark = ",", scientific = FALSE)))
+```
+
+```{r}
+#| label: perf-regimes-plot
+
+regime_plot <- function(dt) {
+  d <- dplyr::filter(regime_df, dtype == dt)
+  d$tt <- sprintf("%s | %s | %s\n%s: %.4g ms  (spread %.2fx)",
+                  d$method, d$variant_label, d$op, d$regime, d$time_ms, d$spread)
+  g <- ggplot(d, aes(regime, time_ms, colour = method, group = method, text = tt)) +
+    geom_line(linewidth = 0.5) + geom_point(size = 1.6) +
+    facet_grid(variant_label ~ op, scales = "free_y") +
+    scale_y_log10() +
+    scale_colour_manual(values = PAL) +
+    labs(x = NULL, y = "time per call (ms)", colour = NULL,
+         title = sprintf("%s-bit — cost by input regime, n = %s",
+                         sub("f", "", dt),
+                         format(REGIME_N, big.mark = ",", scientific = FALSE))) +
+    theme_minimal(base_size = 12) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1))
+  ggplotly(g, tooltip = "text") |> legend_below()
+}
+if (PERF) regime_plot("f64")
+```
+
+```{r}
+#| label: perf-regimes-f32
+if (PERF) regime_plot("f32")
+```
+
+## Compile time {#sec-compile}
+
+```{r}
+#| label: compile-run
+
+compile_df <- NULL
+if (PERF) {
+  ## Fresh, never-before-compiled shapes -- distinct per repetition, or the
+  ## executable cache serves the second one for free.
+  csizes <- COMPILE_N + 7L * (0:2)
+  rows <- list()
+  for (dt in DTYPES) for (v in VARIANTS) for (op in c("value", "value+grad")) {
+    ts <- vapply(csizes, function(n) {
+      set.seed(SEED)
+      arr <- nv_array(gen_inputs("uniform", v$log_p, n), dtype = dt)
+      fn <- if (op == "value") {
+        function(a) as.vector(nv_qnorm(a, log_p = v$log_p))
+      } else {
+        g <- anvl_value_grad_fn(v$log_p)
+        function(a) { r <- g(a); as.vector(r$value); as.vector(r$grad[[1L]]) }
+      }
+      t0 <- Sys.time()
+      invisible(fn(arr))
+      as.numeric(difftime(Sys.time(), t0, units = "secs")) * 1000
+    }, 0)
+    rows[[length(rows) + 1L]] <- data.frame(
+      dtype = dt, variant = v$id, op = op, method = M_ANVL, ms = min(ts))
+  }
+  if (USEJAX) {
+    out_json <- file.path(WORK, "compile_jax.json")
+    run_py_chunk("compile-jax-src", c(
+      sprintf("PJ_SIZES=%s", paste(csizes, collapse = ",")),
+      sprintf("PJ_SEED=%d", SEED), sprintf("PJ_OUT=%s", out_json)))
+    cj <- fromJSON(out_json, simplifyVector = TRUE)
+    cj$op <- ifelse(cj$op == "value", "value", "value+grad")
+    cj$method <- M_JAX
+    rows[[length(rows) + 1L]] <- cj[, c("dtype", "variant", "op", "method", "ms")]
+  }
+  compile_df <- dplyr::bind_rows(rows)
+  compile_df$variant_label <- VAR_LABEL[compile_df$variant]
+}
+```
+
+```{r}
+#| label: compile-table
+#| echo: false
+if (!PERF) {
+  htmltools::HTML("<em>Performance report disabled (<code>QNORM_PERF=0</code>).</em>")
+} else {
+  compile_df |>
+    dplyr::transmute(dtype, variant = variant_label, op, method,
+                     `compile (ms)` = ms) |>
+    dplyr::arrange(dtype, variant, op, method) |>
+    datatable(rownames = FALSE, filter = "top",
+              options = list(pageLength = 8, scrollX = TRUE)) |>
+    formatSignif("compile (ms)", 4)
+}
+```
+
+The one cost a jit framework charges that a steady-state sweep never sees, and
+that a user pays again on **every new input length**: trace, lower, XLA compile,
+plus one negligible execution, on a shape never compiled before. Minimum over
+three distinct fresh shapes — a single measurement varies by tens of percent and
+the first is systematically the highest. Base R has no compile step and does not
+appear.
+
+## Graph size {#sec-opcount}
+
+```{r}
+#| label: opcount-run
+
+## Non-constant StableHLO ops in the program each stack hands to XLA. A measure
+## of algorithm weight that is immune to framework dispatch overhead, so unlike
+## the timing panels it does not go stale as anvl's dispatch is optimised.
+##
+## Both stacks' MLIR is parsed by the one function below, so neither can be
+## counted by a rule the other is not.
+OPCOUNT_N <- 1000L
+
+## Opcodes in a StableHLO module, with calls expanded.
+##
+## Counting op *occurrences in the text* is wrong the moment a module outlines
+## anything: JAX lowers polynomial evaluation to a private `@polyval` function
+## and calls it once per polynomial, so its Horner chain appears once in the text
+## and runs five times, while anvl's tracer emits one flat graph with every chain
+## written out. Textually that reads as JAX using a third of the ops; expanding
+## each call by its callee's body compares the two programs rather than their
+## formatting. Constants are excluded throughout -- they are data, not work.
+## The two stacks do not print MLIR identically -- JAX writes
+## `func.func public @main(%arg0: ...)`, anvl writes `func.func @main (%0: ...)`
+## with no visibility keyword and a space before the paren, and anvl uses the
+## quoted generic form `"stablehlo.add" (%1, %2)` for most ops. Both spellings
+## have to be accepted, and a module that parses to *no* functions is a parser
+## failure, not an empty graph: silently returning nothing here dropped every
+## anvl row from this panel once already, leaving a table that looked fine and
+## compared JAX against itself.
+expand_ops <- function(txt) {
+  lines <- strsplit(txt, "\n", fixed = TRUE)[[1L]]
+  cur <- NA_character_; body <- list(); calls <- list()
+  for (ln in lines) {
+    m <- regmatches(ln, regexec(
+      "func\\.func\\s+(?:public\\s+|private\\s+)?@([A-Za-z0-9_.]+)\\s*\\(",
+      ln))[[1L]]
+    if (length(m) == 2L) {
+      cur <- m[2L]; body[[cur]] <- character(); calls[[cur]] <- character()
+      next
+    }
+    if (is.na(cur)) next
+    cm <- regmatches(ln, regexec(
+      "\\bcall\"?\\s+@([A-Za-z0-9_.]+)\\s*\\(", ln))[[1L]]
+    if (length(cm) == 2L) { calls[[cur]] <- c(calls[[cur]], cm[2L]); next }
+    o <- regmatches(ln, gregexpr("(stablehlo|chlo)\\.[a-z_0-9]+", ln))[[1L]]
+    o <- o[!grepl("constant", o)]
+    if (length(o)) body[[cur]] <- c(body[[cur]], o)
+  }
+  if (!length(body))
+    stop("expand_ops(): no `func.func` found -- the MLIR spelling has changed ",
+         "and the op-count panel would silently omit this stack.")
+  entry <- if ("main" %in% names(body)) "main" else names(body)[1L]
+  active <- character()
+  resolve <- function(fn) {
+    if (is.null(body[[fn]]) || fn %in% active) return(character())  # cycle guard
+    active <<- c(active, fn)
+    out <- body[[fn]]
+    for (callee in calls[[fn]]) out <- c(out, resolve(callee))
+    active <<- setdiff(active, fn)
+    out
+  }
+  resolve(entry)
+}
+
+anvl_mlir <- function(log_p, op, dt) tryCatch({
+  fn <- if (op == "value") {
+    function(z) nv_qnorm(z, log_p = log_p)
+  } else {
+    value_and_gradient(function(z) nv_reduce_sum(nv_qnorm(z, log_p = log_p)),
+                       wrt = "z")
+  }
+  g <- trace_fn(fn, list(z = nv_aval(shape = OPCOUNT_N, dtype = dt)),
+                mode = "toplevel")
+  out <- stablehlo(g, donate = character(), donate_unaliased_outputs = TRUE,
+                   platform = "cpu")
+  paste(stablehlo::repr(out[[1L]]), collapse = "\n")
+}, error = function(e) NA_character_)
+
+op_rows <- list()
+for (v in VARIANTS) for (dt in DTYPES) for (op in c("value", "value+grad")) {
+  txt <- anvl_mlir(v$log_p, op, dt)
+  if (is.na(txt)) next
+  op_rows[[length(op_rows) + 1L]] <- data.frame(
+    dtype = dt, variant = v$id, op = op, method = M_ANVL,
+    opcode = expand_ops(txt))
+}
+if (USEJAX) {
+  oj <- file.path(WORK, "opcount_jax.json")
+  run_py_chunk("opcount-jax-src", c(sprintf("PJ_N=%d", OPCOUNT_N),
+                                    sprintf("PJ_OUT=%s", oj)))
+  jo <- fromJSON(oj, simplifyVector = TRUE)
+  ## How many polynomial evaluations JAX's value graph performs, counted rather
+  ## than asserted: every one is unconditional, and selected between afterwards.
+  JAX_POLY <- local({
+    k <- which(jo$dtype == "f64" & jo$variant == "value" & jo$op == "value")[1L]
+    m <- gregexpr("call @polyval", jo$mlir[k], fixed = TRUE)[[1L]]
+    if (m[1L] == -1L) NA_integer_ else length(m)
+  })
+  for (i in seq_len(nrow(jo))) {
+    o <- expand_ops(jo$mlir[i])
+    op_rows[[length(op_rows) + 1L]] <- data.frame(
+      dtype = jo$dtype[i], variant = jo$variant[i], op = jo$op[i],
+      method = M_JAX, opcode = o)
+  }
+}
+opcode_df <- dplyr::bind_rows(op_rows)
+opcode_df$variant_label <- VAR_LABEL[opcode_df$variant]
+
+## Share of the graph that moves values into position rather than computing on
+## them. Computed rather than transcribed into the prose below, so it cannot
+## drift from the artifact.
+SHAPING_OPS <- paste0("stablehlo.",
+                      c("broadcast_in_dim", "convert", "slice", "reshape"))
+op_slice <- function(m, dt) {
+  dplyr::filter(opcode_df, method == m, dtype == dt, variant == "value",
+                op == "value")
+}
+pct <- function(m, dt) {
+  d <- op_slice(m, dt)
+  if (!nrow(d)) return("n/a")
+  sprintf("%.0f%%", 100 * mean(d$opcode %in% SHAPING_OPS))
+}
+## Total, or arithmetic only, for the value graph of one stack and dtype.
+op_n <- function(m, dt, what = "total") {
+  d <- op_slice(m, dt)
+  if (!nrow(d)) return(NA_integer_)
+  if (identical(what, "total")) nrow(d) else sum(!d$opcode %in% SHAPING_OPS)
+}
+## What the log_p variant costs anvl over the plain one, in ops.
+LOGP_DELTA <- local({
+  n <- table(dplyr::filter(opcode_df, method == M_ANVL, dtype == "f64",
+                           op == "value")$variant)
+  as.integer(n[["log"]] - n[["value"]])
+})
+```
+
+### As handed to XLA
+
+```{r}
+#| label: opcount-table
+#| echo: false
+opcode_df |>
+  dplyr::group_by(dtype, variant = variant_label, op, method) |>
+  dplyr::summarise(`non-constant ops` = dplyr::n(),
+                   arithmetic = sum(!opcode %in% SHAPING_OPS),
+                   shaping = sum(opcode %in% SHAPING_OPS),
+                   `chlo composites` = sum(startsWith(opcode, "chlo.")),
+                   `distinct opcodes` = dplyr::n_distinct(opcode),
+                   .groups = "drop") |>
+  dplyr::arrange(dtype, variant, op, method) |>
+  datatable(rownames = FALSE, filter = "top",
+            options = list(pageLength = 8, scrollX = TRUE))
+```
+
+How much work each stack asks XLA to do, independent of what the framework
+charges to dispatch it. Both sides are read at the
+same stage (the StableHLO handed to XLA: `trace_fn()` → `stablehlo()` for anvl,
+`jit(...).lower(x).as_text()` for JAX) and parsed by the same function, with
+`stablehlo.constant` excluded because a constant is data rather than work. Base R
+has no traced graph at all — it calls compiled C — so it has no entry here.
+
+**Calls are expanded.** The two stacks format the same program differently: JAX
+outlines polynomial evaluation into a private `@polyval` function and calls it
+once per polynomial, whereas anvl's tracer writes every chain out into one flat
+graph. Counting op occurrences in the text would therefore charge JAX for one
+Horner chain where it runs `r if (USEJAX) "six" else "several"`, and made JAX
+look like it used a third of anvl's ops. Each call is expanded by its callee's
+body, so what is compared is the program rather than its formatting.
+
+```{r}
+#| label: opcount-note
+#| echo: false
+#| results: asis
+if (USEJAX) cat(sprintf(
+  "What the arithmetic column shows: the 32-bit coefficient sets cut anvl's value graph from %d arithmetic ops to %d, while JAX's stays at %d in both dtypes — it evaluates the same Cephes polynomials whatever the dtype, so narrowing buys it narrower arithmetic and nothing else. Two structural differences account for the rest. JAX evaluates **%d polynomials unconditionally** (all three rational pairs — central, tail, far tail) and selects afterwards; anvl selects between the tail and far-tail *coefficients* first, so it evaluates one tail rational rather than two. And anvl's `log_p = TRUE` graph costs only %d more op%s than its `log_p = FALSE` one, because the flag is static and the branch is resolved at trace time rather than compiled in.\n",
+  op_n(M_ANVL, "f64", "arithmetic"), op_n(M_ANVL, "f32", "arithmetic"),
+  op_n(M_JAX, "f64", "arithmetic"), JAX_POLY,
+  LOGP_DELTA, if (abs(LOGP_DELTA) == 1L) "" else "s"))
+```
+
+### After XLA optimisation
+
+```{r}
+#| label: hlo-run
+
+## The counts above are the program each stack *hands* to XLA. This is what XLA
+## made of it: the optimised, scheduled HLO of the executable that actually runs,
+## after inlining, constant folding, CSE and fusion.
+##
+## JAX exposes it directly (`.compile().as_text()`). anvl compiles through PJRT,
+## which has no such accessor, so the program is re-run in a subprocess under
+## XLA_FLAGS=--xla_dump_to and the dump is read back. A subprocess per cell, not
+## one for all of them: XLA_FLAGS is process-wide and dumps every compile it
+## sees, and this document compiles hundreds of graphs -- attribution would be
+## guesswork otherwise.
+SHAPING_HLO <- c("broadcast", "reshape", "bitcast", "copy", "convert", "slice",
+                 "transpose", "get-tuple-element", "tuple")
+STRUCTURAL_HLO <- c("fusion", "call", "custom-call")
+
+## Post-optimisation HLO is a different syntax from StableHLO -- instructions
+## read `%name = shape opcode(operands), metadata=...` -- so it needs its own
+## parser. Calls are expanded exactly as before, and `parameter`/`constant` are
+## dropped. Returns the whole program and, separately, the entry computation,
+## whose `fusion` instructions are the kernels that actually get launched.
+expand_hlo <- function(txt) {
+  lines <- strsplit(txt, "\n", fixed = TRUE)[[1L]]
+  cur <- NA_character_; entry <- NA_character_; body <- list(); calls <- list()
+  for (ln in lines) {
+    h <- regmatches(ln, regexec(
+      "^(ENTRY\\s+)?(%[A-Za-z0-9_.-]+)\\s*\\(.*\\{\\s*$", ln))[[1L]]
+    if (length(h) == 3L) {
+      cur <- h[3L]; body[[cur]] <- character(); calls[[cur]] <- character()
+      if (nzchar(h[2L])) entry <- cur
+      next
+    }
+    if (is.na(cur)) next
+    im <- regmatches(ln, regexec(
+      "^\\s+(?:ROOT\\s+)?%[A-Za-z0-9_.-]+\\s*=\\s*.*?([a-z][a-z0-9-]*)\\(",
+      ln, perl = TRUE))[[1L]]
+    if (length(im) != 2L) next
+    op <- im[2L]
+    if (op %in% c("constant", "parameter")) next
+    body[[cur]] <- c(body[[cur]], op)
+    cm <- regmatches(ln, gregexpr("calls=(%[A-Za-z0-9_.-]+)", ln))[[1L]]
+    if (length(cm)) calls[[cur]] <- c(calls[[cur]], sub("^calls=", "", cm))
+  }
+  if (is.na(entry))
+    stop("expand_hlo(): no ENTRY computation -- the HLO dump format has changed.")
+  active <- character()
+  resolve <- function(fn) {
+    if (is.null(body[[fn]]) || fn %in% active) return(character())
+    active <<- c(active, fn)
+    out <- body[[fn]]
+    for (callee in calls[[fn]]) out <- c(out, resolve(callee))
+    active <<- setdiff(active, fn)
+    out
+  }
+  list(all = resolve(entry), entry = body[[entry]])
+}
+
+## Compile one cell in a fresh R subprocess with HLO dumping on, and read back
+## the post-optimisation module. Returns NA if the plugin declined to dump.
+anvl_hlo <- function(log_p, op, dt) tryCatch({
+  dd <- file.path(WORK, sprintf("hlo_%s_%s_%s", dt, log_p, gsub("\\W", "", op)))
+  dir.create(dd, showWarnings = FALSE, recursive = TRUE)
+  script <- file.path(dd, "cell.R")
+  writeLines(c(
+    "suppressPackageStartupMessages(library(anvl))",
+    sprintf("a <- nv_array(runif(%d), dtype = '%s')", OPCOUNT_N, dt),
+    if (op == "value") {
+      sprintf("invisible(as.vector(nv_qnorm(a, log_p = %s)))", log_p)
+    } else {
+      c(sprintf(paste0("vg <- jit(value_and_gradient(function(z) ",
+                       "nv_reduce_sum(nv_qnorm(z, log_p = %s)), wrt = 'z'))"),
+                log_p),
+        "r <- vg(a)",
+        "invisible(as.vector(r$value)); invisible(as.vector(r$grad[[1L]]))")
+    }), script)
+  system2(file.path(R.home("bin"), "Rscript"), shQuote(script),
+          env = quote_env(c(
+            sprintf("XLA_FLAGS=--xla_dump_to=%s --xla_dump_hlo_as_text", dd),
+            paste0("PJRT_PLATFORM=", DEVICE))),
+          stdout = FALSE, stderr = FALSE)
+  ## cpu_ or gpu_ depending on the device. If more than one module was dumped,
+  ## keep the largest -- an incidental transfer/convert module is tiny next to
+  ## the kernel under test.
+  f <- list.files(dd, pattern = "_after_optimizations\\.txt$", full.names = TRUE)
+  if (!length(f)) return(NA_character_)
+  paste(readLines(f[which.max(file.size(f))]), collapse = "\n")
+}, error = function(e) NA_character_)
+
+hlo_summ <- list(); hlo_codes <- list()
+add_hlo <- function(txt, dt, vid, op, method) {
+  if (is.na(txt)) return(invisible(NULL))
+  r <- expand_hlo(txt)
+  hlo_summ[[length(hlo_summ) + 1L]] <<- data.frame(
+    dtype = dt, variant = vid, op = op, method = method,
+    instructions = length(r$all),
+    arithmetic = sum(!r$all %in% c(SHAPING_HLO, STRUCTURAL_HLO)),
+    shaping = sum(r$all %in% SHAPING_HLO),
+    kernels = sum(r$entry == "fusion"))
+  hlo_codes[[length(hlo_codes) + 1L]] <<- data.frame(
+    dtype = dt, variant = vid, op = op, method = method, opcode = r$all)
+}
+
+for (v in VARIANTS) for (dt in DTYPES) for (op in c("value", "value+grad")) {
+  add_hlo(anvl_hlo(v$log_p, op, dt), dt, v$id, op, M_ANVL)
+}
+if (USEJAX) {
+  for (i in seq_len(nrow(jo))) {
+    add_hlo(jo$hlo[i], jo$dtype[i], jo$variant[i], jo$op[i], M_JAX)
+  }
+}
+hlo_df <- dplyr::bind_rows(hlo_summ)
+hlo_codes_df <- dplyr::bind_rows(hlo_codes)
+if (nrow(hlo_df)) hlo_df$variant_label <- VAR_LABEL[hlo_df$variant]
+```
+
+```{r}
+#| label: hlo-table
+#| echo: false
+if (!nrow(hlo_df)) {
+  htmltools::HTML("<em>No post-optimisation HLO was available: the PJRT plugin did not honour <code>--xla_dump_to</code>.</em>")
+} else {
+  hlo_df |>
+    dplyr::transmute(dtype, variant = variant_label, op, method,
+                     instructions, arithmetic, shaping, kernels) |>
+    dplyr::arrange(dtype, variant, op, method) |>
+    datatable(rownames = FALSE, filter = "top",
+              options = list(pageLength = 8, scrollX = TRUE))
+}
+```
+
+The same program after XLA has finished with it — inlined, constant-folded,
+CSE'd and fused — which is what actually executes. `kernels` counts the `fusion`
+instructions in the entry computation, i.e. how many separate passes over the
+data the executable makes.
+
+```{r}
+#| label: hlo-note
+#| echo: false
+#| results: asis
+if (nrow(hlo_df) && USEJAX) {
+  g <- function(m, dt, col) {
+    d <- dplyr::filter(hlo_df, method == m, dtype == dt, variant == "value",
+                       op == "value")
+    if (!nrow(d)) NA_integer_ else d[[col]][1L]
+  }
+  ## `shaping` pools several opcodes; the sentence below names `broadcast`, so
+  ## count that one rather than letting the pooled figure stand in for it.
+  bcast <- function(m, dt) sum(dplyr::filter(
+    hlo_codes_df, method == m, dtype == dt, variant == "value",
+    op == "value")$opcode == "broadcast")
+}
+```
+
+::: {.callout-note title="Every opcode, per graph and stage" collapse="true"}
+```{r}
+#| label: opcount-detail
+#| echo: false
+dplyr::bind_rows(
+  dplyr::mutate(opcode_df[, c("dtype", "variant_label", "op", "method",
+                              "opcode")],
+                stage = "handed to XLA (StableHLO)"),
+  if (nrow(hlo_codes_df)) {
+    hlo_codes_df |>
+      dplyr::mutate(variant_label = VAR_LABEL[variant],
+                    stage = "after XLA (HLO)") |>
+      dplyr::select(dtype, variant_label, op, method, opcode, stage)
+  }) |>
+  dplyr::count(stage, dtype, variant = variant_label, op, method, opcode,
+               name = "count") |>
+  dplyr::arrange(stage, dtype, variant, op, method, dplyr::desc(count)) |>
+  datatable(rownames = FALSE, filter = "top",
+            options = list(pageLength = 15, scrollX = TRUE))
+```
+:::
+
+# Accuracy
+
+```{r}
+#| label: gold
+
+## --- 512-bit Rmpfr ground truth -------------------------------------------
+##
+## Phi^-1 is obtained by Newton in *log* space, log Phi(Q) = lp, which stays
+## well-scaled at any depth: a direct Phi(Q) = p iteration dies once p underflows.
+## Seeded from base R's qnorm, which is accurate enough to converge in a few
+## steps; convergence is asserted below via the returned relative residual.
+
+## MPFR's default exponent floor is 2^(1-2^30), so erfc(-Q/sqrt(2)) underflows to
+## zero -- silently, giving log(0) = -Inf -- once Q^2/2 exceeds ~7.4e8, i.e. at
+## |Q| ~ 3.86e4, well inside the range a log-probability input can reach. Widen
+## as far as the build allows; this is global MPFR state and widening it can only
+## remove spurious underflow.
+for (.e in c(2^61, 2^40, 2^31)) {
+  suppressWarnings(.mpfr_erange_set("Emin", -.e))
+  if (.mpfr_erange("Emin") <= -.e) break
+}
+
+pi_m <- Const("pi", PREC)
+s2   <- sqrt(mpfr(2, PREC))
+l2pi <- log(2 * pi_m)
+
+## Even widened, the erfc route dies at log Phi ~ 2^Emin. Past that, switch to the
+## Mills asymptotic, which has no such limit. 0.9 keeps a margin.
+Q_ERFC_MAX <- sqrt(2 * log(2) * abs(as.numeric(.mpfr_erange("Emin"))) * 0.9)
+
+## log(1 - 1/t^2 + 3/t^4 - 15/t^6 + ...), the bracket of the Mills-ratio
+## asymptotic for the lower tail. Only ever called at t > Q_ERFC_MAX (~1.7e9),
+## where successive terms fall by ~19 decades each. The loop stops on term
+## magnitude rather than a fixed count, so it stays correct if the switch moves.
+mills_log <- function(t) {
+  neg_it2 <- -1 / (t * t)
+  term <- mpfr(rep(1, length(t)), PREC)
+  s <- term
+  tiny <- mpfr(2, PREC)^(-(PREC + 16L))
+  for (k in seq_len(200L)) {
+    term <- term * (2 * k - 1) * neg_it2
+    s <- s + term
+    if (max(abs(term)) < tiny) break
+  }
+  log(s)
+}
+
+## log Phi, cancellation-free on both sides and valid at any depth. The deep
+## branch never materialises Phi itself, which is the point: the direct form
+## underflows long before the quantile domain does (a log-probability input
+## reaches |x| ~ 1.9e154).
+logPhi_m <- function(Q) {
+  out <- Q
+  fin <- is.finite(Q)
+  deep <- fin & Q < -Q_ERFC_MAX
+  lo <- fin & !deep & Q <= 0
+  hi <- fin & !deep & Q > 0
+  if (any(deep)) {
+    t <- -Q[deep]
+    out[deep] <- -t * t / 2 - l2pi / 2 - log(t) + mills_log(t)
+  }
+  if (any(lo)) out[lo] <- log(0.5 * erfc(-Q[lo] / s2))
+  if (any(hi)) out[hi] <- log1p(-0.5 * erfc(Q[hi] / s2))
+  out
+}
+logphi_m <- function(Q) -Q * Q / 2 - l2pi / 2
+Phi_m <- function(x) 0.5 * erfc(-x / s2)
+
+## Newton on g(Q) = log Phi(Q) - lp, with g'(Q) = phi(Q)/Phi(Q).
+solve_q <- function(lp, seed) {
+  Q <- mpfr(seed, PREC)
+  for (k in 1:8) Q <- Q - (logPhi_m(Q) - lp) / exp(logphi_m(Q) - logPhi_m(Q))
+  Q
+}
+
+## Deep lower tail, where log Phi(Q) and lp are both ~ -Q^2/2 and Newton's
+## `log Phi(Q) - lp` subtracts two nearly equal huge numbers -- costing
+## log2(Q^2 / (2 log|Q|)) bits, so by |Q| ~ 2e78 nothing 512 bits can hold
+## survives. Solve instead for u = Q^2/2, where the same equation reads
+##   u = s - log(4 pi u)/2 + mills_log(sqrt(2u)),   s = -lp,
+## and the correction is subtracted *from* a large number instead of *between*
+## two of them, so u keeps full relative precision at any depth. The map
+## contracts like 1/(2u); the last step is a conservative stand-in for the error.
+solve_deep <- function(s) {
+  u <- s; du <- s
+  for (k in 1:6) {
+    u_new <- s - log(4 * pi_m * u) / 2 + mills_log(sqrt(2 * u))
+    du <- u_new - u
+    u <- u_new
+  }
+  t <- sqrt(2 * u)
+  list(Q = -t,
+       ## dQ/dlp = Phi/phi = M(t)/t, formed directly: the exp(lp - logphi) route
+       ## subtracts two ~Q^2/2 quantities and loses the lot.
+       grad = exp(mills_log(t)) / t,
+       rel = as.numeric(abs(du) / (2 * u)))          # |dQ/Q| = |du| / (2u)
+}
+
+## The double-precision input that targets quantile x.
+gold_inputs <- function(x, log_p) {
+  xm <- mpfr(x, PREC)
+  as.numeric(if (log_p) logPhi_m(xm) else Phi_m(xm))
+}
+
+## Value and derivative at the *exact* input supplied (not at the nominal grid
+## point), plus the solver's own relative residual. Must tolerate inputs the f64
+## grid never produces -- a probability that has rounded to 0 or 1, or a log
+## probability rounded to 0 -- since it is called once per dtype at the narrowed
+## input; those are marked NaN and dropped by the caller's `keep` filter.
+gold_eval <- function(input, log_p) {
+  lp_d <- if (log_p) input else base::log(input)
+  ok <- is.finite(lp_d) & lp_d < 0                    # strictly 0 < p < 1
+  n <- length(input)
+  value <- mpfr(rep(NaN, n), PREC)
+  grad  <- mpfr(rep(NaN, n), PREC)
+  residual <- rep(0, n)
+  if (any(ok)) {
+    lp <- if (log_p) mpfr(input[ok], PREC) else log(mpfr(input[ok], PREC))
+    m <- sum(ok)
+    Q <- mpfr(rep(0, m), PREC); gr <- mpfr(rep(0, m), PREC); res <- numeric(m)
+    deep <- lp < -(Q_ERFC_MAX^2 / 2)                  # same split as logPhi_m
+    if (any(!deep)) {
+      pin <- input[ok][!deep]
+      seed <- if (log_p) stats::qnorm(pin, log.p = TRUE) else stats::qnorm(pin)
+      q <- solve_q(lp[!deep], seed)
+      Q[!deep] <- q
+      ## dQ/dp = 1/phi(Q); dQ/dlog p = Phi(Q)/phi(Q) = exp(lp - logphi(Q)).
+      gr[!deep] <- if (log_p) exp(lp[!deep] - logphi_m(q)) else exp(-logphi_m(q))
+      ## The residual must be *relative*: Newton's is in log Phi, so divide by
+      ## dlogPhi/dQ to get dQ, then by |Q|. An absolute bound would be
+      ## meaningless -- at |Q| ~ 1e15 a perfect 512-bit root still leaves
+      ## |dlogPhi| ~ 1e-124, and by |Q| ~ 1e154 it exceeds 1.
+      dQ <- (logPhi_m(q) - lp[!deep]) * exp(logPhi_m(q) - logphi_m(q))
+      res[!deep] <- as.numeric(abs(dQ) / abs(q))
+    }
+    if (any(deep)) {
+      d <- solve_deep(-lp[deep])
+      Q[deep] <- d$Q
+      gr[deep] <- d$grad                # deep is only reachable with log_p = TRUE
+      res[deep] <- d$rel
+    }
+    value[ok] <- Q; grad[ok] <- gr; residual[ok] <- res
+  }
+  list(value = value, grad = grad, residual = residual)
+}
+```
+
+```{r}
+#| label: acc-grid
+
+## --- the accuracy grid, specified in target quantiles x --------------------
+##
+## Specify the grid in terms of the *output*, and derive the input from it
+## through the mpfr reference. Specifying inputs directly is how a grid ends up
+## silently never reaching the tail: a linear or even log-uniform ladder in p
+## cannot place a point at x = -1e100.
+
+## Dense through the body, then a geometric ladder into each tail.
+tail_ladder <- function(to, dense_to = 3, dense_by = 0.2, n_tail = 28) {
+  if (to <= dense_to) return(seq(dense_by, to, by = dense_by))
+  c(seq(dense_by, dense_to, by = dense_by),
+    exp(seq(log(dense_to * 1.15), log(to), length.out = n_tail)))
+}
+grid_symmetric <- function(to, upper_to = to, n_tail = 28, n_tail_upper = n_tail) {
+  sort(unique(c(-tail_ladder(to, n_tail = n_tail),
+                tail_ladder(upper_to, n_tail = n_tail_upper))))
+}
+## Pin a regime boundary with a point either side of it, and one on it. A ladder
+## that merely passes within a few percent of a seam does not test it: both
+## branches agree there, and the failures worth finding are visible only across
+## the cut itself.
+straddle <- function(z, rel = 1e-9) sort(c(z * (1 - rel), z, z * (1 + rel)))
+
+## The Cephes branch cuts, as target quantiles |x|, derived from the thresholds
+## the code actually tests rather than typed as decimals. Both anvl and JAX
+## evaluate the same two regimes on the smaller tail probability t:
+##   t >  e^-2     central rational in w = t - 1/2
+##   t <= e^-2     tail rational in 1/z, z = sqrt(-2 log t), refitted at z = 8.
+r_seam <- function(rp) abs(stats::qnorm(-rp^2, log.p = TRUE))
+SEAMS <- c(r_seam(sqrt(2)), r_seam(sqrt(32)))    # central<->tail, z = 8
+NEAR_CENTRE <- c(0.001, 0.01, 0.05)              # approaches the p = 1/2 reflection
+
+## Reachability is strongly asymmetric, and differently so per variant.
+##  * log_p = FALSE: p in [~2.2e-308, 1-eps] maps to x in [-37.5, +8.2] -- the
+##    left tail is deep, the right capped eight sigma out. (In f32 the cap is
+##    tighter still, x <= +5.29, because 1-p cannot be resolved below 2^-24; the
+##    grid points that collapse are dropped automatically.)
+##  * log_p = TRUE: the left tail runs to x ~ -1.9e154, the deepest a double log
+##    probability can express, and the right still reaches ~ +37.
+ACC_X <- list(
+  value = c(grid_symmetric(to = 37, upper_to = 8.2, n_tail = 34),
+            outer(c(-1, 1), straddle(SEAMS)), outer(c(-1, 1), NEAR_CENTRE)),
+  ## Dense to just past the last seam, then a sparse ladder over the remaining
+  ## 145 decades -- one geometric ladder across the whole range would step by
+  ## five orders at a time and vault straight over the cuts.
+  log   = c(grid_symmetric(to = 2e9, upper_to = 35, n_tail = 60,
+                           n_tail_upper = 26),
+            -10^seq(9.5, 154, length.out = 16),
+            outer(c(-1, 1), straddle(SEAMS)), outer(c(-1, 1), NEAR_CENTRE))
+)
+## Reduce for a quick render, always keeping both extremes.
+thin_grid <- function(x, n = 15L) {
+  if (length(x) <= n) return(x)
+  idx <- unique(round(seq(1, length(x), length.out = n)))
+  sort(unique(c(x[1], x[idx], x[length(x)])))
+}
+prep_targets <- function(x) {
+  x <- sort(unique(as.numeric(x)))
+  x <- x[x != 0]              # Phi^-1(1/2) = 0 exactly; a relative error is 0/0
+  if (FULL) x else thin_grid(x)
+}
+```
+
+```{r}
+#| label: acc-run
+
+## Evaluate JAX on inputs chosen by R. One subprocess per call; `variants` is a
+## list of list(id, log_p, inputs).
+JAX_VER <- NA_character_
+jax_eval <- function(variants, dtypes, tag) {
+  if (!USEJAX) return(NULL)
+  sf <- file.path(WORK, paste0("accspec_", tag, ".json"))
+  ## digits = 17 round-trips f64 exactly; jsonlite's NA/I() do NOT, and would
+  ## turn 1 - 1e-16 into 1, i.e. a probability into a boundary.
+  ## as.list() keeps a single dtype a JSON array: auto_unbox would turn "f64"
+  ## into a bare string, which python then iterates over character by character.
+  write_json(list(variants = variants, dtypes = as.list(dtypes)), sf,
+             digits = 17, auto_unbox = TRUE)
+  of <- file.path(WORK, paste0("acc_", tag, ".json"))
+  run_py_chunk("acc-jax-src", c(sprintf("PJ_SPEC=%s", sf), sprintf("PJ_OUT=%s", of)))
+  jx <- fromJSON(of, simplifyVector = TRUE)
+  JAX_VER <<- jx$meta$jax
+  jx$data
+}
+## The python side tags non-finite results as "inf" / "-inf" / "nan", so a mixed
+## array arrives as character; map it back rather than letting as.numeric() turn
+## all three into an undifferentiated NA.
+as_num <- function(z) {
+  if (is.numeric(z)) return(as.numeric(z))
+  if (is.list(z)) {
+    z[vapply(z, is.null, TRUE)] <- NA_real_
+    z <- unlist(z)
+  }
+  z <- as.character(z)
+  out <- suppressWarnings(as.numeric(z))
+  out[z == "inf"] <- Inf
+  out[z == "-inf"] <- -Inf
+  out[z == "nan"] <- NaN
+  out
+}
+
+## The whole accuracy pipeline for one set of target grids, run for each dtype:
+## targets -> exact input -> narrow to dtype -> reference at the narrowed input
+## -> all three implementations on that same input.
+run_accuracy <- function(targets, dtypes, grid_label, tag) {
+  spec <- list(); store <- list()
+  for (v in VARIANTS) {
+    x_all <- prep_targets(targets[[v$id]])
+    input_f64 <- gold_inputs(x_all, v$log_p)
+    ## JAX receives the f64 inputs and narrows them itself, exactly as anvl does,
+    ## so both stacks see bit-identical values in each dtype.
+    spec[[length(spec) + 1L]] <- list(id = v$id, log_p = v$log_p,
+                                      inputs = input_f64)
+    store[[v$id]] <- list(x_all = x_all, input_f64 = input_f64)
+  }
+  jx <- jax_eval(spec, dtypes, tag)
+
+  rows <- list()
+  for (v in VARIANTS) {
+    x_all <- store[[v$id]]$x_all
+    for (dt in dtypes) {
+      input <- round_to_dtype(store[[v$id]]$input_f64, dt)
+      g <- gold_eval(input, v$log_p)
+      ## Drop points where the reference itself is unusable (an input that has
+      ## rounded onto a boundary) rather than reporting a meaningless error, and
+      ## points whose input has collapsed onto one already covered -- in a narrow
+      ## dtype whole stretches of the grid land on the same value.
+      keep <- is.finite(g$value) & g$value != 0 & is.finite(g$grad) &
+        !duplicated(input)
+      x <- x_all[keep]; inp <- input[keep]
+      gv <- g$value[keep]; gg <- g$grad[keep]
+      ## The reference's own solver must have converged, in relative terms.
+      stopifnot(max(g$residual[keep]) < 1e-40)
+
+      arr <- nv_array(inp, dtype = dt)
+      av <- anvl_value(arr, v$log_p)
+      ag <- as.vector(anvl_grad_fn(v$log_p)(arr)[[1L]])
+      add <- function(method, op, computed, gold_m) {
+        rows[[length(rows) + 1L]] <<- data.frame(
+          grid = grid_label, variant = v$id, variant_label = VAR_LABEL[[v$id]],
+          dtype = dt, method = method, op = op, x = x, input = inp,
+          computed = computed, rel_err = rel_err(computed, gold_m),
+          ulp = ulp_vs_gold(computed, gold_m, dt))
+      }
+      add(M_ANVL, "value", av, gv)
+      add(M_ANVL, "gradient", ag, gg)
+      if (identical(dt, "f64")) {           # base R is double precision only
+        rv <- r_value(inp, v$log_p)
+        add(M_R, "value", rv, gv)
+        add(M_R, "gradient", r_grad(inp, v$log_p, rv), gg)
+      }
+      if (USEJAX) {
+        e <- jx[[v$id]][[dt]]
+        add(M_JAX, "value", as_num(e$value)[keep], gv)
+        add(M_JAX, "gradient", as_num(e$grad)[keep], gg)
+      }
+    }
+  }
+  dplyr::bind_rows(rows)
+}
+
+acc_df <- run_accuracy(ACC_X, DTYPES, "curated grid", "curated")
+```
+
+Relative error against the `r PREC`-bit `Rmpfr` ground truth — **all three
+implementations against the same reference, on bit-identical inputs**. The grid
+is specified in *target quantiles* $x$ and the input is derived from it as
+$\Phi(x)$ (or $\log\Phi(x)$) in `Rmpfr`, which is what gives controlled coverage
+of the deep tail; the reference is then evaluated at the input **after narrowing
+to the dtype under test**, since that is the value the kernel actually receives.
+(Scoring an `f32` run against an `f64`-input reference charges the caller's
+rounding to the algorithm and makes every implementation report the same error.)
+Grid points whose narrowed input collapses onto one already covered are dropped,
+so a narrow dtype shows fewer points rather than repeats.
+
+The $x$-axis is a **signed-log** of the target quantile, so both tails and the
+body are visible at once; $y$ is log relative error. The dotted line marks 100%
+relative error; triangles in the upper band are results worse than 1000%,
+parked there so a single enormous error cannot flatten the rest of the panel
+(the true figure is in the tooltip), and $\times$ markers in the top band are
+non-finite results. Hover for exact values.
+
+One asymmetry to read the gradient panels with: base R's derivative is the
+analytic $p/\phi(x)$ composed as `exp(lp - dnorm(q, log = TRUE))`, which is exact
+in principle but subtracts two quantities of size $x^2/2$ in the exponent. Deep
+in the log tail those are both $\sim 10^{307}$ and nothing survives the
+subtraction — a property of composing the derivative by hand, not of `qnorm`
+itself, and precisely the arithmetic that reverse-mode AD does not have to do.
+
+```{r}
+#| label: acc-plot-fn
+
+## Two bands above the data. A relative error can be arbitrarily large here --
+## base R's composed log-input derivative reaches 1e154 where the exponent
+## cancels -- and one such point would stretch a shared log axis over 170 decades
+## and flatten everything else into a line. Anything past CLIP_HI is parked on
+## its own marker with the true figure in the tooltip; non-finite results get a
+## second band above that.
+CLIP_HI <- 10                               # 1000% relative error
+UF_Y <- 60                                  # marker band for non-finite results
+FLOOR_CLIP <- 1e-18
+## Axis breaks are chosen per panel, from the panel's own slog limits: the
+## log_p = TRUE panel spans 154 decades, where a break set fine enough for the
+## other panel piles half a dozen labels on top of each other next to the origin.
+inv_slog <- function(y) sign(y) * (10^abs(y) - 1)
+acc_breaks <- function(lims) {
+  mx <- max(abs(lims), na.rm = TRUE)
+  cand <- if (mx > 40) c(0, 1e10, 1e40, 1e80, 1e120, 1e150)
+          else c(0, 1, 3, 8, 30, 100, 1e3, 1e6, 1e9)
+  b <- slog(sort(unique(c(-cand, cand)))) + 0        # + 0 normalises -0 to 0
+  b[b >= lims[1] & b <= lims[2]]
+}
+acc_labels <- function(b) {
+  v <- inv_slog(b) + 0
+  ifelse(abs(v) < 1e4, formatC(round(v), format = "d"),
+         formatC(v, format = "g", digits = 2))
+}
+
+acc_plot <- function(dt, which_op) {
+  d <- dplyr::filter(acc_df, dtype == dt, op == which_op)
+  d$status <- ifelse(is.na(d$rel_err), "non-finite",
+                     ifelse(d$rel_err > CLIP_HI, "off scale", "ok"))
+  d$re_plot <- ifelse(d$status == "ok", pmax(d$rel_err, FLOOR_CLIP),
+                      ifelse(d$status == "off scale", CLIP_HI, UF_Y))
+  d$tt <- sprintf("x = %.6g\n%s: %s\nvalue = %.10g\nulp = %.3g",
+                  d$x, d$method,
+                  ifelse(d$status == "non-finite", "non-finite",
+                         formatC(d$rel_err, format = "e", digits = 2)),
+                  d$computed, d$ulp)
+  g <- ggplot(d, aes(slog(x), re_plot, colour = method, group = method,
+                     text = tt)) +
+    geom_hline(yintercept = 1, linetype = "dotted", colour = "grey60") +
+    geom_line(data = subset(d, status == "ok"), linewidth = 0.4) +
+    geom_point(aes(shape = status), size = 1.2) +
+    facet_wrap(~variant_label, scales = "free_x", ncol = 1) +
+    ## Label the signed-log axis in the original x, not in slog(x): the log_p
+    ## panel spans 154 decades, and an unlabelled slog tick reading "-150" would
+    ## be read as x = -150 rather than x = -1e150. Free scales mean each panel
+    ## keeps only the breaks inside its own range.
+    scale_x_continuous(breaks = acc_breaks, labels = acc_labels) +
+    scale_y_log10() +
+    scale_shape_manual(values = c(ok = 16, `off scale` = 17, `non-finite` = 4),
+                       guide = "none") +
+    scale_colour_manual(values = PAL) +
+    labs(x = "target quantile x (signed-log scale)", y = "relative error",
+         colour = NULL,
+         title = sprintf("%s-bit %s — relative error vs %d-bit mpfr",
+                         sub("f", "", dt), which_op, PREC)) +
+    theme_minimal(base_size = 12)
+  ggplotly(g, tooltip = "text") |> legend_below()
+}
+```
+
+## 64-bit
+
+```{r}
+#| label: acc-f64-value
+acc_plot("f64", "value")
+```
+
+```{r}
+#| label: acc-f64-grad
+acc_plot("f64", "gradient")
+```
+
+## 32-bit
+
+```{r}
+#| label: acc-f32-value
+acc_plot("f32", "value")
+```
+
+```{r}
+#| label: acc-f32-grad
+acc_plot("f32", "gradient")
+```
+
+## Dense random sweep
+
+```{r}
+#| label: acc-dense
+
+## A curated grid answers "is every seam and extreme right"; it cannot answer
+## "what is the worst case", because it can only ever report the worst of the
+## points someone thought to include. This does the complementary job: random
+## targets filling the gaps *between* consecutive grid points, f64 only (that is
+## where the accuracy claims live, and a second dtype would double the mpfr cost
+## for no new question).
+##
+## Sampling between adjacent pairs rather than log-uniformly across the whole
+## reach matters once a variant spans 157 decades: a flat draw would put almost
+## every point past |x| = 1e3, where a single asymptotic holds, and none in the
+## body where the fitted rationals live. Interpolating the grid inherits the
+## density the grid already encodes.
+dense_targets <- function(acc_x, n) {
+  x <- acc_x[acc_x != 0 & is.finite(acc_x)]
+  out <- numeric()
+  for (s in c(-1, 1)) {
+    side <- sort(unique(abs(x[sign(x) == s])))
+    if (length(side) < 2L) next
+    k <- max(1L, round(n * length(side) / length(x)))
+    i <- sample.int(length(side) - 1L, k, replace = TRUE)
+    out <- c(out, s * 10^stats::runif(k, log10(side[i]), log10(side[i + 1L])))
+  }
+  out
+}
+set.seed(SEED)
+dense_x <- lapply(ACC_X, dense_targets, n = DENSE_N)
+dense_df <- run_accuracy(dense_x, "f64", "dense random", "dense")
+```
+
+```{r}
+#| label: acc-summary
+#| echo: false
+
+## Deliberately long rather than pivoted: pivoting orders the value/gradient
+## columns alphabetically, which makes the two easy to misread.
+##
+## `worst rel err` is a maximum over the points that produced a number, so on its
+## own it flatters an implementation that declines to produce one. Two companion
+## columns stop that: `non-finite` counts Inf/NaN, and `zeroed` counts points
+## returned as exactly 0 against a non-zero reference -- a silent wrong answer,
+## which in a sampler is worse than a NaN because nothing downstream notices.
+summ <- dplyr::bind_rows(acc_df, dense_df) |>
+  dplyr::group_by(grid, dtype, variant_label, op, method) |>
+  dplyr::summarise(
+    n = dplyr::n(),
+    `worst rel err` = suppressWarnings(max(rel_err, na.rm = TRUE)),
+    `worst ulp` = suppressWarnings(max(ulp, na.rm = TRUE)),
+    `worst at x` = x[which.max(replace(rel_err, is.na(rel_err), -1))],
+    `non-finite` = sum(!is.finite(computed)),
+    zeroed = sum(computed == 0 & is.finite(computed), na.rm = TRUE),
+    .groups = "drop") |>
+  dplyr::mutate(dplyr::across(c(`worst rel err`, `worst ulp`),
+                              ~ ifelse(is.finite(.x), .x, NA_real_))) |>
+  dplyr::arrange(`non-finite` > 0 | zeroed > 0, dtype, variant_label, op,
+                 `worst rel err`)
+datatable(summ, rownames = FALSE, filter = "top",
+          options = list(pageLength = 12, scrollX = TRUE)) |>
+  formatSignif(c("worst rel err", "worst ulp", "worst at x"), 4)
+```
+
+`r format(DENSE_N, big.mark = ",")` random targets per variant, drawn between
+adjacent curated-grid points, are pooled with the curated grid in the table above
+(`grid` distinguishes them). Rows with any non-finite or silently zeroed result
+sort last.
+
+# Behaviour at the seams
+
+```{r}
+#| label: seams
+#| echo: false
+
+## A relative-error panel samples points and never looks between two of them.
+## Offsets are log-spaced from one ulp out to 1e-6 relative, both signs: a
+## uniform cluster only straddles the boundary if the declared seam is accurate
+## to ~1e-13 relative, whereas the jump metric -- max|d(computed) - d(reference)|,
+## a change in *error* between neighbours -- is insensitive to spacing, so a step
+## discontinuity registers in full however wide the cluster is.
+N_LOCAL <- 33L
+
+## Build every cluster first, then evaluate JAX once per dtype: a subprocess per
+## cluster would be sixteen JAX start-ups for thirty-three points each.
+clusters <- list()
+for (v in VARIANTS) for (dt in DTYPES) {
+  eps <- DTYPE_EPS[[dt]]
+  d <- 10^seq(log10(2 * eps), -6, length.out = (N_LOCAL - 1L) %/% 2L)
+  rel <- sort(c(-d, 0, d))
+  for (s in SEAMS) for (sgn in c(-1, 1)) {
+    xs <- sort(sgn * s * (1 + rel))
+    input <- round_to_dtype(gold_inputs(xs, v$log_p), dt)
+    if (anyNA(input) || length(unique(input)) < length(xs)) next  # dtype too coarse
+    g <- gold_eval(input, v$log_p)
+    gv <- as.numeric(g$value)
+    if (!all(is.finite(gv))) next
+    clusters[[length(clusters) + 1L]] <- list(
+      key = sprintf("c%d", length(clusters) + 1L), v = v, dt = dt, s = sgn * s,
+      input = input, gold = gv, ulp_here = 2^floor(log2(abs(s))) * eps)
+  }
+}
+jax_seam <- list()
+if (USEJAX) for (dt in DTYPES) {
+  sel <- Filter(function(cl) cl$dt == dt, clusters)
+  if (!length(sel)) next
+  jj <- jax_eval(lapply(sel, function(cl)
+                   list(id = cl$key, log_p = cl$v$log_p, inputs = cl$input)),
+                 dt, paste0("seam_", dt))
+  for (cl in sel) jax_seam[[cl$key]] <- as_num(jj[[cl$key]][[dt]]$value)
+}
+
+seam_rows <- list()
+for (cl in clusters) {
+  dg <- diff(cl$gold)
+  ## Only judge monotonicity where the reference itself moves by several ulp: the
+  ## innermost offsets are ~1 ulp apart, and at that spacing a step that does not
+  ## move, or moves the other way, is ordinary rounding.
+  resolvable <- abs(dg) > 4 * cl$ulp_here
+  vals <- list()
+  vals[[M_ANVL]] <- anvl_value(nv_array(cl$input, dtype = cl$dt), cl$v$log_p)
+  if (identical(cl$dt, "f64")) vals[[M_R]] <- r_value(cl$input, cl$v$log_p)
+  if (USEJAX) vals[[M_JAX]] <- jax_seam[[cl$key]]
+  for (nm in names(vals)) {
+    dv <- diff(vals[[nm]])
+    seam_rows[[length(seam_rows) + 1L]] <- data.frame(
+      variant = VAR_LABEL[[cl$v$id]], dtype = cl$dt, seam = cl$s, method = nm,
+      `excess jump (ulp)` = if (all(is.finite(dv))) max(abs(dv - dg)) / cl$ulp_here
+                            else NA_real_,
+      reversals = sum(resolvable & sign(dv) == -sign(dg), na.rm = TRUE),
+      `flat steps` = sum(resolvable & dv == 0, na.rm = TRUE),
+      `non-finite` = sum(!is.finite(vals[[nm]])),
+      check.names = FALSE)
+  }
+}
+seam_df <- dplyr::bind_rows(seam_rows)
+if (!nrow(seam_df)) {
+  htmltools::HTML("<em>No seam is resolvable in these dtypes.</em>")
+} else {
+  seam_df |>
+    dplyr::arrange(dplyr::desc(`excess jump (ulp)`)) |>
+    datatable(rownames = FALSE, filter = "top",
+              options = list(pageLength = 12, scrollX = TRUE)) |>
+    formatSignif(c("excess jump (ulp)", "seam"), 4)
+}
+```
+
+Both anvl and JAX switch between a central rational and a tail rational at
+$t = e^{-2}$ ($|x| = `r signif(SEAMS[1], 6)`$), and between two tail fits at
+$z = 8$ ($|x| = `r signif(SEAMS[2], 6)`$). Two properties live *between* grid
+points, and neither shows up in a relative-error panel.
+
+**Excess jump** is how far the step across the cut exceeds the reference's own
+step, in ulps, measured on `r N_LOCAL` points spanning $\pm 10^{-6}$ relative
+either side of each seam (and its mirror image in the upper tail). A few ulp is
+rounding; a large value is a genuine discontinuity — invisible above, and a cliff
+to a sampler, an optimiser, or anything that assumes a smooth map.
+
+**Reversals** and **flat steps** are counted separately, wherever the reference's
+own step exceeds 4 ulp. A reversal is genuine non-monotonicity, which breaks
+inverse-transform sampling and bisection outright. A flat step means the
+implementation's parametrisation discarded resolution the input still carried —
+different diagnosis, different fix, so they are not pooled.
+
+# Boundary and invalid inputs
+
+```{r}
+#| label: domain
+#| echo: false
+
+## The accuracy grid is built from valid targets and then filtered to points
+## where the reference is finite and non-zero, so p = 0, p = 1, p outside [0,1]
+## and NaN can never appear in it -- even though all three implementations carry
+## explicit code for them, and even though these are exactly the inputs a sampler
+## hands over when a proposal goes bad. p = 1/2 is in the same position: x = 0 is
+## dropped because a relative error there is 0/0, so the one input at which the
+## lower/upper reflection changes hands is otherwise never evaluated.
+domain_cases <- function(log_p) {
+  if (log_p) {
+    data.frame(
+      label = c("log p = -Inf (p = 0)", "log p = 0 (p = 1)", "log p = log(1/2)",
+                "log p > 0 (invalid)", "NaN", "log p = -2 exactly (seam)",
+                "log p = -32 exactly (z = 8 seam)"),
+      input = c(-Inf, 0, base::log(0.5), 0.5, NaN, -2, -32),
+      expected = c(-Inf, Inf, 0, NaN, NaN, NA_real_, NA_real_))
+  } else {
+    data.frame(
+      label = c("p = 0", "p = 1", "p = 1/2", "p < 0 (invalid)", "p > 1 (invalid)",
+                "NaN", "p = exp(-2) (seam)", "p = 1 - exp(-2) (reflected seam)"),
+      input = c(0, 1, 0.5, -0.25, 1.25, NaN, exp(-2), 1 - exp(-2)),
+      expected = c(-Inf, Inf, 0, NaN, NaN, NaN, NA_real_, NA_real_))
+  }
+}
+
+## NaN must match NaN and +-Inf must match the same infinity -- a sign flip or a
+## silent Inf where NaN is correct is the whole point of the panel. Finite values
+## are compared with a tolerance in ulps *of the dtype*, since the two seam rows
+## are judged against the mpfr reference and an f32 answer cannot be nearer than
+## its own rounding.
+same <- function(a, b, dtype) {
+  tol <- 8 * DTYPE_EPS[[dtype]]
+  ifelse(is.nan(a) | is.nan(b), is.nan(a) & is.nan(b),
+         ifelse(is.finite(a) != is.finite(b), FALSE,
+                ifelse(is.finite(a), abs(a - b) <= tol * pmax(abs(b), 1),
+                       a == b)))
+}
+## Display helper: Inf/NaN survive into the table as words rather than blanks.
+fmt_val <- function(z) {
+  ifelse(is.nan(z), "NaN",
+         ifelse(is.infinite(z), ifelse(z > 0, "Inf", "-Inf"),
+                formatC(z, digits = 10, format = "g")))
+}
+
+## One JAX subprocess per dtype, both variants inside it.
+jax_dom <- list()
+if (USEJAX) for (dt in DTYPES) {
+  jax_dom[[dt]] <- jax_eval(
+    lapply(VARIANTS, function(v)
+      list(id = v$id, log_p = v$log_p,
+           inputs = round_to_dtype(domain_cases(v$log_p)$input, dt))),
+    dt, paste0("dom_", dt))
+}
+
+dom_rows <- list()
+for (v in VARIANTS) {
+  dc <- domain_cases(v$log_p)
+  for (dt in DTYPES) {
+    input <- round_to_dtype(dc$input, dt)
+    g <- gold_eval(input, v$log_p)
+    ## `expected = NA_real_` means "judge against the mpfr reference", which is
+    ## how the two exact-seam cases are checked: a clamp that ties with the
+    ## constant the code branches on leaves the value correct while splitting the
+    ## derivative, so the seam inputs are worth evaluating even though the value
+    ## is ordinary. NaN is a legitimate *expectation* elsewhere in the column, so
+    ## test for it explicitly rather than with is.na(), which is true for both.
+    want <- ifelse(is.na(dc$expected) & !is.nan(dc$expected),
+                   as.numeric(g$value), dc$expected)
+    got <- list()
+    got[[M_ANVL]] <- anvl_value(nv_array(input, dtype = dt), v$log_p)
+    if (identical(dt, "f64")) got[[M_R]] <- suppressWarnings(r_value(input, v$log_p))
+    if (USEJAX) got[[M_JAX]] <- as_num(jax_dom[[dt]][[v$id]][[dt]]$value)
+    for (nm in names(got)) {
+      dom_rows[[length(dom_rows) + 1L]] <- data.frame(
+        variant = VAR_LABEL[[v$id]], dtype = dt, case = dc$label, method = nm,
+        expected = fmt_val(want), got = fmt_val(got[[nm]]),
+        verdict = ifelse(same(got[[nm]], want, dt), "ok", "MISMATCH"))
+    }
+  }
+}
+dplyr::bind_rows(dom_rows) |>
+  dplyr::arrange(verdict != "MISMATCH", variant, case, method) |>
+  datatable(rownames = FALSE, filter = "top",
+            options = list(pageLength = 12, scrollX = TRUE))
+```
+
+Where `expected` is a plain limit ($\pm\infty$, `0`, `NaN`) it is the documented
+answer; on the two seam rows it is the `Rmpfr` reference, since the interesting
+question there is not the limit but whether landing exactly on a branch cut
+changes the answer. `NaN` where a probability is out of range is the correct
+outcome — silent `±Inf` there would be the worst result of all, because nothing
+downstream notices.
+
+# Detailed results
+
+Full numeric results, collapsed by default.
+
+::: {.callout-note title="Performance — every cell (time per call, ms)" collapse="true"}
+```{r}
+#| label: perf-table
+if (!PERF) {
+  htmltools::HTML("<em>Performance report disabled (<code>QNORM_PERF=0</code>).</em>")
+} else {
+  dplyr::bind_rows(perf_df, regime_df) |>
+    dplyr::transmute(dtype, size, regime = as.character(regime),
+                     variant = variant_label, op, method,
+                     `time (ms)` = time_ms, `spread (max/min)` = spread) |>
+    dplyr::arrange(dtype, variant, op, regime, size, method) |>
+    datatable(rownames = FALSE, filter = "top",
+              options = list(pageLength = 15, scrollX = TRUE)) |>
+    formatSignif(c("time (ms)", "spread (max/min)"), 3)
+}
+```
+:::
+
+::: {.callout-note title="Accuracy — every grid point (relative error, ulps & value)" collapse="true"}
+```{r}
+#| label: acc-table
+## Rounding is display-only (formatSignif); the underlying data stays exact.
+dplyr::bind_rows(acc_df, dense_df) |>
+  dplyr::transmute(grid, dtype, variant = variant_label, op, method, x, input,
+                   `rel err` = rel_err, ulp, computed) |>
+  dplyr::arrange(grid, dtype, variant, op, x, method) |>
+  datatable(rownames = FALSE, filter = "top",
+            options = list(pageLength = 15, scrollX = TRUE)) |>
+  formatSignif(c("rel err", "ulp"), 3) |>
+  formatSignif(c("x", "input", "computed"), 8)
+```
+:::
+
+---
+
+```{r}
+#| label: colophon
+#| echo: false
+#| results: asis
+
+## Verify -- rather than assert in prose -- that f64 literals inside a jitted
+## graph keep full precision. Without it every f64 relative error below would sit
+## on a uniform ~1.7e-8 floor whatever the algorithm, which is exactly the shape
+## of error a reader would blame on the implementation. Also confirm f32 graphs
+## are not silently widened.
+lit_note <- local({
+  f <- function(x) x * pi
+  exact <- tryCatch(identical(as.vector(jit(f)(nv_array(1, dtype = "f64"))), pi),
+                    error = function(e) NA)
+  narrow <- tryCatch(
+    identical(unname(format(dtype(jit(f)(nv_array(1, dtype = "f32"))))), "32"),
+    error = function(e) NA)
+  if (isTRUE(exact) && isTRUE(narrow))
+    "f64 literal precision **verified** (`jit(\\(x) x * pi)` is bit-exact in f64, and an f32 graph stays f32)."
+  else if (isTRUE(narrow))
+    "**WARNING: f64 literals are rounding to f32 inside jitted graphs** (anvl's `default_dtype()` materialises an R double at `FloatType(32)`, so a coefficient loses its low 29 bits before promotion ever sees it). Every f64 relative error above is then floored near 1.7e-8 regardless of algorithm, and the accuracy panels cannot be read in f64 as rendered."
+  else
+    "**WARNING: the f64 literal self-check did not run.** Treat every f64 accuracy number above as unverified."
+})
+
+cpu_model <- function() {
+  out <- tryCatch({
+    if (identical(Sys.info()[["sysname"]], "Darwin")) {
+      system2("sysctl", c("-n", "machdep.cpu.brand_string"), stdout = TRUE)
+    } else {
+      sub("^model name\\s*:\\s*", "",
+          grep("^model name", readLines("/proc/cpuinfo"), value = TRUE)[1L])
+    }
+  }, error = function(e) NULL)
+  if (length(out) && nzchar(out[1L])) trimws(out[1L]) else "unknown CPU"
+}
+
+## Points kept per (variant, dtype), not pooled: a narrow dtype legitimately
+## keeps fewer, and a single total would hide that.
+n_acc <- acc_df |>
+  dplyr::distinct(variant_label, dtype, x) |>
+  dplyr::count(variant_label, dtype) |>
+  dplyr::mutate(txt = sprintf("%s/%s: %d", variant_label, dtype, n))
+cat(sprintf(
+  "Generated %s · %s · device %s · anvl %s · JAX %s · %s · Rmpfr %s (%d-bit) · bench %s · google-benchmark.\n\n%s %s Curated accuracy points kept (%s); %s random targets per variant in the dense sweep.\n",
+  format(Sys.Date()), cpu_model(), toupper(DEVICE),
+  as.character(packageVersion("anvl")),
+  if (is.na(JAX_VER)) "not run" else JAX_VER,
+  R.version.string, as.character(packageVersion("Rmpfr")), PREC,
+  as.character(packageVersion("bench")), lit_note,
+  if (PERF) sprintf("Performance sizes %s.",
+                    paste(format(SIZES, scientific = FALSE, trim = TRUE),
+                          collapse = ", ")) else "Performance report disabled.",
+  paste(n_acc$txt, collapse = ", "), format(DENSE_N, big.mark = ",")))
+```
