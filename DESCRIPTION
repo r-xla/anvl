@@ -23,7 +23,7 @@ License: MIT + file LICENSE
 URL: https://r-xla.github.io/anvl/, https://github.com/r-xla/anvl
 BugReports: https://github.com/r-xla/anvl/issues
 Depends:
-    R (>= 4.2.0)
+    R (>= 4.3.0)
 Imports:
     checkmate,
     cli,
