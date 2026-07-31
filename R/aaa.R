@@ -27,6 +27,7 @@ NULL
 #' @importFrom xlamisc seq_len0 seq_along0
 #' @importFrom utils head tail getFromNamespace
 #' @importFrom cli cli_abort
+#' @importFrom rlang %||%
 #' @importFrom methods formalArgs
 #' @importFrom utils capture.output
 #' @importFrom stats median
