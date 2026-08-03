@@ -11,10 +11,11 @@
 #'   function (`q`).
 #' @param mean ([`arrayish`])\cr
 #'   Mean of the distribution. For `nv_dnorm`/`nv_pnorm` a scalar or the same
-#'   shape as `x`/`q`; for `nv_rnorm` a `numeric(1)`.
+#'   shape as `x`/`q`; for `nv_rnorm` a scalar or the same shape as `shape`.
 #' @param sd ([`arrayish`])\cr
 #'   Standard deviation of the distribution. For `nv_dnorm`/`nv_pnorm` a scalar
-#'   or the same shape as `x`/`q`; for `nv_rnorm` a `numeric(1)`.
+#'   or the same shape as `x`/`q`; for `nv_rnorm` a scalar or the same shape as
+#'   `shape`.
 #'   Must be positive, otherwise results are invalid.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms.

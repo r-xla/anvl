@@ -8,6 +8,17 @@
   `operand` to `x`.
 * Renamed the `"xla"` backend to `"pjrt"`.
 * `xla()` has been removed; use `jit()` instead.
+* `nv_sample()`'s `n` argument is now `x` and, as in R's `sample()`, is either
+  a single number (sampling the integers `1` to `n`) or the population itself.
+* `nv_sample()` now defaults to `replace = FALSE`, like R's `sample()`. Calls
+  that relied on the previous behaviour need `replace = TRUE`.
+* `nv_sample()` is no longer jit-compiled as a whole, because `x` may be either
+  a compile-time count or a traced array. It still composes inside `jit()`.
+
+## Bug fixes
+
+* `nv_sample()` was off by one: the first category was drawn twice as often as
+  it should have been, and the last category was never drawn at all.
 
 ## Features
 

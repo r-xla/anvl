@@ -60,6 +60,33 @@ result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mean = 0, sd = 1)
 result[[2]]
 ```
 
+`mean` and `sd` are arrayish, so they may vary across the sample, as long as
+they have the same shape as it:
+
+```{r}
+sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
+nv_rnorm(state, dtype = "f32", shape = c(2, 3), sd = sds)[[2]]
+```
+
+`nv_sample()` follows R's `sample()`: its second argument is either a single
+number `n`, meaning the integers `1` to `n`, or the population to sample from.
+Like in R, sampling is without replacement by default:
+
+```{r}
+# a permutation of 1:6
+nv_sample(6L, state, 6L)[[2]]
+
+# roll six dice
+nv_sample(6L, state, 6L, replace = TRUE)[[2]]
+```
+
+Both the population and the sampling weights may be arrays:
+
+```{r}
+population <- nv_array(c(10, 20, 30))
+nv_sample(8L, state, population, replace = TRUE, probs = nv_array(c(1, 1, 8)))[[2]]
+```
+
 One thing to avoid is to reuse the same state for multiple calls as done in the example below:
 
 ```{r}

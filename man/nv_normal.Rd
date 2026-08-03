@@ -20,11 +20,12 @@ function (\code{q}).}
 
 \item{mean}{(\code{\link{arrayish}})\cr
 Mean of the distribution. For \code{nv_dnorm}/\code{nv_pnorm} a scalar or the same
-shape as \code{x}/\code{q}; for \code{nv_rnorm} a \code{numeric(1)}.}
+shape as \code{x}/\code{q}; for \code{nv_rnorm} a scalar or the same shape as \code{shape}.}
 
 \item{sd}{(\code{\link{arrayish}})\cr
 Standard deviation of the distribution. For \code{nv_dnorm}/\code{nv_pnorm} a scalar
-or the same shape as \code{x}/\code{q}; for \code{nv_rnorm} a \code{numeric(1)}.
+or the same shape as \code{x}/\code{q}; for \code{nv_rnorm} a scalar or the same shape as
+\code{shape}.
 Must be positive, otherwise results are invalid.}
 
 \item{log, log_p}{(\code{logical(1)})\cr
@@ -70,6 +71,10 @@ left tail when \code{log_p = TRUE} to maintain accuracy.
 
 \code{nv_rnorm} samples via the Box-Muller transform. To sample with a covariance
 structure, use a Cholesky decomposition.
+
+\code{mean} and \code{sd} are \code{\link{arrayish}}, so they may vary across the sample: they
+are applied to the draws after they have been reshaped to \code{shape}, and so
+may either be scalars or have exactly that shape.
 }
 
 \examples{
@@ -88,6 +93,10 @@ nv_pnorm(x, log_p = TRUE)
 state <- nv_rng_state(42L)
 result <- nv_rnorm(c(2, 3), state)
 result[[2]]
+
+# `sd` may also be an array of the same shape as the sample
+sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
+nv_rnorm(c(2, 3), state, sd = sds)[[2]]
 \dontshow{\}) # examplesIf}
 }
 \references{
