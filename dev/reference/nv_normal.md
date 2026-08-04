@@ -1,8 +1,8 @@
 # The Normal Distribution
 
-Density (`nv_dnorm`), distribution function (`nv_pnorm`) and quantile
-function (`nv_qnorm`) of the Normal distribution with mean `mean` and
-standard deviation `sd`.
+Density (`nv_dnorm`), distribution function (`nv_pnorm`), quantile
+function (`nv_qnorm`), and random generation (`nv_rnorm`) for the Normal
+distribution with mean `mean` and standard deviation `sd`.
 
 ## Usage
 
@@ -12,6 +12,8 @@ nv_dnorm(x, mean = 0, sd = 1, log = FALSE)
 nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
+
+nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
 ```
 
 ## Arguments
@@ -50,6 +52,22 @@ nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
   Probabilities at which to evaluate the quantile function. Values
   outside \\\[0, 1\]\\ give `NaN`.
+
+- shape:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Shape.
+
+- initial_state:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  RNG state (`ui64[2]`).
+
+- dtype:
+
+  (`character(1)` \|
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  Data type.
 
 ## Value
 
@@ -91,14 +109,11 @@ exactly that shape.
 
 ## References
 
-Abramowitz M, Stegun I (1964). *Handbook of Mathematical Functions with
-Formulas, Graphs, and Mathematical Tables*, number 55 series Applied
-Mathematics Series. Dover Publications, New York. ISBN 0-486-61272-4.
-
-Moshier S (1989). *Methods and Programs for Mathematical Functions*.
-Ellis Horwood. ISBN 0-7458-0289-3.
+`r xlamisc::format_bib(c("abramowitz1964handbook", "moshier1989methods"))`
 
 ## See also
+
+`nv_rnorm()` for sampling from a normal distribution.
 
 Other rng:
 [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),

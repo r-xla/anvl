@@ -573,6 +573,7 @@ distributions
 - [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   : The Normal Distribution
 - [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
   : Sample from a Uniform Distribution
