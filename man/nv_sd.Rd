@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_sd}
 \alias{nv_sd}
-\title{Standard Deviation Reduction}
+\title{Standard Deviation}
 \usage{
 nv_sd(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
