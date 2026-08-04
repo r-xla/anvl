@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_var}
 \alias{nv_var}
-\title{Variance Reduction}
+\title{Variance}
 \usage{
 nv_var(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }

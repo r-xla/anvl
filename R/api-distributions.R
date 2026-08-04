@@ -3,8 +3,9 @@
 #' @title The Normal Distribution
 #' @name nv_normal
 #' @description
-#' Density (`nv_dnorm`), distribution function (`nv_pnorm`) and quantile
-#' function (`nv_qnorm`) of the Normal distribution with mean `mean` and
+#' Density (`nv_dnorm`), distribution function (`nv_pnorm`),
+#' quantile function (`nv_qnorm`), and random
+#' generation (`nv_rnorm`) for the Normal distribution with mean `mean` and
 #' standard deviation `sd`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
@@ -39,11 +40,15 @@
 #' library as used by JAX) for `f64`, and uses a new lower degree Remez minimax
 #' rational approximation on the same intervals for `f32`.
 #' @references
-#' `r xlamisc::format_bib("abramowitz1964handbook")`
-#'
-#' `r xlamisc::format_bib("moshier1989methods")`
-#' @template return_unary
+#' `r xlamisc::format_bib(c("abramowitz1964handbook", "moshier1989methods"))`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
+#' @return
+#' `nv_dnorm()` and `nv_pnorm()` return an [`arrayish`] with the same shape and
+#' data type as `x`/`q`.
+#'
+#' `nv_rnorm()` returns a `list()` of two [`arrayish`] elements: the updated
+#' RNG state and the sampled values.
+#' 
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_dnorm(x)

@@ -23,7 +23,7 @@ License: MIT + file LICENSE
 URL: https://r-xla.github.io/anvl/, https://github.com/r-xla/anvl
 BugReports: https://github.com/r-xla/anvl/issues
 Depends:
-    R (>= 4.2.0)
+    R (>= 4.3.0)
 Imports:
     checkmate,
     cli,
@@ -45,7 +45,8 @@ Suggests:
 Remotes:
     r-xla/pjrt,
     r-xla/stablehlo,
-    r-xla/tengen
+    r-xla/tengen,
+    r-xla/xlamisc
 Additional_repositories:
     https://r-xla.r-universe.dev
 VignetteBuilder:

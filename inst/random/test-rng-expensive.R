@@ -35,8 +35,8 @@ test_rnorm_mean_sd <- function() {
       nv_array(c(3, 83), dtype = "ui64"),
       dtype = "f64",
       shape = c(10L, 10L, 10L, 10L, 10L),
-      mu = 10,
-      sigma = 9
+      mean = 10,
+      sd = 9
     )
   }
   g <- jit(f)
@@ -63,8 +63,8 @@ test_runif_statistical <- function() {
       nv_array(c(1, 2), dtype = "ui64"),
       dtype = "f32",
       shape = c(10, 20, 30, 40, 50),
-      lower = -1,
-      upper = 1
+      min = -1,
+      max = 1
     )
   }
   g <- jit(f)
@@ -90,7 +90,7 @@ test_runif_statistical <- function() {
 test_rbinom_statistical <- function() {
   cat("Testing nv_rbinom statistical properties...\n")
 
-  # Test Bernoulli case (n = 1)
+  # Test Bernoulli case (size = 1)
   cat("  Testing Bernoulli (n=1)...\n")
   f <- function() {
     nv_rbinom(
@@ -114,13 +114,13 @@ test_rbinom_statistical <- function() {
   cat(sprintf("    Sample variance: %.5f (expected 0.25)\n", sample_var))
   stopifnot(abs(sample_var - 0.25) < 0.005)
 
-  # Test Binomial case (n = 20, prob = 0.5)
+  # Test Binomial case (size = 20, prob = 0.5)
   # For Binomial(n=20, p=0.5): mean = 10, variance = 5
   cat("  Testing Binomial (n=20, prob=0.5)...\n")
   f2 <- function() {
     nv_rbinom(
       nv_array(c(3, 4), dtype = "ui64"),
-      n = 20L,
+      size = 20L,
       dtype = "i32",
       shape = c(100L, 100L, 100L)
     )
@@ -146,7 +146,7 @@ test_rbinom_statistical <- function() {
   f3 <- function() {
     nv_rbinom(
       nv_array(c(5, 6), dtype = "ui64"),
-      n = 10L,
+      size = 10L,
       prob = 0.3,
       dtype = "i32",
       shape = c(100L, 100L, 100L)
@@ -196,12 +196,11 @@ test_rbinom_statistical <- function() {
   cat("  PASS\n")
 }
 
-test_rdunif_statistical <- function() {
-  cat("Testing nv_rdunif statistical properties...\n")
+test_sample_statistical <- function() {
+  cat("Testing nv_sample_int statistical properties...\n")
 
-  cat("  Testing equal probabilities...\n")
   f1 <- function() {
-    nv_rdunif(
+    nv_sample_int(
       n = 6L,
       shape = 60000L,
       initial_state = nv_array(c(1, 2), dtype = "ui64")
@@ -215,7 +214,28 @@ test_rdunif_statistical <- function() {
 
   for (i in 1:6) {
     prop <- mean(values1 == i)
-    cat(sprintf("    Category %d: %.4f (expected ~0.1667)\n", i, prop))
+    cat(sprintf("    Integer %d: %.4f (expected ~0.1667)\n", i, prop))
+    stopifnot(abs(prop - 1 / 6) < 0.01)
+  }
+
+  cat("Testing nv_sample statistical properties...\n")
+
+  population <- c(10, 20, 30, 40, 50, 60)
+  f2 <- function() {
+    nv_sample(
+      x = nv_array(population),
+      shape = 60000L,
+      initial_state = nv_array(c(7, 11), dtype = "ui64")
+    )
+  }
+  g2 <- jit(f2)
+  values2 <- as_array(g2()[[2]])
+
+  stopifnot(all(values2 %in% population))
+
+  for (value in population) {
+    prop <- mean(values2 == value)
+    cat(sprintf("    Element %g: %.4f (expected ~0.1667)\n", value, prop))
     stopifnot(abs(prop - 1 / 6) < 0.01)
   }
 
@@ -229,7 +249,7 @@ run_all_tests <- function() {
   test_rnorm_mean_sd()
   test_runif_statistical()
   test_rbinom_statistical()
-  test_rdunif_statistical()
+  test_sample_statistical()
 
   cat("\nAll expensive RNG tests passed!\n")
 }

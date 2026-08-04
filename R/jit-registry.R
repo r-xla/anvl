@@ -76,7 +76,8 @@
   list(name = "nv_lower_tri_like", static = 2:4),
   list(name = "nv_upper_tri_like", static = 2:4),
   list(name = "nv_runif", static = c(1L, 3L, 4L, 5L)),
-  list(name = "nv_rnorm", static = c(1L, 3L, 4L, 5L)),
+  list(name = "nv_rnorm", static = c(1L, 3L)),
   list(name = "nv_rbinom", static = c(1L, 3L, 4L, 5L)),
-  list(name = "nv_rdunif", static = c(1L, 3L, 4L))
+  list(name = "nv_sample_int", static = c(1L, 3L, 4L)),
+  list(name = "nv_sample", static = 1L)
 )
