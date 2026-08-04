@@ -312,7 +312,7 @@ reference:
       - nv_runif
       - nv_rnorm
       - nv_rbinom
-      - nv_rdunif
+      - nv_sample
       - nv_rng_state
 
   - title: Transformations

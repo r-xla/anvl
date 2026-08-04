@@ -247,47 +247,176 @@ nv_rbinom <- function(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32") {
   list(res[[1]], result)
 }
 
-#' @title Sample from a Discrete Uniform Distribution
+#' @title Random Samples
 #' @description
-#' Samples integers from `1` to `n` with equal probability (with replacement),
-#' analogous to R's `sample.int(n, size, replace = TRUE)`.
+#' Takes a sample from a population, analogous to R's
+#' `sample(x, size, replace, prob)`.
+#'
+#' As in R, `x` is either the population itself or a single number `n`, in
+#' which case the population is the integers `1` to `n`.
 #' @template param_shape
 #' @template param_initial_state
-#' @param n (`integer(1)`)\cr
-#'   Number of categories (samples integers `1` to `n`).
-#' @template param_dtype
+#' @param x (`numeric(1)` | [`arrayish`])\cr
+#'   The population to sample from. A single plain number `n` samples the
+#'   integers `1` to `n`; a 1-D array samples its elements.
+#' @param replace (`logical(1)`)\cr
+#'   Whether to sample with replacement. As in R, defaults to `FALSE`, which
+#'   requires `prod(shape)` to be at most the population size.
+#' @param probs ([`arrayish`] | `NULL`)\cr
+#'   Sampling weights for the population, of the same length. They need not
+#'   sum to one; they are normalised internally. If `NULL` (default), all
+#'   elements are equally likely.
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   Data type of the sampled integers. Only applies when `x` is a single
+#'   number; when sampling from an array the result has the data type of `x`.
 #' @return (`list()` of [`arrayish`])\cr
-#'   List of two elements: the updated RNG state and the sampled integers.
+#'   List of two elements: the updated RNG state and the sampled values,
+#'   of shape `shape`.
+#' @details
+#' With `replace = TRUE`, samples are drawn by inverting the cumulative
+#' distribution of `probs`.
+#'
+#' With `replace = FALSE`, samples are drawn via the Gumbel top-`k` trick:
+#' each element `i` gets the key \eqn{\log p_i + G_i} with \eqn{G_i} standard
+#' Gumbel, and the `prod(shape)` largest keys are taken. This is equivalent to
+#' R's sequential scheme, in which each successive element is drawn with
+#' probability proportional to its weight among those not yet drawn.
+#'
+#' Unlike the other RNG functions, `nv_sample` is not itself jit-compiled,
+#' because `x` may be either a compile-time count or a traced array, and a
+#' static argument cannot be an array. It composes inside [jit()] as usual.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
 #' # Roll 6 dice
-#' result <- nv_rdunif(6, state, n = 6L)
+#' result <- nv_sample(6, state, 6L, replace = TRUE)
 #' result[[2]]
+#'
+#' # A permutation of 1:6
+#' nv_sample(6, state, 6L)[[2]]
+#'
+#' # Sample from a specific array, with weights
+#' pop <- nv_array(c(10, 20, 30))
+#' nv_sample(5, state, pop, replace = TRUE, probs = nv_array(c(1, 1, 8)))[[2]]
 #' @export
-#' @jit static c(1L, 3L, 4L)
-nv_rdunif <- function(shape, initial_state, n, dtype = "i32") {
-  dtype <- as_dtype(dtype)
-  checkmate::assert_int(n, lower = 1)
+nv_sample <- function(shape, initial_state, x, replace = FALSE, probs = NULL, dtype = "i32") {
+  assert_flag(replace)
   shape <- assert_shapevec(shape)
   n_sample <- prod(shape)
 
-  # we sample uniformly and compute the maximial i, s.t. sum(bits[1:i]) <= F(x)
+  # `x` is either a plain count `n` (population 1:n) or the population itself.
+  # A traced array is never `is.numeric()`, so this also picks the right branch
+  # inside `jit()`.
+  if (is.numeric(x) && length(x) == 1L && is.null(dim(x))) {
+    assert_int(x, lower = 1)
+    n <- as.integer(x)
+    population <- NULL
+    dtype <- as_dtype(dtype)
+  } else {
+    if (!missing(dtype)) {
+      cli_abort(c(
+        "{.arg dtype} only applies when {.arg x} is a single number.",
+        i = "When sampling from an array, the result has the data type of {.arg x}."
+      ))
+    }
+    if (is.numeric(x) && is.null(dim(x))) {
+      cli_abort(c(
+        "Vectors of length > 1 are not allowed as a population.",
+        i = "Use {.code array()} to give the population a shape, e.g. {.code array(c(1, 3))}."
+      ))
+    }
+    population <- as_anvl_array(x)
+    nd <- naxes_abstract(population)
+    if (nd != 1L) {
+      cli_abort("{.arg x} must be a single number or a 1-D array, but got a {nd}-D array.")
+    }
+    n <- shape_abstract(population)[1L]
+  }
 
+  if (!replace && n_sample > n) {
+    cli_abort(c(
+      "Cannot take a sample larger than the population when {.code replace = FALSE}.",
+      i = "Requested {n_sample} value{?s} from a population of size {n}."
+    ))
+  }
+
+  if (!is.null(probs)) {
+    probs <- as_anvl_array(probs)
+    nd <- naxes_abstract(probs)
+    if (nd != 1L || shape_abstract(probs)[1L] != n) {
+      cli_abort(
+        "{.arg probs} must be a 1-D array of length {n}, matching the population size."
+      )
+    }
+    # use f64 throughout for higher precision
+    probs <- nv_convert(probs, "f64")
+  }
+
+  if (replace) {
+    out <- sample_with_replacement(initial_state, n, n_sample, probs)
+  } else {
+    out <- sample_without_replacement(initial_state, n, n_sample, probs)
+  }
+  state <- out[[1L]]
+  # 1-based i32 indices into the population, of length n_sample
+  idx <- out[[2L]]
+
+  values <- if (is.null(population)) {
+    nv_convert(idx, dtype)
+  } else {
+    nv_subset(population, idx)
+  }
+
+  list(state, nv_reshape(values, shape))
+}
+
+# Draw `n_sample` 1-based indices into a population of size `n`, with
+# replacement, by inverting the cumulative distribution of `probs`.
+sample_with_replacement <- function(initial_state, n, n_sample, probs) {
   # use f64 for higher precision
   res <- nv_unif_rand(initial_state, shape = n_sample, dtype = "f64")
-  u <- res[[2]]
+  u <- res[[2L]]
 
-  cp <- nv_div(
-    nv_add(nv_iota_like(initial_state, axis = 1L, shape = n, dtype = "f64"), 1),
-    nv_fill_like(initial_state, n, shape = integer(), dtype = "f64")
-  )
+  # Cumulative probabilities, normalised so that the final entry is exactly 1.
+  # Dividing by the last cumulative sum rather than by the total keeps that
+  # exact, so `u < 1` can never select an index past the end.
+  cp <- if (is.null(probs)) {
+    nv_div(
+      nv_iota_like(initial_state, axis = 1L, shape = n, dtype = "f64"),
+      nv_fill_like(initial_state, n, shape = integer(), dtype = "f64")
+    )
+  } else {
+    cs <- nv_cumsum(probs, axis = 1L)
+    nv_div(cs, nv_subset(cs, n))
+  }
 
+  # index i is chosen iff cp[i - 1] <= u < cp[i], i.e. i = 1 + #{j : cp[j] <= u}
   u_col <- nv_reshape(u, c(n_sample, 1L))
   cp_row <- nv_reshape(cp, c(1L, n))
   bc <- nv_broadcast_arrays(u_col, cp_row) # (n_sample, n)
-  lt_matrix <- nv_convert(nv_lt(bc[[2L]], bc[[1L]]), dtype = "i32")
-  samples <- nv_add(nv_reduce_sum(lt_matrix, axes = 2L), 1L)
+  le_matrix <- nv_convert(nv_le(bc[[2L]], bc[[1L]]), dtype = "i32")
+  idx <- nv_add(nv_reduce_sum(le_matrix, axes = 2L), 1L)
 
-  return(list(res[[1]], nv_convert(nv_reshape(samples, shape), dtype)))
+  list(res[[1L]], idx)
+}
+
+# Draw `n_sample` distinct 1-based indices into a population of size `n` via
+# the Gumbel top-k trick: the top k of `log(p_i) + Gumbel_i` is distributed
+# exactly like R's sequential weighted sampling without replacement.
+sample_without_replacement <- function(initial_state, n, n_sample, probs) {
+  # one uniform per population element; f64 for higher precision
+  res <- nv_unif_rand(initial_state, shape = n, dtype = "f64")
+  # `nv_unif_rand` draws from [0, 1), so clamp away from 0 before taking logs
+  u <- nv_max(res[[2L]], 2^-53)
+
+  # G = -log(-log(u)) is standard Gumbel
+  keys <- nv_negate(nv_log(nv_negate(nv_log(u))))
+  if (!is.null(probs)) {
+    # zero-weight elements get key -Inf and so are never drawn
+    keys <- nv_add(nv_log(probs), keys)
+  }
+
+  idx <- nv_top_k(keys, k = n_sample, with_indices = TRUE)$indices
+
+  list(res[[1L]], idx)
 }

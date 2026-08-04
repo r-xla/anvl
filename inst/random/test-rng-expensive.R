@@ -196,15 +196,16 @@ test_rbinom_statistical <- function() {
   cat("  PASS\n")
 }
 
-test_rdunif_statistical <- function() {
-  cat("Testing nv_rdunif statistical properties...\n")
+test_sample_statistical <- function() {
+  cat("Testing nv_sample statistical properties...\n")
 
   cat("  Testing equal probabilities...\n")
   f1 <- function() {
-    nv_rdunif(
-      n = 6L,
+    nv_sample(
+      x = 6L,
       shape = 60000L,
-      initial_state = nv_array(c(1, 2), dtype = "ui64")
+      initial_state = nv_array(c(1, 2), dtype = "ui64"),
+      replace = TRUE
     )
   }
   g1 <- jit(f1)
@@ -219,6 +220,69 @@ test_rdunif_statistical <- function() {
     stopifnot(abs(prop - 1 / 6) < 0.01)
   }
 
+  cat("  Testing unequal probabilities...\n")
+  probs <- c(0.05, 0.1, 0.15, 0.2, 0.2, 0.3)
+  f2 <- function() {
+    nv_sample(
+      x = 6L,
+      shape = 60000L,
+      initial_state = nv_array(c(7, 11), dtype = "ui64"),
+      replace = TRUE,
+      probs = nv_array(probs)
+    )
+  }
+  g2 <- jit(f2)
+  values2 <- as_array(g2()[[2]])
+
+  stopifnot(all(values2 >= 1L & values2 <= 6L))
+
+  for (i in 1:6) {
+    prop <- mean(values2 == i)
+    cat(sprintf("    Category %d: %.4f (expected ~%.4f)\n", i, prop, probs[i]))
+    stopifnot(abs(prop - probs[i]) < 0.01)
+  }
+
+  cat("  Testing sampling without replacement...\n")
+  # Each draw of the whole population must be a permutation of it.
+  for (seed in 1:50) {
+    perm <- as_array(nv_sample(x = 100L, shape = 100L, initial_state = nv_rng_state(seed))[[2]])
+    stopifnot(setequal(perm, 1:100))
+  }
+  cat("    50 draws of 1:100 are all permutations\n")
+
+  # Uniform without replacement: every element is equally likely to come first.
+  first <- vapply(
+    1:6000,
+    function(seed) as_array(nv_sample(x = 6L, shape = 6L, initial_state = nv_rng_state(seed))[[2]])[1L],
+    numeric(1)
+  )
+  for (i in 1:6) {
+    prop <- mean(first == i)
+    cat(sprintf("    First draw is %d: %.4f (expected ~0.1667)\n", i, prop))
+    stopifnot(abs(prop - 1 / 6) < 0.02)
+  }
+
+  # Weighted without replacement: the first draw follows `probs` exactly, since
+  # nothing has been removed from the population yet.
+  wprobs <- c(0.1, 0.1, 0.8)
+  wfirst <- vapply(
+    1:6000,
+    function(seed) {
+      as_array(nv_sample(
+        x = 3L,
+        shape = 1L,
+        initial_state = nv_rng_state(seed),
+        probs = nv_array(wprobs)
+      )[[2]])[1L]
+    },
+    numeric(1)
+  )
+  for (i in 1:3) {
+    prop <- mean(wfirst == i)
+    cat(sprintf("    Weighted first draw is %d: %.4f (expected ~%.4f)\n", i, prop, wprobs[i]))
+    stopifnot(abs(prop - wprobs[i]) < 0.02)
+  }
+
   cat("  PASS\n")
 }
 
@@ -229,7 +293,7 @@ run_all_tests <- function() {
   test_rnorm_mean_sd()
   test_runif_statistical()
   test_rbinom_statistical()
-  test_rdunif_statistical()
+  test_sample_statistical()
 
   cat("\nAll expensive RNG tests passed!\n")
 }

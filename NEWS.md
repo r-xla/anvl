@@ -8,6 +8,13 @@
   `operand` to `x`.
 * Renamed the `"xla"` backend to `"pjrt"`.
 * `xla()` has been removed; use `jit()` instead.
+* `nv_rdunif()` is now `nv_sample()` and mirrors R's `sample()`: its `n`
+  argument is now `x` and is either a single number (sampling the integers `1`
+  to `n`) or the population itself, and it gained `replace` and `probs`
+  arguments. Like in R, `replace` defaults to `FALSE`, so calls that relied on
+  the previous behaviour need `replace = TRUE`.
+* `nv_sample()` is no longer jit-compiled as a whole, because `x` may be either
+  a compile-time count or a traced array. It still composes inside `jit()`.
 
 ## Features
 
@@ -66,6 +73,10 @@
 * Calling `jit()`ted functions is now significantly faster.
 
 ## Bug fixes
+
+* Sampling from a discrete uniform distribution was off by one: the first
+  category was drawn twice as often as it should have been, and the last
+  category was never drawn at all.
 
 * `NULL` is now treated as an empty node when flattening and unflattening trees.
   It contributes no leaves but is preserved structurally, so functions with

@@ -39,7 +39,7 @@ state <- nv_rng_state(42L)
 state
 ```
 
-The main functions for generating random numbers are `nv_runif()`, `nv_rdunif()`, `nv_rbinom()`, and `nv_rnorm()`.
+The main functions for generating random numbers are `nv_runif()`, `nv_sample()`, `nv_rbinom()`, and `nv_rnorm()`.
 All those functions return a list with two elements:
 
 1. The **new** RNG state (to be used for subsequent random number generation).
@@ -58,6 +58,25 @@ For normally distributed random numbers:
 ```{r}
 result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mu = 0, sigma = 1)
 result[[2]]
+```
+
+`nv_sample()` follows R's `sample()`: its second argument is either a single
+number `n`, meaning the integers `1` to `n`, or the population to sample from.
+Like in R, sampling is without replacement by default:
+
+```{r}
+# a permutation of 1:6
+nv_sample(6L, state, 6L)[[2]]
+
+# roll six dice
+nv_sample(6L, state, 6L, replace = TRUE)[[2]]
+```
+
+Both the population and the sampling weights may be arrays:
+
+```{r}
+population <- nv_array(c(10, 20, 30))
+nv_sample(8L, state, population, replace = TRUE, probs = nv_array(c(1, 1, 8)))[[2]]
 ```
 
 One thing to avoid is to reuse the same state for multiple calls as done in the example below:
