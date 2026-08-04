@@ -4,7 +4,14 @@
 \alias{nv_sample_int}
 \title{Sample Integers}
 \usage{
-nv_sample_int(shape, initial_state, n, dtype = "i32")
+nv_sample_int(
+  shape,
+  initial_state,
+  n,
+  replace = FALSE,
+  prob = NULL,
+  dtype = "i32"
+)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -16,6 +23,19 @@ RNG state (\code{ui64[2]}).}
 \item{n}{(\code{integer(1)})\cr
 Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
+\item{replace}{(\code{logical(1)})\cr
+Whether to sample with replacement. As in R, defaults to \code{FALSE}, which
+requires \code{prod(shape)} to be at most the population size.}
+
+\item{prob}{(\code{\link{arrayish}} | \code{NULL})\cr
+Sampling weights for the population, a 1-D array of the same length. They
+need not sum to one; they are normalised internally. If \code{NULL} (default),
+all elements are equally likely.
+Weights must be non-negative and not all zero. Only the length of \code{prob}
+is checked: because it is arrayish, its contents may be unknown until the
+compiled program runs, so invalid weights silently produce garbage rather
+than raising an error.}
+
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sampled integers.}
 }
@@ -25,17 +45,35 @@ List of two elements: the updated RNG state and the sampled integers,
 of shape \code{shape}.
 }
 \description{
-Samples integers from \code{1} to \code{n} with equal probability and with
-replacement, analogous to R's \code{sample.int()}.
+Samples integers from \code{1} to \code{n}, analogous to R's \code{sample.int()}.
 
 To sample from a population other than \code{1:n}, use \code{\link[=nv_sample]{nv_sample()}}.
 }
+\section{Sampling algorithm}{
+
+With \code{replace = TRUE} and unweighted sampling, an index is drawn per sample
+by scaling a uniform draw. With weights, the cumulative distribution of
+\code{prob} is inverted instead.
+
+With \code{replace = FALSE}, samples are drawn via the Gumbel top-\code{k} trick: each
+element \code{i} gets the key \eqn{\log p_i + G_i} with \eqn{G_i} standard Gumbel,
+and the \code{prod(shape)} largest keys are taken. This is equivalent to R's
+sequential scheme, in which each successive element is drawn with probability
+proportional to its weight among those not yet drawn.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 state <- nv_rng_state(42L)
 # Roll 6 dice
-result <- nv_sample_int(6, state, 6L)
+result <- nv_sample_int(6, state, 6L, replace = TRUE)
 result[[2]]
+
+# A permutation of 1:6
+nv_sample_int(6, state, 6L)[[2]]
+
+# Loaded dice
+nv_sample_int(6, state, 6L, replace = TRUE, prob = nv_array(c(1, 1, 1, 1, 1, 5)))[[2]]
 \dontshow{\}) # examplesIf}
 }
 \seealso{

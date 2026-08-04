@@ -4,7 +4,7 @@
 \alias{nv_sample}
 \title{Sample from a Population}
 \usage{
-nv_sample(shape, initial_state, x)
+nv_sample(shape, initial_state, x, replace = FALSE, prob = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -15,6 +15,19 @@ RNG state (\code{ui64[2]}).}
 
 \item{x}{(\code{\link{arrayish}})\cr
 The population to sample from, a 1-D array.}
+
+\item{replace}{(\code{logical(1)})\cr
+Whether to sample with replacement. As in R, defaults to \code{FALSE}, which
+requires \code{prod(shape)} to be at most the population size.}
+
+\item{prob}{(\code{\link{arrayish}} | \code{NULL})\cr
+Sampling weights for the population, a 1-D array of the same length. They
+need not sum to one; they are normalised internally. If \code{NULL} (default),
+all elements are equally likely.
+Weights must be non-negative and not all zero. Only the length of \code{prob}
+is checked: because it is arrayish, its contents may be unknown until the
+compiled program runs, so invalid weights silently produce garbage rather
+than raising an error.}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr
@@ -22,18 +35,36 @@ List of two elements: the updated RNG state and the sampled values, of
 shape \code{shape} and with the data type of \code{x}.
 }
 \description{
-Samples elements of a 1-D array with equal probability and with
-replacement, analogous to R's \code{sample()}.
+Samples elements of a 1-D array, analogous to R's \code{sample()}.
 
 Unlike R's \code{sample()}, \code{x} is always the population itself: sampling the
 integers \code{1} to \code{n} is \code{\link[=nv_sample_int]{nv_sample_int()}} and never an overload of \code{x}.
 }
+\section{Sampling algorithm}{
+
+With \code{replace = TRUE} and unweighted sampling, an index is drawn per sample
+by scaling a uniform draw. With weights, the cumulative distribution of
+\code{prob} is inverted instead.
+
+With \code{replace = FALSE}, samples are drawn via the Gumbel top-\code{k} trick: each
+element \code{i} gets the key \eqn{\log p_i + G_i} with \eqn{G_i} standard Gumbel,
+and the \code{prod(shape)} largest keys are taken. This is equivalent to R's
+sequential scheme, in which each successive element is drawn with probability
+proportional to its weight among those not yet drawn.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 state <- nv_rng_state(42L)
 pop <- nv_array(c(10, 20, 30))
-result <- nv_sample(5, state, pop)
+result <- nv_sample(5, state, pop, replace = TRUE)
 result[[2]]
+
+# A permutation of the population
+nv_sample(3, state, pop)[[2]]
+
+# Weighted sampling
+nv_sample(5, state, pop, replace = TRUE, prob = nv_array(c(1, 1, 8)))[[2]]
 \dontshow{\}) # examplesIf}
 }
 \seealso{

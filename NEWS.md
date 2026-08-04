@@ -25,6 +25,9 @@
 * New `nv_sample()` samples from an arbitrary 1-D population, like R's
   `sample()`. Unlike in R, the population argument is never overloaded with a
   count -- sampling the integers `1` to `n` is `nv_sample_int()`.
+* `nv_sample()` and `nv_sample_int()` gained `replace` and `prob` arguments.
+  As in R, `replace` defaults to `FALSE`; sampling without replacement uses the
+  Gumbel top-`k` trick and is equivalent to R's sequential weighted scheme.
 * `nv_rnorm()`'s `mean` and `sd` are now arrayish, so they may vary across the
   sample instead of being scalars.
 * Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now accept

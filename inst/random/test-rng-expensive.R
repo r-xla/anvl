@@ -199,16 +199,17 @@ test_rbinom_statistical <- function() {
 test_sample_statistical <- function() {
   cat("Testing nv_sample_int statistical properties...\n")
 
+  cat("  Testing equal probabilities...\n")
   f1 <- function() {
     nv_sample_int(
       n = 6L,
       shape = 60000L,
-      initial_state = nv_array(c(1, 2), dtype = "ui64")
+      initial_state = nv_array(c(1, 2), dtype = "ui64"),
+      replace = TRUE
     )
   }
   g1 <- jit(f1)
-  out1 <- g1()
-  values1 <- as_array(out1[[2]])
+  values1 <- as_array(g1()[[2]])
 
   stopifnot(all(values1 >= 1L & values1 <= 6L))
 
@@ -218,23 +219,89 @@ test_sample_statistical <- function() {
     stopifnot(abs(prop - 1 / 6) < 0.01)
   }
 
-  cat("Testing nv_sample statistical properties...\n")
-
-  population <- c(10, 20, 30, 40, 50, 60)
+  cat("  Testing unequal probabilities...\n")
+  prob <- c(0.05, 0.1, 0.15, 0.2, 0.2, 0.3)
   f2 <- function() {
-    nv_sample(
-      x = nv_array(population),
+    nv_sample_int(
+      n = 6L,
       shape = 60000L,
-      initial_state = nv_array(c(7, 11), dtype = "ui64")
+      initial_state = nv_array(c(7, 11), dtype = "ui64"),
+      replace = TRUE,
+      prob = nv_array(prob)
     )
   }
   g2 <- jit(f2)
   values2 <- as_array(g2()[[2]])
 
-  stopifnot(all(values2 %in% population))
+  stopifnot(all(values2 >= 1L & values2 <= 6L))
+
+  for (i in 1:6) {
+    p <- mean(values2 == i)
+    cat(sprintf("    Integer %d: %.4f (expected ~%.4f)\n", i, p, prob[i]))
+    stopifnot(abs(p - prob[i]) < 0.01)
+  }
+
+  cat("  Testing sampling without replacement...\n")
+  # Each draw of the whole population must be a permutation of it.
+  for (seed in 1:50) {
+    perm <- as_array(nv_sample_int(n = 100L, shape = 100L, initial_state = nv_rng_state(seed))[[2]])
+    stopifnot(setequal(perm, 1:100))
+  }
+  cat("    50 draws of 1:100 are all permutations\n")
+
+  # Uniform without replacement: every element is equally likely to come first.
+  first <- vapply(
+    1:6000,
+    function(seed) {
+      as_array(nv_sample_int(n = 6L, shape = 6L, initial_state = nv_rng_state(seed))[[2]])[1L]
+    },
+    numeric(1)
+  )
+  for (i in 1:6) {
+    prop <- mean(first == i)
+    cat(sprintf("    First draw is %d: %.4f (expected ~0.1667)\n", i, prop))
+    stopifnot(abs(prop - 1 / 6) < 0.02)
+  }
+
+  # Weighted without replacement: the first draw follows `prob` exactly, since
+  # nothing has been removed from the population yet.
+  wprob <- c(0.1, 0.1, 0.8)
+  wfirst <- vapply(
+    1:6000,
+    function(seed) {
+      as_array(nv_sample_int(
+        n = 3L,
+        shape = 1L,
+        initial_state = nv_rng_state(seed),
+        prob = nv_array(wprob)
+      )[[2]])[1L]
+    },
+    numeric(1)
+  )
+  for (i in 1:3) {
+    prop <- mean(wfirst == i)
+    cat(sprintf("    Weighted first draw is %d: %.4f (expected ~%.4f)\n", i, prop, wprob[i]))
+    stopifnot(abs(prop - wprob[i]) < 0.02)
+  }
+
+  cat("Testing nv_sample statistical properties...\n")
+
+  population <- c(10, 20, 30, 40, 50, 60)
+  f3 <- function() {
+    nv_sample(
+      x = nv_array(population),
+      shape = 60000L,
+      initial_state = nv_array(c(13, 17), dtype = "ui64"),
+      replace = TRUE
+    )
+  }
+  g3 <- jit(f3)
+  values3 <- as_array(g3()[[2]])
+
+  stopifnot(all(values3 %in% population))
 
   for (value in population) {
-    prop <- mean(values2 == value)
+    prop <- mean(values3 == value)
     cat(sprintf("    Element %g: %.4f (expected ~0.1667)\n", value, prop))
     stopifnot(abs(prop - 1 / 6) < 0.01)
   }
