@@ -31,6 +31,10 @@ Ops.AnvlArray <- function(e1, e2) {
 #' @export
 Ops.AnvlBox <- Ops.AnvlArray
 
+# `matrixOps` is the group generic R 4.3.0 introduced for `%*%`. Registering a
+# method for it is what sets the minimum R version -- for anvl and, since the
+# packages are installed together, for the ecosystem: on R 4.2 the generic does
+# not exist and loading anvl's namespace fails outright.
 #' @export
 matrixOps.AnvlArray <- function(x, y) {
   switch(
