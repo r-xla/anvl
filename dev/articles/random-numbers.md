@@ -46,7 +46,7 @@ state
 
 The main functions for generating random numbers are
 [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
-[`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
+`nv_rnorm()`,
 [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
 [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
 and

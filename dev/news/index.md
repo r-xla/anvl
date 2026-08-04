@@ -16,8 +16,7 @@
   [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
   mirroring R’s [`sample.int()`](https://rdrr.io/r/base/sample.html).
 - [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)’s
-  `lower`/`upper` arguments are now `min`/`max`,
-  [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)’s
+  `lower`/`upper` arguments are now `min`/`max`, `nv_rnorm()`’s
   `mu`/`sigma` are now `mean`/`sd`, and
   [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)’s
   `n` is now `size`, matching the corresponding R functions.
@@ -38,9 +37,8 @@
   population argument is never overloaded with a count – sampling the
   integers `1` to `n` is
   [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md).
-- [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)’s
-  `mean` and `sd` are now arrayish, so they may vary across the sample
-  instead of being scalars.
+- `nv_rnorm()`’s `mean` and `sd` are now arrayish, so they may vary
+  across the sample instead of being scalars.
 - Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now
   accept negative values that count from the end, so `-1` refers to the
   last dimension. This works at both layers: in the `prim_*` primitives
@@ -110,6 +108,12 @@
   computes the normal distribution’s cumulative distribution function
   (`lower_tail = FALSE` for the upper tail, `log_p = TRUE` for the
   log-probability, staying accurate far into either tail).
+- New
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  computes the normal distribution’s quantile function, with the same
+  `lower_tail` / `log_p` arguments. `log_p = TRUE` accepts
+  log-probabilities below the smallest representable `p`, remaining
+  stable far into tail probabilities.
 - [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
   [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),

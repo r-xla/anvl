@@ -1,7 +1,7 @@
 # The Normal Distribution
 
-Density (`nv_dnorm`), distribution function (`nv_pnorm`) and random
-generation (`nv_rnorm`) for the Normal distribution with mean `mean` and
+Density (`nv_dnorm`), distribution function (`nv_pnorm`) and quantile
+function (`nv_qnorm`) of the Normal distribution with mean `mean` and
 standard deviation `sd`.
 
 ## Usage
@@ -11,7 +11,7 @@ nv_dnorm(x, mean = 0, sd = 1, log = FALSE)
 
 nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
+nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 ```
 
 ## Arguments
@@ -25,47 +25,31 @@ nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
 - mean:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Mean of the distribution. For `nv_dnorm`/`nv_pnorm` a scalar or the
-  same shape as `x`/`q`; for `nv_rnorm` a scalar or the same shape as
-  `shape`.
+  Mean of the distribution (scalar or same shape as `x`/`q`/`p`).
 
 - sd:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Standard deviation of the distribution. For `nv_dnorm`/`nv_pnorm` a
-  scalar or the same shape as `x`/`q`; for `nv_rnorm` a scalar or the
-  same shape as `shape`. Must be positive. Because `sd` is arrayish, it
-  may be a traced value whose contents are unknown until the compiled
-  program runs, so this is never checked: a non-positive `sd` silently
-  produces garbage (`NaN` or nonsense values) rather than raising an
-  error.
+  Standard deviation of the distribution (scalar or same shape as
+  `x`/`q`/`p`). Must be positive, otherwise results are invalid.
 
 - log, log_p:
 
   (`logical(1)`)  
-  If `TRUE`, the densities/probabilities are given as logarithms.
+  If `TRUE`, the densities/probabilities are given as logarithms. For
+  `nv_qnorm` this describes the input `p`.
 
 - lower_tail:
 
   (`logical(1)`)  
-  If `TRUE` (default), probabilities are \\P(X \le q)\\; otherwise,
-  \\P(X \> q)\\.
+  If `TRUE` (default), probabilities are \\P(X \le x)\\; otherwise,
+  \\P(X \> x)\\.
 
-- shape:
-
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Shape.
-
-- initial_state:
+- p:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  RNG state (`ui64[2]`).
-
-- dtype:
-
-  (`character(1)` \|
-  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Probabilities at which to evaluate the quantile function. Values
+  outside \\\[0, 1\]\\ give `NaN`.
 
 ## Value
 
@@ -83,11 +67,16 @@ The Normal distribution has probability density function: \$\$f(x) =
 \frac{1}{\sigma\sqrt{2\pi}}
 \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)\$\$ where \\\mu\\ is the
 mean and \\\sigma\\ is the standard deviation. The `mean` and `sd` are
-converted to the data type of `x`/`q`.
+converted to the data type of `x`/`q`/`p`.
 
 `nv_pnorm` uses the asymptotic expansion from Abramowitz & Stegun
 (1964), equation 26.2.12, in the left tail when `log_p = TRUE` to
 maintain accuracy.
+
+`nv_qnorm` uses the same minimax rational approximation as Moshier
+(1989) (this is `ndtri` in the Cephes library as used by JAX) for `f64`,
+and uses a new lower degree Remez minimax rational approximation on the
+same intervals for `f32`.
 
 ## Random generation
 
@@ -105,6 +94,9 @@ exactly that shape.
 Abramowitz M, Stegun I (1964). *Handbook of Mathematical Functions with
 Formulas, Graphs, and Mathematical Tables*, number 55 series Applied
 Mathematics Series. Dover Publications, New York. ISBN 0-486-61272-4.
+
+Moshier S (1989). *Methods and Programs for Mathematical Functions*.
+Ellis Horwood. ISBN 0-7458-0289-3.
 
 ## See also
 
@@ -162,6 +154,32 @@ nv_pnorm(x, log_p = TRUE)
 #>  -0.6931
 #>  -0.1728
 #> [ CPUf32{3} ] 
+
+p <- nv_array(c(0.025, 0.5, 0.975))
+nv_qnorm(p)
+#> AnvlArray
+#>  -1.9600
+#>   0.0000
+#>   1.9600
+#> [ CPUf32{3} ] 
+nv_qnorm(p, mean = 1, sd = 2)
+#> AnvlArray
+#>  -2.9199
+#>   1.0000
+#>   4.9199
+#> [ CPUf32{3} ] 
+nv_qnorm(p, lower_tail = FALSE)
+#> AnvlArray
+#>   1.9600
+#>  -0.0000
+#>  -1.9600
+#> [ CPUf32{3} ] 
+nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
+#> AnvlArray
+#>  -37.2951
+#>   -1.1015
+#>    1.3096
+#> [ CPUf64{3} ] 
 state <- nv_rng_state(42L)
 result <- nv_rnorm(c(2, 3), state)
 result[[2]]

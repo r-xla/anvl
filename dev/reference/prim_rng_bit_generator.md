@@ -58,7 +58,7 @@ Lowers to
 ## See also
 
 [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
-[`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+`nv_rnorm()`
 
 ## Examples
 
