@@ -46,10 +46,11 @@ state
 
 The main functions for generating random numbers are
 [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
-[`nv_rdunif()`](https://r-xla.github.io/anvl/dev/reference/nv_rdunif.md),
+[`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
 [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
+[`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
 and
-[`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_rnorm.md).
+[`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md).
 All those functions return a list with two elements:
 
 1.  The **new** RNG state (to be used for subsequent random number
@@ -77,12 +78,67 @@ For normally distributed random numbers:
 
 ``` r
 
-result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mu = 0, sigma = 1)
+result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mean = 0, sd = 1)
 result[[2]]
 #> AnvlArray
 #>  -0.0675  0.9489  1.9457
 #>  -0.5255  1.2002  0.0008
 #> [ CPUf32{2,3} ]
+```
+
+`mean` and `sd` are arrayish, so they may vary across the sample, as
+long as they have the same shape as it:
+
+``` r
+
+sds <- nv_matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2)
+nv_rnorm(state, dtype = "f32", shape = c(2, 3), sd = sds)[[2]]
+#> AnvlArray
+#>   -0.0007   0.9489 194.5720
+#>   -0.0526  12.0017   0.7665
+#> [ CPUf32{2,3} ]
+```
+
+To draw integers, use
+[`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
+the counterpart to R’s
+[`sample.int()`](https://rdrr.io/r/base/sample.html):
+
+``` r
+
+# roll six dice
+nv_sample_int(6L, state, 6L)[[2]]
+#> AnvlArray
+#>  4
+#>  6
+#>  2
+#>  5
+#>  1
+#>  2
+#> [ CPUi32{6} ]
+```
+
+[`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md)
+draws from an arbitrary population instead. Unlike R’s
+[`sample()`](https://rdrr.io/r/base/sample.html), its population
+argument is never overloaded with a count, so
+`nv_sample(5L, state, nv_array(6))` samples from the population `6`
+rather than from `1:6`:
+
+``` r
+
+population <- nv_array(c(10, 20, 30))
+nv_sample(8L, state, population)[[2]]
+#> AnvlArray
+#>  20
+#>  30
+#>  10
+#>  30
+#>  10
+#>  10
+#>  10
+#>  20
+#> [ CPUf32{8} ]
 ```
 
 One thing to avoid is to reuse the same state for multiple calls as done

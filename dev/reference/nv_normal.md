@@ -1,7 +1,8 @@
 # The Normal Distribution
 
-Density (`nv_dnorm`) and distribution function (`nv_pnorm`) of the
-Normal distribution with mean `mean` and standard deviation `sd`.
+Density (`nv_dnorm`), distribution function (`nv_pnorm`) and random
+generation (`nv_rnorm`) for the Normal distribution with mean `mean` and
+standard deviation `sd`.
 
 ## Usage
 
@@ -9,6 +10,8 @@ Normal distribution with mean `mean` and standard deviation `sd`.
 nv_dnorm(x, mean = 0, sd = 1, log = FALSE)
 
 nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
+
+nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
 ```
 
 ## Arguments
@@ -22,13 +25,20 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 - mean:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Mean of the distribution (scalar or same shape as `x`/`q`).
+  Mean of the distribution. For `nv_dnorm`/`nv_pnorm` a scalar or the
+  same shape as `x`/`q`; for `nv_rnorm` a scalar or the same shape as
+  `shape`.
 
 - sd:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Standard deviation of the distribution (scalar or same shape as
-  `x`/`q`). Must be positive, otherwise results are invalid.
+  Standard deviation of the distribution. For `nv_dnorm`/`nv_pnorm` a
+  scalar or the same shape as `x`/`q`; for `nv_rnorm` a scalar or the
+  same shape as `shape`. Must be positive. Because `sd` is arrayish, it
+  may be a traced value whose contents are unknown until the compiled
+  program runs, so this is never checked: a non-positive `sd` silently
+  produces garbage (`NaN` or nonsense values) rather than raising an
+  error.
 
 - log, log_p:
 
@@ -41,10 +51,31 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
   If `TRUE` (default), probabilities are \\P(X \le q)\\; otherwise,
   \\P(X \> q)\\.
 
+- shape:
+
+  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  Shape.
+
+- initial_state:
+
+  ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+  RNG state (`ui64[2]`).
+
+- dtype:
+
+  (`character(1)` \|
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  Data type.
+
 ## Value
 
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+`nv_dnorm()` and `nv_pnorm()` return an
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+with the same shape and data type as `x`/`q`.
+
+`nv_rnorm()` returns a [`list()`](https://rdrr.io/r/base/list.html) of
+two [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
+elements: the updated RNG state and the sampled values.
 
 ## Details
 
@@ -58,6 +89,17 @@ converted to the data type of `x`/`q`.
 (1964), equation 26.2.12, in the left tail when `log_p = TRUE` to
 maintain accuracy.
 
+## Random generation
+
+`nv_rnorm` samples via the Box-Muller transform. To sample with a
+covariance structure, use a Cholesky decomposition.
+
+`mean` and `sd` are
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md), so
+they may vary across the sample: they are applied to the draws after
+they have been reshaped to `shape`, and so may either be scalars or have
+exactly that shape.
+
 ## References
 
 Abramowitz M, Stegun I (1964). *Handbook of Mathematical Functions with
@@ -66,8 +108,12 @@ Mathematics Series. Dover Publications, New York. ISBN 0-486-61272-4.
 
 ## See also
 
-[`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_rnorm.md)
-for sampling from a normal distribution.
+Other rng:
+[`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
+[`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md),
+[`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
+[`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md),
+[`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
 
 ## Examples
 
@@ -116,4 +162,19 @@ nv_pnorm(x, log_p = TRUE)
 #>  -0.6931
 #>  -0.1728
 #> [ CPUf32{3} ] 
+state <- nv_rng_state(42L)
+result <- nv_rnorm(c(2, 3), state)
+result[[2]]
+#> AnvlArray
+#>  -0.0675  0.9489  1.9457
+#>  -0.5255  1.2002  0.0008
+#> [ CPUf32{2,3} ] 
+
+# `sd` may also be an array of the same shape as the sample
+sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
+nv_rnorm(c(2, 3), state, sd = sds)[[2]]
+#> AnvlArray
+#>   -0.0007   0.9489 194.5720
+#>   -0.0526  12.0017   0.7665
+#> [ CPUf32{2,3} ] 
 ```

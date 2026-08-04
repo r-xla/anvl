@@ -1,4 +1,4 @@
-# Variance Reduction
+# Variance
 
 Computes the variance along the specified axes.
 

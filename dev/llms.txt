@@ -379,9 +379,6 @@ Mathematical and trigonometric functions
   Complementary Error Function
 - [`nv_erf_inv()`](https://r-xla.github.io/anvl/dev/reference/nv_erf_inv.md)
   : Inverse Error Function
-- [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
-  [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
-  : The Normal Distribution
 - [`nv_digamma()`](https://r-xla.github.io/anvl/dev/reference/nv_digamma.md)
   : Digamma
 - [`nv_lgamma()`](https://r-xla.github.io/anvl/dev/reference/nv_lgamma.md)
@@ -428,9 +425,9 @@ Summary statistics over array axes
 - [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md)
   : Quantile
 - [`nv_var()`](https://r-xla.github.io/anvl/dev/reference/nv_var.md) :
-  Variance Reduction
+  Variance
 - [`nv_sd()`](https://r-xla.github.io/anvl/dev/reference/nv_sd.md) :
-  Standard Deviation Reduction
+  Standard Deviation
 
 ### Cumulative Operations
 
@@ -568,18 +565,28 @@ Control flow operations
 - [`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md)
   : Conditional Element Selection
 
-### Random Number Generation
+### Distributions
 
-Functions for generating random numbers
+Densities, distribution functions, and samplers for probability
+distributions
 
+- [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  : The Normal Distribution
 - [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
   : Sample from a Uniform Distribution
-- [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_rnorm.md)
-  : Sample from a Normal Distribution
 - [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)
   : Sample from a Binomial Distribution
-- [`nv_rdunif()`](https://r-xla.github.io/anvl/dev/reference/nv_rdunif.md)
-  : Sample from a Discrete Uniform Distribution
+- [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md)
+  : Sample from a Population
+- [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
+  : Sample Integers
+
+### Utilities
+
+Helpers supporting the API functions
+
 - [`nv_rng_state()`](https://r-xla.github.io/anvl/dev/reference/nv_rng_state.md)
   : Generate RNG State
 

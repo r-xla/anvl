@@ -1,4 +1,4 @@
-# Standard Deviation Reduction
+# Standard Deviation
 
 Computes the standard deviation along the specified axes.
 
