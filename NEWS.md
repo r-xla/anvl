@@ -56,6 +56,10 @@
 * New `nv_pnorm()` computes the normal distribution's cumulative distribution
   function (`lower_tail = FALSE` for the upper tail, `log_p = TRUE` for the
   log-probability, staying accurate far into either tail).
+* New `nv_qnorm()` computes the normal distribution's quantile function, with
+  the same `lower_tail` / `log_p` arguments. `log_p = TRUE` accepts
+  log-probabilities below the smallest representable `p`, remaining stable far
+  into tail probabilities.
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for
   `AnvlArray` gained a `check` argument that opts into scanning for

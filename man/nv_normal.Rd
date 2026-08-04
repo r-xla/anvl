@@ -4,14 +4,14 @@
 \alias{nv_normal}
 \alias{nv_dnorm}
 \alias{nv_pnorm}
-\alias{nv_rnorm}
+\alias{nv_qnorm}
 \title{The Normal Distribution}
 \usage{
 nv_dnorm(x, mean = 0, sd = 1, log = FALSE)
 
 nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
+nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -19,33 +19,23 @@ Quantiles at which to evaluate the density (\code{x}) or the distribution
 function (\code{q}).}
 
 \item{mean}{(\code{\link{arrayish}})\cr
-Mean of the distribution. For \code{nv_dnorm}/\code{nv_pnorm} a scalar or the same
-shape as \code{x}/\code{q}; for \code{nv_rnorm} a scalar or the same shape as \code{shape}.}
+Mean of the distribution (scalar or same shape as \code{x}/\code{q}/\code{p}).}
 
 \item{sd}{(\code{\link{arrayish}})\cr
-Standard deviation of the distribution. For \code{nv_dnorm}/\code{nv_pnorm} a scalar
-or the same shape as \code{x}/\code{q}; for \code{nv_rnorm} a scalar or the same shape as
-\code{shape}.
-Must be positive. Because \code{sd} is arrayish, it may be a traced value whose
-contents are unknown until the compiled program runs, so this is never
-checked: a non-positive \code{sd} silently produces garbage (\code{NaN} or nonsense
-values) rather than raising an error.}
+Standard deviation of the distribution (scalar or same shape as
+\code{x}/\code{q}/\code{p}). Must be positive, otherwise results are invalid.}
 
 \item{log, log_p}{(\code{logical(1)})\cr
-If \code{TRUE}, the densities/probabilities are given as logarithms.}
+If \code{TRUE}, the densities/probabilities are given as logarithms. For
+\code{nv_qnorm} this describes the input \code{p}.}
 
 \item{lower_tail}{(\code{logical(1)})\cr
-If \code{TRUE} (default), probabilities are \eqn{P(X \le q)}; otherwise,
-\eqn{P(X > q)}.}
+If \code{TRUE} (default), probabilities are \eqn{P(X \le x)}; otherwise,
+\eqn{P(X > x)}.}
 
-\item{shape}{(\code{integer()})\cr
-Shape.}
-
-\item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
-
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+\item{p}{(\code{\link{arrayish}})\cr
+Probabilities at which to evaluate the quantile function. Values outside
+\eqn{[0, 1]} give \code{NaN}.}
 }
 \value{
 \code{nv_dnorm()} and \code{nv_pnorm()} return an \code{\link{arrayish}} with the same shape and
@@ -55,8 +45,8 @@ data type as \code{x}/\code{q}.
 RNG state and the sampled values.
 }
 \description{
-Density (\code{nv_dnorm}), distribution function (\code{nv_pnorm}) and random
-generation (\code{nv_rnorm}) for the Normal distribution with mean \code{mean} and
+Density (\code{nv_dnorm}), distribution function (\code{nv_pnorm}) and quantile
+function (\code{nv_qnorm}) of the Normal distribution with mean \code{mean} and
 standard deviation \code{sd}.
 }
 \details{
@@ -64,11 +54,16 @@ The Normal distribution has probability density function:
 \deqn{f(x) = \frac{1}{\sigma\sqrt{2\pi}}
   \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)}
 where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
-The \code{mean} and \code{sd} are converted to the data type of \code{x}/\code{q}.
+The \code{mean} and \code{sd} are converted to the data type of \code{x}/\code{q}/\code{p}.
 
 \code{nv_pnorm} uses the asymptotic expansion from
 Abramowitz & Stegun (1964), equation 26.2.12, in the
 left tail when \code{log_p = TRUE} to maintain accuracy.
+
+\code{nv_qnorm} uses the same minimax rational approximation as
+Moshier (1989) (this is \code{ndtri} in the Cephes
+library as used by JAX) for \code{f64}, and uses a new lower degree Remez minimax
+rational approximation on the same intervals for \code{f32}.
 }
 \section{Random generation}{
 
@@ -91,6 +86,12 @@ nv_pnorm(x)
 nv_pnorm(x, mean = 1, sd = 2)
 nv_pnorm(x, lower_tail = FALSE)
 nv_pnorm(x, log_p = TRUE)
+
+p <- nv_array(c(0.025, 0.5, 0.975))
+nv_qnorm(p)
+nv_qnorm(p, mean = 1, sd = 2)
+nv_qnorm(p, lower_tail = FALSE)
+nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 state <- nv_rng_state(42L)
@@ -107,6 +108,11 @@ Abramowitz M, Stegun I (1964).
 \emph{Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables},  number 55 series Applied Mathematics Series.
 Dover Publications, New York.
 ISBN 0-486-61272-4.
+
+Moshier S (1989).
+\emph{Methods and Programs for Mathematical Functions}.
+Ellis Horwood.
+ISBN 0-7458-0289-3.
 }
 \seealso{
 Other rng:
