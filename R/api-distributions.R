@@ -48,7 +48,7 @@
 #'
 #' `nv_rnorm()` returns a `list()` of two [`arrayish`] elements: the updated
 #' RNG state and the sampled values.
-#' 
+#'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_dnorm(x)

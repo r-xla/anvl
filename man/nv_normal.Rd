@@ -5,6 +5,7 @@
 \alias{nv_dnorm}
 \alias{nv_pnorm}
 \alias{nv_qnorm}
+\alias{nv_rnorm}
 \title{The Normal Distribution}
 \usage{
 nv_dnorm(x, mean = 0, sd = 1, log = FALSE)
@@ -12,6 +13,8 @@ nv_dnorm(x, mean = 0, sd = 1, log = FALSE)
 nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
+
+nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
 }
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
@@ -36,6 +39,15 @@ If \code{TRUE} (default), probabilities are \eqn{P(X \le x)}; otherwise,
 \item{p}{(\code{\link{arrayish}})\cr
 Probabilities at which to evaluate the quantile function. Values outside
 \eqn{[0, 1]} give \code{NaN}.}
+
+\item{shape}{(\code{integer()})\cr
+Shape.}
+
+\item{initial_state}{(\code{\link{arrayish}})\cr
+RNG state (\code{ui64[2]}).}
+
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type.}
 }
 \value{
 \code{nv_dnorm()} and \code{nv_pnorm()} return an \code{\link{arrayish}} with the same shape and
@@ -45,8 +57,9 @@ data type as \code{x}/\code{q}.
 RNG state and the sampled values.
 }
 \description{
-Density (\code{nv_dnorm}), distribution function (\code{nv_pnorm}) and quantile
-function (\code{nv_qnorm}) of the Normal distribution with mean \code{mean} and
+Density (\code{nv_dnorm}), distribution function (\code{nv_pnorm}),
+quantile function (\code{nv_qnorm}), and random
+generation (\code{nv_rnorm}) for the Normal distribution with mean \code{mean} and
 standard deviation \code{sd}.
 }
 \details{
@@ -104,17 +117,11 @@ nv_rnorm(c(2, 3), state, sd = sds)[[2]]
 \dontshow{\}) # examplesIf}
 }
 \references{
-Abramowitz M, Stegun I (1964).
-\emph{Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables},  number 55 series Applied Mathematics Series.
-Dover Publications, New York.
-ISBN 0-486-61272-4.
-
-Moshier S (1989).
-\emph{Methods and Programs for Mathematical Functions}.
-Ellis Horwood.
-ISBN 0-7458-0289-3.
+\verb{r xlamisc::format_bib(c("abramowitz1964handbook", "moshier1989methods"))}
 }
 \seealso{
+\code{\link[=nv_rnorm]{nv_rnorm()}} for sampling from a normal distribution.
+
 Other rng:
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
