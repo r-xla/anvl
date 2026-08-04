@@ -312,6 +312,7 @@ reference:
       - nv_runif
       - nv_rbinom
       - nv_sample
+      - nv_sample_int
 
   - subtitle: Utilities
     desc: Helpers supporting the API functions

@@ -8,20 +8,25 @@
   `operand` to `x`.
 * Renamed the `"xla"` backend to `"pjrt"`.
 * `xla()` has been removed; use `jit()` instead.
-* `nv_sample()`'s `n` argument is now `x` and, as in R's `sample()`, is either
-  a single number (sampling the integers `1` to `n`) or the population itself.
-* `nv_sample()` now defaults to `replace = FALSE`, like R's `sample()`. Calls
-  that relied on the previous behaviour need `replace = TRUE`.
-* `nv_sample()` is no longer jit-compiled as a whole, because `x` may be either
-  a compile-time count or a traced array. It still composes inside `jit()`.
+* `nv_rdunif()` has been renamed to `nv_sample_int()`, mirroring R's
+  `sample.int()`.
+* `nv_runif()`'s `lower`/`upper` arguments are now `min`/`max`, `nv_rnorm()`'s
+  `mu`/`sigma` are now `mean`/`sd`, and `nv_rbinom()`'s `n` is now `size`,
+  matching the corresponding R functions.
 
 ## Bug fixes
 
-* `nv_sample()` was off by one: the first category was drawn twice as often as
-  it should have been, and the last category was never drawn at all.
+* `nv_sample_int()` (formerly `nv_rdunif()`) was off by one: the first integer
+  was drawn twice as often as it should have been, and the last integer was
+  never drawn at all.
 
 ## Features
 
+* New `nv_sample()` samples from an arbitrary 1-D population, like R's
+  `sample()`. Unlike in R, the population argument is never overloaded with a
+  count -- sampling the integers `1` to `n` is `nv_sample_int()`.
+* `nv_rnorm()`'s `mean` and `sd` are now arrayish, so they may vary across the
+  sample instead of being scalars.
 * Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now accept
   negative values that count from the end, so `-1` refers to the last
   dimension. This works at both layers: in the `prim_*` primitives
