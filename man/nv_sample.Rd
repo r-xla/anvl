@@ -2,16 +2,9 @@
 % Please edit documentation in R/api-rng.R
 \name{nv_sample}
 \alias{nv_sample}
-\title{Random Samples}
+\title{Sample from a Population}
 \usage{
-nv_sample(
-  shape,
-  initial_state,
-  x,
-  replace = FALSE,
-  probs = NULL,
-  dtype = "i32"
-)
+nv_sample(shape, initial_state, x)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -20,69 +13,37 @@ Shape.}
 \item{initial_state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
-\item{x}{(\code{numeric(1)} | \code{\link{arrayish}})\cr
-The population to sample from. A single plain number \code{n} samples the
-integers \code{1} to \code{n}; a 1-D array samples its elements.}
-
-\item{replace}{(\code{logical(1)})\cr
-Whether to sample with replacement. As in R, defaults to \code{FALSE}, which
-requires \code{prod(shape)} to be at most the population size.}
-
-\item{probs}{(\code{\link{arrayish}} | \code{NULL})\cr
-Sampling weights for the population, of the same length. They need not
-sum to one; they are normalised internally. If \code{NULL} (default), all
-elements are equally likely.}
-
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled integers. Only applies when \code{x} is a single
-number; when sampling from an array the result has the data type of \code{x}.}
+\item{x}{(\code{\link{arrayish}})\cr
+The population to sample from, a 1-D array.}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr
-List of two elements: the updated RNG state and the sampled values,
-of shape \code{shape}.
+List of two elements: the updated RNG state and the sampled values, of
+shape \code{shape} and with the data type of \code{x}.
 }
 \description{
-Takes a sample from a population, analogous to R's
-\code{sample(x, size, replace, prob)}.
+Samples elements of a 1-D array with equal probability and with
+replacement, analogous to R's \code{sample()}.
 
-As in R, \code{x} is either the population itself or a single number \code{n}, in
-which case the population is the integers \code{1} to \code{n}.
-}
-\details{
-With \code{replace = TRUE}, samples are drawn by inverting the cumulative
-distribution of \code{probs}.
-
-With \code{replace = FALSE}, samples are drawn via the Gumbel top-\code{k} trick:
-each element \code{i} gets the key \eqn{\log p_i + G_i} with \eqn{G_i} standard
-Gumbel, and the \code{prod(shape)} largest keys are taken. This is equivalent to
-R's sequential scheme, in which each successive element is drawn with
-probability proportional to its weight among those not yet drawn.
-
-Unlike the other RNG functions, \code{nv_sample} is not itself jit-compiled,
-because \code{x} may be either a compile-time count or a traced array, and a
-static argument cannot be an array. It composes inside \code{\link[=jit]{jit()}} as usual.
+Unlike R's \code{sample()}, \code{x} is always the population itself: sampling the
+integers \code{1} to \code{n} is \code{\link[=nv_sample_int]{nv_sample_int()}} and never an overload of \code{x}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 state <- nv_rng_state(42L)
-# Roll 6 dice
-result <- nv_sample(6, state, 6L, replace = TRUE)
-result[[2]]
-
-# A permutation of 1:6
-nv_sample(6, state, 6L)[[2]]
-
-# Sample from a specific array, with weights
 pop <- nv_array(c(10, 20, 30))
-nv_sample(5, state, pop, replace = TRUE, probs = nv_array(c(1, 1, 8)))[[2]]
+result <- nv_sample(5, state, pop)
+result[[2]]
 \dontshow{\}) # examplesIf}
 }
 \seealso{
+\code{\link[=nv_sample_int]{nv_sample_int()}} to sample the integers \code{1} to \code{n}.
+
 Other rng:
 \code{\link{nv_normal}},
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
-\code{\link[=nv_runif]{nv_runif()}}
+\code{\link[=nv_runif]{nv_runif()}},
+\code{\link[=nv_sample_int]{nv_sample_int()}}
 }
 \concept{rng}
