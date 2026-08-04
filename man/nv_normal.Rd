@@ -26,7 +26,10 @@ shape as \code{x}/\code{q}; for \code{nv_rnorm} a scalar or the same shape as \c
 Standard deviation of the distribution. For \code{nv_dnorm}/\code{nv_pnorm} a scalar
 or the same shape as \code{x}/\code{q}; for \code{nv_rnorm} a scalar or the same shape as
 \code{shape}.
-Must be positive, otherwise results are invalid.}
+Must be positive. Because \code{sd} is arrayish, it may be a traced value whose
+contents are unknown until the compiled program runs, so this is never
+checked: a non-positive \code{sd} silently produces garbage (\code{NaN} or nonsense
+values) rather than raising an error.}
 
 \item{log, log_p}{(\code{logical(1)})\cr
 If \code{TRUE}, the densities/probabilities are given as logarithms.}
@@ -110,6 +113,7 @@ Other rng:
 \code{\link[=nv_rbinom]{nv_rbinom()}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
 \code{\link[=nv_runif]{nv_runif()}},
-\code{\link[=nv_sample]{nv_sample()}}
+\code{\link[=nv_sample]{nv_sample()}},
+\code{\link[=nv_sample_int]{nv_sample_int()}}
 }
 \concept{rng}

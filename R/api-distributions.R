@@ -16,7 +16,10 @@
 #'   Standard deviation of the distribution. For `nv_dnorm`/`nv_pnorm` a scalar
 #'   or the same shape as `x`/`q`; for `nv_rnorm` a scalar or the same shape as
 #'   `shape`.
-#'   Must be positive, otherwise results are invalid.
+#'   Must be positive. Because `sd` is arrayish, it may be a traced value whose
+#'   contents are unknown until the compiled program runs, so this is never
+#'   checked: a non-positive `sd` silently produces garbage (`NaN` or nonsense
+#'   values) rather than raising an error.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms.
 #' @param lower_tail (`logical(1)`)\cr
