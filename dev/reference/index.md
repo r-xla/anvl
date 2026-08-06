@@ -494,6 +494,8 @@ Backend-related functionality and implementations
   : Temporarily set the default backend
 - [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
   : Run code with a specific backend
+- [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md)
+  : Install what a backend needs to run
 - [`device_arg()`](https://r-xla.github.io/anvl/dev/reference/device_arg.md)
   : Select JIT device from a function argument
 - [`nv_device()`](https://r-xla.github.io/anvl/dev/reference/nv_device.md)

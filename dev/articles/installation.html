@@ -147,6 +147,47 @@ binary).</p>
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"r-xla/anvl"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="pjrt-plugins">PJRT Plugins<a class="anchor" aria-label="anchor" href="#pjrt-plugins"></a>
+</h2>
+<p>The PJRT plugins that actually execute anvl’s programs are not
+shipped with the package. They are downloaded and cached the first time
+they are needed, which requires your confirmation: an interactive
+session asks before downloading, and a non-interactive one aborts with
+an error instead of downloading behind your back.</p>
+<p>To make the download an explicit step – in a <code>Dockerfile</code>
+layer of its own, or before a script that later runs unattended –
+call:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">anvl</span><span class="fu">::</span><span class="fu"><a href="../reference/install_anvl.html">install_anvl</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>The <code>PJRT_INSTALL</code> environment variable overrides this
+behaviour:</p>
+<table class="table">
+<colgroup>
+<col width="46%">
+<col width="53%">
+</colgroup>
+<thead><tr class="header">
+<th>Value</th>
+<th>Effect</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>1</code></td>
+<td>Always download, without asking. Use this in CI, scripts and Docker
+builds.</td>
+</tr>
+<tr class="even">
+<td><code>0</code></td>
+<td>Never download; abort with instructions instead.</td>
+</tr>
+<tr class="odd">
+<td>unset</td>
+<td>Ask in an interactive session, abort in a non-interactive one.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level2">
 <h2 id="gpu-installation">GPU Installation<a class="anchor" aria-label="anchor" href="#gpu-installation"></a>
 </h2>
 <p>Running {anvl} with GPU support currently only works on Linux
@@ -154,7 +195,7 @@ binary).</p>
 <p>The recommended way to use CUDA there is to install the {cuda12.8} R
 package, which only requires a compatible driver to be installed. You
 can install it from GitHub or r-universe:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"mlverse/cudatoolkit/cuda12.8"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"cuda12.8"</span>, repos <span class="op">=</span> <span class="st">"https://mlverse.r-universe.dev"</span><span class="op">)</span></span></code></pre></div>
 <p>When the {cuda12.8} package is not installed, the correct runtime
@@ -164,7 +205,7 @@ libraries provided with {cuda12.8} are listed <a href="https://github.com/mlvers
 <p><strong>Troubleshooting</strong></p>
 <p>To trouble-shoot the CUDA installation, run the following in a new R
 session for maximum debug output.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>PJRT_DEBUG <span class="op">=</span> <span class="st">"1"</span>, TF_CPP_MIN_LOG_LEVEL <span class="op">=</span> <span class="st">"0"</span><span class="op">)</span></span>
 <span><span class="fu">anvl</span><span class="fu">::</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span></span></code></pre></div>
 <p>Note that if another package is using a different cudatoolkit package
@@ -200,10 +241,10 @@ CUDA and CPU build for amd64/x86-64 architecture:</p>
 Container Toolkit</a> to be installed on the host. Once installed (and
 the Docker daemon restarted), pass <code>--gpus all</code> to
 <code>docker run</code> to expose the host GPUs to the container:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--rm</span> <span class="at">-it</span> <span class="at">--gpus</span> all ghcr.io/r-xla/anvl-cuda:latest R</span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--rm</span> <span class="at">-it</span> <span class="at">--gpus</span> all ghcr.io/r-xla/anvl-cuda:latest R</span></code></pre></div>
 <p>You can verify that the GPU is visible inside the container by
 running <code>nvidia-smi</code>, or from R:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">anvl</span><span class="fu">::</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">

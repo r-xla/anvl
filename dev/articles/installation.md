@@ -41,6 +41,30 @@ The development version can be installed via:
 pak::pak("r-xla/anvl")
 ```
 
+## PJRT Plugins
+
+The PJRT plugins that actually execute anvl’s programs are not shipped
+with the package. They are downloaded and cached the first time they are
+needed, which requires your confirmation: an interactive session asks
+before downloading, and a non-interactive one aborts with an error
+instead of downloading behind your back.
+
+To make the download an explicit step – in a `Dockerfile` layer of its
+own, or before a script that later runs unattended – call:
+
+``` r
+
+anvl::install_anvl()
+```
+
+The `PJRT_INSTALL` environment variable overrides this behaviour:
+
+| Value | Effect |
+|----|----|
+| `1` | Always download, without asking. Use this in CI, scripts and Docker builds. |
+| `0` | Never download; abort with instructions instead. |
+| unset | Ask in an interactive session, abort in a non-interactive one. |
+
 ## GPU Installation
 
 Running {anvl} with GPU support currently only works on Linux

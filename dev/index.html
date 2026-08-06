@@ -120,9 +120,10 @@
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"anvl"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://r-xla.r-universe.dev"</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Install CUDA support on linux amd64:</p>
+<p>The PJRT plugins anvl runs on are downloaded separately, on demand. To download them right away instead of when they are first needed:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"cuda12.8"</span>, repos <span class="op">=</span> <span class="st">"https://mlverse.r-universe.dev"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">anvl</span><span class="fu">::</span><span class="fu"><a href="reference/install_anvl.html">install_anvl</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>CUDA support is only available on linux x86_64 (amd64). There, this also installs the CUDA plugin when an NVIDIA GPU is detected; pass <code>cuda = TRUE</code> to install it regardless.</p>
 <p>See the <a href="https://r-xla.github.io/anvl/articles/installation.html">installation guide</a> for more details, including prebuilt Docker images.</p>
 </div>
 <div class="section level2">
