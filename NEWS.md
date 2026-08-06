@@ -8,9 +8,25 @@
   `operand` to `x`.
 * Renamed the `"xla"` backend to `"pjrt"`.
 * `xla()` has been removed; use `jit()` instead.
+* `nv_rdunif()` has been renamed to `nv_sample_int()`, mirroring R's
+  `sample.int()`.
+* `nv_runif()`'s `lower`/`upper` arguments are now `min`/`max`, `nv_rnorm()`'s
+  `mu`/`sigma` are now `mean`/`sd`, and `nv_rbinom()`'s `n` is now `size`,
+  matching the corresponding R functions.
+
+## Bug fixes
+
+* `nv_sample_int()` (formerly `nv_rdunif()`) was off by one: the first integer
+  was drawn twice as often as it should have been, and the last integer was
+  never drawn at all.
 
 ## Features
 
+* New `nv_sample()` samples from an arbitrary 1-D population, like R's
+  `sample()`. Unlike in R, the population argument is never overloaded with a
+  count -- sampling the integers `1` to `n` is `nv_sample_int()`.
+* `nv_rnorm()`'s `mean` and `sd` are now arrayish, so they may vary across the
+  sample instead of being scalars.
 * Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now accept
   negative values that count from the end, so `-1` refers to the last
   dimension. This works at both layers: in the `prim_*` primitives
@@ -40,6 +56,10 @@
 * New `nv_pnorm()` computes the normal distribution's cumulative distribution
   function (`lower_tail = FALSE` for the upper tail, `log_p = TRUE` for the
   log-probability, staying accurate far into either tail).
+* New `nv_qnorm()` computes the normal distribution's quantile function, with
+  the same `lower_tail` / `log_p` arguments. `log_p = TRUE` accepts
+  log-probabilities below the smallest representable `p`, remaining stable far
+  into tail probabilities.
 * `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
   `as.double()` / `as.logical()` / `as.vector()` methods for
   `AnvlArray` gained a `check` argument that opts into scanning for

@@ -2431,7 +2431,7 @@ nv_is_infinite <- function(x) {
 
 ## Reduction operations --------------------------------------------------------
 
-#' @title Variance Reduction
+#' @title Variance
 #' @description
 #' Computes the variance along the specified axes.
 #' @details
@@ -2472,7 +2472,7 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   ssum / max(0L, nelts - correction)
 }
 
-#' @title Standard Deviation Reduction
+#' @title Standard Deviation
 #' @description
 #' Computes the standard deviation along the specified axes.
 #' @details

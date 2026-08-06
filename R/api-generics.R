@@ -31,9 +31,6 @@ Ops.AnvlArray <- function(e1, e2) {
 #' @export
 Ops.AnvlBox <- Ops.AnvlArray
 
-# `matrixOps` is the group generic R 4.3.0 introduced for `%*%`; on R 4.2 it
-# does not exist and loading anvl's namespace fails outright. The package's
-# minimum R version is set higher still, by `crossprod()`/`tcrossprod()` below.
 #' @export
 matrixOps.AnvlArray <- function(x, y) {
   switch(

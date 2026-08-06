@@ -4,7 +4,7 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32")
+nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32")
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -13,7 +13,7 @@ Shape.}
 \item{initial_state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
-\item{n}{(\code{integer(1)})\cr
+\item{size}{(\code{integer(1)})\cr
 Number of trials.}
 
 \item{prob}{(\code{numeric(1)})\cr
@@ -28,7 +28,7 @@ List of two elements: the updated RNG state and the sampled values.
 }
 \description{
 Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
-When \code{n = 1} (the default), this is a Bernoulli distribution.
+When \code{size = 1} (the default), this is a Bernoulli distribution.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -40,9 +40,10 @@ result[[2]]
 }
 \seealso{
 Other rng:
-\code{\link[=nv_rdunif]{nv_rdunif()}},
+\code{\link{nv_normal}},
 \code{\link[=nv_rng_state]{nv_rng_state()}},
-\code{\link[=nv_rnorm]{nv_rnorm()}},
-\code{\link[=nv_runif]{nv_runif()}}
+\code{\link[=nv_runif]{nv_runif()}},
+\code{\link[=nv_sample]{nv_sample()}},
+\code{\link[=nv_sample_int]{nv_sample_int()}}
 }
 \concept{rng}

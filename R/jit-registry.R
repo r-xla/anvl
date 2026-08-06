@@ -6,6 +6,7 @@
 .jit_registry <- list(
   list(name = "nv_dnorm", static = "log"),
   list(name = "nv_pnorm", static = c("lower_tail", "log_p")),
+  list(name = "nv_qnorm", static = c("lower_tail", "log_p")),
   list(name = "nv_broadcast_arrays", static = character(0)),
   list(name = "nv_concatenate", static = "axis"),
   list(name = "nv_rbind", static = character(0)),
@@ -75,7 +76,8 @@
   list(name = "nv_lower_tri_like", static = 2:4),
   list(name = "nv_upper_tri_like", static = 2:4),
   list(name = "nv_runif", static = c(1L, 3L, 4L, 5L)),
-  list(name = "nv_rnorm", static = c(1L, 3L, 4L, 5L)),
+  list(name = "nv_rnorm", static = c(1L, 3L)),
   list(name = "nv_rbinom", static = c(1L, 3L, 4L, 5L)),
-  list(name = "nv_rdunif", static = c(1L, 3L, 4L))
+  list(name = "nv_sample_int", static = c(1L, 3L, 4L)),
+  list(name = "nv_sample", static = 1L)
 )
