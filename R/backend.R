@@ -228,3 +228,36 @@ with_backend <- function(backend, code) {
   backend <- assert_backend(backend)
   withr::with_options(list(anvl.default_backend = backend), code)
 }
+
+#' Install what a backend needs to run
+#'
+#' A backend needs more than the packages anvl declares as dependencies: the
+#' `"pjrt"` backend runs on PJRT plugins that are downloaded rather than shipped
+#' with the package, and the `"quickr"` backend needs {quickr}, which is only
+#' suggested. This installs whichever of the two the given backend is missing.
+#'
+#' Calling this is normally unnecessary: the PJRT plugins are downloaded without
+#' asking when the package providing them is loaded, and failing that the first
+#' time a client is created. Call it to make the download an explicit step, for
+#' instance in a `Dockerfile` layer of its own.
+#'
+#' Which plugins you get -- and whether CUDA is available at all -- is decided
+#' by the repository anvl was installed from, not by this call. See the
+#' installation vignette: `vignette("installation", package = "anvl")`.
+#'
+#' @param backend (`character(1)`)\cr
+#'   Backend to install for. Defaults to [default_backend()]. The `"plain"`
+#'   backend has nothing to install and is not accepted.
+#' @param ... Passed to the underlying installer: [pjrt::install_pjrt()] for
+#'   `"pjrt"`, [utils::install.packages()] for `"quickr"`.
+#' @return `NULL`, invisibly. Called for its side effect.
+#' @export
+install_anvl <- function(backend = default_backend(), ...) {
+  backend <- assert_choice(backend, c("pjrt", "quickr"))
+  switch(
+    backend,
+    pjrt = pjrt::install_pjrt(...),
+    quickr = install.packages("quickr", ...)
+  )
+  invisible(NULL)
+}
