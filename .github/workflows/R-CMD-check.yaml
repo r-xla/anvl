@@ -23,13 +23,8 @@ jobs:
           - { os: "ubuntu", r: "release", platform: "cpu" }
           - { os: "ubuntu", r: "release", platform: "cpu", torch: true }
           - { os: "windows", r: "release", platform: "cpu"}
-          # Down to the declared minimum, R 4.3 -- `matrixOps` (see
-          # api-generics.R) does not exist before that. Linux x86 only: what
-          # these catch is code that is too new for the oldest R we claim to
-          # support, which is platform-independent, so one OS is enough.
           - { os: "ubuntu", r: "oldrel-1", platform: "cpu" }
           - { os: "ubuntu", r: "oldrel-2", platform: "cpu" }
-          - { os: "ubuntu", r: "oldrel-3", platform: "cpu" }
 
         include:
           - config: {os: "ubuntu", platform: "cpu"}

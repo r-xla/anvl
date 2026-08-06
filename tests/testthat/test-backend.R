@@ -53,3 +53,27 @@ test_that("nv_empty works with pjrt backend", {
   expect_equal(dtype(x), as_dtype("f32"))
   expect_equal(shape(x), c(0L, 3L))
 })
+
+test_that("install_anvl routes to the backend's installer and forwards ...", {
+  args <- NULL
+  local_mocked_bindings(
+    install_pjrt = function(...) {
+      args <<- list(...)
+    },
+    .package = "pjrt"
+  )
+  expect_null(install_anvl("pjrt", cuda = FALSE))
+  expect_equal(args, list(cuda = FALSE))
+
+  pkg <- NULL
+  local_mocked_bindings(install.packages = function(pkgs, ...) {
+    pkg <<- pkgs
+  })
+  expect_null(install_anvl("quickr"))
+  expect_equal(pkg, "quickr")
+})
+
+test_that("install_anvl rejects backends that have nothing to install", {
+  expect_error(install_anvl("plain"))
+  expect_error(install_anvl("not-a-backend"))
+})
