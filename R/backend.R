@@ -236,10 +236,13 @@ with_backend <- function(backend, code) {
 #' with the package, and the `"quickr"` backend needs {quickr}, which is only
 #' suggested. This installs whichever of the two the given backend is missing.
 #'
-#' Calling this is normally unnecessary: the PJRT plugins are downloaded without
-#' asking when the package providing them is loaded, and failing that the first
-#' time a client is created. Call it to make the download an explicit step, for
-#' instance in a `Dockerfile` layer of its own.
+#' The PJRT plugins are downloaded on demand, but not silently: the first time a
+#' plugin is needed, an interactive session asks for confirmation, while a
+#' non-interactive session does not download at all. Call this to make the
+#' download an explicit step instead, for instance in a `Dockerfile` layer of its
+#' own or at the start of a script that later runs unattended. The `PJRT_INSTALL`
+#' environment variable overrides the prompt: `"1"` always downloads without
+#' asking, `"0"` never downloads.
 #'
 #' Which plugins you get -- and whether CUDA is available at all -- is decided
 #' by the repository anvl was installed from, not by this call. See the
