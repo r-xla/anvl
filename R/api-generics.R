@@ -31,10 +31,9 @@ Ops.AnvlArray <- function(e1, e2) {
 #' @export
 Ops.AnvlBox <- Ops.AnvlArray
 
-# `matrixOps` is the group generic R 4.3.0 introduced for `%*%`. Registering a
-# method for it is what sets the minimum R version -- for anvl and, since the
-# packages are installed together, for the ecosystem: on R 4.2 the generic does
-# not exist and loading anvl's namespace fails outright.
+# `matrixOps` is the group generic R 4.3.0 introduced for `%*%`; on R 4.2 it
+# does not exist and loading anvl's namespace fails outright. The package's
+# minimum R version is set higher still, by `crossprod()`/`tcrossprod()` below.
 #' @export
 matrixOps.AnvlArray <- function(x, y) {
   switch(
@@ -259,6 +258,10 @@ sort.AnvlBox <- sort.AnvlArray
 #' @export
 `[<-.AnvlBox` <- `[<-.AnvlArray`
 
+# `crossprod()`/`tcrossprod()` only became S3 generic in R 4.4.0 (`%*%` got
+# there in 4.3.0), so these methods are what sets the package's minimum R
+# version: on 4.3 they register but never dispatch, and `crossprod(x)` on an
+# `AnvlArray` errors from base instead.
 #' @rdname nv_crossprod
 #' @param x,y Same as `lhs` and `rhs`; the names used by the base R S3 generic.
 #' @param ... No additional arguments.
