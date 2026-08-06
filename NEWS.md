@@ -1,3 +1,9 @@
+# anvl (development version)
+
+## Documentation
+
+* Improved the installation vignette
+
 # anvl 0.4.0
 
 ## Breaking changes
