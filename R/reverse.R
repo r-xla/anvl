@@ -344,13 +344,9 @@ run_backward_pass <- function(graph, desc, backwards, required_env, out) {
     }
 
     output_grads <- lapply(call$outputs, \(output) {
-      grad <- grad_env[[output]]
-      if (is.null(grad)) {
-        # Output grad may be NULL if there is dead code.
+      # Output grad may be NULL if there is dead code.
+      grad_env[[output]] %||%
         prim_fill(0L, dtype = dtype(output), shape = shape(output))
-      } else {
-        grad
-      }
     })
 
     bwd <- backwards[[i]]
@@ -383,16 +379,14 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
       next
     }
     input <- graph$inputs[[i]]
-    grad <- grad_env[[input]]
-    x <- if (is.null(grad)) {
-      const <- get_box_or_register_const(
-        desc,
-        nv_scalar(0L, dtype = input$aval$dtype, ambiguous = input$aval$ambiguous)
-      )
-      nv_broadcast_to(const, shape(input$aval))
-    } else {
-      grad
-    }
+    x <- grad_env[[input]] %||%
+      {
+        const <- get_box_or_register_const(
+          desc,
+          nv_scalar(0L, dtype = input$aval$dtype, ambiguous = input$aval$ambiguous)
+        )
+        nv_broadcast_to(const, shape(input$aval))
+      }
     # Match the input's ambiguity flag.
     x$gnode$aval$ambiguous <- input$aval$ambiguous
     input_grads <- c(input_grads, list(x$gnode))
