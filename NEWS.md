@@ -1,9 +1,3 @@
-# anvl (development version)
-
-## Documentation
-
-* Improved the installation vignette
-
 # anvl 0.4.0
 
 ## Breaking changes
@@ -54,6 +48,7 @@
   (default) runs none, and a character vector (e.g.
   `c("inline_scalars", "remove_unused_constants")`) selects a subset. `jit()` always traces with all
   passes enabled.
+* Improved the installation vignette
 
 ## Performance
 
