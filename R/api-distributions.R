@@ -40,7 +40,7 @@
 #' library as used by JAX) for `f64`, and uses a new lower degree Remez minimax
 #' rational approximation on the same intervals for `f32`.
 #' @references
-#' `r xlamisc::format_bib(c("abramowitz1964handbook", "moshier1989methods"))`
+#' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
 #' @return
 #' `nv_dnorm()` and `nv_pnorm()` return an [`arrayish`] with the same shape and

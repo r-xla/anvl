@@ -20,7 +20,7 @@ backend has nothing to install and is not accepted.}
 \description{
 A backend needs more than the packages anvl declares as dependencies: the
 \code{"pjrt"} backend runs on PJRT plugins that are downloaded rather than shipped
-with the package, and the \code{"quickr"} backend needs {quickr}, which is only
+with the package, and the \code{"quickr"} backend needs \CRANpkg{quickr}, which is only
 suggested. This installs whichever of the two the given backend is missing.
 }
 \details{
