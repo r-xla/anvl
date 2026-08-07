@@ -22,13 +22,6 @@
   [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md)’s
   `n` is now `size`, matching the corresponding R functions.
 
-### Bug fixes
-
-- [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
-  (formerly `nv_rdunif()`) was off by one: the first integer was drawn
-  twice as often as it should have been, and the last integer was never
-  drawn at all.
-
 ### Features
 
 - New
@@ -90,6 +83,10 @@
 
 ### Bug fixes
 
+- [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
+  (formerly `nv_rdunif()`) was off by one: the first integer was drawn
+  twice as often as it should have been, and the last integer was never
+  drawn at all.
 - Reductions now reject dimensions that are out of range for the operand
   instead of silently ignoring them.
 - `NULL` is now treated as an empty node when flattening and

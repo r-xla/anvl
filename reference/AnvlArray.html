@@ -73,7 +73,7 @@ Its type is determined by a data type and a shape."><meta property="og:image" co
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>AnvlArray</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/array.R" class="external-link"><code>R/array.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-like.R" class="external-link"><code>R/api-like.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/array.R" class="external-link"><code>R/array.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.4.0/R/api-like.R" class="external-link"><code>R/api-like.R</code></a></small>
       <div class="d-none name"><code>AnvlArray.Rd</code></div>
     </div>
 
@@ -325,8 +325,8 @@ The supported data types and devices differ between backends.</p>
 <span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -3.6856e+03  3.0660e-41 -3.6855e+03</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0660e-41 -3.6855e+03  3.0660e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -2.6386e-22  3.0702e-41 -6.5407e-22</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0702e-41 -3.4884e-22  3.0702e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

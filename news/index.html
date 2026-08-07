@@ -71,7 +71,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Changelog</h1>
-      <small>Source: <a href="https://github.com/r-xla/anvl/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
+      <small>Source: <a href="https://github.com/r-xla/anvl/blob/v0.4.0/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
     <div class="section level2">
@@ -87,11 +87,6 @@
 <code>nv_rdunif()</code> has been renamed to <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, mirroring R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int()</a></code>.</li>
 <li>
 <code><a href="../reference/nv_runif.html">nv_runif()</a></code>’s <code>lower</code>/<code>upper</code> arguments are now <code>min</code>/<code>max</code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>’s <code>mu</code>/<code>sigma</code> are now <code>mean</code>/<code>sd</code>, and <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>’s <code>n</code> is now <code>size</code>, matching the corresponding R functions.</li>
-</ul></div>
-<div class="section level3">
-<h3 id="bug-fixes-0-4-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-4-0"></a></h3>
-<ul><li>
-<code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> (formerly <code>nv_rdunif()</code>) was off by one: the first integer was drawn twice as often as it should have been, and the last integer was never drawn at all.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="features-0-4-0">Features<a class="anchor" aria-label="anchor" href="#features-0-4-0"></a></h3>
@@ -119,8 +114,10 @@
 <li>Calling <code><a href="../reference/jit.html">jit()</a></code>ted functions is now significantly faster.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-0-4-0-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-4-0-1"></a></h3>
-<ul><li>Reductions now reject dimensions that are out of range for the operand instead of silently ignoring them.</li>
+<h3 id="bug-fixes-0-4-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-4-0"></a></h3>
+<ul><li>
+<code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> (formerly <code>nv_rdunif()</code>) was off by one: the first integer was drawn twice as often as it should have been, and the last integer was never drawn at all.</li>
+<li>Reductions now reject dimensions that are out of range for the operand instead of silently ignoring them.</li>
 <li>
 <code>NULL</code> is now treated as an empty node when flattening and unflattening trees.</li>
 <li>
