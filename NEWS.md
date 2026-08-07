@@ -14,12 +14,6 @@
   `mu`/`sigma` are now `mean`/`sd`, and `nv_rbinom()`'s `n` is now `size`,
   matching the corresponding R functions.
 
-## Bug fixes
-
-* `nv_sample_int()` (formerly `nv_rdunif()`) was off by one: the first integer
-  was drawn twice as often as it should have been, and the last integer was
-  never drawn at all.
-
 ## Features
 
 * New `nv_sample()` samples from an arbitrary population.
@@ -60,6 +54,9 @@
 
 ## Bug fixes
 
+* `nv_sample_int()` (formerly `nv_rdunif()`) was off by one: the first integer
+  was drawn twice as often as it should have been, and the last integer was
+  never drawn at all.
 * Reductions now reject dimensions that are out of range for the operand
   instead of silently ignoring them.
 * `NULL` is now treated as an empty node when flattening and unflattening trees.
