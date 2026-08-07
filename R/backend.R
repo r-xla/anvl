@@ -233,7 +233,7 @@ with_backend <- function(backend, code) {
 #'
 #' A backend needs more than the packages anvl declares as dependencies: the
 #' `"pjrt"` backend runs on PJRT plugins that are downloaded rather than shipped
-#' with the package, and the `"quickr"` backend needs {quickr}, which is only
+#' with the package, and the `"quickr"` backend needs \CRANpkg{quickr}, which is only
 #' suggested. This installs whichever of the two the given backend is missing.
 #'
 #' The PJRT plugins are downloaded on demand, but not silently: the first time a

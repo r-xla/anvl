@@ -117,7 +117,15 @@ nv_rnorm(c(2, 3), state, sd = sds)[[2]]
 \dontshow{\}) # examplesIf}
 }
 \references{
-\verb{r xlamisc::format_bib(c("abramowitz1964handbook", "moshier1989methods"))}
+Abramowitz M, Stegun I (1964).
+\emph{Handbook of Mathematical Functions with Formulas, Graphs, and Mathematical Tables},  number 55 series Applied Mathematics Series.
+Dover Publications, New York.
+ISBN 0-486-61272-4.
+
+Moshier S (1989).
+\emph{Methods and Programs for Mathematical Functions}.
+Ellis Horwood.
+ISBN 0-7458-0289-3.
 }
 \seealso{
 \code{\link[=nv_rnorm]{nv_rnorm()}} for sampling from a normal distribution.
