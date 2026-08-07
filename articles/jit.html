@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
@@ -109,7 +110,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>JIT Deep Dive</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/vignettes/jit.Rmd" class="external-link"><code>vignettes/jit.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/jit.Rmd" class="external-link"><code>vignettes/jit.Rmd</code></a></small>
       <div class="d-none name"><code>jit.Rmd</code></div>
     </div>
 
@@ -171,14 +172,14 @@ size of the cache held inside the jitted function:</p>
 <span></span>
 <span><span class="va">linear_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">linear</span><span class="op">)</span></span>
 <span><span class="fu">cache_size</span><span class="op">(</span><span class="va">linear_jit</span><span class="op">)</span>   <span class="co"># 0: nothing cached yet</span></span>
-<span><span class="co">#&gt; [1] 0</span></span>
+<span><span class="co">#&gt; NULL</span></span>
 <span></span>
 <span><span class="fu">linear_jit</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  7</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span>
 <span><span class="fu">cache_size</span><span class="op">(</span><span class="va">linear_jit</span><span class="op">)</span>   <span class="co"># 1: a new entry was added</span></span>
-<span><span class="co">#&gt; [1] 1</span></span>
+<span><span class="co">#&gt; NULL</span></span>
 <span></span>
 <span><span class="co"># same shapes -&gt; cache hit, size unchanged</span></span>
 <span><span class="fu">linear_jit</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
@@ -186,7 +187,7 @@ size of the cache held inside the jitted function:</p>
 <span><span class="co">#&gt;  11</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span>
 <span><span class="fu">cache_size</span><span class="op">(</span><span class="va">linear_jit</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1</span></span>
+<span><span class="co">#&gt; NULL</span></span>
 <span></span>
 <span><span class="co"># different shapes -&gt; a second entry is added</span></span>
 <span><span class="fu">linear_jit</span><span class="op">(</span></span>
@@ -199,7 +200,7 @@ size of the cache held inside the jitted function:</p>
 <span><span class="co">#&gt;  9</span></span>
 <span><span class="co">#&gt; [ CPUf32{2} ]</span></span>
 <span><span class="fu">cache_size</span><span class="op">(</span><span class="va">linear_jit</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 2</span></span></code></pre></div>
+<span><span class="co">#&gt; NULL</span></span></code></pre></div>
 <p>Each input to the function contributes to the cache key differently,
 depending on whether it is <em>dynamic</em> (an arrayish value, the
 default) or <em>static</em> (marked via the <code>static =</code>
@@ -294,9 +295,9 @@ the hood. Below, we trace <code>linear</code> with a length-3 vector for
 <span><span class="co">#&gt;     %x2: f32[]</span></span>
 <span><span class="co">#&gt;     %x3: f32[]</span></span>
 <span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = &lt;any&gt;] (%x2)</span></span>
+<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x2)</span></span>
 <span><span class="co">#&gt;     %2: f32[3] = mul(%x1, %1)</span></span>
-<span><span class="co">#&gt;     %3: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = &lt;any&gt;] (%x3)</span></span>
+<span><span class="co">#&gt;     %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x3)</span></span>
 <span><span class="co">#&gt;     %4: f32[3] = add(%2, %3)</span></span>
 <span><span class="co">#&gt;   Outputs:</span></span>
 <span><span class="co">#&gt;     %4: f32[3]</span></span></code></pre></div>
@@ -351,14 +352,14 @@ recorded in the graph. Here we apply the <code>linear</code> function
 <span><span class="co">#&gt;     %x2: f32[3]</span></span>
 <span><span class="co">#&gt;     %x3: f32[3]</span></span>
 <span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = &lt;any&gt;] (%x1)</span></span>
+<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x1)</span></span>
 <span><span class="co">#&gt;     %2: f32[3] = mul(%1, %x2)</span></span>
 <span><span class="co">#&gt;     %3: f32[3] = add(%2, %x3)</span></span>
 <span><span class="co">#&gt;     %4: f32[3] = mul(%3, %x2)</span></span>
 <span><span class="co">#&gt;     %5: f32[3] = add(%4, %x3)</span></span>
 <span><span class="co">#&gt;   Outputs:</span></span>
 <span><span class="co">#&gt;     %5: f32[3]</span></span></code></pre></div>
-<p>The graph contains a single <code>broadcast_in_dim</code> (lifting
+<p>The graph contains a single <code>broadcast_in_axes</code> (lifting
 the scalar <code>x</code> to <code>f32[3]</code>) followed by two
 <code>mul</code>/<code>add</code> pairs in sequence – not a loop
 construct. The broadcast happens only once because by the second
@@ -629,7 +630,7 @@ compiled binaries for several devices at once, unless
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

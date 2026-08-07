@@ -36,7 +36,7 @@ no-op.
 ## See also
 
 [`pjrt::await()`](https://r-xla.github.io/pjrt/reference/await.html),
-[`map_tree()`](https://r-xla.github.io/anvl/reference/map_tree.md) (to
+[`map_tree()`](https://r-xla.github.io/pjrt/reference/map_tree.html) (to
 await a tree of outputs)
 
 ## Examples

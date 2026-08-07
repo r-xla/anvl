@@ -1,22 +1,22 @@
 # Symmetric Eigendecomposition
 
-Computes the eigendecomposition of a symmetric matrix `operand` of shape
+Computes the eigendecomposition of a symmetric matrix `x` of shape
 `(n, n)`: \$\$A = \mathrm{vectors} \\ \mathrm{diag}(\mathrm{values}) \\
-\mathrm{vectors}^\top.\$\$ Only the lower triangle of `operand` is read.
-The columns of `vectors` are the (orthonormal) eigenvectors and `values`
-is the length-`n` vector of (real) eigenvalues in ascending order.
-Output names and order match
+\mathrm{vectors}^\top.\$\$ Only the lower triangle of `x` is read. The
+columns of `vectors` are the (orthonormal) eigenvectors and `values` is
+the length-`n` vector of (real) eigenvalues in ascending order. Output
+names and order match
 [`base::eigen()`](https://rdrr.io/r/base/eigen.html).
 
 ## Usage
 
 ``` r
-nv_eigh(operand)
+nv_eigh(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Symmetric square matrix of floating-point data type.

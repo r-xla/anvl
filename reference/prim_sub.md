@@ -33,7 +33,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_subtract()`](https://r-xla.github.io/stablehlo/reference/hlo_subtract.html).
+[`hlo_subtract()`](https://r-xla.github.io/stablehlo/reference/hlo_subtract.html).
 
 ## See also
 

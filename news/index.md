@@ -1,9 +1,135 @@
 # Changelog
 
+## anvl 0.4.0
+
+### Breaking changes
+
+- Renamed `dim`/`dims` to `axis`/`axes` throughout the package (an axis
+  is an index, a dimension is a size); `ndims()` is now
+  [`naxes()`](https://r-xla.github.io/anvl/reference/naxes.md).
+- Renamed the primary array argument of `prim_*` / `nv_*` functions from
+  `operand` to `x`.
+- Renamed the `"xla"` backend to `"pjrt"`.
+- `xla()` has been removed; use
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) instead.
+- `nv_rdunif()` has been renamed to
+  [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md),
+  mirroring R’s [`sample.int()`](https://rdrr.io/r/base/sample.html).
+- [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md)’s
+  `lower`/`upper` arguments are now `min`/`max`,
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)’s
+  `mu`/`sigma` are now `mean`/`sd`, and
+  [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md)’s
+  `n` is now `size`, matching the corresponding R functions.
+
+### Bug fixes
+
+- [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
+  (formerly `nv_rdunif()`) was off by one: the first integer was drawn
+  twice as often as it should have been, and the last integer was never
+  drawn at all.
+
+### Features
+
+- New
+  [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md)
+  samples from an arbitrary population.
+- New
+  [`nv_lower_tri()`](https://r-xla.github.io/anvl/reference/nv_lower_tri.md)
+  and
+  [`nv_upper_tri()`](https://r-xla.github.io/anvl/reference/nv_upper_tri.md)
+  (with
+  [`nv_lower_tri_like()`](https://r-xla.github.io/anvl/reference/nv_lower_tri.md)
+  /
+  [`nv_upper_tri_like()`](https://r-xla.github.io/anvl/reference/nv_upper_tri.md))
+  return a boolean triangular mask for a given shape, mirroring base R’s
+  [`lower.tri()`](https://rdrr.io/r/base/lower.tri.html) /
+  [`upper.tri()`](https://rdrr.io/r/base/lower.tri.html).
+- New functions for the normal distribution:
+  [`nv_dnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md),
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md),
+  and
+  [`nv_pnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
+  thanks to Louis Aslett. They are implemented to be accurate far into
+  either tail.
+- [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)’s
+  `mean` and `sd` now accept arrayish inputs.
+- Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now
+  accept negative values that count from the end, so `-1` refers to the
+  last dimension.
+- Reshaping functions accept a single `-1` in shape indicating a
+  dimension to be inferred.
+- Added support for 1-3 dimensional convolutions, thanks to Troy
+  Hernandez.
+- `AnvlArray` constructors and converters have gained a `check` argument
+  that opts into scanning for `NA` values, see the “Gotchas” vignette
+  for more information.
+- [`nv_var()`](https://r-xla.github.io/anvl/reference/nv_var.md) and
+  [`nv_sd()`](https://r-xla.github.io/anvl/reference/nv_sd.md) now
+  default to `dims = NULL`, which reduces over all dimensions and
+  returns a scalar, consistent with the other reductions.
+- [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md)
+  gained an `optimize` argument controlling which graph optimization
+  passes run on the traced graph. `TRUE` runs all passes, `FALSE`
+  (default) runs none, and a character vector (e.g.
+  `c("inline_scalars", "remove_unused_constants")`) selects a subset.
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) always traces
+  with all passes enabled.
+- Improved the installation vignette
+
+### Performance
+
+- Most `nv_*()` API functions are now JIT-compiled internally (via a new
+  `@jit` roxygen roclet), speeding up eager-mode execution.
+- Tracing
+  ([`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md))
+  performance has been improved.
+- StableHLO lowering has been sped up.
+- Calling [`jit()`](https://r-xla.github.io/anvl/reference/jit.md)ted
+  functions is now significantly faster.
+
+### Bug fixes
+
+- Reductions now reject dimensions that are out of range for the operand
+  instead of silently ignoring them.
+- `NULL` is now treated as an empty node when flattening and
+  unflattening trees.
+- [`nv_argmax()`](https://r-xla.github.io/anvl/reference/nv_argmax.md) /
+  [`nv_argmin()`](https://r-xla.github.io/anvl/reference/nv_argmin.md)
+  and
+  [`nv_cummax()`](https://r-xla.github.io/anvl/reference/nv_cummax.md) /
+  [`nv_cummin()`](https://r-xla.github.io/anvl/reference/nv_cummin.md)
+  now break ties order-independently, so they return the same result on
+  GPU as on CPU ([\#368](https://github.com/r-xla/anvl/issues/368)).
+  [`nv_argmax()`](https://r-xla.github.io/anvl/reference/nv_argmax.md) /
+  [`nv_argmin()`](https://r-xla.github.io/anvl/reference/nv_argmin.md)
+  prefer the smallest index;
+  [`nv_cummax()`](https://r-xla.github.io/anvl/reference/nv_cummax.md) /
+  [`nv_cummin()`](https://r-xla.github.io/anvl/reference/nv_cummin.md)
+  prefer the last occurrence.
+- [`nv_diag()`](https://r-xla.github.io/anvl/reference/nv_diag.md) now
+  errors on non-1-D input instead of silently producing an incorrect
+  result.
+- [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) now rejects
+  static arguments with reference semantics.
+- Error messages now speak of arrays instead of tensors.
+
 ## anvl 0.3.0
 
 ### Breaking Changes
 
+- [`nv_empty()`](https://r-xla.github.io/anvl/reference/AnvlArray.md) /
+  [`nv_empty_like()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
+  return arrays with unspecified contents (no longer zero-initialized).
+
+### New Features
+
+- On CPU, jitted XLA functions now back every non-aliased output with an
+  R-owned RAWSXP. anvl appends a phantom donated input per unaliased
+  output during lowering, allocates
+  [`pjrt::pjrt_empty()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html)
+  buffers at execute time, and `pjrt` migrates the keepalive onto the
+  output XPtr. The output’s host bytes are then managed by R’s GC.
 - Renamed user-facing API functions to match base R names: `nv_sine()`
   -\> [`nv_sin()`](https://r-xla.github.io/anvl/reference/nv_sin.md),
   `nv_cosine()` -\>
@@ -129,8 +255,9 @@
   [`await()`](https://r-xla.github.io/anvl/reference/await.md) that
   blocks until the underlying computation has finished.
 - New tree utilities
-  [`map_tree()`](https://r-xla.github.io/anvl/reference/map_tree.md) and
-  [`pmap_tree()`](https://r-xla.github.io/anvl/reference/pmap_tree.md)
+  [`map_tree()`](https://r-xla.github.io/pjrt/reference/map_tree.html)
+  and
+  [`pmap_tree()`](https://r-xla.github.io/pjrt/reference/pmap_tree.html)
   for applying functions leaf-wise over (possibly nested) lists.
 - Added support for `range` generic.
 - Improved NaN handling across various primitives and API functions.

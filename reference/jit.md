@@ -2,9 +2,7 @@
 
 Wraps a function so that it is traced and compiled on first call.
 Subsequent calls with the same input structure, shapes, and dtypes hit
-an LRU cache and skip recompilation. Unlike
-[`xla()`](https://r-xla.github.io/anvl/reference/xla.md), the compiled
-executable is not created eagerly but lazily on the first invocation.
+an LRU cache and skip recompilation.
 
 ## Usage
 
@@ -37,6 +35,13 @@ jit(
   compilation is triggered whenever a static value changes. For example
   useful when you want R control flow in your function.
 
+  Note that the values that are passed to static arguments must not have
+  reference semantics. Such a value can be mutated in place while the
+  cache key stays equal, which would silently reuse a program compiled
+  from its old contents. One exception are closures, but there you need
+  to ensure that their enclosing environment does not change in a way
+  that modifies their behavior.
+
 - cache_size:
 
   (`integer(1)`)  
@@ -45,7 +50,7 @@ jit(
 - backend:
 
   (`NULL` \| `character(1)`)  
-  Compilation backend (e.g. `"xla"`, `"quickr"`). The special value
+  Compilation backend (e.g. `"pjrt"`, `"quickr"`). The special value
   `"auto"` defers backend selection to call-time. `NULL` (default)
   respects `device` and otherwise falls back to
   [`default_backend()`](https://r-xla.github.io/anvl/reference/default_backend.md).
@@ -68,7 +73,7 @@ jit(
 - ...:
 
   Backend-specific options. Passing an option that is not supported by
-  the selected backend raises an error. See the **XLA JIT arguments**
+  the selected backend raises an error. See the **PJRT JIT arguments**
   and **Quickr JIT arguments** sections below for the options accepted
   by each backend.
 
@@ -104,7 +109,28 @@ where `<argname>` is the name of the argument specifying the device.
 Note that this is only necessary with the `"auto"` backend. When using a
 concrete backend, you can just specify the device via a static argument.
 
-## XLA JIT arguments
+## Jitting in a Package
+
+To `jit()` a function defined in an R package, prefer the `@jit` roxygen
+tag over a top-level `jit()` call:
+
+    #' @export
+    #' @jit static = c("flag")
+    my_fun <- function(x, flag) if (flag) x + 1 else x * 2
+
+This delegates the wrapping to
+[`jit_roclet()`](https://r-xla.github.io/anvl/reference/jit_roclet.md),
+which records the tagged functions in `R/jit-registry.R`. The wrapping
+itself happens at package build time via
+[`apply_jit_registry()`](https://r-xla.github.io/anvl/reference/apply_jit_registry.md)
+in `R/zzz.R`, so the resulting `JitFunction` is byte-compiled with the
+rest of the package instead of being rebuilt on every `.onLoad`.
+
+See
+[`jit_roclet()`](https://r-xla.github.io/anvl/reference/jit_roclet.md)
+for the one-time setup of the roclet in your package.
+
+## PJRT JIT arguments
 
 - `donate` ([`character()`](https://rdrr.io/r/base/character.html),
   default [`character()`](https://rdrr.io/r/base/character.html)): names
@@ -123,10 +149,10 @@ concrete backend, you can just specify the device via a static argument.
 
 ## See also
 
-[`xla()`](https://r-xla.github.io/anvl/reference/xla.md) for
-ahead-of-time compilation,
 [`jit_eval()`](https://r-xla.github.io/anvl/reference/jit_eval.md) for
-evaluating an expression once.
+evaluating an expression once,
+[`jit_roclet()`](https://r-xla.github.io/anvl/reference/jit_roclet.md)
+for the `@jit` tag used inside R packages.
 
 ## Examples
 

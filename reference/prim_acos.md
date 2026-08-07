@@ -5,12 +5,12 @@ Element-wise inverse cosine.
 ## Usage
 
 ``` r
-prim_acos(operand)
+prim_acos(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_acos()`](https://r-xla.github.io/stablehlo/reference/hlo_acos.html).
+[`hlo_acos()`](https://r-xla.github.io/stablehlo/reference/hlo_acos.html).
 
 ## See also
 

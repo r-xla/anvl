@@ -1,13 +1,13 @@
 # Cholesky Decomposition
 
 Computes the Cholesky decomposition of a symmetric positive-definite
-matrix. Supports batched inputs: dimensions before the last two are
-batch dimensions.
+matrix. Supports batched inputs: axes before the last two are batch
+axes.
 
 ## Usage
 
 ``` r
-nv_chol(operand, lower = FALSE)
+nv_chol(x, lower = FALSE)
 
 # S3 method for class 'AnvlArray'
 chol(x, ..., lower = FALSE)
@@ -15,22 +15,16 @@ chol(x, ..., lower = FALSE)
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Symmetric positive-definite matrix with at least 2 dimensions. The
-  last two dimensions form the square matrix; any leading dimensions are
-  batch dimensions.
+  Symmetric positive-definite matrix with at least 2 axes. The last two
+  axes form the square matrix; any leading axes are batch axes.
 
 - lower:
 
   (`logical(1)`)  
   If `TRUE`, return the lower-triangular factor.
-
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
 
 - ...:
 

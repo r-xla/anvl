@@ -29,13 +29,13 @@ before coercing.
 
 ``` r
 # S3 method for class 'AnvlArray'
-as.double(x, ...)
+as.double(x, check = FALSE, ...)
 
 # S3 method for class 'AnvlArray'
-as.integer(x, ...)
+as.integer(x, check = FALSE, ...)
 
 # S3 method for class 'AnvlArray'
-as.logical(x, ...)
+as.logical(x, check = FALSE, ...)
 
 # S3 method for class 'AnvlArray'
 as.vector(x, mode = "any")
@@ -47,6 +47,13 @@ as.vector(x, mode = "any")
 
   ([`AnvlArray`](https://r-xla.github.io/anvl/reference/AnvlArray.md))  
   Array to coerce.
+
+- check:
+
+  (`logical(1)`)  
+  Forwarded to
+  [`as_array()`](https://r-xla.github.io/anvl/reference/as_array.md);
+  see there for details.
 
 - ...:
 

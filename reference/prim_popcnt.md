@@ -5,12 +5,12 @@ Element-wise population count (number of set bits).
 ## Usage
 
 ``` r
-prim_popcnt(operand)
+prim_popcnt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type integer or unsigned integer.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_popcnt()`](https://r-xla.github.io/stablehlo/reference/hlo_popcnt.html).
+[`hlo_popcnt()`](https://r-xla.github.io/stablehlo/reference/hlo_popcnt.html).
 
 ## See also
 

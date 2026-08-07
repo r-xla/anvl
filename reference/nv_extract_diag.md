@@ -5,15 +5,15 @@ Extracts the diagonal elements from a 2-D array.
 ## Usage
 
 ``` r
-nv_extract_diag(operand)
+nv_extract_diag(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

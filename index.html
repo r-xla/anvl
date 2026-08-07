@@ -34,7 +34,7 @@
 
     <a class="navbar-brand me-2" href="index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,6 +60,7 @@
     <li><a class="dropdown-item" href="articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="articles/faq.html">FAQ</a></li>
   </ul>
@@ -118,10 +119,11 @@
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"anvl"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://r-xla.r-universe.dev"</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Install CUDA support on linux amd64:</p>
+<p>The PJRT plugins anvl runs on are downloaded separately, on demand. To download them right away instead of when they are first needed:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"cuda12.8"</span>, repos <span class="op">=</span> <span class="st">"https://mlverse.r-universe.dev"</span><span class="op">)</span></span></code></pre></div>
-<p>See the <a href="https://r-xla.github.io/anvl/articles/installation.html">Installation guide</a> for more details, including prebuilt Docker images.</p>
+<code class="sourceCode R"><span><span class="fu">anvl</span><span class="fu">::</span><span class="fu"><a href="reference/install_anvl.html">install_anvl</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>CUDA support is only available on linux x86_64 (amd64). There, this also installs the CUDA plugin when an NVIDIA GPU is detected; pass <code>cuda = TRUE</code> to install it regardless.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/installation.html">installation guide</a> for more details, including prebuilt Docker images.</p>
 </div>
 <div class="section level2">
 <h2 id="why-anvl">Why anvl<a class="anchor" aria-label="anchor" href="#why-anvl"></a>
@@ -136,7 +138,7 @@
 <li>
 <strong>Hardware portability.</strong> The same code runs on CPU or GPU.</li>
 </ul>
-<p>Moreover, the package is designed by be extensible. As the package is written in R, new primitives and transformations can be added without needing a lower-level language.</p>
+<p>Moreover, the package is designed to be extensible. As the package is written in R, new primitives and transformations can be added without needing a lower-level language.</p>
 </div>
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
@@ -171,8 +173,8 @@
 <span><span class="co">#&gt; $a</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  3</span></span>
-<span><span class="co">#&gt; [ CPUf32{} ] </span></span>
-<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; [ CPUf32{} ]</span></span>
+<span><span class="co">#&gt;</span></span>
 <span><span class="co">#&gt; $b</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  1</span></span>
@@ -264,6 +266,7 @@
 <li>Daniel Falbel <br><small class="roles"> Author </small> <a href="https://orcid.org/https://orcid.org/0009-0006-0143-2392" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
 <li>Tomasz Kalinowski <br><small class="roles"> Author </small>   </li>
 <li>Nikolai German <br><small class="roles"> Author </small> <a href="https://orcid.org/https://orcid.org/0009-0001-7394-8367" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>
 
@@ -278,7 +281,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

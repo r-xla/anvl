@@ -6,12 +6,12 @@ modifying the underlying data.
 ## Usage
 
 ``` r
-prim_bitcast_convert(operand, dtype)
+prim_bitcast_convert(x, dtype)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -19,10 +19,10 @@ prim_bitcast_convert(operand, dtype)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Target data type. If it has the same bit width as the input, the
-  output shape is unchanged. If narrower, an extra trailing dimension is
-  added. If wider, the last dimension is consumed.
+  output shape is unchanged. If narrower, an extra trailing axis is
+  added. If wider, the last axis is consumed.
 
 ## Value
 
@@ -38,7 +38,7 @@ Has the given `dtype`.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_bitcast_convert()`](https://r-xla.github.io/stablehlo/reference/hlo_bitcast_convert.html).
+[`hlo_bitcast_convert()`](https://r-xla.github.io/stablehlo/reference/hlo_bitcast_convert.html).
 
 ## See also
 

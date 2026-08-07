@@ -6,15 +6,15 @@ the specified diagonal to zero.
 ## Usage
 
 ``` r
-nv_tril(operand, diagonal = 0L)
+nv_tril(x, diagonal = 0L)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - diagonal:
 
@@ -25,11 +25,12 @@ nv_tril(operand, diagonal = 0L)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same shape and data type as `operand`.
+Has the same shape and data type as `x`.
 
 ## See also
 
-[`nv_triu()`](https://r-xla.github.io/anvl/reference/nv_triu.md)
+[`nv_triu()`](https://r-xla.github.io/anvl/reference/nv_triu.md),
+[`nv_lower_tri()`](https://r-xla.github.io/anvl/reference/nv_lower_tri.md)
 
 ## Examples
 

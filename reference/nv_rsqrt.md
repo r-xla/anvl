@@ -5,15 +5,15 @@ Element-wise reciprocal square root, i.e. `1 / sqrt(x)`.
 ## Usage
 
 ``` r
-nv_rsqrt(operand)
+nv_rsqrt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

@@ -5,16 +5,16 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Gather — prim_gather"><meta name="description" content="Gathers slices from the operand array at positions specified by
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Gather — prim_gather"><meta name="description" content="Gathers slices from the x array at positions specified by
 start_indices. Each index vector in start_indices identifies a
-starting position in operand, and a slice of size slice_sizes is
+starting position in x, and a slice of size slice_sizes is
 extracted from that position. The gathered slices are assembled into
 the output array.
 This is the inverse of prim_scatter(): gather reads slices from a
 array at given indices, while scatter writes slices into an array at
-given indices."><meta property="og:description" content="Gathers slices from the operand array at positions specified by
+given indices."><meta property="og:description" content="Gathers slices from the x array at positions specified by
 start_indices. Each index vector in start_indices identifies a
-starting position in operand, and a slice of size slice_sizes is
+starting position in x, and a slice of size slice_sizes is
 extracted from that position. The gathered slices are assembled into
 the output array.
 This is the inverse of prim_scatter(): gather reads slices from a
@@ -27,7 +27,7 @@ given indices."><meta property="og:image" content="https://r-xla.github.io/anvl/
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,6 +49,7 @@ given indices."><meta property="og:image" content="https://r-xla.github.io/anvl/
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -84,14 +85,14 @@ given indices."><meta property="og:image" content="https://r-xla.github.io/anvl/
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Primitive Gather</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
       <div class="d-none name"><code>prim_gather.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Gathers slices from the <code>operand</code> array at positions specified by
+    <p>Gathers slices from the <code>x</code> array at positions specified by
 <code>start_indices</code>. Each index vector in <code>start_indices</code> identifies a
-starting position in <code>operand</code>, and a slice of size <code>slice_sizes</code> is
+starting position in <code>x</code>, and a slice of size <code>slice_sizes</code> is
 extracted from that position. The gathered slices are assembled into
 the output array.</p>
 <p>This is the inverse of <code><a href="prim_scatter.html">prim_scatter()</a></code>: gather reads slices from a
@@ -102,15 +103,15 @@ given indices.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_gather</span><span class="op">(</span></span>
-<span>  <span class="va">operand</span>,</span>
+<span>  <span class="va">x</span>,</span>
 <span>  <span class="va">start_indices</span>,</span>
 <span>  <span class="va">slice_sizes</span>,</span>
-<span>  <span class="va">offset_dims</span>,</span>
-<span>  <span class="va">collapsed_slice_dims</span>,</span>
-<span>  <span class="va">operand_batching_dims</span>,</span>
-<span>  <span class="va">start_indices_batching_dims</span>,</span>
+<span>  <span class="va">offset_axes</span>,</span>
+<span>  <span class="va">collapsed_slice_axes</span>,</span>
+<span>  <span class="va">x_batching_axes</span>,</span>
+<span>  <span class="va">start_indices_batching_axes</span>,</span>
 <span>  <span class="va">start_index_map</span>,</span>
-<span>  <span class="va">index_vector_dim</span>,</span>
+<span>  <span class="va">index_vector_axis</span>,</span>
 <span>  indices_are_sorted <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  unique_indices <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -120,7 +121,7 @@ given indices.</p>
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Arrayish value of any data type.</p></dd>
 
@@ -128,53 +129,53 @@ Arrayish value of any data type.</p></dd>
 <dt id="arg-start-indices">start_indices<a class="anchor" aria-label="anchor" href="#arg-start-indices"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code> of integer type)<br>
 Array of starting indices. Contains index vectors that map to
-positions in <code>operand</code> via <code>start_index_map</code>. The dimension
-specified by <code>index_vector_dim</code> holds the index vectors.</p></dd>
+positions in <code>x</code> via <code>start_index_map</code>. The axis
+specified by <code>index_vector_axis</code> holds the index vectors.</p></dd>
 
 
 <dt id="arg-slice-sizes">slice_sizes<a class="anchor" aria-label="anchor" href="#arg-slice-sizes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Size of the slice to gather from <code>operand</code> in each dimension.
-Must have length equal to <code>ndims(operand)</code>.</p></dd>
+Size of the slice to gather from <code>x</code> in each axis.
+Must have length equal to <code>naxes(x)</code>.</p></dd>
 
 
-<dt id="arg-offset-dims">offset_dims<a class="anchor" aria-label="anchor" href="#arg-offset-dims"></a></dt>
+<dt id="arg-offset-axes">offset_axes<a class="anchor" aria-label="anchor" href="#arg-offset-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions in the output that correspond to the non-collapsed
-slice dimensions of <code>operand</code>.</p></dd>
+Axes in the output that correspond to the non-collapsed
+slice axes of <code>x</code>.</p></dd>
 
 
-<dt id="arg-collapsed-slice-dims">collapsed_slice_dims<a class="anchor" aria-label="anchor" href="#arg-collapsed-slice-dims"></a></dt>
+<dt id="arg-collapsed-slice-axes">collapsed_slice_axes<a class="anchor" aria-label="anchor" href="#arg-collapsed-slice-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions of <code>operand</code> that are collapsed (removed) from the
+Axes of <code>x</code> that are collapsed (removed) from the
 slice. The corresponding entries in <code>slice_sizes</code> must be <code>1</code>.
-Together with <code>offset_dims</code> and <code>operand_batching_dims</code>, these
-must account for all dimensions of <code>operand</code>.</p></dd>
+Together with <code>offset_axes</code> and <code>x_batching_axes</code>, these
+must account for all axes of <code>x</code>.</p></dd>
 
 
-<dt id="arg-operand-batching-dims">operand_batching_dims<a class="anchor" aria-label="anchor" href="#arg-operand-batching-dims"></a></dt>
+<dt id="arg-x-batching-axes">x_batching_axes<a class="anchor" aria-label="anchor" href="#arg-x-batching-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions of <code>operand</code> that are batch dimensions.
-Use <code>integer(0)</code> when there are no batch dimensions.</p></dd>
+Axes of <code>x</code> that are batch axes.
+Use <code>integer(0)</code> when there are no batch axes.</p></dd>
 
 
-<dt id="arg-start-indices-batching-dims">start_indices_batching_dims<a class="anchor" aria-label="anchor" href="#arg-start-indices-batching-dims"></a></dt>
+<dt id="arg-start-indices-batching-axes">start_indices_batching_axes<a class="anchor" aria-label="anchor" href="#arg-start-indices-batching-axes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Dimensions of <code>start_indices</code> that correspond to batch
-dimensions. Must have the same length as <code>operand_batching_dims</code>.</p></dd>
+Axes of <code>start_indices</code> that correspond to batch
+axes. Must have the same length as <code>x_batching_axes</code>.</p></dd>
 
 
 <dt id="arg-start-index-map">start_index_map<a class="anchor" aria-label="anchor" href="#arg-start-index-map"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
-Maps each component of the index vector to an <code>operand</code>
-dimension. For example, <code>start_index_map = c(1L)</code> means each
-index vector indexes into the first dimension of <code>operand</code>.</p></dd>
+Maps each component of the index vector to an <code>x</code>
+axis. For example, <code>start_index_map = c(1L)</code> means each
+index vector indexes into the first axis of <code>x</code>.</p></dd>
 
 
-<dt id="arg-index-vector-dim">index_vector_dim<a class="anchor" aria-label="anchor" href="#arg-index-vector-dim"></a></dt>
+<dt id="arg-index-vector-axis">index_vector_axis<a class="anchor" aria-label="anchor" href="#arg-index-vector-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Dimension of <code>start_indices</code> that contains the index vectors.
-If set to <code>ndims(start_indices) + 1</code>, each scalar element of
+Axis of <code>start_indices</code> that contains the index vectors.
+If set to <code>naxes(start_indices) + 1</code>, each scalar element of
 <code>start_indices</code> is treated as a length-1 index vector.</p></dd>
 
 
@@ -195,9 +196,9 @@ behavior if the indices are not actually unique. Default <code>FALSE</code>.</p>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code><a href="arrayish.html">arrayish</a></code><br>
-Has the same data type as <code>operand</code>. The output shape is composed
-of the offset dimensions (from the slice) and the remaining
-dimensions from <code>start_indices</code>. See the underluing stableHLO function
+Has the same data type as <code>x</code>. The output shape is composed
+of the offset axes (from the slice) and the remaining
+axes from <code>start_indices</code>. See the underluing stableHLO function
 for more details.</p>
     </div>
     <div class="section level2">
@@ -205,7 +206,7 @@ for more details.</p>
 
 
 <p>Start indices are clamped before the slice is extracted:
-<code>clamp(1, start_index, nv_shape(operand) - slice_sizes + 1)</code>.
+<code>clamp(1, start_index, nv_shape(x) - slice_sizes + 1)</code>.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.</p>
     </div>
@@ -221,7 +222,7 @@ the effective start position may differ from the requested one.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_gather.html" class="external-link">stablehlo::hlo_gather()</a></code>.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_gather.html" class="external-link">hlo_gather()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -231,17 +232,17 @@ the effective start position may differ from the requested one.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Gather rows 1 and 3 from a 3x3 matrix</span></span></span>
-<span class="r-in"><span><span class="va">operand</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">9</span>, nrow <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">9</span>, nrow <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">indices</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">3L</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_gather</span><span class="op">(</span></span></span>
-<span class="r-in"><span>  <span class="va">operand</span>, <span class="va">indices</span>,</span></span>
+<span class="r-in"><span>  <span class="va">x</span>, <span class="va">indices</span>,</span></span>
 <span class="r-in"><span>  slice_sizes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">3L</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  offset_dims <span class="op">=</span> <span class="fl">2L</span>,</span></span>
-<span class="r-in"><span>  collapsed_slice_dims <span class="op">=</span> <span class="fl">1L</span>,</span></span>
-<span class="r-in"><span>  operand_batching_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  start_indices_batching_dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  offset_axes <span class="op">=</span> <span class="fl">2L</span>,</span></span>
+<span class="r-in"><span>  collapsed_slice_axes <span class="op">=</span> <span class="fl">1L</span>,</span></span>
+<span class="r-in"><span>  x_batching_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  start_indices_batching_axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  start_index_map <span class="op">=</span> <span class="fl">1L</span>,</span></span>
-<span class="r-in"><span>  index_vector_dim <span class="op">=</span> <span class="fl">2L</span></span></span>
+<span class="r-in"><span>  index_vector_axis <span class="op">=</span> <span class="fl">2L</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 4 7</span>
@@ -258,7 +259,7 @@ the effective start position may differ from the requested one.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

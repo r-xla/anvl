@@ -5,12 +5,12 @@ Element-wise inverse tangent.
 ## Usage
 
 ``` r
-prim_atan(operand)
+prim_atan(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_atan()`](https://r-xla.github.io/stablehlo/reference/hlo_atan.html).
+[`hlo_atan()`](https://r-xla.github.io/stablehlo/reference/hlo_atan.html).
 
 ## See also
 

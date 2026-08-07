@@ -6,12 +6,12 @@ Computes the determinant of a square matrix via
 ## Usage
 
 ``` r
-nv_det(operand)
+nv_det(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Square matrix of floating-point data type.
@@ -19,7 +19,7 @@ nv_det(operand)
 ## Value
 
 Scalar [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)
-with the same dtype as `operand`.
+with the same dtype as `x`.
 
 ## See also
 

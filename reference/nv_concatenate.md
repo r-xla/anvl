@@ -1,12 +1,12 @@
 # Concatenate
 
-Concatenates arrays along a dimension. Operands are promoted to a common
+Concatenates arrays along an axis. Operands are promoted to a common
 data type and scalars are broadcast before concatenation.
 
 ## Usage
 
 ``` r
-nv_concatenate(..., dimension = NULL)
+nv_concatenate(..., axis = NULL)
 ```
 
 ## Arguments
@@ -14,20 +14,20 @@ nv_concatenate(..., dimension = NULL)
 - ...:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrays to concatenate. Must have the same shape except along
-  `dimension`.
+  Arrays to concatenate. Must have the same shape except along `axis`.
 
-- dimension:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to concatenate. If `NULL` (default), assumes all
-  inputs are at most 1-D and concatenates along dimension 1.
+  Axis along which to concatenate. Negative values count from the end,
+  i.e. `-1` refers to the last axis. If `NULL` (default), assumes all
+  inputs are at most 1-D and concatenates along axis 1.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the common data type and a shape matching the inputs in all
-dimensions except `dimension`, which is the sum of input sizes.
+Has the common data type and a shape matching the inputs in all axes
+except `axis`, which is the sum of input sizes.
 
 ## See also
 

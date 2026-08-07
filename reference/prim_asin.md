@@ -5,12 +5,12 @@ Element-wise inverse sine.
 ## Usage
 
 ``` r
-prim_asin(operand)
+prim_asin(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_asin()`](https://r-xla.github.io/stablehlo/reference/hlo_asin.html).
+[`hlo_asin()`](https://r-xla.github.io/stablehlo/reference/hlo_asin.html).
 
 ## See also
 

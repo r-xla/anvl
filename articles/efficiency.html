@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
@@ -109,7 +110,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Efficiency</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/vignettes/efficiency.Rmd" class="external-link"><code>vignettes/efficiency.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/efficiency.Rmd" class="external-link"><code>vignettes/efficiency.Rmd</code></a></small>
       <div class="d-none name"><code>efficiency.Rmd</code></div>
     </div>
 
@@ -272,16 +273,16 @@ on the same cache entry.</p>
 <p>Every new combination of input shapes triggers a fresh recompile. If
 the input shapes vary often, this can considerably degrade performance
 and you might spend more time compiling than computing.</p>
-<p>A common workaround is to <em>round each varying dimension up to a
-fixed bucket size and pad</em> the data to that size. All calls then
-share one compiled function, at the cost of doing some wasted work on
-the padded positions.</p>
+<p>A common workaround is to <em>round each varying axis up to a fixed
+bucket size and pad</em> the data to that size. All calls then share one
+compiled function, at the cost of doing some wasted work on the padded
+positions.</p>
 <p>For example, suppose we want to sum a vector whose length varies
 between calls:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sum_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"compiling for length "</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="st">"\n"</span>, sep <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">x</span>, dims <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">x</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">n</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">7</span>, <span class="fl">11</span>, <span class="fl">13</span>, <span class="fl">17</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -422,7 +423,7 @@ to do this in place.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

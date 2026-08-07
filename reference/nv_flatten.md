@@ -6,15 +6,15 @@ scalar inputs.
 ## Usage
 
 ``` r
-nv_flatten(operand)
+nv_flatten(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

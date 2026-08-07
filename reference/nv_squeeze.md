@@ -1,31 +1,30 @@
 # Squeeze
 
-Removes dimensions of size 1 from an array.
+Removes axes of size 1 from an array.
 
 ## Usage
 
 ``` r
-nv_squeeze(operand, dims = NULL)
+nv_squeeze(x, axes = NULL)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Dimensions to squeeze. If `NULL` (default), all dimensions of size 1
-  are removed.
+  Axes to squeeze. Negative values count from the end, i.e. `-1` refers
+  to the last axis. If `NULL` (default), all axes of size 1 are removed.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type as `operand` with the specified dimensions
-removed.
+Has the same data type as `x` with the specified axes removed.
 
 ## See also
 

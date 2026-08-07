@@ -17,7 +17,7 @@ crossprod(x, y = NULL, ...)
 - lhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  An array with at least 2 dimensions.
+  An array with at least 2 axes.
 
 - rhs:
 

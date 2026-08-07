@@ -27,7 +27,7 @@ prim_fill() or prim_iota())."><meta property="og:image" content="https://r-xla.g
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,6 +49,7 @@ prim_fill() or prim_iota())."><meta property="og:image" content="https://r-xla.g
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -84,7 +85,7 @@ prim_fill() or prim_iota())."><meta property="og:image" content="https://r-xla.g
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Select JIT device from a function argument</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/jit.R" class="external-link"><code>R/jit.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/jit.R" class="external-link"><code>R/jit.R</code></a></small>
       <div class="d-none name"><code>device_arg.Rd</code></div>
     </div>
 
@@ -127,7 +128,7 @@ An object recognized by <code><a href="jit.html">jit()</a></code>.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">g</span> <span class="op">&lt;-</span> <span class="fu"><a href="jit.html">jit</a></span><span class="op">(</span><span class="va">f</span>, backend <span class="op">=</span> <span class="st">"auto"</span>, device <span class="op">=</span> <span class="fu">device_arg</span><span class="op">(</span><span class="st">"x"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">g</span><span class="op">(</span><span class="fu"><a href="nv_device.html">nv_device</a></span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"xla"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">g</span><span class="op">(</span><span class="fu"><a href="nv_device.html">nv_device</a></span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"pjrt"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{} ] </span>
@@ -142,7 +143,7 @@ An object recognized by <code><a href="jit.html">jit()</a></code>.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

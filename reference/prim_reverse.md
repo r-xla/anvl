@@ -1,30 +1,31 @@
 # Primitive Reverse
 
-Reverses the order of elements along specified dimensions.
+Reverses the order of elements along specified axes.
 
 ## Usage
 
 ``` r
-prim_reverse(operand, dims)
+prim_reverse(x, axes)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Dimensions to reverse (1-indexed).
+  Axes to reverse. Negative values count from the end, i.e. `-1` refers
+  to the last axis.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type and shape as `operand`. It is ambiguous if the
-input is ambiguous.
+Has the same data type and shape as `x`. It is ambiguous if the input is
+ambiguous.
 
 ## Implemented Rules
 
@@ -37,7 +38,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reverse()`](https://r-xla.github.io/stablehlo/reference/hlo_reverse.html).
+[`hlo_reverse()`](https://r-xla.github.io/stablehlo/reference/hlo_reverse.html).
 
 ## See also
 
@@ -47,7 +48,7 @@ Lowers to
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4, 5))
-prim_reverse(x, dims = 1L)
+prim_reverse(x, axes = 1L)
 #> AnvlArray
 #>  5
 #>  4

@@ -5,12 +5,12 @@ Element-wise natural logarithm.
 ## Usage
 
 ``` r
-prim_log(operand)
+prim_log(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_log()`](https://r-xla.github.io/stablehlo/reference/hlo_log.html).
+[`hlo_log()`](https://r-xla.github.io/stablehlo/reference/hlo_log.html).
 
 ## See also
 

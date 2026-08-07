@@ -2,10 +2,9 @@
 
 Solves a system of linear equations with a triangular coefficient
 matrix. When `left_side` is `TRUE`, solves `op(a) %*% x = b` for `x`.
-When `left_side` is `FALSE`, solves `x %*% op(a) = b` for `x`.
-Dimensions before the last two are batch dimensions and must match
-between `a` and `b` (no broadcasting). Here `op` is `A` or `A^T`
-depending on `transpose_a`.
+When `left_side` is `FALSE`, solves `x %*% op(a) = b` for `x`. Axes
+before the last two are batch axes and must match between `a` and `b`
+(no broadcasting). Here `op` is `A` or `A^T` depending on `transpose_a`.
 
 ## Usage
 
@@ -19,16 +18,16 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Triangular coefficient matrix of data type floating-point with at
-  least 2 dimensions. The last two dimensions must be equal (square
-  matrix); any leading dimensions are batch dimensions.
+  least 2 axes. The last two axes must be equal (square matrix); any
+  leading axes are batch axes.
 
 - b:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Right-hand side. Same data type and rank as `a` (rank \>= 2), with
-  matching leading batch dimensions. The size of `a`'s last two (square)
-  dimensions must equal `b`'s second-to-last dimension when
-  `left_side = TRUE`, or `b`'s last dimension when `left_side = FALSE`.
+  matching leading batch axes. The size of `a`'s last two (square) axes
+  must equal `b`'s second-to-last axis when `left_side = TRUE`, or `b`'s
+  last axis when `left_side = FALSE`.
 
 - left_side:
 
@@ -67,13 +66,13 @@ Has the same shape and data type as `b`. It is ambiguous if both `a` and
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_triangular_solve()`](https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html).
+[`hlo_triangular_solve()`](https://r-xla.github.io/stablehlo/reference/hlo_triangular_solve.html).
 
 ## References
 
-Giles, Mike (2008). “An extended collection of matrix derivative results
-for forward and reverse mode automatic differentiation.” Oxford
-University Computing Laboratory.
+Giles M (2008). “An extended collection of matrix derivative results for
+forward and reverse mode automatic differentiation.” Oxford University
+Computing Laboratory.
 
 ## See also
 

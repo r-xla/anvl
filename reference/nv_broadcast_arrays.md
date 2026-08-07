@@ -24,11 +24,11 @@ List of arrays, all with the same shape.
 
 ## Broadcasting Rules
 
-1.  If the arrays have different numbers of dimensions, prepend size-1
-    dimensions to the shorter shape.
+1.  If the arrays have different numbers of axes, prepend size-1 axes to
+    the shorter shape.
 
-2.  For each dimension: if the sizes match, keep them; if one is 1,
-    expand it to the other's size; otherwise raise an error.
+2.  For each axis: if the sizes match, keep them; if one is 1, expand it
+    to the other's size; otherwise raise an error.
 
 ## See also
 

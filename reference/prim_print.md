@@ -6,12 +6,12 @@ input unchanged. This is useful for debugging JIT-compiled code.
 ## Usage
 
 ``` r
-prim_print(operand)
+prim_print(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -19,7 +19,7 @@ prim_print(operand)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Returns `operand` as-is.
+Returns `x` as-is.
 
 ## Implemented Rules
 
@@ -28,7 +28,7 @@ Returns `operand` as-is.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html).
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html).
 
 ## See also
 

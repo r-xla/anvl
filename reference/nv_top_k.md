@@ -1,46 +1,47 @@
 # Top-K Elements
 
-Returns the `k` largest values along a dimension, sorted in decreasing
+Returns the `k` largest values along an axis, sorted in decreasing
 order.
 
 ## Usage
 
 ``` r
-nv_top_k(operand, k, dim = NULL, with_indices = FALSE)
+nv_top_k(x, k, axis = NULL, with_indices = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - k:
 
   (`integer(1)`)  
   Number of top elements to return. Must satisfy
-  `1 <= k <= shape(operand)[dim]`.
+  `1 <= k <= shape(x)[axis]`.
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to take the top `k`. If `NULL` (default), uses
-  the last dimension.
+  Axis along which to take the top `k`. Negative values count from the
+  end, i.e. `-1` refers to the last axis. If `NULL` (default), uses the
+  last axis.
 
 - with_indices:
 
   (`logical(1)`)  
   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
   returns `list(values = ..., indices = ...)` where `indices` is the
-  1-based position of each top-`k` value along `dim` (dtype `i32`).
+  1-based position of each top-`k` value along `axis` (dtype `i32`).
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) (when
 `with_indices = FALSE`) or named list of two arrays (when
-`with_indices = TRUE`). Output shape matches `operand` with `dim`
-resized to `k`; values are sorted decreasing along `dim`.
+`with_indices = TRUE`). Output shape matches `x` with `axis` resized to
+`k`; values are sorted decreasing along `axis`.
 
 ## NaN handling
 
@@ -82,7 +83,7 @@ nv_top_k(x, k = 3L, with_indices = TRUE)
 #> 
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_top_k(m, k = 2L, dim = 2L)
+nv_top_k(m, k = 2L, axis = 2L)
 #> AnvlArray
 #>  5 3
 #>  4 2

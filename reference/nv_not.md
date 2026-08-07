@@ -5,15 +5,15 @@ Element-wise logical NOT. You can also use the `!` operator.
 ## Usage
 
 ``` r
-nv_not(operand)
+nv_not(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

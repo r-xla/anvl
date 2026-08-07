@@ -15,14 +15,19 @@ differentiation. Programs can run on CPU and NVIDIA GPU.
 install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-Install CUDA support on linux amd64:
+The PJRT plugins anvl runs on are downloaded separately, on demand. To
+download them right away instead of when they are first needed:
 
 ``` r
 
-install.packages("cuda12.8", repos = "https://mlverse.r-universe.dev")
+anvl::install_anvl()
 ```
 
-See the [Installation
+CUDA support is only available on linux x86_64 (amd64). There, this also
+installs the CUDA plugin when an NVIDIA GPU is detected; pass
+`cuda = TRUE` to install it regardless.
+
+See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
 details, including prebuilt Docker images.
 
@@ -45,7 +50,7 @@ There are three core ideas:
   which returns the derivative of a function as another R function.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
-Moreover, the package is designed by be extensible. As the package is
+Moreover, the package is designed to be extensible. As the package is
 written in R, new primitives and transformations can be added without
 needing a lower-level language.
 
@@ -92,8 +97,8 @@ g_jit(a, b, x)
 #> $a
 #> AnvlArray
 #>  3
-#> [ CPUf32{} ] 
-#> 
+#> [ CPUf32{} ]
+#>
 #> $b
 #> AnvlArray
 #>  1

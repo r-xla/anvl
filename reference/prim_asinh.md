@@ -5,12 +5,12 @@ Element-wise inverse hyperbolic sine.
 ## Usage
 
 ``` r
-prim_asinh(operand)
+prim_asinh(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_asinh()`](https://r-xla.github.io/stablehlo/reference/hlo_asinh.html).
+[`hlo_asinh()`](https://r-xla.github.io/stablehlo/reference/hlo_asinh.html).
 
 ## See also
 

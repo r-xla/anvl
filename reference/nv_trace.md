@@ -5,20 +5,20 @@ Computes the trace (sum of diagonal elements) of a 2-D array.
 ## Usage
 
 ``` r
-nv_trace(operand)
+nv_trace(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-A scalar with the same data type as `operand`.
+A scalar with the same data type as `x`.
 
 ## See also
 

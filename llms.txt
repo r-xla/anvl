@@ -15,14 +15,19 @@ differentiation. Programs can run on CPU and NVIDIA GPU.
 install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-Install CUDA support on linux amd64:
+The PJRT plugins anvl runs on are downloaded separately, on demand. To
+download them right away instead of when they are first needed:
 
 ``` r
 
-install.packages("cuda12.8", repos = "https://mlverse.r-universe.dev")
+anvl::install_anvl()
 ```
 
-See the [Installation
+CUDA support is only available on linux x86_64 (amd64). There, this also
+installs the CUDA plugin when an NVIDIA GPU is detected; pass
+`cuda = TRUE` to install it regardless.
+
+See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
 details, including prebuilt Docker images.
 
@@ -45,7 +50,7 @@ There are three core ideas:
   which returns the derivative of a function as another R function.
 - **Hardware portability.** The same code runs on CPU or GPU.
 
-Moreover, the package is designed by be extensible. As the package is
+Moreover, the package is designed to be extensible. As the package is
 written in R, new primitives and transformations can be added without
 needing a lower-level language.
 
@@ -92,8 +97,8 @@ g_jit(a, b, x)
 #> $a
 #> AnvlArray
 #>  3
-#> [ CPUf32{} ] 
-#> 
+#> [ CPUf32{} ]
+#>
 #> $b
 #> AnvlArray
 #>  1
@@ -173,8 +178,8 @@ Functions for querying array properties
   data type of an array
 - [`shape()`](https://r-xla.github.io/anvl/reference/shape.md) : Get the
   shape of an array
-- [`ndims()`](https://r-xla.github.io/anvl/reference/ndims.md) : Get the
-  number of dimensions of an array
+- [`naxes()`](https://r-xla.github.io/anvl/reference/naxes.md) : Get the
+  number of axes of an array
 - [`device()`](https://r-xla.github.io/anvl/reference/device.md) : Get
   the device of an array
 - [`platform()`](https://r-xla.github.io/anvl/reference/platform.md) :
@@ -257,7 +262,7 @@ Functions for reshaping and rearranging arrays
 - [`nv_static_slice()`](https://r-xla.github.io/anvl/reference/nv_static_slice.md)
   : Static Slice
 - [`nv_select()`](https://r-xla.github.io/anvl/reference/nv_select.md) :
-  Select Elements Along a Dimension
+  Select Elements Along an Axis
 - [`nv_pad()`](https://r-xla.github.io/anvl/reference/nv_pad.md) : Pad
 - [`nv_reverse()`](https://r-xla.github.io/anvl/reference/nv_reverse.md)
   : Reverse
@@ -393,7 +398,7 @@ Mathematical and trigonometric functions
 
 ### Reduction Operations
 
-Operations that reduce array dimensions
+Operations that reduce array axes
 
 - [`nv_reduce_sum()`](https://r-xla.github.io/anvl/reference/nv_reduce_sum.md)
   : Sum Reduction
@@ -410,7 +415,7 @@ Operations that reduce array dimensions
 
 ### Statistical Summaries
 
-Summary statistics over array dimensions
+Summary statistics over array axes
 
 - [`nv_mean()`](https://r-xla.github.io/anvl/reference/nv_mean.md)
   [`mean(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/reference/nv_mean.md)
@@ -421,13 +426,13 @@ Summary statistics over array dimensions
 - [`nv_quantile()`](https://r-xla.github.io/anvl/reference/nv_quantile.md)
   : Quantile
 - [`nv_var()`](https://r-xla.github.io/anvl/reference/nv_var.md) :
-  Variance Reduction
+  Variance
 - [`nv_sd()`](https://r-xla.github.io/anvl/reference/nv_sd.md) :
-  Standard Deviation Reduction
+  Standard Deviation
 
 ### Cumulative Operations
 
-Cumulative (scan) operations along a single dimension
+Cumulative (scan) operations along a single axis
 
 - [`nv_cumsum()`](https://r-xla.github.io/anvl/reference/nv_cumsum.md) :
   Cumulative Sum
@@ -484,6 +489,23 @@ Linear algebra operations
   Lower Triangular Matrix
 - [`nv_triu()`](https://r-xla.github.io/anvl/reference/nv_triu.md) :
   Upper Triangular Matrix
+- [`nv_lower_tri()`](https://r-xla.github.io/anvl/reference/nv_lower_tri.md)
+  [`nv_lower_tri_like()`](https://r-xla.github.io/anvl/reference/nv_lower_tri.md)
+  : Lower Triangular Mask
+- [`nv_upper_tri()`](https://r-xla.github.io/anvl/reference/nv_upper_tri.md)
+  [`nv_upper_tri_like()`](https://r-xla.github.io/anvl/reference/nv_upper_tri.md)
+  : Upper Triangular Mask
+
+### Convolution
+
+N-dimensional convolution operations
+
+- [`nv_conv1d()`](https://r-xla.github.io/anvl/reference/nv_conv1d.md) :
+  1D Convolution
+- [`nv_conv2d()`](https://r-xla.github.io/anvl/reference/nv_conv2d.md) :
+  2D Convolution
+- [`nv_conv3d()`](https://r-xla.github.io/anvl/reference/nv_conv3d.md) :
+  3D Convolution
 
 ### Logical and Bitwise Operations
 
@@ -544,18 +566,29 @@ Control flow operations
 - [`nv_ifelse()`](https://r-xla.github.io/anvl/reference/nv_ifelse.md) :
   Conditional Element Selection
 
-### Random Number Generation
+### Distributions
 
-Functions for generating random numbers
+Densities, distribution functions, and samplers for probability
+distributions
 
+- [`nv_dnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
+  [`nv_pnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md) :
+  The Normal Distribution
 - [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md) :
   Sample from a Uniform Distribution
-- [`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_rnorm.md) :
-  Sample from a Normal Distribution
 - [`nv_rbinom()`](https://r-xla.github.io/anvl/reference/nv_rbinom.md) :
   Sample from a Binomial Distribution
-- [`nv_rdunif()`](https://r-xla.github.io/anvl/reference/nv_rdunif.md) :
-  Sample from a Discrete Uniform Distribution
+- [`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md) :
+  Sample from a Population
+- [`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
+  : Sample Integers
+
+### Utilities
+
+Helpers supporting the API functions
+
 - [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md)
   : Generate RNG State
 
@@ -589,6 +622,8 @@ Backend-related functionality and implementations
   : Temporarily set the default backend
 - [`with_backend()`](https://r-xla.github.io/anvl/reference/with_backend.md)
   : Run code with a specific backend
+- [`install_anvl()`](https://r-xla.github.io/anvl/reference/install_anvl.md)
+  : Install what a backend needs to run
 - [`device_arg()`](https://r-xla.github.io/anvl/reference/device_arg.md)
   : Select JIT device from a function argument
 - [`nv_device()`](https://r-xla.github.io/anvl/reference/nv_device.md) :
@@ -601,8 +636,8 @@ Backend-related functionality and implementations
   : Quickr device
 - [`AnvlBackend()`](https://r-xla.github.io/anvl/reference/AnvlBackend.md)
   : Create a backend
-- [`AnvlBackendXla()`](https://r-xla.github.io/anvl/reference/AnvlBackendXla.md)
-  : XLA backend
+- [`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/reference/AnvlBackendPjrt.md)
+  : PJRT backend
 - [`AnvlBackendQuickr()`](https://r-xla.github.io/anvl/reference/AnvlBackendQuickr.md)
   : Quickr backend
 
@@ -666,7 +701,7 @@ Internal data structures and functions
 - [`IotaArray()`](https://r-xla.github.io/anvl/reference/IotaArray.md) :
   Iota Array Class
 - [`shape_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
-  [`ndims_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
+  [`naxes_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
   [`dtype_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
   [`ambiguous_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
   : Abstract Properties
@@ -677,22 +712,37 @@ Internal data structures and functions
 
 ### Transformations
 
-- [`xla()`](https://r-xla.github.io/anvl/reference/xla.md) :
-  Ahead-of-time compile a function to XLA
+- [`jit_roclet()`](https://r-xla.github.io/anvl/reference/jit_roclet.md)
+  :
+
+  `@jit` roxygen roclet
+
+- [`apply_jit_registry()`](https://r-xla.github.io/anvl/reference/apply_jit_registry.md)
+  :
+
+  Apply a `@jit` registry
+
 - [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md) :
   Trace an R function into a Graph
+
 - [`transform_gradient()`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
   : Transform a graph to its gradient
+
 - [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md)
   : Reverse Rule
+
 - [`graph_to_quickr_r_function()`](https://r-xla.github.io/anvl/reference/graph_to_quickr_r_function.md)
   : Convert an AnvlGraph to a plain R function
+
 - [`jit_eval()`](https://r-xla.github.io/anvl/reference/jit_eval.md) :
   JIT-compile and evaluate an expression
-- [`compile_xla()`](https://r-xla.github.io/anvl/reference/compile_xla.md)
+
+- [`compile_pjrt()`](https://r-xla.github.io/anvl/reference/compile_pjrt.md)
   : Trace, lower, and compile a function to an XLA executable
+
 - [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md) :
   Lower a graph to StableHLO
+
 - [`current_platform()`](https://r-xla.github.io/anvl/reference/current_platform.md)
   [`local_platform()`](https://r-xla.github.io/anvl/reference/current_platform.md)
   : Current Lowering Target Platform
@@ -701,24 +751,15 @@ Internal data structures and functions
 
 Utilities for working with nested structures
 
-- [`flatten()`](https://r-xla.github.io/anvl/reference/flatten.md) :
-  Flatten
-- [`unflatten()`](https://r-xla.github.io/anvl/reference/unflatten.md) :
-  Unflatten
-- [`build_tree()`](https://r-xla.github.io/anvl/reference/build_tree.md)
-  : Build Tree
-- [`reindex_tree()`](https://r-xla.github.io/anvl/reference/reindex_tree.md)
-  : Reindex Tree
-- [`tree_size()`](https://r-xla.github.io/anvl/reference/tree_size.md) :
-  Tree Size
-- [`tree_path()`](https://r-xla.github.io/anvl/reference/tree_path.md) :
-  Tree Path
-- [`map_tree()`](https://r-xla.github.io/anvl/reference/map_tree.md) :
-  Map Over a Tree
-- [`pmap_tree()`](https://r-xla.github.io/anvl/reference/pmap_tree.md) :
-  Map Over Multiple Trees
-- [`filter_list_node()`](https://r-xla.github.io/anvl/reference/filter_list_node.md)
-  : Filter List Node
+- [`reexports`](https://r-xla.github.io/anvl/reference/reexports.md)
+  [`flatten`](https://r-xla.github.io/anvl/reference/reexports.md)
+  [`build_tree`](https://r-xla.github.io/anvl/reference/reexports.md)
+  [`unflatten`](https://r-xla.github.io/anvl/reference/reexports.md)
+  [`tree_size`](https://r-xla.github.io/anvl/reference/reexports.md)
+  [`tree_path`](https://r-xla.github.io/anvl/reference/reexports.md)
+  [`map_tree`](https://r-xla.github.io/anvl/reference/reexports.md)
+  [`pmap_tree`](https://r-xla.github.io/anvl/reference/reexports.md) :
+  Objects exported from other packages
 
 ### Miscellaneous
 
@@ -763,7 +804,7 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Inverse Hyperbolic Tangent
 - [`prim_bitcast_convert()`](https://r-xla.github.io/anvl/reference/prim_bitcast_convert.md)
   : Primitive Bitcast Convert
-- [`prim_broadcast_in_dim()`](https://r-xla.github.io/anvl/reference/prim_broadcast_in_dim.md)
+- [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/reference/prim_broadcast_in_axes.md)
   : Primitive Broadcast
 - [`prim_cbrt()`](https://r-xla.github.io/anvl/reference/prim_cbrt.md) :
   Primitive Cube Root
@@ -777,6 +818,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Concatenate
 - [`prim_convert()`](https://r-xla.github.io/anvl/reference/prim_convert.md)
   : Primitive Convert
+- [`prim_convolution()`](https://r-xla.github.io/anvl/reference/prim_convolution.md)
+  : Primitive Convolution
 - [`prim_cos()`](https://r-xla.github.io/anvl/reference/prim_cos.md) :
   Primitive Cosine
 - [`prim_cosh()`](https://r-xla.github.io/anvl/reference/prim_cosh.md) :
@@ -940,7 +983,7 @@ Low-level primitive operations (prim\_\* functions)
 
 - [`anvl`](https://r-xla.github.io/anvl/reference/anvl-package.md)
   [`anvl-package`](https://r-xla.github.io/anvl/reference/anvl-package.md)
-  : anvl: Framework for R code transformations
+  : anvl: Accelerated Array Computing and Automatic Differentiation
 
 # Articles
 
@@ -955,6 +998,7 @@ Low-level primitive operations (prim\_\* functions)
 - [FAQ](https://r-xla.github.io/anvl/articles/faq.md):
 - [Gaussian
   Process](https://r-xla.github.io/anvl/articles/gaussian-process.md):
+- [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.md):
 - [Installation](https://r-xla.github.io/anvl/articles/installation.md):
 - [Internals](https://r-xla.github.io/anvl/articles/internals.md):
 - [JIT Deep Dive](https://r-xla.github.io/anvl/articles/jit.md):

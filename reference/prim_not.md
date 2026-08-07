@@ -5,12 +5,12 @@ Element-wise logical NOT.
 ## Usage
 
 ``` r
-prim_not(operand)
+prim_not(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type boolean, integer, or unsigned integer.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_not()`](https://r-xla.github.io/stablehlo/reference/hlo_not.html).
+[`hlo_not()`](https://r-xla.github.io/stablehlo/reference/hlo_not.html).
 
 ## See also
 

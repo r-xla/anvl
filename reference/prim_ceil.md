@@ -5,12 +5,12 @@ Element-wise ceiling.
 ## Usage
 
 ``` r
-prim_ceil(operand)
+prim_ceil(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_ceil()`](https://r-xla.github.io/stablehlo/reference/hlo_ceil.html).
+[`hlo_ceil()`](https://r-xla.github.io/stablehlo/reference/hlo_ceil.html).
 
 ## See also
 

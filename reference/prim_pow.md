@@ -33,7 +33,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_power()`](https://r-xla.github.io/stablehlo/reference/hlo_power.html).
+[`hlo_power()`](https://r-xla.github.io/stablehlo/reference/hlo_power.html).
 
 ## See also
 

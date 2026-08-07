@@ -31,7 +31,7 @@ To convert a arrayish value to an abstract array, use to_abstract()."><meta prop
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,6 +53,7 @@ To convert a arrayish value to an abstract array, use to_abstract()."><meta prop
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -88,7 +89,7 @@ To convert a arrayish value to an abstract array, use to_abstract()."><meta prop
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Abstract Array Class</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/array.R" class="external-link"><code>R/array.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/array.R" class="external-link"><code>R/array.R</code></a></small>
       <div class="d-none name"><code>AbstractArray.Rd</code></div>
     </div>
 
@@ -135,9 +136,9 @@ See the <code><a href="../articles/type-promotion.html">vignette("type-promotion
 
 
 <p>The following extractors are available on <code>AbstractArray</code> objects:</p><ul><li><p><code><a href="https://r-xla.github.io/tengen/reference/dtype.html" class="external-link">dtype()</a></code>: Get the data type of the array.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (dimensions) of the array.</p></li>
+<li><p><code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code>: Get the shape (axis sizes) of the array.</p></li>
 <li><p><code><a href="ambiguous.html">ambiguous()</a></code>: Get whether the dtype is ambiguous.</p></li>
-<li><p><code><a href="https://r-xla.github.io/tengen/reference/ndims.html" class="external-link">ndims()</a></code>: Get the number of dimensions.</p></li>
+<li><p><code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code>: Get the number of axes.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -169,7 +170,7 @@ See the <code><a href="../articles/type-promotion.html">vignette("type-promotion
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %x1: i32[4]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Body:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %1: f32?[4] = convert [dtype = f32, ambiguous = TRUE] (%x1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32?[4] = broadcast_in_dim [shape = 4, broadcast_dimensions = &lt;any&gt;] (1:f32?)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32?[4] = broadcast_in_axes [shape = 4, broadcast_axes = &lt;any&gt;] (1:f32?)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %3: f32?[4] = add(%1, %2)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %3: f32?[4] </span>
@@ -186,7 +187,7 @@ See the <code><a href="../articles/type-promotion.html">vignette("type-promotion
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

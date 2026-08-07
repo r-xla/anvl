@@ -1,9 +1,9 @@
 # Primitive Top-K
 
-Returns the `k` largest values along the last dimension, sorted in
-descending order, together with their indices into that dimension.
+Returns the `k` largest values along the last axis, sorted in descending
+order, together with their indices into that axis.
 
-For other dimensions, transpose so the target dimension is last, call
+For other axes, transpose so the target axis is last, call
 `prim_top_k()`, then transpose back.
 [`nv_top_k()`](https://r-xla.github.io/anvl/reference/nv_top_k.md) does
 this.
@@ -11,12 +11,12 @@ this.
 ## Usage
 
 ``` r
-prim_top_k(operand, k)
+prim_top_k(x, k)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Tensor of integer, unsigned integer, or floating-point dtype with rank
@@ -25,18 +25,16 @@ prim_top_k(operand, k)
 - k:
 
   (`integer(1)`)  
-  Number of top elements. Must satisfy
-  `1 <= k <= shape(operand)[ndims(operand)]`.
+  Number of top elements. Must satisfy `1 <= k <= shape(x)[naxes(x)]`.
 
 ## Value
 
 `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)
 values:  
-The top-`k` values (same dtype as `operand`) and their indices along the
-last dimension (dtype `i32`, matching JAX). Both have the same shape as
-`operand` with the last dimension replaced by `k`. Ties are broken by
-lower index first.
+The top-`k` values (same dtype as `x`) and their indices along the last
+axis (dtype `i32`, matching JAX). Both have the same shape as `x` with
+the last axis replaced by `k`. Ties are broken by lower index first.
 
 ## Implemented Rules
 
@@ -47,7 +45,7 @@ lower index first.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_top_k()`](https://r-xla.github.io/stablehlo/reference/hlo_top_k.html).
+[`hlo_top_k()`](https://r-xla.github.io/stablehlo/reference/hlo_top_k.html).
 
 ## See also
 

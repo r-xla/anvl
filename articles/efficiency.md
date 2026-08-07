@@ -148,10 +148,9 @@ Every new combination of input shapes triggers a fresh recompile. If the
 input shapes vary often, this can considerably degrade performance and
 you might spend more time compiling than computing.
 
-A common workaround is to *round each varying dimension up to a fixed
-bucket size and pad* the data to that size. All calls then share one
-compiled function, at the cost of doing some wasted work on the padded
-positions.
+A common workaround is to *round each varying axis up to a fixed bucket
+size and pad* the data to that size. All calls then share one compiled
+function, at the cost of doing some wasted work on the padded positions.
 
 For example, suppose we want to sum a vector whose length varies between
 calls:
@@ -160,7 +159,7 @@ calls:
 
 sum_jit <- jit(function(x) {
   cat("compiling for length ", shape(x), "\n", sep = "")
-  nv_reduce_sum(x, dims = 1L)
+  nv_reduce_sum(x, axes = 1L)
 })
 
 for (n in c(7, 11, 13, 17)) {

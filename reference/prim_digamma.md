@@ -6,12 +6,12 @@ function).
 ## Usage
 
 ``` r
-prim_digamma(operand)
+prim_digamma(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -31,7 +31,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_digamma()`](https://r-xla.github.io/stablehlo/reference/hlo_digamma.html).
+[`hlo_digamma()`](https://r-xla.github.io/stablehlo/reference/hlo_digamma.html).
 
 ## See also
 

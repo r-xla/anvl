@@ -6,7 +6,7 @@ also use [`is.infinite()`](https://rdrr.io/r/base/is.finite.html).
 ## Usage
 
 ``` r
-nv_is_infinite(operand)
+nv_is_infinite(x)
 
 # S3 method for class 'AnvlArray'
 is.infinite(x)
@@ -14,15 +14,10 @@ is.infinite(x)
 
 ## Arguments
 
-- operand:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
-
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  Input array.
 
 ## Value
 

@@ -5,12 +5,12 @@ Element-wise reciprocal square root.
 ## Usage
 
 ``` r
-prim_rsqrt(operand)
+prim_rsqrt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_rsqrt()`](https://r-xla.github.io/stablehlo/reference/hlo_rsqrt.html).
+[`hlo_rsqrt()`](https://r-xla.github.io/stablehlo/reference/hlo_rsqrt.html).
 
 ## See also
 

@@ -6,7 +6,7 @@ Element-wise check if values are NaN. You can also use
 ## Usage
 
 ``` r
-nv_is_nan(operand)
+nv_is_nan(x)
 
 # S3 method for class 'AnvlArray'
 is.nan(x)
@@ -14,15 +14,10 @@ is.nan(x)
 
 ## Arguments
 
-- operand:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
-
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  Input array.
 
 ## Value
 

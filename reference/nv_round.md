@@ -6,15 +6,15 @@ Element-wise rounding. You can also use the
 ## Usage
 
 ``` r
-nv_round(operand, method = "nearest_even")
+nv_round(x, method = "nearest_even")
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - method:
 

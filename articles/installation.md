@@ -12,13 +12,6 @@ compiler).
 
 ## CPU Installation
 
-You can install the latest release from GitHub
-
-``` r
-
-pak::pak("r-xla/anvl@*release")
-```
-
 You can install the latest release from r-universe (prebuilt binary).
 
 ``` r
@@ -26,12 +19,12 @@ You can install the latest release from r-universe (prebuilt binary).
 install.packages("anvl",repos = c("https://cloud.r-project.org", "https://r-xla.r-universe.dev"))
 ```
 
-To confirm that your CPU installation is working, run:
+You can also install the latest release from GitHub
 
 ``` r
 
-library(anvl)
-nv_scalar(1, device = "cpu")
+pak::repo_add("https://r-xla.r-universe.dev")
+pak::pak("r-xla/anvl@*release")
 ```
 
 The development version can be installed via:
@@ -39,6 +32,38 @@ The development version can be installed via:
 ``` r
 
 pak::pak("r-xla/anvl")
+```
+
+## PJRT Plugins
+
+The PJRT plugins that actually execute anvl’s programs are not shipped
+with the package. They are downloaded and cached the first time they are
+needed, which requires your confirmation: an interactive session asks
+before downloading, and a non-interactive one aborts with an error
+instead of downloading behind your back.
+
+To make the download an explicit step – in a `Dockerfile` layer of its
+own, or before a script that later runs unattended – call:
+
+``` r
+
+anvl::install_anvl()
+```
+
+The `PJRT_INSTALL` environment variable overrides this behaviour:
+
+| Value | Effect |
+|----|----|
+| `1` | Always download, without asking. Use this in CI, scripts and Docker builds. |
+| `0` | Never download; abort with instructions instead. |
+| unset | Ask in an interactive session, abort in a non-interactive one. |
+
+To confirm that your CPU installation is working, run:
+
+``` r
+
+library(anvl)
+nv_scalar(1, device = "cpu")
 ```
 
 ## GPU Installation
@@ -61,6 +86,14 @@ libraries need to be installed on the system and discoverable via
 `LD_LIBRARY_PATH`. The specific versions of the CUDA runtime libraries
 provided with {cuda12.8} are listed
 [here](https://github.com/mlverse/cudatoolkit/blob/main/cuda12.8/inst/components.tsv).
+
+To confirm that your CUDA installation is working, run:
+
+``` r
+
+library(anvl)
+nv_scalar(1, device = "cuda")
+```
 
 **Troubleshooting**
 

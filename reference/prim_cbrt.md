@@ -5,12 +5,12 @@ Element-wise cube root.
 ## Usage
 
 ``` r
-prim_cbrt(operand)
+prim_cbrt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_cbrt()`](https://r-xla.github.io/stablehlo/reference/hlo_cbrt.html).
+[`hlo_cbrt()`](https://r-xla.github.io/stablehlo/reference/hlo_cbrt.html).
 
 ## See also
 

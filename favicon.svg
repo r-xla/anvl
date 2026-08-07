@@ -1,36 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="600" height="693" viewBox="0 0 600 693"><metadata><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Description><dc:creator>RealFaviconGenerator</dc:creator><dc:source>https://realfavicongenerator.net</dc:source></rdf:Description></rdf:RDF></metadata><polygon points="300,10 540,148 540,425 300,563 60,425 60,148" fill="#1a1a2e" stroke="#c77dff" stroke-width="4" stroke-linejoin="round"></polygon><polygon points="300,20 530,153 530,420 300,553 70,420 70,153" fill="#0f0f1e"></polygon><ellipse cx="300" cy="340" rx="140" ry="60" fill="#c77dff" opacity="0.06"></ellipse><ellipse cx="300" cy="330" rx="90" ry="35" fill="#ff6b35" opacity="0.08"></ellipse><g transform="translate(300,290)">
-<!-- Horn (left taper) -->
-<path d="M-120,-20 Q-130,-22 -140,-18 Q-148,-14 -145,-8 L-105,-8 L-105,-20 Z" fill="#9898b0"></path>
-<!-- Face (top working surface) -->
-<rect x="-105" y="-28" width="210" height="20" rx="3" fill="#d0d0e4"></rect>
-<!-- Body -->
-<path d="M-105,-8 L-105,30 Q-105,38 -97,38 L-80,38 L-80,20 L-60,20 L-60,60 Q-60,68 -52,68 L52,68 Q60,68 60,60 L60,20 L80,20 L80,38 L97,38 Q105,38 105,30 L105,-8 Z" fill="#b0b0c8"></path>
-<!-- Top highlight -->
-<rect x="-100" y="-26" width="200" height="4" rx="2" fill="#e0e0f0" opacity="0.6"></rect>
-<!-- Hardy hole -->
-<rect x="40" y="-26" width="14" height="14" rx="2" fill="#0f0f1e"></rect>
-<!-- Pritchel hole -->
-<circle cx="70" cy="-18" r="5" fill="#0f0f1e"></circle>
+<svg width="600" height="693" viewBox="0 0 600 693" xmlns="http://www.w3.org/2000/svg">
+<!-- White background -->
+<rect width="600" height="693" fill="#ffffff"/>
+
+<!-- Hexagon outline -->
+<polygon points="300,10 540,148 540,425 300,563 60,425 60,148" fill="#ffffff" stroke="#000000" stroke-width="8" stroke-linejoin="round"/>
+
+<!-- Anvil silhouette — three shapes: face+horn, waist, base -->
+<g transform="translate(312,248) scale(1.1)" fill="#000000">
+<!-- Face with horn tapering left -->
+<path d="M-110,-32 L110,-32 L110,-8 L-110,-8 L-146,-14 L-146,-26 Z"/>
+<!-- Waist -->
+<path d="M-55,-4 L55,-4 L72,52 L-72,52 Z"/>
 <!-- Base -->
-<rect x="-70" y="68" width="140" height="12" rx="2" fill="#8888a0"></rect>
-</g><g stroke="#c77dff" stroke-linecap="round" fill="none" opacity="0.7">
-<line x1="250" y1="240" x2="220" y2="200" stroke-width="2"></line>
-<line x1="220" y1="200" x2="215" y2="190" stroke-width="1" opacity="0.4"></line>
-<line x1="270" y1="235" x2="255" y2="190" stroke-width="1.5"></line>
-<line x1="330" y1="235" x2="345" y2="190" stroke-width="1.5"></line>
-<line x1="350" y1="240" x2="380" y2="200" stroke-width="2"></line>
-<line x1="380" y1="200" x2="385" y2="190" stroke-width="1" opacity="0.4"></line>
-<line x1="300" y1="232" x2="300" y2="180" stroke-width="2.5"></line>
-<line x1="300" y1="180" x2="300" y2="165" stroke-width="1.5" opacity="0.5"></line>
-</g><g fill="#c77dff">
-<circle cx="215" cy="188" r="2.5" opacity="0.8"></circle>
-<circle cx="385" cy="188" r="2.5" opacity="0.8"></circle>
-<circle cx="300" cy="163" r="3" opacity="0.9"></circle>
-<circle cx="250" cy="195" r="1.8" opacity="0.5"></circle>
-<circle cx="350" cy="195" r="1.8" opacity="0.5"></circle>
-</g><g fill="#ff6b35">
-<circle cx="230" cy="210" r="1.5" opacity="0.6"></circle>
-<circle cx="365" cy="205" r="1.5" opacity="0.6"></circle>
-<circle cx="290" cy="175" r="1.5" opacity="0.5"></circle>
-<circle cx="315" cy="178" r="1.5" opacity="0.5"></circle>
-</g><text x="300" y="460" text-anchor="middle" font-family="'JetBrains Mono','Fira Code','SF Mono','Cascadia Code',monospace" font-size="52" font-weight="700" letter-spacing="6" fill="#e8e8f4">anvl</text></svg>
+<rect x="-88" y="56" width="176" height="18"/>
+</g>
+
+<!-- Package name: "anvl" -->
+<text x="300" y="440" text-anchor="middle" font-family="'JetBrains Mono','Fira Code','SF Mono','Cascadia Code','DejaVu Sans Mono',monospace" font-size="52" font-weight="700" letter-spacing="6" fill="#000000">anvl</text>
+
+</svg>

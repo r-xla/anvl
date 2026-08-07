@@ -39,7 +39,7 @@ We will start with subsetting and then move on to subset-assignment.
 
 Let’s start with some simple examples of selecting individual elements
 from a 1-dimensional array. The index can be either static or dynamic
-and we can drop or keep the dimension:
+and we can drop or keep the axis:
 
 ``` r
 
@@ -103,11 +103,10 @@ x
 
   Below, we perform almost the same operation as above, except that we
   use an array of shape `(1)` instead of a scalar with shape `()`. The
-  difference is that subsetting with the former will preserve the
-  dimension, while the latter will drop it, as we have seen above. This
-  ensures that the dimensionality of the result is the same for any 1D
-  subset specification, and does not suddenly “simplify” the result to
-  0D.
+  difference is that subsetting with the former will preserve the axis,
+  while the latter will drop it, as we have seen above. This ensures
+  that the dimensionality of the result is the same for any 1D subset
+  specification, and does not suddenly “simplify” the result to 0D.
 
   ``` r
 
@@ -150,8 +149,8 @@ between static and dynamic indices.
 We use [`arr()`](https://r-xla.github.io/anvl/reference/arr.md) (or
 equivalently [`array()`](https://rdrr.io/r/base/array.html)) instead of
 a bare R vector, because otherwise the case where we use a length-1
-vector would be ambiguous (do we drop or keep the dimension?). This
-allows us to do without a `drop` parameter.
+vector would be ambiguous (do we drop or keep the axis?). This allows us
+to do without a `drop` parameter.
 
 We can also use a range that can be specified either canonically via
 `a:b` or using
@@ -307,7 +306,7 @@ x[arr(2, 2)]
 ### Out-of-bounds Handling
 
 If one specifies out-of-bounds indices, we can only throw an error if
-the indices are static (and therefore known at compile time). The XLA
+the indices are static (and therefore known at compile time). The PJRT
 backend that {anvl} compiles to does not throw errors for out-of-bounds
 dynamic indices, but instead clamps them to the valid range:
 
@@ -382,7 +381,7 @@ x <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
 x[, 3] <- nv_array(c(1.5, 2.5, 3.5))
 ```
 
-    ## Error in `nv_subset_assign()`:
+    ## Error:
     ## ! Value type f32 is not promotable to left-hand side type i32
 
 ``` r

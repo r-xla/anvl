@@ -16,6 +16,8 @@ The general guidelines are:
 4.  The function should (unless there are specific reasons) work in
     eager and jit mode.
 5.  Use static arguments when you require data-dependent input checks.
+6.  Tag the function with `#' @jit` so it is jit-wrapped at package
+    build time (see *Jit-wrapping API Functions* below).
 
 ## Pure Functions
 
@@ -54,12 +56,12 @@ called on an R vector:
 ``` r
 
 library(anvl)
-# operand: dynamic, shape: static
-nv_reshape_naive <- function(operand, shape) {
-  if (!identical(shape(operand), shape)) {
-    prim_reshape(operand, shape)
+# x: dynamic, shape: static
+nv_reshape_naive <- function(x, shape) {
+  if (!identical(shape(x), shape)) {
+    prim_reshape(x, shape)
   } else {
-    operand
+    x
   }
 }
 nv_reshape_naive(1L, c(2, 2))
@@ -80,12 +82,12 @@ no-op case, we return a static R object instead of (as intended) an
 
 ``` r
 
-# operand: dynamic, dtype: static
-nv_convert_naive <- function(operand, dtype) {
+# x: dynamic, dtype: static
+nv_convert_naive <- function(x, dtype) {
   if (is.null(dtype)) {
-    return(operand)
+    return(x)
   }
-  prim_convert(operand, dtype)
+  prim_convert(x, dtype)
 }
 nv_convert_naive(1L, "i16")
 #> AnvlArray
@@ -116,9 +118,9 @@ function. Let’s say you are creating your function and working on GPU:
 
 ``` r
 
-nv_add_one_naive <- function(operand) {
-  operand <- as_anvl_array(operand)
-  operand + nv_fill(1L, shape(operand), device = "cuda")
+nv_add_one_naive <- function(x) {
+  x <- as_anvl_array(x)
+  x + nv_fill(1L, shape(x), device = "cuda")
 }
 ```
 
@@ -135,21 +137,21 @@ One way to achieve this is to simply pass the input’s device to
 
 ``` r
 
-nv_add_one1 <- function(operand) {
-  operand <- as_anvl_array(operand)
-  operand + nv_fill(1L, shape(operand), device = device(operand))
+nv_add_one1 <- function(x) {
+  x <- as_anvl_array(x)
+  x + nv_fill(1L, shape(x), device = device(x))
 }
 ```
 
 Another option is to rely on `nv_<op>_like` functions. These take in
 another `AnvlArray` as their first input and use its properties as the
 defaults for their arguments. In this case, the created array will
-assume the data type, shape and device from the input operand.
+assume the data type, shape and device from the input array.
 
 ``` r
 
-nv_add_one2 <- function(operand) {
-  operand + nv_fill_like(operand, 1L)
+nv_add_one2 <- function(x) {
+  x + nv_fill_like(x, 1L)
 }
 ```
 
@@ -187,3 +189,63 @@ nv_rbernoulli(nv_rng_state(1), 0.2)[[2L]]
 #>  0
 #> [ CPUi32{1} ]
 ```
+
+## Jit-wrapping API Functions
+
+Most user-facing API functions in anvl are wrapped in
+`jit(f, backend = "auto", ...)` so that calling them traces and compiles
+a single program instead of executing each operation eagerly. The
+wrapping is driven by the `@jit` roclet (see
+[`?jit_roclet`](https://r-xla.github.io/anvl/reference/jit_roclet.md)).
+
+In `R/api*.R`, tag any function that performs more than one primitive
+operation with `#' @jit`:
+
+``` r
+
+#' @export
+#' @jit
+nv_log2 <- function(x) {
+  x <- as_anvl_array(x)
+  nv_log(x) / log(2)
+}
+```
+
+If the function has static arguments (anything that is not an arrayish
+input – axes, shape, dtype, control flags, functions used as templates,
+…), list them with `static = c(...)` using either positional indices or
+argument names:
+
+``` r
+
+#' @export
+#' @jit static = c(2L, 3L)
+nv_mean <- function(x, axes = NULL, drop = TRUE) {
+  ...
+}
+
+#' @export
+#' @jit static = c("axis")
+nv_concatenate <- function(..., axis = NULL) {
+  ...
+}
+```
+
+Use names rather than positions whenever an argument lives after `...`,
+since `...` has no fixed position.
+
+**When to skip `#' @jit`.** Don’t tag a function whose body is
+essentially a single primitive call – direct aliases
+(`nv_log <- prim_log`), `make_do_binary(prim_X)` factories, or thin
+wrappers that just validate and forward to one primitive. The underlying
+primitive is already jit-wrapped, so adding another
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) layer adds
+tracing overhead without fusing anything new. Also skip pure I/O
+(`nv_save`, `nv_serialize`), backend constructors (`nv_array`,
+`nv_scalar`, `nv_matrix`), and device/state objects (`nv_device`,
+`nv_rng_state`).
+
+The roclet writes the list of tagged functions to `R/jit-registry.R` on
+every `devtools::document()` run, and `R/zzz.R` applies that registry at
+package source time so the wrapped functions are byte-compiled with the
+rest of the package.

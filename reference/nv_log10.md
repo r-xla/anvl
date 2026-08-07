@@ -6,15 +6,15 @@ Element-wise base-10 logarithm. You can also use
 ## Usage
 
 ``` r
-nv_log10(operand)
+nv_log10(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 
@@ -32,9 +32,9 @@ Has the same shape and data type as the input.
 x <- nv_array(c(1, 10, 100, 1000))
 nv_log10(x)
 #> AnvlArray
-#>  0
-#>  1
-#>  2
-#>  3
+#>  0.0000
+#>  1.0000
+#>  2.0000
+#>  3.0000
 #> [ CPUf32{4} ] 
 ```

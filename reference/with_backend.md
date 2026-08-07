@@ -17,7 +17,7 @@ with_backend(backend, code)
 - backend:
 
   (`character(1)`)  
-  Backend to use (`"xla"` or `"quickr"`).
+  Backend to use (`"pjrt"` or `"quickr"`).
 
 - code:
 

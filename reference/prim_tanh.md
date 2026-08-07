@@ -5,12 +5,12 @@ Element-wise hyperbolic tangent.
 ## Usage
 
 ``` r
-prim_tanh(operand)
+prim_tanh(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_tanh()`](https://r-xla.github.io/stablehlo/reference/hlo_tanh.html).
+[`hlo_tanh()`](https://r-xla.github.io/stablehlo/reference/hlo_tanh.html).
 
 ## See also
 

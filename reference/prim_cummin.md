@@ -1,36 +1,37 @@
 # Primitive Cumulative Minimum
 
-Running minimum of array elements along a single dimension along with
-the index of the last occurrence of the running minimum. At output
-position `j`, the values output is `min(input[1:j])` and the indices
-output is the largest `i` in `1:j` with `input[i] == values[j]`
-(last-occurrence tiebreak).
+Running minimum of array elements along a single axis along with the
+index of the last occurrence of the running minimum. At output position
+`j`, the values output is `min(input[1:j])` and the indices output is
+the largest `i` in `1:j` with `input[i] == values[j]` (last-occurrence
+tiebreak).
 
 ## Usage
 
 ``` r
-prim_cummin(operand, dim)
+prim_cummin(x, axis)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to accumulate.
+  Axis along which to accumulate. Negative values count from the end,
+  i.e. `-1` refers to the last axis.
 
 ## Value
 
 `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)
 values:  
-The running minimum (same dtype as `operand`) and the running argmin
-(dtype `i32`, 1-based). Both have the same shape as `operand`.
+The running minimum (same dtype as `x`) and the running argmin (dtype
+`i32`, 1-based). Both have the same shape as `x`.
 
 ## Implemented Rules
 
@@ -41,7 +42,7 @@ The running minimum (same dtype as `operand`) and the running argmin
 ## StableHLO
 
 Lowers to a variadic
-[`stablehlo::hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
+[`hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
 over `(values, iota)`.
 
 ## See also
@@ -52,7 +53,7 @@ over `(values, iota)`.
 
 ``` r
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
-prim_cummin(x, dim = 1L)
+prim_cummin(x, axis = 1L)
 #> [[1]]
 #> AnvlArray
 #>  3 4 5

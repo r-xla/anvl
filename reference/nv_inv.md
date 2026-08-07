@@ -1,7 +1,7 @@
 # Matrix Inverse
 
-Computes `operand^-1`, the inverse of a square non-singular matrix, by
-solving `operand %*% x = I`.
+Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
+solving `x %*% y = I` for `y`.
 
 For most use cases prefer
 [`nv_solve()`](https://r-xla.github.io/anvl/reference/nv_solve.md)
@@ -11,12 +11,12 @@ numerically stable than solving against a right-hand side.
 ## Usage
 
 ``` r
-nv_inv(operand)
+nv_inv(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Square non-singular matrix.
@@ -24,7 +24,7 @@ nv_inv(operand)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-The inverse, same shape and dtype as `operand`.
+The inverse, same shape and dtype as `x`.
 
 ## See also
 

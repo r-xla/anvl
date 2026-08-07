@@ -5,12 +5,12 @@ Element-wise exponential.
 ## Usage
 
 ``` r
-prim_exp(operand)
+prim_exp(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_exponential()`](https://r-xla.github.io/stablehlo/reference/hlo_exponential.html).
+[`hlo_exponential()`](https://r-xla.github.io/stablehlo/reference/hlo_exponential.html).
 
 ## See also
 

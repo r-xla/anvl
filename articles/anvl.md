@@ -118,7 +118,7 @@ to R’s copy-on-write.
 The [`as_array()`](https://r-xla.github.io/anvl/reference/as_array.md)
 function allows to convert `AnvlArray`s back to R objects, which
 involves copying the data. Note that for 0-dimensional arrays, the
-result is an R vector of length 1, as R arrays cannot have 0 dimensions.
+result is an R vector of length 1, as R arrays cannot have 0 axes.
 
 ``` r
 
@@ -182,7 +182,7 @@ prim_add(y, x)
 ```
 
     ## Error in `prim_add()`:
-    ## ! `lhs` and `rhs` must have the same tensor type.
+    ## ! `lhs` and `rhs` must have the same array type.
     ## ✖ Got tensor<2x3xi32> and tensor<i16>.
 
 ``` r

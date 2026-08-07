@@ -1,8 +1,8 @@
 # Primitive LU Decomposition
 
-Computes the partial-pivoted LU decomposition of a matrix `operand`:
-\$\$P A = L U,\$\$ where \\P\\ is a permutation matrix, \\L\\ is unit
-lower triangular, and \\U\\ is upper triangular. `L` (with implicit unit
+Computes the partial-pivoted LU decomposition of a matrix `x`: \$\$P A =
+L U,\$\$ where \\P\\ is a permutation matrix, \\L\\ is unit lower
+triangular, and \\U\\ is upper triangular. `L` (with implicit unit
 diagonal) and `U` are packed into a single `LU` output matching LAPACK's
 `getrf` layout. \\P\\ is returned in two equivalent forms: `pivots`
 (LAPACK's sequential row-swap encoding) and `permutation` (an explicit
@@ -11,15 +11,15 @@ permutation vector).
 ## Usage
 
 ``` r
-prim_lu(operand)
+prim_lu(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Matrix of data type floating-point with exactly 2 dimensions.
+  Matrix of data type floating-point with exactly 2 axes.
 
 ## Value
 
@@ -38,10 +38,10 @@ exchanged with row `pivots[i]` during elimination step `i`); and
 ## StableHLO
 
 Lowers to a `"lu"`
-[`stablehlo::hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
+[`hlo_custom_call()`](https://r-xla.github.io/stablehlo/reference/hlo_custom_call.html)
 (backed by LAPACK on CPU and cuSOLVER on CUDA) for `LU` and `pivots`,
 followed by a
-[`stablehlo::hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html)
+[`hlo_while()`](https://r-xla.github.io/stablehlo/reference/hlo_while.html)
 loop that converts `pivots` to `permutation` in-graph.
 
 ## See also

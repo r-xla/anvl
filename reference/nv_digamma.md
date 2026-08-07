@@ -7,15 +7,15 @@ function). You can also use
 ## Usage
 
 ``` r
-nv_digamma(operand)
+nv_digamma(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

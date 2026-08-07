@@ -6,26 +6,26 @@ input unchanged if it already has the target type.
 ## Usage
 
 ``` r
-nv_convert(operand, dtype)
+nv_convert(x, dtype)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the given `dtype` and the same shape as `operand`.
+Has the given `dtype` and the same shape as `x`.
 
 ## See also
 

@@ -11,12 +11,12 @@ depends on array values).
 ## Usage
 
 ``` r
-prim_static_slice(operand, start_indices, limit_indices, strides)
+prim_static_slice(x, start_indices, limit_indices, strides)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -24,19 +24,19 @@ prim_static_slice(operand, start_indices, limit_indices, strides)
 - start_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Start indices (inclusive), one per dimension. Must satisfy
-  `1 <= start_indices <= limit_indices` per dimension.
+  Start indices (inclusive), one per axis. Must satisfy
+  `1 <= start_indices <= limit_indices` per axis.
 
 - limit_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  End indices (inclusive), one per dimension. Must satisfy
-  `limit_indices <= nv_shape(operand)` per dimension.
+  End indices (inclusive), one per axis. Must satisfy
+  `limit_indices <= nv_shape(x)` per axis.
 
 - strides:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Step sizes, one per dimension. Must be `>= 1`. A stride of `1` selects
+  Step sizes, one per axis. Must be `>= 1`. A stride of `1` selects
   every element; a stride of `2` selects every other element, etc.
 
 ## Value
@@ -57,7 +57,7 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html).
+[`hlo_slice()`](https://r-xla.github.io/stablehlo/reference/hlo_slice.html).
 
 ## See also
 

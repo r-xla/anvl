@@ -32,7 +32,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_maximum()`](https://r-xla.github.io/stablehlo/reference/hlo_maximum.html).
+[`hlo_maximum()`](https://r-xla.github.io/stablehlo/reference/hlo_maximum.html).
 
 ## See also
 

@@ -5,12 +5,12 @@ Element-wise inverse hyperbolic cosine.
 ## Usage
 
 ``` r
-prim_acosh(operand)
+prim_acosh(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_acosh()`](https://r-xla.github.io/stablehlo/reference/hlo_acosh.html).
+[`hlo_acosh()`](https://r-xla.github.io/stablehlo/reference/hlo_acosh.html).
 
 ## See also
 

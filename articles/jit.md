@@ -63,14 +63,14 @@ cache_size <- function(f) environment(f)$cache$size
 
 linear_jit <- jit(linear)
 cache_size(linear_jit)   # 0: nothing cached yet
-#> [1] 0
+#> NULL
 
 linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(1))
 #> AnvlArray
 #>  7
 #> [ CPUf32{} ]
 cache_size(linear_jit)   # 1: a new entry was added
-#> [1] 1
+#> NULL
 
 # same shapes -> cache hit, size unchanged
 linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
@@ -78,7 +78,7 @@ linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
 #>  11
 #> [ CPUf32{} ]
 cache_size(linear_jit)
-#> [1] 1
+#> NULL
 
 # different shapes -> a second entry is added
 linear_jit(
@@ -91,7 +91,7 @@ linear_jit(
 #>  9
 #> [ CPUf32{2} ]
 cache_size(linear_jit)
-#> [1] 2
+#> NULL
 ```
 
 Each input to the function contributes to the cache key differently,
@@ -190,9 +190,9 @@ trace_fn(linear, args = list(x = f32_vec3, w = f32_scalar, b = f32_scalar))
 #>     %x2: f32[]
 #>     %x3: f32[]
 #>   Body:
-#>     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = <any>] (%x2)
+#>     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x2)
 #>     %2: f32[3] = mul(%x1, %1)
-#>     %3: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = <any>] (%x3)
+#>     %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x3)
 #>     %4: f32[3] = add(%2, %3)
 #>   Outputs:
 #>     %4: f32[3]
@@ -249,7 +249,7 @@ trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3
 #>     %x2: f32[3]
 #>     %x3: f32[3]
 #>   Body:
-#>     %1: f32[3] = broadcast_in_dim [shape = 3, broadcast_dimensions = <any>] (%x1)
+#>     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x1)
 #>     %2: f32[3] = mul(%1, %x2)
 #>     %3: f32[3] = add(%2, %x3)
 #>     %4: f32[3] = mul(%3, %x2)
@@ -258,7 +258,7 @@ trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3
 #>     %5: f32[3]
 ```
 
-The graph contains a single `broadcast_in_dim` (lifting the scalar `x`
+The graph contains a single `broadcast_in_axes` (lifting the scalar `x`
 to `f32[3]`) followed by two `mul`/`add` pairs in sequence – not a loop
 construct. The broadcast happens only once because by the second
 iteration `x` is already an `f32[3]` and matches `w` and `b` directly.

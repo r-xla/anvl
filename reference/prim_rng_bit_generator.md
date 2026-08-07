@@ -29,7 +29,7 @@ prim_rng_bit_generator(
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type of the generated random values.
 
 - shape:
@@ -53,12 +53,12 @@ the given `dtype` and `shape`.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_rng_bit_generator()`](https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html).
+[`hlo_rng_bit_generator()`](https://r-xla.github.io/stablehlo/reference/hlo_rng_bit_generator.html).
 
 ## See also
 
 [`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md),
-[`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_rnorm.md)
+[`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_normal.md)
 
 ## Examples
 
@@ -76,6 +76,6 @@ prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
 #>  1.7973e+09 2.5791e+09
 #>  1.3515e+09 3.2358e+09
 #>  1.6886e+09 4.2293e+09
-#> [ CPUui32{3,2} ] 
+#> [ CPUf32{3,2} ] 
 #> 
 ```

@@ -8,35 +8,35 @@ instead.
 ## Usage
 
 ``` r
-nv_static_slice(operand, start_indices, limit_indices, strides)
+nv_static_slice(x, start_indices, limit_indices, strides)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - start_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Start indices (inclusive), one per dimension.
+  Start indices (inclusive), one per axis.
 
 - limit_indices:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  End indices (inclusive), one per dimension.
+  End indices (inclusive), one per axis.
 
 - strides:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Step sizes, one per dimension. A stride of 1 selects every element.
+  Step sizes, one per axis. A stride of 1 selects every element.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type as `operand`.
+Has the same data type as `x`.
 
 ## See also
 

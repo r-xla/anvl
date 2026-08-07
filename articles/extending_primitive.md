@@ -59,13 +59,13 @@ are various scenarios:
 
 Let’s add a new primitive step by step. We’ll implement
 `prim_repeat_along` – a primitive that repeats an array multiple times
-along a specified dimension.
+along a specified axis.
 
-For example, repeating `c(1, 2, 3)` twice along dimension 1 gives
+For example, repeating `c(1, 2, 3)` twice along axis 1 gives
 `c(1, 2, 3, 1, 2, 3)`.
 
 This primitive has a *dynamic* input (an array) and two *static*
-parameters (how many times to repeat and which dimension).
+parameters (how many times to repeat and which axis).
 
 ### Step 1: Define the Primitive
 
@@ -83,40 +83,40 @@ The returned callable becomes the primitive and is bound to a
 library(anvl)
 prim_repeat_along <- new_primitive(
   "repeat_along",
-  function(operand, times, dim) {
-    # type of operand is checked by graph_desc_add()
-    infer_fn <- function(operand, times, dim) {
-      if (!checkmate::test_integerish(dim, lower = 1, upper = ndims(operand), len = 1L)) {
-        cli::cli_abort("{.arg dim} must be between 1 and {ndims(operand)}, but is {.val dim}")
+  function(x, times, axis) {
+    # type of `x` is checked by graph_desc_add()
+    infer_fn <- function(x, times, axis) {
+      if (!checkmate::test_integerish(axis, lower = 1, upper = naxes(x), len = 1L)) {
+        cli::cli_abort("{.arg axis} must be between 1 and {naxes(x)}, but is {.val axis}")
       }
       if (!checkmate::test_integerish(times, lower = 1, len = 1L)) {
         cli_abort("times must be a positive integer, but is {times}")
       }
-      new_shape <- shape(operand)
-      new_shape[dim] <- new_shape[dim] * times
+      new_shape <- shape(x)
+      new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
-        dtype = dtype(operand),
+        dtype = dtype(x),
         shape = Shape(new_shape),
-        ambiguous = operand$ambiguous
+        ambiguous = x$ambiguous
       ))
     }
 
     graph_desc_add(
       self,                       # lexically bound to the AnvlPrimitive
-      list(operand = operand),    # Dynamic inputs (arrays)
+      list(x = x),                # Dynamic inputs (arrays)
       params = list(              # Static parameters
         times = times,
-        dim = dim
+        axis = axis
       ),
       infer_fn = infer_fn
     )[[1L]]  # Extract single output from list
   },
-  static = c("times", "dim")
+  static = c("times", "axis")
 )
 ```
 
 The primitive is now callable directly as
-`prim_repeat_along(x, times, dim)`.
+`prim_repeat_along(x, times, axis)`.
 
 Key points:
 
@@ -204,7 +204,7 @@ factories that generate the body for you:
   `prim_negate`).
 - `make_binary_op(stablehlo_infer)` – elementwise binary
   (e.g. `prim_add`, `prim_mul`).
-- `make_reduce_op(infer_fn)` – reductions with `dims` / `drop`
+- `make_reduce_op(infer_fn)` – reductions with `axes` / `drop`
   parameters (e.g. `prim_reduce_sum`).
 - `make_compare_op(direction)` – comparison ops with a fixed `direction`
   string (e.g. `prim_eq`, `prim_lt`).
@@ -233,9 +233,9 @@ lowering pass. We implement `repeat_along` using concatenation:
 
 ``` r
 
-prim_repeat_along[["stablehlo"]] <- function(operand, times, dim) {
-  operands <- rep(list(operand), times)
-  list(rlang::exec(stablehlo::hlo_concatenate, !!!operands, dimension = dim - 1L))
+prim_repeat_along[["stablehlo"]] <- function(x, times, axis) {
+  xs <- rep(list(x), times)
+  list(rlang::exec(stablehlo::hlo_concatenate, !!!xs, dimension = axis - 1L))
 }
 ```
 
@@ -250,8 +250,8 @@ It must return a list of
 even if there is only one output.
 
 **Important**: StableHLO uses 0-based indexing, while {anvl} uses R’s
-1-based indexing. Always convert dimension indices by subtracting 1.
-Also note that in
+1-based indexing. Always convert axis indices by subtracting 1. Also
+note that in
 [`graph_desc_add()`](https://r-xla.github.io/anvl/reference/graph_desc_add.md)
 we are converting the error messages from stablehlo to our 1-based
 indexing, so you do not have to worry about that here.
@@ -261,14 +261,14 @@ indexing, so you do not have to worry about that here.
 If the operation should support automatic differentiation, attach a
 reverse rule built with
 [`rule_reverse()`](https://r-xla.github.io/anvl/reference/rule_reverse.md).
-The idea here is the following, where we assume the input `operand` has
-shape `(s_1, ..., s_n)`, which means that the output (and therefore it’s
+The idea here is the following, where we assume the input `x` has shape
+`(s_1, ..., s_n)`, which means that the output (and therefore it’s
 gradient) has shape
-`(s_1, ..., s_{dim-1}, s_dim * times, s_{dim+1}, ..., s_n)`.
+`(s_1, ..., s_{axis-1}, s_axis * times, s_{axis+1}, ..., s_n)`.
 
 1.  Reshape the gradient to
-    `(s_1, ..., s_{dim-1}, s_dim, times, s_{dim+1}, ..., s_n)`.
-2.  Sum over the `times` dimension and drop the `times` dimension.
+    `(s_1, ..., s_{axis-1}, s_axis, times, s_{axis+1}, ..., s_n)`.
+2.  Sum over the `times` axis and drop the `times` axis.
 
 ``` r
 
@@ -278,19 +278,19 @@ prim_repeat_along[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
   }
 
   grad <- grads[[1L]]
-  operand <- inputs[[1L]]
-  dim <- params$dim
+  x <- inputs[[1L]]
+  axis <- params$axis
   times <- params$times
 
-  old_shape <- shape(operand)
+  old_shape <- shape(x)
   grad_shape <- shape(grad)
 
   new_shape <- grad_shape
-  new_shape[dim] <- old_shape[dim]
-  new_shape <- append(new_shape, times, after = dim - 1L)
+  new_shape[axis] <- old_shape[axis]
+  new_shape <- append(new_shape, times, after = axis - 1L)
 
   grad_reshaped <- prim_reshape(grad, new_shape)
-  grad_summed <- prim_reduce_sum(grad_reshaped, dims = dim, drop = TRUE)
+  grad_summed <- prim_reduce_sum(grad_reshaped, axes = axis, drop = TRUE)
   list(grad_summed)
 })
 ```
@@ -301,7 +301,7 @@ The wrapped backward receives:
 - `outputs`: Output `GraphValue`s from the forward pass
 - `grads`: Gradients flowing back from downstream (one per output)
 - `params`: Named list of the call’s static parameters (here:
-  `params$dim`, `params$times`)
+  `params$axis`, `params$times`)
 - `required`: Logical vector indicating which input gradients are needed
 
 It returns a list with one gradient per input (or `NULL` if not
@@ -349,7 +349,7 @@ rules you almost always want. A primitive can optionally also carry a
 `quickr` rule, which lowers it to plain R code for the quickr backend
 (see `R/rules-quickr.R`). The quickr rule is only required if you want
 the primitive to run under `local_backend("quickr")`; if you skip it,
-the primitive will still work on the xla backend.
+the primitive will still work on the pjrt backend.
 
 ### Step 4: Verify the Registration
 
@@ -361,7 +361,7 @@ registration step is needed:
 ``` r
 
 prim_repeat_along
-#> function (operand, times, dim) 
+#> function (x, times, axis) 
 #> {
 #>     if (currently_tracing()) {
 #>         cl <- match.call()
@@ -376,21 +376,28 @@ prim_repeat_along
 #>         else backend(dev_val)
 #>     }
 #>     else {
-#>         jit_auto_detect_backend(flatten(args[!names(args) %in% 
-#>             static]))
+#>         jit_auto_detect_backend(args, static)
 #>     }
-#>     if (is.null(jit_fns[[be]])) {
-#>         jit_fns[[be]] <<- do.call(jit_with_backend, c(list(f = f, 
-#>             static = static, cache_size = cache_size, backend = be), 
-#>             if (!is.null(device_argname)) {
-#>                 list(device = device_arg(device_argname))
-#>             } else if (!is.null(device)) {
-#>                 list(device = device)
-#>             }, dots))
+#>     run <- jit_runs[[be]]
+#>     if (is.null(run)) {
+#>         if (is.null(jit_fns[[be]])) {
+#>             jit_fns[[be]] <<- do.call(jit_with_backend, c(list(f = f, 
+#>                 static = static, cache_size = cache_size, backend = be), 
+#>                 if (!is.null(device_argname)) {
+#>                   list(device = device_arg(device_argname))
+#>                 } else if (!is.null(device)) {
+#>                   list(device = device)
+#>                 }, dots))
+#>         }
+#>         run <- attr(jit_fns[[be]], "jit_run_args")
+#>         if (is.null(run)) {
+#>             run <- function(args) do.call(jit_fns[[be]], args)
+#>         }
+#>         jit_runs[[be]] <<- run
 #>     }
-#>     do.call(jit_fns[[be]], args)
+#>     run(args)
 #> }
-#> <environment: 0x56239d613fb0>
+#> <environment: 0x55f9fb931728>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")
@@ -414,7 +421,7 @@ nv_add(1L, nv_array(2:3))
 #> [ CPUi32{2} ]
 prim_add(1L, nv_array(2:3))
 #> Error in `prim_add()`:
-#> ! `lhs` and `rhs` must have the same tensor type.
+#> ! `lhs` and `rhs` must have the same array type.
 #> ✖ Got tensor<i32> and tensor<2xi32>.
 ```
 
@@ -431,7 +438,7 @@ Note that in the `nv_*` wrapper function, you can only access certain
 properties of the input arrayish values via:
 
 - [`shape_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
-- [`ndims_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
+- [`naxes_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
 - [`dtype_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
 - [`ambiguous_abstract()`](https://r-xla.github.io/anvl/reference/abstract_properties.md)
 
@@ -451,14 +458,14 @@ JIT-compiled function:
 
 x <- nv_array(c(1, 2, 3), shape = c(3, 1))
 # Eager call -- works because prim_repeat_along is itself jit-compiled.
-prim_repeat_along(x, times = 2L, dim = 2L)
+prim_repeat_along(x, times = 2L, axis = 2L)
 #> AnvlArray
 #>  1 1
 #>  2 2
 #>  3 3
 #> [ CPUf32{3,2} ]
 # Traced into the outer graph when composed with another jit-compiled function.
-jit(function(x) prim_repeat_along(x, times = 2L, dim = 2L))(x)
+jit(function(x) prim_repeat_along(x, times = 2L, axis = 2L))(x)
 #> AnvlArray
 #>  1 1
 #>  2 2
@@ -471,7 +478,7 @@ And compute gradients through it.
 ``` r
 
 f <- function(x) {
-  repeated <- prim_repeat_along(x, times = 2L, dim = 2L)
+  repeated <- prim_repeat_along(x, times = 2L, axis = 2L)
   sum(repeated)
 }
 

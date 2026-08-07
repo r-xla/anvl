@@ -6,15 +6,15 @@ Element-wise error function
 ## Usage
 
 ``` r
-nv_erf(operand)
+nv_erf(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

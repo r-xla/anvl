@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
@@ -109,7 +110,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Gaussian Process</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/vignettes/gaussian-process.Rmd" class="external-link"><code>vignettes/gaussian-process.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/gaussian-process.Rmd" class="external-link"><code>vignettes/gaussian-process.Rmd</code></a></small>
       <div class="d-none name"><code>gaussian-process.Rmd</code></div>
     </div>
 
@@ -161,7 +162,7 @@ sets of points:</p>
 <span>    <span class="fu"><a href="../reference/nv_reshape.html">nv_reshape</a></span><span class="op">(</span><span class="va">X2</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="va">m</span>, <span class="va">d</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span>  <span class="va">diff</span> <span class="op">&lt;-</span> <span class="va">diff</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span> <span class="op">-</span> <span class="va">diff</span><span class="op">[[</span><span class="fl">2L</span><span class="op">]</span><span class="op">]</span></span>
-<span>  <span class="va">sq_dist</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">diff</span> <span class="op">*</span> <span class="va">diff</span>, dims <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
+<span>  <span class="va">sq_dist</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">diff</span> <span class="op">*</span> <span class="va">diff</span>, axes <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
 <span>  <span class="va">signal_var</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="op">-</span><span class="va">sq_dist</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">lengthscale</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Because <code>anvl</code> jit-compiles the code, there is no
@@ -362,11 +363,11 @@ out the constant term because we don’t need it for optimization.</p>
 <span>  <span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># Data fit term: 0.5 * y^T %*% alpha</span></span>
-<span>  <span class="va">data_fit</span> <span class="op">&lt;-</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="va">alpha</span>, dims <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">data_fit</span> <span class="op">&lt;-</span> <span class="fl">0.5</span> <span class="op">*</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">y</span> <span class="op">*</span> <span class="va">alpha</span>, axes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="co"># Log determinant: sum(log(diag(L)))</span></span>
-<span>  <span class="va">diag_L</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">L</span> <span class="op">*</span> <span class="va">eye</span>, dims <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
-<span>  <span class="va">log_det</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">diag_L</span><span class="op">)</span>, dims <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="va">diag_L</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">L</span> <span class="op">*</span> <span class="va">eye</span>, axes <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
+<span>  <span class="va">log_det</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">diag_L</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span></span>
 <span>  <span class="va">data_fit</span> <span class="op">+</span> <span class="va">log_det</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -478,7 +479,7 @@ to Machine Learning lecture on Gaussian Processes</a>.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

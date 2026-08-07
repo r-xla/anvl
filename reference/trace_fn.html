@@ -19,7 +19,7 @@ The resulting graph can be lowered to StableHLO (via stablehlo()) or transformed
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@ The resulting graph can be lowered to StableHLO (via stablehlo()) or transformed
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -76,7 +77,7 @@ The resulting graph can be lowered to StableHLO (via stablehlo()) or transformed
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Trace an R function into a Graph</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/graph.R" class="external-link"><code>R/graph.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/graph.R" class="external-link"><code>R/graph.R</code></a></small>
       <div class="d-none name"><code>trace_fn.Rd</code></div>
     </div>
 
@@ -95,7 +96,8 @@ an <code><a href="AnvlGraph.html">AnvlGraph</a></code>.</p>
 <span>  desc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  in_tree <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  in_tree <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  optimize <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -138,6 +140,15 @@ Flattened arguments. Must be accompanied by <code>in_tree</code>.</p></dd>
 <dd><p>(<code>Node</code>)<br>
 Tree structure describing how <code>args_flat</code> maps back to <code>f</code>'s arguments.</p></dd>
 
+
+<dt id="arg-optimize">optimize<a class="anchor" aria-label="anchor" href="#arg-optimize"></a></dt>
+<dd><p>(<code>logical(1)</code> | <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>)<br>
+Which graph optimization passes to run on the traced graph before returning
+it. <code>TRUE</code> runs all passes, <code>FALSE</code> (default) runs none, and a character
+vector selects a subset by name. The available passes are:</p><ul><li><p><code>"inline_scalars"</code>: replace scalar-shaped constants with inline literals.</p></li>
+<li><p><code>"remove_unused_constants"</code>: drop constants not referenced by the graph.</p></li>
+</ul><p><code><a href="jit.html">jit()</a></code> always traces with all passes enabled.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -145,7 +156,7 @@ Tree structure describing how <code>args_flat</code> maps back to <code>f</code>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="stablehlo.html">stablehlo()</a></code> to lower the graph, <code><a href="jit.html">jit()</a></code> / <code><a href="xla.html">xla()</a></code> for end-to-end
+    <div class="dont-index"><p><code><a href="stablehlo.html">stablehlo()</a></code> to lower the graph, <code><a href="jit.html">jit()</a></code> for end-to-end
 compilation.</p></div>
     </div>
 
@@ -173,7 +184,7 @@ compilation.</p></div>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

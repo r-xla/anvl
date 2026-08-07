@@ -1,25 +1,26 @@
 # Primitive Cumulative Product
 
-Cumulative product of array elements along a single dimension. Output
-position `j` along `dim` equals the product of input positions `1:j`.
+Cumulative product of array elements along a single axis. Output
+position `j` along `axis` equals the product of input positions `1:j`.
 
 ## Usage
 
 ``` r
-prim_cumprod(operand, dim)
+prim_cumprod(x, axis)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to accumulate.
+  Axis along which to accumulate. Negative values count from the end,
+  i.e. `-1` refers to the last axis.
 
 ## Value
 
@@ -34,9 +35,9 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
+[`hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
 with
-[`stablehlo::hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html)
+[`hlo_multiply()`](https://r-xla.github.io/stablehlo/reference/hlo_multiply.html)
 as the reducer.
 
 ## See also
@@ -47,7 +48,7 @@ as the reducer.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-prim_cumprod(x, dim = 1L)
+prim_cumprod(x, axis = 1L)
 #> AnvlArray
 #>   1  3  5
 #>   2 12 30

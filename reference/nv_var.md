@@ -1,30 +1,31 @@
-# Variance Reduction
+# Variance
 
-Computes the variance along the specified dimensions.
+Computes the variance along the specified axes.
 
 ## Usage
 
 ``` r
-nv_var(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
+nv_var(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Dimensions to reduce. If `NULL` (default), reduces over all
-  dimensions, returning a scalar.
+  Axes to reduce. Negative values count from the end, i.e. `-1` refers
+  to the last axis. If `NULL` (default), reduces over all axes,
+  returning a scalar.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced dimensions.
+  Whether to drop reduced axes.
 
 - correction:
 
@@ -41,8 +42,7 @@ nv_var(operand, dims, drop = TRUE, correction = 1L, nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
 Has the same data type as the input. When `drop = TRUE`, the reduced
-dimensions are removed. When `drop = FALSE`, the reduced dimensions are
-set to 1.
+axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
 
 ## Details
 
@@ -59,11 +59,15 @@ population variance.
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4, 5))
-nv_var(x, dims = 1L)
+nv_var(x)             # all axes -> scalar
 #> AnvlArray
 #>  2.5000
 #> [ CPUf32{} ] 
-nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
+nv_var(x, axes = 1L)
+#> AnvlArray
+#>  2.5000
+#> [ CPUf32{} ] 
+nv_var(nv_array(c(1, NaN, 3, 5)), axes = 1L, nan_rm = TRUE)
 #> AnvlArray
 #>  4
 #> [ CPUf32{} ] 

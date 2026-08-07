@@ -5,12 +5,12 @@ Negates an array element-wise.
 ## Usage
 
 ``` r
-prim_negate(operand)
+prim_negate(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type integer or floating-point.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_negate()`](https://r-xla.github.io/stablehlo/reference/hlo_negate.html).
+[`hlo_negate()`](https://r-xla.github.io/stablehlo/reference/hlo_negate.html).
 
 ## See also
 

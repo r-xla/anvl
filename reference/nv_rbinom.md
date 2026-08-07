@@ -1,13 +1,13 @@
 # Sample from a Binomial Distribution
 
 Samples from a binomial distribution with \\n\\ trials and success
-probability \\p\\. When `n = 1` (the default), this is a Bernoulli
+probability \\p\\. When `size = 1` (the default), this is a Bernoulli
 distribution.
 
 ## Usage
 
 ``` r
-nv_rbinom(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32")
+nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32")
 ```
 
 ## Arguments
@@ -22,7 +22,7 @@ nv_rbinom(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32")
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   RNG state (`ui64[2]`).
 
-- n:
+- size:
 
   (`integer(1)`)  
   Number of trials.
@@ -35,7 +35,7 @@ nv_rbinom(shape, initial_state, n = 1L, prob = 0.5, dtype = "i32")
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 ## Value
@@ -47,10 +47,11 @@ List of two elements: the updated RNG state and the sampled values.
 ## See also
 
 Other rng:
-[`nv_rdunif()`](https://r-xla.github.io/anvl/reference/nv_rdunif.md),
+[`nv_normal`](https://r-xla.github.io/anvl/reference/nv_normal.md),
 [`nv_rng_state()`](https://r-xla.github.io/anvl/reference/nv_rng_state.md),
-[`nv_rnorm()`](https://r-xla.github.io/anvl/reference/nv_rnorm.md),
-[`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md)
+[`nv_runif()`](https://r-xla.github.io/anvl/reference/nv_runif.md),
+[`nv_sample()`](https://r-xla.github.io/anvl/reference/nv_sample.md),
+[`nv_sample_int()`](https://r-xla.github.io/anvl/reference/nv_sample_int.md)
 
 ## Examples
 

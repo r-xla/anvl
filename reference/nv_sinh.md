@@ -6,15 +6,15 @@ Element-wise hyperbolic sine. You can also use
 ## Usage
 
 ``` r
-nv_sinh(operand)
+nv_sinh(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

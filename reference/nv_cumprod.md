@@ -1,24 +1,25 @@
 # Cumulative Product
 
-Cumulative product, optionally along a single dimension.
+Cumulative product, optionally along a single axis.
 
 ## Usage
 
 ``` r
-nv_cumprod(operand, dim = NULL, nan_rm = FALSE)
+nv_cumprod(x, axis = NULL, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to accumulate. If `NULL` (default), the input is
+  Axis along which to accumulate. Negative values count from the end,
+  i.e. `-1` refers to the last axis. If `NULL` (default), the input is
   first flattened to a 1-D array, like
   [`base::cumprod()`](https://rdrr.io/r/base/cumsum.html).
 
@@ -38,12 +39,12 @@ Has the same shape and data type as the input.
 
 ## Relation to base R
 
-Both `nv_cumprod()` (with `dim = NULL`) and
+Both `nv_cumprod()` (with `axis = NULL`) and
 [`base::cumprod()`](https://rdrr.io/r/base/cumsum.html) flatten a
 multi-dimensional input to 1-D before accumulating, but the flatten
 order differs: anvl arrays are row-major (C order), so the flattened
-sequence iterates the last dim fastest, whereas base R uses column-major
-(Fortran) order. The two agree on 1-D inputs.
+sequence iterates the last axis fastest, whereas base R uses
+column-major (Fortran) order. The two agree on 1-D inputs.
 
 ## See also
 
@@ -63,7 +64,7 @@ nv_cumprod(x)              # row-major flatten, then accumulate
 #>  120
 #>  720
 #> [ CPUi32{6} ] 
-nv_cumprod(x, dim = 1L)    # accumulate along rows
+nv_cumprod(x, axis = 1L)    # accumulate along rows
 #> AnvlArray
 #>   1  3  5
 #>   2 12 30

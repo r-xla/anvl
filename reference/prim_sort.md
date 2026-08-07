@@ -1,26 +1,26 @@
 # Primitive Sort
 
-Sorts arrays along the given dimension.
+Sorts arrays along the given axis.
 
-Sorting is determined by the *first operand* only: it is the sort key,
-and any additional operands are reordered with the same permutation that
-sorts the first. This enables idioms like *argsort* (sort `x` paired
-with an `iota` and read off the second output) and key-value sorts (sort
-`keys` paired with `values`).
+Sorting is determined by the *first array* only: it is the sort key, and
+any additional arrays are reordered with the same permutation that sorts
+the first. This enables idioms like *argsort* (sort `x` paired with an
+`iota` and read off the second output) and key-value sorts (sort `keys`
+paired with `values`).
 
-All operands must have the same shape; their dtypes may differ.
-1-dimensional slices along `dim` are sorted independently; other
-dimensions are preserved.
+All arrays must have the same shape; their dtypes may differ.
+1-dimensional slices along `axis` are sorted independently; other axes
+are preserved.
 
 ## Usage
 
 ``` r
-prim_sort(operands, dim = 1L, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
 ```
 
 ## Arguments
 
-- operands:
+- xs:
 
   (`list` of
   [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
@@ -28,16 +28,17 @@ prim_sort(operands, dim = 1L, descending = FALSE, is_stable = FALSE)
   carried along under the same permutation. All must share the same
   shape.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to sort.
+  Axis along which to sort. Negative values count from the end, i.e.
+  `-1` refers to the last axis.
 
 - descending:
 
   (`logical(1)`)  
   If `TRUE`, sort the key in descending order (largest first). Default
-  `FALSE`. Additional operands are reordered by the same permutation
+  `FALSE`. Additional arrays are reordered by the same permutation
   regardless.
 
 - is_stable:
@@ -50,9 +51,8 @@ prim_sort(operands, dim = 1L, descending = FALSE, is_stable = FALSE)
 
 `list` of
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-One sorted output per element of `operands`, in the same order. Each
-output has the same shape, data type, and ambiguity as the corresponding
-input.
+One sorted output per element of `xs`, in the same order. Each output
+has the same shape, data type, and ambiguity as the corresponding input.
 
 ## Implemented Rules
 
@@ -63,14 +63,14 @@ input.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_sort()`](https://r-xla.github.io/stablehlo/reference/hlo_sort.html)
+[`hlo_sort()`](https://r-xla.github.io/stablehlo/reference/hlo_sort.html)
 with a comparator that uses
-[`stablehlo::hlo_compare()`](https://r-xla.github.io/stablehlo/reference/hlo_compare.html)
-(`LT` for ascending, `GT` for descending) on the first operand. For
-float keys the comparator uses `compare_type = "TOTALORDER"` and
-canonicalizes `-0`/`+0` and `-NaN`/`+NaN` to their positive form before
-comparing, so all `NaN` values land at one end of the result regardless
-of sign. Integer keys use `SIGNED` / `UNSIGNED` as appropriate.
+[`hlo_compare()`](https://r-xla.github.io/stablehlo/reference/hlo_compare.html)
+(`LT` for ascending, `GT` for descending) on the first array. For float
+keys the comparator uses `compare_type = "TOTALORDER"` and canonicalizes
+`-0`/`+0` and `-NaN`/`+NaN` to their positive form before comparing, so
+all `NaN` values land at one end of the result regardless of sign.
+Integer keys use `SIGNED` / `UNSIGNED` as appropriate.
 
 ## See also
 
@@ -83,7 +83,7 @@ of sign. Integer keys use `SIGNED` / `UNSIGNED` as appropriate.
 
 ``` r
 x <- nv_array(c(3, 1, 4, 1, 5))
-prim_sort(list(x), dim = 1L)[[1L]]
+prim_sort(list(x), axis = 1L)[[1L]]
 #> AnvlArray
 #>  1
 #>  1
@@ -94,8 +94,8 @@ prim_sort(list(x), dim = 1L)[[1L]]
 
 # Sort indices by the values (argsort): pair x with iota and read off
 # the second result.
-idx <- nv_iota(dim = 1L, dtype = "i64", shape = 5L)
-out <- prim_sort(list(x, idx), dim = 1L)
+idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
+out <- prim_sort(list(x, idx), axis = 1L)
 out[[1L]] # sorted x
 #> AnvlArray
 #>  1

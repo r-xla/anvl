@@ -17,7 +17,7 @@ asynchronous operation should not be confused with its execution."><meta propert
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,7 @@ asynchronous operation should not be confused with its execution."><meta propert
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -74,7 +75,7 @@ asynchronous operation should not be confused with its execution."><meta propert
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Block until an async operation completes</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/reexports.R" class="external-link"><code>R/reexports.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/reexports.R" class="external-link"><code>R/reexports.R</code></a></small>
       <div class="d-none name"><code>await.Rd</code></div>
     </div>
 
@@ -113,7 +114,7 @@ asynchronous execution (e.g. <code>"quickr"</code>), this is a no-op.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="https://r-xla.github.io/pjrt/reference/await.html" class="external-link">pjrt::await()</a></code>, <code><a href="map_tree.html">map_tree()</a></code> (to await a tree of outputs)</p></div>
+    <div class="dont-index"><p><code><a href="https://r-xla.github.io/pjrt/reference/await.html" class="external-link">pjrt::await()</a></code>, <code><a href="https://r-xla.github.io/pjrt/reference/map_tree.html" class="external-link">map_tree()</a></code> (to await a tree of outputs)</p></div>
     </div>
 
     <div class="section level2">
@@ -122,7 +123,7 @@ asynchronous execution (e.g. <code>"quickr"</code>), this is a no-op.</p>
 <span class="r-in"><span><span class="fu">await</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Await all leaves of a (possibly nested) list of arrays.</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="map_tree.html">map_tree</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">x</span><span class="op">)</span><span class="op">)</span>, <span class="va">await</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://r-xla.github.io/pjrt/reference/map_tree.html" class="external-link">map_tree</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>y <span class="op">=</span> <span class="va">x</span><span class="op">)</span><span class="op">)</span>, <span class="va">await</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
@@ -152,7 +153,7 @@ asynchronous execution (e.g. <code>"quickr"</code>), this is a no-op.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

@@ -35,9 +35,11 @@ with `backend = "quickr"` is, under the hood, a plain R vector or array
 [`as_array()`](https://r-xla.github.io/anvl/reference/as_array.md)
 returns the underlying vector/array directly without copying, and
 [`nv_array()`](https://r-xla.github.io/anvl/reference/AnvlArray.md)
-simply wraps an R vector/array. As a consequence, there is no separate
-notion of a device: data always lives in R's memory and computation
-always runs on the CPU.
+simply wraps an R vector/array. Data always lives in R's memory and
+computation always runs on the CPU, so the only device is
+[`quickr_device("cpu")`](https://r-xla.github.io/anvl/reference/quickr_device.md);
+every array still carries it in `$device`, as arrays of every backend
+do.
 
 ## Status
 
@@ -47,7 +49,7 @@ This backend is **experimental** and has a number of limitations:
   best suited to long-running or repeatedly-called functions where the
   one-time compilation cost is amortized.
 
-- Only a subset of the primitives that the XLA backend supports are
+- Only a subset of the primitives that the PJRT backend supports are
   currently lowered to quickr code. See
   [`vignette("primitives")`](https://r-xla.github.io/anvl/articles/primitives.md)
   for an overview.
@@ -67,6 +69,6 @@ This backend is **experimental** and has a number of limitations:
 ## See also
 
 [`AnvlBackend()`](https://r-xla.github.io/anvl/reference/AnvlBackend.md),
-[`AnvlBackendXla()`](https://r-xla.github.io/anvl/reference/AnvlBackendXla.md),
+[`AnvlBackendPjrt()`](https://r-xla.github.io/anvl/reference/AnvlBackendPjrt.md),
 [`local_backend()`](https://r-xla.github.io/anvl/reference/local_backend.md),
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md).

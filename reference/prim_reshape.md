@@ -7,12 +7,12 @@ order.
 ## Usage
 
 ``` r
-prim_reshape(operand, shape)
+prim_reshape(x, shape)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -20,7 +20,9 @@ prim_reshape(operand, shape)
 - shape:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  Target shape. Must have the same number of elements as `operand`.
+  Target shape. Must have the same number of elements as `x`. At most
+  one entry may be `-1`, in which case its extent is inferred from the
+  remaining entries and the number of elements of `x`.
 
 ## Value
 
@@ -39,7 +41,7 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html).
+[`hlo_reshape()`](https://r-xla.github.io/stablehlo/reference/hlo_reshape.html).
 
 ## See also
 

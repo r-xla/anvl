@@ -1,7 +1,7 @@
 # Get the default backend
 
 Returns the current default backend from
-`getOption("anvl.default_backend", "xla")`.
+`getOption("anvl.default_backend", "pjrt")`.
 
 ## Usage
 
@@ -11,7 +11,7 @@ default_backend()
 
 ## Value
 
-`character(1)` — the backend name (e.g. `"xla"`, `"quickr"`).
+`character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
 
 ## See also
 

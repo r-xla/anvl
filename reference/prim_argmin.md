@@ -1,38 +1,38 @@
 # Primitive Argmin
 
-Returns the index of the minimum value along a single dimension. Ties
-are broken by returning the smallest index.
+Returns the index of the minimum value along a single axis. Ties are
+broken by returning the smallest index.
 
 ## Usage
 
 ``` r
-prim_argmin(operand, dim, drop = TRUE)
+prim_argmin(x, axis, drop = TRUE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to find the index of the maximum.
+  Axis along which to find the index of the maximum. Negative values
+  count from the end, i.e. `-1` refers to the last axis.
 
 - drop:
 
   (`logical(1)`)  
-  If `TRUE` (default) the reduced dimension is removed; if `FALSE` it is
-  kept with size 1.
+  If `TRUE` (default) the reduced axis is removed; if `FALSE` it is kept
+  with size 1.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
 dtype `i32`  
-Same shape as `operand` with `dim` removed (or set to 1 if
-`drop = FALSE`).
+Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 
 ## Implemented Rules
 
@@ -43,7 +43,7 @@ Same shape as `operand` with `dim` removed (or set to 1 if
 ## StableHLO
 
 Lowers to a variadic
-[`stablehlo::hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
+[`hlo_reduce()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce.html)
 over `(values, indices)` with a (value \< value \| (value == value & idx
 \< idx)) selector.
 
@@ -55,7 +55,7 @@ over `(values, indices)` with a (value \< value \| (value == value & idx
 ## Examples
 
 ``` r
-prim_argmin(nv_array(c(3, 1, 4, 1, 5)), dim = 1L)
+prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #> AnvlArray
 #>  2
 #> [ CPUi32{} ] 

@@ -9,7 +9,7 @@ array. You can also use the `[<-` operator.
 # S3 method for class 'AnvlArray'
 x[...] <- value
 
-nv_subset_assign(operand, ..., value)
+nv_subset_assign(x, ..., value)
 ```
 
 ## Arguments
@@ -17,11 +17,11 @@ nv_subset_assign(operand, ..., value)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  Input array.
 
 - ...:
 
-  Subset specifications, one per dimension. See
+  Subset specifications, one per axis. See
   [`vignette("subsetting")`](https://r-xla.github.io/anvl/articles/subsetting.md)
   for details.
 
@@ -31,15 +31,10 @@ nv_subset_assign(operand, ..., value)
   Replacement values. Scalars are broadcast to the subset shape.
   Non-scalar values must match the subset shape.
 
-- operand:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
-
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-A new array with the same shape as `operand` and the subset replaced.
+A new array with the same shape as `x` and the subset replaced.
 
 ## See also
 

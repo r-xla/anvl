@@ -30,7 +30,7 @@ nv_device(x, backend = NULL)
 
 ## Value
 
-A backend-specific device object (e.g. `PJRTDevice` for `"xla"`,
+A backend-specific device object (e.g. `PJRTDevice` for `"pjrt"`,
 [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
 for `"quickr"`).
 
@@ -42,8 +42,8 @@ for `"quickr"`).
 ## Examples
 
 ``` r
-# Create CPU device for xla backend:
-nv_device("cpu", "xla")
+# Create CPU device for pjrt backend:
+nv_device("cpu", "pjrt")
 #> <CpuDevice(id=0)>
 # Create CPU device for quickr backend:
 nv_device("cpu", "quickr")

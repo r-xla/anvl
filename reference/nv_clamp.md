@@ -1,12 +1,12 @@
 # Clamp
 
-Element-wise clamp: `max(min_val, min(operand, max_val))`. Converts
-`min_val` and `max_val` to the data type of `operand`.
+Element-wise clamp: `max(min_val, min(x, max_val))`. Converts `min_val`
+and `max_val` to the data type of `x`.
 
 ## Usage
 
 ``` r
-nv_clamp(min_val, operand, max_val)
+nv_clamp(min_val, x, max_val)
 ```
 
 ## Arguments
@@ -14,12 +14,12 @@ nv_clamp(min_val, operand, max_val)
 - min_val, max_val:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Minimum and maximum values (scalar or same shape as `operand`).
+  Minimum and maximum values (scalar or same shape as `x`).
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

@@ -6,20 +6,20 @@ the input unchanged. Useful for debugging.
 ## Usage
 
 ``` r
-nv_print(operand)
+nv_print(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Returns `operand` unchanged.
+Returns `x` unchanged.
 
 ## See also
 

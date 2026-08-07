@@ -23,8 +23,8 @@ nv_triangular_solve(
 - a:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Triangular coefficient matrix with at least 2 dimensions. The last two
-  dimensions must be equal; any leading dimensions are batch dimensions.
+  Triangular coefficient matrix with at least 2 axes. The last two axes
+  must be equal; any leading axes are batch axes.
 
 - b:
 
@@ -39,7 +39,7 @@ nv_triangular_solve(
     reshaped internally and the reshape is undone on the result so the
     output rank matches `b`.
 
-  `b`'s batch dimensions (`B...`) must match `a`'s exactly.
+  `b`'s batch axes (`B...`) must match `a`'s exactly.
 
 - left_side:
 
@@ -70,7 +70,7 @@ The solution `x`, with the same shape and dtype as `b`.
 
 ## Details
 
-As a convenience, `b` may have one fewer dimension than `a` (a single
+As a convenience, `b` may have one fewer axis than `a` (a single
 right-hand side per batch, shape `(B..., n)` for `a` of shape
 `(B..., n, n)`). It is reshaped internally to a column
 (`left_side = TRUE`) or row (`left_side = FALSE`) and reshaped back on

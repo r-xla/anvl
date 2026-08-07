@@ -32,7 +32,7 @@ if both inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_compare()`](https://r-xla.github.io/stablehlo/reference/hlo_compare.html)
+[`hlo_compare()`](https://r-xla.github.io/stablehlo/reference/hlo_compare.html)
 with `comparison_direction = "GT"`.
 
 ## See also

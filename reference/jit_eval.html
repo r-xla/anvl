@@ -19,7 +19,7 @@ Useful if you want to evaluate an expression once."><meta property="og:image" co
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@ Useful if you want to evaluate an expression once."><meta property="og:image" co
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -76,7 +77,7 @@ Useful if you want to evaluate an expression once."><meta property="og:image" co
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>JIT-compile and evaluate an expression</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/jit.R" class="external-link"><code>R/jit.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/jit.R" class="external-link"><code>R/jit.R</code></a></small>
       <div class="d-none name"><code>jit_eval.Rd</code></div>
     </div>
 
@@ -103,7 +104,7 @@ Expression to compile and evaluate.</p></dd>
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Backend-specific options forwarded to <code><a href="jit.html">jit()</a></code> (e.g. <code>device</code>
-for the <code>"xla"</code> backend, <code>unwrap</code> for the <code>"quickr"</code> backend).</p></dd>
+for the <code>"pjrt"</code> backend, <code>unwrap</code> for the <code>"quickr"</code> backend).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -132,7 +133,7 @@ Result of the compiled and evaluated expression.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

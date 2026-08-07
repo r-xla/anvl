@@ -5,15 +5,15 @@ Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
 ## Usage
 
 ``` r
-nv_erf_inv(operand)
+nv_erf_inv(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

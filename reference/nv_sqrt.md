@@ -6,15 +6,15 @@ Element-wise square root. You can also use
 ## Usage
 
 ``` r
-nv_sqrt(operand)
+nv_sqrt(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

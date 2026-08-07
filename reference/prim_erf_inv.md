@@ -5,12 +5,12 @@ Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
 ## Usage
 
 ``` r
-prim_erf_inv(operand)
+prim_erf_inv(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -30,7 +30,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_erf_inv()`](https://r-xla.github.io/stablehlo/reference/hlo_erf_inv.html).
+[`hlo_erf_inv()`](https://r-xla.github.io/stablehlo/reference/hlo_erf_inv.html).
 
 ## See also
 

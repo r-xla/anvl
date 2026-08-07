@@ -1,37 +1,38 @@
 # All Reduction
 
-Performs logical AND along the specified dimensions. Returns `TRUE` only
-if all elements are `TRUE`.
+Performs logical AND along the specified axes. Returns `TRUE` only if
+all elements are `TRUE`.
 
 ## Usage
 
 ``` r
-nv_reduce_all(operand, dims = NULL, drop = TRUE)
+nv_reduce_all(x, axes = NULL, drop = TRUE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Dimensions to reduce. If `NULL` (default), reduces over all
-  dimensions, returning a scalar.
+  Axes to reduce. Negative values count from the end, i.e. `-1` refers
+  to the last axis. If `NULL` (default), reduces over all axes,
+  returning a scalar.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced dimensions.
+  Whether to drop reduced axes.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Boolean array. When `drop = TRUE`, the reduced dimensions are removed.
-When `drop = FALSE`, the reduced dimensions are set to 1.
+Boolean array. When `drop = TRUE`, the reduced axes are removed. When
+`drop = FALSE`, the reduced axes are set to 1.
 
 ## See also
 
@@ -42,11 +43,11 @@ for the underlying primitive.
 
 ``` r
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-nv_reduce_all(x)            # all dims -> scalar
+nv_reduce_all(x)            # all axes -> scalar
 #> AnvlArray
 #>  0
 #> [ CPUbool{} ] 
-nv_reduce_all(x, dims = 1L)
+nv_reduce_all(x, axes = 1L)
 #> AnvlArray
 #>  0
 #>  1

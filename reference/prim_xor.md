@@ -33,7 +33,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_xor()`](https://r-xla.github.io/stablehlo/reference/hlo_xor.html).
+[`hlo_xor()`](https://r-xla.github.io/stablehlo/reference/hlo_xor.html).
 
 ## See also
 

@@ -9,7 +9,7 @@ scalar determinant, use
 ## Usage
 
 ``` r
-nv_determinant(operand, logarithm = TRUE)
+nv_determinant(x, logarithm = TRUE)
 
 # S3 method for class 'AnvlArray'
 determinant(x, logarithm = TRUE, ...)
@@ -17,7 +17,7 @@ determinant(x, logarithm = TRUE, ...)
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Square matrix of floating-point data type.
@@ -27,11 +27,6 @@ determinant(x, logarithm = TRUE, ...)
   (`logical(1)`)  
   If `TRUE` (default), return the log of the absolute determinant.
 
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
-
 - ...:
 
   No additional arguments.
@@ -40,9 +35,9 @@ determinant(x, logarithm = TRUE, ...)
 
 Named `list` with elements `modulus` and `sign`, both scalar
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) with
-the same dtype as `operand`. The full determinant is
-`sign * exp(modulus)` (with `logarithm = TRUE`) or `sign * modulus`
-(with `logarithm = FALSE`).
+the same dtype as `x`. The full determinant is `sign * exp(modulus)`
+(with `logarithm = TRUE`) or `sign * modulus` (with
+`logarithm = FALSE`).
 
 ## Details
 

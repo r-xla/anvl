@@ -5,12 +5,12 @@ Converts the elements of an array to a different data type.
 ## Usage
 
 ``` r
-prim_convert(operand, dtype, ambiguous = FALSE)
+prim_convert(x, dtype, ambiguous = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
@@ -18,7 +18,7 @@ prim_convert(operand, dtype, ambiguous = FALSE)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Target data type.
 
 - ambiguous:
@@ -33,8 +33,8 @@ prim_convert(operand, dtype, ambiguous = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the given `dtype` and the same shape as `operand`. Ambiguity is
-controlled by the `ambiguous` parameter.
+Has the given `dtype` and the same shape as `x`. Ambiguity is controlled
+by the `ambiguous` parameter.
 
 ## Implemented Rules
 
@@ -47,7 +47,7 @@ controlled by the `ambiguous` parameter.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_convert()`](https://r-xla.github.io/stablehlo/reference/hlo_convert.html).
+[`hlo_convert()`](https://r-xla.github.io/stablehlo/reference/hlo_convert.html).
 
 ## See also
 

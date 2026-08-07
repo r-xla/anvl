@@ -6,12 +6,12 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Subset an Array — [.AnvlArray"><meta name="description" content="Extracts a subset from an array. You can also use the [ operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (a:b), and array(c(...)) for selecting multiple elements along a
-dimension."><meta property="og:description" content="Extracts a subset from an array. You can also use the [ operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+axis."><meta property="og:description" content="Extracts a subset from an array. You can also use the [ operator.
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (a:b), and array(c(...)) for selecting multiple elements along a
-dimension."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
+axis."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -19,7 +19,7 @@ dimension."><meta property="og:image" content="https://r-xla.github.io/anvl/logo
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@ dimension."><meta property="og:image" content="https://r-xla.github.io/anvl/logo
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -76,15 +77,15 @@ dimension."><meta property="og:image" content="https://r-xla.github.io/anvl/logo
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Subset an Array</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/api-subset.R" class="external-link"><code>R/api-subset.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-subset.R" class="external-link"><code>R/api-subset.R</code></a></small>
       <div class="d-none name"><code>nv_subset.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>Extracts a subset from an array. You can also use the <code>[</code> operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
+Supports R-style indexing including scalar indices (which drop axes),
 ranges (<code>a:b</code>), and <code>array(c(...))</code> for selecting multiple elements along a
-dimension.</p>
+axis.</p>
     </div>
 
     <div class="section level2">
@@ -92,7 +93,7 @@ dimension.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="va">x</span><span class="op">[</span><span class="va">...</span><span class="op">]</span></span>
 <span></span>
-<span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">operand</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -101,17 +102,12 @@ dimension.</p>
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Same as <code>operand</code>; this is the name used by the base R S3 generic.</p></dd>
+Input array.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Subset specifications, one per dimension. Omitted trailing
-dimensions select all elements. See <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for details.</p></dd>
-
-
-<dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Operand.</p></dd>
+<dd><p>Subset specifications, one per axis. Omitted trailing
+axes select all elements. See <code><a href="../articles/subsetting.html">vignette("subsetting")</a></code> for details.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -159,7 +155,7 @@ for a comprehensive guide.</p></div>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

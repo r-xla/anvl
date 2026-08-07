@@ -42,7 +42,7 @@ Has the same dtype and shape as `true_value`. It is ambiguous if both
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_select()`](https://r-xla.github.io/stablehlo/reference/hlo_select.html).
+[`hlo_select()`](https://r-xla.github.io/stablehlo/reference/hlo_select.html).
 
 ## See also
 

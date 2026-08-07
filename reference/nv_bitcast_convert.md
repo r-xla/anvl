@@ -2,25 +2,25 @@
 
 Reinterprets the bits of an array as a different data type without
 modifying the underlying data. If the target type is narrower, an extra
-trailing dimension is added; if wider, the last dimension is consumed.
+trailing axis is added; if wider, the last axis is consumed.
 
 ## Usage
 
 ``` r
-nv_bitcast_convert(operand, dtype)
+nv_bitcast_convert(x, dtype)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Target data type.
 
 ## Value

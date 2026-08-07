@@ -11,6 +11,7 @@
 - [FAQ](https://r-xla.github.io/anvl/articles/faq.md):
 - [Gaussian
   Process](https://r-xla.github.io/anvl/articles/gaussian-process.md):
+- [Gotchas](https://r-xla.github.io/anvl/articles/gotchas.md):
 - [Installation](https://r-xla.github.io/anvl/articles/installation.md):
 - [Internals](https://r-xla.github.io/anvl/articles/internals.md):
 - [JIT Deep Dive](https://r-xla.github.io/anvl/articles/jit.md):

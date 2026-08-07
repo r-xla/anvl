@@ -1,31 +1,30 @@
 # Primitive Cholesky Decomposition
 
 Computes the Cholesky decomposition of a symmetric positive-definite
-matrix. Dimensions before the last two are batch dimensions.
+matrix. Axes before the last two are batch axes.
 
 ## Usage
 
 ``` r
-prim_chol(operand, lower = FALSE)
+prim_chol(x, lower = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrayish value of data type floating-point with at least 2 dimensions.
-  The last two dimensions must be equal (square matrix); any leading
-  dimensions are batch dimensions.
+  Arrayish value of data type floating-point with at least 2 axes. The
+  last two axes must be equal (square matrix); any leading axes are
+  batch axes.
 
 - lower:
 
   (`logical(1)`)  
   If `FALSE` (default, matching base R's
   [`base::chol()`](https://rdrr.io/r/base/chol.html)), compute the upper
-  triangular factor `U` such that `operand = t(U) %*% U`. If `TRUE`,
-  compute the lower triangular factor `L` such that
-  `operand = L %*% t(L)`.
+  triangular factor `U` such that `x = t(U) %*% U`. If `TRUE`, compute
+  the lower triangular factor `L` such that `x = L %*% t(L)`.
 
 ## Value
 
@@ -43,17 +42,16 @@ ambiguous if the input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html).
+[`hlo_cholesky()`](https://r-xla.github.io/stablehlo/reference/hlo_cholesky.html).
 
 ## References
 
-Murray, Iain (2016). “Differentiation of the Cholesky decomposition.”
-*arXiv preprint arXiv:1602.07527*.
+Murray I (2016). “Differentiation of the Cholesky decomposition.” *arXiv
+preprint arXiv:1602.07527*.
 
-Walter, Sebastian (2012). *Structured higher-order algorithmic
-differentiation in the forward and reverse mode with application in
-optimum experimental design*. Ph.D. thesis,
-Mathematisch-Naturwissenschaftliche Fakult"at II.
+Walter S (2012). *Structured higher-order algorithmic differentiation in
+the forward and reverse mode with application in optimum experimental
+design*. Ph.D. thesis, Mathematisch-Naturwissenschaftliche Fakult"at II.
 
 ## See also
 

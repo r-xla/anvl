@@ -1,9 +1,9 @@
 # Subset an Array
 
 Extracts a subset from an array. You can also use the `[` operator.
-Supports R-style indexing including scalar indices (which drop
-dimensions), ranges (`a:b`), and `array(c(...))` for selecting multiple
-elements along a dimension.
+Supports R-style indexing including scalar indices (which drop axes),
+ranges (`a:b`), and `array(c(...))` for selecting multiple elements
+along a axis.
 
 ## Usage
 
@@ -11,7 +11,7 @@ elements along a dimension.
 # S3 method for class 'AnvlArray'
 x[...]
 
-nv_subset(operand, ...)
+nv_subset(x, ...)
 ```
 
 ## Arguments
@@ -19,19 +19,14 @@ nv_subset(operand, ...)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  Input array.
 
 - ...:
 
-  Subset specifications, one per dimension. Omitted trailing dimensions
-  select all elements. See
+  Subset specifications, one per axis. Omitted trailing axes select all
+  elements. See
   [`vignette("subsetting")`](https://r-xla.github.io/anvl/articles/subsetting.md)
   for details.
-
-- operand:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
 
 ## Value
 

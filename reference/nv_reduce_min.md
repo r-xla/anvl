@@ -1,30 +1,31 @@
 # Min Reduction
 
-Finds the minimum of array elements along the specified dimensions.
+Finds the minimum of array elements along the specified axes.
 
 ## Usage
 
 ``` r
-nv_reduce_min(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
+nv_reduce_min(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
-- dims:
+- axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  Dimensions to reduce. If `NULL` (default), reduces over all
-  dimensions, returning a scalar.
+  Axes to reduce. Negative values count from the end, i.e. `-1` refers
+  to the last axis. If `NULL` (default), reduces over all axes,
+  returning a scalar.
 
 - drop:
 
   (`logical(1)`)  
-  Whether to drop reduced dimensions.
+  Whether to drop reduced axes.
 
 - nan_rm:
 
@@ -36,8 +37,7 @@ nv_reduce_min(operand, dims = NULL, drop = TRUE, nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
 Has the same data type as the input. When `drop = TRUE`, the reduced
-dimensions are removed. When `drop = FALSE`, the reduced dimensions are
-set to 1.
+axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
 
 ## See also
 
@@ -48,11 +48,11 @@ for the underlying primitive.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-nv_reduce_min(x)            # all dims -> scalar
+nv_reduce_min(x)            # all axes -> scalar
 #> AnvlArray
 #>  1
 #> [ CPUi32{} ] 
-nv_reduce_min(x, dims = 1L)
+nv_reduce_min(x, axes = 1L)
 #> AnvlArray
 #>  1
 #>  3

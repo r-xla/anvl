@@ -5,15 +5,15 @@ Element-wise `log(1 + x)`, more accurate for small `x`.
 ## Usage
 
 ``` r
-nv_log1p(operand)
+nv_log1p(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -175,10 +176,10 @@
 
         <dt>
 
-          <code><a href="ndims.html">ndims()</a></code>
+          <code><a href="naxes.html">naxes()</a></code>
 
         </dt>
-        <dd>Get the number of dimensions of an array</dd>
+        <dd>Get the number of axes of an array</dd>
 
         <dt>
 
@@ -401,7 +402,7 @@
           <code><a href="nv_select.html">nv_select()</a></code>
 
         </dt>
-        <dd>Select Elements Along a Dimension</dd>
+        <dd>Select Elements Along an Axis</dd>
 
         <dt>
 
@@ -838,7 +839,7 @@
       </dl></div><div class="section level2">
 
       <h3 id="reduction-operations">Reduction Operations<a class="anchor" aria-label="anchor" href="#reduction-operations"></a></h3>
-      <div class="section-desc"><p>Operations that reduce array dimensions</p></div>
+      <div class="section-desc"><p>Operations that reduce array axes</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -889,7 +890,7 @@
       </dl></div><div class="section level2">
 
       <h3 id="statistical-summaries">Statistical Summaries<a class="anchor" aria-label="anchor" href="#statistical-summaries"></a></h3>
-      <div class="section-desc"><p>Summary statistics over array dimensions</p></div>
+      <div class="section-desc"><p>Summary statistics over array axes</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -922,18 +923,18 @@
           <code><a href="nv_var.html">nv_var()</a></code>
 
         </dt>
-        <dd>Variance Reduction</dd>
+        <dd>Variance</dd>
 
         <dt>
 
           <code><a href="nv_sd.html">nv_sd()</a></code>
 
         </dt>
-        <dd>Standard Deviation Reduction</dd>
+        <dd>Standard Deviation</dd>
       </dl></div><div class="section level2">
 
       <h3 id="cumulative-operations">Cumulative Operations<a class="anchor" aria-label="anchor" href="#cumulative-operations"></a></h3>
-      <div class="section-desc"><p>Cumulative (scan) operations along a single dimension</p></div>
+      <div class="section-desc"><p>Cumulative (scan) operations along a single axis</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -1102,6 +1103,50 @@
 
         </dt>
         <dd>Upper Triangular Matrix</dd>
+
+        <dt>
+
+          <code><a href="nv_lower_tri.html">nv_lower_tri()</a></code> <code><a href="nv_lower_tri.html">nv_lower_tri_like()</a></code>
+
+        </dt>
+        <dd>Lower Triangular Mask</dd>
+
+        <dt>
+
+          <code><a href="nv_upper_tri.html">nv_upper_tri()</a></code> <code><a href="nv_upper_tri.html">nv_upper_tri_like()</a></code>
+
+        </dt>
+        <dd>Upper Triangular Mask</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="convolution">Convolution<a class="anchor" aria-label="anchor" href="#convolution"></a></h3>
+      <div class="section-desc"><p>N-dimensional convolution operations</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="nv_conv1d.html">nv_conv1d()</a></code>
+
+        </dt>
+        <dd>1D Convolution</dd>
+
+        <dt>
+
+          <code><a href="nv_conv2d.html">nv_conv2d()</a></code>
+
+        </dt>
+        <dd>2D Convolution</dd>
+
+        <dt>
+
+          <code><a href="nv_conv3d.html">nv_conv3d()</a></code>
+
+        </dt>
+        <dd>3D Convolution</dd>
       </dl></div><div class="section level2">
 
       <h3 id="logical-and-bitwise-operations">Logical and Bitwise Operations<a class="anchor" aria-label="anchor" href="#logical-and-bitwise-operations"></a></h3>
@@ -1273,8 +1318,8 @@
         <dd>Conditional Element Selection</dd>
       </dl></div><div class="section level2">
 
-      <h3 id="random-number-generation">Random Number Generation<a class="anchor" aria-label="anchor" href="#random-number-generation"></a></h3>
-      <div class="section-desc"><p>Functions for generating random numbers</p></div>
+      <h3 id="distributions">Distributions<a class="anchor" aria-label="anchor" href="#distributions"></a></h3>
+      <div class="section-desc"><p>Densities, distribution functions, and samplers for probability distributions</p></div>
 
       <dl></dl></div><div class="section level2">
 
@@ -1283,17 +1328,17 @@
 
       <dl><dt>
 
+          <code><a href="nv_normal.html">nv_dnorm()</a></code> <code><a href="nv_normal.html">nv_pnorm()</a></code> <code><a href="nv_normal.html">nv_qnorm()</a></code> <code><a href="nv_normal.html">nv_rnorm()</a></code>
+
+        </dt>
+        <dd>The Normal Distribution</dd>
+
+        <dt>
+
           <code><a href="nv_runif.html">nv_runif()</a></code>
 
         </dt>
         <dd>Sample from a Uniform Distribution</dd>
-
-        <dt>
-
-          <code><a href="nv_rnorm.html">nv_rnorm()</a></code>
-
-        </dt>
-        <dd>Sample from a Normal Distribution</dd>
 
         <dt>
 
@@ -1304,12 +1349,28 @@
 
         <dt>
 
-          <code><a href="nv_rdunif.html">nv_rdunif()</a></code>
+          <code><a href="nv_sample.html">nv_sample()</a></code>
 
         </dt>
-        <dd>Sample from a Discrete Uniform Distribution</dd>
+        <dd>Sample from a Population</dd>
 
         <dt>
+
+          <code><a href="nv_sample_int.html">nv_sample_int()</a></code>
+
+        </dt>
+        <dd>Sample Integers</dd>
+      </dl></div><div class="section level2">
+
+      <h3 id="utilities">Utilities<a class="anchor" aria-label="anchor" href="#utilities"></a></h3>
+      <div class="section-desc"><p>Helpers supporting the API functions</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
 
           <code><a href="nv_rng_state.html">nv_rng_state()</a></code>
 
@@ -1401,6 +1462,13 @@
 
         <dt>
 
+          <code><a href="install_anvl.html">install_anvl()</a></code>
+
+        </dt>
+        <dd>Install what a backend needs to run</dd>
+
+        <dt>
+
           <code><a href="device_arg.html">device_arg()</a></code>
 
         </dt>
@@ -1443,10 +1511,10 @@
 
         <dt>
 
-          <code><a href="AnvlBackendXla.html">AnvlBackendXla()</a></code>
+          <code><a href="AnvlBackendPjrt.html">AnvlBackendPjrt()</a></code>
 
         </dt>
-        <dd>XLA backend</dd>
+        <dd>PJRT backend</dd>
 
         <dt>
 
@@ -1638,7 +1706,7 @@
 
         <dt>
 
-          <code><a href="abstract_properties.html">shape_abstract()</a></code> <code><a href="abstract_properties.html">ndims_abstract()</a></code> <code><a href="abstract_properties.html">dtype_abstract()</a></code> <code><a href="abstract_properties.html">ambiguous_abstract()</a></code>
+          <code><a href="abstract_properties.html">shape_abstract()</a></code> <code><a href="abstract_properties.html">naxes_abstract()</a></code> <code><a href="abstract_properties.html">dtype_abstract()</a></code> <code><a href="abstract_properties.html">ambiguous_abstract()</a></code>
 
         </dt>
         <dd>Abstract Properties</dd>
@@ -1668,10 +1736,17 @@
 
       <dl><dt>
 
-          <code><a href="xla.html">xla()</a></code>
+          <code><a href="jit_roclet.html">jit_roclet()</a></code>
 
         </dt>
-        <dd>Ahead-of-time compile a function to XLA</dd>
+        <dd><code>@jit</code> roxygen roclet</dd>
+
+        <dt>
+
+          <code><a href="apply_jit_registry.html">apply_jit_registry()</a></code>
+
+        </dt>
+        <dd>Apply a <code>@jit</code> registry</dd>
 
         <dt>
 
@@ -1710,7 +1785,7 @@
 
         <dt>
 
-          <code><a href="compile_xla.html">compile_xla()</a></code>
+          <code><a href="compile_pjrt.html">compile_pjrt()</a></code>
 
         </dt>
         <dd>Trace, lower, and compile a function to an XLA executable</dd>
@@ -1740,66 +1815,10 @@
 
       <dl><dt>
 
-          <code><a href="flatten.html">flatten()</a></code>
+          <code><a href="reexports.html">reexports</a></code> <code><a href="reexports.html">flatten</a></code> <code><a href="reexports.html">build_tree</a></code> <code><a href="reexports.html">unflatten</a></code> <code><a href="reexports.html">tree_size</a></code> <code><a href="reexports.html">tree_path</a></code> <code><a href="reexports.html">map_tree</a></code> <code><a href="reexports.html">pmap_tree</a></code>
 
         </dt>
-        <dd>Flatten</dd>
-
-        <dt>
-
-          <code><a href="unflatten.html">unflatten()</a></code>
-
-        </dt>
-        <dd>Unflatten</dd>
-
-        <dt>
-
-          <code><a href="build_tree.html">build_tree()</a></code>
-
-        </dt>
-        <dd>Build Tree</dd>
-
-        <dt>
-
-          <code><a href="reindex_tree.html">reindex_tree()</a></code>
-
-        </dt>
-        <dd>Reindex Tree</dd>
-
-        <dt>
-
-          <code><a href="tree_size.html">tree_size()</a></code>
-
-        </dt>
-        <dd>Tree Size</dd>
-
-        <dt>
-
-          <code><a href="tree_path.html">tree_path()</a></code>
-
-        </dt>
-        <dd>Tree Path</dd>
-
-        <dt>
-
-          <code><a href="map_tree.html">map_tree()</a></code>
-
-        </dt>
-        <dd>Map Over a Tree</dd>
-
-        <dt>
-
-          <code><a href="pmap_tree.html">pmap_tree()</a></code>
-
-        </dt>
-        <dd>Map Over Multiple Trees</dd>
-
-        <dt>
-
-          <code><a href="filter_list_node.html">filter_list_node()</a></code>
-
-        </dt>
-        <dd>Filter List Node</dd>
+        <dd>Objects exported from other packages</dd>
       </dl></div><div class="section level2">
 
       <h3 id="miscellaneous-1">Miscellaneous<a class="anchor" aria-label="anchor" href="#miscellaneous-1"></a></h3>
@@ -1947,7 +1966,7 @@
 
         <dt>
 
-          <code><a href="prim_broadcast_in_dim.html">prim_broadcast_in_dim()</a></code>
+          <code><a href="prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code>
 
         </dt>
         <dd>Primitive Broadcast</dd>
@@ -1993,6 +2012,13 @@
 
         </dt>
         <dd>Primitive Convert</dd>
+
+        <dt>
+
+          <code><a href="prim_convolution.html">prim_convolution()</a></code>
+
+        </dt>
+        <dd>Primitive Convolution</dd>
 
         <dt>
 
@@ -2561,7 +2587,7 @@
           <code><a href="anvl-package.html">anvl</a></code> <code><a href="anvl-package.html">anvl-package</a></code>
 
         </dt>
-        <dd>anvl: Framework for R code transformations</dd>
+        <dd>anvl: Accelerated Array Computing and Automatic Differentiation</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
@@ -2572,7 +2598,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

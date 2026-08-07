@@ -8,7 +8,7 @@ Calls the extractor after converting the input to an
 ``` r
 shape_abstract(x)
 
-ndims_abstract(x)
+naxes_abstract(x)
 
 dtype_abstract(x)
 

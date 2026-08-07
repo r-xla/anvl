@@ -5,12 +5,12 @@ Rounds the elements of an array to the nearest integer.
 ## Usage
 
 ``` r
-prim_round(operand, method = "nearest_even")
+prim_round(x, method = "nearest_even")
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -24,8 +24,8 @@ prim_round(operand, method = "nearest_even")
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same dtype and shape as `operand`. It is ambiguous if the input
-is ambiguous.
+Has the same dtype and shape as `x`. It is ambiguous if the input is
+ambiguous.
 
 ## Implemented Rules
 
@@ -36,9 +36,9 @@ is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_round_nearest_even()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_even.html)
+[`hlo_round_nearest_even()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_even.html)
 or
-[`stablehlo::hlo_round_nearest_afz()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_afz.html)
+[`hlo_round_nearest_afz()`](https://r-xla.github.io/stablehlo/reference/hlo_round_nearest_afz.html)
 depending on the `method` parameter.
 
 ## See also

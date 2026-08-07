@@ -1,12 +1,12 @@
 # Transpose
 
-Permutes the dimensions of an array. You can also use
+Permutes the axes of an array. You can also use
 [`t()`](https://rdrr.io/r/base/t.html) for matrices.
 
 ## Usage
 
 ``` r
-nv_transpose(operand, permutation = NULL)
+nv_transpose(x, permutation = NULL)
 
 # S3 method for class 'AnvlArray'
 t(x)
@@ -14,27 +14,21 @@ t(x)
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 - permutation:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
-  New ordering of dimensions. If `NULL` (default), reverses the
-  dimensions.
-
-- x:
-
-  ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Same as `operand`; this is the name used by the base R S3 generic.
+  New ordering of axes. If `NULL` (default), reverses the axes. Negative
+  values count from the end, i.e. `-1` refers to the last axis.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md)  
-Has the same data type as `operand` and shape
-`nv_shape(operand)[permutation]`.
+Has the same data type as `x` and shape `nv_shape(x)[permutation]`.
 
 ## See also
 

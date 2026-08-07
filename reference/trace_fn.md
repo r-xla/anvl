@@ -18,7 +18,8 @@ trace_fn(
   desc = NULL,
   mode = NULL,
   args_flat = NULL,
-  in_tree = NULL
+  in_tree = NULL,
+  optimize = FALSE
 )
 ```
 
@@ -69,6 +70,23 @@ trace_fn(
   Tree structure describing how `args_flat` maps back to `f`'s
   arguments.
 
+- optimize:
+
+  (`logical(1)` \|
+  [`character()`](https://rdrr.io/r/base/character.html))  
+  Which graph optimization passes to run on the traced graph before
+  returning it. `TRUE` runs all passes, `FALSE` (default) runs none, and
+  a character vector selects a subset by name. The available passes are:
+
+  - `"inline_scalars"`: replace scalar-shaped constants with inline
+    literals.
+
+  - `"remove_unused_constants"`: drop constants not referenced by the
+    graph.
+
+  [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) always traces
+  with all passes enabled.
+
 ## Value
 
 An [`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md)
@@ -78,8 +96,7 @@ containing the traced operations.
 
 [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md) to
 lower the graph,
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) /
-[`xla()`](https://r-xla.github.io/anvl/reference/xla.md) for end-to-end
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) for end-to-end
 compilation.
 
 ## Examples

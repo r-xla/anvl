@@ -7,6 +7,7 @@ Create a backend
 ``` r
 AnvlBackend(
   new_data,
+  new_empty,
   dtype,
   shape,
   ambiguous,
@@ -29,8 +30,15 @@ AnvlBackend(
   Constructs an AnvlArray from R data. This should be a
   [`structure()`](https://rdrr.io/r/base/structure.html) with at least a
   `$data` field that contains the actual underlying data (`PJRTBuffer`
-  for `"xla"` backend, [`array()`](https://rdrr.io/r/base/array.html)
+  for `"pjrt"` backend, [`array()`](https://rdrr.io/r/base/array.html)
   for `"quickr"` backend).
+
+- new_empty:
+
+  (`function`)  
+  Constructs an AnvlArray of the given `dtype` and `shape` with
+  unspecified contents. Called by
+  [`nv_empty()`](https://r-xla.github.io/anvl/reference/AnvlArray.md).
 
 - dtype:
 
@@ -49,8 +57,15 @@ AnvlBackend(
 
 - as_array:
 
-  (`function`)  
-  Converts an AnvlArray to an R array.
+  (`function(x, check)`)  
+  Converts an AnvlArray to an R array. The `check` flag is forwarded
+  from
+  [`as_array()`](https://r-xla.github.io/anvl/reference/as_array.md);
+  backends may use it to abort when materialization would lose
+  information (e.g. ui64 values wrapping through
+  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)).
+  See
+  [`pjrt::as_array.PJRTBuffer()`](https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html).
 
 - as_raw:
 

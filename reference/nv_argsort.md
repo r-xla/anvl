@@ -1,25 +1,26 @@
 # Argsort
 
-Returns the indices that would sort the array along a dimension.
+Returns the indices that would sort the array along an axis.
 
 ## Usage
 
 ``` r
-nv_argsort(operand, dim = NULL, decreasing = FALSE, stable = FALSE)
+nv_argsort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
-- dim:
+- axis:
 
   (`integer(1)` \| `NULL`)  
-  Dimension along which to compute the sort permutation. If `NULL`
-  (default), uses the last dimension.
+  Axis along which to compute the sort permutation. Negative values
+  count from the end, i.e. `-1` refers to the last axis. If `NULL`
+  (default), uses the last axis.
 
 - decreasing:
 
@@ -37,10 +38,10 @@ nv_argsort(operand, dim = NULL, decreasing = FALSE, stable = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md) of
 dtype `i32`  
-Same shape as `operand`. For a size-0 axis, the output is an empty `i32`
-array of the same shape (a valid empty permutation).
-`as_array(operand)[as_array(nv_argsort(operand))]` reproduces the sorted
-array (for 1-D inputs).
+Same shape as `x`. For a size-0 axis, the output is an empty `i32` array
+of the same shape (a valid empty permutation).
+`as_array(x)[as_array(nv_argsort(x))]` reproduces the sorted array (for
+1-D inputs).
 
 ## NaN handling
 

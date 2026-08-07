@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
@@ -109,7 +110,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Random Number Generation</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/vignettes/random-numbers.Rmd" class="external-link"><code>vignettes/random-numbers.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/random-numbers.Rmd" class="external-link"><code>vignettes/random-numbers.Rmd</code></a></small>
       <div class="d-none name"><code>random-numbers.Rmd</code></div>
     </div>
 
@@ -149,9 +150,10 @@ into a state using <code><a href="../reference/nv_rng_state.html">nv_rng_state()
 <span><span class="co">#&gt;   0</span></span>
 <span><span class="co">#&gt; [ CPUui64{2} ]</span></span></code></pre></div>
 <p>The main functions for generating random numbers are
-<code><a href="../reference/nv_runif.html">nv_runif()</a></code>, <code><a href="../reference/nv_rdunif.html">nv_rdunif()</a></code>,
-<code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, and <code><a href="../reference/nv_rnorm.html">nv_rnorm()</a></code>. All those
-functions return a list with two elements:</p>
+<code><a href="../reference/nv_runif.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>,
+<code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, and
+<code><a href="../reference/nv_sample.html">nv_sample()</a></code>. All those functions return a list with two
+elements:</p>
 <ol style="list-style-type: decimal">
 <li>The <strong>new</strong> RNG state (to be used for subsequent random
 number generation).</li>
@@ -172,15 +174,55 @@ number generation).</li>
 <span><span class="co">#&gt; [ CPUf32{2,3} ]</span></span></code></pre></div>
 <p>For normally distributed random numbers:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_rnorm.html">nv_rnorm</a></span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, mu <span class="op">=</span> <span class="fl">0</span>, sigma <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">result</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  -0.0675  0.9489  1.9457</span></span>
 <span><span class="co">#&gt;  -0.5255  1.2002  0.0008</span></span>
 <span><span class="co">#&gt; [ CPUf32{2,3} ]</span></span></code></pre></div>
+<p><code>mean</code> and <code>sd</code> are arrayish, so they may vary
+across the sample, as long as they have the same shape as it:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.1</span>, <span class="fl">1</span>, <span class="fl">10</span>, <span class="fl">100</span>, <span class="fl">1000</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/nv_normal.html">nv_rnorm</a></span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, sd <span class="op">=</span> <span class="va">sds</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;   -0.0007   0.9489 194.5720</span></span>
+<span><span class="co">#&gt;   -0.0526  12.0017   0.7665</span></span>
+<span><span class="co">#&gt; [ CPUf32{2,3} ]</span></span></code></pre></div>
+<p>To draw integers, use <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, the counterpart
+to R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int()</a></code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># roll six dice</span></span>
+<span><span class="fu"><a href="../reference/nv_sample_int.html">nv_sample_int</a></span><span class="op">(</span><span class="fl">6L</span>, <span class="va">state</span>, <span class="fl">6L</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  4</span></span>
+<span><span class="co">#&gt;  6</span></span>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt;  5</span></span>
+<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt; [ CPUi32{6} ]</span></span></code></pre></div>
+<p><code><a href="../reference/nv_sample.html">nv_sample()</a></code> draws from an arbitrary population instead.
+Unlike R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>, its population argument is never
+overloaded with a count, so
+<code>nv_sample(5L, state, nv_array(6))</code> samples from the
+population <code>6</code> rather than from <code>1:6</code>:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">population</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/nv_sample.html">nv_sample</a></span><span class="op">(</span><span class="fl">8L</span>, <span class="va">state</span>, <span class="va">population</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="co">#&gt; AnvlArray</span></span>
+<span><span class="co">#&gt;  20</span></span>
+<span><span class="co">#&gt;  30</span></span>
+<span><span class="co">#&gt;  10</span></span>
+<span><span class="co">#&gt;  30</span></span>
+<span><span class="co">#&gt;  10</span></span>
+<span><span class="co">#&gt;  10</span></span>
+<span><span class="co">#&gt;  10</span></span>
+<span><span class="co">#&gt;  20</span></span>
+<span><span class="co">#&gt; [ CPUf32{8} ]</span></span></code></pre></div>
 <p>One thing to avoid is to reuse the same state for multiple calls as
 done in the example below:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_runif.html">nv_runif</a></span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
 <span><span class="va">result2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_runif.html">nv_runif</a></span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>first <span class="op">=</span> <span class="va">result1</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, second <span class="op">=</span> <span class="va">result2</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
@@ -201,7 +243,7 @@ done in the example below:</p>
 we used the same state for both. To get different random numbers in
 subsequent calls, you need to pass the <strong>new</strong> state
 returned by the previous call:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_runif.html">nv_runif</a></span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
 <span><span class="va">new_state</span> <span class="op">&lt;-</span> <span class="va">result1</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">result2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_runif.html">nv_runif</a></span><span class="op">(</span><span class="va">new_state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fl">3L</span><span class="op">)</span></span>
@@ -231,7 +273,7 @@ the state.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
@@ -109,7 +110,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Static Shape Restriction</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/vignettes/static_shapes.Rmd" class="external-link"><code>vignettes/static_shapes.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/static_shapes.Rmd" class="external-link"><code>vignettes/static_shapes.Rmd</code></a></small>
       <div class="d-none name"><code>static_shapes.Rmd</code></div>
     </div>
 
@@ -164,7 +165,7 @@ whole vector. Because adding <code>0</code> does nothing, the masked-out
 positions don’t contribute to the total:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sum_positive</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="va">x</span>, <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>, dims <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">x</span> <span class="op">&gt;</span> <span class="fl">0</span>, <span class="va">x</span>, <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">sum_positive</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
@@ -226,8 +227,8 @@ summing the boolean mask, and then divide separately:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mean_positive</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">mask</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">&gt;</span> <span class="fl">0</span></span>
-<span>  <span class="va">total</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">mask</span>, <span class="va">x</span>, <span class="fl">0</span><span class="op">)</span>, dims <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">mask</span>, dims <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="va">total</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_ifelse.html">nv_ifelse</a></span><span class="op">(</span><span class="va">mask</span>, <span class="va">x</span>, <span class="fl">0</span><span class="op">)</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
+<span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_reduce_sum.html">nv_reduce_sum</a></span><span class="op">(</span><span class="va">mask</span>, axes <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span>
 <span>  <span class="va">total</span> <span class="op">/</span> <span class="va">n</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
 <span></span>
@@ -273,7 +274,7 @@ so that it only contains values <code>&gt;= 1</code>.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

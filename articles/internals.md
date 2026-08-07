@@ -8,29 +8,29 @@ for reshaping code. We refer to such a rewriting of code as a
 
 1.  `R` \\\rightarrow\\ `AnvlGraph`: Generic `R` functions are too
     complicated to handle, so the first step in {anvl} is always to
-    convert them into a computational `anvl::Graph` object via
-    **tracing**. Such a `AnvlGraph` is similar to `JAXExpr` objects in
-    `JAX`. It operates only on `AnvlArray` objects and applies
-    `anvl::Primitive` operations to them.
+    convert them into a computational `AnvlGraph` object via
+    **tracing**. Such an `AnvlGraph` is similar to `Jaxpr` objects in
+    JAX. It operates only on `GraphNode`s – the graph’s stand-ins for
+    arrays – and applies `AnvlPrimitive` operations to them.
 2.  `AnvlGraph` \\\rightarrow\\ `AnvlGraph`: It is possible to transform
     `AnvlGraph`s into other `AnvlGraph`s. Their purpose is to change the
     functionality of the code. At the time of writing, there is
     essentially only one such transformation, namely reverse-mode
     automatic differentiation via
     [`gradient()`](https://r-xla.github.io/anvl/reference/gradient.md).
-3.  `AnvlGraph` \\\rightarrow\\ `Executable`: In order to perform the
+3.  `AnvlGraph` \\\rightarrow\\ executable: In order to perform the
     actual computation, the `AnvlGraph` needs to be converted into an
-    executable. The main backend is XLA (via `stablehlo` and `pjrt`).
-    There is also an experimental
+    executable. The main backend is `"pjrt"` (via {stablehlo} and
+    {pjrt}, compiling with XLA). There is also an experimental
     [quickr](https://github.com/t-kalinowski/quickr) backend.
 
 ### Tracing R Functions into Graphs
 
 All functionality in the {anvl} package is centered around the
-`anvl::Graph` class. While it is in principle possible to create
+`AnvlGraph` class. While it is in principle possible to create
 `AnvlGraph`s by hand, these are usually created by tracing R functions.
 In general, when we want to convert some code into another form (in our
-case, R Code into a `AnvlGraph`), there are two approaches:
+case, R code into an `AnvlGraph`), there are two approaches:
 
 1.  Static analysis, which would require operating on the abstract
     syntax tree (AST) of the code.
@@ -38,7 +38,7 @@ case, R Code into a `AnvlGraph`), there are two approaches:
     records selected operations.
 
 The former approach is followed by the {quickr} package, while we go
-with tracing. We start with a simple, yet illustrative example that
+with tracing. We start with a simple yet illustrative example that
 either adds or multiplies two inputs `x` and `y` depending on the value
 of `op`.
 
@@ -59,7 +59,7 @@ f <- function(x, y, op) {
 To do this, we use
 [`anvl::trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md),
 which takes in an `R` function and a list of `AbstractArray` inputs that
-specify the types of the inputs.
+specify the input types.
 
 ``` r
 
@@ -86,25 +86,26 @@ graph
 
 The output of
 [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md) is
-now a `AnvlGraph` object that represents the computation. The fields of
+now an `AnvlGraph` object that represents the computation. The fields of
 the `AnvlGraph` are:
 
-- `inputs`, which are `GraphNode`s that represent the inputs to the
+- `inputs`, which are `GraphValue`s that represent the inputs to the
   function.
-- `outputs`, which are `GraphNode`s that represent the outputs of the
+- `outputs`, which are `GraphValue`s that represent the outputs of the
   function.
 - `calls`, which are `PrimitiveCall`s that take in `GraphNode`s (and
-  parameters) and produce output `GraphNode`s.
-- `in_tree`, `out_tree`, which we will cover later (do we??)
+  parameters) and produce output `GraphValue`s.
+- `constants`, which are the `GraphValue`s for values closed over by the
+  traced function (see *Constant Handling*).
+- `in_tree`, `out_tree`, which record the nesting structure of the
+  function’s inputs and outputs.
 
 What happens during
 [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md) is
 that a new `GraphDescriptor` is created and the inputs `x` and `y` are
-converted into
-[`anvl::GraphBox`](https://r-xla.github.io/anvl/reference/GraphBox.md)
-objects. Then, the function `f` is simply evaluated with the `GraphBox`
-objects as inputs. During this evaluation, we need to distinguish
-between two cases:
+converted into `GraphBox` objects. Then, the function `f` is simply
+evaluated with the `GraphBox` objects as inputs. During this evaluation,
+we need to distinguish between two cases:
 
 1.  A “standard” `R` function is called: Here, nothing special happens
     and the function is simply evaluated.
@@ -115,9 +116,9 @@ The evaluation of the `if` statement is an example for the first
 category. Because we set `op = "mul"`, only the second branch is
 executed. Then, we are calling `nv_mul`, which attaches a
 `PrimitiveCall` that represents the multiplication of the two arrays to
-the `$calls` of the `GraphDescriptor`. Note that the `nv_mul` is itself
-not primitive, but performs some type promotion and broadcasting if
-needed, before calling into the primitive `prim_mul`.
+the `$calls` of the `GraphDescriptor`. Note that `nv_mul` is itself not
+a primitive: it performs some type promotion and broadcasting if needed
+before calling into the primitive `prim_mul`.
 
 A `PrimitiveCall` object consists of the following fields:
 
@@ -137,15 +138,14 @@ tutorial, you can think of them as being the same.
 
 Once the `R` function is staged out into a simpler format, it is ready
 to be transformed. The {anvl} package does not in any way dictate how
-such a `AnvlGraph` to `AnvlGraph` transformation can be implemented. For
-most interesting transformations, however, we need to store some
+such an `AnvlGraph` to `AnvlGraph` transformation can be implemented.
+For most interesting transformations, however, we need to store some
 information for each {anvl} primitive function. In the case of the
 gradient, we need to store the derivative rules. For this, the
-[`anvl::AnvlPrimitive`](https://r-xla.github.io/anvl/reference/AnvlPrimitive.md)
-metadata object attached to each primitive has a `rules` field that can
-be populated. The derivative rules are stored as functions under the
-`"reverse"` name. Each primitive is an exported `prim_*` function; `[[`
-on it reads a rule:
+`AnvlPrimitive` metadata object attached to each primitive has a `rules`
+field that can be populated. The derivative rules are stored as
+functions under the `"reverse"` name. Each primitive is an exported
+`prim_*` function; `[[` on it reads a rule:
 
 ``` r
 
@@ -170,13 +170,12 @@ prim_mul[["reverse"]]
     ## [1] "anvl_rule_reverse"
 
 The
-[`anvl::transform_gradient`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
+[`transform_gradient()`](https://r-xla.github.io/anvl/reference/transform_gradient.md)
 function uses these rules to compute the gradient of a function. For
-this specific transformation, we are walking the graph backwards and
-apply the derivative rules, which will append the “reverse pass” to the
-graph. Besides the forward graph, the transformation takes in the `wrt`
-argument, which specifies with respect to which arguments to compute the
-gradient.
+this specific transformation, we walk the graph backwards and apply the
+derivative rules, which appends the “reverse pass” to the graph. Besides
+the forward graph, the transformation takes in the `wrt` argument, which
+specifies with respect to which arguments to compute the gradient.
 
 ``` r
 
@@ -200,9 +199,9 @@ bwd_graph
 
 ### Lowering a Graph
 
-In order to execute a `AnvlGraph`, we need to convert it into a – wait
-for it – executable. Here, we show how to compile using the XLA backend.
-First, we will translate the `AnvlGraph` into the StableHLO
+In order to execute an `AnvlGraph`, we need to convert it into a – wait
+for it – executable. Here, we show how to compile using the PJRT
+backend. First, we will translate the `AnvlGraph` into the StableHLO
 representation via the {stablehlo} package. Then, we will compile this
 program using the XLA compiler that is accessible via the {pjrt}
 package.
@@ -215,18 +214,17 @@ transformation are attached to each primitive.
 prim_mul[["stablehlo"]]
 ```
 
-    ## function (lhs, rhs) 
+    ## function (lhs, rhs, output_types) 
     ## {
-    ##     list(hlo_multiply(lhs, rhs))
+    ##     list(hlo_multiply(lhs, rhs, output_types = output_types))
     ## }
     ## <environment: namespace:anvl>
 
-The
-[`anvl::stablehlo`](https://r-xla.github.io/anvl/reference/stablehlo.md)
-function will create a
+The [`stablehlo()`](https://r-xla.github.io/anvl/reference/stablehlo.md)
+function creates a
 [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)
-object and will sequentially translate the `PrimitiveCall`s into
-StableHLO operations.
+object and sequentially translates the `PrimitiveCall`s into StableHLO
+operations.
 
 ``` r
 
@@ -277,12 +275,12 @@ nv_array(out)
 
 In the previous section, we have shown how the transformations are
 implemented under the hood. The actual user interface is a little more
-convenient and follows the `JAX` interface.
+convenient and follows JAX’s interface.
 
 ### `jit()`
 
 The [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) function
-allows to convert a regular `R` function into a Just-In-Time compiled
+allows converting a regular `R` function into a just-in-time compiled
 function that can be executed on `AnvlArray`s. We apply it to our simple
 example function, where we mark the non-array parameter `op` as
 “static”. This means that the value of this parameter needs to be known
@@ -290,7 +288,7 @@ at compile time.
 
 ``` r
 
-f_jit <-  jit(f, static = "op")
+f_jit <- jit(f, static = "op")
 f_jit(x, y, "add")
 ```
 
@@ -308,7 +306,7 @@ as this requires the input types to be known. Instead, `f_jit` is a
 “lazy” function that will only perform these steps once the inputs are
 provided. However, if those steps were applied every time the `f_jit`
 function is called, this would be very inefficient, because tracing and
-compiling takes some time. Therefore, the function `f_jit` also contains
+compiling take some time. Therefore, the function `f_jit` also contains
 a cache (implemented as an
 [`xlamisc::LRUCache`](https://rdrr.io/pkg/xlamisc/man/LRUCache.html)),
 which will check whether there is already a compiled executable for the
@@ -325,7 +323,7 @@ cache_size <- function(f) environment(f)$cache$size
 cache_size(f_jit)
 ```
 
-    ## [1] 1
+    ## NULL
 
 After calling it with arrays of the same types and identical static
 argument values, the size of the cache remains 1:
@@ -344,7 +342,7 @@ f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
 cache_size(f_jit)
 ```
 
-    ## [1] 1
+    ## NULL
 
 When we execute the function with arrays of different `dtype` or
 `shape`, the function will be recompiled:
@@ -363,7 +361,7 @@ f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
 cache_size(f_jit)
 ```
 
-    ## [1] 2
+    ## NULL
 
 Also, if we provide different values for static arguments, the function
 will be recompiled:
@@ -382,7 +380,7 @@ f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
 cache_size(f_jit)
 ```
 
-    ## [1] 3
+    ## NULL
 
 ### `gradient()`
 
@@ -443,7 +441,7 @@ are converted into `GraphBox` objects. Then, the addition of `x` and `y`
 is recorded in the `GraphDescriptor`. The call into `g()` is a bit more
 involved. First, a new `GraphDescriptor` is created and the forward
 computation of `g` is recorded. Subsequently, the reverse pass will be
-added to the descriptor, after which it will be converted into a
+added to the descriptor, after which it will be converted into an
 `AnvlGraph`. This `AnvlGraph` will then be inlined into the parent
 `GraphDescriptor` (representing the whole function `h`), which is then
 converted into the main `AnvlGraph`. We can look at this graph below,
@@ -471,7 +469,7 @@ h_graph
     ##     %3: f32[]
     ##     %4: f32[]
 
-Afterwards, this graph is lowered to stableHLO and subsequently
+Afterwards, this graph is lowered to StableHLO and subsequently
 compiled.
 
 ## More Internals
@@ -496,9 +494,9 @@ graph
     ##     %c1: f32[1000000]
     ##   Body:
     ##     %1: f32[] = convert [dtype = f32, ambiguous = FALSE] (%x1)
-    ##     %2: f32[1000000] = broadcast_in_dim [shape = 1000000, broadcast_dimensions = <any>] (%1)
+    ##     %2: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = <any>] (%1)
     ##     %3: f32[1000000] = add(%2, %c1)
-    ##     %4: f32?[1000000] = broadcast_in_dim [shape = 1000000, broadcast_dimensions = <any>] (1:f32?)
+    ##     %4: f32?[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = <any>] (1:f32?)
     ##     %5: f32[1000000] = add(%3, %4)
     ##   Outputs:
     ##     %5: f32[1000000]
@@ -514,10 +512,10 @@ graph$constants
     ## [[1]]
     ## GraphValue(ConcreteArray(f32, (1000000)))
 
-When compiling such a program to stableHLO, constants are treated
+When compiling such a program to StableHLO, constants are treated
 differently depending on their shape (we follow JAX’s approach here).
 That is, constants with 1 element are **inlined** into the program,
-whereas other constants are added as inputs to the stableHLO program.
+whereas other constants are added as inputs to the StableHLO program.
 This is because inlining large constants into the executable is
 inefficient. However, if we didn’t inline small scalars, the compiler
 would be unable to do constant folding.
@@ -570,7 +568,7 @@ pass constants as inputs to the program, we need to handle it ourselves.
 
 Further note that:
 
-1.  R Literals are immediately embedded as literals into the program.
+1.  R literals are embedded directly into the program.
 2.  Currently, constants with the same value (that refer to different
     `AnvlArray`s) are not deduplicated, which we might change in the
     future.
@@ -581,7 +579,7 @@ Device handling in
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) is quite
 complicated. Some things that are important to be aware of:
 
-1.  We don’t know the inferred device just from looking at the input as
+1.  We don’t know the inferred device just from looking at the input, as
     we might have something like:
     `jit(\(x) x + nv_scalar(1, device = "cuda"))` where we might only
     learn about the device during tracing. This means the data is only
@@ -598,13 +596,13 @@ complicated. Some things that are important to be aware of:
     ``` r
 
     f <- jit(\(dev) nv_scalar(1, device = dev), backend = "auto", device = device_arg("dev"))
-    f(nv_device("cpu", "xla"))
+    f(nv_device("cpu", "pjrt"))
     ```
 
-    If we would make the main
+    If we made the main
     [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) function
-    already trace, we could determine the backend during the tracing,
-    but this is not really needed yet.
+    trace eagerly, we could determine the backend during tracing, but
+    this is not really needed yet.
 
 3.  `device = device_arg()` is only accepted together with
     `backend = NULL` or `backend = "auto"`. A concrete backend combined
@@ -615,18 +613,20 @@ complicated. Some things that are important to be aware of:
 
 ### Nested Inputs and Outputs
 
-TODO \## Dichotomy of anvl functions
+TODO
+
+## Dichotomy of anvl functions
 
 Here, we will dig deeper into the dichotomy of {anvl} functions such as
-`prim_add`. In the *Getting Started* vignette, we have learned that
-these functions can either be called directly on `AnvlArray`s to
-transform data, or used within
+`prim_add`. In the *Get Started* vignette, we have learned that these
+functions can either be called directly on `AnvlArray`s to transform
+data, or used within
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) blocks to build
 up programs. Here, we will explain what this actually does and why this
 is possible.
 
 The core problem this dichotomy solves is that it is a mental burden to
-always keep two versions os an {anvl} function:
+always keep two versions of an {anvl} function:
 
 1.  The [`jit()`](https://r-xla.github.io/anvl/reference/jit.md)ted
     version that can be used to transform arrays.
@@ -693,16 +693,18 @@ behave differently depending on whether we are in another
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md) call or not.
 
 If we are in a [`jit()`](https://r-xla.github.io/anvl/reference/jit.md)
-call, and call into a function `jit(f)`, internally `f` is evaluated,
-and the function is re-traced. Otherwise, the standard jit path is
-followed.
+call and call into a `jit(f)`, then `f` is evaluated inline and
+re-traced. Otherwise, the standard jit path is followed.
 
 However, for the {anvl} API this now means that special care needs to be
 taken that everything works in jit-mode and in eager-mode. The most
 important points are:
 
-1.  Canonicalize inputs at the start using `as_anvl_array(s)`
-2.  Propagate device from inputs:
+1.  Canonicalize inputs at the start using
+    [`as_anvl_array()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md)
+    /
+    [`as_anvl_arrays()`](https://r-xla.github.io/anvl/reference/as_anvl_array.md).
+2.  Propagate the device from the inputs:
     1.  For functions with dynamic inputs: use `nv_*_like` for constant
         creation and pass input operands
     2.  For functions without dynamic inputs, add `device` arg and pass

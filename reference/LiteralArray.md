@@ -53,7 +53,7 @@ for more details.
 
 `LiteralArray`s become constants inlined into the stableHLO program.
 I.e., they lower to
-[`stablehlo::hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
+[`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
 
 ## Examples
 
@@ -65,7 +65,7 @@ ambiguous(x)
 #> [1] TRUE
 shape(x)
 #> integer(0)
-ndims(x)
+naxes(x)
 #> [1] 0
 dtype(x)
 #> <i32>

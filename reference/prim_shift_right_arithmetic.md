@@ -31,7 +31,7 @@ inputs are ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_shift_right_arithmetic()`](https://r-xla.github.io/stablehlo/reference/hlo_shift_right_arithmetic.html).
+[`hlo_shift_right_arithmetic()`](https://r-xla.github.io/stablehlo/reference/hlo_shift_right_arithmetic.html).
 
 ## See also
 

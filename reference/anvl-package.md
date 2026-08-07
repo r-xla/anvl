@@ -1,6 +1,11 @@
-# anvl: Framework for R code transformations
+# anvl: Accelerated Array Computing and Automatic Differentiation
 
-Code transformation framework for R.
+Accelerated array computing and code transformations for R. Numerical
+programs operating on multi-dimensional arrays can be just-in-time
+compiled to optimized executables via 'XLA' – the same compiler that
+powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the
+same source. Also provides reverse-mode automatic differentiation,
+returning the gradient of a function as another R function.
 
 ## Third-Party Licenses
 
@@ -32,6 +37,9 @@ Useful links:
 
 Authors:
 
+- Sebastian Fischer <seb.fischer@tutamail.com>
+  ([ORCID](https://orcid.org/0000-0002-9609-3197))
+
 - Daniel Falbel <daniel@posit.co>
   ([ORCID](https://orcid.org/0009-0006-0143-2392))
 
@@ -39,3 +47,8 @@ Authors:
 
 - Nikolai German <niko.german@gmail.com>
   ([ORCID](https://orcid.org/0009-0001-7394-8367))
+
+Other contributors:
+
+- Louis Aslett <louis.aslett@durham.ac.uk>
+  ([ORCID](https://orcid.org/0000-0003-2211-233X)) \[contributor\]

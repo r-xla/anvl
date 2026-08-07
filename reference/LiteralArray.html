@@ -17,7 +17,7 @@ nv_fill() to create a constant."><meta property="og:image" content="https://r-xl
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,6 +39,7 @@ nv_fill() to create a constant."><meta property="og:image" content="https://r-xl
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -74,7 +75,7 @@ nv_fill() to create a constant."><meta property="og:image" content="https://r-xl
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Literal Array Class</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/array.R" class="external-link"><code>R/array.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/array.R" class="external-link"><code>R/array.R</code></a></small>
       <div class="d-none name"><code>LiteralArray.Rd</code></div>
     </div>
 
@@ -128,7 +129,7 @@ information was available. See the <code><a href="../articles/type-promotion.htm
 
 
 <p><code>LiteralArray</code>s become constants inlined into the stableHLO program.
-I.e., they lower to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_constant.html" class="external-link">stablehlo::hlo_tensor()</a></code>.</p>
+I.e., they lower to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_constant.html" class="external-link">hlo_tensor()</a></code>.</p>
     </div>
 
     <div class="section level2">
@@ -140,7 +141,7 @@ I.e., they lower to <code><a href="https://r-xla.github.io/stablehlo/reference/h
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span><span class="fu"><a href="shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> integer(0)</span>
-<span class="r-in"><span><span class="fu"><a href="ndims.html">ndims</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="naxes.html">naxes</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
 <span class="r-in"><span><span class="fu"><a href="dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;i32&gt;</span>
@@ -177,7 +178,7 @@ I.e., they lower to <code><a href="https://r-xla.github.io/stablehlo/reference/h
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

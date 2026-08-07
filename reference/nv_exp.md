@@ -6,15 +6,15 @@ Element-wise exponential. You can also use
 ## Usage
 
 ``` r
-nv_exp(operand)
+nv_exp(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

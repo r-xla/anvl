@@ -60,7 +60,7 @@ contribute to the total:
 ``` r
 
 sum_positive <- jit(function(x) {
-  nv_reduce_sum(nv_ifelse(x > 0, x, nv_fill_like(x, 0)), dims = 1L)
+  nv_reduce_sum(nv_ifelse(x > 0, x, nv_fill_like(x, 0)), axes = 1L)
 })
 
 sum_positive(x)
@@ -95,8 +95,8 @@ boolean mask, and then divide separately:
 
 mean_positive <- jit(function(x) {
   mask <- x > 0
-  total <- nv_reduce_sum(nv_ifelse(mask, x, 0), dims = 1L)
-  n <- nv_reduce_sum(mask, dims = 1L)
+  total <- nv_reduce_sum(nv_ifelse(mask, x, 0), axes = 1L)
+  n <- nv_reduce_sum(mask, axes = 1L)
   total / n
 })
 

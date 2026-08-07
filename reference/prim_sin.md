@@ -5,12 +5,12 @@ Element-wise sine.
 ## Usage
 
 ``` r
-prim_sin(operand)
+prim_sin(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_sine()`](https://r-xla.github.io/stablehlo/reference/hlo_sine.html).
+[`hlo_sine()`](https://r-xla.github.io/stablehlo/reference/hlo_sine.html).
 
 ## See also
 

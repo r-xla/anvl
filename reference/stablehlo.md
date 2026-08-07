@@ -13,17 +13,18 @@ The rules for translating to stablehlo are stored in
 `$rules[["stablehlo"]]` of the primitives.
 
 This is a low-level function; most users should use
-[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) or
-[`xla()`](https://r-xla.github.io/anvl/reference/xla.md) instead.
+[`jit()`](https://r-xla.github.io/anvl/reference/jit.md) instead.
 
 ## Usage
 
 ``` r
 stablehlo(
   graph,
+  id = "main",
   constants_as_inputs = TRUE,
   env = NULL,
   donate = character(),
+  donate_unaliased_outputs = FALSE,
   platform = NULL
 )
 ```
@@ -35,6 +36,15 @@ stablehlo(
   ([`AnvlGraph`](https://r-xla.github.io/anvl/reference/AnvlGraph.md))  
   The graph to lower (e.g. produced by
   [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md)).
+
+- id:
+
+  (`character(1)`)  
+  The id of the resulting StableHLO function. Use `"main"` (the default)
+  for a top-level lowering (returning from the `main` function finalizes
+  the module) and `""` for a closure/region lowering (e.g. a while body
+  or a scatter update computation) that builds an anonymous nested
+  function inside an enclosing build.
 
 - constants_as_inputs:
 
@@ -58,6 +68,14 @@ stablehlo(
   buffers can be aliased with outputs of the same type, enabling
   in-place operations.
 
+- donate_unaliased_outputs:
+
+  (`logical(1)`)  
+  If `TRUE` and the current target platform is `"cpu"`, append a phantom
+  donated input for every output that isn't already aliased to a
+  user-`donate`d input. This is needed internally so R keeps track of
+  the CPU buffers memory in order to know when to garbage collect.
+
 - platform:
 
   (`NULL` \| `character(1)`)  
@@ -71,7 +89,7 @@ stablehlo(
 
 ## Value
 
-A `list` of length 2:
+A `list` of length 3:
 
 - the
   [`stablehlo::Func`](https://r-xla.github.io/stablehlo/reference/Func.html)
@@ -81,11 +99,15 @@ A `list` of length 2:
   holding
   [`ConcreteArray`](https://r-xla.github.io/anvl/reference/ConcreteArray.md)s.
 
+- A list of phantom-output specs, one per phantom donated input appended
+  when `donate_unaliased_outputs = TRUE`. Each entry is a
+  `list(dtype, shape)` describing the buffer the executor must allocate.
+  Empty when no phantoms were added.
+
 ## See also
 
 [`trace_fn()`](https://r-xla.github.io/anvl/reference/trace_fn.md),
 [`jit()`](https://r-xla.github.io/anvl/reference/jit.md),
-[`xla()`](https://r-xla.github.io/anvl/reference/xla.md),
 [`current_platform()`](https://r-xla.github.io/anvl/reference/current_platform.md)
 
 ## Examples
@@ -100,7 +122,7 @@ graph
 #>   Constants:
 #>     %c1: f32[2]
 #>   Body:
-#>     %1: f32[2] = broadcast_in_dim [shape = 2, broadcast_dimensions = <any>] (%x1)
+#>     %1: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = <any>] (%x1)
 #>     %2: f32[2] = add(%1, %c1)
 #>   Outputs:
 #>     %2: f32[2] 
@@ -118,5 +140,8 @@ stablehlo(graph)
 #> [[2]][[1]]
 #> GraphValue(ConcreteArray(f32, (2))) 
 #> 
+#> 
+#> [[3]]
+#> list()
 #> 
 ```

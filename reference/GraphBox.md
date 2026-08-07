@@ -41,7 +41,7 @@ GraphBox(gnode, desc)
 
 - [`shape()`](https://r-xla.github.io/tengen/reference/shape.html)
 
-- [`ndims()`](https://r-xla.github.io/tengen/reference/ndims.html)
+- [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html)
 
 - [`ambiguous()`](https://r-xla.github.io/anvl/reference/ambiguous.md)
 

@@ -5,12 +5,12 @@ Element-wise logistic sigmoid: 1 / (1 + exp(-x)).
 ## Usage
 
 ``` r
-prim_logistic(operand)
+prim_logistic(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of data type floating-point.
@@ -32,7 +32,7 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_logistic()`](https://r-xla.github.io/stablehlo/reference/hlo_logistic.html).
+[`hlo_logistic()`](https://r-xla.github.io/stablehlo/reference/hlo_logistic.html).
 
 ## See also
 

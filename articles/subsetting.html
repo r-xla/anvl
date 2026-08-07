@@ -31,7 +31,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul>
@@ -109,7 +110,7 @@
       <img src="../logo.svg" class="logo" alt=""><h1>Subsetting</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/vignettes/subsetting.Rmd" class="external-link"><code>vignettes/subsetting.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/vignettes/subsetting.Rmd" class="external-link"><code>vignettes/subsetting.Rmd</code></a></small>
       <div class="d-none name"><code>subsetting.Rmd</code></div>
     </div>
 
@@ -176,7 +177,7 @@ subset-assignment.</p>
 </h3>
 <p>Let’s start with some simple examples of selecting individual
 elements from a 1-dimensional array. The index can be either static or
-dynamic and we can drop or keep the dimension:</p>
+dynamic and we can drop or keep the axis:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">)</span></span>
@@ -227,10 +228,10 @@ array without having to wrap the values in <code><a href="https://rdrr.io/r/base
 <p>Below, we perform almost the same operation as above, except that we
 use an array of shape <code>(1)</code> instead of a scalar with shape
 <code>()</code>. The difference is that subsetting with the former will
-preserve the dimension, while the latter will drop it, as we have seen
-above. This ensures that the dimensionality of the result is the same
-for any 1D subset specification, and does not suddenly “simplify” the
-result to 0D.</p>
+preserve the axis, while the latter will drop it, as we have seen above.
+This ensures that the dimensionality of the result is the same for any
+1D subset specification, and does not suddenly “simplify” the result to
+0D.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span><span class="op">[</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -264,8 +265,8 @@ between static and dynamic indices.</p>
 </ul>
 <p>We use <code><a href="../reference/arr.html">arr()</a></code> (or equivalently <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>)
 instead of a bare R vector, because otherwise the case where we use a
-length-1 vector would be ambiguous (do we drop or keep the dimension?).
-This allows us to do without a <code>drop</code> parameter.</p>
+length-1 vector would be ambiguous (do we drop or keep the axis?). This
+allows us to do without a <code>drop</code> parameter.</p>
 <p>We can also use a range that can be specified either canonically via
 <code>a:b</code> or using <code><a href="../reference/nv_seq.html">nv_seq()</a></code>.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
@@ -371,7 +372,7 @@ specification altogether.</p>
 <h3 id="out-of-bounds-handling">Out-of-bounds Handling<a class="anchor" aria-label="anchor" href="#out-of-bounds-handling"></a>
 </h3>
 <p>If one specifies out-of-bounds indices, we can only throw an error if
-the indices are static (and therefore known at compile time). The XLA
+the indices are static (and therefore known at compile time). The PJRT
 backend that {anvl} compiles to does not throw errors for out-of-bounds
 dynamic indices, but instead clamps them to the valid range:</p>
 <div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
@@ -422,7 +423,7 @@ of the array.</p>
 <div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">x</span><span class="op">[</span>, <span class="fl">3</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.5</span>, <span class="fl">2.5</span>, <span class="fl">3.5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `nv_subset_assign()`:</span></span></span>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Value type f32 is not promotable to left-hand side type i32</span></span></code></pre>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">x</span></span></code></pre></div>
@@ -506,7 +507,7 @@ for details.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

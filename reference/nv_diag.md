@@ -5,12 +5,12 @@ Creates a diagonal matrix from a 1-D array.
 ## Usage
 
 ``` r
-nv_diag(operand)
+nv_diag(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   A 1-D array of length `n` whose elements become the diagonal entries.

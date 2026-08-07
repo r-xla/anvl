@@ -5,11 +5,11 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Cumulative Maximum — prim_cummax"><meta name="description" content="Running maximum of array elements along a single dimension along with
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Primitive Cumulative Maximum — prim_cummax"><meta name="description" content="Running maximum of array elements along a single axis along with
 the index of the last occurrence of the running maximum.
 At output position j, the values output is max(input[1:j]) and the
 indices output is the largest i in 1:j with
-input[i] == values[j] (last-occurrence tiebreak)."><meta property="og:description" content="Running maximum of array elements along a single dimension along with
+input[i] == values[j] (last-occurrence tiebreak)."><meta property="og:description" content="Running maximum of array elements along a single axis along with
 the index of the last occurrence of the running maximum.
 At output position j, the values output is max(input[1:j]) and the
 indices output is the largest i in 1:j with
@@ -21,7 +21,7 @@ input[i] == values[j] (last-occurrence tiebreak)."><meta property="og:image" con
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@ input[i] == values[j] (last-occurrence tiebreak)."><meta property="og:image" con
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -78,12 +79,12 @@ input[i] == values[j] (last-occurrence tiebreak)."><meta property="og:image" con
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Primitive Cumulative Maximum</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/primitives.R" class="external-link"><code>R/primitives.R</code></a></small>
       <div class="d-none name"><code>prim_cummax.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Running maximum of array elements along a single dimension along with
+    <p>Running maximum of array elements along a single axis along with
 the index of the last occurrence of the running maximum.
 At output position <code>j</code>, the values output is <code>max(input[1:j])</code> and the
 indices output is the largest <code>i</code> in <code>1:j</code> with
@@ -92,29 +93,30 @@ indices output is the largest <code>i</code> in <code>1:j</code> with
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_cummax</span><span class="op">(</span><span class="va">operand</span>, <span class="va">dim</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_cummax</span><span class="op">(</span><span class="va">x</span>, <span class="va">axis</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-operand">operand<a class="anchor" aria-label="anchor" href="#arg-operand"></a></dt>
+<dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Arrayish value of any data type.</p></dd>
 
 
-<dt id="arg-dim">dim<a class="anchor" aria-label="anchor" href="#arg-dim"></a></dt>
+<dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Dimension along which to accumulate.</p></dd>
+Axis along which to accumulate.
+Negative values count from the end, i.e. <code>-1</code> refers to the last axis.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list</code> of two <code><a href="arrayish.html">arrayish</a></code> values:<br>
-The running maximum (same dtype as <code>operand</code>) and the
+The running maximum (same dtype as <code>x</code>) and the
 running argmax (dtype <code>i32</code>, 1-based). Both have
-the same shape as <code>operand</code>.</p>
+the same shape as <code>x</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -127,7 +129,7 @@ the same shape as <code>operand</code>.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to a variadic <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html" class="external-link">stablehlo::hlo_reduce_window()</a></code> over <code>(values, iota)</code>.</p>
+<p>Lowers to a variadic <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html" class="external-link">hlo_reduce_window()</a></code> over <code>(values, iota)</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -137,7 +139,7 @@ the same shape as <code>operand</code>.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">4</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">9</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">prim_cummax</span><span class="op">(</span><span class="va">x</span>, dim <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">prim_cummax</span><span class="op">(</span><span class="va">x</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3 4 5</span>
@@ -161,7 +163,7 @@ the same shape as <code>operand</code>.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

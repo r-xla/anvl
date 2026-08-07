@@ -1,25 +1,26 @@
 # Primitive Cumulative Sum
 
-Cumulative sum of array elements along a single dimension. Output
-position `j` along `dim` equals the sum of input positions `1:j`.
+Cumulative sum of array elements along a single axis. Output position
+`j` along `axis` equals the sum of input positions `1:j`.
 
 ## Usage
 
 ``` r
-prim_cumsum(operand, dim)
+prim_cumsum(x, axis)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
   Arrayish value of any data type.
 
-- dim:
+- axis:
 
   (`integer(1)`)  
-  Dimension along which to accumulate.
+  Axis along which to accumulate. Negative values count from the end,
+  i.e. `-1` refers to the last axis.
 
 ## Value
 
@@ -36,9 +37,9 @@ input is ambiguous.
 ## StableHLO
 
 Lowers to
-[`stablehlo::hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
+[`hlo_reduce_window()`](https://r-xla.github.io/stablehlo/reference/hlo_reduce_window.html)
 with
-[`stablehlo::hlo_add()`](https://r-xla.github.io/stablehlo/reference/hlo_add.html)
+[`hlo_add()`](https://r-xla.github.io/stablehlo/reference/hlo_add.html)
 as the reducer.
 
 ## See also
@@ -49,7 +50,7 @@ as the reducer.
 
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
-prim_cumsum(x, dim = 1L)
+prim_cumsum(x, axis = 1L)
 #> AnvlArray
 #>   1  3  5
 #>   3  7 11

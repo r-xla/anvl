@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@
     <li><a class="dropdown-item" href="articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -70,14 +71,14 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="logo.svg" class="logo" alt=""><h1>NA</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
 
 <p>@../claude-config/CLAUDE.md</p>
 <div class="section level2">
 <h2 id="package-overview">Package Overview<a class="anchor" aria-label="anchor" href="#package-overview"></a></h2>
-<p><code>anvl</code> is a code transformation framework for R, similar to JAX. It provides JIT compilation (<code><a href="reference/jit.html">jit()</a></code>, <code><a href="reference/xla.html">xla()</a></code>) and automatic differentiation (<code><a href="reference/gradient.html">gradient()</a></code>, <code><a href="reference/value_and_gradient.html">value_and_gradient()</a></code>).</p>
+<p><code>anvl</code> is a code transformation framework for R, similar to JAX. It provides JIT compilation (<code><a href="reference/jit.html">jit()</a></code>) and automatic differentiation (<code><a href="reference/gradient.html">gradient()</a></code>, <code><a href="reference/value_and_gradient.html">value_and_gradient()</a></code>).</p>
 </div>
 <div class="section level2">
 <h2 id="two-layer-api">Two-Layer API<a class="anchor" aria-label="anchor" href="#two-layer-api"></a></h2>
@@ -88,6 +89,17 @@
 </ul><p>When adding new functionality, decide which layer it belongs to. Most new operations need both: a <code>prim_*</code> primitive with rules, and an <code>nv_*</code> wrapper with R-idiomatic semantics.</p>
 <p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>.</p>
 </div>
+<div class="section level2">
+<h2 id="terminology">Terminology<a class="anchor" aria-label="anchor" href="#terminology"></a></h2>
+<ul><li>
+<strong>Axis, axis size, shape.</strong> An <em>axis</em> is an index that identifies a direction of an array; the <em>size</em> of that axis (its <em>axis size</em>) is the extent along it; the <em>shape</em> is the vector of all axis sizes. For a <code>20x5x3</code> array the axes are <code>1</code>, <code>2</code>, <code>3</code> and the shape is <code>c(20, 5, 3)</code>, so the size of axis <code>1</code> is <code>20</code>. Name identifiers accordingly: use <code>axis</code>/<code>axes</code> when the value is an index (or vector of indices) and <code>shape</code> for the vector of sizes; for a single size use an <em>axis size</em> name (e.g. <code>axis_size</code>, <code>n</code>). Helpers reflect this: <code>naxes(x)</code> is the number of axes (the rank), so <code>seq_len(naxes(x))</code> is the axis indices, and <code>shape(x)</code> returns the axis sizes.</li>
+<li>
+<strong>Don’t use “dim”/“dimension” for anvl concepts.</strong> We don’t speak of an array’s “dimensions” or name size-valued identifiers <code>dim</code>/<code>dims</code> — say <em>axis size</em> (a single size) or <em>shape</em> (the vector) instead. <code>dim</code>/<code>dimensions</code> is reserved for foreign call boundaries only (next point).</li>
+<li>Speak of the <strong>size of an axis</strong>, never the “length of an axis” (reserve “length” for vectors and 1-D arrays).</li>
+<li>Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of “dimensions”, so calls into them keep those argument names (e.g. <code>hlo_reduce(dimensions = axes - 1L)</code>, <code>array(dim = ...)</code>) with the anvl-side axis variable on the right.</li>
+<li>
+<strong>Arrays, not tensors.</strong> In anvl-facing docs, messages, and identifiers, say <em>array</em> rather than <em>tensor</em>. The primary array argument of <code>nv_*</code> / <code>prim_*</code> functions is called <code>x</code>.</li>
+</ul></div>
 <div class="section level2">
 <h2 id="supported-dtypes">Supported dtypes<a class="anchor" aria-label="anchor" href="#supported-dtypes"></a></h2>
 <ul><li>there is currently no support for complex numbers.</li>
@@ -105,7 +117,7 @@
 <div class="section level2">
 <h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>
 <p>Anvl’s elementwise binary operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>nv_add</code>, <code>nv_mul</code>, …) only <strong>auto-broadcast scalars</strong> — i.e. operands with <code>shape = integer()</code>. They do <strong>not</strong> do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code> errors like <em>“All non-scalar arrays must have the same shape, … Use <code><a href="reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> for general broadcasting.”</em></p>
-<p>When two non-scalar arrays need to be combined and only differ by size-1 dimensions (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(operand, target_shape)</code> / <code><a href="reference/prim_broadcast_in_dim.html">prim_broadcast_in_dim()</a></code> for a one-sided broadcast).</p>
+<p>When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(x, target_shape)</code> / <code><a href="reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> for a one-sided broadcast).</p>
 </div>
 <div class="section level2">
 <h2 id="graph-tracing">Graph Tracing<a class="anchor" aria-label="anchor" href="#graph-tracing"></a></h2>
@@ -134,7 +146,7 @@
 <ul><li>Do not mention “1-based” indexing. Since this is an R package, 1-based indexing is the default.</li>
 <li>Use <code>@templateVar primitive_id &lt;name&gt;</code> with <code>@template section_rules</code> to auto-generate the “Implemented Rules” section.</li>
 <li>Use <code>@rdname</code> or <code>@inheritParams</code> to share documentation between <code>prim_*</code> and <code>nv_*</code> variants.</li>
-<li>Where a <code>man-roxygen/</code> template is too generic for a specific primitive (e.g. the operand has specific dtype constraints), write the <code>@param</code> inline instead.</li>
+<li>Where a <code>man-roxygen/</code> template is too generic for a specific primitive (e.g. the input has specific dtype constraints), write the <code>@param</code> inline instead.</li>
 </ul></div>
 
 
@@ -147,7 +159,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

@@ -23,15 +23,31 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 - dtype:
 
   (`character(1)` \|
-  [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
 
 - device:
 
-  ( `character(1)` \| `PJRTDevice` \|
-  [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
-  \| `NULL`)  
-  Device for data to live on.
+  (`NULL` \| `character(1)` \|
+  [device](https://r-xla.github.io/anvl/reference/nv_device.md))  
+  The device the data lives on, given either as:
+
+  - a *device string* naming the platform (e.g. `"cpu"`, `"cuda"`,
+    `"cuda:<n>"`), which is resolved against the backend in use, or
+
+  - a *device object* as returned by
+    [`nv_device()`](https://r-xla.github.io/anvl/reference/nv_device.md):
+    a
+    [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html)
+    for the `"pjrt"` backend or a
+    [`quickr_device`](https://r-xla.github.io/anvl/reference/quickr_device.md)
+    for the `"quickr"` backend. Because a device object is
+    backend-specific, it also determines the backend.
+
+  The default (`NULL`) uses
+  [`default_device()`](https://r-xla.github.io/anvl/reference/default_device.md):
+  the CPU, or the platform named by the `PJRT_PLATFORM` environment
+  variable on the `"pjrt"` backend.
 
 - like:
 

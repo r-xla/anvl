@@ -2,12 +2,12 @@
 
 Matrix multiplication of two arrays. You can also use the `%*%`
 operator. Supports batched matrix multiplication when inputs have more
-than 2 dimensions.
+than 2 axes.
 
 ## Usage
 
 ``` r
-nv_matmul(lhs, rhs)
+nv_matmul(lhs, rhs, precision = "highest")
 ```
 
 ## Arguments
@@ -15,9 +15,16 @@ nv_matmul(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Arrays with at least 2 dimensions. Operands are [promoted to a common
-  data
+  Arrays with at least 2 axes. Operands are [promoted to a common data
   type](https://r-xla.github.io/anvl/reference/nv_promote_to_common.md).
+
+- precision:
+
+  (`character(1)`)  
+  Controls the trade-off between speed and numerical accuracy of the
+  operation. One of `"highest"` (default), `"high"` or `"default"`. See
+  [`prim_dot_general()`](https://r-xla.github.io/anvl/reference/prim_dot_general.md)
+  for details.
 
 ## Value
 

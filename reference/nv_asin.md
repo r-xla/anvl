@@ -6,15 +6,15 @@ Element-wise inverse sine. You can also use
 ## Usage
 
 ``` r
-nv_asin(operand)
+nv_asin(x)
 ```
 
 ## Arguments
 
-- operand:
+- x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/reference/arrayish.md))  
-  Operand.
+  Input array.
 
 ## Value
 

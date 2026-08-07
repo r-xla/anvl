@@ -5,19 +5,19 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Combine arrays by rows or columns — nv_bind"><meta name="description" content="Combine arrays along the row (nv_rbind) or column (nv_cbind) dimension.
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Combine arrays by rows or columns — nv_bind"><meta name="description" content="Combine arrays along the row (nv_rbind) or column (nv_cbind) axis.
 Arguments are first promoted to a common data type
 (see nv_promote_to_common()).
 Each input is then handled according to its rank:
-0-D: broadcast to match the non-stacked dimensions of the other inputs.
+0-D: broadcast to match the non-stacked axes of the other inputs.
 1-D: treated as a single row/column.
 Other: used as-is.
 
-"><meta property="og:description" content="Combine arrays along the row (nv_rbind) or column (nv_cbind) dimension.
+"><meta property="og:description" content="Combine arrays along the row (nv_rbind) or column (nv_cbind) axis.
 Arguments are first promoted to a common data type
 (see nv_promote_to_common()).
 Each input is then handled according to its rank:
-0-D: broadcast to match the non-stacked dimensions of the other inputs.
+0-D: broadcast to match the non-stacked axes of the other inputs.
 1-D: treated as a single row/column.
 Other: used as-is.
 
@@ -29,7 +29,7 @@ Other: used as-is.
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.3.0</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,6 +51,7 @@ Other: used as-is.
     <li><a class="dropdown-item" href="../articles/subsetting.html">Subsetting</a></li>
     <li><a class="dropdown-item" href="../articles/random-numbers.html">Random Number Generation</a></li>
     <li><a class="dropdown-item" href="../articles/type-promotion.html">Type Promotion</a></li>
+    <li><a class="dropdown-item" href="../articles/gotchas.html">Gotchas</a></li>
     <li><a class="dropdown-item" href="../articles/efficiency.html">Efficiency</a></li>
     <li><a class="dropdown-item" href="../articles/faq.html">FAQ</a></li>
   </ul></li>
@@ -86,15 +87,15 @@ Other: used as-is.
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Combine arrays by rows or columns</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/v0.3.0/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_bind.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Combine arrays along the row (<code>nv_rbind</code>) or column (<code>nv_cbind</code>) dimension.
+    <p>Combine arrays along the row (<code>nv_rbind</code>) or column (<code>nv_cbind</code>) axis.
 Arguments are first promoted to a common data type
 (see <code><a href="nv_promote_to_common.html">nv_promote_to_common()</a></code>).</p>
-<p>Each input is then handled according to its rank:</p><ul><li><p>0-D: broadcast to match the non-stacked dimensions of the other inputs.</p></li>
+<p>Each input is then handled according to its rank:</p><ul><li><p>0-D: broadcast to match the non-stacked axes of the other inputs.</p></li>
 <li><p>1-D: treated as a single row/column.</p></li>
 <li><p>Other: used as-is.</p></li>
 </ul></div>
@@ -133,9 +134,9 @@ and <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">base
     <div class="section level2">
     <h2 id="differences-from-base-r">Differences from base R<a class="anchor" aria-label="anchor" href="#differences-from-base-r"></a></h2>
     <p><code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">base::rbind()</a></code> and <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">base::cbind()</a></code> applied to an <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code> of rank &gt; 2
-flatten the trailing dimensions into the column axis (so a <code>c(2, 3, 4)</code>
+flatten the trailing axes into the column axis (so a <code>c(2, 3, 4)</code>
 array becomes a <code>2 x 12</code> matrix). <code>nv_rbind</code> and <code>nv_cbind</code> instead
-preserve all non-stacked dimensions: combining two <code>c(2, 3, 4)</code> arrays
+preserve all non-stacked axes: combining two <code>c(2, 3, 4)</code> arrays
 with <code>nv_rbind</code> produces a <code>c(4, 3, 4)</code> array, and with <code>nv_cbind</code> a
 <code>c(2, 6, 4)</code> array.</p>
     </div>
@@ -167,7 +168,7 @@ with <code>nv_rbind</code> produces a <code>c(4, 3, 4)</code> array, and with <c
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3,3} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Rank-3 arrays preserve trailing dimensions</span></span></span>
+<span class="r-in"><span><span class="co"># Rank-3 arrays preserve trailing axes</span></span></span>
 <span class="r-in"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">24</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="shape.html">shape</a></span><span class="op">(</span><span class="fu">nv_rbind</span><span class="op">(</span><span class="va">a</span>, <span class="va">a</span><span class="op">)</span><span class="op">)</span> <span class="co"># c(4, 3, 4)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4 3 4</span>
@@ -182,7 +183,7 @@ with <code>nv_rbind</code> produces a <code>c(4, 3, 4)</code> array, and with <c
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>
