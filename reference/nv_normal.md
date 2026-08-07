@@ -109,7 +109,12 @@ exactly that shape.
 
 ## References
 
-`r xlamisc::format_bib(c("abramowitz1964handbook", "moshier1989methods"))`
+Abramowitz M, Stegun I (1964). *Handbook of Mathematical Functions with
+Formulas, Graphs, and Mathematical Tables*, number 55 series Applied
+Mathematics Series. Dover Publications, New York. ISBN 0-486-61272-4.
+
+Moshier S (1989). *Methods and Programs for Mathematical Functions*.
+Ellis Horwood. ISBN 0-7458-0289-3.
 
 ## See also
 
