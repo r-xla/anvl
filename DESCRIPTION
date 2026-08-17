@@ -1,6 +1,6 @@
 Package: anvl
 Title: Accelerated Array Computing and Automatic Differentiation
-Version: 0.4.0
+Version: 0.4.0.9000
 Authors@R: c(
     person("Sebastian", "Fischer", , "seb.fischer@tutamail.com", role = c("cre", "aut"),
            comment = c(ORCID = "https://orcid.org/0000-0002-9609-3197")),
