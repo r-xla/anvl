@@ -2,9 +2,10 @@
 
 A backend needs more than the packages anvl declares as dependencies:
 the `"pjrt"` backend runs on PJRT plugins that are downloaded rather
-than shipped with the package, and the `"quickr"` backend needs quickr,
-which is only suggested. This installs whichever of the two the given
-backend is missing.
+than shipped with the package, and the `"quickr"` backend needs
+[quickr](https://CRAN.R-project.org/package=quickr), which is only
+suggested. This installs whichever of the two the given backend is
+missing.
 
 ## Usage
 

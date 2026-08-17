@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">anvl</a>
 
-    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.3.0.9000</small>
+    <small class="nav-text text-default me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="In-development version">0.4.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -76,8 +76,11 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.4.0" id="anvl-040">anvl 0.4.0<a class="anchor" aria-label="anchor" href="#anvl-040"></a></h2>
 <div class="section level3">
-<h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
+<h3 id="breaking-changes-0-4-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-0-4-0"></a></h3>
 <ul><li>Renamed <code>dim</code>/<code>dims</code> to <code>axis</code>/<code>axes</code> throughout the package (an axis is an index, a dimension is a size); <code>ndims()</code> is now <code><a href="../reference/naxes.html">naxes()</a></code>.</li>
 <li>Renamed the primary array argument of <code>prim_*</code> / <code>nv_*</code> functions from <code>operand</code> to <code>x</code>.</li>
 <li>Renamed the <code>"xla"</code> backend to <code>"pjrt"</code>.</li>
@@ -89,47 +92,47 @@
 <code><a href="../reference/nv_runif.html">nv_runif()</a></code>’s <code>lower</code>/<code>upper</code> arguments are now <code>min</code>/<code>max</code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>’s <code>mu</code>/<code>sigma</code> are now <code>mean</code>/<code>sd</code>, and <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>’s <code>n</code> is now <code>size</code>, matching the corresponding R functions.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<h3 id="bug-fixes-0-4-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-4-0"></a></h3>
 <ul><li>
 <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> (formerly <code>nv_rdunif()</code>) was off by one: the first integer was drawn twice as often as it should have been, and the last integer was never drawn at all.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
-<ul><li>New <code><a href="../reference/nv_sample.html">nv_sample()</a></code> samples from an arbitrary 1-D population, like R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>. Unlike in R, the population argument is never overloaded with a count – sampling the integers <code>1</code> to <code>n</code> is <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>.</li>
+<h3 id="features-0-4-0">Features<a class="anchor" aria-label="anchor" href="#features-0-4-0"></a></h3>
+<ul><li>New <code><a href="../reference/nv_sample.html">nv_sample()</a></code> samples from an arbitrary population.</li>
+<li>New <code><a href="../reference/nv_lower_tri.html">nv_lower_tri()</a></code> and <code><a href="../reference/nv_upper_tri.html">nv_upper_tri()</a></code> (with <code><a href="../reference/nv_lower_tri.html">nv_lower_tri_like()</a></code> / <code><a href="../reference/nv_upper_tri.html">nv_upper_tri_like()</a></code>) return a boolean triangular mask for a given shape, mirroring base R’s <code><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">lower.tri()</a></code> / <code><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">upper.tri()</a></code>.</li>
+<li>New functions for the normal distribution: <code><a href="../reference/nv_normal.html">nv_dnorm()</a></code>, <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code>, and <code><a href="../reference/nv_normal.html">nv_pnorm()</a></code> thanks to Louis Aslett. They are implemented to be accurate far into either tail.</li>
 <li>
-<code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>’s <code>mean</code> and <code>sd</code> are now arrayish, so they may vary across the sample instead of being scalars.</li>
-<li>Dimension arguments (<code>dim</code>, <code>dims</code>, <code>dimension</code>, <code>permutation</code>) now accept negative values that count from the end, so <code>-1</code> refers to the last dimension. This works at both layers: in the <code>prim_*</code> primitives (<code><a href="../reference/prim_transpose.html">prim_transpose()</a></code>, <code><a href="../reference/prim_concatenate.html">prim_concatenate()</a></code>, <code>prim_reduce_*()</code>, <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>, <code><a href="../reference/prim_cumsum.html">prim_cumsum()</a></code> / <code><a href="../reference/prim_cumprod.html">prim_cumprod()</a></code> / <code><a href="../reference/prim_cummax.html">prim_cummax()</a></code> / <code><a href="../reference/prim_cummin.html">prim_cummin()</a></code>, <code><a href="../reference/prim_argmax.html">prim_argmax()</a></code>, <code><a href="../reference/prim_argmin.html">prim_argmin()</a></code>, <code><a href="../reference/prim_reverse.html">prim_reverse()</a></code>, <code><a href="../reference/prim_iota.html">prim_iota()</a></code>, <code><a href="../reference/prim_sort.html">prim_sort()</a></code>) and in the <code>nv_*</code> functions built on top of them, including <code><a href="../reference/nv_squeeze.html">nv_squeeze()</a></code>, <code><a href="../reference/nv_unsqueeze.html">nv_unsqueeze()</a></code>, <code><a href="../reference/nv_select.html">nv_select()</a></code>, <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code>, <code><a href="../reference/nv_quantile.html">nv_quantile()</a></code> and <code><a href="../reference/nv_median.html">nv_median()</a></code> (<a href="https://github.com/r-xla/anvl/issues/396" class="external-link">#396</a>).</li>
+<code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>’s <code>mean</code> and <code>sd</code> now accept arrayish inputs.</li>
+<li>Dimension arguments (<code>dim</code>, <code>dims</code>, <code>dimension</code>, <code>permutation</code>) now accept negative values that count from the end, so <code>-1</code> refers to the last dimension.</li>
+<li>Reshaping functions accept a single <code>-1</code> in shape indicating a dimension to be inferred.</li>
+<li>Added support for 1-3 dimensional convolutions, thanks to Troy Hernandez.</li>
 <li>
-<code><a href="../reference/nv_reshape.html">nv_reshape()</a></code> and <code><a href="../reference/prim_reshape.html">prim_reshape()</a></code> accept a single <code>-1</code> in <code>shape</code>, whose extent is then inferred from the number of elements of the input, e.g. <code>nv_reshape(x, c(2, -1))</code> (<a href="https://github.com/r-xla/anvl/issues/396" class="external-link">#396</a>).</li>
-<li>Reductions now reject dimensions that are out of range for the operand instead of silently ignoring them (<a href="https://github.com/r-xla/anvl/issues/396" class="external-link">#396</a>).</li>
-<li>New <code><a href="../reference/nv_lower_tri.html">nv_lower_tri()</a></code> and <code><a href="../reference/nv_upper_tri.html">nv_upper_tri()</a></code> (with <code><a href="../reference/nv_lower_tri.html">nv_lower_tri_like()</a></code> / <code><a href="../reference/nv_upper_tri.html">nv_upper_tri_like()</a></code>) return a boolean triangular mask for a given shape, mirroring base R’s <code><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">lower.tri()</a></code> / <code><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">upper.tri()</a></code>. As in base R, the main diagonal is excluded by default; pass <code>diagonal = 0L</code> to include it. Use <code><a href="../reference/nv_tril.html">nv_tril()</a></code> / <code><a href="../reference/nv_triu.html">nv_triu()</a></code> to zero out a triangle of an existing array.</li>
-<li>
-<code><a href="../reference/trace_fn.html">trace_fn()</a></code> gained an <code>optimize</code> argument controlling which graph optimization passes run on the traced graph. <code>TRUE</code> runs all passes, <code>FALSE</code> (default) runs none, and a character vector (e.g. <code>c("inline_scalars", "remove_unused_constants")</code>) selects a subset. <code><a href="../reference/jit.html">jit()</a></code> always traces with all passes enabled.</li>
-<li>New <code><a href="../reference/nv_normal.html">nv_dnorm()</a></code> computes the normal distribution’s probability density function (or, with <code>log = TRUE</code>, its log-density).</li>
-<li>New <code><a href="../reference/nv_normal.html">nv_pnorm()</a></code> computes the normal distribution’s cumulative distribution function (<code>lower_tail = FALSE</code> for the upper tail, <code>log_p = TRUE</code> for the log-probability, staying accurate far into either tail).</li>
-<li>New <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> computes the normal distribution’s quantile function, with the same <code>lower_tail</code> / <code>log_p</code> arguments. <code>log_p = TRUE</code> accepts log-probabilities below the smallest representable <code>p</code>, remaining stable far into tail probabilities.</li>
-<li>
-<code><a href="../reference/AnvlArray.html">nv_array()</a></code>, <code><a href="../reference/AnvlArray.html">nv_scalar()</a></code>, <code><a href="../reference/as_array.html">as_array()</a></code>, and the <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code> / <code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code> / <code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code> / <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> methods for <code>AnvlArray</code> gained a <code>check</code> argument that opts into scanning for <code>NA</code> values during host -&gt; device and device -&gt; host transfers. See the “Gotchas” vignette.</li>
+<code>AnvlArray</code> constructors and converters have gained a <code>check</code> argument that opts into scanning for <code>NA</code> values, see the “Gotchas” vignette for more information.</li>
 <li>
 <code><a href="../reference/nv_var.html">nv_var()</a></code> and <code><a href="../reference/nv_sd.html">nv_sd()</a></code> now default to <code>dims = NULL</code>, which reduces over all dimensions and returns a scalar, consistent with the other reductions.</li>
-<li>Supports 1-3d convolutions.</li>
+<li>
+<code><a href="../reference/trace_fn.html">trace_fn()</a></code> gained an <code>optimize</code> argument controlling which graph optimization passes run on the traced graph. <code>TRUE</code> runs all passes, <code>FALSE</code> (default) runs none, and a character vector (e.g. <code>c("inline_scalars", "remove_unused_constants")</code>) selects a subset. <code><a href="../reference/jit.html">jit()</a></code> always traces with all passes enabled.</li>
+<li>Improved the installation vignette</li>
 </ul></div>
 <div class="section level3">
-<h3 id="performance-development-version">Performance<a class="anchor" aria-label="anchor" href="#performance-development-version"></a></h3>
+<h3 id="performance-0-4-0">Performance<a class="anchor" aria-label="anchor" href="#performance-0-4-0"></a></h3>
 <ul><li>Most <code>nv_*()</code> API functions are now JIT-compiled internally (via a new <code>@jit</code> roxygen roclet), speeding up eager-mode execution.</li>
 <li>Tracing (<code><a href="../reference/trace_fn.html">trace_fn()</a></code>) performance has been improved.</li>
-<li>Tracing now accumulates primitive calls in a <code><a href="https://r-lib.github.io/fastmap/reference/fastqueue.html" class="external-link">fastmap::fastqueue</a></code> (amortised-O(1) append) instead of an R list grown with <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> (copy-on-modify, O(n^2)). Tracing large unrolled graphs is substantially faster, e.g. ~1.36x for an 8000-op chain, with the gain growing with graph size.</li>
-<li>StableHLO lowering forwards the trace-time output types to the <code>hlo_*</code> builders (via an <code>output_types</code> argument passed to the lowering rules), so stablehlo skips redundant type inference when lowering the graph.</li>
+<li>StableHLO lowering has been sped up.</li>
 <li>Calling <code><a href="../reference/jit.html">jit()</a></code>ted functions is now significantly faster.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="bug-fixes-development-version-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version-1"></a></h3>
-<ul><li><p><code>NULL</code> is now treated as an empty node when flattening and unflattening trees. It contributes no leaves but is preserved structurally, so functions with optional arguments (e.g. <code>function(x, y = NULL)</code>) round-trip correctly.</p></li>
-<li><p><code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> and <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> now break ties order-independently, so they return the same result on GPU as on CPU (<a href="https://github.com/r-xla/anvl/issues/368" class="external-link">#368</a>). <code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> prefer the smallest index; <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> prefer the last occurrence.</p></li>
-<li><p><code><a href="../reference/nv_diag.html">nv_diag()</a></code> now errors on non-1-D input instead of silently producing an incorrect result.</p></li>
-<li><p>Errors raised while tracing are now phrased in anvl’s own vocabulary (<a href="https://github.com/r-xla/anvl/issues/298" class="external-link">#298</a>). Messages originating in the <code>stablehlo</code> package used the StableHLO spec’s terminology; they now speak of arrays instead of tensors, and of <code>x</code> instead of <code>operand</code>. For example, <code>`operand` must have dtype float</code> became <code>`x` must have dtype float</code>.</p></li>
-<li><p><code><a href="../reference/jit.html">jit()</a></code> now rejects static arguments with reference semantics – an environment (and therefore also an R6 or reference class object) or an external pointer, including one nested inside a static list (<a href="https://github.com/r-xla/anvl/issues/17" class="external-link">#17</a>). Such a value can be mutated in place while the compilation cache key stays equal, which silently reused a program compiled from its old contents. Functions and device objects remain valid static values.</p></li>
-<li><p>Errors raised while tracing now speak of arrays instead of tensors (<a href="https://github.com/r-xla/anvl/issues/298" class="external-link">#298</a>). Previously, messages that originated in the <code>stablehlo</code> package used the StableHLO spec’s terminology, e.g. <code>`lhs` and `rhs` must have the same tensor type. x Got tensor&lt;4xi32&gt; and tensor&lt;4xf32&gt;.</code></p></li>
+<h3 id="bug-fixes-0-4-0-1">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-4-0-1"></a></h3>
+<ul><li>Reductions now reject dimensions that are out of range for the operand instead of silently ignoring them.</li>
+<li>
+<code>NULL</code> is now treated as an empty node when flattening and unflattening trees.</li>
+<li>
+<code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> and <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> now break ties order-independently, so they return the same result on GPU as on CPU (<a href="https://github.com/r-xla/anvl/issues/368" class="external-link">#368</a>). <code><a href="../reference/nv_argmax.html">nv_argmax()</a></code> / <code><a href="../reference/nv_argmin.html">nv_argmin()</a></code> prefer the smallest index; <code><a href="../reference/nv_cummax.html">nv_cummax()</a></code> / <code><a href="../reference/nv_cummin.html">nv_cummin()</a></code> prefer the last occurrence.</li>
+<li>
+<code><a href="../reference/nv_diag.html">nv_diag()</a></code> now errors on non-1-D input instead of silently producing an incorrect result.</li>
+<li>
+<code><a href="../reference/jit.html">jit()</a></code> now rejects static arguments with reference semantics.</li>
+<li>Error messages now speak of arrays instead of tensors.</li>
 </ul></div>
 </div>
     <div class="section level2">

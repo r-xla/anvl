@@ -2,6 +2,8 @@
 
 ## anvl (development version)
 
+## anvl 0.4.0
+
 ### Breaking changes
 
 - Renamed `dim`/`dims` to `axis`/`axes` throughout the package (an axis
@@ -33,51 +35,7 @@
 
 - New
   [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md)
-  samples from an arbitrary 1-D population, like R’s
-  [`sample()`](https://rdrr.io/r/base/sample.html). Unlike in R, the
-  population argument is never overloaded with a count – sampling the
-  integers `1` to `n` is
-  [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md).
-- [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)’s
-  `mean` and `sd` are now arrayish, so they may vary across the sample
-  instead of being scalars.
-- Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now
-  accept negative values that count from the end, so `-1` refers to the
-  last dimension. This works at both layers: in the `prim_*` primitives
-  ([`prim_transpose()`](https://r-xla.github.io/anvl/dev/reference/prim_transpose.md),
-  [`prim_concatenate()`](https://r-xla.github.io/anvl/dev/reference/prim_concatenate.md),
-  `prim_reduce_*()`,
-  [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md),
-  [`prim_cumsum()`](https://r-xla.github.io/anvl/dev/reference/prim_cumsum.md)
-  /
-  [`prim_cumprod()`](https://r-xla.github.io/anvl/dev/reference/prim_cumprod.md)
-  /
-  [`prim_cummax()`](https://r-xla.github.io/anvl/dev/reference/prim_cummax.md)
-  /
-  [`prim_cummin()`](https://r-xla.github.io/anvl/dev/reference/prim_cummin.md),
-  [`prim_argmax()`](https://r-xla.github.io/anvl/dev/reference/prim_argmax.md),
-  [`prim_argmin()`](https://r-xla.github.io/anvl/dev/reference/prim_argmin.md),
-  [`prim_reverse()`](https://r-xla.github.io/anvl/dev/reference/prim_reverse.md),
-  [`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md),
-  [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md))
-  and in the `nv_*` functions built on top of them, including
-  [`nv_squeeze()`](https://r-xla.github.io/anvl/dev/reference/nv_squeeze.md),
-  [`nv_unsqueeze()`](https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.md),
-  [`nv_select()`](https://r-xla.github.io/anvl/dev/reference/nv_select.md),
-  [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md),
-  [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md)
-  and
-  [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
-  ([\#396](https://github.com/r-xla/anvl/issues/396)).
-- [`nv_reshape()`](https://r-xla.github.io/anvl/dev/reference/nv_reshape.md)
-  and
-  [`prim_reshape()`](https://r-xla.github.io/anvl/dev/reference/prim_reshape.md)
-  accept a single `-1` in `shape`, whose extent is then inferred from
-  the number of elements of the input, e.g. `nv_reshape(x, c(2, -1))`
-  ([\#396](https://github.com/r-xla/anvl/issues/396)).
-- Reductions now reject dimensions that are out of range for the operand
-  instead of silently ignoring them
-  ([\#396](https://github.com/r-xla/anvl/issues/396)).
+  samples from an arbitrary population.
 - New
   [`nv_lower_tri()`](https://r-xla.github.io/anvl/dev/reference/nv_lower_tri.md)
   and
@@ -88,12 +46,30 @@
   [`nv_upper_tri_like()`](https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.md))
   return a boolean triangular mask for a given shape, mirroring base R’s
   [`lower.tri()`](https://rdrr.io/r/base/lower.tri.html) /
-  [`upper.tri()`](https://rdrr.io/r/base/lower.tri.html). As in base R,
-  the main diagonal is excluded by default; pass `diagonal = 0L` to
-  include it. Use
-  [`nv_tril()`](https://r-xla.github.io/anvl/dev/reference/nv_tril.md) /
-  [`nv_triu()`](https://r-xla.github.io/anvl/dev/reference/nv_triu.md)
-  to zero out a triangle of an existing array.
+  [`upper.tri()`](https://rdrr.io/r/base/lower.tri.html).
+- New functions for the normal distribution:
+  [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
+  and
+  [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  thanks to Louis Aslett. They are implemented to be accurate far into
+  either tail.
+- [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)’s
+  `mean` and `sd` now accept arrayish inputs.
+- Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now
+  accept negative values that count from the end, so `-1` refers to the
+  last dimension.
+- Reshaping functions accept a single `-1` in shape indicating a
+  dimension to be inferred.
+- Added support for 1-3 dimensional convolutions, thanks to Troy
+  Hernandez.
+- `AnvlArray` constructors and converters have gained a `check` argument
+  that opts into scanning for `NA` values, see the “Gotchas” vignette
+  for more information.
+- [`nv_var()`](https://r-xla.github.io/anvl/dev/reference/nv_var.md) and
+  [`nv_sd()`](https://r-xla.github.io/anvl/dev/reference/nv_sd.md) now
+  default to `dims = NULL`, which reduces over all dimensions and
+  returns a scalar, consistent with the other reductions.
 - [`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md)
   gained an `optimize` argument controlling which graph optimization
   passes run on the traced graph. `TRUE` runs all passes, `FALSE`
@@ -101,36 +77,7 @@
   `c("inline_scalars", "remove_unused_constants")`) selects a subset.
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) always
   traces with all passes enabled.
-- New
-  [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
-  computes the normal distribution’s probability density function (or,
-  with `log = TRUE`, its log-density).
-- New
-  [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
-  computes the normal distribution’s cumulative distribution function
-  (`lower_tail = FALSE` for the upper tail, `log_p = TRUE` for the
-  log-probability, staying accurate far into either tail).
-- New
-  [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
-  computes the normal distribution’s quantile function, with the same
-  `lower_tail` / `log_p` arguments. `log_p = TRUE` accepts
-  log-probabilities below the smallest representable `p`, remaining
-  stable far into tail probabilities.
-- [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
-  [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
-  [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),
-  and the [`as.integer()`](https://rdrr.io/r/base/integer.html) /
-  [`as.double()`](https://rdrr.io/r/base/double.html) /
-  [`as.logical()`](https://rdrr.io/r/base/logical.html) /
-  [`as.vector()`](https://rdrr.io/r/base/vector.html) methods for
-  `AnvlArray` gained a `check` argument that opts into scanning for `NA`
-  values during host -\> device and device -\> host transfers. See the
-  “Gotchas” vignette.
-- [`nv_var()`](https://r-xla.github.io/anvl/dev/reference/nv_var.md) and
-  [`nv_sd()`](https://r-xla.github.io/anvl/dev/reference/nv_sd.md) now
-  default to `dims = NULL`, which reduces over all dimensions and
-  returns a scalar, consistent with the other reductions.
-- Supports 1-3d convolutions.
+- Improved the installation vignette
 
 ### Performance
 
@@ -139,27 +86,17 @@
 - Tracing
   ([`trace_fn()`](https://r-xla.github.io/anvl/dev/reference/trace_fn.md))
   performance has been improved.
-- Tracing now accumulates primitive calls in a
-  [`fastmap::fastqueue`](https://r-lib.github.io/fastmap/reference/fastqueue.html)
-  (amortised-O(1) append) instead of an R list grown with
-  [`c()`](https://rdrr.io/r/base/c.html) (copy-on-modify, O(n^2)).
-  Tracing large unrolled graphs is substantially faster, e.g. ~1.36x for
-  an 8000-op chain, with the gain growing with graph size.
-- StableHLO lowering forwards the trace-time output types to the `hlo_*`
-  builders (via an `output_types` argument passed to the lowering
-  rules), so stablehlo skips redundant type inference when lowering the
-  graph.
+- StableHLO lowering has been sped up.
 - Calling
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)ted
   functions is now significantly faster.
 
 ### Bug fixes
 
+- Reductions now reject dimensions that are out of range for the operand
+  instead of silently ignoring them.
 - `NULL` is now treated as an empty node when flattening and
-  unflattening trees. It contributes no leaves but is preserved
-  structurally, so functions with optional arguments
-  (e.g. `function(x, y = NULL)`) round-trip correctly.
-
+  unflattening trees.
 - [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
   /
   [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
@@ -177,33 +114,12 @@
   /
   [`nv_cummin()`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
   prefer the last occurrence.
-
 - [`nv_diag()`](https://r-xla.github.io/anvl/dev/reference/nv_diag.md)
   now errors on non-1-D input instead of silently producing an incorrect
   result.
-
-- Errors raised while tracing are now phrased in anvl’s own vocabulary
-  ([\#298](https://github.com/r-xla/anvl/issues/298)). Messages
-  originating in the `stablehlo` package used the StableHLO spec’s
-  terminology; they now speak of arrays instead of tensors, and of `x`
-  instead of `operand`. For example,
-  `` `operand` must have dtype float `` became
-  `` `x` must have dtype float ``.
-
 - [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) now
-  rejects static arguments with reference semantics – an environment
-  (and therefore also an R6 or reference class object) or an external
-  pointer, including one nested inside a static list
-  ([\#17](https://github.com/r-xla/anvl/issues/17)). Such a value can be
-  mutated in place while the compilation cache key stays equal, which
-  silently reused a program compiled from its old contents. Functions
-  and device objects remain valid static values.
-
-- Errors raised while tracing now speak of arrays instead of tensors
-  ([\#298](https://github.com/r-xla/anvl/issues/298)). Previously,
-  messages that originated in the `stablehlo` package used the StableHLO
-  spec’s terminology,
-  e.g. `` `lhs` and `rhs` must have the same tensor type. x Got tensor<4xi32> and tensor<4xf32>. ``
+  rejects static arguments with reference semantics.
+- Error messages now speak of arrays instead of tensors.
 
 ## anvl 0.3.0
 
