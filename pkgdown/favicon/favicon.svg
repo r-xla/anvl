@@ -6,7 +6,7 @@
 <polygon points="300,10 540,148 540,425 300,563 60,425 60,148" fill="#ffffff" stroke="#000000" stroke-width="8" stroke-linejoin="round"/>
 
 <!-- Anvil silhouette — three shapes: face+horn, waist, base -->
-<g transform="translate(312,248) scale(1.1)" fill="#000000">
+<g transform="translate(305,263) scale(1.1)" fill="#000000">
 <!-- Face with horn tapering left -->
 <path d="M-110,-32 L110,-32 L110,-8 L-110,-8 L-146,-14 L-146,-26 Z"/>
 <!-- Waist -->
