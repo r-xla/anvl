@@ -167,12 +167,12 @@ related discussion in JAX.</p>
 <span><span class="co"># Bad (does not capture the whole computation):</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   1.235   0.488   0.795</span></span></code></pre>
+<span><span class="co">##   1.274   0.464   0.860</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Good (also measures actual computation):</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/await.html">await</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   0.903   0.606   0.552</span></span></code></pre>
+<span><span class="co">##   0.763   0.549   0.519</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="how-do-i-control-the-number-of-threads-used-by-xla">How do I control the number of threads used by XLA?<a class="anchor" aria-label="anchor" href="#how-do-i-control-the-number-of-threads-used-by-xla"></a>
