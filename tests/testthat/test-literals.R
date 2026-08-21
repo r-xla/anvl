@@ -15,14 +15,14 @@ test_that("can combine literals", {
   }
   expect_equal(
     jit(f1)(),
-    nv_scalar(6, dtype = "f32", ambiguous = TRUE)
+    nv_scalar(6, dtype = "f32")
   )
   f2 <- function() {
     nv_mul(2, 3L)
   }
   expect_equal(
     jit(f2)(),
-    nv_scalar(6, dtype = "f32", ambiguous = TRUE)
+    nv_scalar(6, dtype = "f32")
   )
 })
 
@@ -42,7 +42,7 @@ test_that("literals can be returned in jit", {
   }
   expect_equal(
     jit(f2)(),
-    nv_scalar(1, dtype = "f32", ambiguous = TRUE)
+    nv_scalar(1, dtype = "f32")
   )
 })
 

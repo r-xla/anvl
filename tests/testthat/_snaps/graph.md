@@ -3,7 +3,7 @@
     Code
       gl
     Output
-      GraphLiteral(1, i32?, ()) 
+      GraphLiteral(1, i32, ()) 
 
 # error handling
 
@@ -36,8 +36,7 @@
 # can print GraphLiteral if it holds scalar array
 
     Code
-      GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer(),
-      ambiguous = TRUE))
+      GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer()))
     Output
-      GraphLiteral(1, i32?, ()) 
+      GraphLiteral(1, i32, ()) 
 

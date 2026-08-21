@@ -331,7 +331,7 @@ test_that("value_and_gradient with static (non-array) argument", {
   expect_equal(result_false$grad[[1L]], nv_scalar(7.0))
 })
 
-test_that("Can propagate ambiguous float32 through integer/bool functions", {
+test_that("Can propagate float32 through integer/bool functions", {
   f <- function(x) {
     x1 <- nv_convert(x, "i32")
     x2 <- nv_convert(x1, "bool")

@@ -144,7 +144,7 @@ test_that("can pass constant to nested trace_fn call if it is defined in the par
 })
 
 test_that("GraphLiteral", {
-  gl <- GraphLiteral(LiteralArray(1L, integer(), ambiguous = TRUE))
+  gl <- GraphLiteral(LiteralArray(1L, integer()))
   expect_equal(dtype(gl), as_dtype("i32"))
   expect_equal(shape(gl), integer())
   expect_snapshot(gl)
@@ -222,7 +222,7 @@ test_that("user_terminology() rewrites words but not identifiers", {
 })
 
 test_that("can print GraphLiteral if it holds scalar array", {
-  expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer(), ambiguous = TRUE)))
+  expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer())))
 })
 
 test_that("trace_fn(mode = 'toplevel') errors when called inside an existing descriptor", {

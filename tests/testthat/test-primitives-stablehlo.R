@@ -410,15 +410,15 @@ describe("prim_if", {
   })
 
   it("works with literals as predicate", {
-    expect_equal(nv_if(TRUE, \() 1, \() 2), nv_scalar(1, ambiguous = TRUE))
+    expect_equal(nv_if(TRUE, \() 1, \() 2), nv_scalar(1))
   })
 
   it("works with multi-element R array branch outputs", {
     f <- jit(function(pred) {
       nv_if(pred, \() array(c(1L, 2L, 3L)), \() array(c(4L, 5L, 6L)))
     })
-    expect_equal(f(nv_scalar(TRUE)), nv_array(c(1L, 2L, 3L), ambiguous = TRUE))
-    expect_equal(f(nv_scalar(FALSE)), nv_array(c(4L, 5L, 6L), ambiguous = TRUE))
+    expect_equal(f(nv_scalar(TRUE)), nv_array(c(1L, 2L, 3L)))
+    expect_equal(f(nv_scalar(FALSE)), nv_array(c(4L, 5L, 6L)))
   })
 })
 
@@ -535,7 +535,7 @@ describe("prim_while", {
     })
     out <- f(nv_scalar(5L))
     expect_equal(out$i, nv_scalar(5L))
-    expect_equal(out$v, nv_array(c(6L, 7L, 8L), ambiguous = TRUE))
+    expect_equal(out$v, nv_array(c(6L, 7L, 8L)))
   })
 
   it("errors", {

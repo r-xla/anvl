@@ -5,9 +5,9 @@
 \alias{AbstractArray}
 \title{Abstract Array Class}
 \usage{
-nv_aval(dtype, shape, ambiguous = FALSE)
+nv_aval(dtype, shape)
 
-AbstractArray(dtype, shape, ambiguous = FALSE)
+AbstractArray(dtype, shape)
 }
 \arguments{
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
@@ -15,11 +15,6 @@ The data type of the array.}
 
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array. Can be provided as an integer vector.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 }
 \description{
 Representation of an abstract array type.
@@ -41,7 +36,6 @@ The following extractors are available on \code{AbstractArray} objects:
 \itemize{
 \item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
 \item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
-\item \code{\link[=ambiguous]{ambiguous()}}: Get whether the dtype is ambiguous.
 \item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
 }
 }
@@ -53,7 +47,6 @@ a <- AbstractArray("f32", c(2L, 3L))
 a
 dtype(a)
 shape(a)
-ambiguous(a)
 
 # Shorthand
 nv_aval("f32", c(2L, 3L))

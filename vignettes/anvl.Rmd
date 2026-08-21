@@ -157,8 +157,7 @@ This applies to both `nv_*` calls and your own `jit()`-compiled functions:
 nv_add(1, array(2:3))
 ```
 
-Note the `?` after the dtype in the printed output (`f32?`): it marks the dtype as *ambiguous*.
-A dtype is ambiguous when it was inferred from an auto-converted R value rather than pinned by the user (e.g. via `nv_array(..., dtype = "f32")`), so the type-promotion rules are allowed to coerce it more freely when combining it with a non-ambiguous operand.
+An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to a default (`f32` for doubles, `i32` for integers, `bool` for logicals) when it meets nothing else.
 See `vignette("type-promotion")` for the full rules.
 
 Note that we only auto-convert `double`/`integer`/`logical`s that are

@@ -16,7 +16,7 @@ exec_compiled_pjrt_for_test <- function(compiled, args_nv) {
     !!!phantom_bufs,
     simplify = FALSE
   )
-  jit_wrap_outputs(out_vals, compiled$out_tree, compiled$ambiguous_out, "pjrt")
+  jit_wrap_outputs(out_vals, compiled$out_tree, "pjrt")
 }
 
 graph_runner_pjrt <- function(graph) {

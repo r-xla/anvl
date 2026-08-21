@@ -33,7 +33,7 @@ test_that("AbstractArray", {
   )
   expect_snapshot(x)
   expect_true(inherits(x, "AbstractArray"))
-  expect_true(eq_type(x, x, ambiguity = TRUE))
+  expect_true(eq_type(x, x))
 
   expect_false(
     eq_type(
@@ -41,8 +41,7 @@ test_that("AbstractArray", {
       AbstractArray(
         as_dtype("f32"),
         Shape(c(2, 1))
-      ),
-      ambiguity = TRUE
+      )
     )
   )
 
@@ -52,8 +51,7 @@ test_that("AbstractArray", {
       AbstractArray(
         as_dtype("f64"),
         Shape(c(2, 3))
-      ),
-      ambiguity = TRUE
+      )
     )
   )
 })
@@ -152,10 +150,9 @@ test_that("nv_matrix() forwards byrow to nv_array", {
   )
 })
 
-test_that("nv_matrix() forwards dtype and ambiguous to nv_array", {
-  x <- nv_matrix(1:6, nrow = 2L, dtype = "f64", ambiguous = TRUE)
+test_that("nv_matrix() forwards dtype to nv_array", {
+  x <- nv_matrix(1:6, nrow = 2L, dtype = "f64")
   expect_equal(dtype(x), as_dtype("f64"))
-  expect_true(ambiguous(x))
   expect_equal(shape(x), c(2, 3))
 })
 
@@ -221,49 +218,29 @@ test_that("nv_matrix() broadcasts a scalar AnvlArray", {
     matrix(1, nrow = 3L, ncol = 3L)
   )
 })
-test_that("eq_type and neq_type respect ambiguity argument", {
-  # With ambiguity = TRUE, different ambiguity means not equal
-  expect_true(
-    neq_type(AbstractArray("f32", 1L, TRUE), AbstractArray("f32", 1L, FALSE), ambiguity = TRUE)
-  )
-  expect_true(
-    neq_type(AbstractArray("f32", 1L, FALSE), AbstractArray("f32", 1L, TRUE), ambiguity = TRUE)
-  )
-  expect_true(
-    eq_type(AbstractArray("f32", 1L, TRUE), AbstractArray("f32", 1L, TRUE), ambiguity = TRUE)
-  )
-  # With ambiguity = FALSE, ambiguity is ignored
-  expect_true(
-    eq_type(AbstractArray("f32", 1L, TRUE), AbstractArray("f32", 1L, FALSE), ambiguity = FALSE)
-  )
-  expect_true(
-    eq_type(AbstractArray("f32", 1L, FALSE), AbstractArray("f32", 1L, TRUE), ambiguity = FALSE)
-  )
-})
-
 test_that("== and != operators throw errors for AbstractArray", {
-  x <- AbstractArray("f32", 1L, FALSE)
-  y <- AbstractArray("f32", 1L, FALSE)
+  x <- AbstractArray("f32", 1L)
+  y <- AbstractArray("f32", 1L)
   expect_error(x == y, "Use.*eq_type")
   expect_error(x != y, "Use.*neq_type")
 })
 
 test_that("to_abstract", {
   # literal
-  expect_equal(to_abstract(TRUE), LiteralArray(TRUE, c(), "bool", FALSE))
-  expect_equal(to_abstract(1L), LiteralArray(1L, c(), "i32", TRUE))
-  expect_equal(to_abstract(1.0), LiteralArray(1.0, c(), "f32", TRUE))
+  expect_equal(to_abstract(TRUE), LiteralArray(TRUE, c(), "bool"))
+  expect_equal(to_abstract(1L), LiteralArray(1L, c(), "i32"))
+  expect_equal(to_abstract(1.0), LiteralArray(1.0, c(), "f32"))
   # anvl array
   x <- nv_array(1:4, dtype = "f32", shape = c(2, 2))
   expect_equal(to_abstract(x), ConcreteArray(x))
   # graph box
-  aval <- GraphValue(AbstractArray("f32", c(2, 2), FALSE))
+  aval <- GraphValue(AbstractArray("f32", c(2, 2)))
   x <- GraphBox(aval, local_descriptor())
   expect_equal(to_abstract(x), aval$aval)
 
   # pure
   x <- nv_scalar(1)
-  expect_equal(to_abstract(x, pure = TRUE), AbstractArray("f32", c(), FALSE))
+  expect_equal(to_abstract(x, pure = TRUE), AbstractArray("f32", c()))
   expect_error(to_abstract(list(1, 2)), "is not an array-like object")
 })
 
@@ -272,18 +249,14 @@ test_that("as_shape for c() (i.e., NULL)", {
   expect_equal(as_shape(c()), Shape(integer()))
 })
 
-test_that("AbstractArray can be created with any ambiguous dtype", {
-  expect_true(ambiguous(AbstractArray("i16", integer(), TRUE)))
-})
-
 test_that("nv_aval creates AbstractArray", {
   expect_equal(
     nv_aval("f32", c()),
-    AbstractArray("f32", Shape(integer()), FALSE)
+    AbstractArray("f32", Shape(integer()))
   )
   expect_equal(
     nv_aval(as_dtype("i32"), 1:2),
-    AbstractArray("i32", Shape(1:2), FALSE)
+    AbstractArray("i32", Shape(1:2))
   )
 })
 
@@ -294,14 +267,14 @@ test_that("as_shape for c() (i.e., NULL)", {
 
 test_that("to_abstract", {
   # literal
-  expect_equal(to_abstract(TRUE), LiteralArray(TRUE, c(), "bool", FALSE))
-  expect_equal(to_abstract(1L), LiteralArray(1L, c(), "i32", TRUE))
-  expect_equal(to_abstract(1.0), LiteralArray(1.0, c(), "f32", TRUE))
+  expect_equal(to_abstract(TRUE), LiteralArray(TRUE, c(), "bool"))
+  expect_equal(to_abstract(1L), LiteralArray(1L, c(), "i32"))
+  expect_equal(to_abstract(1.0), LiteralArray(1.0, c(), "f32"))
   # anvl array
   x <- nv_array(1:4, dtype = "f32", shape = c(2, 2))
   expect_equal(to_abstract(x), ConcreteArray(x))
   # graph box
-  aval <- GraphValue(AbstractArray("f32", c(2, 2), FALSE))
+  aval <- GraphValue(AbstractArray("f32", c(2, 2)))
   x <- GraphBox(aval, local_descriptor())
   expect_equal(to_abstract(x), aval$aval)
 })
@@ -335,7 +308,7 @@ test_that("device returns QuickrDevice for quickr arrays", {
 })
 
 test_that("device returns PlainDeviceCpu for plain arrays", {
-  x <- globals$backends[["plain"]]$new_data(1, "f32", 1L, NULL, FALSE)
+  x <- globals$backends[["plain"]]$new_data(1, "f32", 1L, NULL)
   dev <- device(x)
   expect_s3_class(dev, "PlainDeviceCpu")
 })
@@ -347,7 +320,7 @@ test_that("platform returns 'cpu' for quickr backend", {
 })
 
 test_that("platform returns 'cpu' for plain backend", {
-  x <- globals$backends[["plain"]]$new_data(1, "f32", 1L, NULL, FALSE)
+  x <- globals$backends[["plain"]]$new_data(1, "f32", 1L, NULL)
   expect_equal(platform(x), "cpu")
 })
 
@@ -385,30 +358,27 @@ test_that("default floating dtype is f64 for quickr", {
   expect_equal(dtype(nv_scalar(1.0)), as_dtype("f64"))
 })
 
-test_that("nv_array_like inherits dtype, shape, ambiguous, device, backend from like", {
-  like <- nv_array(c(1L, 2L, 3L), dtype = "i16", ambiguous = TRUE)
+test_that("nv_array_like inherits dtype, shape, device, backend from like", {
+  like <- nv_array(c(1L, 2L, 3L), dtype = "i16")
   out <- nv_array_like(like, c(7L, 8L, 9L))
   expect_equal(dtype(out), dtype(like))
   expect_equal(shape(out), shape(like))
-  expect_equal(ambiguous(out), ambiguous(like))
   expect_equal(backend(out), backend(like))
   expect_equal(as.integer(out), c(7L, 8L, 9L))
 })
 
 test_that("nv_array_like respects explicit overrides", {
-  like <- nv_array(c(1L, 2L, 3L), dtype = "i16", ambiguous = TRUE)
-  out <- nv_array_like(like, c(1L, 2L, 3L, 4L), dtype = "i32", ambiguous = FALSE, shape = 4L)
+  like <- nv_array(c(1L, 2L, 3L), dtype = "i16")
+  out <- nv_array_like(like, c(1L, 2L, 3L, 4L), dtype = "i32", shape = 4L)
   expect_equal(dtype(out), as_dtype("i32"))
   expect_equal(shape(out), 4L)
-  expect_false(ambiguous(out))
 })
 
-test_that("nv_scalar_like inherits dtype, ambiguous, device, backend from like", {
-  like <- nv_scalar(1L, dtype = "i16", ambiguous = TRUE)
+test_that("nv_scalar_like inherits dtype, device, backend from like", {
+  like <- nv_scalar(1L, dtype = "i16")
   out <- nv_scalar_like(like, 7L)
   expect_equal(dtype(out), dtype(like))
   expect_equal(shape(out), integer())
-  expect_equal(ambiguous(out), ambiguous(like))
   expect_equal(backend(out), backend(like))
   expect_equal(as.integer(out), 7L)
 })
@@ -423,7 +393,6 @@ describe("as_anvl_array", {
     out <- as_anvl_array(1L)
     expect_s3_class(out, "AnvlArray")
     expect_equal(shape(out), integer())
-    expect_true(ambiguous(out))
   })
 
   it("converts R arrays into AnvlArrays preserving shape", {

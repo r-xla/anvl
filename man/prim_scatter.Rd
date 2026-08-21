@@ -77,7 +77,6 @@ Binary function \code{f(old, new)} that combines the existing value in
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type and shape as \code{x}.
-It is ambiguous if \code{x} is ambiguous.
 }
 \description{
 Produces a result array identical to \code{x} except that slices at

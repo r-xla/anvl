@@ -7,10 +7,9 @@
         Inputs:
           %x1: f32[]
         Body:
-          %1: f32[] = convert [dtype = f32, ambiguous = FALSE] (1:i32?)
-          %2: f32[] = mul(%x1, %1)
+          %1: f32[] = mul(%x1, 1:f32)
         Outputs:
-          %2: f32[] 
+          %1: f32[] 
 
 ---
 
@@ -20,23 +19,9 @@
       <AnvlGraph>
         Inputs: (none)
         Body:
-          %1: f32[2, 1] = fill [value = 1, dtype = f32, shape = c(2, 1), ambiguous = FALSE] ()
+          %1: f32[2, 1] = fill [value = 1, dtype = f32, shape = c(2, 1)] ()
         Outputs:
           %1: f32[2, 1] 
-
-# ambiguity is printed via ?
-
-    Code
-      graph
-    Output
-      <AnvlGraph>
-        Inputs:
-          %x1: i1[]
-        Body:
-          %1: f32?[] = convert [dtype = f32, ambiguous = TRUE] (%x1)
-          %2: f32?[] = mul(%1, 1:f32?)
-        Outputs:
-          %2: f32?[] 
 
 # constants
 

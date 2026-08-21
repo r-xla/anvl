@@ -327,7 +327,15 @@ avals_from_dispatch <- function(info) {
       if (is_static) {
         return(leaf)
       }
-      nv_aval(as_dtype(av$dtype), av$shape, av$ambiguous)
+      if (!is_anvl_array(leaf)) {
+        # Bare R data: it has no dtype of its own, and the program decides what
+        # it is uploaded as (see `RDataArray`). Only the leaf's R type is read,
+        # never its value -- the dispatcher keyed this entry on the type and
+        # the shape, so a program that looked at the value would be served back
+        # for a different one.
+        return(RDataArray(NULL, shape = av$shape, r_type = typeof(leaf)))
+      }
+      nv_aval(as_dtype(av$dtype), av$shape)
     },
     list(info$leaves, info$is_static, info$avals),
     NULL
@@ -429,13 +437,8 @@ dispatch_arg_devices <- function(info) {
 }
 
 
-jit_wrap_outputs <- function(out_flat, out_tree, ambiguous_out, backend) {
-  if (!is.null(ambiguous_out)) {
-    out_flat <- Map(function(val, amb) nv_array(val, ambiguous = amb, backend = backend), out_flat, ambiguous_out)
-  } else {
-    out_flat <- lapply(out_flat, nv_array, backend = backend)
-  }
-  unflatten(out_tree, out_flat)
+jit_wrap_outputs <- function(out_flat, out_tree, backend) {
+  unflatten(out_tree, lapply(out_flat, nv_array, backend = backend))
 }
 
 

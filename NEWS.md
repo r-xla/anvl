@@ -1,5 +1,32 @@
 # anvl (development version)
 
+## Breaking changes
+
+* R values entering a program no longer get a data type at the boundary. A
+  length-1 vector or an `array()` is carried as R data and built into the
+  program at the data type its use site needs, so a literal that meets an `f64`
+  arrives at full `f64` precision: `x_f64 / sqrt(2)` is now exact, where it used
+  to round through `f32` first (#373). This holds both for values written in the
+  body of a jitted function and for ones passed as its arguments.
+* Asking for the data type of such a value is an error, because there is none
+  yet: `dtype()` and the `nv_*_like()` family (which take their result's type
+  from their argument) now fail on a bare R value under `jit()`. `shape()` and
+  `naxes()` answer as before. Pass an explicit `dtype` (e.g. via `nv_array()`)
+  to give the value a type.
+* The `ambiguous` flag is gone, along with the `ambiguous()` generic, the
+  `ambiguous` argument of `nv_array()` / `nv_scalar()` / `nv_matrix()` /
+  `nv_empty()` / `nv_aval()` / `nv_fill()` / `nv_seq()` / the `nv_*_like()`
+  family / `AbstractArray()` / `LiteralArray()` / `IotaArray()` /
+  `prim_fill()` / `prim_iota()` / `prim_convert()`, the `ambiguity` argument of
+  `eq_type()` / `neq_type()`, `ambiguous_abstract()`, and the `?` suffix in
+  printed dtypes. Yielding now belongs to the R value that has not committed
+  yet, rather than to a bit carried by everything downstream -- the model
+  PyTorch uses for Python scalars. `common_dtype()` correspondingly takes two
+  dtypes and returns one.
+* An operation's result is therefore an ordinary array of an ordinary type. A
+  value that has committed no longer yields to a narrower type later on:
+  `(x_bool * 1L) + y_i16` is now `i32` rather than `i16`.
+
 # anvl 0.4.0
 
 ## Breaking changes

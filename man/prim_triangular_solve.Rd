@@ -33,7 +33,6 @@ If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{F
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as \code{b}.
-It is ambiguous if both \code{a} and \code{b} are ambiguous.
 }
 \description{
 Solves a system of linear equations with a triangular coefficient matrix.

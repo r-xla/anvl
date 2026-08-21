@@ -91,7 +91,6 @@ reference:
     desc: Functions for querying array properties
     contents:
       - backend
-      - ambiguous
       - dtype
       - shape
       - naxes
@@ -366,6 +365,7 @@ reference:
       - GraphValue
       - GraphBox
       - GraphLiteral
+      - GraphRData
       - AnvlBox
       - graph_desc_add
       - local_descriptor
@@ -384,11 +384,11 @@ reference:
       - AbstractArray
       - ConcreteArray
       - LiteralArray
+      - RDataArray
       - IotaArray
       - dtype_abstract
       - shape_abstract
       - naxes_abstract
-      - ambiguous_abstract
       - to_abstract
       - arrayish
 

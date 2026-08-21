@@ -1,6 +1,29 @@
 #' @include rules-quickr.R
 NULL
 
+# Bring one of the call's inputs to the R storage type the compiled function
+# declares for it. Only an input built from bare R data can need this: it
+# arrives as whatever R type the caller wrote (`2L`), while the program may
+# have decided to consume it as something else (an `f64`, because it met an
+# f64 array). `dtype` is NA for every other input, which is passed through.
+quickr_coerce_input <- function(value, dtype) {
+  if (is.na(dtype)) {
+    return(value)
+  }
+  ctor <- quickr_dtype_to_r_ctor(dtype)
+  if (!identical(storage.mode(value), ctor)) {
+    storage.mode(value) <- ctor
+  }
+  value
+}
+
+quickr_coerce_inputs <- function(args, input_dtypes) {
+  if (is.null(input_dtypes)) {
+    return(args)
+  }
+  .mapply(quickr_coerce_input, list(args, input_dtypes), NULL)
+}
+
 quickr_restore_leaf <- function(value, info) {
   shape <- as.integer(info$shape)
 
@@ -15,7 +38,6 @@ quickr_restore_leaf <- function(value, info) {
     value <- nv_array(
       value,
       shape = shape,
-      ambiguous = info$ambiguous,
       backend = info$backend
     )
   }
@@ -52,8 +74,7 @@ graph_to_quickr_prepare <- function(graph) {
   out_infos <- lapply(graph$outputs, function(node) {
     list(
       dtype = as.character(dtype(node)),
-      shape = shape(node),
-      ambiguous = node$aval$ambiguous
+      shape = shape(node)
     )
   })
   is_static_flat <- graph$is_static_flat
@@ -138,6 +159,8 @@ graph_to_quickr_make_wrapper <- function(
   wrapper_env$static_args_flat <- graph$static_args_flat
   wrapper_env$const_args <- const_args
   wrapper_env$restore_output <- quickr_restore_output
+  wrapper_env$input_dtypes <- graph$input_dtypes
+  wrapper_env$coerce_inputs <- quickr_coerce_inputs
 
   if (isTRUE(flat)) {
     # pjrt's dispatcher calls this one, and it passes the call's inputs only:
@@ -147,7 +170,7 @@ graph_to_quickr_make_wrapper <- function(
     # to check or drop.
     flat_wrapper <- function(args_flat) {}
     body(flat_wrapper) <- quote({
-      args <- stats::setNames(args_flat, leaf_arg_names)
+      args <- stats::setNames(coerce_inputs(args_flat, input_dtypes), leaf_arg_names)
       value <- do.call(inner, c(const_args, args))
       restore_output(value, out_tree, out_infos)
     })
@@ -194,6 +217,7 @@ graph_to_quickr_make_wrapper <- function(
     } else {
       args <- mget(leaf_arg_names, envir = environment(), inherits = FALSE)
     }
+    args <- stats::setNames(coerce_inputs(args, input_dtypes), names(args))
 
     value <- do.call(inner, c(const_args, args))
     restore_output(value, out_tree, out_infos)

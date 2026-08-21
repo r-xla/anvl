@@ -1,71 +1,72 @@
 test_that("common_type_info: single argument", {
-  s1 <- AbstractArray(as_dtype("i32"), Shape(c(1, 2)), FALSE)
-  result <- common_type_info(s1)
-  expect_equal(result[[1L]], as_dtype("i32"))
-  expect_equal(result[[2L]], FALSE)
-
-  s2 <- AbstractArray(as_dtype("f32"), Shape(c(2, 3)), TRUE)
-  result <- common_type_info(s2)
-  expect_equal(result[[1L]], as_dtype("f32"))
-  expect_equal(result[[2L]], TRUE)
+  expect_equal(common_type_info(AbstractArray("i32", Shape(c(1, 2)))), as_dtype("i32"))
+  expect_equal(common_type_info(RDataArray(1.5, integer())), as_dtype("f32"))
 })
 
-test_that("common_type_info: two arguments", {
-  check <- function(dt1, dt2, a1, a2, expected_dt, expected_ambiguous) {
-    s1 <- AbstractArray(dt1, Shape(c(1, 2)), a1)
-    s2 <- AbstractArray(dt2, Shape(c(2, 1)), a2)
-    result <- common_type_info(s1, s2)
-    expect_equal(result[[1L]], expected_dt)
-    expect_equal(result[[2L]], expected_ambiguous)
-    # Check symmetry for dtype (ambiguity may differ based on order in some edge cases)
-    result_rev <- common_type_info(s2, s1)
-    expect_equal(result_rev[[1L]], expected_dt)
+test_that("common_type_info: two typed arguments", {
+  check <- function(dt1, dt2, expected) {
+    s1 <- AbstractArray(dt1, Shape(c(1, 2)))
+    s2 <- AbstractArray(dt2, Shape(c(2, 1)))
+    expect_equal(common_type_info(s1, s2), as_dtype(expected))
+    expect_equal(common_type_info(s2, s1), as_dtype(expected))
   }
 
-  # both are ambiguous -> result is ambiguous
+  check("i32", "i32", "i32")
+  check("f32", "i32", "f32")
+  check("f32", "f64", "f64")
+  check("ui32", "i32", "i64")
+})
 
-  check(as_dtype("i32"), as_dtype("i32"), TRUE, TRUE, as_dtype("i32"), TRUE)
-  check(as_dtype("i32"), as_dtype("f32"), TRUE, TRUE, as_dtype("f32"), TRUE)
+test_that("common_type_info: an R value yields to a typed one", {
+  check <- function(data, dt, expected) {
+    rd <- RDataArray(data, integer())
+    known <- AbstractArray(dt, Shape(c(2, 1)))
+    expect_equal(common_type_info(rd, known), as_dtype(expected))
+    expect_equal(common_type_info(known, rd), as_dtype(expected))
+  }
 
-  # one is ambiguous
-  # ambiguous float + known int -> ambiguous float (ambiguous wins because it's float)
-  check(as_dtype("f32"), as_dtype("i32"), TRUE, FALSE, as_dtype("f32"), TRUE)
-  # ambiguous int + known float -> known float (known wins)
-  check(as_dtype("i32"), as_dtype("f32"), TRUE, FALSE, as_dtype("f32"), FALSE)
-  # both types same -> known wins
+  # It takes the dtype it meets, within its own category ...
+  check(1L, "i8", "i8")
+  check(1L, "i64", "i64")
+  check(1.5, "f64", "f64")
+  check(1.5, "f32", "f32")
+  # ... crosses to the other category when that is what it meets ...
+  check(1L, "f64", "f64")
+  # ... but a float R value never becomes an integer, and nothing becomes a bool.
+  check(1.5, "i32", "f32")
+  check(1L, "bool", "i32")
+  check(TRUE, "i32", "i32")
+})
 
-  check(as_dtype("i32"), as_dtype("i32"), TRUE, FALSE, as_dtype("i32"), FALSE)
-
-  # neither is ambiguous -> result is not ambiguous
-  check(as_dtype("f32"), as_dtype("i32"), FALSE, FALSE, as_dtype("f32"), FALSE)
-  check(as_dtype("f32"), as_dtype("f64"), FALSE, FALSE, as_dtype("f64"), FALSE)
-  check(as_dtype("ui32"), as_dtype("i32"), FALSE, FALSE, as_dtype("i64"), FALSE)
+test_that("common_type_info: R values among themselves take their defaults", {
+  check <- function(d1, d2, expected) {
+    r1 <- RDataArray(d1, integer())
+    r2 <- RDataArray(d2, integer())
+    expect_equal(common_type_info(r1, r2), as_dtype(expected))
+    expect_equal(common_type_info(r2, r1), as_dtype(expected))
+  }
+  check(1L, 2L, "i32")
+  check(1.5, 2.5, "f32")
+  check(1L, 2.5, "f32")
+  check(TRUE, FALSE, "bool")
+  check(TRUE, 1L, "i32")
+  check(TRUE, 1.5, "f32")
 })
 
 test_that("common_type_info: multiple arguments", {
-  i32 <- AbstractArray(as_dtype("i32"), Shape(1), FALSE)
-  f32 <- AbstractArray(as_dtype("f32"), Shape(2), FALSE)
-  f64 <- AbstractArray(as_dtype("f64"), Shape(3), FALSE)
+  i32 <- AbstractArray("i32", Shape(1))
+  f32 <- AbstractArray("f32", Shape(2))
+  f64 <- AbstractArray("f64", Shape(3))
 
-  result <- common_type_info(i32, f32, f64)
-  expect_equal(result[[1L]], as_dtype("f64"))
-  expect_equal(result[[2L]], FALSE)
-
-  result <- common_type_info(f64, f32, i32)
-  expect_equal(result[[1L]], as_dtype("f64"))
-  expect_equal(result[[2L]], FALSE)
-
-  result <- common_type_info(i32, i32, i32)
-  expect_equal(result[[1L]], as_dtype("i32"))
-  expect_equal(result[[2L]], FALSE)
-
-  # With ambiguous types
-  i32_amb <- AbstractArray(as_dtype("i32"), Shape(1), TRUE)
-  i64_known <- AbstractArray(as_dtype("i64"), Shape(2), FALSE)
-
-  result <- common_type_info(i32_amb, i64_known)
-  expect_equal(result[[1L]], as_dtype("i64"))
-  expect_equal(result[[2L]], FALSE)
+  expect_equal(common_type_info(i32, f32, f64), as_dtype("f64"))
+  expect_equal(common_type_info(f64, f32, i32), as_dtype("f64"))
+  expect_equal(common_type_info(i32, i32, i32), as_dtype("i32"))
+  # An R value in the middle still yields to the typed ones around it.
+  expect_equal(common_type_info(RDataArray(1L, integer()), AbstractArray("i64", Shape(2))), as_dtype("i64"))
+  expect_equal(
+    common_type_info(RDataArray(1.5, integer()), i32, AbstractArray("f64", Shape(1))),
+    as_dtype("f64")
+  )
 })
 
 test_that("common_type_info: error on no arguments", {
@@ -107,47 +108,31 @@ test_that("promote_dt_known", {
   check("ui64", "ui32", "ui64")
 })
 
-test_that("promote_dt_ambiguous", {
-  check <- function(x, y, z) {
+test_that("promote_dt_rdata", {
+  check <- function(rdtype, known, z) {
     expect_equal(
-      promote_dt_ambiguous(as_dtype(x), as_dtype(y)),
-      as_dtype(z)
-    )
-    expect_equal(
-      promote_dt_ambiguous(as_dtype(y), as_dtype(x)),
+      promote_dt_rdata(as_dtype(rdtype), as_dtype(known)),
       as_dtype(z)
     )
   }
-  check("i32", "i32", "i32")
-  check("f32", "f32", "f32")
-  check("bool", "bool", "bool")
-
-  check("i32", "f32", "f32")
-  check("bool", "f32", "f32")
-  check("bool", "i32", "i32")
-})
-
-test_that("promote_dt_ambiguous_to_known", {
-  check <- function(amb, known, z) {
-    expect_equal(
-      promote_dt_ambiguous_to_known(as_dtype(amb), as_dtype(known)),
-      as_dtype(z)
-    )
-  }
+  # An R value commits to i32, f32 or bool, and yields from there.
   check("i32", "i32", "i32")
   check("bool", "bool", "bool")
   check("f32", "f32", "f32")
-  # ambiguous can only be i32 or f32
 
   check("i32", "i8", "i8")
   check("i32", "i64", "i64")
   check("i32", "bool", "i32")
-  check("i64", "f32", "f32")
 
   check("f32", "f64", "f64")
-  check("f64", "f32", "f32")
   check("f32", "i32", "f32")
 
   check("bool", "f32", "f32")
   check("bool", "i32", "i32")
+})
+
+test_that("common_dtype is the promotion of two known dtypes", {
+  expect_equal(common_dtype("i32", "f32"), as_dtype("f32"))
+  expect_equal(common_dtype("i32", "i64"), as_dtype("i64"))
+  expect_equal(common_dtype("f64", "f32"), as_dtype("f64"))
 })

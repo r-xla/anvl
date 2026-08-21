@@ -48,8 +48,12 @@ A \code{list} with elements:
 \item \code{exec}: The compiled PJRT executable.
 \item \code{out_tree}: The output tree structure.
 \item \code{const_arrays}: Constants needed at execution time.
-\item \code{out_avals}: One \code{list(dtype, shape, ambiguous)} per output leaf; pjrt's
+\item \code{out_avals}: One \code{list(dtype, shape)} per output leaf; pjrt's
 dispatcher builds the output wrappers from these.
+\item \code{input_dtypes}: One dtype name per input, or \code{NA} where the caller
+passes the input through unchanged. Only an input built from bare R
+data names one: the R data has no dtype of its own, so the program
+decides what it is uploaded as.
 }
 }
 \description{

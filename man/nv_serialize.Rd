@@ -21,9 +21,6 @@ A \code{\link{raw}} vector if \code{con} is \code{NULL}, otherwise \code{NULL} (
 Serializes a named list of arrays into the
 \href{https://huggingface.co/docs/safetensors/index}{safetensors} format.
 }
-\details{
-The ambiguity of the arrays is stored in the metadata and preserved in write-read roundtrips.
-}
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)

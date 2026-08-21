@@ -84,7 +84,7 @@ cache_size(linear_jit)
 
 Each input to the function contributes to the cache key differently, depending on whether it is *dynamic* (an arrayish value, the default) or *static* (marked via the `static =` argument of `jit()`):
 
-- **Dynamic inputs** contribute their *abstract value* -- the `nv_aval(dtype, shape, ambiguous)` triple.
+- **Dynamic inputs** contribute their *abstract value* -- the `nv_aval(dtype, shape)` pair, or, for a bare R value, its R type and shape.
   Two arrays with the same abstract value but different data hit the same cache entry.
 - **Static inputs** contribute their *exact R value*, compared with `identical()`.
   They stay as regular R values during the compilation, but their value is fixed for a compiled program.
@@ -151,7 +151,7 @@ Tracing only produces correct results for *pure* functions -- functions whose ou
 This contract is a consequence of both how the caching works and that the compiled program runs outside of R and only communicates back to the R interpreter via it's return values.
 Concretely, the function's execution path -- the specific sequence of primitive calls it performs -- must depend only on:
 
-1. The *abstract* representation (shape, dtype, ambiguity) of each dynamic input, and
+1. The *abstract* representation (shape and dtype) of each dynamic input, and
 2. The *value* of each static input.
 
 The next subsections each show what tracing does to particular R code and where its behavior might be surprising.

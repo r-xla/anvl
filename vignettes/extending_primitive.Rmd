@@ -76,8 +76,7 @@ prim_repeat_along <- new_primitive(
       new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
         dtype = dtype(x),
-        shape = Shape(new_shape),
-        ambiguous = x$ambiguous
+        shape = Shape(new_shape)
       ))
     }
 
@@ -102,7 +101,6 @@ Key points:
 - Pass the lexically-bound `self` (the [`AnvlPrimitive`]) as the first argument to `graph_desc_add()`. `new_primitive()` installs `self` into the enclosing environment of the body, so this is always available inside a primitive.
 - The inference function receives abstract arrays (types, not values) for dynamic inputs, and actual values for static parameters. It must verify that the arguments to the function are valid, and should throw clear error messages — {anvl} programs are otherwise hard to debug.
 - `graph_desc_add()` returns a list of outputs; use `[[1L]]` for single-output primitives.
-- Propagate the `ambiguous` flag from inputs to outputs, see [type promotion](type-promotion.html) for what this means.
 
 Every argument that is *not* a dynamic array must be listed in `static`. `new_primitive` calls `jit()` with `backend = "auto"` internally, which defers the choice of backend to call time.
 
@@ -112,7 +110,6 @@ When doing so, you need to:
 1. Convert the abstract arrays to stablehlo `ValueType`s using `at2vt()`.
 2. Call the stablehlo inference function and obtain a list of `ValueType`s.
 3. Convert the `ValueType`s back to abstract arrays using `vt2at()`.
-4. Set the `ambiguous` flag of the output depending on the inputs (`ambiguity` is strictly an {anvl} concept, not a stablehlo concept).
 
 #### Special case: primitives with 0 dynamic inputs
 
@@ -126,10 +123,10 @@ For example, the real definition of `prim_fill` looks like this:
 ```r
 prim_fill <- new_primitive(
   "fill",
-  function(value, shape, dtype, ambiguous = FALSE, device = NULL) {
+  function(value, shape, dtype, device = NULL) {
     # ... graph_desc_add(self, ...) ...
   },
-  static = 1:5,
+  static = 1:4,
   device = device_arg("device")
 )
 ```
@@ -284,7 +281,6 @@ Note that in the `nv_*` wrapper function, you can only access certain properties
 - `shape_abstract()`
 - `naxes_abstract()`
 - `dtype_abstract()`
-- `ambiguous_abstract()`
 
 If you, for example, use `shape()` instead of `shape_abstract()`, your function won't work with R literals.
 I.e., `<extract>_abstract()` first converts the input to an `AbstractArray` (if possible) and then extracts the property.

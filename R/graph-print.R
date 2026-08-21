@@ -17,13 +17,12 @@ format_literal <- function(node) {
     val <- as_array(val)
   }
   dt <- repr(dtype(node$aval))
-  dt <- if (node$aval$ambiguous) paste0(dt, "?") else dt
   shp <- shape(node$aval)
   sprintf("%s:%s%s", val, dt, if (length(shp)) sprintf("[%s]", shape2string(shp)) else "")
 }
 
 format_aval_short <- function(aval) {
-  sprintf("%s[%s]", paste0(repr(dtype(aval)), if (aval$ambiguous) "?" else ""), paste(shape(aval), collapse = ", "))
+  sprintf("%s[%s]", repr(dtype(aval)), paste(shape(aval), collapse = ", "))
 }
 
 build_node_ids <- function(inputs, constants, calls) {

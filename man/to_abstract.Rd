@@ -21,7 +21,7 @@ Convert an object to its abstract array representation (\code{\link{AbstractArra
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# R literals become LiteralArrays (ambiguous by default, except logicals)
+# R literals become LiteralArrays
 to_abstract(1.5)
 to_abstract(1L)
 to_abstract(TRUE)

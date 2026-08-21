@@ -33,6 +33,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
     list(
       exec = compiled$exec,
       const_arrays = compiled$const_arrays,
+      input_dtypes = compiled$input_dtypes,
       phantom_specs = phantom_specs,
       client = pjrt::pjrt_client(pjrt::platform(compiled$device)),
       device = compiled$device,
@@ -126,8 +127,12 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `exec`: The compiled PJRT executable.
 #'   - `out_tree`: The output tree structure.
 #'   - `const_arrays`: Constants needed at execution time.
-#'   - `out_avals`: One `list(dtype, shape, ambiguous)` per output leaf; pjrt's
+#'   - `out_avals`: One `list(dtype, shape)` per output leaf; pjrt's
 #'     dispatcher builds the output wrappers from these.
+#'   - `input_dtypes`: One dtype name per input, or `NA` where the caller
+#'     passes the input through unchanged. Only an input built from bare R
+#'     data names one: the R data has no dtype of its own, so the program
+#'     decides what it is uploaded as.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -221,8 +226,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
   out_avals <- lapply(graph$outputs, function(x) {
     list(
       dtype = as.character(x$aval$dtype),
-      shape = shape(x$aval),
-      ambiguous = x$aval$ambiguous
+      shape = shape(x$aval)
     )
   })
 
@@ -235,6 +239,10 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     out_tree = out_tree,
     const_arrays = const_arrays,
     out_avals = out_avals,
+    # The dtype each input is supplied at. Only an input built from bare R data
+    # names one -- the dispatcher uploads the R data at that dtype instead of
+    # its default, which is how an `f64` program gets the exact R double.
+    input_dtypes = graph$input_dtypes,
     device = device(exec),
     phantom_specs = phantom_specs
   )
@@ -280,7 +288,7 @@ AnvlBackendPjrt <- function() {
     # already do for dtype/shape). This turns the per-call dtype()/shape()/
     # device() reads on the hot dispatch path into plain field accesses instead
     # of repeated S3-dispatch -> C++/pjrt calls.
-    new_data = function(data, dtype, shape, device, ambiguous) {
+    new_data = function(data, dtype, shape, device) {
       buf <- pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
       structure(
         list(
@@ -288,13 +296,12 @@ AnvlBackendPjrt <- function() {
           dtype = tengen::dtype(buf),
           shape = tengen::shape(buf),
           device = device(buf),
-          ambiguous = ambiguous,
           backend = "pjrt"
         ),
         class = "AnvlArray"
       )
     },
-    new_empty = function(dtype, shape, device, ambiguous) {
+    new_empty = function(dtype, shape, device) {
       buf <- pjrt::pjrt_empty(dtype = dtype, shape = shape, device = device)
       structure(
         list(
@@ -302,7 +309,6 @@ AnvlBackendPjrt <- function() {
           dtype = tengen::dtype(buf),
           shape = tengen::shape(buf),
           device = device(buf),
-          ambiguous = ambiguous,
           backend = "pjrt"
         ),
         class = "AnvlArray"
@@ -310,7 +316,6 @@ AnvlBackendPjrt <- function() {
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    ambiguous = function(x) x$ambiguous,
     as_array = function(x, check) tengen::as_array(x$data, check = check),
     as_raw = function(x, row_major) tengen::as_raw(x$data, row_major = row_major),
     platform = function(x) pjrt::platform(x$data),

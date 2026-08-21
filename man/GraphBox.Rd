@@ -28,7 +28,6 @@ It also contains an associated \code{\link{GraphDescriptor}} in which the node "
 \item \code{\link[tengen:dtype]{dtype()}}
 \item \code{\link[tengen:shape]{shape()}}
 \item \code{\link[tengen:naxes]{naxes()}}
-\item \code{\link[=ambiguous]{ambiguous()}}
 }
 }
 

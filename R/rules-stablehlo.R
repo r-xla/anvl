@@ -6,9 +6,7 @@
 # stablehlo skip re-inference. Composite and region rules (reduce, cumulative
 # ops, linalg decompositions, ...) omit the parameter and keep normal inference.
 
-prim_fill[["stablehlo"]] <- function(value, shape, dtype, ambiguous) {
-  # ambiguity only relevant for type promotion, but when we lower
-  # there is no type promotion, so it has no effect
+prim_fill[["stablehlo"]] <- function(value, shape, dtype) {
   list(hlo_tensor(value, shape = shape, dtype = dtype))
 }
 
@@ -596,7 +594,7 @@ prim_reverse[["stablehlo"]] <- function(x, axes, output_types) {
   list(hlo_reverse(x, axes - 1L, output_types = output_types))
 }
 
-prim_iota[["stablehlo"]] <- function(axis, dtype, shape, start, ambiguous) {
+prim_iota[["stablehlo"]] <- function(axis, dtype, shape, start) {
   out <- hlo_iota(iota_dimension = axis - 1L, dtype = dtype, shape = shape)
   if (start != 0L) {
     offset <- hlo_broadcast_in_dim(
@@ -636,7 +634,7 @@ prim_round[["stablehlo"]] <- function(x, method) {
   )
 }
 
-prim_convert[["stablehlo"]] <- function(x, dtype, ambiguous, output_types) {
+prim_convert[["stablehlo"]] <- function(x, dtype, output_types) {
   list(hlo_convert(x, dtype, output_types = output_types))
 }
 

@@ -8,7 +8,7 @@ describe("[", {
         idx2 <- nv_scalar(1L, dtype = "i32")
         x[idx1, idx2]
       },
-      nv_scalar(1, ambiguous = FALSE)
+      nv_scalar(1)
     )
   })
 
@@ -21,7 +21,7 @@ describe("[", {
         x[idx1, idx2]
       },
       # Scalar array indices drop axes, so result is a scalar
-      nv_scalar(8, ambiguous = FALSE)
+      nv_scalar(8)
     )
   })
 })

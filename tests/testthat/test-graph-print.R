@@ -13,14 +13,6 @@ test_that("literals", {
   expect_snapshot(graph)
 })
 
-test_that("ambiguity is printed via ?", {
-  f <- function(x) {
-    x * 1
-  }
-  graph <- trace_fn(f, list(x = nv_scalar(TRUE)))
-  expect_snapshot(graph)
-})
-
 test_that("constants", {
   y <- nv_scalar(1, dtype = "f32")
   f <- function(x) {

@@ -29,11 +29,10 @@ jit(nv_add)(
 The type-promotion rules are inspired by JAX, and they are designed for execution on accelerators like GPUs, where one often wants speed instead of precision.
 
 The rules are defined by the `common_dtype()` function.
-It returns a `list()` with two values: the common dtype and a flag indicating whether the result is ambiguous, which we will cover later.
 
 ```{r}
-common_dtype("f64", "f32")$dtype
-common_dtype("i64", "f32")$dtype
+common_dtype("f64", "f32")
+common_dtype("i64", "f32")
 ```
 
 A table with the promotion rules is below.
@@ -44,7 +43,7 @@ dtypes <- c("bool", "i8", "i16", "i32", "i64", "ui8", "ui16", "ui32", "ui64", "f
 tbl <- matrix(NA_character_, length(dtypes), length(dtypes))
 for (i in seq_along(dtypes)) {
   for (j in seq_along(dtypes)) {
-    tbl[i, j] <- repr(common_dtype(dtypes[i], dtypes[j])$dtype)
+    tbl[i, j] <- repr(common_dtype(dtypes[i], dtypes[j]))
   }
 }
 rownames(tbl) <- dtypes
@@ -52,87 +51,96 @@ colnames(tbl) <- dtypes
 knitr::kable(tbl, format = "html", caption = "Type promotion rules (row × column)")
 ```
 
-## Literals as Ambiguous Types
+## R Values Have No Data Type
 
-Usually, the types in an {anvl} program can be deterministically inferred from the input types.
-The only case where this is not possible is when you use R literals.
-The default types for literals are as follows:
+Every array in an {anvl} program has a data type -- except the R values you write into it.
+`1.5` is neither an `f32` nor an `f64`; `sqrt(2)` is a number, not a number *at some precision*.
+So {anvl} does not give an R value a data type when it enters a program.
+It keeps the R data, and builds the value into the program at the type its use site turns out to need.
+
+```{r}
+x <- nv_scalar(1, dtype = "f64")
+as_array(x / sqrt(2)) == 1 / sqrt(2)
+```
+
+The result is exact to the last bit, because the `f64` division was handed `sqrt(2)` itself.
+Had the literal been stamped `f32` on the way in, that `f64` would have been built from a number that had already lost half its digits.
+The same holds for a value passed as an argument:
+
+```{r}
+f <- jit(function(a, b) a / b)
+as_array(f(x, sqrt(2))) == 1 / sqrt(2)
+```
+
+This works for length-1 vectors and for `array()`s, in the body of a jitted function and as its arguments alike.
+
+## What an R Value Becomes
+
+An R value takes the data type of the array it meets, whatever that type is:
+
+```{r}
+dtype(nv_array(1L, dtype = "i8") + 1L)
+dtype(nv_array(1, dtype = "f64") + 1L)
+```
+
+It does not drag a program to a wider type just because R stores its numbers as doubles -- which is what makes it safe to write `x + 1` without thinking about it.
+Two rules limit the yielding, both because the type simply cannot hold the value:
+
+1. A value from an R `double` meets an integer type: it stays a float (the default one).
+2. Any value meets `bool`: it stays what it is.
+
+```{r}
+dtype(nv_array(1L, dtype = "i32") + 1.5)
+dtype(nv_array(TRUE) + 1L)
+```
+
+When an R value meets nothing but other R values, there is nothing to take a type from, and it **commits to the default** for its R type:
 
 * `double()` -> `f32`
 * `integer()` -> `i32`
-* `logical()` -> `i1` (bool)
+* `logical()` -> `bool`
 
 ```{r}
 jit(\() list(1L, 1.0, TRUE))()
 ```
 
-However, because this is just a guess, they behave differently than known types during promotion.
-Therefore, the `common_dtype` function has two arguments indicating which of the data types are ambiguous.
-Below, the first type is a known `f64` and the second is an ambiguous `f32`.
-Within anvl, we denote the latter as `i32?`.
-The result is an `f64`, although we would promote to an `f64` if both were known.
-If both types are ambiguous, the result is generally the same as if both were known.
+## Committing Happens Per Operation
+
+A value commits the first time it takes part in an operation, and from then on it is an ordinary array with an ordinary type.
+Nothing is remembered about where it came from.
+This is the same model PyTorch uses for Python scalars, and it is worth knowing where its edge is:
 
 ```{r}
-common_dtype("f32", "f64", FALSE, TRUE)
-common_dtype("f32", "f64", TRUE, TRUE)
-common_dtype("f32", "f64", FALSE, FALSE)
-```
-
-The promotion rules only change when one type is ambiguous and the other is not.
-There, we usually promote the ambiguous type to the known type, unless:
-
-1. The ambiguous type is a float and the known type is not.
-2. The known type is a bool but the ambiguous type is not.
-
-In both case, we promote the known type to the default type of the ambiguous type.
-The table below shows the promotion rules, where the rows are ambiguous and the columns are known.
-
-```{r, echo = FALSE}
-dtypes <- c("bool", "i8", "i16", "i32", "i64", "ui8", "ui16", "ui32", "ui64", "f32", "f64")
-tbl <- matrix(NA_character_, length(dtypes), length(dtypes))
-for (i in seq_along(dtypes)) {
-  for (j in seq_along(dtypes)) {
-    tbl[i, j] <- repr(common_dtype(dtypes[i], dtypes[j], TRUE, FALSE)$dtype)
-  }
-}
-rownames(tbl) <- dtypes
-colnames(tbl) <- dtypes
-knitr::kable(tbl, format = "html", caption = "Promotion rules: ambiguous (row) × known (column)")
-```
-
-## Creating Tensors with Different Ambiguity
-
-Both `nv_scalar()` and `nv_array()` create **non-ambiguous** arrays by default.
-You can explicitly control ambiguity using the `ambiguous` parameter:
-
-```{r}
-s1 <- nv_scalar(1.0)
-ambiguous(s1)
-
-s2 <- nv_scalar(1.0, ambiguous = TRUE)
-ambiguous(s2)
-
-t1 <- nv_array(c(1.0, 2.0, 3.0))
-ambiguous(t1)
-
-t2 <- nv_array(c(1.0, 2.0, 3.0), ambiguous = TRUE)
-ambiguous(t2)
-```
-
-## Propagating Ambiguity
-
-Ambiguity is propagated through operations.
-Consider the following example:
-
-```{r}
-f <- jit(function(x, y) {
-  z <- x + 1L
-  z * y
+f <- jit(function(x) {
+  y <- x * 2
+  y + nv_scalar(1, dtype = "f64")
 })
-f(nv_scalar(TRUE), nv_scalar(2L, dtype = "i16"))
+f(sqrt(2))
 ```
 
-The type of `z` is `i32?`, because `x` is promoted to an `i32`, the default type of the `1L` literal.
-If `z` was not ambiguous, the output would be an `i32`, because the `y` would be promoted to an `i32` in the multiplication.
-Because we propagate the ambiguity, the `z` is actually down-promoted to an `i16`, because the `z` is ambiguous, while the `y` is known.
+Here `x` is only ever combined with the literal `2`, so at that point the best {anvl} knows is "a float, no width demanded" and both commit to `f32`.
+The `f64` arrives one step later, on `y`, when `x` is already spent.
+If you need the wider type, say so where the value enters:
+
+```{r}
+f(nv_scalar(sqrt(2), dtype = "f64"))
+```
+
+## Asking for the Type of an R Value
+
+Because an R value has no type until it is used, asking for one is an error -- just as `dtype(1.5)` has no answer outside a program either:
+
+```{r, error = TRUE}
+jit(function(x) dtype(x))(1)
+```
+
+Its *shape* is a different matter, and is answered as usual: `()` for a length-1 vector, `dim()` for an `array()`.
+This also means the `nv_*_like()` family, which takes its result's type from its argument, needs an argument that has one:
+
+```{r, error = TRUE}
+jit(function(x) nv_fill_like(x, 3))(1)
+```
+
+```{r}
+jit(function(x) nv_fill_like(x, 3))(nv_scalar(1))
+```

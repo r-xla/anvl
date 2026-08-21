@@ -22,7 +22,6 @@ Each must be a scalar array.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type and shape as \code{x}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Returns a copy of \code{x} with a slice replaced by \code{update} at a

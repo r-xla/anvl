@@ -22,7 +22,6 @@ per axis.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input and shape \code{slice_sizes}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Extracts a slice from an array whose start position is determined at

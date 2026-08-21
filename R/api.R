@@ -8,7 +8,7 @@
 #' Creates an array filled with a scalar value. More memory-efficient than
 #' `nv_array(value, shape = shape)` for large arrays.
 #'
-#' `nv_fill_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
+#' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with.
@@ -19,7 +19,6 @@
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_fill_like()`).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and `dtype`.
@@ -29,7 +28,7 @@
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_fill_like(x, 0)
 #' @export
-nv_fill <- function(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL) {
+nv_fill <- function(value, shape, dtype = NULL, device = NULL) {
   if (!is_valid_r_lit(value)) {
     cli_abort(
       "{.arg value} must be an R vector of length 1 of type double, integer, or logical, not {.cls {class(value)[1]}}."
@@ -40,7 +39,7 @@ nv_fill <- function(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL
   } else {
     as_dtype(dtype)
   }
-  prim_fill(value, shape, dtype, ambiguous, device = device)
+  prim_fill(value, shape, dtype, device = device)
 }
 
 ## Conversion ------------------------------------------------------------------
@@ -129,18 +128,14 @@ nv_broadcast_scalars <- function(...) {
 #' nv_promote_to_common(x, y)
 #' @export
 nv_promote_to_common <- function(...) {
-  args <- as_anvl_arrays(...)
-  tmp <- do.call(common_type_info, args)
-  cdt <- tmp[[1L]]
-  ambiguous <- tmp[[2L]]
-  out <- lapply(seq_along(args), \(i) {
-    if (cdt == dtype(args[[i]])) {
-      args[[i]]
-    } else {
-      prim_convert(args[[i]], dtype = cdt, ambiguous = ambiguous)
-    }
-  })
-  return(out)
+  # An R value has no dtype to convert *from*: it is built at the common one
+  # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
+  # converting an f32 `sqrt(2)` would only widen a number that had already lost
+  # its digits. So the values are aligned first and built afterwards, once the
+  # common dtype is known.
+  aligned <- align_arrayish(list(...))
+  cdt <- do.call(common_type_info, aligned$args)
+  lapply(aligned$args, realize_at, dtype = cdt, device = aligned$device)
 }
 
 #' @title Broadcast Arrays to a Common Shape
@@ -209,12 +204,9 @@ nv_broadcast_to <- function(x, shape) {
 #' nv_convert(x, dtype = "f32")
 #' @export
 nv_convert <- function(x, dtype) {
-  x <- as_anvl_array(x)
-  if (dtype(x) != as_dtype(dtype)) {
-    prim_convert(x, dtype = as_dtype(dtype), ambiguous = FALSE)
-  } else {
-    x
-  }
+  # An R value is built at the target dtype rather than converted to it, so it
+  # keeps every digit it had.
+  realize_at(as_anvl_array_lazy(x), as_dtype(dtype))
 }
 
 #' @rdname nv_transpose
@@ -1365,7 +1357,7 @@ nv_reverse <- prim_reverse
 #' Creates an array with values increasing along the specified axis,
 #' starting from `start`.
 #'
-#' `nv_iota_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
+#' `nv_iota_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which values increase.
@@ -1378,7 +1370,6 @@ nv_reverse <- prim_reverse
 #' @template param_shape
 #' @param start (`integer(1)`)\cr
 #'   Starting value (default 1).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and `shape`.
@@ -1397,7 +1388,7 @@ nv_iota <- prim_iota
 #' Without `steps`, behaves like R's `seq(start, end)` producing integer values.
 #' With `steps`, produces `steps` evenly spaced values (like `seq(start, end, length.out = steps)`).
 #'
-#' `nv_seq_like()` is a variant where `dtype`, `ambiguous`, and `device`
+#' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
 #' @param start,end (`numeric(1)`)\cr
 #'   Start and end values. When `steps` is `NULL`, must satisfy `start <= end`.
@@ -1410,7 +1401,6 @@ nv_iota <- prim_iota
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   1-D array of length `end - start + 1`.
@@ -1419,8 +1409,8 @@ nv_iota <- prim_iota
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
-#' @jit static 1:6
-nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, device = NULL) {
+#' @jit static 1:5
+nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
   if (is.null(steps)) {
     dtype <- dtype %||% "i32"
     assert_int(start)
@@ -1429,7 +1419,6 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, de
     return(nv_iota(
       shape = end - start + 1,
       dtype = dtype,
-      ambiguous = ambiguous,
       axis = 1L,
       start = start,
       device = device
@@ -1692,7 +1681,7 @@ nv_triangular_solve <- function(
   # primitive requires rank(b) == rank(a); for left_side = TRUE we append
   # a trailing 1 (column vector per batch), for left_side = FALSE we
   # insert a 1 before the last axis (row vector per batch). The shape is
-  # restored on the way out. There's no ambiguity from broadcasting since
+  # restored on the way out. Nothing is ambiguous about the broadcast since
   # we require exact shape match for the batch axes.
   b_is_vector <- rank_b == rank_a - 1L
   if (b_is_vector) {

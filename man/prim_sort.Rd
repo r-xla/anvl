@@ -27,7 +27,7 @@ preserved. Default \code{FALSE}.}
 \value{
 \code{list} of \code{\link{arrayish}}\cr
 One sorted output per element of \code{xs}, in the same order. Each
-output has the same shape, data type, and ambiguity as the
+output has the same shape and data type as the
 corresponding input.
 }
 \description{

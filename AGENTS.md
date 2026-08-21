@@ -26,6 +26,32 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 - there is currently no support for complex numbers.
 
+## R Values Have No Data Type
+
+An R value entering a program -- a length-1 vector or an `array()`, written in
+the body of a traced function or passed as an argument to a jitted one -- is
+*not* converted at the boundary. It is carried as [`RDataArray`] (an
+`AbstractArray` with no dtype, boxed in a `GraphRData` node) and built into the
+program at the dtype its use site needs, from the R data itself. That is what
+makes `x_f64 / sqrt(2)` exact.
+
+- Promotion decides the dtype: `common_type_info()` treats an `RDataArray` as
+  the yielding operand, and `nv_promote_to_common()` then *builds* it at the
+  common dtype (`realize_at()`), rather than converting it from a default.
+- Every primitive call and every trace output commits whatever is left, at
+  `default_dtype_r()` (`f32` / `i32` / `bool`), so a primitive never sees an
+  uncommitted value.
+- `dtype()` on one errors -- there is nothing to report yet. Internal code that
+  needs a dtype to decide with should take it from promotion, or commit the
+  value first. `shape()` and `naxes()` answer as usual.
+- For a jitted function's argument, the value is unknown at trace time (the
+  cache keys it by R type and shape only, so the program must not depend on it).
+  It becomes a program input whose upload dtype the trace records in
+  `graph$input_dtypes` and pjrt's dispatcher applies.
+
+There is no "weak"/ambiguous flag on arrays: once a value has committed it is an
+ordinary array of an ordinary dtype. See `vignette("type-promotion")`.
+
 ## Primitive System
 
 Primitives are `JitPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`. Primitives are stored as `prim_<name>` variables. `new_primitive()` lexically binds `self` (the `AnvlPrimitive`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:

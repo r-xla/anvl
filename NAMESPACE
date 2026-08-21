@@ -17,11 +17,6 @@ S3method(Ops,AnvlArray)
 S3method(Ops,AnvlBox)
 S3method(Summary,AnvlArray)
 S3method(Summary,AnvlBox)
-S3method(ambiguous,AbstractArray)
-S3method(ambiguous,AnvlArray)
-S3method(ambiguous,GraphBox)
-S3method(ambiguous,GraphLiteral)
-S3method(ambiguous,GraphValue)
 S3method(as.array,AnvlArray)
 S3method(as.character,QuickrDevice)
 S3method(as.double,AnvlArray)
@@ -54,7 +49,9 @@ S3method(dtype,AbstractArray)
 S3method(dtype,AnvlArray)
 S3method(dtype,GraphBox)
 S3method(dtype,GraphLiteral)
+S3method(dtype,GraphRData)
 S3method(dtype,GraphValue)
+S3method(dtype,RDataArray)
 S3method(format,AbstractArray)
 S3method(format,AnvlArray)
 S3method(format,AnvlGraph)
@@ -62,12 +59,14 @@ S3method(format,ConcreteArray)
 S3method(format,GraphBox)
 S3method(format,GraphDescriptor)
 S3method(format,GraphLiteral)
+S3method(format,GraphRData)
 S3method(format,GraphValue)
 S3method(format,IotaArray)
 S3method(format,LiteralArray)
 S3method(format,PlainDeviceCpu)
 S3method(format,PrimitiveCall)
 S3method(format,QuickrDevice)
+S3method(format,RDataArray)
 S3method(hlo_scalar,AnvlArray)
 S3method(hlo_tensor,AnvlArray)
 S3method(is.finite,AnvlArray)
@@ -93,19 +92,23 @@ S3method(print,ConcreteArray)
 S3method(print,GraphBox)
 S3method(print,GraphDescriptor)
 S3method(print,GraphLiteral)
+S3method(print,GraphRData)
 S3method(print,GraphValue)
 S3method(print,IotaArray)
 S3method(print,PlainDeviceCpu)
 S3method(print,QuickrDevice)
+S3method(print,RDataArray)
 S3method(qr,AnvlArray)
 S3method(qr,AnvlBox)
 S3method(rbind,AnvlArray)
 S3method(rbind,AnvlBox)
 S3method(repr,AbstractArray)
+S3method(repr,RDataArray)
 S3method(shape,AbstractArray)
 S3method(shape,AnvlArray)
 S3method(shape,GraphBox)
 S3method(shape,GraphLiteral)
+S3method(shape,GraphRData)
 S3method(shape,GraphValue)
 S3method(solve,AnvlArray)
 S3method(solve,AnvlBox)
@@ -125,13 +128,13 @@ export(ConcreteArray)
 export(GraphBox)
 export(GraphDescriptor)
 export(GraphLiteral)
+export(GraphRData)
 export(GraphValue)
 export(IotaArray)
 export(LiteralArray)
 export(PrimitiveCall)
+export(RDataArray)
 export(Shape)
-export(ambiguous)
-export(ambiguous_abstract)
 export(apply_jit_registry)
 export(arr)
 export(as_anvl_array)
@@ -456,27 +459,36 @@ import(checkmate)
 import(tengen)
 importFrom(cli,cli_abort)
 importFrom(methods,formalArgs)
-importFrom(pjrt,await)
-importFrom(pjrt,build_tree)
-importFrom(pjrt,elt_type)
-importFrom(pjrt,flatten)
-importFrom(pjrt,map_tree)
-importFrom(pjrt,pjrt_buffer)
-importFrom(pjrt,pjrt_compile)
-importFrom(pjrt,pjrt_execute)
-importFrom(pjrt,pjrt_program)
-importFrom(pjrt,pjrt_scalar)
-importFrom(pjrt,platform)
-importFrom(pjrt,pmap_tree)
-importFrom(pjrt,tree_path)
-importFrom(pjrt,tree_size)
-importFrom(pjrt,unflatten)
+importFrom(pjrt,
+  await,
+  build_tree,
+  elt_type,
+  flatten,
+  map_tree,
+  pjrt_buffer,
+  pjrt_compile,
+  pjrt_execute,
+  pjrt_program,
+  pjrt_scalar,
+  platform,
+  pmap_tree,
+  tree_path,
+  tree_size,
+  unflatten
+)
 importFrom(rlang,"%||%")
-importFrom(stablehlo,Func)
-importFrom(stablehlo,FuncId)
-importFrom(stablehlo,FuncValue)
-importFrom(stablehlo,Shape)
-importFrom(stablehlo,TensorType)
+importFrom(stablehlo,
+  Func,
+  FuncId,
+  FuncValue,
+  Shape,
+  TensorType,
+  hlo_scalar,
+  hlo_tensor,
+  local_func,
+  r_to_constant,
+  repr
+)
 importFrom(stablehlo,hlo_abs)
 importFrom(stablehlo,hlo_acos)
 importFrom(stablehlo,hlo_acosh)
@@ -552,7 +564,6 @@ importFrom(stablehlo,hlo_rng_bit_generator)
 importFrom(stablehlo,hlo_round_nearest_afz)
 importFrom(stablehlo,hlo_round_nearest_even)
 importFrom(stablehlo,hlo_rsqrt)
-importFrom(stablehlo,hlo_scalar)
 importFrom(stablehlo,hlo_scatter)
 importFrom(stablehlo,hlo_select)
 importFrom(stablehlo,hlo_shift_left)
@@ -568,32 +579,34 @@ importFrom(stablehlo,hlo_square)
 importFrom(stablehlo,hlo_subtract)
 importFrom(stablehlo,hlo_tan)
 importFrom(stablehlo,hlo_tanh)
-importFrom(stablehlo,hlo_tensor)
 importFrom(stablehlo,hlo_top_k)
 importFrom(stablehlo,hlo_transpose)
 importFrom(stablehlo,hlo_triangular_solve)
 importFrom(stablehlo,hlo_while)
 importFrom(stablehlo,hlo_xor)
-importFrom(stablehlo,local_func)
-importFrom(stablehlo,r_to_constant)
-importFrom(stablehlo,repr)
 importFrom(stats,median)
-importFrom(tengen,as_array)
-importFrom(tengen,as_dtype)
-importFrom(tengen,as_raw)
-importFrom(tengen,device)
-importFrom(tengen,dtype)
-importFrom(tengen,is_dtype)
-importFrom(tengen,naxes)
-importFrom(tengen,shape)
-importFrom(utils,capture.output)
-importFrom(utils,getFromNamespace)
-importFrom(utils,gethash)
-importFrom(utils,hashtab)
-importFrom(utils,head)
-importFrom(utils,install.packages)
-importFrom(utils,maphash)
-importFrom(utils,numhash)
-importFrom(utils,tail)
-importFrom(xlamisc,seq_along0)
-importFrom(xlamisc,seq_len0)
+importFrom(tengen,
+  as_array,
+  as_dtype,
+  as_raw,
+  device,
+  dtype,
+  is_dtype,
+  naxes,
+  shape
+)
+importFrom(utils,
+  capture.output,
+  getFromNamespace,
+  gethash,
+  hashtab,
+  head,
+  install.packages,
+  maphash,
+  numhash,
+  tail
+)
+importFrom(xlamisc,
+  seq_along0,
+  seq_len0
+)

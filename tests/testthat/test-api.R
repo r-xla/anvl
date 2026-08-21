@@ -104,16 +104,14 @@ describe("nv_concatenate", {
     )
   })
   it("can concatenate literals", {
-    # Pure literals produce ambiguous output
     expect_equal(
       nv_concatenate(1L, 2L),
-      nv_array(1:2, ambiguous = TRUE)
+      nv_array(1:2)
     )
     expect_equal(
       nv_concatenate(1L, 2L, axis = 1L),
-      nv_array(1:2, ambiguous = TRUE)
+      nv_array(1:2)
     )
-    # Mixed array + literal: non-ambiguous array determines output ambiguity
     expect_equal(
       nv_concatenate(nv_array(1:2), 3L),
       nv_array(1:3)
@@ -1115,7 +1113,7 @@ describe("nv_tcrossprod", {
 })
 
 describe("nv_fill_like", {
-  it("inherits shape, dtype, ambiguous, device from like", {
+  it("inherits shape, dtype, device from like", {
     like <- nv_matrix(1:6, nrow = 2, dtype = "i16")
     out <- nv_fill_like(like, 0L)
     expect_equal(shape(out), shape(like))
@@ -1133,7 +1131,7 @@ describe("nv_fill_like", {
 })
 
 describe("nv_iota_like", {
-  it("inherits shape, dtype, ambiguous, device from like", {
+  it("inherits shape, dtype, device from like", {
     like <- nv_fill(0L, shape = c(2, 3), dtype = "i16")
     out <- nv_iota_like(like, axis = 1L)
     expect_equal(shape(out), shape(like))
@@ -1155,7 +1153,7 @@ describe("nv_iota_like", {
 })
 
 describe("nv_seq_like", {
-  it("inherits dtype, ambiguous, device from like (length determined by start/end)", {
+  it("inherits dtype, device from like (length determined by start/end)", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
     out <- nv_seq_like(like, 1L, 5L)
     expect_equal(dtype(out), dtype(like))

@@ -6,11 +6,7 @@
 make_binary_op <- function(stablehlo_infer) {
   force(stablehlo_infer)
   infer_fn <- function(lhs, rhs) {
-    both_ambiguous <- lhs$ambiguous && rhs$ambiguous
-    out <- stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]
-    out <- vt2at(out)
-    out$ambiguous <- both_ambiguous
-    list(out)
+    list(vt2at(stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]))
   }
   function(lhs, rhs) {
     graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
@@ -20,10 +16,7 @@ make_binary_op <- function(stablehlo_infer) {
 make_unary_op <- function(stablehlo_infer) {
   force(stablehlo_infer)
   infer_fn <- function(x) {
-    out <- stablehlo_infer(at2vt(x))[[1L]]
-    out <- vt2at(out)
-    out$ambiguous <- x$ambiguous
-    list(out)
+    list(vt2at(stablehlo_infer(at2vt(x))[[1L]]))
   }
   function(x) {
     graph_desc_add(self, list(x = x), infer_fn = infer_fn)[[1L]]
@@ -41,8 +34,7 @@ infer_reduce <- function(x, axes, drop) {
   }
   list(AbstractArray(
     dtype = dtype(x),
-    shape = Shape(new_shape),
-    ambiguous = x$ambiguous
+    shape = Shape(new_shape)
   ))
 }
 
@@ -56,8 +48,7 @@ infer_reduce_boolean <- function(x, axes, drop) {
   }
   list(AbstractArray(
     dtype = "bool",
-    shape = Shape(new_shape),
-    ambiguous = FALSE
+    shape = Shape(new_shape)
   ))
 }
 
@@ -73,7 +64,6 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @template param_dtype
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and `dtype`.
@@ -87,18 +77,18 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' @export
 prim_fill <- new_primitive(
   "fill",
-  function(value, shape, dtype, ambiguous = FALSE, device = NULL) {
-    infer_fill <- function(value, shape, dtype, ambiguous) {
-      list(AbstractArray(dtype = as_dtype(dtype), shape = shape, ambiguous = ambiguous))
+  function(value, shape, dtype, device = NULL) {
+    infer_fill <- function(value, shape, dtype) {
+      list(AbstractArray(dtype = as_dtype(dtype), shape = shape))
     }
     graph_desc_add(
       self,
       list(),
-      params = list(value = value, dtype = dtype, shape = shape, ambiguous = ambiguous),
+      params = list(value = value, dtype = dtype, shape = shape),
       infer_fn = infer_fill
     )[[1L]]
   },
-  static = 1:5,
+  static = 1:4,
   device = device_arg("device")
 )
 
@@ -216,7 +206,6 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 #'   Must have length equal to the number of axes of `x`.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and the given `shape`.
-#'   It is ambiguous if the input is ambiguous.
 #' @importFrom stablehlo r_to_constant
 #' @templateVar primitive_id broadcast_in_axes
 #' @template section_rules
@@ -242,7 +231,6 @@ prim_broadcast_in_axes <- new_primitive(
         shape = shape
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(
@@ -325,7 +313,6 @@ prim_dot_general <- new_primitive(
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape `nv_shape(x)[permutation]`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id transpose
 #' @template section_rules
 #' @section StableHLO:
@@ -347,7 +334,6 @@ prim_transpose <- new_primitive(
       )
       out <- stablehlo::infer_types_transpose(at2vt(x), permutation = perm_attr)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(
@@ -371,7 +357,6 @@ prim_transpose <- new_primitive(
 #'   the remaining entries and the number of elements of `x`.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and the given `shape`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id reshape
 #' @template section_rules
 #' @section StableHLO:
@@ -388,7 +373,6 @@ prim_reshape <- new_primitive(
     infer_fn <- function(x, shape) {
       out <- stablehlo::infer_types_reshape(at2vt(x), shape = shape)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(
@@ -414,7 +398,6 @@ prim_reshape <- new_primitive(
 #'   Has the same data type as the inputs.
 #'   The output shape matches the inputs in all axes except `axis`,
 #'   which is the sum of the input sizes along that axis.
-#'   It is ambiguous if all inputs are ambiguous.
 #' @templateVar primitive_id concatenate
 #' @template section_rules
 #' @section StableHLO:
@@ -435,7 +418,6 @@ prim_concatenate <- new_primitive(
     axis <- resolve_axis(axis, naxes_abstract(dots[[1L]]))
     infer_fn <- function(..., axis) {
       xs <- list(...)
-      all_ambiguous <- all(vapply(xs, \(x) x$ambiguous, logical(1L)))
       vts <- lapply(xs, at2vt)
       # Convert axis to Constant as required by stablehlo
       axis_const <- stablehlo::r_to_constant(
@@ -445,7 +427,6 @@ prim_concatenate <- new_primitive(
       )
       out <- rlang::exec(stablehlo::infer_types_concatenate, !!!vts, dimension = axis_const)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- all_ambiguous
       list(out)
     }
     graph_desc_add(
@@ -478,7 +459,6 @@ prim_concatenate <- new_primitive(
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape
 #'   `ceiling((limit_indices - start_indices + 1) / strides)`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id static_slice
 #' @template section_rules
 #' @section StableHLO:
@@ -510,7 +490,6 @@ prim_static_slice <- new_primitive(
       strides_attr <- r_to_constant(strides, dtype = "i64", shape = length(strides))
       out <- stablehlo::infer_types_slice(at2vt(x), start_attr, limit_attr, strides_attr)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(
@@ -552,7 +531,6 @@ prim_static_slice <- new_primitive(
 #' the effective start position may differ from the requested one.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape `slice_sizes`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id dynamic_slice
 #' @template section_rules
 #' @section StableHLO:
@@ -582,7 +560,7 @@ prim_dynamic_slice <- new_primitive(
           cli_abort("Start index {i} must be a scalar, but has shape {shape(aval)}")
         }
       }
-      out <- AbstractArray(dtype = x$dtype, shape = slice_sizes, ambiguous = x$ambiguous)
+      out <- AbstractArray(dtype = x$dtype, shape = slice_sizes)
       list(out)
     }
     graph_desc_add(
@@ -612,7 +590,6 @@ prim_dynamic_slice <- new_primitive(
 #' @inheritSection prim_dynamic_slice Out Of Bounds Behavior
 #' @return [`arrayish`]\cr
 #'   Has the same data type and shape as `x`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id dynamic_update_slice
 #' @template section_rules
 #' @section StableHLO:
@@ -644,7 +621,7 @@ prim_dynamic_update_slice <- new_primitive(
           cli_abort("Start index {i} must be a scalar, but has shape {shape(aval)}")
         }
       }
-      out <- AbstractArray(dtype = x$dtype, shape = shape(x), ambiguous = x$ambiguous)
+      out <- AbstractArray(dtype = x$dtype, shape = shape(x))
       list(out)
     }
     graph_desc_add(
@@ -822,8 +799,7 @@ infer_cum <- function(x, axis) {
   }
   list(AbstractArray(
     dtype = dtype(x),
-    shape = Shape(shape(x)),
-    ambiguous = x$ambiguous
+    shape = Shape(shape(x))
   ))
 }
 
@@ -843,13 +819,11 @@ infer_cum_extreme <- function(x, axis) {
   list(
     AbstractArray(
       dtype = dtype(x),
-      shape = Shape(shape(x)),
-      ambiguous = x$ambiguous
+      shape = Shape(shape(x))
     ),
     AbstractArray(
       dtype = "i32",
-      shape = Shape(shape(x)),
-      ambiguous = FALSE
+      shape = Shape(shape(x))
     )
   )
 }
@@ -1048,14 +1022,12 @@ prim_reduce <- new_primitive(
         )
       )
       out <- vt2at(vts[[1L]])
-      out$ambiguous <- x$ambiguous
       if (!drop) {
         new_shape <- shape(x)
         new_shape[axes] <- 1L
         out <- AbstractArray(
           dtype = out$dtype,
-          shape = Shape(new_shape),
-          ambiguous = out$ambiguous
+          shape = Shape(new_shape)
         )
       }
       list(out)
@@ -1101,8 +1073,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
   }
   list(AbstractArray(
     dtype = "i32",
-    shape = Shape(new_shape),
-    ambiguous = FALSE
+    shape = Shape(new_shape)
   ))
 }
 
@@ -1190,7 +1161,6 @@ infer_compare <- function(lhs, rhs, comparison_direction) {
   }
   out <- stablehlo::infer_types_compare(at2vt(lhs), at2vt(rhs), comparison_direction, compare_type)[[1L]]
   out <- vt2at(out)
-  out$ambiguous <- lhs$ambiguous && rhs$ambiguous
   list(out)
 }
 
@@ -1427,10 +1397,8 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
 
 infer_shift <- function(lhs, rhs, shift_fn) {
-  both_ambiguous <- lhs$ambiguous && rhs$ambiguous
   out <- shift_fn(at2vt(lhs), at2vt(rhs))[[1L]]
   out <- vt2at(out)
-  out$ambiguous <- both_ambiguous
   list(out)
 }
 
@@ -1994,10 +1962,8 @@ prim_polygamma <- new_primitive(
   "polygamma",
   function(n, x) {
     infer_fn <- function(n, x) {
-      both_ambiguous <- n$ambiguous && x$ambiguous
       out <- stablehlo::infer_types_polygamma(at2vt(n), at2vt(x))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- both_ambiguous
       list(out)
     }
     graph_desc_add(self, list(n = n, x = x), infer_fn = infer_fn)[[1L]]
@@ -2058,7 +2024,6 @@ prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
 #' @template param_prim_x_float
 #' @return [`arrayish`]\cr
 #'   Has the same shape as the input and boolean data type.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id is_finite
 #' @template section_rules
 #' @section StableHLO:
@@ -2100,7 +2065,6 @@ prim_popcnt <- new_primitive(
     infer_fn <- function(x) {
       out <- stablehlo::infer_types_popcnt(at2vt(x))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(self, list(x = x), list(), infer_fn = infer_fn)[[1L]]
@@ -2118,7 +2082,6 @@ prim_popcnt <- new_primitive(
 #'   Maximum value. Must be scalar or the same shape as `x`.
 #' @return [`arrayish`]\cr
 #'   Has the same data type and shape as `x`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id clamp
 #' @template section_rules
 #' @section StableHLO:
@@ -2134,7 +2097,6 @@ prim_clamp <- new_primitive(
     infer_fn <- function(min_val, x, max_val) {
       out <- stablehlo::infer_types_clamp(at2vt(min_val), at2vt(x), at2vt(max_val))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(
@@ -2157,7 +2119,6 @@ prim_clamp <- new_primitive(
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
 #'   Has the same data type and shape as `x`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id reverse
 #' @template section_rules
 #' @section StableHLO:
@@ -2176,7 +2137,6 @@ prim_reverse <- new_primitive(
       axes_attr <- r_to_constant(axes - 1L, dtype = "i64", shape = length(axes))
       out <- stablehlo::infer_types_reverse(at2vt(x), dimensions = axes_attr)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(self, list(x = x), list(axes = axes), infer_fn = infer_fn)[[1L]]
@@ -2195,7 +2155,6 @@ prim_reverse <- new_primitive(
 #'   Shape of the output array.
 #' @param start (`integer(1)`)\cr
 #'   Starting value.
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and `shape`.
@@ -2209,9 +2168,9 @@ prim_reverse <- new_primitive(
 #' @export
 prim_iota <- new_primitive(
   "iota",
-  function(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL) {
+  function(axis, dtype, shape, start = 1L, device = NULL) {
     axis <- resolve_axis(axis, length(shape))
-    infer_fn <- function(axis, dtype, shape, start, ambiguous) {
+    infer_fn <- function(axis, dtype, shape, start) {
       # stablehlo uses 0-based indexing, anvl uses 1-based
       # Convert axis to Constant as required by stablehlo
       iota_axis_const <- stablehlo::r_to_constant(
@@ -2222,18 +2181,18 @@ prim_iota <- new_primitive(
       # Just for the checks
       stablehlo::infer_types_iota(iota_dimension = iota_axis_const, dtype = dtype, shape = shape)[[1L]]
 
-      list(IotaArray(shape = shape, dtype = dtype, axis = axis, start = start, ambiguous = ambiguous))
+      list(IotaArray(shape = shape, dtype = dtype, axis = axis, start = start))
     }
     result <- graph_desc_add(
       self,
       list(),
-      list(axis = axis, dtype = dtype, shape = shape, start = start, ambiguous = ambiguous),
+      list(axis = axis, dtype = dtype, shape = shape, start = start),
       infer_fn = infer_fn
     )[[1L]]
 
     result
   },
-  static = 1:6,
+  static = 1:5,
   device = device_arg("device")
 )
 
@@ -2252,7 +2211,6 @@ prim_iota <- new_primitive(
 #' @return [`arrayish`]\cr
 #'   Has the same data type as `x`.
 #'   For the output shape see the underlying stablehlo documentation ([hlo_pad()]).
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id pad
 #' @template section_rules
 #' @section StableHLO:
@@ -2279,7 +2237,6 @@ prim_pad <- new_primitive(
         interior_padding = interior_attr
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
 
@@ -2306,7 +2263,6 @@ prim_pad <- new_primitive(
 #'   integer on a tie, `"afz"` rounds away from zero on a tie.
 #' @return [`arrayish`]\cr
 #'   Has the same dtype and shape as `x`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id round
 #' @template section_rules
 #' @section StableHLO:
@@ -2328,7 +2284,6 @@ prim_round <- new_primitive(
       stablehlo_infer <- stablehlo::infer_types_round_nearest_even
       out <- stablehlo_infer(at2vt(x))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(self, list(x = x), list(method = method), infer_fn = infer_fn)[[1L]]
@@ -2344,10 +2299,8 @@ prim_round <- new_primitive(
 #' @template param_prim_x_any
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Target data type.
-#' @template param_ambiguous
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and the same shape as `x`.
-#'   Ambiguity is controlled by the `ambiguous` parameter.
 #' @templateVar primitive_id convert
 #' @template section_rules
 #' @section StableHLO:
@@ -2359,23 +2312,24 @@ prim_round <- new_primitive(
 #' @export
 prim_convert <- new_primitive(
   "convert",
-  function(x, dtype, ambiguous = FALSE) {
+  function(x, dtype) {
     dtype <- as_dtype(dtype)
-    infer_fn <- function(x, dtype, ambiguous) {
-      list(AbstractArray(
-        dtype = dtype,
-        shape = Shape(shape(x)),
-        ambiguous = ambiguous
-      ))
+    if (is_rdata_box(x)) {
+      # There is nothing to convert: an R value is built at the dtype asked
+      # for, so the result holds every digit the R value had.
+      return(materialize_rdata(x, dtype))
+    }
+    infer_fn <- function(x, dtype) {
+      list(AbstractArray(dtype = dtype, shape = Shape(shape(x))))
     }
     graph_desc_add(
       self,
       list(x = x),
-      params = list(dtype = dtype, ambiguous = ambiguous),
+      params = list(dtype = dtype),
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = 2:3
+  static = 2L
 )
 
 
@@ -2391,7 +2345,6 @@ prim_convert <- new_primitive(
 #'   Values to select from. Must have the same dtype and shape.
 #' @return [`arrayish`]\cr
 #'   Has the same dtype and shape as `true_value`.
-#'   It is ambiguous if both `true_value` and `false_value` are ambiguous.
 #' @templateVar primitive_id select
 #' @template section_rules
 #' @section StableHLO:
@@ -2405,14 +2358,12 @@ prim_ifelse <- new_primitive(
   "select",
   function(pred, true_value, false_value) {
     infer_fn <- function(pred, true_value, false_value) {
-      both_ambiguous <- true_value$ambiguous && false_value$ambiguous
       out <- stablehlo::infer_types_select(
         at2vt(pred),
         on_true = at2vt(true_value),
         on_false = at2vt(false_value)
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- both_ambiguous
       list(out)
     }
     graph_desc_add(
@@ -2438,7 +2389,6 @@ prim_ifelse <- new_primitive(
 #'   Zero-argument functions for the true and false branches. Both must return outputs
 #'   with the same structure, dtypes, and shapes.
 #' @return Result of the executed branch.\cr
-#'   An output is ambiguous if it is ambiguous in both branches.
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2476,18 +2426,7 @@ prim_if <- new_primitive(
     # TODO: Apply promotion rules to the outputs of the branches
 
     infer_fn <- function(pred, true_graph, false_graph) {
-      # The returned values might have different ambiguity, so we need to handle it.
-      # An output is ambiguous if its type is ambiguous in both branches.
-      lapply(seq_along(true_graph$outputs), function(i) {
-        aval_true <- true_graph$outputs[[i]]$aval
-        aval_false <- false_graph$outputs[[i]]$aval
-        if (aval_true$ambiguous && aval_false$ambiguous) {
-          return(aval_true)
-        }
-
-        aval_true$ambiguous <- FALSE
-        return(aval_true)
-      })
+      lapply(true_graph$outputs, function(out) out$aval)
     }
 
     out <- graph_desc_add(
@@ -2581,14 +2520,13 @@ prim_while <- new_primitive(
       outs <- list(...)
       outs_body <- lapply(body_graph$outputs, \(out) out$aval)
       inputs_body <- lapply(body_graph$inputs, \(inp) inp$aval)
-      # ignore ambiguity when comparing dtypes
-      if (!all(sapply(seq_along(outs), \(i) eq_type(outs[[i]], outs_body[[i]], ambiguity = FALSE)))) {
+      if (!all(sapply(seq_along(outs), \(i) eq_type(outs[[i]], outs_body[[i]])))) {
         cli_abort("outs must be have same type as outs_body")
       }
-      if (!all(sapply(seq_along(inputs_body), \(i) eq_type(inputs_body[[i]], outs_body[[i]], ambiguity = FALSE)))) {
+      if (!all(sapply(seq_along(inputs_body), \(i) eq_type(inputs_body[[i]], outs_body[[i]])))) {
         cli_abort("inputs_body must be have same type as outs_body")
       }
-      # function might change the ambiguity, so we return the body outputs and not the inputs
+      # the body's outputs are what the loop carries, so we return those
       return(outs_body)
     }
 
@@ -2634,7 +2572,7 @@ prim_while <- new_primitive(
 #'   preserved. Default `FALSE`.
 #' @return `list` of [`arrayish`]\cr
 #'   One sorted output per element of `xs`, in the same order. Each
-#'   output has the same shape, data type, and ambiguity as the
+#'   output has the same shape and data type as the
 #'   corresponding input.
 #' @templateVar primitive_id sort
 #' @template section_rules
@@ -2681,11 +2619,7 @@ prim_sort <- new_primitive(
     infer_fn <- function(..., axis, descending, is_stable) {
       ops <- list(...)
       lapply(ops, function(op) {
-        AbstractArray(
-          dtype = dtype(op),
-          shape = Shape(shape(op)),
-          ambiguous = op$ambiguous
-        )
+        AbstractArray(dtype = dtype(op), shape = Shape(shape(op)))
       })
     }
 
@@ -2738,11 +2672,7 @@ prim_top_k <- new_primitive(
         shape = integer()
       )
       vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
-      values <- vt2at(vts[[1L]])
-      values$ambiguous <- x$ambiguous
-      indices <- vt2at(vts[[2L]])
-      indices$ambiguous <- FALSE
-      list(values, indices)
+      list(vt2at(vts[[1L]]), vt2at(vts[[2L]]))
     }
 
     graph_desc_add(
@@ -2775,12 +2705,11 @@ prim_top_k <- new_primitive(
 prim_print <- new_primitive(
   "print",
   function(x) {
-    # HACK: ambiguity is not available in stablehlo, so we need to pre-compute this
-    # and pass it as a "param", although it is not really one
+    # HACK: the footer is pre-computed here and passed as a "param", although
+    # it is not really one: stablehlo does not carry the dtype the way anvl
+    # prints it.
     # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
-    dtype_str <- paste0(as.character(dtype(x)), if (ambiguous_abstract(x)) "?")
-    footer <- sprintf("[ %s{%s} ]", dtype_str, paste0(shape(x), collapse = ","))
-    # slig
+    footer <- sprintf("[ %s{%s} ]", as.character(dtype(x)), paste0(shape(x), collapse = ","))
     graph_desc_add(self, list(x = x), list(footer = footer), infer_fn = function(x, ...) {
       list(x)
     })[[1L]]
@@ -2882,7 +2811,6 @@ prim_rng_bit_generator <- new_primitive(
 #'   `function(old, new) new`, which replaces the old value.
 #' @return [`arrayish`]\cr
 #'   Has the same data type and shape as `x`.
-#'   It is ambiguous if `x` is ambiguous.
 #' @section Out Of Bounds Behavior:
 #' If a computed result index falls outside the bounds of `x`, the
 #' update for that index is silently ignored.
@@ -2950,8 +2878,8 @@ prim_scatter <- new_primitive(
     }
 
     dummy_args <- list(
-      AbstractArray(dtype = x_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(x)),
-      AbstractArray(dtype = x_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(update))
+      AbstractArray(dtype = x_dtype, shape = Shape(integer())),
+      AbstractArray(dtype = x_dtype, shape = Shape(integer()))
     )
 
     update_computation_graph <- trace_fn(update_computation, dummy_args, desc = desc_update, mode = "subgraph")
@@ -2999,7 +2927,6 @@ prim_scatter <- new_primitive(
       )[[1L]]
 
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
 
@@ -3157,7 +3084,6 @@ prim_gather <- new_primitive(
       )[[1L]]
 
       out <- vt2at(out)
-      out$ambiguous <- x$ambiguous
       list(out)
     }
     graph_desc_add(
@@ -3196,7 +3122,6 @@ prim_gather <- new_primitive(
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as the input.
 #'   The values in the triangle not specified by `lower` are implementation-defined.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id cholesky
 #' @template section_rules
 #' @section StableHLO:
@@ -3214,8 +3139,7 @@ prim_chol <- new_primitive(
       # Output has same shape and dtype as input (square matrix)
       list(AbstractArray(
         dtype = dtype(x),
-        shape = Shape(shape(x)),
-        ambiguous = x$ambiguous
+        shape = Shape(shape(x))
       ))
     }
     graph_desc_add(
@@ -3255,7 +3179,6 @@ prim_chol <- new_primitive(
 #'   If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `b`.
-#'   It is ambiguous if both `a` and `b` are ambiguous.
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
 #' @section StableHLO:
@@ -3286,7 +3209,6 @@ prim_triangular_solve <- new_primitive(
         transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE"
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- a$ambiguous && b$ambiguous
       list(out)
     }
     graph_desc_add(

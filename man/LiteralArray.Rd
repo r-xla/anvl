@@ -4,7 +4,7 @@
 \alias{LiteralArray}
 \title{Literal Array Class}
 \usage{
-LiteralArray(data, shape, dtype = default_dtype(data), ambiguous)
+LiteralArray(data, shape, dtype = default_dtype(data))
 }
 \arguments{
 \item{data}{(\code{double(1)} | \code{integer(1)} | \code{logical(1)} | \code{\link{AnvlArray}})\cr
@@ -16,23 +16,12 @@ The shape of the array.}
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
 The data type. Defaults to the current backend's default floating dtype,
 \code{i32} for integer, and \code{bool} for logical.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 }
 \description{
 An \code{\link{AbstractArray}} where all elements have the same constant value.
 This either arises when using literals in traced code (e.g. \code{x + 1}) or when using
 \code{\link[=nv_fill]{nv_fill()}} to create a constant.
 }
-\section{Type Ambiguity}{
-
-When arising from R literals, the resulting \code{LiteralArray} is ambiguous because no type
-information was available. See the \code{vignette("type-promotion")} for more details.
-}
-
 \section{Lowering}{
 
 \code{LiteralArray}s become constants inlined into the stableHLO program.
@@ -41,9 +30,8 @@ I.e., they lower to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- LiteralArray(1L, shape = integer(), ambiguous = TRUE)
+x <- LiteralArray(1L, shape = integer())
 x
-ambiguous(x)
 shape(x)
 naxes(x)
 dtype(x)

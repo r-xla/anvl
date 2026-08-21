@@ -322,7 +322,7 @@ run_backward_pass <- function(graph, desc, backwards, required_env, out) {
   grad_env <- hashtab()
   grad_env[[out]] <- get_box_or_register_const(
     desc,
-    nv_scalar(1L, dtype = out$aval$dtype, ambiguous = out$aval$ambiguous)
+    nv_scalar(1L, dtype = out$aval$dtype)
   )
 
   add_or_init <- function(grad1, grad2) {
@@ -383,12 +383,10 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
       {
         const <- get_box_or_register_const(
           desc,
-          nv_scalar(0L, dtype = input$aval$dtype, ambiguous = input$aval$ambiguous)
+          nv_scalar(0L, dtype = input$aval$dtype)
         )
         nv_broadcast_to(const, shape(input$aval))
       }
-    # Match the input's ambiguity flag.
-    x$gnode$aval$ambiguous <- input$aval$ambiguous
     input_grads <- c(input_grads, list(x$gnode))
   }
   input_grads

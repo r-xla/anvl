@@ -21,7 +21,6 @@ Must have length equal to the number of axes of \code{x}.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input and the given \code{shape}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Broadcasts an array to a new shape by replicating the data along new or size-1 axes.

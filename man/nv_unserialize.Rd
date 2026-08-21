@@ -26,7 +26,7 @@ Deserializes arrays from the
 \href{https://huggingface.co/docs/safetensors/index}{safetensors} format.
 }
 \details{
-The data type, shape, and \link[=ambiguous]{ambiguity} of each array are
+The data type and shape of each array are
 restored from the serialized data.
 }
 \examples{

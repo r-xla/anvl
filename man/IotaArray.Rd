@@ -4,7 +4,7 @@
 \alias{IotaArray}
 \title{Iota Array Class}
 \usage{
-IotaArray(shape, dtype, axis, start = 1L, ambiguous = FALSE)
+IotaArray(shape, dtype, axis, start = 1L)
 }
 \arguments{
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
@@ -18,11 +18,6 @@ The axis along which values increase.}
 
 \item{start}{(\code{integer(1)})\cr
 The starting value.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 }
 \description{
 An \code{\link{AbstractArray}} representing an integer sequence.
@@ -41,7 +36,6 @@ It lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}, optionally shifting t
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- IotaArray(shape = 4L, dtype = "i32", axis = 1L)
 x
-ambiguous(x)
 shape(x)
 naxes(x)
 dtype(x)

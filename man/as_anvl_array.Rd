@@ -31,7 +31,9 @@ Use \code{\link[=as_anvl_array]{as_anvl_array()}} for a single input and \code{\
 The latter will also ensure all arrays are from the same backend and live on the same device.
 }
 \details{
-During tracing, \link[=GraphBox]{boxes} are returned as is.
+During tracing, \link[=GraphBox]{boxes} are returned as is, and R literals and
+arrays are boxed as \code{\link{RDataArray}}s -- values that carry their R data but no
+data type yet, and take one at their first use.
 During eager mode, R literals and arrays are converted to \code{AnvlArray}s on the specified device.
 For \code{AnvlArray} inputs, we check that they live on provided device (if specified).
 }

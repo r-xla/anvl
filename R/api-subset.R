@@ -109,14 +109,14 @@ static_start_indices <- function(starts, like = NULL) {
     if (is.null(like)) {
       return(nv_array(data, dtype = "i32"))
     }
-    return(nv_array_like(like, data, dtype = "i32", shape = length(data), ambiguous = FALSE))
+    return(nv_array_like(like, data, dtype = "i32", shape = length(data)))
   }
   grid <- as.matrix(do.call(expand.grid, starts))
   out <- array(grid, dim = c(sizes[multi_index_axes], length(starts)))
   if (is.null(like)) {
     return(nv_array(out, dtype = "i32"))
   }
-  nv_array_like(like, out, dtype = "i32", shape = dim(out), ambiguous = FALSE)
+  nv_array_like(like, out, dtype = "i32", shape = dim(out))
 }
 
 
@@ -146,7 +146,7 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
         if (is.null(like)) {
           nv_array(s, dtype = "i32")
         } else {
-          nv_array_like(like, s, dtype = "i32", shape = length(s), ambiguous = FALSE)
+          nv_array_like(like, s, dtype = "i32", shape = length(s))
         }
       } else if (naxes_abstract(s) == 0L) {
         nv_reshape(s, 1L)
@@ -507,16 +507,20 @@ subset_scatter_core <- jit(
     unique_indices,
     update_shape
   ) {
-    if (dtype(x) != dtype(value)) {
-      dt_x <- dtype(x)
-      dt_value <- dtype(value)
+    dt_x <- dtype(x)
+    # An R value is assigned at the dtype of the array it goes into, so it is
+    # built at that dtype rather than converted to it. What it is allowed to go
+    # into is still decided by the dtype it would commit to: `x_i32[i] <- 1.5`
+    # is a narrowing assignment either way.
+    dt_value <- if (is_rdata_box(value)) rdata_default_dtype(value) else dtype(value)
+    if (dt_x != dt_value) {
       if (!promotable_to(dt_value, dt_x)) {
         cli_abort(
           "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_x)}"
         )
       }
-      value <- nv_convert(value, dtype = dt_x)
     }
+    value <- nv_convert(value, dtype = dt_x)
 
     if (!naxes(value)) {
       value <- nv_broadcast_to(value, update_shape)
@@ -585,9 +589,11 @@ nv_subset_assign <- function(x, ..., value) {
   if (!is_arrayish(value)) {
     cli_abort("Expected arrayish `value`, but got {.cls {class(value)[1]}}")
   }
-  aligned <- as_anvl_arrays(x, value)
-  x <- aligned[[1L]]
-  value <- aligned[[2L]]
+  # `value` is left as it is when it is an R value: it takes the dtype of the
+  # array it is assigned into, which subset_scatter_core() settles.
+  aligned <- align_arrayish(list(x, value))
+  x <- as_anvl_array(aligned$args[[1L]], device = aligned$device)
+  value <- aligned$args[[2L]]
 
   lhs_shape <- shape_abstract(x)
   # because we do NSE to determine `:`-calls

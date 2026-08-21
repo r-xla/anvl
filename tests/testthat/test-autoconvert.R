@@ -1,40 +1,40 @@
-test_that("jit: autoconverts length-1 numeric scalar to ambiguous nv_scalar", {
+test_that("jit: autoconverts length-1 numeric scalar", {
   f <- jit(identity)
   out <- f(1)
-  expect_equal(out, nv_scalar(1, ambiguous = TRUE))
+  expect_equal(out, nv_scalar(1))
 })
 
-test_that("jit: ambiguous autoconverted scalar + literal stays ambiguous", {
+test_that("jit: an autoconverted scalar plus a literal takes the default dtype", {
   f <- jit(\(x) x + 1)
   out <- f(1)
   expect_equal(dtype(out), as_dtype("f32"))
   expect_equal(shape(out), integer())
-  expect_true(ambiguous(out))
 })
 
-test_that("jit: autoconverts length-1 integer scalar to ambiguous nv_scalar", {
+test_that("jit: autoconverts length-1 integer scalar", {
   f <- jit(identity)
   out <- f(1L)
-  expect_equal(out, nv_scalar(1L, ambiguous = TRUE))
+  expect_equal(out, nv_scalar(1L))
 })
 
-test_that("jit: autoconverts length-1 logical scalar to ambiguous nv_scalar", {
+test_that("jit: autoconverts length-1 logical scalar", {
+  # A logical is the one R type that names its dtype: there is nothing for
+  # `TRUE` to become other than `bool`.
   f <- jit(identity)
   out <- f(TRUE)
-  expect_equal(out, nv_scalar(TRUE, ambiguous = TRUE))
+  expect_equal(out, nv_scalar(TRUE))
 })
 
-test_that("jit: promotes scalar dtype against non-ambiguous typed scalar", {
+test_that("jit: an R scalar takes the dtype of the typed array it meets", {
   f <- jit(\(x, y) x + y)
   out <- f(1, nv_scalar(2, dtype = "f64"))
   expect_equal(dtype(out), as_dtype("f64"))
-  expect_false(ambiguous(out))
 })
 
-test_that("jit: autoconverts matrix via nv_array (ambiguous)", {
+test_that("jit: autoconverts matrix via nv_array", {
   f <- jit(identity)
   out <- f(matrix(1:4, 2, 2))
-  expect_equal(out, nv_matrix(1:4, nrow = 2, ncol = 2, ambiguous = TRUE))
+  expect_equal(out, nv_matrix(1:4, nrow = 2, ncol = 2))
 })
 
 test_that("jit: autoconverts higher-axis array via nv_array", {
@@ -87,7 +87,7 @@ test_that("quickr: autoconverts scalar input", {
   local_backend("quickr")
   f <- jit(identity)
   out <- f(1)
-  expect_equal(out, nv_scalar(1, ambiguous = TRUE))
+  expect_equal(out, nv_scalar(1))
 })
 
 test_that("quickr: autoconverts matrix input", {
@@ -97,7 +97,7 @@ test_that("quickr: autoconverts matrix input", {
   out <- f(matrix(1:4, 2, 2))
   expect_equal(dtype(out), as_dtype("i32"))
   expect_equal(shape(out), c(2L, 2L))
-  expect_equal(out, nv_matrix(1:4, nrow = 2, ncol = 2, ambiguous = TRUE))
+  expect_equal(out, nv_matrix(1:4, nrow = 2, ncol = 2))
 })
 
 test_that("quickr: nested input tree with mixed AnvlArray/scalar still works", {
