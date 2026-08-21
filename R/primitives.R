@@ -2469,7 +2469,7 @@ prim_if <- new_primitive(
 
     register_consts(current_desc, desc_false$constants)
 
-    if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
+    if (!tree_equal(true_graph$out_tree, false_graph$out_tree)) {
       cli_abort("true and false branches must have the same output structure")
     }
 
@@ -2566,11 +2566,11 @@ prim_while <- new_primitive(
     register_consts(desc_body, desc_cond$constants)
     body_graph <- trace_fn(body, init, desc_body, mode = "subgraph")
 
-    if (!pjrt::tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
+    if (!tree_equal(cond_graph$in_tree, body_graph$in_tree)) {
       cli_abort("cond and body must have the same input structure")
     }
 
-    if (!pjrt::tree_equal(body_graph$in_tree, body_graph$out_tree)) {
+    if (!tree_equal(body_graph$in_tree, body_graph$out_tree)) {
       cli_abort("body must have the same input and output structure")
     }
 

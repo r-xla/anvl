@@ -349,8 +349,8 @@ test_that("Can propagate ambiguous float32 through integer/bool functions", {
 test_that("trace_fn matches args with formals", {
   graph1 <- trace_fn(prim_add, list(nv_aval("f32", c()), nv_aval("f32", c())))
   graph2 <- trace_fn(prim_add, list(lhs = nv_aval("f32", c()), rhs = nv_aval("f32", c())))
-  expect_true(pjrt::tree_equal(graph1$in_tree, graph2$in_tree))
-  expect_equal(pjrt::tree_child_names(graph1$in_tree), c("lhs", "rhs"))
+  expect_true(tree_equal(graph1$in_tree, graph2$in_tree))
+  expect_equal(tree_child_names(graph1$in_tree), c("lhs", "rhs"))
 })
 
 test_that("gradient works through graph with primitives that have no reverse rule", {

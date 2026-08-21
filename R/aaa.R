@@ -31,6 +31,8 @@ NULL
 #' @importFrom methods formalArgs
 #' @importFrom utils capture.output
 #' @importFrom stats median
+#' @useDynLib anvl, .registration = TRUE
+#' @importFrom Rcpp sourceCpp
 ## usethis namespace: end
 NULL
 

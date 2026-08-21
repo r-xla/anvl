@@ -46,6 +46,42 @@ When a function is JIT-compiled, anvl traces it by executing with `GraphBox` obj
 
 Key types: `GraphValue` (traced variable), `GraphLiteral` (embedded constant), `AbstractArray` (shape + dtype metadata), `AnvlGraph`.
 
+## Native layer (`src/`)
+
+anvl has a C++ layer, built with Rcpp. It holds two modules, both moved here
+from pjrt (which had a `src/` before anvl did, and no other reason to own them):
+
+- **The Dispatcher** (`src/dispatch*.{h,cpp}`, `src/dispatch_key.h`,
+  `src/lru_cache.h`, `R/dispatch.R`) — the eager-dispatch engine behind `jit()`.
+  It owns an executable cache keyed on the inputs' structure and abstract
+  values, and calls back into R to compile only on a miss. `PjrtEngine` runs a
+  compiled PJRT executable natively; `ClosureEngine` calls a compiled R closure
+  and is what the quickr backend uses. It is **internal**: `jit()` is the only
+  caller, and `backend-pjrt.R` / `backend-quickr.R` supply the `compile`
+  callback.
+- **The Rtree module** (`src/tree.{h,cpp}`, `src/hash.{h,cpp}`, `R/tree.R`) —
+  `build_tree()`/`flatten()`/`unflatten()` and the structural tree ops. Trees
+  are opaque `RTree` external pointers. It is anvl's analog of
+  [JAX's pytree](https://docs.jax.dev/en/latest/pytrees.html), which is where
+  the idea comes from.
+
+**anvl never calls pjrt's C++ directly.** It reaches PJRT objects through
+pjrt's C interface (`pjrt/api.h`, reached via `LinkingTo: pjrt`), which speaks
+only `SEXP`/`int`/`int64_t`/`const char*`. Two consequences to keep in mind
+when editing `dispatch_engine.cpp`:
+
+- Those entry points never raise an R error — they return a sentinel and leave
+  a message in `pjrt_c_last_error()`. Wrap every call in `pjrt_checked()`,
+  which raises the error here, where the throw unwinds the engine's own locals.
+- `PJRT_C_API_VERSION` is checked from `.onLoad`
+  (`check_pjrt_api_version()` in `R/zzz.R`), so a pjrt upgraded underneath an
+  installed anvl fails legibly instead of crashing in dispatch.
+
+The C++ unit tests (`src/test-dispatch.cpp`, `src/test-lru_cache.cpp`) run
+under Catch via testthat and cover the cache key, where a mistake does not
+error — it silently returns someone else's compiled program. They are compiled
+into every build; `tests/testthat/test-cpp.R` runs them.
+
 ## NSE and Tracing
 
 `force()` is only needed in higher-order primitives that trace R functions internally (e.g. `prim_sort` traces a comparator, `prim_scatter` traces an update computation). In those cases, force all arrayish inputs first so they aren't accidentally captured as unevaluated promises in the sub-graph descriptor — R's lazy evaluation otherwise causes hard-to-debug errors. Plain primitives that don't open a sub-descriptor don't need `force()`.

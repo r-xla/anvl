@@ -1,5 +1,30 @@
 # anvl (development version)
 
+## New features
+
+* anvl now has a native (C++) layer. The **Dispatcher** behind `jit()` and the
+  **Rtree module** have moved here from pjrt, which owned them only because it
+  had a `src/` directory and anvl did not. Neither was used by pjrt itself, and
+  both were written against anvl's own data model (`AnvlArray`, its dtype
+  vocabulary, its backend contract), which no longer has to leak across the
+  package boundary.
+* The full Rtree API is exported from anvl under its existing names —
+  `flatten()`, `unflatten()`, `build_tree()`, `tree_size()`, `tree_path()`,
+  `map_tree()`, `pmap_tree()` are unchanged, and `flatten_fun()`,
+  `tree_equal()`, `tree_hash()`, `tree_repr()`, `tree_diff()`,
+  `tree_root_kind()`, `tree_child_names()`, `tree_child_kinds()`,
+  `tree_child_sizes()`, `tree_concat()`, `tree_filter_by_names()` and
+  `tree_leaf_mask()` join them (they were `pjrt::` exports before).
+* The dispatcher itself is internal. It was `pjrt::dispatcher()` /
+  `pjrt::dispatch()`; it is an implementation detail of `jit()` and is no longer
+  part of any package's public API.
+
+## Dependencies
+
+* Requires pjrt (>= 0.6.0), and links against it (`LinkingTo`) for its C
+  interface. anvl is now a compiled package and needs a C++17 toolchain.
+
+
 # anvl 0.4.0
 
 ## Breaking changes

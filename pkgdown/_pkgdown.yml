@@ -410,12 +410,24 @@ reference:
     desc: Utilities for working with nested structures
     contents:
       - flatten
+      - flatten_fun
       - unflatten
       - build_tree
       - tree_size
       - tree_path
       - map_tree
       - pmap_tree
+      - tree_equal
+      - tree_hash
+      - tree_repr
+      - tree_diff
+      - tree_root_kind
+      - tree_child_names
+      - tree_child_kinds
+      - tree_child_sizes
+      - tree_concat
+      - tree_filter_by_names
+      - tree_leaf_mask
 
   - subtitle: Miscellaneous
     contents:

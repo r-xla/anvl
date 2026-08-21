@@ -29,7 +29,8 @@ Imports:
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.5.0),
+    pjrt (>= 0.6.0),
+    Rcpp,
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.4.0),
@@ -38,10 +39,15 @@ Imports:
     xlamisc (>= 0.4.1)
 Suggests:
     knitr,
+    xml2,
     quarto,
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
+LinkingTo:
+    pjrt (>= 0.6.0),
+    Rcpp,
+    testthat
 Additional_repositories:
     https://r-xla.r-universe.dev
 VignetteBuilder:
@@ -50,10 +56,13 @@ Config/testthat/edition: 3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
 Collate:
+    'RcppExports.R'
     'aaa.R'
     'api-distributions.R'
     'array.R'
     'device.R'
+    'tree.R'
+    'dispatch.R'
     'backend.R'
     'jit.R'
     'primitive.R'
@@ -71,6 +80,7 @@ Collate:
     'backend-quickr.R'
     'bibentries.R'
     'box.R'
+    'catch-routine-registration.R'
     'graph-passes.R'
     'graph.R'
     'graph-print.R'
@@ -89,4 +99,3 @@ Collate:
     'stablehlo.R'
     'zzz.R'
 Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3

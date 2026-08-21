@@ -52,7 +52,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   # target device (jit(device = ) or device_arg()) it copies buffer inputs to
   # the entry's device per call (move_inputs); otherwise the first input's
   # device is the call's device.
-  dispatcher <- pjrt::dispatcher(
+  dispatcher <- dispatcher(
     cache_size,
     jit_pjrt_compile_cb(f, static, donate, device),
     static = static,
@@ -67,7 +67,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   )
   # Hoisted out of the per-call path: `::` resolves via getExportedValue on
   # every evaluation, which costs ~1us per lookup.
-  dispatch <- pjrt::dispatch
+  dispatch <- dispatch
 
   # One call on already-evaluated args. This is the fast entry: jit_auto's
   # wrapper (which has already captured and evaluated the arguments) calls it

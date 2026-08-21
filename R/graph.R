@@ -611,7 +611,7 @@ trace_fn <- function(
     in_tree <- build_tree(args)
     args_flat <- flatten(args)
   }
-  f_flat <- pjrt::flatten_fun(f, in_tree = in_tree)
+  f_flat <- flatten_fun(f, in_tree = in_tree)
   if (is.null(desc)) {
     desc <- local_descriptor(in_tree = in_tree)
   } else {

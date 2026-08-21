@@ -1,0 +1,6 @@
+# C++17 for std::optional, used throughout the dispatcher.
+CXX_STD = CXX17
+
+# Hide everything but the registered entry points, as R recommends. The
+# include paths for Rcpp, testthat and pjrt come from LinkingTo.
+PKG_CXXFLAGS = $(C_VISIBILITY)

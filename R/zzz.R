@@ -20,7 +20,24 @@ register_s3_method <- function(pkg, generic, class, fun = NULL) {
   )
 }
 
+# The native dispatcher calls into pjrt through its C interface, whose
+# signatures are versioned. A pjrt upgraded underneath an already-installed
+# anvl would otherwise be found out only by a crash somewhere in dispatch.
+check_pjrt_api_version <- function() {
+  v <- impl_pjrt_api_versions()
+  if (v[["built"]] != v[["runtime"]]) {
+    cli_abort(c(
+      "{.pkg anvl} was built against version {v[['built']]} of {.pkg pjrt}'s C
+       interface, but the installed {.pkg pjrt} provides version
+       {v[['runtime']]}.",
+      i = "Reinstall {.pkg anvl} against the installed {.pkg pjrt}."
+    ))
+  }
+}
+
 .onLoad <- function(libname, pkgname) {
+  check_pjrt_api_version()
+
   # fmt: skip
   globals$ranges_raw <- list(
     ui8  = minmax_raw(8, FALSE),

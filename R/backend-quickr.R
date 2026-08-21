@@ -53,7 +53,7 @@ jit_quickr_compile_cb <- function(f, static, unwrap) {
 
 jit_quickr_impl <- function(f, static, cache_size, unwrap) {
   # use pjrt's "closure" engine for quickr.
-  dispatcher <- pjrt::dispatcher(
+  dispatcher <- dispatcher(
     cache_size,
     jit_quickr_compile_cb(f, static, unwrap),
     static = static,
@@ -73,7 +73,7 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
     # second one would split the cache without further work here.
     default_device = function() default_device("quickr")
   )
-  dispatch <- pjrt::dispatch
+  dispatch <- dispatch
 
   # The dispatcher validates the inputs itself and errors on anything the
   # compiled closure cannot take, so there is no fallback. The compiled
