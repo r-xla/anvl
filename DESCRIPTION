@@ -44,6 +44,8 @@ Suggests:
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
+Remotes:
+    r-xla/pjrt@dispatcher-to-anvl
 LinkingTo:
     pjrt (>= 0.6.0),
     Rcpp,
