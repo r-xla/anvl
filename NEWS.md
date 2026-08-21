@@ -25,7 +25,11 @@
   dtypes and returns one.
 * An operation's result is therefore an ordinary array of an ordinary type. A
   value that has committed no longer yields to a narrower type later on:
-  `(x_bool * 1L) + y_i16` is now `i32` rather than `i16`.
+  `(x_bool * 1L) + y_i16` is now `i32` rather than `i16`, and likewise against
+  `i8`, `ui8`, `ui16`, `ui32` and `ui64`.
+* `nv_serialize()` / `nv_save()` no longer write the array ambiguity into the
+  safetensors metadata, since there is none. Files written by earlier versions
+  still load; the metadata is ignored.
 
 # anvl 0.4.0
 

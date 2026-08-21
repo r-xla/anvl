@@ -41,6 +41,68 @@ test_that("an R array reaches an f64 use site exactly", {
   expect_identical(as.vector(x * array(c(0.1, sqrt(2)))), c(0.1, sqrt(2)))
 })
 
+test_that("an R value is uploaded in its own R category", {
+  # A logical can only be handed to the runtime as a logical, an integer as an
+  # integer: the upload stays in the value's category and the program converts
+  # out of it. Getting this wrong makes the upload itself fail.
+  x32 <- nv_array(c(1, 2), dtype = "f32")
+  expect_equal(as.vector(nv_mul(x32, TRUE)), c(1, 2))
+  expect_equal(as.vector(nv_add(TRUE, nv_array(1:2))), c(2L, 3L))
+  expect_equal(as.vector(nv_add(TRUE, nv_scalar(1, dtype = "f64"))), 2)
+  # an R logical array as a mask
+  expect_equal(as.vector(nv_mul(x32, array(c(TRUE, FALSE)))), c(1, 0))
+  # explicit conversions across the category boundary, in both directions
+  expect_equal(as.vector(jit(function(x) nv_convert(x, "i32"))(TRUE)), 1L)
+  expect_equal(as.vector(jit(function(x) nv_convert(x, "bool"))(1L)), TRUE)
+})
+
+test_that("an R double converted to an integer dtype keeps every digit", {
+  # The double is uploaded as f64 -- the one float that holds it exactly -- so
+  # the conversion sees the value itself rather than an f32 of it.
+  f <- jit(function(x) nv_convert(x, "i64"))
+  expect_equal(as_array(f(3e9)), 3000000000)
+  expect_equal(as_array(f(1e18)), 1e18)
+  expect_equal(as_array(f(-3e9)), -3000000000)
+  # ... and still truncates toward zero, like converting a typed array does.
+  expect_equal(as_array(f(1.9)), 1)
+  expect_equal(as_array(f(-1.9)), -1)
+})
+
+test_that("a bare R value works as a gradient argument", {
+  expect_equal(as_array(jit(gradient(function(v) v * v))(2)[[1L]]), 4)
+  expect_equal(as_array(jit(gradient(function(v) v * v))(nv_scalar(2))[[1L]]), 4)
+})
+
+test_that("a bare R value works as a subscript", {
+  x <- nv_array(c(1, 2, 3), dtype = "f32")
+  expect_equal(as.vector(jit(function(a, i) a[i])(x, 2L)), 2)
+  expect_equal(as.vector(jit(function(a) a[2])(x)), 2)
+})
+
+test_that("nv_array() gives a traced R value a dtype", {
+  # This is what the `dtype()` error tells the user to reach for, so it has to
+  # work -- and it has to be exact.
+  f <- jit(function(v) nv_array(v, dtype = "f64"))
+  expect_identical(as_array(f(sqrt(2))), sqrt(2))
+  expect_equal(dtype(jit(function(v) nv_scalar(v, dtype = "i64"))(2L)), as_dtype("i64"))
+  # Without a dtype it commits to its default.
+  expect_equal(dtype(jit(function(v) nv_array(v))(1)), as_dtype("f32"))
+  # A value that already has a dtype is not rebuilt this way.
+  expect_error(jit(function(v) nv_array(v + 1, dtype = "f64"))(1), "traced value")
+})
+
+test_that("dtype_abstract answers for an R value, dtype does not", {
+  # The API needs "what would this commit to" without forcing a commitment.
+  seen <- NULL
+  invisible(jit(function(x) {
+    seen <<- dtype_abstract(x)
+    x + nv_scalar(1, dtype = "f64")
+  })(sqrt(2)))
+  expect_equal(seen, as_dtype("f32"))
+  expect_equal(dtype_abstract(1.5), as_dtype("f32"))
+  expect_equal(dtype_abstract(1L), as_dtype("i32"))
+})
+
 test_that("an R value commits to the default dtype when nothing claims it", {
   expect_equal(dtype(jit(function() 1)()), as_dtype("f32"))
   expect_equal(dtype(jit(function() 1L)()), as_dtype("i32"))

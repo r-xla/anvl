@@ -507,14 +507,19 @@ subset_scatter_core <- jit(
     unique_indices,
     update_shape
   ) {
+    x <- commit_dtype(x)
     dt_x <- dtype(x)
     # An R value is assigned at the dtype of the array it goes into, so it is
     # built at that dtype rather than converted to it. What it is allowed to go
     # into is still decided by the dtype it would commit to: `x_i32[i] <- 1.5`
     # is a narrowing assignment either way.
-    dt_value <- if (is_rdata_box(value)) rdata_default_dtype(value) else dtype(value)
+    is_rdata <- is_rdata_box(value)
+    dt_value <- if (is_rdata) rdata_default_dtype(value) else dtype(value)
     if (dt_x != dt_value) {
-      if (!promotable_to(dt_value, dt_x)) {
+      # An R value yields to the array it is assigned into, exactly as it does
+      # in any other operation; a typed value has to be promotable to it.
+      ok <- if (is_rdata) promote_dt_rdata(dt_value, dt_x) == dt_x else promotable_to(dt_value, dt_x)
+      if (!ok) {
         cli_abort(
           "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_x)}"
         )

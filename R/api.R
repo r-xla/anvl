@@ -134,7 +134,7 @@ nv_promote_to_common <- function(...) {
   # its digits. So the values are aligned first and built afterwards, once the
   # common dtype is known.
   aligned <- align_arrayish(list(...))
-  cdt <- do.call(common_type_info, aligned$args)
+  cdt <- do.call(common_dtype_of, aligned$args)
   lapply(aligned$args, realize_at, dtype = cdt, device = aligned$device)
 }
 
@@ -1330,6 +1330,7 @@ nv_clamp <- function(min_val, x, max_val) {
   min_val <- args[[1L]]
   x <- args[[2L]]
   max_val <- args[[3L]]
+  x <- commit_dtype(x)
   op_dtype <- dtype(x)
   min_val <- nv_convert(min_val, op_dtype)
   max_val <- nv_convert(max_val, op_dtype)
@@ -1777,6 +1778,7 @@ nv_determinant <- function(x, logarithm = TRUE) {
     cli_abort("{.arg x} must be a square 2-D matrix")
   }
   n <- shp[[1L]]
+  x <- commit_dtype(x)
   dt <- dtype(x)
   # Empty matrix: det of the 0x0 matrix is the empty product = 1, so
   # log|det| = 0 and sign(det) = +1. This matches `base::determinant()`
@@ -1827,7 +1829,8 @@ nv_determinant <- function(x, logarithm = TRUE) {
 #' @export
 #' @jit
 nv_inv <- function(x) {
-  x <- as_anvl_array(x)
+  # The identity it builds takes `x`'s dtype, so `x` settles on one here.
+  x <- commit_dtype(as_anvl_array(x))
   shp <- shape(x)
   if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
     cli_abort("{.arg x} must be a square 2-D matrix")
@@ -1883,6 +1886,7 @@ nv_lu <- function(x) {
   m <- shp[[1L]]
   n <- shp[[2L]]
   k <- min(m, n)
+  x <- commit_dtype(x)
   dt <- dtype(x)
 
   # L = strict lower triangle of LU (shape (m, k)) + unit diagonal.
@@ -2018,7 +2022,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_reduce_sum(x, axes = axes, drop = drop)
@@ -2044,7 +2048,7 @@ nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
     is_nan <- nv_is_nan(x)
     total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
     count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
@@ -2072,7 +2076,7 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_reduce_prod(x, axes = axes, drop = drop)
@@ -2126,7 +2130,7 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 # to re-inject NaN — no input substitution can coax the kernel into emitting
 # NaN on output.
 .nv_reduce_extreme <- function(x, axes, drop, nan_rm, identity_val, prim_reduce) {
-  if (!is_dtype_float(dtype(x))) {
+  if (!is_dtype_float(dtype_abstract(x))) {
     return(prim_reduce(x, axes = axes, drop = drop))
   }
   is_nan <- nv_is_nan(x)
@@ -2200,7 +2204,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_cumsum(x, axis = axis)
@@ -2231,7 +2235,7 @@ nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_cumprod(x, axis = axis)
@@ -2298,7 +2302,7 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
@@ -2450,7 +2454,7 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   )
   diff <- x - mean_bc
   ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
     count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), "i32"), axes, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
@@ -3067,7 +3071,8 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' @export
 #' @jit static 2:5
 nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  # The interpolation weights are built `_like` x, so x settles on a dtype here.
+  x <- commit_dtype(as_anvl_array(x))
   rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("Cannot compute quantile of a 0-dimensional array")
@@ -3083,7 +3088,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- is_dtype_float(dtype(x))
+  is_float <- is_dtype_float(dtype_abstract(x))
   shp_kd <- replace(shp, axis, 1L)
   shp_K <- replace(shp, axis, K)
 
@@ -3261,7 +3266,7 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #
 .nv_arg_extreme <- function(x, axis, drop, nan_rm, prim_arg) {
   result <- prim_arg(x, axis = axis, drop = drop)
-  if (nan_rm || !is_dtype_float(dtype(x))) {
+  if (nan_rm || !is_dtype_float(dtype_abstract(x))) {
     return(result)
   }
   # argmax on the bool mask returns the index of the first TRUE (tie-break:

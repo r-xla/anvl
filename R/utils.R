@@ -174,9 +174,15 @@ naxes_abstract <- function(x) {
 }
 
 #' @rdname abstract_properties
+#' @details
+#' `dtype_abstract()` answers for an R value too, with the dtype it would
+#' commit to -- unlike [`dtype()`][tengen::dtype], which has nothing to report
+#' for one (see [`RDataArray`]). Use it wherever the API needs a dtype to
+#' decide something with, so that an R value does not have to commit just to be
+#' asked about.
 #' @export
 dtype_abstract <- function(x) {
-  dtype(to_abstract(x))
+  committed_dtype(to_abstract(x))
 }
 
 dtype2string <- function(dtype) {

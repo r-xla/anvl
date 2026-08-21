@@ -143,6 +143,24 @@ nv_array <- function(
     }
     return(data)
   }
+  if (is_rdata_box(data)) {
+    # An R value that has not taken a data type yet: build it at the one asked
+    # for, which is what makes `nv_array(x, dtype = )` the way to give a traced
+    # R value a type.
+    if (!is.null(shape) && !identical(as.integer(shape), shape(data))) {
+      cli_abort("Cannot change shape of a traced value from {.val {shape(data)}} to {.val {shape}}")
+    }
+    if (is.null(dtype)) {
+      return(commit_rdata(data))
+    }
+    return(materialize_rdata(data, as_dtype(dtype)))
+  }
+  if (is_box(data)) {
+    cli_abort(c(
+      "Cannot build an {.cls AnvlArray} from a traced value.",
+      i = "It already has a data type; use {.fn nv_convert} to change it."
+    ))
+  }
   if (!is.null(dtype)) {
     dtype <- as_dtype(dtype)
   }
@@ -300,10 +318,19 @@ realize_at <- function(x, dtype, device = NULL) {
     return(materialize_rdata(x, dtype))
   }
   if (!is_anvl_array(x) && !is_box(x) && is_valid_r(x)) {
-    if (is_valid_r_lit(x)) {
-      return(nv_scalar(x, dtype = dtype, device = device))
+    # Outside a trace the same rule applies as inside it: build the R value
+    # where it is exact, and let a conversion out of its category be the
+    # program's, not R's (see `materialize_rdata()`).
+    build_at <- if (rdata_builds_directly(typeof(x), dtype)) dtype else rdata_natural_dtype(typeof(x))
+    out <- if (is_valid_r_lit(x)) {
+      nv_scalar(x, dtype = build_at, device = device)
+    } else {
+      nv_array(x, dtype = build_at, device = device)
     }
-    return(nv_array(x, dtype = dtype, device = device))
+    if (build_at == dtype) {
+      return(out)
+    }
+    return(prim_convert(out, dtype = dtype))
   }
   if (dtype(x) == dtype) {
     return(x)
@@ -958,7 +985,8 @@ eq_type <- function(e1, e2) {
   if (!inherits(e1, "AbstractArray") || !inherits(e2, "AbstractArray")) {
     cli_abort("e1 and e2 must be AbstractArrays")
   }
-  if (e1$dtype != e2$dtype || !identical(e1$shape, e2$shape)) {
+  # An `RDataArray` compares as the dtype it would commit to; it has no other.
+  if (committed_dtype(e1) != committed_dtype(e2) || !identical(e1$shape, e2$shape)) {
     return(FALSE)
   }
   TRUE
@@ -1068,7 +1096,7 @@ to_abstract <- function(x, pure = FALSE) {
   } else if (is_abstract_array(x)) {
     x
   } else if (test_atomic(x) && (is.logical(x) || is.numeric(x))) {
-    LiteralArray(x, integer())
+    RDataArray(x, shape = if (is.null(dim(x))) integer() else as.integer(dim(x)))
   } else if (is_graph_box(x)) {
     gnode <- x$gnode
     gnode$aval
@@ -1076,7 +1104,7 @@ to_abstract <- function(x, pure = FALSE) {
     cli_abort("internal error: {.cls {class(x)}} is not an array-like object")
   }
   if (pure && class(x)[[1L]] != "AbstractArray") {
-    AbstractArray(dtype = x$dtype, shape = x$shape)
+    AbstractArray(dtype = committed_dtype(x), shape = x$shape)
   } else {
     x
   }

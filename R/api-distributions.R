@@ -76,6 +76,7 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
   x <- args[[1L]]
   mean <- args[[2L]]
   sd <- args[[3L]]
+  x <- commit_dtype(x)
   op_dtype <- dtype(x)
   mean <- nv_convert(mean, op_dtype)
   sd <- nv_convert(sd, op_dtype)
@@ -99,6 +100,7 @@ nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   q <- args[[1L]]
   mean <- args[[2L]]
   sd <- args[[3L]]
+  q <- commit_dtype(q)
   op_dtype <- dtype(q)
   mean <- nv_convert(mean, op_dtype)
   sd <- nv_convert(sd, op_dtype)
@@ -295,6 +297,7 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   p <- args[[1L]]
   mean <- args[[2L]]
   sd <- args[[3L]]
+  p <- commit_dtype(p)
   op_dtype <- dtype(p)
   mean <- nv_convert(mean, op_dtype)
   sd <- nv_convert(sd, op_dtype)

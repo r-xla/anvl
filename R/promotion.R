@@ -26,7 +26,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 # it meets, and contributes only the dtype it would commit to when it meets
 # nothing but other R values.
 # For internal use.
-common_type_info <- function(...) {
+common_dtype_of <- function(...) {
   args <- list(...)
   if (length(args) == 0L) {
     cli_abort("No arguments provided")
@@ -36,7 +36,7 @@ common_type_info <- function(...) {
   for (arg in args) {
     aval <- to_abstract(arg)
     is_rdata <- is_rdata_array(aval)
-    dt <- if (is_rdata) aval$default_dtype else aval$dtype
+    dt <- committed_dtype(aval)
     if (is.null(cdt)) {
       cdt <- dt
       cdt_is_rdata <- is_rdata
@@ -119,15 +119,21 @@ promote_dt_known <- function(dt1, dt2) {
 }
 
 default_dtype <- function(x) {
-  if (is.integer(x)) {
-    as_dtype("i32")
-  } else if (is.double(x)) {
-    as_dtype("f32")
-  } else if (is.logical(x)) {
-    as_dtype("bool")
-  } else {
+  if (!is.numeric(x) && !is.logical(x)) {
     cli_abort("No default type for: {.class class(x)[1L]}")
   }
+  default_dtype_r(typeof(x))
+}
+
+# The dtype an abstract array contributes wherever one is needed: an
+# `RDataArray` has none yet, so it contributes the one it would commit to.
+committed_dtype <- function(aval) {
+  if (is_rdata_array(aval)) aval$default_dtype else aval$dtype
+}
+
+# Whether a dtype holds whole numbers: signed or unsigned integers.
+is_dtype_intish <- function(x) {
+  is_dtype_int(x) || is_dtype_uint(x)
 }
 
 # The dtype an R value of this storage type commits to when nothing in the

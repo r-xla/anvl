@@ -93,11 +93,36 @@ rdata_default_dtype <- function(box) {
   box$gnode$aval$default_dtype
 }
 
+# The dtype that holds an R value of this storage type exactly. Building at it
+# is always faithful; every other dtype is reached by converting from it, so
+# that narrowing follows the program's own conversion semantics rather than R's
+# (they disagree: XLA clamps a float that overflows an integer dtype and maps
+# NaN to zero, R wraps or yields NA).
+rdata_natural_dtype <- function(r_type) {
+  switch(r_type, double = as_dtype("f64"), integer = as_dtype("i32"), logical = as_dtype("bool"))
+}
+
+# Whether an R value of this storage type can be built at `dtype` directly,
+# i.e. whether doing so gives the same value as building it at its natural
+# dtype and converting. It does within the value's own category (float to
+# float rounds once either way; an R integer reaches any 32-bit-or-wider
+# integer dtype unchanged), and for an R integer widened into a float. It does
+# not for anything narrowing out of a category, which is where R and the
+# program disagree.
+rdata_builds_directly <- function(r_type, dtype) {
+  switch(
+    r_type,
+    logical = is_dtype_bool(dtype),
+    integer = is_dtype_float(dtype) || (is_dtype_intish(dtype) && dtype_width(dtype) >= 32L),
+    double = is_dtype_float(dtype)
+  )
+}
+
 # Build `box`'s R value into the graph at `dtype`, and return the GraphBox for
 # it. Memoized per dtype on the node: a value used twice at one dtype is built
 # once. The value is always built from the R data itself, never converted from
-# a value that was built at another dtype -- that is what keeps `x_f64 /
-# sqrt(2)` exact.
+# a value that was built at another dtype in the same category -- that is what
+# keeps `x_f64 / sqrt(2)` exact.
 materialize_rdata <- function(box, dtype) {
   node <- box$gnode
   key <- as.character(dtype)
@@ -106,6 +131,14 @@ materialize_rdata <- function(box, dtype) {
     return(hit)
   }
   aval <- node$aval
+  if (!rdata_builds_directly(aval$r_type, dtype)) {
+    # Out of the value's own category: build it where it is exact and let the
+    # program convert, so the result is the one `nv_convert()` gives for a
+    # typed array of the same value.
+    out <- prim_convert(materialize_rdata(box, rdata_natural_dtype(aval$r_type)), dtype = dtype)
+    node$mat[[key]] <- out
+    return(out)
+  }
   desc <- box$desc
   out <- if (is.null(aval$data)) {
     # An argument of the jitted function: its value is unknown here (the
@@ -130,6 +163,14 @@ materialize_rdata <- function(box, dtype) {
 # Materialize at the dtype the value commits to when nothing else decided.
 commit_rdata <- function(box) {
   materialize_rdata(box, rdata_default_dtype(box))
+}
+
+# Give an arrayish value its dtype now. For an API function whose *result* type
+# is the argument's type -- the one it converts its other arguments to -- so
+# that the dtype it decided with and the value it goes on to use are the same
+# one. Anything that already has a dtype is returned unchanged.
+commit_dtype <- function(x) {
+  if (is_rdata_box(x)) commit_rdata(x) else x
 }
 
 # A fresh RData node for an R value written in the body of a traced function.
@@ -467,7 +508,7 @@ maybe_box_arrayish <- function(x, desc = .current_descriptor(), materialize = TR
     }
     return(get_box_or_register_const(desc, x$gnode))
   }
-  if (!materialize && is_valid_r(x)) {
+  if (!materialize && (is_valid_r_lit(x) || is_valid_r_array(x))) {
     return(new_rdata_box(desc, x))
   }
   if (is_valid_r_array(x)) {
@@ -633,7 +674,13 @@ finalize_rdata_inputs <- function(desc) {
   for (i in which(is_rdata)) {
     node <- inputs[[i]]
     aval <- node$aval
-    requested <- names(node$mat)
+    # Only the dtypes the value was *built* at can be uploaded; the memo also
+    # holds the results of converting out of its category, which the program
+    # computes from one of these.
+    requested <- Filter(
+      function(dt) rdata_builds_directly(aval$r_type, as_dtype(dt)),
+      names(node$mat)
+    )
     resolved <- resolve_upload_dtype(aval, requested)
     main <- node$mat[[resolved]] %||%
       GraphBox(GraphValue(AbstractArray(resolved, aval$shape)), desc)
@@ -655,25 +702,19 @@ finalize_rdata_inputs <- function(desc) {
 }
 
 # The single dtype an R argument is uploaded at, given every dtype the trace
-# asked for it at.
+# built it at. Those are all in the value's own category (materialize_rdata()
+# converts out of it inside the program instead), so the widest of them holds
+# every use site's value: a narrower site converts down from an exact upload,
+# which rounds exactly once.
 resolve_upload_dtype <- function(aval, requested) {
   if (!length(requested)) {
     return(as.character(aval$default_dtype))
   }
-  if (length(requested) == 1L) {
-    return(requested)
-  }
   dtypes <- lapply(requested, as_dtype)
-  is_float <- vapply(dtypes, is_dtype_float, logical(1L))
-  # Uploading in the value's own category and converting out of it rounds once;
-  # uploading in the other category and converting back can round twice.
-  preferred <- switch(aval$r_type, double = is_float, integer = !is_float, rep(TRUE, length(dtypes)))
-  if (!any(preferred)) {
-    preferred <- rep(TRUE, length(dtypes))
-  }
-  candidates <- dtypes[preferred]
-  widths <- vapply(candidates, dtype_width, integer(1L))
-  as.character(candidates[[which.max(widths)]])
+  widths <- vapply(dtypes, dtype_width, integer(1L))
+  # `order()` breaks a width tie by the dtype name, so the choice does not
+  # depend on the order the trace happened to ask in.
+  as.character(dtypes[[order(-widths, vapply(dtypes, as.character, character(1L)))[[1L]]]])
 }
 
 register_gvals <- function(desc, gvals) {

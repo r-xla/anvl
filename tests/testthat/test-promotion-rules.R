@@ -1,14 +1,14 @@
-test_that("common_type_info: single argument", {
-  expect_equal(common_type_info(AbstractArray("i32", Shape(c(1, 2)))), as_dtype("i32"))
-  expect_equal(common_type_info(RDataArray(1.5, integer())), as_dtype("f32"))
+test_that("common_dtype_of: single argument", {
+  expect_equal(common_dtype_of(AbstractArray("i32", Shape(c(1, 2)))), as_dtype("i32"))
+  expect_equal(common_dtype_of(RDataArray(1.5, integer())), as_dtype("f32"))
 })
 
-test_that("common_type_info: two typed arguments", {
+test_that("common_dtype_of: two typed arguments", {
   check <- function(dt1, dt2, expected) {
     s1 <- AbstractArray(dt1, Shape(c(1, 2)))
     s2 <- AbstractArray(dt2, Shape(c(2, 1)))
-    expect_equal(common_type_info(s1, s2), as_dtype(expected))
-    expect_equal(common_type_info(s2, s1), as_dtype(expected))
+    expect_equal(common_dtype_of(s1, s2), as_dtype(expected))
+    expect_equal(common_dtype_of(s2, s1), as_dtype(expected))
   }
 
   check("i32", "i32", "i32")
@@ -17,12 +17,12 @@ test_that("common_type_info: two typed arguments", {
   check("ui32", "i32", "i64")
 })
 
-test_that("common_type_info: an R value yields to a typed one", {
+test_that("common_dtype_of: an R value yields to a typed one", {
   check <- function(data, dt, expected) {
     rd <- RDataArray(data, integer())
     known <- AbstractArray(dt, Shape(c(2, 1)))
-    expect_equal(common_type_info(rd, known), as_dtype(expected))
-    expect_equal(common_type_info(known, rd), as_dtype(expected))
+    expect_equal(common_dtype_of(rd, known), as_dtype(expected))
+    expect_equal(common_dtype_of(known, rd), as_dtype(expected))
   }
 
   # It takes the dtype it meets, within its own category ...
@@ -38,12 +38,12 @@ test_that("common_type_info: an R value yields to a typed one", {
   check(TRUE, "i32", "i32")
 })
 
-test_that("common_type_info: R values among themselves take their defaults", {
+test_that("common_dtype_of: R values among themselves take their defaults", {
   check <- function(d1, d2, expected) {
     r1 <- RDataArray(d1, integer())
     r2 <- RDataArray(d2, integer())
-    expect_equal(common_type_info(r1, r2), as_dtype(expected))
-    expect_equal(common_type_info(r2, r1), as_dtype(expected))
+    expect_equal(common_dtype_of(r1, r2), as_dtype(expected))
+    expect_equal(common_dtype_of(r2, r1), as_dtype(expected))
   }
   check(1L, 2L, "i32")
   check(1.5, 2.5, "f32")
@@ -53,24 +53,24 @@ test_that("common_type_info: R values among themselves take their defaults", {
   check(TRUE, 1.5, "f32")
 })
 
-test_that("common_type_info: multiple arguments", {
+test_that("common_dtype_of: multiple arguments", {
   i32 <- AbstractArray("i32", Shape(1))
   f32 <- AbstractArray("f32", Shape(2))
   f64 <- AbstractArray("f64", Shape(3))
 
-  expect_equal(common_type_info(i32, f32, f64), as_dtype("f64"))
-  expect_equal(common_type_info(f64, f32, i32), as_dtype("f64"))
-  expect_equal(common_type_info(i32, i32, i32), as_dtype("i32"))
+  expect_equal(common_dtype_of(i32, f32, f64), as_dtype("f64"))
+  expect_equal(common_dtype_of(f64, f32, i32), as_dtype("f64"))
+  expect_equal(common_dtype_of(i32, i32, i32), as_dtype("i32"))
   # An R value in the middle still yields to the typed ones around it.
-  expect_equal(common_type_info(RDataArray(1L, integer()), AbstractArray("i64", Shape(2))), as_dtype("i64"))
+  expect_equal(common_dtype_of(RDataArray(1L, integer()), AbstractArray("i64", Shape(2))), as_dtype("i64"))
   expect_equal(
-    common_type_info(RDataArray(1.5, integer()), i32, AbstractArray("f64", Shape(1))),
+    common_dtype_of(RDataArray(1.5, integer()), i32, AbstractArray("f64", Shape(1))),
     as_dtype("f64")
   )
 })
 
-test_that("common_type_info: error on no arguments", {
-  expect_error(common_type_info(), "No arguments provided")
+test_that("common_dtype_of: error on no arguments", {
+  expect_error(common_dtype_of(), "No arguments provided")
 })
 
 test_that("promote_dt_known", {

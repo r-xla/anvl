@@ -94,6 +94,22 @@ dtype(nv_array(1L, dtype = "i32") + 1.5)
 dtype(nv_array(TRUE) + 1L)
 ```
 
+The full rule, for each of the three R types against every data type it can
+meet:
+
+```{r, echo = FALSE}
+r_types <- c(logical = "bool", integer = "i32", double = "f32")
+tbl <- matrix(NA_character_, length(r_types), length(dtypes))
+for (i in seq_along(r_types)) {
+  for (j in seq_along(dtypes)) {
+    tbl[i, j] <- repr(promote_dt_rdata(as_dtype(r_types[[i]]), as_dtype(dtypes[[j]])))
+  }
+}
+rownames(tbl) <- sprintf("%s()", names(r_types))
+colnames(tbl) <- dtypes
+knitr::kable(tbl, format = "html", caption = "What an R value becomes: R type (row) meeting a data type (column)")
+```
+
 When an R value meets nothing but other R values, there is nothing to take a type from, and it **commits to the default** for its R type:
 
 * `double()` -> `f32`

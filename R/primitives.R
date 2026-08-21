@@ -2709,6 +2709,7 @@ prim_print <- new_primitive(
     # it is not really one: stablehlo does not carry the dtype the way anvl
     # prints it.
     # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
+    x <- commit_dtype(x)
     footer <- sprintf("[ %s{%s} ]", as.character(dtype(x)), paste0(shape(x), collapse = ","))
     graph_desc_add(self, list(x = x), list(footer = footer), infer_fn = function(x, ...) {
       list(x)

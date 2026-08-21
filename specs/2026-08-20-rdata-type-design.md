@@ -46,12 +46,19 @@ convert.
 
 The flag existed to model exactly this yielding, by marking a *result* as
 literal-derived so it could yield again later. With the yielding attached to the
-uncommitted value itself, the flag has nothing left to do: comparing the two
-promotion paths, `promote_dt_ambiguous_to_known()` differed from
-`promote_dt_known()` only when the weak value was *wider* than the known one it
-met, and a value that commits either takes the default width or the dtype of the
-array it met, so a weak-but-wider value can no longer arise. `nv_add(1, 1)` is a
-plain `f32`.
+uncommitted value itself, the flag has nothing left to do: the yielding *rule*
+is unchanged (`promote_dt_rdata()` is `promote_dt_ambiguous_to_known()` under a
+new name, identical over every dtype pair), and only its *reach* changes -- it
+now applies to the operand that has not committed, rather than to every value
+descended from one. `nv_add(1, 1)` is a plain `f32`.
+
+What that costs is real, and larger than one example: a result that used to keep
+yielding now promotes normally. `(x_bool * 1L) + y_i16` is `i32` rather than
+`i16`, and the same goes for the other five `weak i32` x `{i8, i16, ui8, ui16,
+ui32, ui64}` cells -- including two where the old result was not simply the
+narrower dtype (`weak i32` x `ui32` was `ui32`, plain promotion is `i64`). The
+trade is deliberate: one mechanism instead of two, and a value's dtype no longer
+depends on how far back its ancestry reaches.
 
 This is PyTorch's model for Python scalars (a "wrapped number" yields for the one
 operation it takes part in, and results never carry the mark), rather than JAX's
@@ -118,9 +125,26 @@ generic, so working out what a value *would* commit to never commits it.
   graph constant.
 - **argument leaf** -> a `GraphValue` that becomes a program input of that dtype.
 
-Materializing an R value directly at a dtype is equivalent to materializing it at
-the default and converting (both truncate toward zero for integer targets), and
-is *exact* for float targets — which is the whole point.
+### Only within the value's own category
+
+Building the R value at the dtype directly is only sound while R's coercion and
+the program's `convert` agree, and they do not once the value leaves its own
+category: XLA clamps a float that overflows an integer dtype and maps `NaN` to
+zero, while R wraps or produces `NA` — and a literal that is out of range for the
+target cannot be written into the IR at all (`nv_convert(-1, "ui8")` would emit
+an unsigned constant of `-1`).
+
+So a value is built directly only at a dtype that holds it faithfully: a double
+at any float, an R integer at any float or any integer of at least 32 bits, a
+logical at `bool`. Every other target is reached by building at the value's
+**natural** dtype — `f64`, `i32`, `bool`, the one that holds the R value exactly
+— and emitting a `convert`. Narrowing is then the program's own, identical for a
+literal, an argument and an eager call, and identical to what a typed array of
+the same value would give.
+
+Within the category nothing is lost: float-to-float rounds exactly once whether
+it is built at the target or converted from `f64`, and an R integer reaches any
+32-bit-or-wider integer dtype unchanged.
 
 ### Argument leaves and the upload dtype
 
@@ -129,17 +153,13 @@ keys a raw R leaf on its storage type and shape only, so the compiled program
 must not depend on the value. A leaf therefore materializes into a *program
 input*, and the trace records which dtype that input needs.
 
-A leaf can be used at more than one dtype. The trace collects every dtype
-requested for a leaf and resolves one **upload dtype** — the highest precision
-requested, staying in the R value's own category where it can:
-
-- logical -> `bool`
-- integer -> the widest integer requested, else the widest float requested, else `i32`
-- double -> the widest float requested, else the widest integer requested, else `f32`
-
-The input is uploaded at that dtype and the remaining use sites get an in-graph
-`convert` from it. Since the upload is exact, converting down is a single
-rounding — identical to uploading at the narrower dtype directly.
+A leaf can be used at more than one dtype. Every dtype it is *built* at is in
+its own category (the rule above), so the widest of them holds every use site's
+value, and that is the **upload dtype**. A narrower site converts down from an
+exact upload, which rounds exactly once — the same result it would have had on
+its own, so no use site's value depends on which other sites exist. A leaf that
+is only ever converted out of its category uploads at its natural dtype, and the
+conversion happens in the program.
 
 In the overwhelmingly common case a leaf is used at exactly one dtype, and the
 graph contains no convert at all.
@@ -166,7 +186,12 @@ closure, which coerces them itself, so it needs nothing from this.
 - **No new f64 in f64-free programs**: an upload only widens to `f64` when an
   `f64` use site asked for it, i.e. when the program already contains `f64`.
 - **No surprise widening**: an R value never drags a program to a wider dtype;
-  it takes the one it meets, or the default.
+  it takes the one it meets, or the default. The one exception is a value that
+  is *only* converted out of its category, which uploads at its natural dtype
+  so the conversion sees the value itself.
+- **One answer per program**: a use site's value does not depend on what the
+  other use sites of the same value are, and the eager, in-body and argument
+  spellings of the same conversion all agree.
 
 ## Testing plan
 

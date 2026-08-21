@@ -35,15 +35,25 @@ the body of a traced function or passed as an argument to a jitted one -- is
 program at the dtype its use site needs, from the R data itself. That is what
 makes `x_f64 / sqrt(2)` exact.
 
-- Promotion decides the dtype: `common_type_info()` treats an `RDataArray` as
+- Promotion decides the dtype: `common_dtype_of()` treats an `RDataArray` as
   the yielding operand, and `nv_promote_to_common()` then *builds* it at the
   common dtype (`realize_at()`), rather than converting it from a default.
 - Every primitive call and every trace output commits whatever is left, at
   `default_dtype_r()` (`f32` / `i32` / `bool`), so a primitive never sees an
   uncommitted value.
-- `dtype()` on one errors -- there is nothing to report yet. Internal code that
-  needs a dtype to decide with should take it from promotion, or commit the
-  value first. `shape()` and `naxes()` answer as usual.
+- The value is built directly only at a dtype that holds it faithfully (a
+  double at any float, an R integer at any float or any >=32-bit integer, a
+  logical at `bool`); any other target is built at the natural dtype -- `f64` /
+  `i32` / `bool` -- and converted by the program. R's coercion and XLA's
+  `convert` disagree on overflow and `NaN`, so narrowing has to be the
+  program's.
+- `dtype()` on one errors -- there is nothing to report yet. **An `nv_*`
+  function that reads a dtype from its argument must not call `dtype()` on it**:
+  use `dtype_abstract()` to ask what it *would* commit to (a category test, a
+  `nan_rm` branch), or `commit_dtype()` when that dtype becomes the operation's
+  own -- what the other arguments get converted to, or what the result is built
+  `_like`. Forgetting this is silent until someone passes a bare R value.
+  `shape()` and `naxes()` answer as usual.
 - For a jitted function's argument, the value is unknown at trace time (the
   cache keys it by R type and shape only, so the program must not depend on it).
   It becomes a program input whose upload dtype the trace records in

@@ -143,10 +143,10 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
     ))
   }
-  if (!is_dtype_float(dtype(x))) {
+  if (!is_dtype_float(dtype_abstract(x))) {
     cli_abort(c(
       "{.arg {arg}} must have a floating-point dtype.",
-      "x" = "Got dtype {.val {as.character(dtype(x))}}."
+      "x" = "Got dtype {.val {as.character(dtype_abstract(x))}}."
     ))
   }
   invisible(NULL)

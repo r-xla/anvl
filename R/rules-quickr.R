@@ -182,7 +182,9 @@ quickr_emit_convert <- function(out_sym, operand_expr, shape_in, in_aval, out_av
   }
 
   cast_expr <- function(expr) {
-    if (dt_out == "f64") {
+    # quickr has no single-precision type: it carries `f32` as a double, so
+    # both float dtypes cast the same way.
+    if (dt_out == "f64" || dt_out == "f32") {
       return(rlang::call2("as.double", expr))
     }
 
