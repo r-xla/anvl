@@ -1,5 +1,14 @@
 # anvl (development version)
 
+## Testing
+
+* Added `test-jit-dispatch.R`, the integration tests for `jit()` driving pjrt's
+  native dispatcher. These previously lived in pjrt, which had to suggest anvl
+  to run them -- an inverted dependency. They belong here: anvl imports pjrt, so
+  this is the side that can check the two agree on the compile-callback
+  contract, on the `AnvlArray` layout the engine reads, and on the wrapped
+  outputs coming back as anvl arrays.
+
 # anvl 0.4.0
 
 ## Breaking changes
