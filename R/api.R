@@ -132,10 +132,8 @@ nv_promote_to_common <- function(...) {
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
   # converting an f32 `sqrt(2)` would only widen a number that had already lost
   # its digits. So the values are aligned first and built afterwards, once the
-  # common dtype is known.
-  aligned <- align_arrayish(list(...))
-  cdt <- do.call(common_dtype_of, aligned$args)
-  lapply(aligned$args, realize_at, dtype = cdt, device = aligned$device)
+  # common dtype is known. `as_anvl_arrays(promote = TRUE)` is that sequence.
+  as_anvl_arrays(..., promote = TRUE)
 }
 
 #' @title Broadcast Arrays to a Common Shape

@@ -194,7 +194,8 @@ nv_array <- function(
 #' Use this to canonicalize inputs at the start of a function so it works
 #' both with eager executing and in combination with [`jit()`].
 #' Use [`as_anvl_array()`] for a single input and [`as_anvl_arrays()`] for multiple inputs.
-#' The latter will also ensure all arrays are from the same backend and live on the same device.
+#' The latter will also ensure all arrays are from the same backend and live on the same device,
+#' and can additionally realize them all at one common dtype (`promote = TRUE`).
 #'
 #' @details
 #' During tracing, [boxes][GraphBox] are returned as is, and R literals and
@@ -210,11 +211,27 @@ nv_array <- function(
 #' @param device (`NULL` | [`device`])\cr
 #'   Target device. If `x` is an `AnvlArray` on a different device, an error
 #'   is raised.
+#' @param promote (`logical(1)`)\cr
+#'   If `TRUE`, every input is additionally realized at the common dtype of the
+#'   whole set (see [`common_dtype()`]), so the result agrees on dtype as well
+#'   as on backend and device. Defaults to `FALSE`, which leaves each input's
+#'   dtype alone.
+#'
+#'   Values are *realized* at that dtype rather than converted to it: an
+#'   [`RDataArray`] has no dtype to convert from, so it is built at the common
+#'   one directly, which is what keeps `x_f64 / sqrt(2)` exact. A side effect is
+#'   that promoting settles every `RDataArray` in the set, so a caller that
+#'   promotes needs no `commit_dtype()` of its own.
+#'
+#'   Note this is *promotion*, not anchoring: the result dtype is the common one
+#'   across all inputs, not the dtype of any particular argument.
 #' @return ([`AnvlArray`] for `as_anvl_array()`, `list` of [`AnvlArray`]s
 #'   for `as_anvl_arrays()`).
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_array(1L)
 #' as_anvl_arrays(nv_array(1:3), 1L)
+#' # dtypes left alone by default, realized at a common one with `promote`
+#' as_anvl_arrays(nv_array(1L), nv_array(1.5), promote = TRUE)
 #' @name as_anvl_array
 NULL
 
@@ -251,9 +268,18 @@ as_anvl_array <- function(x, device = NULL) {
 
 #' @rdname as_anvl_array
 #' @export
-as_anvl_arrays <- function(...) {
+as_anvl_arrays <- function(..., promote = FALSE) {
+  assert_flag(promote)
   aligned <- align_arrayish(list(...))
-  lapply(aligned$args, as_anvl_array, device = aligned$device)
+  if (!promote) {
+    return(lapply(aligned$args, as_anvl_array, device = aligned$device))
+  }
+  # Realized at the common dtype rather than converted to it: an R value has no
+  # dtype to convert *from*, so it is built at the common one directly (see
+  # `realize_at()`). That also settles every RData box in the set, which is why
+  # a caller that promotes needs no `commit_dtype()` of its own.
+  cdt <- do.call(common_dtype_of, aligned$args)
+  lapply(aligned$args, realize_at, dtype = cdt, device = aligned$device)
 }
 
 # Canonicalize one input without converting an R value: while tracing it

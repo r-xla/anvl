@@ -7,7 +7,7 @@
 \usage{
 as_anvl_array(x, device = NULL)
 
-as_anvl_arrays(...)
+as_anvl_arrays(..., promote = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -19,6 +19,21 @@ is raised.}
 
 \item{...}{(\code{\link{arrayish}})\cr
 Inputs to align.}
+
+\item{promote}{(\code{logical(1)})\cr
+If \code{TRUE}, every input is additionally realized at the common dtype of the
+whole set (see \code{\link[=common_dtype]{common_dtype()}}), so the result agrees on dtype as well
+as on backend and device. Defaults to \code{FALSE}, which leaves each input's
+dtype alone.
+
+Values are \emph{realized} at that dtype rather than converted to it: an
+\code{\link{RDataArray}} has no dtype to convert from, so it is built at the common
+one directly, which is what keeps \code{x_f64 / sqrt(2)} exact. A side effect is
+that promoting settles every \code{RDataArray} in the set, so a caller that
+promotes needs no \code{commit_dtype()} of its own.
+
+Note this is \emph{promotion}, not anchoring: the result dtype is the common one
+across all inputs, not the dtype of any particular argument.}
 }
 \value{
 (\code{\link{AnvlArray}} for \code{as_anvl_array()}, \code{list} of \code{\link{AnvlArray}}s
@@ -28,7 +43,8 @@ for \code{as_anvl_arrays()}).
 Use this to canonicalize inputs at the start of a function so it works
 both with eager executing and in combination with \code{\link[=jit]{jit()}}.
 Use \code{\link[=as_anvl_array]{as_anvl_array()}} for a single input and \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} for multiple inputs.
-The latter will also ensure all arrays are from the same backend and live on the same device.
+The latter will also ensure all arrays are from the same backend and live on the same device,
+and can additionally realize them all at one common dtype (\code{promote = TRUE}).
 }
 \details{
 During tracing, \link[=GraphBox]{boxes} are returned as is, and R literals and
@@ -41,5 +57,7 @@ For \code{AnvlArray} inputs, we check that they live on provided device (if spec
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_anvl_array(1L)
 as_anvl_arrays(nv_array(1:3), 1L)
+# dtypes left alone by default, realized at a common one with `promote`
+as_anvl_arrays(nv_array(1L), nv_array(1.5), promote = TRUE)
 \dontshow{\}) # examplesIf}
 }

@@ -31,6 +31,14 @@
   safetensors metadata, since there is none. Files written by earlier versions
   still load; the metadata is ignored.
 
+## Features
+
+* `as_anvl_arrays()` gains `promote`. It already aligned backend and device;
+  `promote = TRUE` additionally realizes every input at the common dtype of the
+  set. Because realizing settles an `RDataArray`, a caller that promotes needs
+  no `commit_dtype()` of its own. `nv_promote_to_common()` is now a call to it,
+  so the two share one implementation.
+
 # anvl 0.4.0
 
 ## Breaking changes

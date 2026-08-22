@@ -501,6 +501,68 @@ describe("as_anvl_arrays", {
     out <- f(nv_array(1:3), nv_array(4:6))
     expect_equal(as.integer(out), c(5L, 7L, 9L))
   })
+
+  it("leaves dtypes alone unless asked to promote", {
+    out <- as_anvl_arrays(nv_array(1L), nv_array(1.5))
+    expect_identical(as.character(dtype(out[[1L]])), "i32")
+    expect_identical(as.character(dtype(out[[2L]])), "f32")
+  })
+
+  it("realizes every input at the common dtype with promote = TRUE", {
+    out <- as_anvl_arrays(nv_array(1L), nv_array(1.5), promote = TRUE)
+    expect_identical(as.character(dtype(out[[1L]])), "f32")
+    expect_identical(as.character(dtype(out[[2L]])), "f32")
+    expect_equal(as.numeric(out[[1L]]), 1)
+    expect_equal(as.numeric(out[[2L]]), 1.5)
+  })
+
+  it("settles RData inputs, so no commit_dtype() is needed", {
+    # A bare R value carries no dtype until something decides one. Promoting is
+    # that decision, which is why a caller that promotes need not commit first.
+    out <- as_anvl_arrays(nv_array(c(1, 2), dtype = "f64"), 2L, promote = TRUE)
+    expect_identical(as.character(dtype(out[[1L]])), "f64")
+    expect_identical(as.character(dtype(out[[2L]])), "f64")
+    expect_equal(as.numeric(out[[2L]]), 2)
+  })
+
+  it("builds an R value at the common dtype rather than converting to it", {
+    # The point of realize_at(): converting an f32 sqrt(2) to f64 would only
+    # widen a number that had already lost its digits.
+    out <- as_anvl_arrays(nv_array(1, dtype = "f64"), sqrt(2), promote = TRUE)
+    expect_identical(as.character(dtype(out[[2L]])), "f64")
+    expect_equal(as.numeric(out[[2L]]), sqrt(2), tolerance = 1e-15)
+  })
+
+  it("promotes R literals onto the aligned device", {
+    dev <- nv_device("cpu:1", "pjrt")
+    x <- nv_array(c(1, 2), dtype = "f32", device = dev)
+    out <- as_anvl_arrays(x, 2L, promote = TRUE)
+    expect_equal(device(out[[1L]]), dev)
+    expect_equal(device(out[[2L]]), dev)
+  })
+
+  it("agrees with nv_promote_to_common(), which shares its implementation", {
+    x <- nv_array(1L)
+    y <- nv_array(1.5)
+    expect_equal(
+      lapply(as_anvl_arrays(x, y, promote = TRUE), as.numeric),
+      lapply(nv_promote_to_common(x, y), as.numeric)
+    )
+  })
+
+  it("promotes under jit() as well", {
+    f <- jit(function(x, y) {
+      args <- as_anvl_arrays(x, y, promote = TRUE)
+      args[[1L]] + args[[2L]]
+    })
+    out <- f(nv_array(1L), nv_array(1.5))
+    expect_identical(as.character(dtype(out)), "f32")
+    expect_equal(as.numeric(out), 2.5)
+  })
+
+  it("rejects a non-flag promote", {
+    expect_error(as_anvl_arrays(nv_array(1L), promote = "yes"))
+  })
 })
 
 describe("arr", {
