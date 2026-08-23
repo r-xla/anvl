@@ -52,14 +52,6 @@ Key types: `GraphValue` (traced variable), `GraphLiteral` (embedded constant), `
 
 ## Testing
 
-`jit()`'s integration with pjrt's native dispatcher is tested in
-`tests/testthat/test-jit-dispatch.R`. pjrt tests its own engine against
-hand-written fixtures and must not depend on anvl to do it, so this file is
-where the two are checked against each other: that anvl's real compile callback
-returns what the engine expects, and that a real `AnvlArray` carries what it
-reads. If the compile-callback contract changes on either side, this is the file
-that should catch it.
-
 Each rule of each primitive should be tested. Tests are organized as:
 
 - `tests/testthat/test-primitives-stablehlo.R` -- sources `inst/extra-tests/test-primitives-stablehlo-torch.R`
