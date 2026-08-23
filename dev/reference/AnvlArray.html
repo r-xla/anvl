@@ -325,8 +325,8 @@ The supported data types and devices differ between backends.</p>
 <span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -2.0947e+15  3.0882e-41 -2.0960e+15</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0882e-41 -2.0947e+15  3.0882e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        -nan       -nan 1.4013e-45</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013e-45 4.1853e+24 3.0885e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>
