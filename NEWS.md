@@ -1,5 +1,9 @@
 # anvl (development version)
 
+## Tests
+
+* Moved some of pjrt's dispatcher tests into anvl.
+
 # anvl 0.4.0
 
 ## Breaking changes
