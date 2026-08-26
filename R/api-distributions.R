@@ -378,3 +378,31 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   # Unstandardise as necessary
   mean + sd * res_std
 }
+
+#' @export
+#' @jit static "log"
+nv_dunif <- function(x, min = 0, max = 1, log = FALSE) {
+  assert_flag(log)
+  args <- as_anvl_arrays(x, min, max)
+  x <- args[[1L]]
+  min <- args[[2L]]
+  max <- args[[3L]]
+  op_dtype <- dtype(x)
+  min <- nv_convert(min, op_dtype)
+  max <- nv_convert(max, op_dtype)
+
+  # Density constant on support, just need support indicator
+  in_support <- (x >= min) & (x <= max)
+  width <- max - min
+
+  density <- if (log) {
+    nv_ifelse(in_support, -nv_log(width), -Inf)
+  } else {
+    nv_ifelse(in_support, 1 / width, 0)
+  }
+  # NOTE: `in_support` will eval to FALSE when x is NaN, so need to restore a
+  #       NaN result there. Similarly, the `max > min` check ensures NaN is
+  #       restored for same reason if either is NaN while also rejecting
+  #       reversed interval ends
+  nv_ifelse(!nv_is_nan(x) & (max > min), density, NaN)
+}
