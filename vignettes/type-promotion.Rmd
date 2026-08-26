@@ -144,10 +144,24 @@ f(nv_scalar(sqrt(2), dtype = "f64"))
 
 ## Asking for the Type of an R Value
 
-Because an R value has no type until it is used, asking for one is an error -- just as `dtype(1.5)` has no answer outside a program either:
+Because an R value has no type until it is used, asking for one is an error. This is
+the same answer inside a program and outside one -- `dtype(1.5)` has none to give
+either:
 
 ```{r, error = TRUE}
 jit(function(x) dtype(x))(1)
+```
+
+```{r, error = TRUE}
+dtype(1.5)
+```
+
+What you can ask is which type it *would* take if nothing claimed it, which
+`peek_dtype()` answers without settling the value:
+
+```{r}
+peek_dtype(1.5)
+peek_dtype(1L)
 ```
 
 Its *shape* is a different matter, and is answered as usual: `()` for a length-1 vector, `dim()` for an `array()`.

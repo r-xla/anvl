@@ -419,7 +419,7 @@ parse_subset_spec <- function(quo, axis_size) {
 
   # Array indices (AnvlArray or GraphBox)
   if (is_arrayish(e) && !is.atomic(e)) {
-    dt <- dtype_abstract(e)
+    dt <- peek_dtype(e)
     if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
       cli_abort("Dynamic indices must be integers, but got {.val {as.character(dt)}}")
     }
@@ -507,7 +507,7 @@ subset_scatter_core <- jit(
     unique_indices,
     update_shape
   ) {
-    x <- commit_dtype(x)
+    x <- as_anvl_array(x)
     dt_x <- dtype(x)
     # An R value is assigned at the dtype of the array it goes into, so it is
     # built at that dtype rather than converted to it. What it is allowed to go

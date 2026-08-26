@@ -2709,7 +2709,7 @@ prim_print <- new_primitive(
     # it is not really one: stablehlo does not carry the dtype the way anvl
     # prints it.
     # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
-    x <- commit_dtype(x)
+    x <- as_anvl_array(x)
     footer <- sprintf("[ %s{%s} ]", as.character(dtype(x)), paste0(shape(x), collapse = ","))
     graph_desc_add(self, list(x = x), list(footer = footer), infer_fn = function(x, ...) {
       list(x)
@@ -2872,8 +2872,8 @@ prim_scatter <- new_primitive(
     desc_update <- local_descriptor()
 
     # Create dummy arguments for tracing - use the input's dtype
-    x_dtype <- dtype_abstract(x)
-    update_dtype <- dtype_abstract(update)
+    x_dtype <- peek_dtype(x)
+    update_dtype <- peek_dtype(update)
     if (x_dtype != update_dtype) {
       cli_abort("{.arg x} and {.arg update} must have the same dtype")
     }

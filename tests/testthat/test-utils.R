@@ -11,13 +11,13 @@ test_that("dtype2string", {
   expect_equal(dtype2string(as_dtype("i32")), "i32")
 })
 
-test_that("dtype_abstract", {
+test_that("peek_dtype", {
   expect_equal(
-    dtype_abstract(1L),
+    peek_dtype(1L),
     as_dtype("i32")
   )
   expect_equal(
-    dtype_abstract(nv_scalar(1L, dtype = "f32")),
+    peek_dtype(nv_scalar(1L, dtype = "f32")),
     as_dtype("f32")
   )
 })

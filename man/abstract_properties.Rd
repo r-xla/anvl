@@ -4,14 +4,11 @@
 \alias{abstract_properties}
 \alias{shape_abstract}
 \alias{naxes_abstract}
-\alias{dtype_abstract}
 \title{Abstract Properties}
 \usage{
 shape_abstract(x)
 
 naxes_abstract(x)
-
-dtype_abstract(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr}

@@ -65,5 +65,9 @@ test_that("prim_while carries the dtype of its state", {
 test_that("a logical R value is a bool, not an uncommitted value", {
   f <- function(x) x * TRUE
   graph <- trace_fn(f, list(x = nv_scalar(1L)))
-  expect_equal(dtype(graph$calls[[1L]]$inputs[[2L]]$aval), as_dtype("i32"))
+  # The logical is built at `bool` -- the only dtype that holds it faithfully --
+  # and the program converts it to the dtype it met, so the multiply itself sees
+  # an i32.
+  mul <- Filter(function(call) call$primitive$name == "mul", graph$calls)[[1L]]
+  expect_equal(dtype(mul$inputs[[2L]]$aval), as_dtype("i32"))
 })

@@ -195,43 +195,73 @@ nv_array <- function(
 #' both with eager executing and in combination with [`jit()`].
 #' Use [`as_anvl_array()`] for a single input and [`as_anvl_arrays()`] for multiple inputs.
 #' The latter will also ensure all arrays are from the same backend and live on the same device,
-#' and can additionally realize them all at one common dtype (`promote = TRUE`).
+#' and can additionally bring them all to one dtype (`promote`).
 #'
 #' @details
-#' During tracing, [boxes][GraphBox] are returned as is, and R literals and
-#' arrays are boxed as [`RDataArray`]s -- values that carry their R data but no
-#' data type yet, and take one at their first use.
-#' During eager mode, R literals and arrays are converted to `AnvlArray`s on the specified device.
-#' For `AnvlArray` inputs, we check that they live on provided device (if specified).
+#' [Boxes][GraphBox] and [`AnvlArray`]s are returned as they are -- for an
+#' `AnvlArray` we check that it lives on `device`, if one is given.
+#'
+#' A bare R value is converted, always -- the same conversion while tracing and
+#' in eager mode. This is what the names say, and it matters that they mean one
+#' thing in both modes: an `nv_*` function built on them must not do two
+#' different things depending on whether it is called under [`jit()`].
+#'
+#' Which dtype it is converted at is the question these functions answer. An R
+#' value has none of its own (see [`RDataArray`]); it can take the one the
+#' operation settles on, which is what makes `x_f64 / sqrt(2)` exact, or -- with
+#' nothing to take it from -- its default (`f32` for a double, `i32` for an
+#' integer, `bool` for a logical).
+#'
+#' `as_anvl_arrays(promote = )` is the one that can be exact, because it decides
+#' the dtype and does the conversion in the same call. Without a `promote` rule
+#' there is nothing to decide from, so an R value takes its default, and a
+#' caller that goes on to convert it (`nv_convert(args[[2]], dtype(args[[1]]))`)
+#' has already lost the digits below that default. **An `nv_*` function whose
+#' result dtype depends on its arguments should say so with a
+#' [rule][promote_rule]** rather than canonicalize first and convert
+#' afterwards.
+#'
+#' To keep an R value open -- to hold it until the dtype is known -- do not
+#' canonicalize it at all: [`nv_convert()`] and the primitives take it as it is,
+#' and [`peek_dtype()`] answers what it would commit to without committing it.
 #'
 #' @param x ([`arrayish`])\cr
 #'   Input to standardize.
-#' @param ... ([`arrayish`])\cr
-#'   Inputs to align.
+#' @param ... ([`arrayish`], or a nested `list` of them)\cr
+#'   Inputs to align. An argument may be a tree of arrayish values -- the device
+#'   and the `promote` target are decided over every leaf of every argument, and
+#'   each argument comes back with the structure it had. Name the arguments to
+#'   be able to point `promote` at one of them.
 #' @param device (`NULL` | [`device`])\cr
 #'   Target device. If `x` is an `AnvlArray` on a different device, an error
 #'   is raised.
-#' @param promote (`logical(1)`)\cr
-#'   If `TRUE`, every input is additionally realized at the common dtype of the
-#'   whole set (see [`common_dtype()`]), so the result agrees on dtype as well
-#'   as on backend and device. Defaults to `FALSE`, which leaves each input's
-#'   dtype alone.
+#' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
+#'   Which dtype every input is brought to: [`promote_common()`] for the common
+#'   one, [`promote_like()`] for the one a particular argument has, or
+#'   [`promote_dtype()`] for one the caller names. `NULL` (default) decides
+#'   none, so each input keeps the dtype it has and an R value takes its
+#'   default.
 #'
-#'   Values are *realized* at that dtype rather than converted to it: an
-#'   [`RDataArray`] has no dtype to convert from, so it is built at the common
-#'   one directly, which is what keeps `x_f64 / sqrt(2)` exact. A side effect is
-#'   that promoting settles every `RDataArray` in the set, so a caller that
-#'   promotes needs no `commit_dtype()` of its own.
+#'   A *list* of rules promotes several groups of arguments independently; they
+#'   must name disjoint sets with `only`.
 #'
-#'   Note this is *promotion*, not anchoring: the result dtype is the common one
-#'   across all inputs, not the dtype of any particular argument.
-#' @return ([`AnvlArray`] for `as_anvl_array()`, `list` of [`AnvlArray`]s
-#'   for `as_anvl_arrays()`).
+#'   Inputs are *realized* at that dtype rather than converted to it: an R value
+#'   has no dtype to convert from, so it is built at the target directly, which
+#'   is what keeps `x_f64 / sqrt(2)` exact.
+#' @return ([`AnvlArray`], or a [`GraphBox`] while tracing, for
+#'   `as_anvl_array()`; a `list` of them for `as_anvl_arrays()`, keeping the
+#'   names of `...`).
+#' @seealso [peek_dtype()], [nv_promote_to_common()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_array(1L)
 #' as_anvl_arrays(nv_array(1:3), 1L)
-#' # dtypes left alone by default, realized at a common one with `promote`
-#' as_anvl_arrays(nv_array(1L), nv_array(1.5), promote = TRUE)
+#' # each input keeps its own dtype by default, brought to a common one with
+#' # `promote` -- and only then is an R value exact at it
+#' as_anvl_arrays(nv_array(1L), nv_array(1.5), promote = promote_common())
+#' # ... or to one particular argument's
+#' as_anvl_arrays(x = nv_array(1L), y = nv_array(1.5), promote = promote_like("x"))
+#' # an argument may be a tree, and comes back as one
+#' as_anvl_arrays(nv_array(1L), list(a = 1.5, b = list(2L)), promote = promote_common())
 #' @name as_anvl_array
 NULL
 
@@ -239,7 +269,7 @@ NULL
 #' @export
 as_anvl_array <- function(x, device = NULL) {
   if (is_box(x)) {
-    return(x)
+    return(commit_rdata_box(x))
   }
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
@@ -254,11 +284,10 @@ as_anvl_array <- function(x, device = NULL) {
     }
     return(x)
   }
+  # A bare R value: it has no dtype of its own, and nothing here says what it
+  # should be, so it takes its default.
   if (currently_tracing()) {
-    # Keep the R value as [`RDataArray`]: canonicalizing an input is not the
-    # same as deciding its dtype, and here we do not know yet what it will be
-    # combined with. It takes a dtype at its first use.
-    return(maybe_box_arrayish(x, materialize = FALSE))
+    return(maybe_box_arrayish(x))
   }
   if (is_valid_r_lit(x)) {
     return(nv_scalar(x, device = device))
@@ -268,25 +297,56 @@ as_anvl_array <- function(x, device = NULL) {
 
 #' @rdname as_anvl_array
 #' @export
-as_anvl_arrays <- function(..., promote = FALSE) {
-  assert_flag(promote)
-  aligned <- align_arrayish(list(...))
-  if (!promote) {
-    return(lapply(aligned$args, as_anvl_array, device = aligned$device))
+as_anvl_arrays <- function(..., promote = NULL) {
+  args <- list(...)
+  # An argument may be a whole tree of arrayish values, so the alignment and the
+  # promotion are decided over every *leaf* of every argument -- one device and
+  # one dtype across the call, however the caller nested them. The structure is
+  # captured first and restored around the aligned leaves, so `map_tree()` below
+  # walks trees whose R values have already been canonicalized.
+  tree <- build_tree(args)
+  aligned <- align_arrayish(flatten(args))
+  args <- unflatten(tree, aligned$args)
+  if (is.null(promote)) {
+    return(map_tree(args, as_anvl_array, device = aligned$device))
   }
-  # Realized at the common dtype rather than converted to it: an R value has no
-  # dtype to convert *from*, so it is built at the common one directly (see
-  # `realize_at()`). That also settles every RData box in the set, which is why
-  # a caller that promotes needs no `commit_dtype()` of its own.
-  cdt <- do.call(common_dtype_of, aligned$args)
-  lapply(aligned$args, realize_at, dtype = cdt, device = aligned$device)
+  # Every rule is resolved before any is applied, so a rule's target is read off
+  # the arguments as the caller passed them.
+  resolved <- resolve_promote_rules(promote, args)
+  # Realized at the target dtype rather than converted to it: an R value has no
+  # dtype to convert *from*, so it is built at the target directly (see
+  # `realize_at()`), with every digit it had. A rule covers whole arguments, so
+  # every leaf of one gets the same treatment.
+  for (rule in resolved) {
+    args[rule$positions] <- map_tree(
+      args[rule$positions],
+      realize_at,
+      dtype = rule$dtype,
+      device = aligned$device
+    )
+  }
+  # An argument no rule names is still aligned and converted, just not to a
+  # target.
+  rest <- setdiff(seq_along(args), unlist(lapply(resolved, `[[`, "positions")))
+  args[rest] <- map_tree(args[rest], as_anvl_array, device = aligned$device)
+  args
 }
 
-# Canonicalize one input without converting an R value: while tracing it
-# becomes an [`RDataArray`] box, and outside it stays the R value itself. Its
-# dtype is the caller's to decide (see `realize_at()`).
+# Canonicalize one input *without* deciding its dtype: an R value stays the R
+# value while not tracing and becomes an [`RDataArray`] box while tracing, so
+# the caller can build it at the dtype the operation settles on rather than at
+# the default. Not `as_anvl_array()`, which converts, by name and by contract.
+# For the two places that align a set of inputs and then decide the dtype over
+# some of them: `align_arrayish()` and, through it, `nv_ifelse()` and
+# `nv_subset_assign()`.
 as_anvl_array_lazy <- function(x) {
-  if (!is_anvl_array(x) && !is_box(x) && is_valid_r(x)) {
+  # A box is already canonical, and an RData one must stay open -- letting it
+  # fall through to `as_anvl_array()` would commit it, which is the whole point
+  # of not calling that here.
+  if (is_box(x)) {
+    return(x)
+  }
+  if (!is_anvl_array(x) && is_valid_r(x)) {
     if (currently_tracing()) {
       return(maybe_box_arrayish(x, materialize = FALSE))
     }
@@ -483,7 +543,24 @@ nv_empty <- function(dtype, shape, device = NULL, backend = NULL) {
 #' @rdname AbstractArray
 #' @export
 nv_aval <- function(dtype, shape) {
+  r_type <- r_type_of_aval_spec(dtype)
+  if (!is.null(r_type)) {
+    return(RDataArray(NULL, shape = shape, r_type = r_type))
+  }
   AbstractArray(dtype = dtype, shape = shape)
+}
+
+# The R storage types `nv_aval()` names, and their spellings. The `r_` prefix
+# says which vocabulary the string belongs to: `"dbl"` next to `"f32"` and
+# `"i32"` would read like one more dtype.
+r_type_aval_specs <- c(r_dbl = "double", r_int = "integer", r_lgl = "logical")
+
+# The R storage type an `nv_aval()` spec names, or NULL if it names a dtype.
+r_type_of_aval_spec <- function(dtype) {
+  if (!is.character(dtype) || length(dtype) != 1L || !dtype %in% names(r_type_aval_specs)) {
+    return(NULL)
+  }
+  r_type_aval_specs[[dtype]]
 }
 
 #' @export
@@ -662,11 +739,19 @@ backend.QuickrDevice <- function(x, ...) {
 #' - [`shape()`][tengen::shape]: Get the shape (axis sizes) of the array.
 #' - [`naxes()`][tengen::naxes]: Get the number of axes.
 #'
+#' @section R data:
+#' A value can also be one that has *no* dtype yet -- a bare R value, which only
+#' takes one where it is used (see [`RDataArray`]). `nv_aval()` builds that aval
+#' from the R storage type instead of a dtype: `"r_dbl"`, `"r_int"` or
+#' `"r_lgl"`. This is the aval of a bare R argument of a jitted function,
+#' whose value is unknown while tracing.
+#'
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
-#'   The data type of the array.
+#'   The data type of the array, or -- for `nv_aval()` -- one of `"r_dbl"`,
+#'   `"r_int"`, `"r_lgl"` for a value that has none yet.
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array. Can be provided as an integer vector.
-#' @seealso [LiteralArray], [ConcreteArray], [IotaArray], [GraphValue], [to_abstract()], [GraphBox]
+#' @seealso [LiteralArray], [ConcreteArray], [IotaArray], [RDataArray], [GraphValue], [to_abstract()], [GraphBox]
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' # -- Creating abstract arrays --
@@ -677,6 +762,9 @@ backend.QuickrDevice <- function(x, ...) {
 #'
 #' # Shorthand
 #' nv_aval("f32", c(2L, 3L))
+#'
+#' # An R value, which has no dtype until it is used
+#' nv_aval("r_dbl", c(2L, 3L))
 #'
 #' # How AbstractArrays appear in an AnvlGraph
 #' graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
@@ -878,13 +966,113 @@ is_rdata_array <- function(x) {
   inherits(x, "RDataArray")
 }
 
+#' @title R Data Input Class
+#' @description
+#' The [`AbstractArray`] of a program input that the caller supplies as bare R
+#' data. Unlike every other input it has no data type of its own to be supplied
+#' at: the program decides one (see [`RDataArray`]), and the runtime uploads the
+#' R value at that dtype rather than at the default for its R storage type.
+#'
+#' It is the resolved form of an [`RDataArray`]: an `RDataArray` is a value
+#' whose dtype is still open, an `RDataInput` is the same value once the
+#' finished trace has settled which dtype its input is supplied at. It is what
+#' makes an [`AnvlGraph`] self-describing about its inputs -- the backends read
+#' the upload dtypes off the inputs themselves, via `graph_input_dtypes()`.
+#'
+#' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
+#'   The dtype the R value is uploaded at.
+#' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
+#'   The shape of the value.
+#' @param r_type (`character(1)`)\cr
+#'   The R storage type the caller passes: `"double"`, `"integer"` or
+#'   `"logical"`.
+#' @return (`RDataInput`)
+#' @seealso [RDataArray], [AbstractArray]
+#' @examplesIf pjrt::plugins_downloaded()
+#' # An f64 program consuming an R double argument uploads it as f64.
+#' graph <- trace_fn(function(x) nv_scalar(1, dtype = "f64") + x, list(x = nv_aval("r_dbl", integer()))) # nolint
+#' graph$inputs[[1]]$aval
+#' @export
+RDataInput <- function(dtype, shape, r_type) {
+  structure(
+    list(dtype = as_dtype(dtype), shape = as_shape(shape), r_type = r_type),
+    class = c("RDataInput", "AbstractArray")
+  )
+}
+
+is_rdata_input <- function(x) {
+  inherits(x, "RDataInput")
+}
+
+#' @export
+format.RDataInput <- function(x, ...) {
+  sprintf("RDataInput(%s, %s, %s)", as.character(x$dtype), x$r_type, shape2string(x$shape))
+}
+
+#' @export
+print.RDataInput <- function(x, ...) {
+  cat(format(x), "\n")
+  invisible(x)
+}
+
+#' @export
+repr.RDataInput <- function(x, ...) {
+  sprintf("%s<-%s[%s]", repr(x$dtype), x$r_type, repr(x$shape))
+}
+
 #' @method dtype RDataArray
 #' @export
 dtype.RDataArray <- function(x, ...) {
+  abort_no_dtype(x$default_dtype)
+}
+
+# An R value is the same value whether it is boxed for a trace or not, so the
+# extractors have to answer the same way in both places -- otherwise an `nv_*`
+# function means one thing under `jit()` and another eagerly. `shape.array()`
+# (tengen) already covers an R array; these cover a length-1 vector, and refuse
+# a dtype for either.
+#' @method shape numeric
+#' @export
+shape.numeric <- function(x, ...) {
+  r_value_shape(x)
+}
+
+#' @method shape logical
+#' @export
+shape.logical <- function(x, ...) {
+  r_value_shape(x)
+}
+
+#' @method dtype numeric
+#' @export
+dtype.numeric <- function(x, ...) {
+  abort_no_dtype(default_dtype(x))
+}
+
+#' @method dtype logical
+#' @export
+dtype.logical <- function(x, ...) {
+  abort_no_dtype(default_dtype(x))
+}
+
+r_value_shape <- function(x) {
+  if (!is.null(dim(x))) {
+    return(as.integer(dim(x)))
+  }
+  if (length(x) != 1L) {
+    cli_abort(c(
+      "{.fn shape} is undefined for a length-{length(x)} R vector.",
+      i = "Only a length-1 R value and an {.fn array} are arrayish; use {.fn nv_array} to make one an array."
+    ))
+  }
+  integer()
+}
+
+abort_no_dtype <- function(default_dtype) {
   cli_abort(
     c(
       "An R value has no data type of its own until it is used.",
-      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it commits to the default ({.val {as.character(x$default_dtype)}}).", # nolint
+      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it commits to the default ({.val {as.character(default_dtype)}}).", # nolint
       i = "Give it one explicitly, e.g. {.fn nv_array} or {.fn nv_scalar} with {.arg dtype}."
     ),
     call = NULL
@@ -1012,7 +1200,7 @@ eq_type <- function(e1, e2) {
     cli_abort("e1 and e2 must be AbstractArrays")
   }
   # An `RDataArray` compares as the dtype it would commit to; it has no other.
-  if (committed_dtype(e1) != committed_dtype(e2) || !identical(e1$shape, e2$shape)) {
+  if (peek_dtype(e1) != peek_dtype(e2) || !identical(e1$shape, e2$shape)) {
     return(FALSE)
   }
   TRUE
@@ -1130,7 +1318,7 @@ to_abstract <- function(x, pure = FALSE) {
     cli_abort("internal error: {.cls {class(x)}} is not an array-like object")
   }
   if (pure && class(x)[[1L]] != "AbstractArray") {
-    AbstractArray(dtype = committed_dtype(x), shape = x$shape)
+    AbstractArray(dtype = peek_dtype(x), shape = x$shape)
   } else {
     x
   }

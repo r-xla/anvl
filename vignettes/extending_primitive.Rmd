@@ -276,14 +276,9 @@ In our case, no such convenience is needed and the functionality is not too low-
 nv_repeat_along <- prim_repeat_along
 ```
 
-Note that in the `nv_*` wrapper function, you can only access certain properties of the input arrayish values via:
-
-- `shape_abstract()`
-- `naxes_abstract()`
-- `dtype_abstract()`
-
-If you, for example, use `shape()` instead of `shape_abstract()`, your function won't work with R literals.
-I.e., `<extract>_abstract()` first converts the input to an `AbstractArray` (if possible) and then extracts the property.
+Note that in the `nv_*` wrapper function, the input may still be a bare R value -- one that has no data type yet (see `?RDataArray`).
+`shape_abstract()` and `naxes_abstract()` answer for any arrayish input by first converting it to an `AbstractArray`.
+For the data type there is `peek_dtype()`, which reports the type the value *would* commit to; `dtype()` errors on an R value, because there is nothing to report until it is used.
 
 ### Using Your Primitive
 

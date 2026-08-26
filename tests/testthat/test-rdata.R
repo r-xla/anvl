@@ -59,13 +59,15 @@ test_that("an R value is uploaded in its own R category", {
 test_that("an R double converted to an integer dtype keeps every digit", {
   # The double is uploaded as f64 -- the one float that holds it exactly -- so
   # the conversion sees the value itself rather than an f32 of it.
-  f <- jit(function(x) nv_convert(x, "i64"))
-  expect_equal(as_array(f(3e9)), 3000000000)
-  expect_equal(as_array(f(1e18)), 1e18)
-  expect_equal(as_array(f(-3e9)), -3000000000)
+  # `i64` comes back as a bit64::integer64; compare its digits, which is the
+  # only comparison that stays exact past 2^53.
+  f <- function(x) format(as_array(jit(function(v) nv_convert(v, "i64"))(x)))
+  expect_equal(f(3e9), "3000000000")
+  expect_equal(f(1e18), "1000000000000000000")
+  expect_equal(f(-3e9), "-3000000000")
   # ... and still truncates toward zero, like converting a typed array does.
-  expect_equal(as_array(f(1.9)), 1)
-  expect_equal(as_array(f(-1.9)), -1)
+  expect_equal(f(1.9), "1")
+  expect_equal(f(-1.9), "-1")
 })
 
 test_that("a bare R value works as a gradient argument", {
@@ -91,16 +93,16 @@ test_that("nv_array() gives a traced R value a dtype", {
   expect_error(jit(function(v) nv_array(v + 1, dtype = "f64"))(1), "traced value")
 })
 
-test_that("dtype_abstract answers for an R value, dtype does not", {
+test_that("peek_dtype answers for an R value, dtype does not", {
   # The API needs "what would this commit to" without forcing a commitment.
   seen <- NULL
   invisible(jit(function(x) {
-    seen <<- dtype_abstract(x)
+    seen <<- peek_dtype(x)
     x + nv_scalar(1, dtype = "f64")
   })(sqrt(2)))
   expect_equal(seen, as_dtype("f32"))
-  expect_equal(dtype_abstract(1.5), as_dtype("f32"))
-  expect_equal(dtype_abstract(1L), as_dtype("i32"))
+  expect_equal(peek_dtype(1.5), as_dtype("f32"))
+  expect_equal(peek_dtype(1L), as_dtype("i32"))
 })
 
 test_that("an R value commits to the default dtype when nothing claims it", {
@@ -217,6 +219,50 @@ test_that("a literal that only meets other literals takes the default", {
   out <- f(sqrt(2))
   expect_equal(dtype(out), as_dtype("f64"))
   expect_false(isTRUE(all.equal(as_array(out), 2 * sqrt(2) + 1, tolerance = 1e-15)))
+})
+
+test_that("a bare R value answers the extractors like an RDataArray", {
+  # Eagerly the R value *is* the uncommitted value, so it has to answer the way
+  # the boxed one does under jit().
+  expect_equal(shape(1.5), integer())
+  expect_equal(naxes(1.5), 0L)
+  expect_equal(shape(TRUE), integer())
+  expect_equal(shape(array(1:6, c(2, 3))), c(2L, 3L))
+  expect_error(dtype(1.5), "no data type of its own")
+  expect_error(dtype(1L), "no data type of its own")
+  expect_error(dtype(TRUE), "no data type of its own")
+  expect_error(dtype(array(1:6, c(2, 3))), "no data type of its own")
+  expect_equal(peek_dtype(1.5), as_dtype("f32"))
+  # A vector that is not an anvl value at all says so rather than lying.
+  expect_error(shape(c(1, 2, 3)), "undefined for a length-3")
+})
+
+test_that("the graph records the dtype each R input is uploaded at", {
+  graph <- trace_fn(
+    function(x, y) x + y,
+    list(x = nv_aval("f64", 2L), y = nv_aval("r_dbl", integer()))
+  )
+  # It lives on the input's own aval, not beside it.
+  expect_s3_class(graph$inputs[[1L]]$aval, "AbstractArray")
+  expect_false(is_rdata_input(graph$inputs[[1L]]$aval))
+  expect_s3_class(graph$inputs[[2L]]$aval, "RDataInput")
+  expect_equal(dtype(graph$inputs[[2L]]$aval), as_dtype("f64"))
+  expect_equal(graph$inputs[[2L]]$aval$r_type, "double")
+  # ... and the vector the backends read is derived from it.
+  expect_equal(graph_input_dtypes(graph), c(NA, "f64"))
+  # No R input at all means nothing to upload, and the backends skip the step.
+  plain <- trace_fn(function(x) x + 1, list(x = nv_aval("f64", 2L)))
+  expect_null(graph_input_dtypes(plain))
+})
+
+test_that("nv_pad builds the padding value at the array's dtype", {
+  for (dt in c("f64", "f32", "i8", "i32")) {
+    x <- nv_array(c(1L, 2L), dtype = dt)
+    expect_equal(dtype(nv_pad(x, 0, 1L, 1L)), as_dtype(dt), info = dt)
+    expect_equal(dtype(nv_pad(x, 0L, 1L, 1L)), as_dtype(dt), info = dt)
+  }
+  x <- nv_array(c(1, 2), dtype = "f64")
+  expect_identical(as.vector(nv_pad(x, sqrt(2), 1L, 0L)), c(sqrt(2), 1, 2))
 })
 
 test_that("RDataArray reports what the R value can answer", {

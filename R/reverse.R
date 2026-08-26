@@ -8,10 +8,10 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
         ))
       }
 
-      if (!is_dtype_float(dtype_abstract(args_flat[[i]]))) {
+      if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          x = "Got {repr(dtype_abstract(args_flat[[i]]))}"
+          x = "Got {repr(peek_dtype(args_flat[[i]]))}"
         ))
       }
     }

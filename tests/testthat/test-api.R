@@ -1554,6 +1554,31 @@ describe("literals adopt device of array siblings", {
     expect_true(eq_device(device(out), dev1))
   })
 
+  it("nv_ifelse when only one of the three names a device", {
+    # `nv_ifelse()` aligns all three arguments but promotes only the two values,
+    # which is why it works below `as_anvl_arrays()`. Each direction of that is
+    # load-bearing: dropping either half puts an input on the default device and
+    # the call fails.
+    #
+    # Only `pred` names one -- the branches are built on its device rather than
+    # on the default one.
+    out <- nv_ifelse(nv_array(c(TRUE, FALSE), device = dev1), 1, 0)
+    expect_true(eq_device(device(out), dev1))
+    # Only a branch names one, and `pred` is a bare R value.
+    out <- nv_ifelse(TRUE, nv_array(c(1, 2), dtype = "f64", device = dev1), 0)
+    expect_true(eq_device(device(out), dev1))
+  })
+
+  it("nv_ifelse promotes only the branches, leaving pred a bool", {
+    # An R branch value yields to the other branch's dtype; including `pred` in
+    # the promotion would convert it out of `bool`, which prim_ifelse rejects.
+    out <- nv_ifelse(arr(TRUE, FALSE), nv_array(c(1L, 2L), dtype = "i8"), 3L)
+    expect_equal(dtype(out), as_dtype("i8"))
+    out <- nv_ifelse(arr(TRUE, FALSE), nv_array(c(1, 2), dtype = "f64"), sqrt(2))
+    expect_equal(dtype(out), as_dtype("f64"))
+    expect_identical(as.vector(out)[[2L]], sqrt(2))
+  })
+
   it("nv_rbind with literal", {
     x <- nv_array(c(1, 2), device = dev1)
     out <- nv_rbind(x, arr(3, 4))

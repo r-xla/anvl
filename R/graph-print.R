@@ -22,7 +22,13 @@ format_literal <- function(node) {
 }
 
 format_aval_short <- function(aval) {
-  sprintf("%s[%s]", repr(dtype(aval)), paste(shape(aval), collapse = ", "))
+  out <- sprintf("%s[%s]", repr(dtype(aval)), paste(shape(aval), collapse = ", "))
+  if (is_rdata_input(aval)) {
+    # An input the caller supplies as bare R data, which the program uploads at
+    # the dtype shown -- worth seeing, since nothing else in the graph says so.
+    return(paste0(out, " <- ", aval$r_type))
+  }
+  out
 }
 
 build_node_ids <- function(inputs, constants, calls) {

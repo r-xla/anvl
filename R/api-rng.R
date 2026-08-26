@@ -139,10 +139,14 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
   dtype <- assert_float_dtype(dtype)
   shape <- assert_shapevec(shape)
   # `mean` and `sd` are arrayish: they may be traced values, so they cannot be
-  # validated here and are only required to broadcast against `shape`.
-  args <- as_anvl_arrays(mean, sd)
-  mean <- nv_convert(args[[1L]], dtype)
-  sd <- nv_convert(args[[2L]], dtype)
+  # validated here and are only required to broadcast against `shape`. The
+  # target is this function's own `dtype` argument rather than one of the
+  # inputs', which is what `promote_dtype()` is for -- realizing an R value
+  # there directly, instead of converting it from its default and rounding
+  # through `f32` on the way.
+  args <- as_anvl_arrays(mean, sd, promote = promote_dtype(dtype))
+  mean <- args[[1L]]
+  sd <- args[[2L]]
   # n: amount of rvs needed
   n <- prod(shape)
 

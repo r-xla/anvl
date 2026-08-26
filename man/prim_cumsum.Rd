@@ -17,7 +17,6 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Cumulative sum of array elements along a single axis.

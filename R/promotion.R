@@ -21,6 +21,228 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
   promote_dt_known(as_dtype(lhs_dtype), as_dtype(rhs_dtype))
 }
 
+#' @title Promotion Rules
+#' @name promote_rule
+#' @description
+#' Which data type [`as_anvl_arrays()`] brings its inputs to. A rule is passed
+#' as that function's `promote` argument; without one, each input keeps the data
+#' type it has and a bare R value takes its default.
+#'
+#' * `promote_common()` -- the common data type of the inputs
+#'   (see [`common_dtype()`]). What a binary operator does.
+#' * `promote_like()` -- the data type one particular input already has. For a
+#'   function whose result type *is* one argument's type, and whose other
+#'   arguments come along: `nv_clamp(min_val, x, max_val)` is `x`'s type.
+#' * `promote_dtype()` -- a data type the function names itself, rather than one
+#'   read off an input. For a function with an explicit `dtype` argument, such as
+#'   [`nv_rnorm()`].
+#'
+#' @details
+#' Inputs are *realized* at the target rather than converted to it: an R value
+#' has no data type to convert from, so it is built at the target directly and
+#' arrives with every digit it had (which is what keeps `x_f64 / sqrt(2)`
+#' exact). An input that already has a data type is converted, **even where that
+#' narrows** -- `promote_like()` and `promote_dtype()` say what the result type
+#' is, they do not negotiate it.
+#'
+#' `only` restricts the rule to some of the inputs. The rest are still aligned
+#' onto one device and converted, just not to the target -- for an argument that
+#' has no business taking part in the promotion, such as [`nv_ifelse()`]'s
+#' `pred`, which stays a `bool`.
+#'
+#' A rule names whole arguments, never individual values inside one. An argument
+#' that is a tree therefore takes part as a whole: all of its leaves contribute
+#' to the target, and all of them are brought to it.
+#'
+#' @section Several groups in one call:
+#' `promote` also takes a *list* of rules, which is how one call promotes
+#' several groups of arguments independently -- `x` and `y` to their common data
+#' type, `a` and `b` to theirs:
+#'
+#' ```r
+#' as_anvl_arrays(
+#'   x = x, y = y, a = a, b = b,
+#'   promote = list(
+#'     promote_common(only = c("x", "y")),
+#'     promote_common(only = c("a", "b"))
+#'   )
+#' )
+#' ```
+#'
+#' The rules may be of different kinds, and they are all resolved against the
+#' call's arguments before any of them is applied, so one group's target never
+#' depends on another's having been applied first. They must cover disjoint
+#' arguments -- a value cannot be brought to two data types -- and an argument
+#' no rule names is aligned and converted, as it would be without a rule at
+#' all.
+#'
+#' @param arg (`character(1)` | `numeric(1)`)\cr
+#'   Which input to take the data type from: its name in the
+#'   [`as_anvl_arrays()`] call, or its position. Naming it needs the call's
+#'   arguments to be named. An argument that is a tree contributes the common
+#'   data type of its leaves.
+#' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
+#'   The data type to bring the inputs to.
+#' @param only (`NULL` | `character()` | `numeric()`)\cr
+#'   Which inputs the rule applies to, by name or position. `NULL` (default) is
+#'   all of them.
+#' @return (`PromoteRule`)
+#' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' as_anvl_arrays(nv_array(1L), 1.5, promote = promote_common())
+#' as_anvl_arrays(x = nv_array(1L), y = 1.5, promote = promote_like("x"))
+#' as_anvl_arrays(nv_array(1L), 1.5, promote = promote_dtype("f64"))
+#' # `pred` is aligned and converted, but keeps out of the promotion
+#' as_anvl_arrays(
+#'   pred = nv_array(TRUE),
+#'   a = nv_array(1L),
+#'   b = 1.5,
+#'   promote = promote_common(only = c("a", "b"))
+#' )
+#' # two groups, promoted independently
+#' as_anvl_arrays(
+#'   x = nv_array(1L), y = 1.5,
+#'   a = nv_array(1L, dtype = "i8"), b = 2L,
+#'   promote = list(
+#'     promote_common(only = c("x", "y")),
+#'     promote_common(only = c("a", "b"))
+#'   )
+#' )
+NULL
+
+#' @rdname promote_rule
+#' @export
+promote_common <- function(only = NULL) {
+  PromoteRule("common", only = only)
+}
+
+#' @rdname promote_rule
+#' @export
+promote_like <- function(arg, only = NULL) {
+  assert_arg_ref(arg, "arg", len = 1L)
+  PromoteRule("like", only = only, arg = arg)
+}
+
+#' @rdname promote_rule
+#' @export
+promote_dtype <- function(dtype, only = NULL) {
+  PromoteRule("dtype", only = only, dtype = as_dtype(dtype))
+}
+
+# A tagged union over the three rules. The tag rather than three S3 subclasses:
+# the whole of the behaviour is `promote_target()`, and one function that shows
+# all three side by side is easier to read than three one-line methods.
+PromoteRule <- function(kind, only, ...) {
+  if (!is.null(only)) {
+    assert_arg_ref(only, "only")
+  }
+  structure(list(kind = kind, only = only, ...), class = "PromoteRule")
+}
+
+is_promote_rule <- function(x) {
+  inherits(x, "PromoteRule")
+}
+
+# A reference to one of `as_anvl_arrays()`'s inputs: a name, or a position.
+assert_arg_ref <- function(x, what, len = NULL) {
+  ok <- (is.character(x) || (is.numeric(x) && all(x == trunc(x)))) &&
+    !anyNA(x) &&
+    (is.null(len) || length(x) == len)
+  if (!ok) {
+    cli_abort(
+      "{.arg {what}} must be {if (is.null(len)) 'names or positions' else 'the name or position'} of {cli::qty(len %||% 2L)}{?an/} argument{?s}, not {.cls {class(x)}}." # nolint
+    )
+  }
+  invisible(x)
+}
+
+#' @export
+format.PromoteRule <- function(x, ...) {
+  detail <- switch(
+    x$kind,
+    common = "",
+    like = sprintf("(%s)", format_arg_ref(x$arg)),
+    dtype = sprintf("(%s)", repr(x$dtype))
+  )
+  only <- if (is.null(x$only)) "" else sprintf(" only %s", format_arg_ref(x$only))
+  sprintf("<promote_%s%s%s>", x$kind, detail, only)
+}
+
+format_arg_ref <- function(x) {
+  if (is.character(x)) {
+    return(paste0("\"", x, "\"", collapse = ", "))
+  }
+  paste(x, collapse = ", ")
+}
+
+#' @export
+print.PromoteRule <- function(x, ...) {
+  cat(format(x), "\n")
+  invisible(x)
+}
+
+# Resolve every rule of a call against its arguments, before any of them is
+# applied: a later rule reads the dtypes the earlier ones have not changed yet.
+# `promote` is one rule or a list of them; the list is how a call promotes
+# several groups independently, so the rules must cover disjoint arguments.
+# Returns a list of `list(dtype, positions)`.
+resolve_promote_rules <- function(promote, args) {
+  rules <- if (is_promote_rule(promote)) list(promote) else promote
+  if (!is.list(rules) || !length(rules) || !all(vapply(rules, is_promote_rule, logical(1L)))) {
+    cli_abort(c(
+      "{.arg promote} must be a promotion rule or a list of them, not {.cls {class(promote)}}.",
+      i = "Build one with {.fn promote_common}, {.fn promote_like} or {.fn promote_dtype}."
+    ))
+  }
+  resolved <- lapply(rules, resolve_promote_rule, args = args)
+  positions <- unlist(lapply(resolved, `[[`, "positions"))
+  clashing <- unique(positions[duplicated(positions)])
+  if (length(clashing)) {
+    named <- rlang::names2(args)[clashing]
+    cli_abort(c(
+      "More than one promotion rule covers the same argument.",
+      x = "{cli::qty(length(clashing))}Argument{?s} {.val {ifelse(nzchar(named), named, as.character(clashing))}} {?is/are} covered twice.", # nolint
+      i = "An argument can only be brought to one data type, so the rules must name disjoint sets with {.arg only}." # nolint
+    ))
+  }
+  resolved
+}
+
+# The dtype one rule brings its inputs to, and which of them it applies to.
+# Returns `list(dtype, positions)`; `positions` indexes `args`.
+resolve_promote_rule <- function(rule, args) {
+  positions <- if (is.null(rule$only)) seq_along(args) else arg_positions(rule$only, args, "only")
+  dtype <- switch(
+    rule$kind,
+    # Over the *leaves*: an argument may be a tree, and every value in it counts.
+    # An R value among them yields -- it contributes the dtype it would take on
+    # its own and takes the others' where there is one. For an argument that is a
+    # single value this is just that value's dtype.
+    common = do.call(common_dtype_of, flatten(args[positions])),
+    like = do.call(common_dtype_of, flatten(args[arg_positions(rule$arg, args, "arg")])),
+    dtype = rule$dtype
+  )
+  list(dtype = dtype, positions = positions)
+}
+
+# Resolve argument references -- names or positions -- against the call's
+# arguments.
+arg_positions <- function(ref, args, what) {
+  if (!is.character(ref)) {
+    assert_integerish(ref, lower = 1L, upper = length(args), .var.name = what)
+    return(as.integer(ref))
+  }
+  found <- match(ref, rlang::names2(args))
+  if (anyNA(found)) {
+    cli_abort(c(
+      "{.arg {what}} names {?an argument/arguments} this call does not have: {.val {ref[is.na(found)]}}.",
+      i = "The arguments are {.val {rlang::names2(args)}}.",
+      i = "Referring to one by name needs them named, e.g. {.code as_anvl_arrays(x = x, y = y, promote = promote_like(\"x\"))}." # nolint
+    ))
+  }
+  found
+}
+
 # The common dtype of several arrayish values, the one every operand of an
 # operation is brought to. An R value yields: it takes the dtype of the values
 # it meets, and contributes only the dtype it would commit to when it meets
@@ -36,7 +258,7 @@ common_dtype_of <- function(...) {
   for (arg in args) {
     aval <- to_abstract(arg)
     is_rdata <- is_rdata_array(aval)
-    dt <- committed_dtype(aval)
+    dt <- peek_dtype(aval)
     if (is.null(cdt)) {
       cdt <- dt
       cdt_is_rdata <- is_rdata
@@ -123,12 +345,6 @@ default_dtype <- function(x) {
     cli_abort("No default type for: {.class class(x)[1L]}")
   }
   default_dtype_r(typeof(x))
-}
-
-# The dtype an abstract array contributes wherever one is needed: an
-# `RDataArray` has none yet, so it contributes the one it would commit to.
-committed_dtype <- function(aval) {
-  if (is_rdata_array(aval)) aval$default_dtype else aval$dtype
 }
 
 # Whether a dtype holds whole numbers: signed or unsigned integers.

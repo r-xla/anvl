@@ -128,6 +128,9 @@ reference:
       - nv_broadcast_arrays
       - nv_broadcast_to
       - common_dtype
+      - promote_common
+      - promote_like
+      - promote_dtype
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
@@ -385,8 +388,9 @@ reference:
       - ConcreteArray
       - LiteralArray
       - RDataArray
+      - RDataInput
       - IotaArray
-      - dtype_abstract
+      - peek_dtype
       - shape_abstract
       - naxes_abstract
       - to_abstract

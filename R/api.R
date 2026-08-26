@@ -132,8 +132,8 @@ nv_promote_to_common <- function(...) {
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
   # converting an f32 `sqrt(2)` would only widen a number that had already lost
   # its digits. So the values are aligned first and built afterwards, once the
-  # common dtype is known. `as_anvl_arrays(promote = TRUE)` is that sequence.
-  as_anvl_arrays(..., promote = TRUE)
+  # common dtype is known. `promote_common()` is that sequence.
+  as_anvl_arrays(..., promote = promote_common())
 }
 
 #' @title Broadcast Arrays to a Common Shape
@@ -203,7 +203,9 @@ nv_broadcast_to <- function(x, shape) {
 #' @export
 nv_convert <- function(x, dtype) {
   # An R value is built at the target dtype rather than converted to it, so it
-  # keeps every digit it had.
+  # keeps every digit it had. `as_anvl_array_lazy()` rather than
+  # `as_anvl_array()`: converting at the default first is exactly the rounding
+  # this avoids.
   realize_at(as_anvl_array_lazy(x), as_dtype(dtype))
 }
 
@@ -501,13 +503,16 @@ nv_print <- prim_print
 #' @export
 #' @jit
 nv_ifelse <- function(pred, true_value, false_value) {
-  # Canonicalize all three inputs together so an R literal `true_value` /
-  # `false_value` inherits the device of `pred` (and vice versa). Doing the
-  # `nv_promote_to_common` step first would convert literals on the default
-  # device and then conflict with a non-default-device `pred`.
-  args <- as_anvl_arrays(pred, true_value, false_value)
-  promoted <- nv_promote_to_common(args[[2L]], args[[3L]])
-  args <- nv_broadcast_scalars(args[[1L]], promoted[[1L]], promoted[[2L]])
+  # All three are aligned together -- so an R literal branch is built on the
+  # device of `pred` rather than on the default one and then conflicting with it
+  # -- but only the two branches are promoted, `pred` staying a bool.
+  args <- as_anvl_arrays(
+    pred = pred,
+    true_value = true_value,
+    false_value = false_value,
+    promote = promote_common(only = c("true_value", "false_value"))
+  )
+  args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
 }
 
@@ -1324,15 +1329,8 @@ nv_popcnt <- prim_popcnt
 #' @export
 #' @jit
 nv_clamp <- function(min_val, x, max_val) {
-  args <- as_anvl_arrays(min_val, x, max_val)
-  min_val <- args[[1L]]
-  x <- args[[2L]]
-  max_val <- args[[3L]]
-  x <- commit_dtype(x)
-  op_dtype <- dtype(x)
-  min_val <- nv_convert(min_val, op_dtype)
-  max_val <- nv_convert(max_val, op_dtype)
-  prim_clamp(min_val, x, max_val)
+  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, promote = promote_like("x"))
+  prim_clamp(args$min_val, args$x, args$max_val)
 }
 
 #' @title Reverse
@@ -1453,9 +1451,11 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  args <- as_anvl_arrays(x, padding_value)
-  x <- args[[1L]]
-  padding_value <- args[[2L]]
+  # The padding value goes into `x`, so it is `x`'s dtype it has to arrive at --
+  # an R value is built there directly, and a typed one is converted.
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, promote = promote_like("x"))
+  x <- args$x
+  padding_value <- args$padding_value
   rank <- naxes(x)
   if (is.null(interior_padding)) {
     interior_padding <- rep(0L, rank)
@@ -1776,7 +1776,6 @@ nv_determinant <- function(x, logarithm = TRUE) {
     cli_abort("{.arg x} must be a square 2-D matrix")
   }
   n <- shp[[1L]]
-  x <- commit_dtype(x)
   dt <- dtype(x)
   # Empty matrix: det of the 0x0 matrix is the empty product = 1, so
   # log|det| = 0 and sign(det) = +1. This matches `base::determinant()`
@@ -1827,8 +1826,7 @@ nv_determinant <- function(x, logarithm = TRUE) {
 #' @export
 #' @jit
 nv_inv <- function(x) {
-  # The identity it builds takes `x`'s dtype, so `x` settles on one here.
-  x <- commit_dtype(as_anvl_array(x))
+  x <- as_anvl_array(x)
   shp <- shape(x)
   if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
     cli_abort("{.arg x} must be a square 2-D matrix")
@@ -1884,7 +1882,6 @@ nv_lu <- function(x) {
   m <- shp[[1L]]
   n <- shp[[2L]]
   k <- min(m, n)
-  x <- commit_dtype(x)
   dt <- dtype(x)
 
   # L = strict lower triangle of LU (shape (m, k)) + unit diagonal.
@@ -2020,7 +2017,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_reduce_sum(x, axes = axes, drop = drop)
@@ -2046,7 +2043,7 @@ nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     is_nan <- nv_is_nan(x)
     total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
     count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
@@ -2074,7 +2071,7 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_reduce_prod(x, axes = axes, drop = drop)
@@ -2128,7 +2125,7 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 # to re-inject NaN — no input substitution can coax the kernel into emitting
 # NaN on output.
 .nv_reduce_extreme <- function(x, axes, drop, nan_rm, identity_val, prim_reduce) {
-  if (!is_dtype_float(dtype_abstract(x))) {
+  if (!is_dtype_float(peek_dtype(x))) {
     return(prim_reduce(x, axes = axes, drop = drop))
   }
   is_nan <- nv_is_nan(x)
@@ -2202,7 +2199,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_cumsum(x, axis = axis)
@@ -2233,7 +2230,7 @@ nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_cumprod(x, axis = axis)
@@ -2300,7 +2297,7 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
@@ -2452,7 +2449,7 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   )
   diff <- x - mean_bc
   ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
-  if (nan_rm && is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), "i32"), axes, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
@@ -3069,8 +3066,7 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' @export
 #' @jit static 2:5
 nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
-  # The interpolation weights are built `_like` x, so x settles on a dtype here.
-  x <- commit_dtype(as_anvl_array(x))
+  x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("Cannot compute quantile of a 0-dimensional array")
@@ -3086,7 +3082,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- is_dtype_float(dtype_abstract(x))
+  is_float <- is_dtype_float(peek_dtype(x))
   shp_kd <- replace(shp, axis, 1L)
   shp_K <- replace(shp, axis, K)
 
@@ -3264,7 +3260,7 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #
 .nv_arg_extreme <- function(x, axis, drop, nan_rm, prim_arg) {
   result <- prim_arg(x, axis = axis, drop = drop)
-  if (nan_rm || !is_dtype_float(dtype_abstract(x))) {
+  if (nan_rm || !is_dtype_float(peek_dtype(x))) {
     return(result)
   }
   # argmax on the bool mask returns the index of the first TRUE (tie-break:

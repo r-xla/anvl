@@ -159,7 +159,7 @@ graph_to_quickr_make_wrapper <- function(
   wrapper_env$static_args_flat <- graph$static_args_flat
   wrapper_env$const_args <- const_args
   wrapper_env$restore_output <- quickr_restore_output
-  wrapper_env$input_dtypes <- graph$input_dtypes
+  wrapper_env$input_dtypes <- graph_input_dtypes(graph)
   wrapper_env$coerce_inputs <- quickr_coerce_inputs
 
   if (isTRUE(flat)) {

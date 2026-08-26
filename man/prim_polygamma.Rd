@@ -14,7 +14,6 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
 Element-wise polygamma function: the \code{(n+1)}-th derivative of the

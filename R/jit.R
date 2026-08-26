@@ -318,16 +318,16 @@ jit_auto_detect_backend <- function(args, static = character()) {
 # The flat argument list a compile callback traces with, built from the `info`
 # pjrt's dispatcher hands it: a static leaf traces as its value, a dynamic one
 # as the aval the dispatcher already derived. There is deliberately no
-# classification here -- the dtype and shape below are the ones the cache key
-# was built from, so the program we compile cannot disagree with the key it is
-# filed under.
+# classification here -- the kind, dtype and shape below are the ones the cache
+# key was built from, so the program we compile cannot disagree with the key it
+# is filed under.
 avals_from_dispatch <- function(info) {
   .mapply(
     function(leaf, is_static, av) {
       if (is_static) {
         return(leaf)
       }
-      if (!is_anvl_array(leaf)) {
+      if (av$kind == "rdata") {
         # Bare R data: it has no dtype of its own, and the program decides what
         # it is uploaded as (see `RDataArray`). Only the leaf's R type is read,
         # never its value -- the dispatcher keyed this entry on the type and

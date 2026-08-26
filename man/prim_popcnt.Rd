@@ -13,7 +13,6 @@ Arrayish value of data type integer or unsigned integer.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise population count (number of set bits).

@@ -242,7 +242,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     # The dtype each input is supplied at. Only an input built from bare R data
     # names one -- the dispatcher uploads the R data at that dtype instead of
     # its default, which is how an `f64` program gets the exact R double.
-    input_dtypes = graph$input_dtypes,
+    input_dtypes = graph_input_dtypes(graph),
     device = device(exec),
     phantom_specs = phantom_specs
   )

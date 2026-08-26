@@ -165,11 +165,42 @@ commit_rdata <- function(box) {
   materialize_rdata(box, rdata_default_dtype(box))
 }
 
-# Give an arrayish value its dtype now. For an API function whose *result* type
-# is the argument's type -- the one it converts its other arguments to -- so
-# that the dtype it decided with and the value it goes on to use are the same
-# one. Anything that already has a dtype is returned unchanged.
-commit_dtype <- function(x) {
+#' @title Peek at a Data Type
+#' @description
+#' The data type `x` would use if an operation needed one right now: its own
+#' where it has one, and the one it *would* commit to where it has none.
+#'
+#' An R value entering a program has no data type until it is used (see
+#' [`RDataArray`]), so [`dtype()`][tengen::dtype] has nothing to report for one
+#' and errors. `peek_dtype()` answers instead with the value's default (`f32`
+#' for a double, `i32` for an integer, `bool` for a logical) -- *without*
+#' committing it, which is the point: an `nv_*` function that needs a dtype only
+#' to decide something with (a category test, a `nan_rm` branch) must not force
+#' the value to settle just by asking.
+#'
+#' Where the dtype becomes the operation's own -- what the other arguments are
+#' converted to, or what the result is built `_like` -- the value has to commit
+#' for real; that is a `promote` rule of [`as_anvl_arrays()`] (exact, because it
+#' decides and converts in one step) or, failing that, [`as_anvl_array()`],
+#' which converts at the default. Not this.
+#'
+#' @param x ([`arrayish`] | [`AbstractArray`])\cr
+#'   The value to ask about.
+#' @return ([`tengen::DataType`])
+#' @seealso [as_anvl_arrays()], [RDataArray], [shape_abstract()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' peek_dtype(1.5)
+#' peek_dtype(1L)
+#' peek_dtype(nv_array(1:3, dtype = "i8"))
+#' @export
+peek_dtype <- function(x) {
+  aval <- to_abstract(x)
+  if (is_rdata_array(aval)) aval$default_dtype else aval$dtype
+}
+
+# A box, with any R value in it committed to its default dtype. Anything that
+# already has a dtype is returned unchanged.
+commit_rdata_box <- function(x) {
   if (is_rdata_box(x)) commit_rdata(x) else x
 }
 
@@ -272,12 +303,6 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'   `NULL` when all args are array inputs.
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
-#' @param input_dtypes (`NULL | character()`)\cr
-#'   One entry per element of `inputs`, naming the dtype that input is supplied
-#'   at, or `NA` where the caller passes its value through unchanged. Only an
-#'   input that came from bare R data ([`RDataArray`]) names a dtype: the R data
-#'   has none of its own, so the program decides what it is uploaded as.
-#'   `NULL` when no input came from R data.
 #' @return (`AnvlGraph`)
 # @export
 AnvlGraph <- function(
@@ -288,8 +313,7 @@ AnvlGraph <- function(
   outputs = list(),
   constants = list(),
   is_static_flat = NULL,
-  static_args_flat = NULL,
-  input_dtypes = NULL
+  static_args_flat = NULL
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -301,9 +325,23 @@ AnvlGraph <- function(
   env$constants <- constants
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
-  env$input_dtypes <- input_dtypes
 
   structure(env, class = "AnvlGraph")
+}
+
+# The dtype each of the graph's inputs is supplied at, for the backends that
+# have to upload it: one entry per input, `NA` for one the caller passes through
+# unchanged (an array, which already has its dtype). Only an input built from
+# bare R data names one -- it has no dtype of its own, so the program decided
+# what it is uploaded as, and the aval remembers it (see [`RDataInput`]).
+# `NULL` when no input came from R data, which is the overwhelmingly common
+# case and lets the callers skip the whole step.
+graph_input_dtypes <- function(graph) {
+  is_rdata <- vapply(graph$inputs, function(gval) is_rdata_input(gval$aval), logical(1L))
+  if (!any(is_rdata)) {
+    return(NULL)
+  }
+  ifelse(is_rdata, vapply(graph$inputs, function(gval) as.character(gval$aval$dtype), character(1L)), NA_character_)
 }
 
 #' @title Graph Descriptor
@@ -373,7 +411,6 @@ GraphDescriptor <- function(
   # the graph's inputs: the converts finalize_rdata_inputs() adds for an R
   # argument that one program used at more than one dtype.
   env$pre_calls <- list()
-  env$input_dtypes <- NULL
 
   structure(env, class = "GraphDescriptor")
 }
@@ -412,8 +449,7 @@ descriptor_to_graph <- function(descriptor) {
     outputs = descriptor$outputs,
     constants = descriptor$constants,
     is_static_flat = descriptor$is_static_flat,
-    static_args_flat = descriptor$static_args_flat,
-    input_dtypes = descriptor$input_dtypes
+    static_args_flat = descriptor$static_args_flat
   )
   maybe_restore_previous_desc(descriptor)
   graph
@@ -655,7 +691,9 @@ register_rdata_input <- function(desc, aval) {
 }
 
 # Settle every R argument of a finished trace: which dtype its input is
-# supplied at, and the converts for any further dtype the body used it at.
+# supplied at, and the converts for any further dtype the body used it at. The
+# resolved dtype is written onto the input's own aval, as an [`RDataInput`], so
+# the finished graph carries it where the input is rather than beside it.
 #
 # The upload dtype is the highest precision the body asked for, staying in the
 # R value's own category where it can -- an R integer used as both `i64` and
@@ -669,7 +707,6 @@ finalize_rdata_inputs <- function(desc) {
   if (!any(is_rdata)) {
     return(invisible(NULL))
   }
-  dtypes <- rep(NA_character_, length(inputs))
   pre_calls <- list()
   for (i in which(is_rdata)) {
     node <- inputs[[i]]
@@ -684,8 +721,8 @@ finalize_rdata_inputs <- function(desc) {
     resolved <- resolve_upload_dtype(aval, requested)
     main <- node$mat[[resolved]] %||%
       GraphBox(GraphValue(AbstractArray(resolved, aval$shape)), desc)
+    main$gnode$aval <- RDataInput(resolved, aval$shape, aval$r_type)
     inputs[[i]] <- main$gnode
-    dtypes[[i]] <- resolved
     for (other in setdiff(requested, resolved)) {
       pre_calls[[length(pre_calls) + 1L]] <- PrimitiveCall(
         primitive = prim_convert,
@@ -696,7 +733,6 @@ finalize_rdata_inputs <- function(desc) {
     }
   }
   desc$inputs <- inputs
-  desc$input_dtypes <- dtypes
   desc$pre_calls <- c(desc$pre_calls, pre_calls)
   invisible(NULL)
 }

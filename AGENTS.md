@@ -49,15 +49,35 @@ makes `x_f64 / sqrt(2)` exact.
   program's.
 - `dtype()` on one errors -- there is nothing to report yet. **An `nv_*`
   function that reads a dtype from its argument must not call `dtype()` on it**:
-  use `dtype_abstract()` to ask what it *would* commit to (a category test, a
-  `nan_rm` branch), or `commit_dtype()` when that dtype becomes the operation's
-  own -- what the other arguments get converted to, or what the result is built
+  use `peek_dtype()` to ask what it *would* commit to (a category test, a
+  `nan_rm` branch), or commit it when that dtype becomes the operation's own --
+  what the other arguments get converted to, or what the result is built
   `_like`. Forgetting this is silent until someone passes a bare R value.
   `shape()` and `naxes()` answer as usual.
+- **`as_anvl_array()` / `as_anvl_arrays()` always convert**, and identically
+  while tracing and eagerly -- an `nv_*` function must not mean two things
+  depending on whether it is under `jit()`. Call `as_anvl_arrays()` once over
+  the whole argument set at the top of an `nv_*` function: it aligns devices and
+  backends, promotes, and leaves every argument something `dtype()` / `device()`
+  answer for. An argument may be a tree of arrayish values; the device and the
+  dtype are decided over every leaf, and each argument comes back with the
+  structure it had. The `promote` argument takes a rule -- `promote_common()`,
+  `promote_like(arg)` or `promote_dtype(dtype)`, each optionally restricted with
+  `only =`, or a *list* of rules for independent groups -- and *realizes* every
+  input it covers at that dtype, which is what keeps the R values exact. **Without a rule an R value converts at its
+  default**, so a function whose result dtype depends on its arguments must say
+  so with a rule rather than canonicalize first and `nv_convert()` afterwards.
+- To hold an R value open until the dtype is known, do *not* canonicalize it:
+  `nv_convert()` and the primitives take it as it is, and `peek_dtype()` answers
+  what it would take. The internal `align_arrayish()` aligns devices without
+  deciding any dtype; `nv_subset_assign()` still needs it, because the dtype it
+  settles on is decided after a promotability check that has to see the
+  uncommitted value.
 - For a jitted function's argument, the value is unknown at trace time (the
   cache keys it by R type and shape only, so the program must not depend on it).
-  It becomes a program input whose upload dtype the trace records in
-  `graph$input_dtypes` and pjrt's dispatcher applies.
+  It becomes a program input whose aval is an `RDataInput`, carrying the dtype
+  the trace decided it is uploaded at; `graph_input_dtypes()` reads those off
+  for pjrt's dispatcher and the quickr wrapper to apply.
 
 There is no "weak"/ambiguous flag on arrays: once a value has committed it is an
 ordinary array of an ordinary dtype. See `vignette("type-promotion")`.

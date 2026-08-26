@@ -12,8 +12,7 @@ AnvlGraph(
   outputs = list(),
   constants = list(),
   is_static_flat = NULL,
-  static_args_flat = NULL,
-  input_dtypes = NULL
+  static_args_flat = NULL
 )
 }
 \arguments{
@@ -43,13 +42,6 @@ Boolean mask indicating which flat positions in \code{in_tree} are static (non-a
 
 \item{static_args_flat}{(\code{NULL | list()})\cr
 Flattened traced values for the static arguments indicated by \code{is_static_flat}.}
-
-\item{input_dtypes}{(\code{NULL | character()})\cr
-One entry per element of \code{inputs}, naming the dtype that input is supplied
-at, or \code{NA} where the caller passes its value through unchanged. Only an
-input that came from bare R data (\code{\link{RDataArray}}) names a dtype: the R data
-has none of its own, so the program decides what it is uploaded as.
-\code{NULL} when no input came from R data.}
 }
 \value{
 (\code{AnvlGraph})
