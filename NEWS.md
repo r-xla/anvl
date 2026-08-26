@@ -1,5 +1,10 @@
 # anvl (development version)
 
+## Features
+
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
+
 # anvl 0.4.0
 
 ## Breaking changes

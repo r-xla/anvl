@@ -379,6 +379,72 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   mean + sd * res_std
 }
 
+#' @title The Uniform Distribution
+#' @name nv_uniform
+#' @description
+#' Density (`nv_dunif`), distribution function (`nv_punif`), and quantile
+#' function (`nv_qunif`) for the Uniform distribution on the interval from
+#' `min` to `max`.
+#' @param x,q ([`arrayish`])\cr
+#'   Quantiles at which to evaluate the density (`x`) or the distribution
+#'   function (`q`).
+#' @param p ([`arrayish`])\cr
+#'   Probabilities at which to evaluate the quantile function. Values outside
+#'   \eqn{[0, 1]} give `NaN`.
+#' @param min,max ([`arrayish`])\cr
+#'   Lower and upper limits of the distribution. Either scalars, or arrays of
+#'   exactly the same shape as `x`/`q`/`p`, in which case the interval varies
+#'   elementwise and each element of `x`/`q`/`p` is evaluated against its own
+#'   `min`/`max`.
+#' @param log,log_p (`logical(1)`)\cr
+#'   If `TRUE`, the densities/probabilities are given as logarithms. For
+#'   `nv_qunif` this describes the input `p`.
+#' @param lower_tail (`logical(1)`)\cr
+#'   If `TRUE` (default), probabilities are \eqn{P(X \le x)}; otherwise,
+#'   \eqn{P(X > x)}.
+#' @details
+#' The Uniform distribution has probability density function:
+#' \deqn{f(x) = \frac{1}{b - a}, \quad a \le x \le b}
+#' and zero elsewhere, where \eqn{a} is `min` and \eqn{b} is `max`.
+#' The `min` and `max` are converted to the data type of `x`/`q`/`p`.
+#'
+#' All three are univariate functions evaluated elementwise, returning one
+#' value per element of `x`/`q`/`p`. Non-scalar `min`/`max` therefore give a
+#' separate univariate Uniform per element, *not* a multivariate Uniform over
+#' the hyper-rectangle \eqn{\prod_i [a_i, b_i]}. For that, reduce over the
+#' result: `nv_reduce_prod(nv_dunif(x, min, max))`, or
+#' `nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
+#'
+#' @seealso [nv_runif()] for sampling from a uniform distribution.
+#' @return
+#' `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an [`arrayish`] with the
+#' same shape and data type as `x`/`q`/`p`.
+#'
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(-0.5, 0, 0.25, 1, 1.5))
+#' nv_dunif(x)
+#' nv_dunif(x, min = -1, max = 2)
+#' nv_dunif(x, log = TRUE)
+#'
+#' # `min`/`max` may vary elementwise, giving one univariate Uniform per
+#' # element rather than a single distribution over a hyper-rectangle
+#' lower <- nv_array(c(-1, -1, 0, 0, 1))
+#' upper <- nv_array(c(0, 1, 1, 2, 2))
+#' nv_dunif(x, min = lower, max = upper)
+#'
+#' nv_punif(x)
+#' nv_punif(x, min = -1, max = 2)
+#' nv_punif(x, lower_tail = FALSE)
+#' nv_punif(x, log_p = TRUE)
+#'
+#' p <- nv_array(c(0.025, 0.5, 0.975))
+#' nv_qunif(p)
+#' nv_qunif(p, min = -1, max = 2)
+#' nv_qunif(p, lower_tail = FALSE)
+#' nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
+NULL
+
+#' @rdname nv_uniform
 #' @export
 #' @jit static "log"
 nv_dunif <- function(x, min = 0, max = 1, log = FALSE) {
@@ -407,6 +473,7 @@ nv_dunif <- function(x, min = 0, max = 1, log = FALSE) {
   nv_ifelse(!nv_is_nan(x) & (max > min), density, NaN)
 }
 
+#' @rdname nv_uniform
 #' @export
 #' @jit static c("lower_tail", "log_p")
 nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
@@ -462,6 +529,7 @@ nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
   nv_ifelse(valid, res, NaN)
 }
 
+#' @rdname nv_uniform
 #' @export
 #' @jit static c("lower_tail", "log_p")
 nv_qunif <- function(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
