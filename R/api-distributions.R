@@ -406,3 +406,58 @@ nv_dunif <- function(x, min = 0, max = 1, log = FALSE) {
   #       reversed interval ends
   nv_ifelse(!nv_is_nan(x) & (max > min), density, NaN)
 }
+
+#' @export
+#' @jit static c("lower_tail", "log_p")
+nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
+  assert_flag(lower_tail)
+  assert_flag(log_p)
+  args <- as_anvl_arrays(q, min, max)
+  q <- args[[1L]]
+  min <- args[[2L]]
+  max <- args[[3L]]
+  op_dtype <- dtype(q)
+  min <- nv_convert(min, op_dtype)
+  max <- nv_convert(max, op_dtype)
+
+  width <- max - min
+  # Resolve q against the endpoints before dividing, to match base R behaviour.
+  # Also avoids degenerate 0 / 0 for edge case q == min == max.
+  at_or_above <- q >= max
+  at_or_below <- q <= min
+  resolve_ends <- function(above_val, below_val, interior_val) {
+    nv_ifelse(at_or_above, above_val, nv_ifelse(at_or_below, below_val, interior_val))
+  }
+
+  # Ensure all branches have safe value for gradients
+  q_int <- nv_ifelse(at_or_above | at_or_below, min, q)
+
+  u <- if (lower_tail) {
+    resolve_ends(1, 0, (q_int - min) / width)
+  } else {
+    resolve_ends(0, 1, (max - q_int) / width)
+  }
+
+  # Reversed/non-finite interval is NaN to match base R: `valid` flag to track
+  valid <- nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+
+  if (!log_p) {
+    return(nv_ifelse(valid, u, NaN))
+  }
+
+  # To maintain accuracy of log near 1, switch to log1p in opposite tail mid way
+  v <- if (lower_tail) {
+    resolve_ends(0, 1, (max - q_int) / width)
+  } else {
+    resolve_ends(1, 0, (q_int - min) / width)
+  }
+  # So flag if can use log, else switch to log1p() of the opposite tail
+  use_log <- u <= 0.5
+  # Include inner clamp of a safe input on branch not taken for gradient calcs
+  res <- nv_ifelse(
+    use_log,
+    nv_log(nv_ifelse(use_log, u, 1)),
+    nv_log1p(-nv_ifelse(use_log, 0, v))
+  )
+  nv_ifelse(valid, res, NaN)
+}
