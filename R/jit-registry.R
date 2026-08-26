@@ -9,6 +9,7 @@
   list(name = "nv_qnorm", static = c("lower_tail", "log_p")),
   list(name = "nv_dunif", static = "log"),
   list(name = "nv_punif", static = c("lower_tail", "log_p")),
+  list(name = "nv_qunif", static = c("lower_tail", "log_p")),
   list(name = "nv_broadcast_arrays", static = character(0)),
   list(name = "nv_concatenate", static = "axis"),
   list(name = "nv_rbind", static = character(0)),

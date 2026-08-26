@@ -461,3 +461,33 @@ nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
   )
   nv_ifelse(valid, res, NaN)
 }
+
+#' @export
+#' @jit static c("lower_tail", "log_p")
+nv_qunif <- function(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
+  assert_flag(lower_tail)
+  assert_flag(log_p)
+  args <- as_anvl_arrays(p, min, max)
+  p <- args[[1L]]
+  min <- args[[2L]]
+  max <- args[[3L]]
+  op_dtype <- dtype(p)
+  min <- nv_convert(min, op_dtype)
+  max <- nv_convert(max, op_dtype)
+
+  # Out-of-range `p` is resolved to NaN by `valid`, but also need `p_safe` to
+  # avoid poisoning gradients
+  if (log_p) {
+    in_range <- p <= 0
+    p_safe <- nv_ifelse(in_range, p, 0)
+    u <- if (lower_tail) nv_exp(p_safe) else -nv_expm1(p_safe)
+  } else {
+    in_range <- (p >= 0) & (p <= 1)
+    p_safe <- nv_ifelse(in_range, p, 0)
+    u <- if (lower_tail) p_safe else 1 - p_safe
+  }
+
+  # Conditions to match NaN behaviour of base R
+  valid <- in_range & nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+  nv_ifelse(valid, min + u * (max - min), NaN)
+}
