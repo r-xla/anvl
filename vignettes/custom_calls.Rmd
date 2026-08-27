@@ -1,0 +1,279 @@
+---
+title: "Custom Calls"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Custom Calls}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+{anvl} lowers every primitive to a StableHLO program, which XLA then compiles.
+Some operations have no StableHLO counterpart, or one that is awkward or
+numerically poor.
+For those, XLA offers *custom calls*: you write a C++ function, register it
+with the PJRT runtime under a name, and `stablehlo.custom_call @name(...)`
+invokes it at exactly that point in the compiled program.
+
+This vignette walks the whole path on CPU.
+It assumes you have read [Adding a Primitive](extending_primitive.html); the
+custom call replaces only *Step 2*, the StableHLO lowering rule.
+{pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
+article covers the C++ side in much more depth, including CUDA, LAPACK,
+attributes and buffer aliasing.
+
+## The example
+
+We will implement `hypot(x, y)` -- the length of the hypotenuse,
+`sqrt(x^2 + y^2)`, computed without letting the intermediate `x^2 + y^2`
+over- or underflow.
+StableHLO has no `hypot` op, and the obvious composition loses:
+
+```{r}
+library(anvl)
+x <- nv_array(c(3, 1e-200), dtype = "f64")
+y <- nv_array(c(4, 1e-200), dtype = "f64")
+nv_sqrt(x^2 + y^2)
+```
+
+The second element should be roughly `1.41e-200`, but `x^2` underflowed to
+zero before the square root ever ran; symmetrically, inputs above `1e154`
+overflow to `Inf`.
+C's `std::hypot` rescales its inputs and gets both right, so we call it.
+
+## Step 1: Write the handler
+
+A custom call handler is a C++ function that receives one argument per
+operand and one `Result<>` per result of the `stablehlo.custom_call` op, and
+returns an `xla::ffi::Error`.
+The buffers are already allocated by XLA; the handler only fills the results
+in.
+
+{pjrt} ships XLA's FFI headers in its `inst/include`, and the FFI API is
+header-only, so `LinkingTo: pjrt` in a package -- or
+`// [[Rcpp::depends(pjrt)]]` with `Rcpp::sourceCpp()`, as here -- is all that
+is needed to compile against it.
+
+```{Rcpp}
+// [[Rcpp::plugins(cpp20)]]
+// [[Rcpp::depends(pjrt)]]
+#include <Rcpp.h>
+#include <cmath>
+#include "xla/ffi/api/ffi.h"
+
+using namespace xla::ffi;
+
+static Error do_hypot(Buffer<DataType::F64> x, Buffer<DataType::F64> y,
+                      Result<Buffer<DataType::F64>> out) {
+  size_t n = out->element_count();
+  if (x.element_count() != n || y.element_count() != n) {
+    return Error::InvalidArgument("hypot: operands must have the same size");
+  }
+  const double *xp = x.typed_data();
+  const double *yp = y.typed_data();
+  double *op = out->typed_data();
+  for (size_t i = 0; i < n; ++i) {
+    op[i] = std::hypot(xp[i], yp[i]);
+  }
+  return Error::Success();
+}
+
+XLA_FFI_DEFINE_HANDLER(hypot_handler, do_hypot,
+                       Ffi::Bind()
+                           .Arg<Buffer<DataType::F64>>()
+                           .Arg<Buffer<DataType::F64>>()
+                           .Ret<Buffer<DataType::F64>>());
+
+// [[Rcpp::export]]
+SEXP hypot_handler_ptr() {
+  return R_MakeExternalPtr((void *)hypot_handler, R_NilValue, R_NilValue);
+}
+```
+
+Three things are happening here:
+
+- `do_hypot()` is the implementation. `Buffer<DataType::F64>` is a
+  statically typed buffer -- the handler only accepts `f64` and XLA rejects
+  the call otherwise. Use `AnyBuffer` instead if you want to dispatch on
+  dtype and rank yourself.
+- `XLA_FFI_DEFINE_HANDLER()` attaches the *binding specification* to it.
+  Without it the runtime has no way to know that `do_hypot` wants two
+  operands and one result, in that order. The macro defines `hypot_handler`,
+  a plain function pointer.
+- `hypot_handler_ptr()` hands that pointer to R as an external pointer, which
+  is what the registration function below expects.
+
+A handler may be called from XLA's worker threads, so it must not touch R's
+C API (no allocation, no `Rf_error()`, no printing).
+Report failures by returning an `Error` instead -- XLA aborts the execution
+and {pjrt} re-raises it as an R error.
+The FFI decoder does the same for a call that does not match the binding, so
+handing this handler an `f32` array fails with *Wrong buffer dtype: expected
+F64 but got F32* rather than reading nonsense.
+
+## Step 2: Register it with PJRT
+
+```{r}
+pjrt::pjrt_register_custom_call(
+  "anvl_hypot",
+  list(cpu = hypot_handler_ptr())
+)
+```
+
+The target name is a process-global key, so prefix it with something
+specific to your package.
+The second argument is one handler per platform, `"cpu"` (a synonym for
+PJRT's own `"host"`) and `"cuda"`.
+Platforms you leave out simply have no implementation: running the call
+there aborts with *No FFI handler registered for `anvl_hypot`*.
+
+Registration is *deferred*: if the plugin for a platform is not loaded yet,
+the handler is queued and registered when it is.
+Calling this in a package's `.onLoad()` is therefore fine, and you should
+pass `.package = pkgname` there so that the handler is dropped again when
+the package is unloaded.
+
+## Step 3: Define the primitive
+
+Nothing here is custom-call specific -- this is the usual `new_primitive()`
+from [Adding a Primitive](extending_primitive.html).
+The inference function pins down what the handler can actually cope with:
+two `f64` arrays of the same shape.
+
+```{r}
+prim_hypot <- new_primitive("hypot", function(x, y) {
+  graph_desc_add(self, list(x = x, y = y), infer_fn = function(x, y) {
+    if (!identical(shape(x), shape(y))) {
+      cli::cli_abort("{.arg x} and {.arg y} must have the same shape.")
+    }
+    if (dtype(x) != "f64" || dtype(y) != "f64") {
+      cli::cli_abort("{.arg x} and {.arg y} must be {.val f64}.")
+    }
+    list(AbstractArray(dtype = dtype(x), shape = shape(x)))
+  })[[1L]]
+})
+```
+
+## Step 4: Lower it to a custom call
+
+The StableHLO rule emits `stablehlo::hlo_custom_call()` instead of a regular
+op:
+
+```{r}
+prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
+  # row-major, in minor-to-major order: [N-1, ..., 1, 0]
+  row_major <- rev(seq_along(shape(x)) - 1L)
+
+  list(stablehlo::hlo_custom_call(
+    x,
+    y,
+    call_target_name = "anvl_hypot",
+    api_version = 4L,
+    has_side_effect = FALSE,
+    output_types = output_types,
+    operand_layouts = list(row_major, row_major),
+    result_layouts = list(row_major)
+  ))
+}
+```
+
+The arguments that matter:
+
+- `call_target_name` must be the name the handler was registered under.
+- `api_version = 4L` selects the FFI calling convention that
+  `XLA_FFI_DEFINE_HANDLER()` implements. Always 4.
+- `has_side_effect = FALSE` lets XLA drop the call if its result is unused.
+  Set it to `TRUE` for handlers that exist *only* for their effect -- a
+  printing or logging call -- or the optimizer will delete them.
+- `output_types` is a list of [`stablehlo::ValueType`]s. Declaring an
+  `output_types` formal on the rule makes {anvl} pass in the types it already
+  inferred in Step 3, so there is nothing to recompute. Elsewhere, build them
+  with [`vt()`].
+- `operand_layouts` / `result_layouts` fix the memory layout XLA hands to the
+  handler, in minor-to-major order. `do_hypot()` walks all three buffers
+  linearly, so all it needs is that they agree; for a handler that calls a
+  column-major library such as LAPACK, this is where you would ask for
+  `c(0L, 1L)` instead.
+
+## Step 5: Give it a gradient
+
+The custom call is opaque to XLA, so it is opaque to {anvl}'s
+differentiation as well: without a reverse rule, `gradient()` will not go
+through it.
+The rule is written exactly as for any other primitive.
+Since `d/dx hypot(x, y) = x / hypot(x, y)`, we can reuse the value the
+forward pass already computed, which arrives in `outputs`:
+
+```{r}
+prim_hypot[["reverse"]] <- rule_reverse(function(
+  inputs,
+  outputs,
+  grads,
+  params,
+  required
+) {
+  x <- inputs[[1L]]
+  y <- inputs[[2L]]
+  r <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) prim_mul(grad, prim_div(x, r)),
+    if (required[[2L]]) prim_mul(grad, prim_div(y, r))
+  )
+})
+```
+
+## Using it
+
+Eagerly:
+
+```{r}
+prim_hypot(x, y)
+```
+
+Inside a JIT-compiled function, where the custom call is one op among
+others:
+
+```{r}
+f <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
+jit(f)(x, y)
+```
+
+And differentiated:
+
+```{r}
+a <- nv_array(c(3, 6), dtype = "f64")
+b <- nv_array(c(4, 8), dtype = "f64")
+jit(gradient(f))(a, b)
+```
+
+## Shipping this in a package
+
+`Rcpp::sourceCpp()` keeps this vignette self-contained, but in a package you
+would:
+
+1. put the `.cpp` file in `src/` and add `pjrt` to `LinkingTo:` (and
+   `SystemRequirements: C++20`),
+2. register the handler from `.onLoad()`, passing `.package = pkgname`:
+
+   ```r
+   .onLoad <- function(libname, pkgname) {
+     pjrt::pjrt_register_custom_call(
+       "anvl_hypot",
+       list(cpu = hypot_handler_ptr()),
+       .package = pkgname
+     )
+   }
+   ```
+
+3. define the primitive and its rules at build time as usual.
+
+To also support CUDA, register a second handler under `cuda`; see the
+[{pjrt} article](https://r-xla.github.io/pjrt/dev/articles/ffi.html) for what
+changes on the GPU side.

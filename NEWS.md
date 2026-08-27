@@ -1,5 +1,10 @@
 # anvl (development version)
 
+## Documentation
+
+* New vignette "Custom Calls", showing how to write an XLA FFI handler,
+  register it with {pjrt} and lower a primitive to it on CPU.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

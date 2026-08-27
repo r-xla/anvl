@@ -62,6 +62,8 @@ navbar:
         href: articles/extending_primitive.html
       - text: "Adding an API Function"
         href: articles/extending_api.html
+      - text: "Custom Calls"
+        href: articles/custom_calls.html
       - text: Other
       - text: Internals
         href: articles/internals.html

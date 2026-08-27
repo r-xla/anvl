@@ -39,6 +39,7 @@ Imports:
 Suggests:
     knitr,
     quarto,
+    Rcpp,
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
