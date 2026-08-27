@@ -39,7 +39,7 @@
   produce two different answers for one call -- `nv_ifelse(pred, x_i8, 1L)` was
   `i32` eagerly and `i8` under `jit()`, and `nv_dnorm(x_f64, mean = sqrt(2))` was
   exact only under `jit()`. Both now convert in both modes, as their names say,
-  so `dtype()` answers for whatever they return. Use a `promote` rule to say
+  so `dtype()` answers for whatever they return. Use a `.promote` rule to say
   which data type they convert *at*; without one an R value takes its default.
 * `dtype_abstract()` is now `peek_dtype()`. The old name said "the data type of
   the abstract value", which is the one thing it is not -- it answers with the
@@ -47,19 +47,19 @@
 
 ## Features
 
-* `as_anvl_arrays()` gains `promote`. It already aligned backend and device;
-  `promote` additionally realizes every input at one data type, named by a rule:
+* `as_anvl_arrays()` gains `.promote`. It already aligned backend and device;
+  `.promote` additionally realizes every input at one data type, named by a rule:
   `promote_common()` for the common one of the set, `promote_like(arg)` for the
   one a particular argument already has, or `promote_dtype(dtype)` for one the
   caller names. Realizing *builds* an R value at the target rather than
   converting it there, so it keeps every digit. Each rule takes `only =` to
   restrict it to some of the inputs -- the rest are still aligned and converted,
   just not to the target, which is what `nv_ifelse()` needs for its `pred` --
-  and `promote` takes a *list* of rules, for a call whose arguments fall into
+  and `.promote` takes a *list* of rules, for a call whose arguments fall into
   several groups that promote independently. `nv_promote_to_common()` is
   `promote_common()`, so the two share one implementation.
 * `as_anvl_arrays()` accepts arguments that are trees of arrayish values, not
-  just single ones. The device and the `promote` target are decided over every
+  just single ones. The device and the `.promote` target are decided over every
   leaf of every argument, and each argument comes back with the structure it
   had.
 * `nv_aval()` also builds the abstract value of a bare R argument, from its R

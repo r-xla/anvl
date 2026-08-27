@@ -123,11 +123,11 @@ test_that("the canonicalization API means the same thing in both modes", {
       nv_convert(v, peek_dtype(x)) * x
     },
     "anchored promotion" = function(x, v) {
-      args <- as_anvl_arrays(x = x, v = v, promote = promote_like("x"))
+      args <- as_anvl_arrays(x = x, v = v, .promote = promote_like("x"))
       args$x * args$v
     },
     "promotion to the common dtype" = function(x, v) {
-      args <- as_anvl_arrays(x, v, promote = promote_common())
+      args <- as_anvl_arrays(x, v, .promote = promote_common())
       args[[1L]] * args[[2L]]
     },
     "no promotion at all" = function(x, v) {

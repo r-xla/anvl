@@ -195,7 +195,7 @@ nv_array <- function(
 #' both with eager executing and in combination with [`jit()`].
 #' Use [`as_anvl_array()`] for a single input and [`as_anvl_arrays()`] for multiple inputs.
 #' The latter will also ensure all arrays are from the same backend and live on the same device,
-#' and can additionally bring them all to one dtype (`promote`).
+#' and can additionally bring them all to one dtype (`.promote`).
 #'
 #' @details
 #' [Boxes][GraphBox] and [`AnvlArray`]s are returned as they are -- for an
@@ -212,8 +212,8 @@ nv_array <- function(
 #' nothing to take it from -- its default (`f32` for a double, `i32` for an
 #' integer, `bool` for a logical).
 #'
-#' `as_anvl_arrays(promote = )` is the one that can be exact, because it decides
-#' the dtype and does the conversion in the same call. Without a `promote` rule
+#' `as_anvl_arrays(.promote = )` is the one that can be exact, because it decides
+#' the dtype and does the conversion in the same call. Without a `.promote` rule
 #' there is nothing to decide from, so an R value takes its default, and a
 #' caller that goes on to convert it (`nv_convert(args[[2]], dtype(args[[1]]))`)
 #' has already lost the digits below that default. **An `nv_*` function whose
@@ -229,13 +229,13 @@ nv_array <- function(
 #'   Input to standardize.
 #' @param ... ([`arrayish`], or a nested `list` of them)\cr
 #'   Inputs to align. An argument may be a tree of arrayish values -- the device
-#'   and the `promote` target are decided over every leaf of every argument, and
+#'   and the `.promote` target are decided over every leaf of every argument, and
 #'   each argument comes back with the structure it had. Name the arguments to
-#'   be able to point `promote` at one of them.
+#'   be able to point `.promote` at one of them.
 #' @param device (`NULL` | [`device`])\cr
 #'   Target device. If `x` is an `AnvlArray` on a different device, an error
 #'   is raised.
-#' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
+#' @param .promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
 #'   Which dtype every input is brought to: [`promote_common()`] for the common
 #'   one, [`promote_like()`] for the one a particular argument has, or
 #'   [`promote_dtype()`] for one the caller names. `NULL` (default) decides
@@ -244,6 +244,9 @@ nv_array <- function(
 #'
 #'   A *list* of rules promotes several groups of arguments independently; they
 #'   must name disjoint sets with `only`.
+#'
+#'   The name is dotted because the inputs go in `...`: an argument the caller
+#'   happens to call `promote` is data, not the rule.
 #'
 #'   Inputs are *realized* at that dtype rather than converted to it: an R value
 #'   has no dtype to convert from, so it is built at the target directly, which
@@ -256,12 +259,12 @@ nv_array <- function(
 #' as_anvl_array(1L)
 #' as_anvl_arrays(nv_array(1:3), 1L)
 #' # each input keeps its own dtype by default, brought to a common one with
-#' # `promote` -- and only then is an R value exact at it
-#' as_anvl_arrays(nv_array(1L), nv_array(1.5), promote = promote_common())
+#' # `.promote` -- and only then is an R value exact at it
+#' as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
 #' # ... or to one particular argument's
-#' as_anvl_arrays(x = nv_array(1L), y = nv_array(1.5), promote = promote_like("x"))
+#' as_anvl_arrays(x = nv_array(1L), y = nv_array(1.5), .promote = promote_like("x"))
 #' # an argument may be a tree, and comes back as one
-#' as_anvl_arrays(nv_array(1L), list(a = 1.5, b = list(2L)), promote = promote_common())
+#' as_anvl_arrays(nv_array(1L), list(a = 1.5, b = list(2L)), .promote = promote_common())
 #' @name as_anvl_array
 NULL
 
@@ -297,7 +300,7 @@ as_anvl_array <- function(x, device = NULL) {
 
 #' @rdname as_anvl_array
 #' @export
-as_anvl_arrays <- function(..., promote = NULL) {
+as_anvl_arrays <- function(..., .promote = NULL) {
   args <- list(...)
   # An argument may be a whole tree of arrayish values, so the alignment and the
   # promotion are decided over every *leaf* of every argument -- one device and
@@ -307,12 +310,12 @@ as_anvl_arrays <- function(..., promote = NULL) {
   tree <- build_tree(args)
   aligned <- align_arrayish(flatten(args))
   args <- unflatten(tree, aligned$args)
-  if (is.null(promote)) {
+  if (is.null(.promote)) {
     return(map_tree(args, as_anvl_array, device = aligned$device))
   }
   # Every rule is resolved before any is applied, so a rule's target is read off
   # the arguments as the caller passed them.
-  resolved <- resolve_promote_rules(promote, args)
+  resolved <- resolve_promote_rules(.promote, args)
   # Realized at the target dtype rather than converted to it: an R value has no
   # dtype to convert *from*, so it is built at the target directly (see
   # `realize_at()`), with every digit it had. A rule covers whole arguments, so

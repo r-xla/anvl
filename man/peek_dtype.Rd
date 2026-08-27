@@ -27,7 +27,7 @@ the value to settle just by asking.
 
 Where the dtype becomes the operation's own -- what the other arguments are
 converted to, or what the result is built \verb{_like} -- the value has to commit
-for real; that is a \code{promote} rule of \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} (exact, because it
+for real; that is a \code{.promote} rule of \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} (exact, because it
 decides and converts in one step) or, failing that, \code{\link[=as_anvl_array]{as_anvl_array()}},
 which converts at the default. Not this.
 }

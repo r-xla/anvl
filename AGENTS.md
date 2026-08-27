@@ -61,7 +61,7 @@ makes `x_f64 / sqrt(2)` exact.
   backends, promotes, and leaves every argument something `dtype()` / `device()`
   answer for. An argument may be a tree of arrayish values; the device and the
   dtype are decided over every leaf, and each argument comes back with the
-  structure it had. The `promote` argument takes a rule -- `promote_common()`,
+  structure it had. The `.promote` argument takes a rule -- `promote_common()`,
   `promote_like(arg)` or `promote_dtype(dtype)`, each optionally restricted with
   `only =`, or a *list* of rules for independent groups -- and *realizes* every
   input it covers at that dtype, which is what keeps the R values exact. **Without a rule an R value converts at its

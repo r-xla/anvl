@@ -180,7 +180,7 @@ commit_rdata <- function(box) {
 #'
 #' Where the dtype becomes the operation's own -- what the other arguments are
 #' converted to, or what the result is built `_like` -- the value has to commit
-#' for real; that is a `promote` rule of [`as_anvl_arrays()`] (exact, because it
+#' for real; that is a `.promote` rule of [`as_anvl_arrays()`] (exact, because it
 #' decides and converts in one step) or, failing that, [`as_anvl_array()`],
 #' which converts at the default. Not this.
 #'

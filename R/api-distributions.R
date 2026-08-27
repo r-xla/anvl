@@ -72,7 +72,7 @@ NULL
 #' @jit static "log"
 nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
   assert_flag(log)
-  args <- as_anvl_arrays(x = x, mean = mean, sd = sd, promote = promote_like("x"))
+  args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promote_like("x"))
   x <- args$x
   mean <- args$mean
   sd <- args$sd
@@ -92,7 +92,7 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
 nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(q = q, mean = mean, sd = sd, promote = promote_like("q"))
+  args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promote_like("q"))
   q <- args$q
   mean <- args$mean
   sd <- args$sd
@@ -286,7 +286,7 @@ qnorm_f32_coefs <- list(
 nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(p = p, mean = mean, sd = sd, promote = promote_like("p"))
+  args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promote_like("p"))
   p <- args$p
   mean <- args$mean
   sd <- args$sd

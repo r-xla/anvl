@@ -117,16 +117,16 @@ nv_scaled_sum(nv_scalar(1, device = "cuda"), 2, 3)   # fine
 It also rejects a call that mixes devices or backends, which is the check you
 want at the boundary rather than somewhere in the middle of the body.
 
-**2. It does the type promotion.** With a `promote` rule the whole set comes
+**2. It does the type promotion.** With a `.promote` rule the whole set comes
 back at one data type. Which one is the rule's job to say, and there are three:
 
 ```{r}
 # the common data type of the inputs -- what a binary operator does
-as_anvl_arrays(nv_array(1L), 1.5, promote = promote_common())
+as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
 # the data type one particular input already has
-as_anvl_arrays(x = nv_array(1L), y = 1.5, promote = promote_like("x"))
+as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
 # a data type the function names itself
-as_anvl_arrays(nv_array(1L), 1.5, promote = promote_dtype("f64"))
+as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
 ```
 
 Promoting *realizes* an R value at the target rather than converting it there:
@@ -153,18 +153,18 @@ as_anvl_arrays(
   pred = nv_array(c(TRUE, FALSE)),
   true_value = nv_array(c(1L, 2L), dtype = "i8"),
   false_value = 3L,
-  promote = promote_common(only = c("true_value", "false_value"))
+  .promote = promote_common(only = c("true_value", "false_value"))
 )
 ```
 
-`promote` also takes a *list* of rules, for a function whose arguments fall into
+`.promote` also takes a *list* of rules, for a function whose arguments fall into
 several groups that are promoted independently:
 
 ```{r}
 as_anvl_arrays(
   x = nv_array(1L), y = 1.5,
   a = nv_array(1L, dtype = "i8"), b = 2L,
-  promote = list(
+  .promote = list(
     promote_common(only = c("x", "y")),
     promote_common(only = c("a", "b"))
   )
@@ -178,14 +178,14 @@ never depends on another group having been converted first.
 ### Arguments may be trees
 
 An argument can be a nested list of arrayish values rather than a single one.
-The device and the `promote` target are decided over every *leaf* of every
+The device and the `.promote` target are decided over every *leaf* of every
 argument, and each argument comes back with the structure it had:
 
 ```{r}
 as_anvl_arrays(
   nv_array(1L, dtype = "i8"),
   list(a = 1.5, b = list(2L)),
-  promote = promote_common()
+  .promote = promote_common()
 )
 ```
 

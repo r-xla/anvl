@@ -32,7 +32,7 @@ The data type to bring the inputs to.}
 }
 \description{
 Which data type \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} brings its inputs to. A rule is passed
-as that function's \code{promote} argument; without one, each input keeps the data
+as that function's \code{.promote} argument; without one, each input keeps the data
 type it has and a bare R value takes its default.
 \itemize{
 \item \code{promote_common()} -- the common data type of the inputs
@@ -64,13 +64,13 @@ to the target, and all of them are brought to it.
 }
 \section{Several groups in one call}{
 
-\code{promote} also takes a \emph{list} of rules, which is how one call promotes
+\code{.promote} also takes a \emph{list} of rules, which is how one call promotes
 several groups of arguments independently -- \code{x} and \code{y} to their common data
 type, \code{a} and \code{b} to theirs:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{as_anvl_arrays(
   x = x, y = y, a = a, b = b,
-  promote = list(
+  .promote = list(
     promote_common(only = c("x", "y")),
     promote_common(only = c("a", "b"))
   )
@@ -87,21 +87,21 @@ all.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-as_anvl_arrays(nv_array(1L), 1.5, promote = promote_common())
-as_anvl_arrays(x = nv_array(1L), y = 1.5, promote = promote_like("x"))
-as_anvl_arrays(nv_array(1L), 1.5, promote = promote_dtype("f64"))
+as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
+as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
+as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
 # `pred` is aligned and converted, but keeps out of the promotion
 as_anvl_arrays(
   pred = nv_array(TRUE),
   a = nv_array(1L),
   b = 1.5,
-  promote = promote_common(only = c("a", "b"))
+  .promote = promote_common(only = c("a", "b"))
 )
 # two groups, promoted independently
 as_anvl_arrays(
   x = nv_array(1L), y = 1.5,
   a = nv_array(1L, dtype = "i8"), b = 2L,
-  promote = list(
+  .promote = list(
     promote_common(only = c("x", "y")),
     promote_common(only = c("a", "b"))
   )

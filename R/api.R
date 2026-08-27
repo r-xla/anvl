@@ -133,7 +133,7 @@ nv_promote_to_common <- function(...) {
   # converting an f32 `sqrt(2)` would only widen a number that had already lost
   # its digits. So the values are aligned first and built afterwards, once the
   # common dtype is known. `promote_common()` is that sequence.
-  as_anvl_arrays(..., promote = promote_common())
+  as_anvl_arrays(..., .promote = promote_common())
 }
 
 #' @title Broadcast Arrays to a Common Shape
@@ -510,7 +510,7 @@ nv_ifelse <- function(pred, true_value, false_value) {
     pred = pred,
     true_value = true_value,
     false_value = false_value,
-    promote = promote_common(only = c("true_value", "false_value"))
+    .promote = promote_common(only = c("true_value", "false_value"))
   )
   args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
@@ -1329,7 +1329,7 @@ nv_popcnt <- prim_popcnt
 #' @export
 #' @jit
 nv_clamp <- function(min_val, x, max_val) {
-  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, promote = promote_like("x"))
+  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promote_like("x"))
   prim_clamp(args$min_val, args$x, args$max_val)
 }
 
@@ -1453,7 +1453,7 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
   # The padding value goes into `x`, so it is `x`'s dtype it has to arrive at --
   # an R value is built there directly, and a typed one is converted.
-  args <- as_anvl_arrays(x = x, padding_value = padding_value, promote = promote_like("x"))
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_like("x"))
   x <- args$x
   padding_value <- args$padding_value
   rank <- naxes(x)

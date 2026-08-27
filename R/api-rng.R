@@ -144,7 +144,7 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
   # inputs', which is what `promote_dtype()` is for -- realizing an R value
   # there directly, instead of converting it from its default and rounding
   # through `f32` on the way.
-  args <- as_anvl_arrays(mean, sd, promote = promote_dtype(dtype))
+  args <- as_anvl_arrays(mean, sd, .promote = promote_dtype(dtype))
   mean <- args[[1L]]
   sd <- args[[2L]]
   # n: amount of rvs needed
