@@ -336,3 +336,98 @@ resolve_device <- function(device, backend) {
   }
   list(device, backend)
 }
+
+row_major_layout <- function(naxes) {
+  rev(as.integer(seq.int(0L, naxes - 1L)))
+}
+
+# Turn a named list of R values into a stablehlo `backend_config`. Values that
+# are already attribute objects pass through, so a caller who needs a dtype
+# other than the R default can build the attribute itself.
+custom_call_backend_config <- function(attrs) {
+  items <- Map(
+    function(nm, value) {
+      if (inherits(value, "OpInputAttr")) {
+        return(value)
+      }
+      if (!is.atomic(value) || !length(value) || anyNA(value)) {
+        cli_abort(c(
+          "Attribute {.val {nm}} must be a non-empty atomic vector without missing values.",
+          i = "Alternatively pass a {.cls stablehlo::OpInputAttr} to choose the dtype yourself."
+        ))
+      }
+      if (is.character(value)) {
+        if (length(value) != 1L) {
+          cli_abort("String attribute {.val {nm}} must have length 1.")
+        }
+        return(stablehlo::StringAttr(name = nm, value = value))
+      }
+      dt <- default_dtype(value)
+      if (length(value) == 1L) {
+        if (is.logical(value)) {
+          stablehlo::BoolAttr(name = nm, value = value)
+        } else {
+          stablehlo::ScalarAttr(name = nm, value = value, dtype = dt)
+        }
+      } else {
+        stablehlo::constant_attr(name = nm, value = value, dtype = as.character(dt))
+      }
+    },
+    names(attrs),
+    attrs
+  )
+  stablehlo::CustomOpBackendConfig(unname(items))
+}
+
+# Layouts are either one spec used everywhere (a list of integer vectors) or
+# one spec per platform (a list of such lists, named "cpu" / "cuda").
+is_per_platform_layouts <- function(x) {
+  is.list(x) &&
+    length(x) &&
+    !is.null(names(x)) &&
+    all(vapply(x, is.list, logical(1)))
+}
+
+# Resolved during lowering rather than at call time: which platform a program
+# is compiled for is only known once `stablehlo()` runs.
+custom_call_layouts <- function(layouts, arg) {
+  if (!is_per_platform_layouts(layouts)) {
+    return(layouts)
+  }
+  platform <- current_platform()
+  chosen <- if (!is.null(platform)) layouts[[platform]]
+  if (is.null(chosen)) {
+    cli_abort(c(
+      "{.arg {arg}} has no entry for platform {.val {platform %||% 'unknown'}}.",
+      i = "It lists {.val {names(layouts)}}."
+    ))
+  }
+  chosen
+}
+
+assert_layouts <- function(layouts, n, arg, what) {
+  if (is_per_platform_layouts(layouts)) {
+    for (platform in names(layouts)) {
+      if (length(layouts[[platform]]) != n) {
+        cli_abort(
+          "{.arg {arg}} for platform {.val {platform}} must have one entry per {what} ({n})."
+        )
+      }
+    }
+  } else if (length(layouts) != n) {
+    cli_abort("{.arg {arg}} must have one entry per {what} ({n}).")
+  }
+  invisible(NULL)
+}
+
+# `aliases` is 1-based and one entry per result; NA means "no alias".
+custom_call_aliases <- function(aliases, n_results) {
+  idx <- which(!is.na(aliases))
+  lapply(idx, function(i) {
+    stablehlo::OutputOperandAlias(
+      operand_index = aliases[[i]] - 1L,
+      # a call with a single result is not tuple-typed
+      output_tuple_indices = if (n_results > 1L) i - 1L else integer()
+    )
+  })
+}

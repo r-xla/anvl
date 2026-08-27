@@ -321,6 +321,11 @@ reference:
     contents:
       - nv_rng_state
 
+  - subtitle: Custom Calls
+    desc: Calling hand-written XLA FFI handlers
+    contents:
+      - nv_custom_call
+
   - title: Transformations
     desc: Code transformations
     contents:

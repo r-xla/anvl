@@ -18,15 +18,19 @@ knitr::opts_chunk$set(
 Some operations have no StableHLO counterpart, or one that is awkward or
 numerically poor.
 For those, XLA offers *custom calls*: you write a C++ function, register it
-with the PJRT runtime under a name, and `stablehlo.custom_call @name(...)`
-invokes it at exactly that point in the compiled program.
+with the PJRT runtime under a name, and XLA invokes it at exactly that point
+in the compiled program.
 
 This article walks the whole path on CPU.
-It assumes you have read [Adding a Primitive](extending_primitive.html); the
-custom call replaces only *Step 2*, the StableHLO lowering rule.
 {pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
 article covers the C++ side in much more depth, including CUDA, LAPACK,
-attributes and buffer aliasing.
+buffer aliasing and the full binding API.
+
+Everything here is specific to the **`"pjrt"` backend**.
+A custom call is a handler registered with the PJRT runtime and invoked by
+the XLA-compiled program, so there is nothing for {anvl}'s `quickr` backend
+to call: under `local_backend("quickr")` a function containing a custom call
+fails to compile with *does not support these primitives: custom_call*.
 
 ## The example
 
@@ -50,8 +54,8 @@ C's `std::hypot` rescales its inputs and gets both right, so we call it.
 ## Step 1: Write the handler
 
 A custom call handler is a C++ function that receives one argument per
-operand and one `Result<>` per result of the `stablehlo.custom_call` op, and
-returns an `xla::ffi::Error`.
+operand and one `Result<>` per result of the call, and returns an
+`xla::ffi::Error`.
 The buffers are already allocated by XLA; the handler only fills the results
 in.
 
@@ -100,14 +104,17 @@ Three things are happening here:
 
 - `do_hypot()` is the implementation. `Buffer<DataType::F64>` is a
   statically typed buffer -- the handler only accepts `f64` and XLA rejects
-  the call otherwise. Use `AnyBuffer` instead if you want to dispatch on
-  dtype and rank yourself.
+  the call otherwise. Use `AnyBuffer` instead to dispatch on dtype and rank
+  yourself.
 - `XLA_FFI_DEFINE_HANDLER()` attaches the *binding specification* to it.
   Without it the runtime has no way to know that `do_hypot` wants two
   operands and one result, in that order. The macro defines `hypot_handler`,
   a plain function pointer.
-- `hypot_handler_ptr()` hands that pointer to R as an external pointer, which
-  is what the registration function below expects.
+- `hypot_handler_ptr()` hands that pointer to R as an external pointer,
+  which is what the registration function below expects. In a package this
+  getter is unnecessary: declare the handler with
+  `XLA_FFI_DEFINE_HANDLER_SYMBOL()` instead and look the resulting
+  `extern "C"` symbol up with `getNativeSymbolInfo()`.
 
 A handler may be called from XLA's worker threads, so it must not touch R's
 C API (no allocation, no `Rf_error()`, no printing).
@@ -139,37 +146,72 @@ Calling this in a package's `.onLoad()` is therefore fine, and you should
 pass `.package = pkgname` there so that the handler is dropped again when
 the package is unloaded.
 
-## Step 3: Define the primitive
+## Step 3: Call it
 
-Nothing here is custom-call specific -- this is the usual `new_primitive()`
-from [Adding a Primitive](extending_primitive.html).
-The inference function pins down what the handler can actually cope with:
-two `f64` arrays of the same shape.
+[`nv_custom_call()`] takes the target name, the operands, and the shape and
+dtype of each result:
+
+```{r}
+nv_custom_call("anvl_hypot", x, y, output_types = vt("f64", 2))
+```
+
+That is the whole binding.
+It works the same inside a JIT-compiled function, where the custom call
+becomes one op among the others:
+
+```{r}
+f <- jit(function(x, y) {
+  nv_reduce_sum(nv_custom_call("anvl_hypot", x, y, output_types = vt("f64", 2)))
+})
+f(x, y)
+```
+
+The arguments worth knowing about:
+
+- `output_types` is a [`stablehlo::ValueType`], or a list of them for a
+  handler with several results, most easily built with [`vt()`]. anvl cannot
+  infer these -- the handler decides them -- which is why they are the one
+  thing you always have to declare. Pass a bare `vt()` and you get a bare
+  array back; pass a list and you get a list.
+- `attrs` is a named list of values the handler reads through
+  `.Attr<T>("name")` or `.Attrs<Dictionary>()`. Scalars, strings and vectors
+  are converted using anvl's usual dtype defaults; pass a
+  [`stablehlo::ScalarAttr()`] and friends to pin a different one.
+- `operand_layouts` / `result_layouts` fix the memory layout XLA hands the
+  handler, in minor-to-major order. They default to row-major, which is what
+  `do_hypot()` -- walking its buffers linearly -- wants. A handler calling a
+  column-major library such as LAPACK wants `c(0L, 1L)` instead.
+- `aliases` says which operand's buffer each result is written into, so an
+  in-place kernel does not force a copy. `aliases = 1L` on a single-result
+  call hands the handler the same pointer for operand 1 and the result.
+- `has_side_effect` keeps a call XLA would otherwise delete as unused. It
+  defaults to `TRUE` exactly when `output_types` is `NULL`, which is how you
+  write a printing or logging call; such a call returns its operands
+  unchanged.
+
+## Making it a primitive
+
+`nv_custom_call()` is opaque to XLA, and therefore to {anvl}'s
+differentiation: `gradient()` will not go through it.
+It also shows up in a traced graph as a generic `custom_call` rather than
+an operation with a name of its own.
+
+Both are fixed the same way -- by giving the call its own primitive with a
+reverse rule, exactly as in
+[Adding a Primitive](extending_primitive.html).
+The lowering rule reaches one level lower than `nv_custom_call()` does,
+emitting [`stablehlo::hlo_custom_call()`] directly, because a rule is handed
+`FuncValue`s rather than arrays:
 
 ```{r}
 prim_hypot <- new_primitive("hypot", function(x, y) {
   graph_desc_add(self, list(x = x, y = y), infer_fn = function(x, y) {
-    if (!identical(shape(x), shape(y))) {
-      cli::cli_abort("{.arg x} and {.arg y} must have the same shape.")
-    }
-    if (dtype(x) != "f64" || dtype(y) != "f64") {
-      cli::cli_abort("{.arg x} and {.arg y} must be {.val f64}.")
-    }
     list(AbstractArray(dtype = dtype(x), shape = shape(x)))
   })[[1L]]
 })
-```
 
-## Step 4: Lower it to a custom call
-
-The StableHLO rule emits `stablehlo::hlo_custom_call()` instead of a regular
-op:
-
-```{r}
 prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
-  # row-major, in minor-to-major order: [N-1, ..., 1, 0]
   row_major <- rev(seq_along(shape(x)) - 1L)
-
   list(stablehlo::hlo_custom_call(
     x,
     y,
@@ -181,69 +223,224 @@ prim_hypot[["stablehlo"]] <- function(x, y, output_types) {
     result_layouts = list(row_major)
   ))
 }
+
+# d/dx hypot(x, y) = x / hypot(x, y), and the forward result is already there
+prim_hypot[["reverse"]] <- rule_reverse(function(
+  inputs,
+  outputs,
+  grads,
+  params,
+  required
+) {
+  x <- inputs[[1L]]
+  y <- inputs[[2L]]
+  r <- outputs[[1L]]
+  grad <- grads[[1L]]
+  list(
+    if (required[[1L]]) prim_mul(grad, prim_div(x, r)),
+    if (required[[2L]]) prim_mul(grad, prim_div(y, r))
+  )
+})
 ```
 
-The arguments that matter:
-
-- `call_target_name` must be the name the handler was registered under.
-- `api_version = 4L` selects the FFI calling convention that
-  `XLA_FFI_DEFINE_HANDLER()` implements. Always 4.
-- `has_side_effect = FALSE` lets XLA drop the call if its result is unused.
-  Set it to `TRUE` for handlers that exist *only* for their effect -- a
-  printing or logging call -- or the optimizer will delete them.
-- `output_types` is a list of [`stablehlo::ValueType`]s. Declaring an
-  `output_types` formal on the rule makes {anvl} pass in the types it already
-  inferred in Step 3, so there is nothing to recompute. Elsewhere, build them
-  with [`vt()`].
-- `operand_layouts` / `result_layouts` fix the memory layout XLA hands to the
-  handler, in minor-to-major order. `do_hypot()` walks all three buffers
-  linearly, so all it needs is that they agree; for a handler that calls a
-  column-major library such as LAPACK, this is where you would ask for
-  `c(0L, 1L)` instead.
-
-## Using it
-
-Eagerly:
+Now the call differentiates:
 
 ```{r}
-prim_hypot(x, y)
+g <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
+a <- nv_array(c(3, 6), dtype = "f64")
+b <- nv_array(c(4, 8), dtype = "f64")
+jit(gradient(g))(a, b)
 ```
-
-Inside a JIT-compiled function, where the custom call is one op among
-others:
-
-```{r}
-f <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
-jit(f)(x, y)
-```
-
-A custom call is opaque to XLA, and so opaque to {anvl}'s differentiation:
-`gradient()` only sees through it once the primitive carries a reverse rule.
-That rule is written exactly as for any other primitive -- here
-`d/dx hypot(x, y) = x / hypot(x, y)` -- see
-[Adding a Primitive](extending_primitive.html).
 
 ## Shipping this in a package
 
 `Rcpp::sourceCpp()` keeps this article self-contained, but in a package you
 would:
 
-1. put the `.cpp` file in `src/` and add `pjrt` to `LinkingTo:` (and
-   `SystemRequirements: C++20`),
-2. register the handler from `.onLoad()`, passing `.package = pkgname`:
+1. put the `.cpp` file in `src/`, declare the handler with
+   `XLA_FFI_DEFINE_HANDLER_SYMBOL()`, and add `pjrt` to `LinkingTo:` and
+   `C++20` to `SystemRequirements:`,
+2. register it from `.onLoad()`, passing `.package = pkgname` so the handler
+   goes away with the package:
 
    ```r
    .onLoad <- function(libname, pkgname) {
      pjrt::pjrt_register_custom_call(
        "anvl_hypot",
-       list(cpu = hypot_handler_ptr()),
+       list(cpu = getNativeSymbolInfo("HypotHandler", PACKAGE = pkgname)$address),
        .package = pkgname
      )
    }
    ```
 
-3. define the primitive and its rules at build time as usual.
+## Going to CUDA
 
-To also support CUDA, register a second handler under `cuda`; see the
-[{pjrt} article](https://r-xla.github.io/pjrt/dev/articles/ffi.html) for what
-changes on the GPU side.
+Nothing on the R side changes for a GPU.
+A `stablehlo.custom_call` names a *target*, not an implementation, and
+`pjrt_register_custom_call()` already takes one handler per platform, so the
+same `nv_custom_call("anvl_hypot", x, y, ...)` runs the CUDA handler as soon
+as its operands live on a CUDA device:
+
+```{r, eval = FALSE}
+x <- nv_array(c(3, 1e-200), dtype = "f64", device = "cuda")
+y <- nv_array(c(4, 1e-200), dtype = "f64", device = "cuda")
+nv_custom_call("anvl_hypot", x, y, output_types = vt("f64", 2))
+```
+
+What changes is the handler, and above all how it is built: R's build system
+knows how to compile `.cpp`, not `.cu`.
+
+### Keep the kernel and the handler in separate files
+
+Put the kernel in a `.cu` compiled by `nvcc`, and the FFI handler in a
+`.cpp` compiled by R's ordinary C++ toolchain, with one `extern "C"`
+launcher bridging them.
+Typing the stream as `void *` at that boundary means the `.cpp` never
+includes a CUDA header and the `.cu` never includes an XLA one -- which
+matters, because `nvcc`'s C++ support trails the host compiler's.
+This is the same split {pjrt} uses for its own CUDA handlers.
+
+```c++
+// src/hypot_kernel.cu -- compiled by nvcc
+#include <cuda_runtime.h>
+
+__global__ void hypot_kernel(const double *x, const double *y, double *out,
+                             size_t n) {
+  size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < n) out[i] = hypot(x[i], y[i]);
+}
+
+// The only symbol the rest of the package sees.
+extern "C" void anvl_launch_hypot(void *stream, const double *x,
+                                  const double *y, double *out, size_t n) {
+  const int threads = 256;
+  const int blocks = static_cast<int>((n + threads - 1) / threads);
+  hypot_kernel<<<blocks, threads, 0, static_cast<cudaStream_t>(stream)>>>(
+      x, y, out, n);
+}
+```
+
+```c++
+// src/hypot_cuda.cpp -- compiled by R's C++ toolchain, no CUDA headers
+#include "xla/ffi/api/ffi.h"
+
+using namespace xla::ffi;
+
+extern "C" void anvl_launch_hypot(void *stream, const double *x,
+                                  const double *y, double *out, size_t n);
+
+static Error do_hypot_cuda(void *stream, Buffer<DataType::F64> x,
+                           Buffer<DataType::F64> y,
+                           Result<Buffer<DataType::F64>> out) {
+  size_t n = out->element_count();
+  if (x.element_count() != n || y.element_count() != n) {
+    return Error::InvalidArgument("hypot: operands must have the same size");
+  }
+  // these are *device* pointers; only the kernel may dereference them
+  anvl_launch_hypot(stream, x.typed_data(), y.typed_data(),
+                    out->typed_data(), n);
+  return Error::Success();
+}
+
+XLA_FFI_DEFINE_HANDLER_SYMBOL(HypotHandlerCuda, do_hypot_cuda,
+                              Ffi::Bind()
+                                  .Ctx<PlatformStream<void *>>()
+                                  .Arg<Buffer<DataType::F64>>()
+                                  .Arg<Buffer<DataType::F64>>()
+                                  .Ret<Buffer<DataType::F64>>());
+```
+
+The binding gains one entry: `.Ctx<PlatformStream<void *>>()` puts the CUDA
+stream XLA dispatched the op on in front of the buffers.
+Everything the handler enqueues must go on *that* stream.
+
+### Teaching `R CMD INSTALL` about `.cu`
+
+R has no rule for `.cu`, so `src/Makevars` supplies one and lists every
+object explicitly:
+
+```make
+CUDA_HOME ?= /usr/local/cuda
+NVCC = $(CUDA_HOME)/bin/nvcc
+
+OBJECTS = hypot.o hypot_cuda.o hypot_kernel.o
+PKG_LIBS = -L$(CUDA_HOME)/lib64 -lcudart
+
+%.o: %.cu
+	$(NVCC) -std=c++17 -O2 -Xcompiler "$(CXXPICFLAGS)" -c $< -o $@
+```
+
+A package meant to install on machines without a GPU wants a `configure`
+that looks for `nvcc`, and generates a `Makevars` without the CUDA objects
+when it is missing.
+
+### Registering both
+
+`.onLoad()` then offers whichever handlers were actually built:
+
+```r
+symbol <- function(name, pkgname) {
+  tryCatch(getNativeSymbolInfo(name, PACKAGE = pkgname)$address, error = function(e) NULL)
+}
+
+.onLoad <- function(libname, pkgname) {
+  handlers <- list(
+    cpu = symbol("HypotHandler", pkgname),
+    cuda = symbol("HypotHandlerCuda", pkgname)
+  )
+  pjrt::pjrt_register_custom_call(
+    "anvl_hypot",
+    Filter(Negate(is.null), handlers),
+    .package = pkgname
+  )
+}
+```
+
+Registering only `cpu` is not an error; a program that needs the missing
+platform is what fails, with *No FFI handler registered for `anvl_hypot`*.
+
+### When the platforms disagree
+
+Layouts sometimes differ between a CPU and a CUDA implementation -- a
+LAPACK kernel wants column-major where a hand-rolled kernel is happy
+row-major.
+`operand_layouts` and `result_layouts` accept a list keyed by platform for
+that case, resolved when the program is lowered, which is the first point at
+which the target platform is known:
+
+```{r, eval = FALSE}
+nv_custom_call(
+  "anvl_hypot",
+  x,
+  y,
+  output_types = vt("f64", 2),
+  operand_layouts = list(
+    cpu = list(0L, 0L),
+    cuda = list(0L, 0L)
+  ),
+  result_layouts = list(cpu = list(0L), cuda = list(0L))
+)
+```
+
+If the two platforms need to differ by more than layouts -- a different
+operand order, an extra attribute, a transpose on one side only -- write a
+primitive instead and branch on [`current_platform()`] in its lowering rule,
+the way {anvl}'s own `prim_svd` does for cuSOLVER.
+
+### Three things to get right
+
+- **Stay on the stream, and do not synchronise it.**
+  `cudaStreamSynchronize()` inside a handler makes the host wait for the GPU
+  and breaks the pipelining XLA depends on. XLA already orders any op that
+  reads your outputs after your kernel.
+- **Ask XLA for scratch, not `cudaMalloc`.** Device memory beyond the FFI
+  buffers comes from `.Ctx<ScratchAllocator>()`, which draws on the same
+  allocator that backs the input and output buffers and frees everything
+  when the handler returns.
+- **Check every status.** CUDA and library calls return an `int` that is `0`
+  on success; a dropped one leaves garbage in the output buffer that
+  surfaces much later as wrong numbers rather than an error. Turn a non-zero
+  status into `Error::Internal`.
+
+{pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
+article goes further into all three, and into cuSOLVER specifically.
