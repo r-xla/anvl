@@ -31,3 +31,4 @@ anvl.Rproj
 ^jarl\.toml$
 ^specs$
 ^paper$
+^vignettes/articles/

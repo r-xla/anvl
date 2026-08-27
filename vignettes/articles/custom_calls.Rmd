@@ -21,7 +21,7 @@ For those, XLA offers *custom calls*: you write a C++ function, register it
 with the PJRT runtime under a name, and `stablehlo.custom_call @name(...)`
 invokes it at exactly that point in the compiled program.
 
-This vignette walks the whole path on CPU.
+This article walks the whole path on CPU.
 It assumes you have read [Adding a Primitive](extending_primitive.html); the
 custom call replaces only *Step 2*, the StableHLO lowering rule.
 {pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
@@ -255,7 +255,7 @@ jit(gradient(f))(a, b)
 
 ## Shipping this in a package
 
-`Rcpp::sourceCpp()` keeps this vignette self-contained, but in a package you
+`Rcpp::sourceCpp()` keeps this article self-contained, but in a package you
 would:
 
 1. put the `.cpp` file in `src/` and add `pjrt` to `LinkingTo:` (and
