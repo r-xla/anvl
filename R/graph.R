@@ -88,11 +88,6 @@ is_rdata_box <- function(x) {
   inherits(x, "GraphBox") && inherits(x$gnode, "GraphRData")
 }
 
-# The dtype an uncommitted R value would take if nothing claimed it.
-rdata_default_dtype <- function(box) {
-  box$gnode$aval$default_dtype
-}
-
 # The dtype that holds an R value of this storage type exactly. Building at it
 # is always faithful; every other dtype is reached by converting from it, so
 # that narrowing follows the program's own conversion semantics rather than R's
@@ -108,12 +103,7 @@ rdata_natural_dtype <- function(r_type) {
 # out of the category R's coercion and XLA's `convert` disagree, so it has to be
 # the program's conversion rather than R's.
 rdata_in_category <- function(r_type, dtype) {
-  switch(
-    r_type,
-    logical = is_dtype_bool(dtype),
-    integer = is_dtype_intish(dtype),
-    double = is_dtype_float(dtype)
-  )
+  dtype_category(dtype) == dtype_category(default_dtype_r(r_type))
 }
 
 # Whether an R value of this storage type can be built at `dtype` *directly*,
@@ -176,7 +166,7 @@ materialize_rdata <- function(box, dtype) {
 
 # Materialize at the dtype the value commits to when nothing else decided.
 commit_rdata <- function(box) {
-  materialize_rdata(box, rdata_default_dtype(box))
+  materialize_rdata(box, peek_dtype(box))
 }
 
 #' @title Peek at a Data Type
@@ -235,15 +225,7 @@ resolve_primitive_args <- function(primitive, args) {
   if (is.null(promote) || !length(args) || !any(vapply(args, has_no_dtype, logical(1L)))) {
     return(args)
   }
-  for (rule in resolve_promote_rules(promote, args)) {
-    # A rule that could not settle on one dtype realizes nothing; whatever
-    # consumes the arguments reports the mismatch, as it does today.
-    if (is.null(rule$dtype)) {
-      next
-    }
-    args[rule$positions] <- lapply(args[rule$positions], realize_traced, dtype = rule$dtype)
-  }
-  args
+  apply_promote_rules(args, resolve_promote_rules(promote, args))
 }
 
 # Whether a value has no dtype yet -- an RData box, or a bare R value that has
@@ -253,20 +235,9 @@ has_no_dtype <- function(x) {
   is_rdata_box(x) || (!is_anvl_array(x) && !is_box(x) && is_valid_r(x))
 }
 
-# Realize a value at `dtype` inside a trace. A bare R value is boxed *without*
-# committing first, so that materializing it yields the same node kind it would
-# have had anyway -- an inlined literal for a scalar, a constant for an R array.
-realize_traced <- function(x, dtype) {
-  if (has_no_dtype(x) && !is_box(x)) {
-    x <- maybe_box_arrayish(x, materialize = FALSE)
-  }
-  realize_at(x, dtype)
-}
-
 # A fresh RData node for an R value written in the body of a traced function.
 new_rdata_box <- function(desc, x) {
-  shape <- if (is.null(dim(x))) integer() else as.integer(dim(x))
-  GraphBox(GraphRData(RDataArray(x, shape = shape)), desc)
+  GraphBox(GraphRData(to_abstract(x)), desc)
 }
 
 
@@ -290,7 +261,7 @@ format.GraphLiteral <- function(x, ...) {
   } else {
     as.character(x$aval$data)
   }
-  sprintf("GraphLiteral(%s, %s, %s)", val, dtype2string(x$aval$dtype), shape2string(x$aval$shape))
+  sprintf("GraphLiteral(%s, %s, %s)", val, repr(x$aval$dtype), shape2string(x$aval$shape))
 }
 
 #' @export
@@ -580,38 +551,27 @@ format.GraphBox <- function(x, ...) {
   sprintf("GraphBox(%s)", format(x$gnode))
 }
 
-# Box an arrayish value for `desc`.
-#
-# `materialize = FALSE` keeps an R value as an [`RDataArray`] -- with no dtype,
-# to be built at the one its use site needs. It is for the API layer, which
-# canonicalizes its inputs (`as_anvl_array()`) long before it knows what they
-# are combined with. Everything that needs a typed value -- every primitive
-# call, and the outputs of a trace -- takes the default and commits it.
-maybe_box_arrayish <- function(x, desc = .current_descriptor(), materialize = TRUE) {
+# Box an arrayish value for `desc`, keeping an R value as an [`RDataArray`] --
+# with no dtype, to be built at the one its use site needs. That is what the API
+# layer wants, since it canonicalizes its inputs long before it knows what they
+# are combined with. A caller that needs a typed value -- every primitive call,
+# and the outputs of a trace -- says so with `commit_rdata_box()`.
+maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
-    if (is_graph_rdata(x$gnode)) {
-      # An R value belongs to the graph it was written in, so one reaching
-      # another graph has to commit before it can be captured there.
-      if (materialize || !identical(x$desc, desc)) {
-        x <- commit_rdata(x)
-      } else {
-        return(x)
-      }
+    # An R value belongs to the graph it was written in, so one reaching
+    # another graph has to commit before it can be captured there.
+    if (is_rdata_box(x) && !identical(x$desc, desc)) {
+      x <- commit_rdata(x)
     }
     if (identical(x$desc, desc)) {
       return(x)
     }
     return(get_box_or_register_const(desc, x$gnode))
   }
-  if (!materialize && (is_valid_r_lit(x) || is_valid_r_array(x))) {
+  if (is_valid_r_lit(x) || is_valid_r_array(x)) {
     return(new_rdata_box(desc, x))
   }
-  if (is_valid_r_array(x)) {
-    # Materialize R arrays as plain-backend AnvlArrays so they can be
-    # registered as named constants in the current graph.
-    x <- nv_array(x)
-  }
-  if (is_anvl_array(x) || is_valid_r_lit(x)) {
+  if (is_anvl_array(x)) {
     return(get_box_or_register_const(desc, x))
   }
   cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
@@ -652,9 +612,7 @@ maybe_box_input <- function(x, desc, mode) {
     if (is_graph_box(x)) {
       # A subgraph parameter needs a dtype, and the subgraph is traced before
       # its operands meet anything, so an R value commits here.
-      if (is_graph_rdata(x$gnode)) {
-        x <- commit_rdata(x)
-      }
+      x <- commit_rdata_box(x)
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
@@ -678,9 +636,7 @@ maybe_box_input <- function(x, desc, mode) {
     }
     # \(x) gradient(f)(x)
     if (is_graph_box(x)) {
-      if (is_graph_rdata(x$gnode)) {
-        x <- commit_rdata(x)
-      }
+      x <- commit_rdata_box(x)
       return(register_input(desc, x$gnode))
     }
     # don't convert R values because they might be static.
@@ -704,9 +660,7 @@ maybe_box_input <- function(x, desc, mode) {
     return(register_rdata_input(desc, x))
   }
   if (is_graph_box(x)) {
-    if (is_graph_rdata(x$gnode)) {
-      x <- commit_rdata(x)
-    }
+    x <- commit_rdata_box(x)
     return(register_input(desc, x$gnode))
   }
   if (is_abstract_array(x)) {
@@ -796,20 +750,51 @@ finalize_rdata_inputs <- function(desc) {
   invisible(NULL)
 }
 
+# What a dtype can hold, as (precision, range): a float's mantissa and exponent
+# width, an integer's width and whether it is signed -- an R integer is signed,
+# so an unsigned dtype of the same width holds less of it. Used only to compare
+# dtypes of one category, which is the only comparison that means anything.
+dtype_capacity <- function(dtype) {
+  switch(
+    as.character(dtype),
+    f64 = c(52L, 11L),
+    f32 = c(23L, 8L),
+    f16 = c(10L, 5L),
+    bf16 = c(7L, 8L),
+    c(dtype_width(dtype), if (is_dtype_int(dtype)) 1L else 0L)
+  )
+}
+
+# Whether building an R value at `dtype` and converting to `other` gives what
+# building it at `other` directly would -- i.e. whether `dtype` holds every
+# value `other` can express.
+dtype_holds <- function(dtype, other) {
+  all(dtype_capacity(dtype) >= dtype_capacity(other))
+}
+
 # The single dtype an R argument is uploaded at, given every dtype the trace
 # built it at. Those are all in the value's own category (materialize_rdata()
-# converts out of it inside the program instead), so the widest of them holds
-# every use site's value: a narrower site converts down from an exact upload,
-# which rounds exactly once.
+# converts out of it inside the program instead), so one of them can serve every
+# use site: the upload has to *hold* them all, and each site then converts down
+# from it, rounding exactly once.
+#
+# Not simply the widest. `f16` and `bf16` are both 16 bits and neither holds the
+# other -- `f16` has three more mantissa bits, `bf16` a far wider exponent -- and
+# `i32` and `ui32` likewise. When no candidate holds them all, the value's
+# natural dtype does, by construction.
 resolve_upload_dtype <- function(aval, requested) {
   if (!length(requested)) {
     return(as.character(aval$default_dtype))
   }
   dtypes <- lapply(requested, as_dtype)
-  widths <- vapply(dtypes, dtype_width, integer(1L))
-  # `order()` breaks a width tie by the dtype name, so the choice does not
-  # depend on the order the trace happened to ask in.
-  as.character(dtypes[[order(-widths, vapply(dtypes, as.character, character(1L)))[[1L]]]])
+  holds_all <- vapply(dtypes, function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d)), logical(1L))
+  if (!any(holds_all)) {
+    return(as.character(rdata_natural_dtype(aval$r_type)))
+  }
+  # Several candidates hold them all only when they are equivalent; ordering by
+  # name keeps the choice independent of the order the trace happened to ask in.
+  names <- vapply(dtypes[holds_all], as.character, character(1L))
+  sort(names)[[1L]]
 }
 
 register_gvals <- function(desc, gvals) {
@@ -1001,7 +986,7 @@ trace_fn <- function(
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
-  outputs_flat <- lapply(output[[2L]], maybe_box_arrayish)
+  outputs_flat <- lapply(output[[2L]], function(x) commit_rdata_box(maybe_box_arrayish(x)))
 
   desc$out_tree <- out_tree
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
@@ -1147,7 +1132,7 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    gnode <- maybe_box_arrayish(args[[i]], desc)$gnode
+    gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval
   }

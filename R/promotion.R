@@ -66,7 +66,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' An R value only ever yields **within its own category**: a double becomes a
 #' float, an integer an integer, a logical a `bool`. `promote_yield()` on an
 #' `f64` input and a `1L` is an error, where a `1` gives `f64` -- crossing a
-#' category is promotion, which is what the other three rules are for.
+#' category is promotion, which is what the other rules are for.
 #'
 #' `only` restricts the rule to some of the inputs. The rest are still aligned
 #' onto one device and converted, just not to the target -- for an argument that
@@ -160,9 +160,9 @@ promote_yield <- function(only = NULL) {
   PromoteRule("yield", only = only)
 }
 
-# A tagged union over the three rules. The tag rather than three S3 subclasses:
-# the whole of the behaviour is `promote_target()`, and one function that shows
-# all three side by side is easier to read than three one-line methods.
+# A tagged union over the four rules. The tag rather than four S3 subclasses:
+# the whole of the behaviour is `resolve_promote_rule()`, and one function that
+# shows them side by side is easier to read than four one-line methods.
 PromoteRule <- function(kind, only, ...) {
   if (!is.null(only)) {
     assert_arg_ref(only, "only")
@@ -213,6 +213,20 @@ print.PromoteRule <- function(x, ...) {
   invisible(x)
 }
 
+# Carry out resolved rules: each argument a rule covers is realized at that
+# rule's target dtype. The one place a promotion rule is applied, shared by
+# `as_anvl_arrays()` and the primitive layer -- `...` is how the former passes
+# the device it aligned on.
+#
+# A rule that could not settle on a dtype covers no arguments, so it is a no-op
+# here and whatever consumes the values reports the mismatch.
+apply_promote_rules <- function(args, resolved, ...) {
+  for (rule in resolved) {
+    args[rule$positions] <- map_tree(args[rule$positions], realize_at, dtype = rule$dtype, ...)
+  }
+  args
+}
+
 # Resolve every rule of a call against its arguments, before any of them is
 # applied: a later rule reads the dtypes the earlier ones have not changed yet.
 # `.promote` is one rule or a list of them; the list is how a call promotes
@@ -223,7 +237,7 @@ resolve_promote_rules <- function(promote, args) {
   if (!is.list(rules) || !length(rules) || !all(vapply(rules, is_promote_rule, logical(1L)))) {
     cli_abort(c(
       "{.arg .promote} must be a promotion rule or a list of them, not {.cls {class(promote)}}.",
-      i = "Build one with {.fn promote_common}, {.fn promote_like} or {.fn promote_dtype}."
+      i = "Build one with {.fn promote_common}, {.fn promote_like}, {.fn promote_dtype} or {.fn promote_yield}."
     ))
   }
   resolved <- lapply(rules, resolve_promote_rule, args = args)
@@ -263,9 +277,9 @@ resolve_promote_rule <- function(rule, args) {
 # `promote_yield()`: read the target off the inputs that already have a dtype,
 # never move them, and let the R values take it -- within their own category.
 resolve_yield <- function(args, positions) {
-  leaves <- flatten(args[positions])
-  is_r <- vapply(leaves, function(x) is_rdata_array(to_abstract(x)), logical(1L))
-  settled <- unique(lapply(leaves[!is_r], peek_dtype))
+  avals <- lapply(flatten(args[positions]), to_abstract)
+  is_r <- vapply(avals, is_rdata_array, logical(1L))
+  settled <- unique(lapply(avals[!is_r], peek_dtype))
   if (length(settled) > 1L) {
     # The inputs cannot be brought together without converting one of them.
     # Realize nothing and let whatever consumes them report the mismatch.
@@ -274,7 +288,7 @@ resolve_yield <- function(args, positions) {
   if (!length(settled)) {
     # Every input is an R value. They agree only if they are of one storage
     # type; there is no data type for a mix of them to meet at.
-    r_types <- unique(vapply(leaves[is_r], function(x) to_abstract(x)$r_type, character(1L)))
+    r_types <- unique(vapply(avals[is_r], function(a) a$r_type, character(1L)))
     if (length(r_types) > 1L) {
       cli_abort(
         c(
@@ -289,8 +303,8 @@ resolve_yield <- function(args, positions) {
   }
   target <- settled[[1L]]
   # Each R value must be able to take the target without leaving its category.
-  for (leaf in leaves[is_r]) {
-    r_type <- to_abstract(leaf)$r_type
+  for (aval in avals[is_r]) {
+    r_type <- aval$r_type
     if (!rdata_in_category(r_type, target)) {
       cli_abort(
         c(
@@ -359,19 +373,27 @@ common_dtype_of <- function(...) {
 }
 
 
+# The ordering the whole RData design turns on: `bool` < integer < float. An R
+# value may only be *built* within its own category (`rdata_in_category()` asks
+# this for equality), and it only *yields* to a dtype at least as high
+# (`promote_dt_rdata()` asks it for the maximum).
+dtype_category <- function(dtype) {
+  if (is_dtype_bool(dtype)) {
+    1L
+  } else if (is_dtype_float(dtype)) {
+    3L
+  } else {
+    2L
+  }
+}
+
 # What an R value becomes when it meets a value that has a dtype. It yields --
 # an R double meeting an `f16` array becomes `f16`, not the default float --
-# except where the dtype cannot hold it: a value from a float R type meeting an
-# integer dtype stays a float, and anything meeting `bool` stays itself.
-# `rdtype` is the dtype the R value would commit to on its own.
+# except where the dtype's category cannot hold it: a value from a float R type
+# meeting an integer dtype stays a float, and anything meeting `bool` stays
+# itself. `rdtype` is the dtype the R value would commit to on its own.
 promote_dt_rdata <- function(rdtype, dtype) {
-  if (is_dtype_float(rdtype) && !is_dtype_float(dtype)) {
-    return(rdtype)
-  }
-  if (!is_dtype_bool(rdtype) && is_dtype_bool(dtype)) {
-    return(rdtype)
-  }
-  dtype
+  if (dtype_category(dtype) >= dtype_category(rdtype)) dtype else rdtype
 }
 
 promote_dt_known <- function(dt1, dt2) {
@@ -425,11 +447,6 @@ default_dtype <- function(x) {
     cli_abort("No default type for: {.class class(x)[1L]}")
   }
   default_dtype_r(typeof(x))
-}
-
-# Whether a dtype holds whole numbers: signed or unsigned integers.
-is_dtype_intish <- function(x) {
-  is_dtype_int(x) || is_dtype_uint(x)
 }
 
 # The dtype an R value of this storage type commits to when nothing in the

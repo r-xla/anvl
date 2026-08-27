@@ -514,14 +514,14 @@ subset_scatter_core <- jit(
     # into is still decided by the dtype it would commit to: `x_i32[i] <- 1.5`
     # is a narrowing assignment either way.
     is_rdata <- is_rdata_box(value)
-    dt_value <- if (is_rdata) rdata_default_dtype(value) else dtype(value)
+    dt_value <- peek_dtype(value)
     if (dt_x != dt_value) {
       # An R value yields to the array it is assigned into, exactly as it does
       # in any other operation; a typed value has to be promotable to it.
       ok <- if (is_rdata) promote_dt_rdata(dt_value, dt_x) == dt_x else promotable_to(dt_value, dt_x)
       if (!ok) {
         cli_abort(
-          "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_x)}"
+          "Value type {repr(dt_value)} is not promotable to left-hand side type {repr(dt_x)}"
         )
       }
     }

@@ -79,7 +79,7 @@ and whatever consumes the values reports the mismatch.
 An R value only ever yields \strong{within its own category}: a double becomes a
 float, an integer an integer, a logical a \code{bool}. \code{promote_yield()} on an
 \code{f64} input and a \code{1L} is an error, where a \code{1} gives \code{f64} -- crossing a
-category is promotion, which is what the other three rules are for.
+category is promotion, which is what the other rules are for.
 
 \code{only} restricts the rule to some of the inputs. The rest are still aligned
 onto one device and converted, just not to the target -- for an argument that

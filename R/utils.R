@@ -173,10 +173,6 @@ naxes_abstract <- function(x) {
   length(shape_abstract(x))
 }
 
-dtype2string <- function(dtype) {
-  repr(dtype)
-}
-
 is_valid_r_lit <- function(x) {
   length(x) == 1L &&
     is.null(dim(x)) &&

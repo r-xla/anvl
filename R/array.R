@@ -290,7 +290,7 @@ as_anvl_array <- function(x, device = NULL) {
   # A bare R value: it has no dtype of its own, and nothing here says what it
   # should be, so it takes its default.
   if (currently_tracing()) {
-    return(maybe_box_arrayish(x))
+    return(commit_rdata_box(maybe_box_arrayish(x)))
   }
   if (is_valid_r_lit(x)) {
     return(nv_scalar(x, device = device))
@@ -313,21 +313,14 @@ as_anvl_arrays <- function(..., .promote = NULL) {
   if (is.null(.promote)) {
     return(map_tree(args, as_anvl_array, device = aligned$device))
   }
-  # Every rule is resolved before any is applied, so a rule's target is read off
-  # the arguments as the caller passed them.
-  resolved <- resolve_promote_rules(.promote, args)
   # Realized at the target dtype rather than converted to it: an R value has no
   # dtype to convert *from*, so it is built at the target directly (see
   # `realize_at()`), with every digit it had. A rule covers whole arguments, so
   # every leaf of one gets the same treatment.
-  for (rule in resolved) {
-    args[rule$positions] <- map_tree(
-      args[rule$positions],
-      realize_at,
-      dtype = rule$dtype,
-      device = aligned$device
-    )
-  }
+  # Every rule is resolved before any is applied, so a rule's target is read off
+  # the arguments as the caller passed them.
+  resolved <- resolve_promote_rules(.promote, args)
+  args <- apply_promote_rules(args, resolved, device = aligned$device)
   # An argument no rule names is still aligned and converted, just not to a
   # target.
   rest <- setdiff(seq_along(args), unlist(lapply(resolved, `[[`, "positions")))
@@ -351,7 +344,7 @@ as_anvl_array_lazy <- function(x) {
   }
   if (!is_anvl_array(x) && is_valid_r(x)) {
     if (currently_tracing()) {
-      return(maybe_box_arrayish(x, materialize = FALSE))
+      return(maybe_box_arrayish(x))
     }
     return(x)
   }
@@ -403,6 +396,12 @@ align_arrayish <- function(args) {
 # value itself when not -- is built from its R data, so it arrives with every
 # digit it had; anything that already has a dtype is converted.
 realize_at <- function(x, dtype, device = NULL) {
+  if (!is_box(x) && !is_anvl_array(x) && is_valid_r(x) && currently_tracing()) {
+    # Inside a trace, box the value *without* committing it first, so that
+    # materializing it below yields the node kind it would have had anyway --
+    # an inlined literal for a scalar, a constant for an R array.
+    x <- maybe_box_arrayish(x)
+  }
   if (is_rdata_box(x)) {
     return(materialize_rdata(x, dtype))
   }
@@ -1152,7 +1151,7 @@ format.IotaArray <- function(x, ...) {
   sprintf(
     "IotaArray(shape=%s, dtype=%s, axis=%s, start=%s)",
     shape2string(x$shape),
-    dtype2string(x$dtype),
+    repr(x$dtype),
     x$axis,
     x$start
   )
@@ -1231,7 +1230,7 @@ format.AbstractArray <- function(x, ...) {
 
 #' @export
 format.ConcreteArray <- function(x, ...) {
-  sprintf("ConcreteArray(%s, %s)", dtype2string(x$dtype), shape2string(x$shape))
+  sprintf("ConcreteArray(%s, %s)", repr(x$dtype), shape2string(x$shape))
 }
 
 #' @export
@@ -1241,7 +1240,7 @@ format.LiteralArray <- function(x, ...) {
   } else {
     x$data
   }
-  sprintf("LiteralArray(%s, %s, %s)", data_str, dtype2string(x$dtype), shape2string(x$shape))
+  sprintf("LiteralArray(%s, %s, %s)", data_str, repr(x$dtype), shape2string(x$shape))
 }
 
 #' @export

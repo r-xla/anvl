@@ -6,11 +6,6 @@ test_that("shape2string", {
   expect_equal(shape2string(Shape(c()), parenthesize = FALSE), "")
 })
 
-test_that("dtype2string", {
-  expect_equal(dtype2string(as_dtype("f32")), "f32")
-  expect_equal(dtype2string(as_dtype("i32")), "i32")
-})
-
 test_that("peek_dtype", {
   expect_equal(
     peek_dtype(1L),
