@@ -201,34 +201,6 @@ The arguments that matter:
   column-major library such as LAPACK, this is where you would ask for
   `c(0L, 1L)` instead.
 
-## Step 5: Give it a gradient
-
-The custom call is opaque to XLA, so it is opaque to {anvl}'s
-differentiation as well: without a reverse rule, `gradient()` will not go
-through it.
-The rule is written exactly as for any other primitive.
-Since `d/dx hypot(x, y) = x / hypot(x, y)`, we can reuse the value the
-forward pass already computed, which arrives in `outputs`:
-
-```{r}
-prim_hypot[["reverse"]] <- rule_reverse(function(
-  inputs,
-  outputs,
-  grads,
-  params,
-  required
-) {
-  x <- inputs[[1L]]
-  y <- inputs[[2L]]
-  r <- outputs[[1L]]
-  grad <- grads[[1L]]
-  list(
-    if (required[[1L]]) prim_mul(grad, prim_div(x, r)),
-    if (required[[2L]]) prim_mul(grad, prim_div(y, r))
-  )
-})
-```
-
 ## Using it
 
 Eagerly:
@@ -245,13 +217,11 @@ f <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
 jit(f)(x, y)
 ```
 
-And differentiated:
-
-```{r}
-a <- nv_array(c(3, 6), dtype = "f64")
-b <- nv_array(c(4, 8), dtype = "f64")
-jit(gradient(f))(a, b)
-```
+A custom call is opaque to XLA, and so opaque to {anvl}'s differentiation:
+`gradient()` only sees through it once the primitive carries a reverse rule.
+That rule is written exactly as for any other primitive -- here
+`d/dx hypot(x, y) = x / hypot(x, y)` -- see
+[Adding a Primitive](extending_primitive.html).
 
 ## Shipping this in a package
 
