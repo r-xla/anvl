@@ -3389,3 +3389,62 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
     )
   )
 }
+
+#' @title Call an XLA FFI Handler
+#' @description
+#' Calls a handler registered with [`pjrt::pjrt_register_custom_call()`],
+#' the way [`prim_ffi_call()`] does, but taking the operands through `...`
+#' and unwrapping a single result.
+#'
+#' This is anvl's escape hatch for operations StableHLO cannot express, or
+#' cannot express efficiently. The call is opaque to XLA and therefore to
+#' [`gradient()`]: to differentiate through a handler, wrap it in a
+#' primitive of your own with a reverse rule -- see
+#' `vignette("extending_primitive")`.
+#' @param target_name (`character(1)`)\cr
+#'   The name the handler was registered under.
+#' @param ... ([`arrayish`])\cr
+#'   The operands, in the order the handler binds them.
+#' @inheritParams prim_ffi_call
+#' @return [`arrayish`] or `list` of [`arrayish`]\cr
+#'   A single value when `output_types` is a single [`AbstractArray`] (or
+#'   when a side-effect only call has a single operand), otherwise a list.
+#' @seealso [prim_ffi_call()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' # "eigh" is one of the handlers {pjrt} registers on load; it wants
+#' # column-major buffers and returns (eigenvectors, eigenvalues)
+#' x <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
+#' nv_ffi_call(
+#'   "eigh",
+#'   x,
+#'   output_types = list(vt("f64", c(2, 2)), vt("f64", 2)),
+#'   operand_layouts = list(c(0L, 1L)),
+#'   result_layouts = list(c(0L, 1L), 0L)
+#' )
+#' @export
+nv_ffi_call <- function(
+  target_name,
+  ...,
+  output_types = NULL,
+  attrs = list(),
+  has_side_effect = is.null(output_types),
+  operand_layouts = NULL,
+  result_layouts = NULL,
+  aliases = NULL,
+  device = NULL
+) {
+  single <- inherits(output_types, "ValueType")
+  operands <- list(...)
+  out <- prim_ffi_call(
+    operands,
+    target_name = target_name,
+    output_types = output_types,
+    attrs = attrs,
+    has_side_effect = has_side_effect,
+    operand_layouts = operand_layouts,
+    result_layouts = result_layouts,
+    aliases = aliases,
+    device = device
+  )
+  if (single || length(out) == 1L) out[[1L]] else out
+}

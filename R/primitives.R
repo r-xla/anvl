@@ -3633,3 +3633,152 @@ prim_convolution <- new_primitive(
   },
   static = 3:18
 )
+
+# FFI primitive
+#' @title Primitive FFI Call
+#' @description
+#' Invokes an XLA FFI handler registered with
+#' [`pjrt::pjrt_register_custom_call()`].
+#'
+#' This is the escape hatch for operations StableHLO cannot express, or
+#' cannot express efficiently. Unlike every other primitive, its output
+#' types cannot be derived from its inputs -- the handler decides them --
+#' so they are declared up front as [`AbstractArray`]s.
+#'
+#' Use [`nv_ffi_call()`] unless you need the exact primitive signature.
+#' @param operands (`list` of [`arrayish`])\cr
+#'   The values passed to the handler, in the order it binds them.
+#' @param target_name (`character(1)`)\cr
+#'   The name the handler was registered under.
+#' @param output_types ([`stablehlo::ValueType`] | `list` of them | `NULL`)\cr
+#'   Shape and dtype of each result, most easily built with [`vt()`]. The
+#'   handler, not the inputs, decides these, so anvl cannot infer them.
+#'   `NULL` declares a call that only runs for its side effect; `operands`
+#'   are then returned unchanged, so at least one is required.
+#' @param attrs (`list`)\cr
+#'   Named attributes the handler reads via `.Attr<T>("name")` or
+#'   `.Attrs<Dictionary>()`. Scalars, strings and vectors are converted
+#'   using anvl's usual dtype defaults (`f32` for doubles, `i32` for
+#'   integers, `bool` for logicals); pass a `stablehlo` attribute object
+#'   such as [`stablehlo::ScalarAttr()`] to pin a different dtype.
+#' @param has_side_effect (`logical(1)`)\cr
+#'   Whether XLA must keep the call even when its results are unused.
+#'   Defaults to `TRUE` exactly when `output_types` is `NULL`.
+#' @param operand_layouts,result_layouts (`list` of `integer()` | `NULL`)\cr
+#'   Memory layouts in minor-to-major order, as in
+#'   [`stablehlo::hlo_custom_call()`]. `NULL` (the default) requests
+#'   row-major for every operand and result, which is what a handler
+#'   walking its buffers linearly expects.
+#' @param aliases (`integer()` | `NULL`)\cr
+#'   One entry per result, giving the 1-based index of the operand whose
+#'   buffer that result is written into, or `NA` for no aliasing. XLA then
+#'   hands the handler the same pointer for both, so an in-place kernel
+#'   avoids a copy.
+#' @param device (`NULL` | `character(1)` | [device][nv_device])\cr
+#'   Where to run. Only needed when there are no operands to infer it from.
+#' @return `list` of [`arrayish`]\cr
+#'   One element per result, or the operands unchanged for a side-effect
+#'   only call.
+#' @templateVar primitive_id ffi_call
+#' @template section_rules
+#' @section StableHLO:
+#' Lowers to [hlo_custom_call()].
+#' @seealso [nv_ffi_call()]
+#' @export
+prim_ffi_call <- new_primitive(
+  "ffi_call",
+  function(
+    operands,
+    target_name,
+    output_types = NULL,
+    attrs = list(),
+    has_side_effect = is.null(output_types),
+    operand_layouts = NULL,
+    result_layouts = NULL,
+    aliases = NULL,
+    device = NULL
+  ) {
+    assert_string(target_name)
+    assert_flag(has_side_effect)
+    if (!is.list(operands)) {
+      cli_abort("{.arg operands} must be a list of arrayish values.")
+    }
+    if (inherits(output_types, "ValueType")) {
+      output_types <- list(output_types)
+    }
+    assert_list(output_types, types = "ValueType", null.ok = TRUE)
+    assert_list(attrs, names = "unique")
+    if (is.null(output_types) && !length(operands)) {
+      cli_abort(c(
+        "A side-effect only {.fn prim_ffi_call} returns its operands, so it needs at least one.",
+        i = "Declare {.arg output_types} for a call that produces results."
+      ))
+    }
+
+    n_results <- length(output_types)
+    operand_layouts <- operand_layouts %||%
+      lapply(operands, function(op) row_major_layout(naxes_abstract(op)))
+    result_layouts <- result_layouts %||%
+      lapply(output_types %||% list(), function(t) row_major_layout(length(shape(vt2at(t)))))
+    if (length(operand_layouts) != length(operands)) {
+      cli_abort("{.arg operand_layouts} must have one entry per operand.")
+    }
+    if (length(result_layouts) != n_results) {
+      cli_abort("{.arg result_layouts} must have one entry per result.")
+    }
+
+    if (!is.null(aliases)) {
+      aliases <- as.integer(aliases)
+      if (length(aliases) != n_results) {
+        cli_abort("{.arg aliases} must have one entry per result.")
+      }
+      bad <- !is.na(aliases) & (aliases < 1L | aliases > length(operands))
+      if (any(bad)) {
+        cli_abort("{.arg aliases} must index an operand between 1 and {length(operands)}, or be {.val NA}.")
+      }
+    }
+
+    # Carried under `result_types` rather than `output_types`: anvl injects an
+    # `output_types` argument into any lowering rule that declares one, and the
+    # two would collide.
+    infer_fn <- function(
+      ...,
+      target_name,
+      result_types,
+      attrs,
+      has_side_effect,
+      operand_layouts,
+      result_layouts,
+      aliases
+    ) {
+      # The handler, not the inputs, determines the result types; for a
+      # side-effect only call the operands pass straight through.
+      if (is.null(result_types)) list(...) else lapply(result_types, vt2at)
+    }
+
+    graph_desc_add(
+      self,
+      args = operands,
+      params = list(
+        target_name = target_name,
+        result_types = output_types,
+        attrs = attrs,
+        has_side_effect = has_side_effect,
+        operand_layouts = operand_layouts,
+        result_layouts = result_layouts,
+        aliases = aliases
+      ),
+      infer_fn = infer_fn
+    )
+  },
+  static = c(
+    "target_name",
+    "output_types",
+    "attrs",
+    "has_side_effect",
+    "operand_layouts",
+    "result_layouts",
+    "aliases"
+  ),
+  device = device_arg("device")
+)

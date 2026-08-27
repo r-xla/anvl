@@ -321,6 +321,11 @@ reference:
     contents:
       - nv_rng_state
 
+  - subtitle: Foreign Function Interface
+    desc: Calling hand-written XLA FFI handlers
+    contents:
+      - nv_ffi_call
+
   - title: Transformations
     desc: Code transformations
     contents:

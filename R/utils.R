@@ -336,3 +336,57 @@ resolve_device <- function(device, backend) {
   }
   list(device, backend)
 }
+
+row_major_layout <- function(naxes) {
+  rev(as.integer(seq.int(0L, naxes - 1L)))
+}
+
+# Turn a named list of R values into a stablehlo `backend_config`. Values that
+# are already attribute objects pass through, so a caller who needs a dtype
+# other than the R default can build the attribute itself.
+ffi_backend_config <- function(attrs) {
+  items <- Map(
+    function(nm, value) {
+      if (inherits(value, "OpInputAttr")) {
+        return(value)
+      }
+      if (!is.atomic(value) || !length(value) || anyNA(value)) {
+        cli_abort(c(
+          "Attribute {.val {nm}} must be a non-empty atomic vector without missing values.",
+          i = "Alternatively pass a {.cls stablehlo::OpInputAttr} to choose the dtype yourself."
+        ))
+      }
+      if (is.character(value)) {
+        if (length(value) != 1L) {
+          cli_abort("String attribute {.val {nm}} must have length 1.")
+        }
+        return(stablehlo::StringAttr(name = nm, value = value))
+      }
+      dt <- default_dtype(value)
+      if (length(value) == 1L) {
+        if (is.logical(value)) {
+          stablehlo::BoolAttr(name = nm, value = value)
+        } else {
+          stablehlo::ScalarAttr(name = nm, value = value, dtype = dt)
+        }
+      } else {
+        stablehlo::constant_attr(name = nm, value = value, dtype = as.character(dt))
+      }
+    },
+    names(attrs),
+    attrs
+  )
+  stablehlo::CustomOpBackendConfig(unname(items))
+}
+
+# `aliases` is 1-based and one entry per result; NA means "no alias".
+ffi_output_operand_aliases <- function(aliases, n_results) {
+  idx <- which(!is.na(aliases))
+  lapply(idx, function(i) {
+    stablehlo::OutputOperandAlias(
+      operand_index = aliases[[i]] - 1L,
+      # a call with a single result is not tuple-typed
+      output_tuple_indices = if (n_results > 1L) i - 1L else integer()
+    )
+  })
+}

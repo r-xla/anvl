@@ -1,9 +1,18 @@
 # anvl (development version)
 
+## Features
+
+* New `nv_ffi_call()` (and the `prim_ffi_call()` primitive behind it) calls
+  an XLA FFI handler registered with `pjrt::pjrt_register_custom_call()`,
+  without having to define a primitive and a StableHLO lowering rule by
+  hand. Operand and result layouts default to row-major, attributes are
+  taken as a named list, and results can be aliased onto operands so an
+  in-place handler avoids a copy.
+
 ## Documentation
 
 * New article "Custom Calls", showing how to write an XLA FFI handler,
-  register it with {pjrt} and lower a primitive to it on CPU.
+  register it with {pjrt} and call it on CPU.
 
 ## Tests
 

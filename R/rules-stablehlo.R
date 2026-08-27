@@ -1153,3 +1153,43 @@ prim_convolution[["stablehlo"]] <- function(
     precision_config = rep(toupper(precision), 2L)
   ))
 }
+
+# Deliberately does not declare an `output_types` formal: the types are
+# already carried as the `result_types` param, and declaring one would make
+# the lowering pass inject a second, colliding argument.
+prim_ffi_call[["stablehlo"]] <- function(
+  ...,
+  target_name,
+  result_types,
+  attrs,
+  has_side_effect,
+  operand_layouts,
+  result_layouts,
+  aliases
+) {
+  ops <- list(...)
+  n_results <- length(result_types)
+
+  out <- rlang::exec(
+    hlo_custom_call,
+    !!!ops,
+    call_target_name = target_name,
+    api_version = 4L,
+    has_side_effect = has_side_effect,
+    backend_config = if (length(attrs)) ffi_backend_config(attrs) else NULL,
+    output_types = result_types,
+    operand_layouts = operand_layouts,
+    result_layouts = result_layouts,
+    output_operand_aliases = if (!is.null(aliases)) {
+      ffi_output_operand_aliases(aliases, n_results)
+    }
+  )
+
+  if (!n_results) {
+    ops
+  } else if (n_results == 1L) {
+    list(out)
+  } else {
+    out
+  }
+}
