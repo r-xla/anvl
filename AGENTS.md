@@ -12,7 +12,7 @@ It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()
 
 When adding new functionality, decide which layer it belongs to. Most new operations need both: a `prim_*` primitive with rules, and an `nv_*` wrapper with R-idiomatic semantics.
 
-Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`.
+Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets, so write it in the *category* the operand is in -- `0` for a float array, `0L` for an integer one. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
 
 ## Terminology
 
@@ -38,9 +38,14 @@ makes `x_f64 / sqrt(2)` exact.
 - Promotion decides the dtype: `common_dtype_of()` treats an `RDataArray` as
   the yielding operand, and `nv_promote_to_common()` then *builds* it at the
   common dtype (`realize_at()`), rather than converting it from a default.
-- Every primitive call and every trace output commits whatever is left, at
-  `default_dtype_r()` (`f32` / `i32` / `bool`), so a primitive never sees an
-  uncommitted value.
+- A primitive brings its arrayish arguments to one dtype before it records a
+  call, following the `promote` rule it declared (see `new_primitive()`; the
+  default is `promote_yield()`). An R value takes the dtype the other operands
+  already have -- **within its own category**: a double becomes a float, an
+  integer an integer, a logical a `bool`, and nothing else. Crossing a category
+  is promotion, which is the `nv_*` layer's job, so `prim_add(x_f64, 1L)` is an
+  error where `nv_add(x_f64, 1L)` is `f64`. A trace output commits whatever is
+  left, at `default_dtype_r()`.
 - The value is built directly only at a dtype that holds it faithfully (a
   double at any float, an R integer at any float or any >=32-bit integer, a
   logical at `bool`); any other target is built at the natural dtype -- `f64` /

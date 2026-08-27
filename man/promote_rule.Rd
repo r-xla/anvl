@@ -5,6 +5,7 @@
 \alias{promote_common}
 \alias{promote_like}
 \alias{promote_dtype}
+\alias{promote_yield}
 \title{Promotion Rules}
 \usage{
 promote_common(only = NULL)
@@ -12,6 +13,8 @@ promote_common(only = NULL)
 promote_like(arg, only = NULL)
 
 promote_dtype(dtype, only = NULL)
+
+promote_yield(only = NULL)
 }
 \arguments{
 \item{only}{(\code{NULL} | \code{character()} | \code{numeric()})\cr
@@ -43,6 +46,11 @@ arguments come along: \code{nv_clamp(min_val, x, max_val)} is \code{x}'s type.
 \item \code{promote_dtype()} -- a data type the function names itself, rather than one
 read off an input. For a function with an explicit \code{dtype} argument, such as
 \code{\link[=nv_rnorm]{nv_rnorm()}}.
+\item \code{promote_yield()} -- the data type the inputs that \emph{have} one already share.
+Unlike the other three it never converts an input that has a data type; only
+the R values move, and only within their own category. This is what the
+primitives use, and what a function wants when its arguments must agree but
+it will not widen the array it was given.
 }
 }
 \details{
@@ -51,7 +59,27 @@ has no data type to convert from, so it is built at the target directly and
 arrives with every digit it had (which is what keeps \code{x_f64 / sqrt(2)}
 exact). An input that already has a data type is converted, \strong{even where that
 narrows} -- \code{promote_like()} and \code{promote_dtype()} say what the result type
-is, they do not negotiate it.
+is, they do not negotiate it. \code{promote_yield()} is the exception: it converts
+nothing that has a data type already.
+}
+\section{Yielding, and categories}{
+
+\code{promote_yield()} reads its target off the inputs rather than computing one:
+\itemize{
+\item If exactly one data type is present among the inputs, that is the target and
+the R values take it.
+\item If none is -- every input is an R value -- they must all be of the same R
+storage type, and they take its default (\code{f32} / \code{i32} / \code{bool}). A mix of
+storage types has no data type to agree on and is an error.
+\item If more than one is present, the inputs cannot be brought together without
+converting one of them, which this rule does not do. Nothing is realized,
+and whatever consumes the values reports the mismatch.
+}
+
+An R value only ever yields \strong{within its own category}: a double becomes a
+float, an integer an integer, a logical a \code{bool}. \code{promote_yield()} on an
+\code{f64} input and a \code{1L} is an error, where a \code{1} gives \code{f64} -- crossing a
+category is promotion, which is what the other three rules are for.
 
 \code{only} restricts the rule to some of the inputs. The rest are still aligned
 onto one device and converted, just not to the target -- for an argument that
@@ -62,6 +90,7 @@ A rule names whole arguments, never individual values inside one. An argument
 that is a tree therefore takes part as a whole: all of its leaves contribute
 to the target, and all of them are brought to it.
 }
+
 \section{Several groups in one call}{
 
 \code{.promote} also takes a \emph{list} of rules, which is how one call promotes
@@ -88,6 +117,8 @@ all.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
+# yielding: the R value takes the array's dtype, the array never moves
+as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
 as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
 # `pred` is aligned and converted, but keeps out of the promotion

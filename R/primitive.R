@@ -9,9 +9,12 @@
 #'   The name of the primitive.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs. Only used if `higher_order = TRUE`.
+#' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
+#'   How the primitive brings its arrayish arguments to one data type before it
+#'   records a call. See [`new_primitive()`].
 #' @return (`AnvlPrimitive`)
 #' @export
-AnvlPrimitive <- function(name, subgraphs = character()) {
+AnvlPrimitive <- function(name, subgraphs = character(), promote = promote_yield()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
 
@@ -19,6 +22,7 @@ AnvlPrimitive <- function(name, subgraphs = character()) {
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
+  env$promote <- promote
 
   structure(env, class = "AnvlPrimitive")
 }
@@ -91,6 +95,20 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   the first argument to [`graph_desc_add()`].
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
+#' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
+#'   How the primitive brings its arrayish arguments to one data type before it
+#'   records a call, applied to the `args` of [`graph_desc_add()`].
+#'
+#'   Defaults to [`promote_yield()`]: all of them must agree, an argument that
+#'   has a data type keeps it, and an R value takes the one the others have --
+#'   within its own category. Restrict it with `only =` for a primitive whose
+#'   operands are *meant* to differ in part, such as [`prim_ifelse()`]'s `pred`
+#'   or a gather's indices.
+#'
+#'   `NULL` means no rule at all: every R value commits to its own default, and
+#'   the arguments may hold any data types the primitive accepts. That is what
+#'   [`prim_sort()`] and [`prim_while()`] want, since a sort payload and a
+#'   loop-carried state are deliberately heterogeneous.
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
 #' @param device (`NULL` | `character(1)` | `device_arg()`)\cr
@@ -101,13 +119,21 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   registry.
 #' @return A callable of class `c("JitPrimitive", "JitFunction")`.
 #' @export
-new_primitive <- function(name, fn, subgraphs = character(), static = character(), device = NULL, register = TRUE) {
+new_primitive <- function(
+  name,
+  fn,
+  subgraphs = character(),
+  promote = promote_yield(),
+  static = character(),
+  device = NULL,
+  register = TRUE
+) {
   checkmate::assert_string(name)
   checkmate::assert_function(fn)
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
-  primitive <- AnvlPrimitive(name, subgraphs = subgraphs)
+  primitive <- AnvlPrimitive(name, subgraphs = subgraphs, promote = promote)
 
   # Bind `self` (the AnvlPrimitive) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —

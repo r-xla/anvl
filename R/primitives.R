@@ -1,5 +1,6 @@
 #' @include utils.R
 #' @include type-converters.R
+#' @include promotion.R
 #' @include primitive.R
 #' @include jit.R
 
@@ -570,6 +571,9 @@ prim_dynamic_slice <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
+  # Position, not name: the start indices are variadic and unnamed. They are
+  # integers whatever `x` is.
+  promote = promote_yield(only = 1L),
   static = "slice_sizes"
 )
 
@@ -630,7 +634,9 @@ prim_dynamic_update_slice <- new_primitive(
       params = list(),
       infer_fn = infer_fn
     )[[1L]]
-  }
+  },
+  # `x` and `update` must agree; the variadic start indices are integers.
+  promote = promote_yield(only = 1:2)
 )
 
 
@@ -960,6 +966,13 @@ prim_reduce <- new_primitive(
     force(x)
     force(init)
     force(reductor)
+
+    # Early, because the reductor below is traced at `x`'s dtype: by the time
+    # graph_desc_add() would resolve them, the sub-graph's parameter slots would
+    # already have been built from an `init` that committed to its own default.
+    resolved <- resolve_primitive_args(self, list(x = x, init = init))
+    x <- resolved$x
+    init <- resolved$init
 
     axes <- resolve_axes(axes, naxes_abstract(x), unique = TRUE)
     if (!checkmate::test_flag(drop)) {
@@ -2373,7 +2386,9 @@ prim_ifelse <- new_primitive(
     )[[
       1L
     ]]
-  }
+  },
+  # `pred` is a bool and keeps out of it; the two branches must agree.
+  promote = promote_yield(only = c("true_value", "false_value"))
 )
 
 # Higher order primitives -------------------------------------------------------
@@ -2540,6 +2555,9 @@ prim_while <- new_primitive(
 
     unflatten(body_graph$out_tree, out)
   },
+  # The loop-carried state is meant to be heterogeneous -- a counter and the
+  # values it iterates over -- so its members do not share a dtype.
+  promote = NULL,
   subgraphs = c("cond_graph", "body_graph"),
   static = 2:3
 )
@@ -2630,6 +2648,9 @@ prim_sort <- new_primitive(
       infer_fn = infer_fn
     )
   },
+  # A key and its payloads are meant to differ in dtype (nv_argsort() sorts an
+  # f32 key alongside an i32 index), so there is nothing here to yield to.
+  promote = NULL,
   static = c("axis", "descending", "is_stable")
 )
 
@@ -2867,6 +2888,17 @@ prim_scatter <- new_primitive(
 
     current_desc <- .current_descriptor(silent = TRUE)
 
+    # Early, for the same reason as prim_reduce(): the update computation below
+    # is traced at these dtypes, so they have to be settled before the sub-graph
+    # is built rather than when the call is recorded.
+    resolved <- resolve_primitive_args(
+      self,
+      list(x = x, scatter_indices = scatter_indices, update = update)
+    )
+    x <- resolved$x
+    scatter_indices <- resolved$scatter_indices
+    update <- resolved$update
+
     # Trace the update computation function
     # For scatter, the update computation takes 2 scalar arguments (current, update)
     desc_update <- local_descriptor()
@@ -2951,6 +2983,8 @@ prim_scatter <- new_primitive(
 
     out[[1L]]
   },
+  # The value operands must agree; the scatter indices are integers.
+  promote = promote_yield(only = c("x", "update")),
   subgraphs = "update_computation_graph",
   static = 4:12
 )
@@ -3104,6 +3138,8 @@ prim_gather <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
+  # The start indices are integers whatever `x` is.
+  promote = promote_yield(only = "x"),
   static = 3:11
 )
 

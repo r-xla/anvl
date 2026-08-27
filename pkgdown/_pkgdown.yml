@@ -131,6 +131,7 @@ reference:
       - promote_common
       - promote_like
       - promote_dtype
+      - promote_yield
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays

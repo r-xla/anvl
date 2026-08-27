@@ -102,20 +102,34 @@ rdata_natural_dtype <- function(r_type) {
   switch(r_type, double = as_dtype("f64"), integer = as_dtype("i32"), logical = as_dtype("bool"))
 }
 
-# Whether an R value of this storage type can be built at `dtype` directly,
-# i.e. whether doing so gives the same value as building it at its natural
-# dtype and converting. It does within the value's own category (float to
-# float rounds once either way; an R integer reaches any 32-bit-or-wider
-# integer dtype unchanged), and for an R integer widened into a float. It does
-# not for anything narrowing out of a category, which is where R and the
-# program disagree.
-rdata_builds_directly <- function(r_type, dtype) {
+# The dtypes an R value of this storage type may be built at at all: the ones of
+# its own category. A double becomes a float, an integer an integer, a logical a
+# `bool`. Anything else is *promotion*, which is the API layer's business -- and
+# out of the category R's coercion and XLA's `convert` disagree, so it has to be
+# the program's conversion rather than R's.
+rdata_in_category <- function(r_type, dtype) {
   switch(
     r_type,
     logical = is_dtype_bool(dtype),
-    integer = is_dtype_float(dtype) || (is_dtype_intish(dtype) && dtype_width(dtype) >= 32L),
+    integer = is_dtype_intish(dtype),
     double = is_dtype_float(dtype)
   )
+}
+
+# Whether an R value of this storage type can be built at `dtype` *directly*,
+# i.e. whether doing so gives the same value as building it at its natural dtype
+# and converting. That is the category test plus enough width: float to float
+# rounds once either way, and an R integer reaches any 32-bit-or-wider integer
+# dtype unchanged, but a narrower one has to be the program's convert.
+#
+# An R integer is deliberately not built at a float here. It would be exact, but
+# it would let one argument leaf be built at both `i32` and `f32`, and
+# `resolve_upload_dtype()` then has to choose between two dtypes of the same
+# width where the float does not hold every value of the integer. Keeping the
+# candidates inside one category is what makes "the widest holds them all" true.
+rdata_builds_directly <- function(r_type, dtype) {
+  rdata_in_category(r_type, dtype) &&
+    (r_type != "integer" || dtype_width(dtype) >= 32L)
 }
 
 # Build `box`'s R value into the graph at `dtype`, and return the GraphBox for
@@ -202,6 +216,51 @@ peek_dtype <- function(x) {
 # already has a dtype is returned unchanged.
 commit_rdata_box <- function(x) {
   if (is_rdata_box(x)) commit_rdata(x) else x
+}
+
+# Bring a primitive's arrayish arguments to one dtype, following the rule the
+# primitive declared (see `new_primitive()`). Without this an R value would
+# commit to its own default, so whether a call worked would depend on whether the
+# array it met happened to be at that default.
+#
+# `graph_desc_add()` calls this, and so does any primitive that reads its
+# operands' dtypes *before* recording a call -- tracing a sub-graph, or checking
+# a constraint. It is idempotent: once every argument has a dtype there is
+# nothing left to decide, which is also the fast path.
+resolve_primitive_args <- function(primitive, args) {
+  if (inherits(primitive, "JitPrimitive")) {
+    primitive <- attr(primitive, "primitive")
+  }
+  promote <- primitive$promote
+  if (is.null(promote) || !length(args) || !any(vapply(args, has_no_dtype, logical(1L)))) {
+    return(args)
+  }
+  for (rule in resolve_promote_rules(promote, args)) {
+    # A rule that could not settle on one dtype realizes nothing; whatever
+    # consumes the arguments reports the mismatch, as it does today.
+    if (is.null(rule$dtype)) {
+      next
+    }
+    args[rule$positions] <- lapply(args[rule$positions], realize_traced, dtype = rule$dtype)
+  }
+  args
+}
+
+# Whether a value has no dtype yet -- an RData box, or a bare R value that has
+# not been boxed. Deliberately cheap: it runs once per argument of every traced
+# primitive call.
+has_no_dtype <- function(x) {
+  is_rdata_box(x) || (!is_anvl_array(x) && !is_box(x) && is_valid_r(x))
+}
+
+# Realize a value at `dtype` inside a trace. A bare R value is boxed *without*
+# committing first, so that materializing it yields the same node kind it would
+# have had anyway -- an inlined literal for a scalar, a constant for an R array.
+realize_traced <- function(x, dtype) {
+  if (has_no_dtype(x) && !is_box(x)) {
+    x <- maybe_box_arrayish(x, materialize = FALSE)
+  }
+  realize_at(x, dtype)
 }
 
 # A fresh RData node for an R value written in the body of a traced function.
@@ -1080,6 +1139,7 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
+  args <- resolve_primitive_args(primitive, args)
 
   # Box each input and pull out its gnode + aval in one pass (`gnodes_in`
   # unnamed for the PrimitiveCall; `avals_in` keeps arg names for infer_fn).

@@ -175,6 +175,19 @@ The rules must name disjoint sets -- a value cannot be brought to two data types
 -- and all of them are resolved before any is applied, so one group's target
 never depends on another group having been converted first.
 
+`promote_yield()` is the fourth rule, and the odd one out: it reads its target
+off the inputs that already have a data type and *never converts them*, so only
+the R values move. It is what the primitives use, and what you want for a
+function whose arguments must agree but which should not silently widen the
+array it was handed.
+
+```{r, error = TRUE}
+# the R value takes the array's data type
+as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
+# ... but only within its own category: an integer literal stays an integer
+as_anvl_arrays(nv_array(1, dtype = "f64"), 1L, .promote = promote_yield())
+```
+
 ### Arguments may be trees
 
 An argument can be a nested list of arrayish values rather than a single one.

@@ -36,6 +36,11 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' * `promote_dtype()` -- a data type the function names itself, rather than one
 #'   read off an input. For a function with an explicit `dtype` argument, such as
 #'   [`nv_rnorm()`].
+#' * `promote_yield()` -- the data type the inputs that *have* one already share.
+#'   Unlike the other three it never converts an input that has a data type; only
+#'   the R values move, and only within their own category. This is what the
+#'   primitives use, and what a function wants when its arguments must agree but
+#'   it will not widen the array it was given.
 #'
 #' @details
 #' Inputs are *realized* at the target rather than converted to it: an R value
@@ -43,7 +48,25 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' arrives with every digit it had (which is what keeps `x_f64 / sqrt(2)`
 #' exact). An input that already has a data type is converted, **even where that
 #' narrows** -- `promote_like()` and `promote_dtype()` say what the result type
-#' is, they do not negotiate it.
+#' is, they do not negotiate it. `promote_yield()` is the exception: it converts
+#' nothing that has a data type already.
+#'
+#' @section Yielding, and categories:
+#' `promote_yield()` reads its target off the inputs rather than computing one:
+#'
+#' * If exactly one data type is present among the inputs, that is the target and
+#'   the R values take it.
+#' * If none is -- every input is an R value -- they must all be of the same R
+#'   storage type, and they take its default (`f32` / `i32` / `bool`). A mix of
+#'   storage types has no data type to agree on and is an error.
+#' * If more than one is present, the inputs cannot be brought together without
+#'   converting one of them, which this rule does not do. Nothing is realized,
+#'   and whatever consumes the values reports the mismatch.
+#'
+#' An R value only ever yields **within its own category**: a double becomes a
+#' float, an integer an integer, a logical a `bool`. `promote_yield()` on an
+#' `f64` input and a `1L` is an error, where a `1` gives `f64` -- crossing a
+#' category is promotion, which is what the other three rules are for.
 #'
 #' `only` restricts the rule to some of the inputs. The rest are still aligned
 #' onto one device and converted, just not to the target -- for an argument that
@@ -90,6 +113,8 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
+#' # yielding: the R value takes the array's dtype, the array never moves
+#' as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
 #' as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
 #' as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
 #' # `pred` is aligned and converted, but keeps out of the promotion
@@ -129,6 +154,12 @@ promote_dtype <- function(dtype, only = NULL) {
   PromoteRule("dtype", only = only, dtype = as_dtype(dtype))
 }
 
+#' @rdname promote_rule
+#' @export
+promote_yield <- function(only = NULL) {
+  PromoteRule("yield", only = only)
+}
+
 # A tagged union over the three rules. The tag rather than three S3 subclasses:
 # the whole of the behaviour is `promote_target()`, and one function that shows
 # all three side by side is easier to read than three one-line methods.
@@ -160,7 +191,8 @@ assert_arg_ref <- function(x, what, len = NULL) {
 format.PromoteRule <- function(x, ...) {
   detail <- switch(
     x$kind,
-    common = "",
+    common = ,
+    yield = "",
     like = sprintf("(%s)", format_arg_ref(x$arg)),
     dtype = sprintf("(%s)", repr(x$dtype))
   )
@@ -212,6 +244,9 @@ resolve_promote_rules <- function(promote, args) {
 # Returns `list(dtype, positions)`; `positions` indexes `args`.
 resolve_promote_rule <- function(rule, args) {
   positions <- if (is.null(rule$only)) seq_along(args) else arg_positions(rule$only, args, "only")
+  if (rule$kind == "yield") {
+    return(resolve_yield(args, positions))
+  }
   dtype <- switch(
     rule$kind,
     # Over the *leaves*: an argument may be a tree, and every value in it counts.
@@ -223,6 +258,51 @@ resolve_promote_rule <- function(rule, args) {
     dtype = rule$dtype
   )
   list(dtype = dtype, positions = positions)
+}
+
+# `promote_yield()`: read the target off the inputs that already have a dtype,
+# never move them, and let the R values take it -- within their own category.
+resolve_yield <- function(args, positions) {
+  leaves <- flatten(args[positions])
+  is_r <- vapply(leaves, function(x) is_rdata_array(to_abstract(x)), logical(1L))
+  settled <- unique(lapply(leaves[!is_r], peek_dtype))
+  if (length(settled) > 1L) {
+    # The inputs cannot be brought together without converting one of them.
+    # Realize nothing and let whatever consumes them report the mismatch.
+    return(list(dtype = NULL, positions = integer()))
+  }
+  if (!length(settled)) {
+    # Every input is an R value. They agree only if they are of one storage
+    # type; there is no data type for a mix of them to meet at.
+    r_types <- unique(vapply(leaves[is_r], function(x) to_abstract(x)$r_type, character(1L)))
+    if (length(r_types) > 1L) {
+      cli_abort(
+        c(
+          "The R values here have no data type to agree on.",
+          x = "Got {.val {r_types}} values, which belong to different data type categories.",
+          i = "Give one of them a data type with {.fn nv_scalar} or {.fn nv_array}, or use an operation that promotes across categories." # nolint
+        ),
+        call = NULL
+      )
+    }
+    return(list(dtype = default_dtype_r(r_types), positions = positions))
+  }
+  target <- settled[[1L]]
+  # Each R value must be able to take the target without leaving its category.
+  for (leaf in leaves[is_r]) {
+    r_type <- to_abstract(leaf)$r_type
+    if (!rdata_in_category(r_type, target)) {
+      cli_abort(
+        c(
+          "An R {r_type} cannot be used at the {.val {as.character(target)}} data type here.",
+          i = "A literal is only ever built at a data type of its own category: a double becomes a float, an integer an integer, a logical a {.val bool}.", # nolint
+          i = "Use an operation that promotes across categories, or convert explicitly with {.fn nv_convert}."
+        ),
+        call = NULL
+      )
+    }
+  }
+  list(dtype = target, positions = positions)
 }
 
 # Resolve argument references -- names or positions -- against the call's

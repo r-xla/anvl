@@ -66,8 +66,30 @@
   storage type: `nv_aval("r_dbl", shape)`, and likewise `"r_int"` /
   `"r_lgl"`.
 
+* Primitives resolve R values against their own operands instead of committing
+  them to a default. `prim_mul(x, 2)` used to work only when `x` happened to be
+  at the default data type for an R double, so `prim_mul(x_f32, 2)` worked and
+  `prim_mul(x_f64, 2)` did not; now the literal takes `x`'s data type, and it is
+  built there rather than converted, so it keeps every digit. This reaches the
+  slots where writing a literal is natural -- `prim_pad()`'s padding value,
+  `prim_clamp()`'s bounds, `prim_reduce()`'s `init`.
+
+  A literal is only ever built at a data type of its **own category**: a double
+  becomes a float, an integer an integer, a logical a `bool`. Crossing a
+  category is promotion and stays with the `nv_*` layer, so `prim_add(x_f64, 1L)`
+  is now an error naming the rule, where `nv_add(x_f64, 1L)` is `f64` as before.
+  A primitive whose operands are meant to differ -- `prim_sort()`'s payload,
+  `prim_while()`'s loop state -- opts out with `promote = NULL`.
+
+  `new_primitive()` gains `promote` for this, taking the same rules as
+  `as_anvl_arrays()`.
+
 ## Bug fixes
 
+* An R integer argument used at both an integer and a float data type in one
+  program was uploaded as `f32`, which carries 24 bits of mantissa, so the
+  integer use site silently lost bits above 2^24. R integers are now built only
+  at integer data types, and a float use site converts from one.
 * `nv_pad()` builds its padding value at the array's data type. It used to
   commit the value to its own default first, so `nv_pad(x_f64, 0)` failed with a
   data type mismatch and only an `f32` array with a double padding value

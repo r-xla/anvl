@@ -7,9 +7,10 @@
         Inputs:
           %x1: f32[]
         Body:
-          %1: f32[] = mul(%x1, 1:f32)
+          %1: f32[] = convert [dtype = f32] (1:i32)
+          %2: f32[] = mul(%x1, %1)
         Outputs:
-          %1: f32[] 
+          %2: f32[] 
 
 ---
 
