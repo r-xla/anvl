@@ -132,6 +132,7 @@ reference:
       - promote_like
       - promote_dtype
       - promote_yield
+      - promote_grouped
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
@@ -392,8 +393,6 @@ reference:
       - RDataInput
       - IotaArray
       - peek_dtype
-      - shape_abstract
-      - naxes_abstract
       - to_abstract
       - arrayish
 

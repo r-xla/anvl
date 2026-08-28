@@ -256,6 +256,10 @@ test_that("good error message when passing AbstractArrays", {
   )
 })
 
+test_that("jit_eval evaluates a scalar expression", {
+  expect_equal(as_array(jit_eval(nv_scalar(1) + nv_scalar(2))), 3)
+})
+
 test_that("jit_eval does not modify calling environment", {
   x <- nv_array(1:2)
   jit_eval({

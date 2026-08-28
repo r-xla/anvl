@@ -202,11 +202,13 @@ nv_broadcast_to <- function(x, shape) {
 #' nv_convert(x, dtype = "f32")
 #' @export
 nv_convert <- function(x, dtype) {
-  # An R value is built at the target dtype rather than converted to it, so it
-  # keeps every digit it had. `as_anvl_array_lazy()` rather than
-  # `as_anvl_array()`: converting at the default first is exactly the rounding
-  # this avoids.
-  realize_at(as_anvl_array_lazy(x), as_dtype(dtype))
+  if (!is_arrayish(x)) {
+    cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
+  }
+  # `realize_at()` rather than canonicalizing first: an R value is *built* at
+  # the target dtype, keeping every digit it had, where converting it from its
+  # own default would round through `f32` on the way.
+  realize_at(x, as_dtype(dtype))
 }
 
 #' @rdname nv_transpose

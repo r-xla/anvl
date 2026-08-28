@@ -116,7 +116,10 @@ nv_runif <- function(
 #' @rdname nv_normal
 #' @template param_shape
 #' @template param_initial_state
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#'   Data type of the sample, `"f32"` or `"f64"`. `NULL` (default) takes it from
+#'   `mean` and `sd` where either is a real array, and falls back to the default
+#'   float data type (`"f32"`) where both are bare R values, which have none.
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -135,18 +138,22 @@ nv_runif <- function(
 #' nv_rnorm(c(2, 3), state, sd = sds)[[2]]
 #' @export
 #' @jit static c(1L, 3L)
-nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
-  dtype <- assert_float_dtype(dtype)
+nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   shape <- assert_shapevec(shape)
   # `mean` and `sd` are arrayish: they may be traced values, so they cannot be
-  # validated here and are only required to broadcast against `shape`. The
-  # target is this function's own `dtype` argument rather than one of the
-  # inputs', which is what `promote_dtype()` is for -- realizing an R value
-  # there directly, instead of converting it from its default and rounding
-  # through `f32` on the way.
-  # REVIEW: Is this really how we want the semantics for rnorm? If mean and sd are real arrays
-  # we should probably prefer theirs?
-  # @louisaslett might have an opinion here.
+  # validated here and are only required to broadcast against `shape`. With no
+  # `dtype` the sample takes theirs -- a bare R value has none, so a call that
+  # names neither falls back to the default float rather than to whatever R
+  # stores its numbers as.
+  dtype <- if (is.null(dtype)) {
+    dt <- common_dtype_of(mean, sd)
+    assert_float_dtype(if (is_dtype_float(dt)) dt else default_dtype_r("double"), arg = "mean/sd")
+  } else {
+    assert_float_dtype(dtype)
+  }
+  # The draws come out of the generator at `dtype`, and `mean`/`sd` shift and
+  # scale them, so they are realized there -- an R value built at `dtype`
+  # directly instead of converted from its default and rounded through `f32`.
   args <- as_anvl_arrays(mean, sd, .promote = promote_dtype(dtype))
   mean <- args[[1L]]
   sd <- args[[2L]]
@@ -314,7 +321,7 @@ nv_sample_int <- function(shape, initial_state, n, dtype = "i32") {
 nv_sample <- function(shape, initial_state, x) {
   shape <- assert_shapevec(shape)
   x <- as_anvl_array(x)
-  x_shape <- shape_abstract(x)
+  x_shape <- shape(x)
   if (length(x_shape) != 1L) {
     cli_abort("{.arg x} must be a 1-D array, but has {length(x_shape)} axes.")
   }

@@ -40,14 +40,9 @@ Functions in anvl have dynamic (arrayish) and static (standard R values) inputs.
 However, it can also be convenient to pass R objects as dynamic inputs and let anvl convert them.
 To enable this, there are the `as_anvl_array()` and `as_anvl_arrays()` converters.
 You should call them at the top of your function.
-Not only will these functions convert the inputs, they will also check them for compatibility, specifically w.r.t. their device and backend.
-If they don't live on the same device, an error will be thrown.
-
-<!-- REVIEW: Weird wording. It also matters in jit-mode (promotion). We shoul just mention that in eager mode it additionally handles device-placement -->
-This matters most in eager mode: under `jit()`, {anvl} sees the whole call and
-places the inputs itself. But the converters mean the same thing in both modes,
-so writing your function this way costs nothing when it *is* jitted -- and see
-point 4 below for what it buys.
+Not only will these functions convert the inputs, they will also decide the data type they are all brought to (see `.promote` below).
+In eager mode they additionally handle device placement: every input is put on one device, and a call that mixes devices or backends is rejected.
+The converters mean the same thing in both modes, so a function written this way behaves the same eagerly and under `jit()`.
 
 The advantage of this input standardization is best illustrated with an example.
 
@@ -125,28 +120,29 @@ back at one data type. Which one is the rule's job to say, and there are three:
 # the common data type of the inputs -- what a binary operator does
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
 # the data type one particular input already has
-as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
+as_anvl_arrays(x = nv_array(1, dtype = "f64"), y = 1.5, .promote = promote_like("x"))
 # a data type the function names itself
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
 ```
 
-<!--REVIEW: this would be the default expectation anyway, so no need to alk about this so much-->
-Promoting *realizes* an R value at the target rather than converting it there:
-it is built at that data type from the R data, so it arrives with every digit it
-had. Converting afterwards instead -- canonicalizing first and then calling
-`nv_convert()` -- rounds through the default `f32` on the way, so
-`x_f64 * sqrt(2)` comes out right only in the first spelling. **If your
-function's result data type depends on its arguments, say so with a rule.**
+An R value is *built* at the target rather than converted to it, so it arrives
+with every digit it had. **If your function's result data type depends on its
+arguments, say so with a rule** rather than canonicalizing first and calling
+`nv_convert()` afterwards, which rounds through the default `f32` on the way.
 
-<!-- REVIEW: no need to mention everythign here. Just say different rules exist and ref the help page -->
-Which rule you want follows from what the function is. `nv_add()` is
-`promote_common()`: neither operand is privileged. `nv_clamp(min_val, x,
-max_val)` is `promote_like("x")`: the result is `x`'s type and the bounds come
-along, even where that narrows them. `nv_rnorm(shape, state, dtype = )` is
-`promote_dtype(dtype)`: the type is the function's own argument, not something
-read off an input.
+`promote_like()` and `promote_dtype()` refuse an argument the target data type
+cannot hold rather than narrowing it silently; pass `force = TRUE` where the
+narrowing is your function's contract.
+
+```{r, error = TRUE}
+as_anvl_arrays(x = nv_array(1L), y = nv_array(1.5), .promote = promote_like("x"))
+```
+
+Which rule fits which function, and what each of them does exactly, is in
+`?promote_rule`.
 
 <!-- REVIEW: Weird wodring "no business". I should write this myself.-->
+<!-- RESPONSE: left for you to write; the paragraph below is untouched. -->
 An argument that has no business taking part is named out with `only`. Every
 input is still aligned onto one device and converted -- it just does not take
 the target's data type. `nv_ifelse()` is the case: its predicate has to stay a
@@ -161,14 +157,14 @@ as_anvl_arrays(
 )
 ```
 
-`.promote` also takes a *list* of rules, for a function whose arguments fall into
+`promote_grouped()` combines rules, for a function whose arguments fall into
 several groups that are promoted independently:
 
 ```{r}
 as_anvl_arrays(
   x = nv_array(1L), y = 1.5,
   a = nv_array(1L, dtype = "i8"), b = 2L,
-  .promote = list(
+  .promote = promote_grouped(
     promote_common(only = c("x", "y")),
     promote_common(only = c("a", "b"))
   )
@@ -192,25 +188,6 @@ as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
 as_anvl_arrays(nv_array(1, dtype = "f64"), 1L, .promote = promote_yield())
 ```
 
-### Arguments may be trees
-
-<!-- REVIEW: We don't want this here yet.-->
-An argument can be a nested list of arrayish values rather than a single one.
-The device and the `.promote` target are decided over every *leaf* of every
-argument, and each argument comes back with the structure it had:
-
-```{r}
-as_anvl_arrays(
-  nv_array(1L, dtype = "i8"),
-  list(a = 1.5, b = list(2L)),
-  .promote = promote_common()
-)
-```
-
-A rule names whole arguments, never individual values inside one, so a tree
-takes part as a whole: all of its leaves contribute to the target and all of
-them are brought to it.
-
 **3. Everything downstream is then well-defined.** After the call each argument
 is an `AnvlArray` (or, under `jit()`, a traced box), so `dtype()`, `device()`
 and `backend()` answer. On a bare R value they do not -- an R value has no data
@@ -231,6 +208,7 @@ If you only need to *look* at the data type -- an "is this a float?" branch --
 arguments happen to all be R values never reaches anvl at all: base R evaluates
 it, and you get an R vector rather than an array.
 <!-- REVIEW: Also reformulate. I just have to do the writing -->
+<!-- RESPONSE: left for you to write. -->
 
 ```{r}
 g <- function(x, y) x + y

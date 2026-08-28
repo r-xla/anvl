@@ -9,14 +9,12 @@
 #'   The name of the primitive.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs. Only used if `higher_order = TRUE`.
-#' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
+#' @param promote (`NULL` | [`PromoteRule`][promote_rule])\cr
 #'   How the primitive brings its arrayish arguments to one data type before it
 #'   records a call. See [`new_primitive()`].
-#'   REVIEW: I don't think promote_yield() should be the default as it ensures all inputs
-#'           have the same dtype.
 #' @return (`AnvlPrimitive`)
 #' @export
-AnvlPrimitive <- function(name, subgraphs = character(), promote = promote_yield()) {
+AnvlPrimitive <- function(name, subgraphs = character(), promote = NULL) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
 
@@ -97,20 +95,22 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   the first argument to [`graph_desc_add()`].
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
-#' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
+#' @param promote (`NULL` | [`PromoteRule`][promote_rule])\cr
 #'   How the primitive brings its arrayish arguments to one data type before it
 #'   records a call, applied to the `args` of [`graph_desc_add()`].
-#'   REVIEW: Also the default here should be changed.
-#'   Defaults to [`promote_yield()`]: all of them must agree, an argument that
-#'   has a data type keeps it, and an R value takes the one the others have --
-#'   within its own category. Restrict it with `only =` for a primitive whose
-#'   operands are *meant* to differ in part, such as [`prim_ifelse()`]'s `pred`
-#'   or a gather's indices.
 #'
-#'   `NULL` means no rule at all: every R value commits to its own default, and
-#'   the arguments may hold any data types the primitive accepts. That is what
-#'   [`prim_sort()`] and [`prim_while()`] want, since a sort payload and a
-#'   loop-carried state are deliberately heterogeneous.
+#'   `NULL` (default) means no rule: every R value commits to its own default,
+#'   and the arguments may hold any data types the primitive accepts. That is
+#'   right for a primitive with one arrayish argument, and for one whose
+#'   operands are deliberately heterogeneous ([`prim_sort()`]'s payload,
+#'   [`prim_while()`]'s loop state).
+#'
+#'   A primitive whose arrayish arguments must *agree* says so with
+#'   [`promote_yield()`]: an argument that has a data type keeps it, and an R
+#'   value takes the one the others have -- within its own category. This is
+#'   what makes `prim_mul(x_f64, 2)` work whatever `x`'s data type is. Restrict
+#'   it with `only =` where some of the operands are meant to differ, such as
+#'   [`prim_ifelse()`]'s `pred` or a gather's indices.
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
 #' @param device (`NULL` | `character(1)` | `device_arg()`)\cr
@@ -125,7 +125,7 @@ new_primitive <- function(
   name,
   fn,
   subgraphs = character(),
-  promote = promote_yield(),
+  promote = NULL,
   static = character(),
   device = NULL,
   register = TRUE

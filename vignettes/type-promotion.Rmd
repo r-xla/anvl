@@ -43,7 +43,7 @@ dtypes <- c("bool", "i8", "i16", "i32", "i64", "ui8", "ui16", "ui32", "ui64", "f
 tbl <- matrix(NA_character_, length(dtypes), length(dtypes))
 for (i in seq_along(dtypes)) {
   for (j in seq_along(dtypes)) {
-    tbl[i, j] <- repr(common_dtype(dtypes[i], dtypes[j]))
+    tbl[i, j] <- as.character(common_dtype(dtypes[i], dtypes[j]))
   }
 }
 rownames(tbl) <- dtypes
@@ -63,9 +63,7 @@ x <- nv_scalar(1, dtype = "f64")
 as_array(x / sqrt(2)) == 1 / sqrt(2)
 ```
 
-<!-- REVIEW: Information w.r.t. old behavior that user does not care about.-->
 The result is exact to the last bit, because the `f64` division was handed `sqrt(2)` itself.
-Had the literal been stamped `f32` on the way in, that `f64` would have been built from a number that had already lost half its digits.
 The same holds for a value passed as an argument:
 
 ```{r}
@@ -77,7 +75,6 @@ This works for length-1 vectors and for `array()`s, in the body of a jitted func
 
 ## What an R Value Becomes
 
-<!-- REVIEW: this is not automatically the case, it depends on the promotion rules -->
 An R value takes the data type of the array it meets, whatever that type is:
 
 ```{r}
@@ -85,8 +82,9 @@ dtype(nv_array(1L, dtype = "i8") + 1L)
 dtype(nv_array(1, dtype = "f64") + 1L)
 ```
 
-<!-- REVIEW: Should reference the problem on accelerators wherre f64 can slow down considerablu and might not even exist (metal) -->
 It does not drag a program to a wider type just because R stores its numbers as doubles -- which is what makes it safe to write `x + 1` without thinking about it.
+That matters on accelerators: `f64` arithmetic is far slower than `f32` on most GPUs, and the Metal backend does not support it at all, so an `f32` program that silently became an `f64` one because of a literal would be a real cost.
+
 Two rules limit the yielding, both because the type simply cannot hold the value:
 
 1. A value from an R `double` meets an integer type: it stays a float (the default one).
@@ -100,13 +98,12 @@ dtype(nv_array(TRUE) + 1L)
 The full rule, for each of the three R types against every data type it can
 meet:
 
-<!-- REVIEW: need to look at the rendered output here -->
 ```{r, echo = FALSE}
 r_types <- c(logical = "bool", integer = "i32", double = "f32")
 tbl <- matrix(NA_character_, length(r_types), length(dtypes))
 for (i in seq_along(r_types)) {
   for (j in seq_along(dtypes)) {
-    tbl[i, j] <- repr(promote_dt_rdata(as_dtype(r_types[[i]]), as_dtype(dtypes[[j]])))
+    tbl[i, j] <- as.character(promote_dt_rdata(as_dtype(r_types[[i]]), as_dtype(dtypes[[j]])))
   }
 }
 rownames(tbl) <- sprintf("%s()", names(r_types))
@@ -126,10 +123,8 @@ jit(\() list(1L, 1.0, TRUE))()
 
 ## Committing Happens Per Operation
 
-<!-- REVIEW: Also this "where it came from" is confusing to users. Also we should tone tone the pytorch comp. Not sure how similar they really are. -->
-A value commits the first time it takes part in an operation, and from then on it is an ordinary array with an ordinary type.
-Nothing is remembered about where it came from.
-This is the same model PyTorch uses for Python scalars, and it is worth knowing where its edge is:
+A value commits the first time it takes part in an operation, and from then on it is an ordinary array with an ordinary type, which will not yield again.
+It is worth knowing where that puts the edge:
 
 ```{r}
 f <- jit(function(x) {
@@ -147,6 +142,53 @@ If you need the wider type, say so where the value enters:
 f(nv_scalar(sqrt(2), dtype = "f64"))
 ```
 
+## Which Type a Function Promotes To
+
+The rules above say what *one* type two values meet at. Which of them an `nv_*` function applies is the function's own decision, stated once at the top of it: the arguments are canonicalized together with `as_anvl_arrays()`, and its `.promote` argument names the rule.
+
+```{r}
+# the common type of the inputs -- what a binary operator does
+as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
+# the type one particular argument already has
+as_anvl_arrays(x = nv_array(1, dtype = "f64"), y = 1.5, .promote = promote_like("x"))
+# a type the function names itself
+as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
+```
+
+`nv_add()` is `promote_common()`: neither operand is privileged, so the table above decides.
+`nv_clamp(min_val, x, max_val)` is `promote_like("x")`: the result is `x`'s type and the bounds come along.
+`nv_rnorm(shape, initial_state, dtype = )` is `promote_dtype(dtype)`: the type is the function's own argument rather than one read off an input.
+
+The two rules that *name* a target refuse an argument that type cannot hold, rather than narrowing it silently:
+
+```{r, error = TRUE}
+nv_clamp(0, nv_array(1L), 1.5)
+```
+
+Write the literal in the array's own category instead -- an R integer reaches any data type an integer can, a double only the floats:
+
+```{r}
+nv_clamp(0L, nv_array(1L), 2L)
+```
+
+
+`promote_yield()` is the fourth rule and the odd one out: it reads the target off the arguments that already have a type and *never converts them*, so only the R values move -- and only within their own category.
+It is what the primitives use, because a primitive should not silently widen the array it was handed.
+
+```{r, error = TRUE}
+as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
+# an integer literal cannot become a float this way -- that is promotion, and
+# belongs to the `nv_*` layer
+as_anvl_arrays(nv_array(1, dtype = "f64"), 1L, .promote = promote_yield())
+```
+
+An argument that should stay out of the promotion is named out with `only`; it is still converted, just not to the target.
+`nv_ifelse()` needs this, since its predicate has to stay a `bool`.
+Groups of arguments that promote independently are combined with `promote_grouped()`.
+See `?promote_rule` for the full set, and `vignette("extending_api")` for writing a function around them.
+
+Whichever rule applies, an R value among the arguments is *built* at the target rather than converted to it -- which is what makes the exactness of the previous sections hold for `nv_*` functions too, and not just for a literal that happens to meet an array.
+
 ## Asking for the Type of an R Value
 
 Because an R value has no type until it is used, asking for one is an error. This is
@@ -160,8 +202,6 @@ jit(function(x) dtype(x))(1)
 ```{r, error = TRUE}
 dtype(1.5)
 ```
-
-<!-- REVIEW: I also think the promotion rules should be described in THIS vignette -->
 
 What you can ask is which type it *would* take if nothing claimed it, which
 `peek_dtype()` answers without settling the value:

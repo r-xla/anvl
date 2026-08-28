@@ -6,15 +6,18 @@
 \alias{promote_like}
 \alias{promote_dtype}
 \alias{promote_yield}
+\alias{promote_grouped}
 \title{Promotion Rules}
 \usage{
 promote_common(only = NULL)
 
-promote_like(arg, only = NULL)
+promote_like(arg, only = NULL, force = FALSE)
 
-promote_dtype(dtype, only = NULL)
+promote_dtype(dtype, only = NULL, force = FALSE)
 
 promote_yield(only = NULL)
+
+promote_grouped(...)
 }
 \arguments{
 \item{only}{(\code{NULL} | \code{character()} | \code{numeric()})\cr
@@ -24,11 +27,19 @@ all of them.}
 \item{arg}{(\code{character(1)} | \code{numeric(1)})\cr
 Which input to take the data type from: its name in the
 \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} call, or its position. Naming it needs the call's
-arguments to be named. An argument that is a tree contributes the common
-data type of its leaves.}
+arguments to be named.}
+
+\item{force}{(\code{logical(1)})\cr
+Convert an input the target data type cannot hold, instead of raising an
+error. \code{FALSE} (default) is what you want unless narrowing is the
+function's contract. See the \emph{Narrowing} section.}
 
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
 The data type to bring the inputs to.}
+
+\item{...}{(\code{\link[=promote_rule]{PromoteRule}})\cr
+For \code{promote_grouped()}: the rules to apply, each covering its own group of
+arguments.}
 }
 \value{
 (\code{PromoteRule})
@@ -44,8 +55,7 @@ type it has and a bare R value takes its default.
 function whose result type \emph{is} one argument's type, and whose other
 arguments come along: \code{nv_clamp(min_val, x, max_val)} is \code{x}'s type.
 \item \code{promote_dtype()} -- a data type the function names itself, rather than one
-read off an input. For a function with an explicit \code{dtype} argument, such as
-\code{\link[=nv_rnorm]{nv_rnorm()}}.
+read off an input. For a function with an explicit \code{dtype} argument.
 \item \code{promote_yield()} -- the data type the inputs that \emph{have} one already share.
 Unlike the other three it never converts an input that has a data type; only
 the R values move, and only within their own category. This is what the
@@ -57,11 +67,32 @@ it will not widen the array it was given.
 Inputs are \emph{realized} at the target rather than converted to it: an R value
 has no data type to convert from, so it is built at the target directly and
 arrives with every digit it had (which is what keeps \code{x_f64 / sqrt(2)}
-exact). An input that already has a data type is converted, \strong{even where that
-narrows} -- \code{promote_like()} and \code{promote_dtype()} say what the result type
-is, they do not negotiate it. \code{promote_yield()} is the exception: it converts
-nothing that has a data type already.
+exact). An input that already has a data type is converted.
 }
+\section{Narrowing, and \code{force}}{
+
+The two rules that \emph{name} a target -- \code{promote_like()} and \code{promote_dtype()}
+-- refuse an input the target cannot hold, rather than narrowing it silently.
+An input that has a data type must be promotable to the target
+(\code{\link[=common_dtype]{common_dtype()}} of the two must be the target), and an R value must
+\emph{yield} to it, which it only does within its own category: an R double is
+never built at an integer data type, whatever its value, because the same
+answer has to hold for a jit argument nobody has seen.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{nv_clamp(0, nv_array(1L), 1.5)   # error: 1.5 has no place in an i32
+nv_pad(nv_array(1L), 0L, 1L, 1L) # fine: write the literal in x's category
+}\if{html}{\out{</div>}}
+
+\code{force = TRUE} says the narrowing is the point and converts anyway. It is for
+a function whose contract \emph{is} the conversion, not a way past an error
+message: prefer \code{\link[=nv_convert]{nv_convert()}} at the call site where the caller should see
+it happening.
+
+\code{promote_common()} needs no such flag -- its target is one every input reaches
+by construction -- and \code{promote_yield()} converts nothing that has a data type
+at all.
+}
+
 \section{Yielding, and categories}{
 
 \code{promote_yield()} reads its target off the inputs rather than computing one:
@@ -85,21 +116,17 @@ category is promotion, which is what the other rules are for.
 onto one device and converted, just not to the target -- for an argument that
 has no business taking part in the promotion, such as \code{\link[=nv_ifelse]{nv_ifelse()}}'s
 \code{pred}, which stays a \code{bool}.
-
-A rule names whole arguments, never individual values inside one. An argument
-that is a tree therefore takes part as a whole: all of its leaves contribute
-to the target, and all of them are brought to it.
 }
 
 \section{Several groups in one call}{
 
-\code{.promote} also takes a \emph{list} of rules, which is how one call promotes
-several groups of arguments independently -- \code{x} and \code{y} to their common data
-type, \code{a} and \code{b} to theirs:
+\code{promote_grouped()} combines rules, which is how one call promotes several
+groups of arguments independently -- \code{x} and \code{y} to their common data type,
+\code{a} and \code{b} to theirs:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{as_anvl_arrays(
   x = x, y = y, a = a, b = b,
-  .promote = list(
+  .promote = promote_grouped(
     promote_common(only = c("x", "y")),
     promote_common(only = c("a", "b"))
   )
@@ -119,8 +146,11 @@ all.
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
 # yielding: the R value takes the array's dtype, the array never moves
 as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
-as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
+as_anvl_arrays(x = nv_array(1L), y = 1L, .promote = promote_like("x"))
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
+# a target that cannot hold an input is an error, unless that is the point
+try(as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x")))
+as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x", force = TRUE))
 # `pred` is aligned and converted, but keeps out of the promotion
 as_anvl_arrays(
   pred = nv_array(TRUE),
@@ -132,7 +162,7 @@ as_anvl_arrays(
 as_anvl_arrays(
   x = nv_array(1L), y = 1.5,
   a = nv_array(1L, dtype = "i8"), b = 2L,
-  .promote = list(
+  .promote = promote_grouped(
     promote_common(only = c("x", "y")),
     promote_common(only = c("a", "b"))
   )

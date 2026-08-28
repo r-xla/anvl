@@ -31,6 +31,11 @@ at the boundary, the value is kept as R data and built into the program at
 each use site, at the dtype that use site turns out to need. \code{x_f64 / sqrt(2)} therefore sees the exact double, rather than one that was rounded
 to \code{f32} on the way in and widened again.
 
+Which dtype a use site needs is normally not decided value by value: an
+\verb{nv_*} function canonicalizes its whole argument set once at the top with
+\code{\link[=as_anvl_arrays]{as_anvl_arrays()}}, and the \link[=promote_rule]{\code{.promote} rule} it passes
+there is what names the dtype every R value among them is built at.
+
 A value that is never combined with a typed array has nothing to take its
 dtype from and \emph{commits} to the default for its R type: \code{f32} for a double,
 \code{i32} for an integer, \code{bool} for a logical.
@@ -38,7 +43,9 @@ dtype from and \emph{commits} to the default for its R type: \code{f32} for a do
 \section{Extractors}{
 
 \code{\link[tengen:shape]{shape()}} and \code{\link[tengen:naxes]{naxes()}} answer as they
-would for the R value. \code{\link[tengen:dtype]{dtype()}} \strong{errors}: there is no
+would for the R value: \verb{()} for a length-1 vector, \code{dim()} for an
+\code{\link[=array]{array()}}, and an error for a longer vector without a \code{dim()}, which is not
+an arrayish value at all. \code{\link[tengen:dtype]{dtype()}} \strong{errors}: there is no
 dtype to report until the value commits, exactly as \code{dtype(1.5)} has none to
 report. Give the value a dtype (e.g. \code{\link[=nv_array]{nv_array()}}, \code{\link[=nv_scalar]{nv_scalar()}}) to ask.
 }

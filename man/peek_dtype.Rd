@@ -39,5 +39,5 @@ peek_dtype(nv_array(1:3, dtype = "i8"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=as_anvl_arrays]{as_anvl_arrays()}}, \link{RDataArray}, \code{\link[=shape_abstract]{shape_abstract()}}
+\code{\link[=as_anvl_arrays]{as_anvl_arrays()}}, \link{RDataArray}, \link[tengen:shape]{shape()}
 }

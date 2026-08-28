@@ -35,7 +35,7 @@ the upload dtypes off the inputs themselves, via \code{graph_input_dtypes()}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # An f64 program consuming an R double argument uploads it as f64.
-graph <- trace_fn(function(x) nv_scalar(1, dtype = "f64") + x, list(x = nv_aval("r_dbl", integer()))) # nolint
+graph <- trace_fn(function(x) nv_scalar(1, dtype = "f64") + x, list(x = nv_aval("double", integer()))) # nolint
 graph$inputs[[1]]$aval
 \dontshow{\}) # examplesIf}
 }

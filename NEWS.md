@@ -9,6 +9,22 @@
     This resolves #373 (issue reported by @louisaslett).
     See the *type promotion* vignette for more details on the improved type system.
   - The `ambiguity` concept no longer exists in the type system.
+  - `promote_like()` and `promote_dtype()` refuse an input the target data type
+    cannot hold, rather than narrowing it silently: `nv_clamp(0, x_i32, 1.5)`
+    and `nv_pad(x_i32, 0)` are now errors (write the literal in the array's
+    category, e.g. `0L`), and so is `x_i32[i] <- 1.5`. Pass `force = TRUE` to
+    the rule where the narrowing is the point.
+  - A primitive no longer promotes its arguments unless it says so: the
+    `promote` argument of `new_primitive()` defaults to `NULL`, and the
+    primitives whose arrayish arguments must agree declare
+    `promote = promote_yield()`.
+* `nv_rnorm()`'s `dtype` now defaults to `NULL`, which takes the sample's data
+  type from `mean` and `sd` where either is a real array, and falls back to
+  `"f32"` where both are bare R values. It used to always be `"f32"` unless the
+  caller said otherwise, so an `f64` `mean` was silently narrowed.
+* `shape_abstract()` and `naxes_abstract()` have been removed: `shape()` and
+  `naxes()` now answer for every arrayish value, bare R values included, so the
+  two were the same function under a second name.
 
 ## Bug fixes
 

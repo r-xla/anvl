@@ -164,8 +164,9 @@ materialize_rdata <- function(box, dtype) {
   out
 }
 
-# Materialize at the dtype the value commits to when nothing else decided.
-commit_rdata <- function(box) {
+# Materialize an [`RDataArray`] box at the dtype the value commits to when
+# nothing else decided. Tracing only -- a box exists only inside a trace.
+trace_commit_rdata <- function(box) {
   materialize_rdata(box, peek_dtype(box))
 }
 
@@ -191,7 +192,7 @@ commit_rdata <- function(box) {
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
 #' @return ([`tengen::DataType`])
-#' @seealso [as_anvl_arrays()], [RDataArray], [shape_abstract()]
+#' @seealso [as_anvl_arrays()], [RDataArray], [shape()][tengen::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)
 #' peek_dtype(1L)
@@ -202,10 +203,10 @@ peek_dtype <- function(x) {
   if (is_rdata_array(aval)) aval$default_dtype else aval$dtype
 }
 
-# A box, with any R value in it committed to its default dtype. Anything that
-# already has a dtype is returned unchanged.
-commit_rdata_box <- function(x) {
-  if (is_rdata_box(x)) commit_rdata(x) else x
+# A traced box, with any R value in it committed to its default dtype. Anything
+# that already has a dtype is returned unchanged.
+trace_commit_rdata_box <- function(x) {
+  if (is_rdata_box(x)) trace_commit_rdata(x) else x
 }
 
 # Bring a primitive's arrayish arguments to one dtype, following the rule the
@@ -555,13 +556,13 @@ format.GraphBox <- function(x, ...) {
 # with no dtype, to be built at the one its use site needs. That is what the API
 # layer wants, since it canonicalizes its inputs long before it knows what they
 # are combined with. A caller that needs a typed value -- every primitive call,
-# and the outputs of a trace -- says so with `commit_rdata_box()`.
+# and the outputs of a trace -- says so with `trace_commit_rdata_box()`.
 maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
     # An R value belongs to the graph it was written in, so one reaching
     # another graph has to commit before it can be captured there.
     if (is_rdata_box(x) && !identical(x$desc, desc)) {
-      x <- commit_rdata(x)
+      x <- trace_commit_rdata(x)
     }
     if (identical(x$desc, desc)) {
       return(x)
@@ -612,7 +613,7 @@ maybe_box_input <- function(x, desc, mode) {
     if (is_graph_box(x)) {
       # A subgraph parameter needs a dtype, and the subgraph is traced before
       # its operands meet anything, so an R value commits here.
-      x <- commit_rdata_box(x)
+      x <- trace_commit_rdata_box(x)
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
@@ -636,7 +637,7 @@ maybe_box_input <- function(x, desc, mode) {
     }
     # \(x) gradient(f)(x)
     if (is_graph_box(x)) {
-      x <- commit_rdata_box(x)
+      x <- trace_commit_rdata_box(x)
       return(register_input(desc, x$gnode))
     }
     # don't convert R values because they might be static.
@@ -660,7 +661,7 @@ maybe_box_input <- function(x, desc, mode) {
     return(register_rdata_input(desc, x))
   }
   if (is_graph_box(x)) {
-    x <- commit_rdata_box(x)
+    x <- trace_commit_rdata_box(x)
     return(register_input(desc, x$gnode))
   }
   if (is_abstract_array(x)) {
@@ -756,6 +757,12 @@ finalize_rdata_inputs <- function(desc) {
 # dtypes of one category, which is the only comparison that means anything.
 dtype_capacity <- function(dtype) {
   # REVIEW: What is this needed for?
+  # RESPONSE: Only for `resolve_upload_dtype()` below: an R argument used at
+  # several data types in one program is uploaded once, and the upload has to
+  # *hold* every one of them so each use site can convert down from it. Width
+  # alone does not answer that -- `f16` and `bf16` are both 16 bits and neither
+  # holds the other, and `i32` does not hold `ui32` -- so the comparison is on
+  # (precision, range) instead.
   switch(
     as.character(dtype),
     f64 = c(52L, 11L),
@@ -987,7 +994,7 @@ trace_fn <- function(
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
-  outputs_flat <- lapply(output[[2L]], function(x) commit_rdata_box(maybe_box_arrayish(x)))
+  outputs_flat <- lapply(output[[2L]], function(x) trace_commit_rdata_box(maybe_box_arrayish(x)))
 
   desc$out_tree <- out_tree
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
@@ -1133,8 +1140,15 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    # REVIEW: Why do we need commit_rdata_box when we already resolve the args above?
-    gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
+    # REVIEW: Why do we need trace_commit_rdata_box when we already resolve the args above?
+    # RESPONSE: Because `resolve_primitive_args()` does not always settle every
+    # argument: a primitive with `promote = NULL` (`prim_sort`, `prim_while`)
+    # resolves nothing, a rule with `only =` leaves the arguments it does not
+    # name, and `promote_yield()` deliberately gives up when the inputs already
+    # carry more than one data type. A node entering the graph must have one, so
+    # this is the last resort -- it commits whatever is left at its default and
+    # lets type inference report the mismatch.
+    gnode <- trace_commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval
   }

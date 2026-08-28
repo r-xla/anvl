@@ -14,14 +14,6 @@
       Error:
       ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
 
-# quickr: bare vector errors
-
-    Code
-      f(c(1, 2, 3))
-    Condition
-      Error:
-      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <numeric> of length 3
-
 # jit: error shows path for nested list element
 
     Code
@@ -37,4 +29,12 @@
     Condition
       Error:
       ! invalid input `pair[[1]]`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
+
+# quickr: bare vector errors
+
+    Code
+      f(c(1, 2, 3))
+    Condition
+      Error:
+      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <numeric> of length 3
 

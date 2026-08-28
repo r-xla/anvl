@@ -28,66 +28,50 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 ## R Values Have No Data Type
 
-<!-- That's way too much text. We should use the claude function to re-generate the AGENTS.md-->
-
 An R value entering a program -- a length-1 vector or an `array()`, written in
 the body of a traced function or passed as an argument to a jitted one -- is
-*not* converted at the boundary. It is carried as [`RDataArray`] (an
+*not* converted at the boundary. It is carried as an `RDataArray` (an
 `AbstractArray` with no dtype, boxed in a `GraphRData` node) and built into the
 program at the dtype its use site needs, from the R data itself. That is what
-makes `x_f64 / sqrt(2)` exact.
+makes `x_f64 / sqrt(2)` exact. See `vignette("type-promotion")`.
 
-- Promotion decides the dtype: `common_dtype_of()` treats an `RDataArray` as
-  the yielding operand, and `nv_promote_to_common()` then *builds* it at the
-  common dtype (`realize_at()`), rather than converting it from a default.
-- A primitive brings its arrayish arguments to one dtype before it records a
-  call, following the `promote` rule it declared (see `new_primitive()`; the
-  default is `promote_yield()`). An R value takes the dtype the other operands
-  already have -- **within its own category**: a double becomes a float, an
-  integer an integer, a logical a `bool`, and nothing else. Crossing a category
-  is promotion, which is the `nv_*` layer's job, so `prim_add(x_f64, 1L)` is an
-  error where `nv_add(x_f64, 1L)` is `f64`. A trace output commits whatever is
-  left, at `default_dtype_r()`.
-- The value is built directly only at a dtype that holds it faithfully (a
-  double at any float, an R integer at any float or any >=32-bit integer, a
-  logical at `bool`); any other target is built at the natural dtype -- `f64` /
-  `i32` / `bool` -- and converted by the program. R's coercion and XLA's
-  `convert` disagree on overflow and `NaN`, so narrowing has to be the
-  program's.
-- `dtype()` on one errors -- there is nothing to report yet. **An `nv_*`
-  function that reads a dtype from its argument must not call `dtype()` on it**:
-  use `peek_dtype()` to ask what it *would* commit to (a category test, a
-  `nan_rm` branch), or commit it when that dtype becomes the operation's own --
-  what the other arguments get converted to, or what the result is built
-  `_like`. Forgetting this is silent until someone passes a bare R value.
-  `shape()` and `naxes()` answer as usual.
-- **`as_anvl_array()` / `as_anvl_arrays()` always convert**, and identically
-  while tracing and eagerly -- an `nv_*` function must not mean two things
-  depending on whether it is under `jit()`. Call `as_anvl_arrays()` once over
-  the whole argument set at the top of an `nv_*` function: it aligns devices and
-  backends, promotes, and leaves every argument something `dtype()` / `device()`
-  answer for. An argument may be a tree of arrayish values; the device and the
-  dtype are decided over every leaf, and each argument comes back with the
-  structure it had. The `.promote` argument takes a rule -- `promote_common()`,
-  `promote_like(arg)` or `promote_dtype(dtype)`, each optionally restricted with
-  `only =`, or a *list* of rules for independent groups -- and *realizes* every
-  input it covers at that dtype, which is what keeps the R values exact. **Without a rule an R value converts at its
-  default**, so a function whose result dtype depends on its arguments must say
-  so with a rule rather than canonicalize first and `nv_convert()` afterwards.
-- To hold an R value open until the dtype is known, do *not* canonicalize it:
-  `nv_convert()` and the primitives take it as it is, and `peek_dtype()` answers
-  what it would take. The internal `align_arrayish()` aligns devices without
-  deciding any dtype; `nv_subset_assign()` still needs it, because the dtype it
-  settles on is decided after a promotability check that has to see the
-  uncommitted value.
-- For a jitted function's argument, the value is unknown at trace time (the
+- **Canonicalize once, with a rule.** Call `as_anvl_arrays()` over the whole
+  argument set at the top of an `nv_*` function: it aligns devices and backends,
+  applies the `.promote` rule, and leaves every argument something `dtype()` and
+  `device()` answer for. It always converts, and means the same thing eagerly
+  and under `jit()`. *Without* a rule an R value converts at its default, so a
+  function whose result dtype depends on its arguments must say so with one --
+  `promote_common()`, `promote_like(arg)`, `promote_dtype(dtype)` or
+  `promote_yield()`, each restrictable with `only =` and combinable with
+  `promote_grouped()` -- rather than canonicalize first and `nv_convert()`
+  afterwards. A rule *realizes* an input at the target (`realize_at()`), which
+  is what keeps the R values exact. The two rules that name a target
+  (`promote_like()`, `promote_dtype()`) refuse an input it cannot hold; say
+  `force = TRUE` only where the narrowing is the function's contract.
+- **Never call `dtype()` on an argument that may be a bare R value** -- there is
+  nothing to report yet, so it errors. Use `peek_dtype()` to ask what it *would*
+  commit to (a category test, a `nan_rm` branch), and commit it only where that
+  dtype becomes the operation's own. `shape()` and `naxes()` answer as usual.
+- **A primitive** promotes nothing unless it says so: `new_primitive()`'s
+  `promote` defaults to `NULL`. A primitive whose arrayish arguments must agree
+  declares `promote = promote_yield()` (restricted with `only =` where some
+  operands are meant to differ), which is what makes `prim_mul(x_f64, 2)` work.
+  An R value then takes the dtype the other operands have, but only **within its
+  own category**: a double becomes a float, an integer an integer, a logical a
+  `bool`. Crossing a category is promotion and belongs to the `nv_*` layer, so
+  `prim_add(x_f64, 1L)` is an error where `nv_add(x_f64, 1L)` is `f64`. A trace
+  output commits whatever is left, at `default_dtype_r()`.
+- **Built, not converted.** A value is built directly only at a dtype that holds
+  it faithfully; any other target is built at its natural dtype (`f64` / `i32` /
+  `bool`) and converted by the program, because R's coercion and XLA's `convert`
+  disagree on overflow and `NaN`.
+- **To hold a value open** until the dtype is known, do not canonicalize it:
+  `nv_convert()` and the primitives take it as it is.
+- **As a jitted function's argument** the value is unknown at trace time (the
   cache keys it by R type and shape only, so the program must not depend on it).
-  It becomes a program input whose aval is an `RDataInput`, carrying the dtype
-  the trace decided it is uploaded at; `graph_input_dtypes()` reads those off
-  for pjrt's dispatcher and the quickr wrapper to apply.
-
-There is no "weak"/ambiguous flag on arrays: once a value has committed it is an
-ordinary array of an ordinary dtype. See `vignette("type-promotion")`.
+  Its input aval is an `RDataInput` carrying the dtype the trace decided it is
+  uploaded at; `graph_input_dtypes()` reads those off for pjrt's dispatcher and
+  the quickr wrapper.
 
 ## Primitive System
 

@@ -11,8 +11,8 @@ AbstractArray(dtype, shape)
 }
 \arguments{
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
-The data type of the array, or -- for \code{nv_aval()} -- one of \code{"r_dbl"},
-\code{"r_int"}, \code{"r_lgl"} for a value that has none yet.}
+The data type of the array, or -- for \code{nv_aval()} -- one of \code{"double"},
+\code{"integer"}, \code{"logical"} for a value that has none yet.}
 
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array. Can be provided as an integer vector.}
@@ -45,8 +45,8 @@ The following extractors are available on \code{AbstractArray} objects:
 
 A value can also be one that has \emph{no} dtype yet -- a bare R value, which only
 takes one where it is used (see \code{\link{RDataArray}}). \code{nv_aval()} builds that aval
-from the R storage type instead of a dtype: \code{"r_dbl"}, \code{"r_int"} or
-\code{"r_lgl"}. This is the aval of a bare R argument of a jitted function,
+from the R storage type instead of a dtype: \code{"double"}, \code{"integer"} or
+\code{"logical"}. This is the aval of a bare R argument of a jitted function,
 whose value is unknown while tracing.
 }
 
@@ -62,7 +62,7 @@ shape(a)
 nv_aval("f32", c(2L, 3L))
 
 # An R value, which has no dtype until it is used
-nv_aval("r_dbl", c(2L, 3L))
+nv_aval("double", c(2L, 3L))
 
 # How AbstractArrays appear in an AnvlGraph
 graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))

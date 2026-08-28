@@ -73,6 +73,8 @@ test_that("an R double converted to an integer dtype keeps every digit", {
 test_that("a bare R value works as a gradient argument", {
   expect_equal(as_array(jit(gradient(function(v) v * v))(2)[[1L]]), 4)
   expect_equal(as_array(jit(gradient(function(v) v * v))(nv_scalar(2))[[1L]]), 4)
+  # ... and as a literal in the body of the function being differentiated
+  expect_equal(jit(gradient(function(x) x * 2, wrt = "x"))(nv_scalar(1)), list(x = nv_scalar(2)))
 })
 
 test_that("a bare R value works as a subscript", {
@@ -111,6 +113,10 @@ test_that("an R value commits to the default dtype when nothing claims it", {
   expect_equal(dtype(jit(function() TRUE)()), as_dtype("bool"))
   expect_equal(dtype(jit(identity)(1)), as_dtype("f32"))
   expect_equal(dtype(jit(identity)(array(1:4))), as_dtype("i32"))
+  # ... including a value that only ever meets other R values
+  expect_equal(jit(function() nv_mul(2, 3))(), nv_scalar(6, dtype = "f32"))
+  expect_equal(jit(function() nv_mul(2, 3L))(), nv_scalar(6, dtype = "f32"))
+  expect_equal(jit(function(x) x + 1)(1), nv_scalar(2, dtype = "f32"))
 })
 
 test_that("an R value takes the dtype it meets, whatever the width", {
@@ -118,6 +124,11 @@ test_that("an R value takes the dtype it meets, whatever the width", {
   expect_equal(dtype(nv_array(1L, dtype = "i8") + 1L), as_dtype("i8"))
   expect_equal(dtype(nv_array(1, dtype = "f64") + 1L), as_dtype("f64"))
   expect_equal(dtype(nv_array(TRUE) + 1L), as_dtype("i32"))
+  # narrower than the value's own default, and on either side of the operator
+  expect_equal(jit(function(x) x * 2L)(nv_scalar(1, dtype = "i16")), nv_scalar(2L, dtype = "i16"))
+  expect_equal(jit(function(x) 2 + x)(nv_scalar(1)), nv_scalar(3))
+  expect_equal(jit(function(x) nv_mul(2, x))(nv_scalar(3, dtype = "f64")), nv_scalar(6, dtype = "f64")) # nolint
+  expect_equal(jit(function(x) x == TRUE)(nv_scalar(FALSE)), nv_scalar(FALSE))
 })
 
 test_that("the compiled program does not depend on the R value", {
@@ -204,9 +215,13 @@ test_that("assigning an R value into an array uses the array's dtype", {
   x <- nv_array(c(1, 2, 3), dtype = "f64")
   x[2] <- 0.1
   expect_identical(as.vector(x), c(1, 0.1, 3))
-  # What may be assigned is still decided by the dtype the R value would take.
+  # What may be assigned is still decided by the dtype the R value would take:
+  # an R double has no place in an integer array, whatever its value.
   y <- nv_array(1:3, dtype = "i32")
-  expect_error(y[2] <- 1.5, "not promotable")
+  expect_error(y[2] <- 1.5, "R double")
+  expect_error(y[2] <- 1, "R double")
+  y[2] <- 5L
+  expect_identical(as.vector(y), c(1L, 5L, 3L))
 })
 
 test_that("a literal that only meets other literals takes the default", {
@@ -240,7 +255,7 @@ test_that("a bare R value answers the extractors like an RDataArray", {
 test_that("the graph records the dtype each R input is uploaded at", {
   graph <- trace_fn(
     function(x, y) x + y,
-    list(x = nv_aval("f64", 2L), y = nv_aval("r_dbl", integer()))
+    list(x = nv_aval("f64", 2L), y = nv_aval("double", integer()))
   )
   # It lives on the input's own aval, not beside it.
   expect_s3_class(graph$inputs[[1L]]$aval, "AbstractArray")
@@ -258,8 +273,14 @@ test_that("the graph records the dtype each R input is uploaded at", {
 test_that("nv_pad builds the padding value at the array's dtype", {
   for (dt in c("f64", "f32", "i8", "i32")) {
     x <- nv_array(c(1L, 2L), dtype = dt)
-    expect_equal(dtype(nv_pad(x, 0, 1L, 1L)), as_dtype(dt), info = dt)
+    # An integer literal reaches any of them; a double only the floats, since
+    # it would have to leave its category to become an integer.
     expect_equal(dtype(nv_pad(x, 0L, 1L, 1L)), as_dtype(dt), info = dt)
+    if (is_dtype_float(as_dtype(dt))) {
+      expect_equal(dtype(nv_pad(x, 0, 1L, 1L)), as_dtype(dt), info = dt)
+    } else {
+      expect_error(nv_pad(x, 0, 1L, 1L), "R double", info = dt)
+    }
   }
   x <- nv_array(c(1, 2), dtype = "f64")
   expect_identical(as.vector(nv_pad(x, sqrt(2), 1L, 0L)), c(sqrt(2), 1, 2))
@@ -289,4 +310,126 @@ test_that("quickr: an R argument is coerced to the dtype the program takes", {
   # The leaf arrives as an R integer but the program consumes it as f64.
   f <- jit(function(x, y) x + y)
   expect_identical(as_array(f(nv_scalar(1, dtype = "f64"), 2L)), 3)
+})
+
+
+# --- What a jitted call accepts as a bare R argument -------------------------
+
+test_that("a jitted call converts an R argument of any R type", {
+  f <- jit(identity)
+  expect_equal(f(1), nv_scalar(1))
+  expect_equal(f(1L), nv_scalar(1L))
+  # A logical is the one R type that names its dtype: there is nothing for
+  # `TRUE` to become other than `bool`.
+  expect_equal(f(TRUE), nv_scalar(TRUE))
+  expect_equal(f(matrix(1:4, 2, 2)), nv_matrix(1:4, nrow = 2, ncol = 2))
+  out <- f(array(1:24, dim = c(2, 3, 4)))
+  expect_equal(dtype(out), as_dtype("i32"))
+  expect_equal(shape(out), c(2L, 3L, 4L))
+})
+
+test_that("R leaves of a nested argument are converted too", {
+  f <- jit(function(pair) pair[[1]] + pair[[2]])
+  out <- f(list(1, 2))
+  expect_equal(dtype(out), as_dtype("f32"))
+  expect_equal(as_array(out), 3)
+})
+
+test_that("a static argument is not converted", {
+  f <- jit(function(x, flag) if (flag) x + 1 else x * 2, static = "flag")
+  expect_equal(as_array(f(nv_scalar(3), TRUE)), 4)
+  expect_equal(as_array(f(3, FALSE)), 6)
+})
+
+test_that("a traced value passed to an inner jit is left alone", {
+  inner <- jit(function(x) x + 1)
+  outer <- jit(function(x) inner(x))
+  expect_equal(as_array(outer(nv_scalar(1))), 2)
+})
+
+test_that("jit: bare vector without dim errors", {
+  f <- jit(function(x) x)
+  expect_snapshot(f(c(1, 2, 3)), error = TRUE)
+})
+
+test_that("jit: non-array/non-scalar leaves (e.g. character) error", {
+  f <- jit(function(x) x)
+  expect_snapshot(f("hello"), error = TRUE)
+})
+
+test_that("jit: error shows path for nested list element", {
+  f <- jit(function(l) l[[1]])
+  expect_snapshot(f(list(list(a = "abc"))), error = TRUE)
+})
+
+test_that("jit: error shows path for unnamed nested element", {
+  f <- jit(function(pair) pair[[1]])
+  expect_snapshot(f(list("bad", nv_scalar(1))), error = TRUE)
+})
+
+test_that("quickr: an R argument is converted the same way", {
+  skip_if_no_quickr()
+  local_backend("quickr")
+  f <- jit(identity)
+  expect_equal(f(1), nv_scalar(1))
+  expect_equal(f(matrix(1:4, 2, 2)), nv_matrix(1:4, nrow = 2, ncol = 2))
+  g <- jit(function(pair) pair[[1]] + pair[[2]])
+  expect_equal(g(list(nv_scalar(1L), 2L)), nv_scalar(3L))
+})
+
+test_that("quickr: bare vector errors", {
+  skip_if_no_quickr()
+  local_backend("quickr")
+  f <- jit(function(x) x)
+  expect_snapshot(f(c(1, 2, 3)), error = TRUE)
+})
+
+test_that("an RDataArray does not print the R data it carries", {
+  # The data can be a whole array, and what matters about the value is what it
+  # is, not what it holds.
+  expect_identical(format(RDataArray(1.5, integer())), "RDataArray(double, ())")
+  expect_identical(
+    format(RDataArray(array(1:6, c(2, 3)), c(2L, 3L))),
+    "RDataArray(integer, (2,3))"
+  )
+  # An argument of a jitted function has no data to print in the first place.
+  expect_identical(
+    format(RDataArray(NULL, integer(), "logical")),
+    "RDataArray(logical, ())"
+  )
+  expect_identical(repr(RDataArray(1.5, c(2L, 3L))), "double[2x3]")
+})
+
+test_that("an RDataInput names both data types it stands between", {
+  x <- RDataInput("f64", c(2L, 3L), "double")
+  expect_identical(format(x), "RDataInput(f64, double, (2,3))")
+  expect_identical(repr(x), "f64[2x3]<-double")
+})
+
+test_that("nv_rnorm takes its data type from mean and sd when none is named", {
+  state <- nv_rng_state(42L)
+  # Bare R values have no data type, so the sample falls back to the default
+  # float rather than to whatever R stores its numbers as.
+  expect_equal(dtype(nv_rnorm(4L, state, mean = 0, sd = 1)[[2L]]), as_dtype("f32"))
+  # A real array names it.
+  expect_equal(
+    dtype(nv_rnorm(4L, state, mean = nv_scalar(0, dtype = "f64"))[[2L]]),
+    as_dtype("f64")
+  )
+  expect_equal(
+    dtype(nv_rnorm(4L, state, sd = nv_scalar(1, dtype = "f64"))[[2L]]),
+    as_dtype("f64")
+  )
+  # An integer array cannot name one, so the default float stands.
+  expect_equal(dtype(nv_rnorm(4L, state, mean = nv_scalar(0L))[[2L]]), as_dtype("f32"))
+  # ... and an explicit `dtype` still wins.
+  expect_equal(
+    dtype(nv_rnorm(4L, state, dtype = "f64", mean = 0)[[2L]]),
+    as_dtype("f64")
+  )
+  # An f64 mean cannot be narrowed to an f32 sample.
+  expect_error(
+    nv_rnorm(4L, state, dtype = "f32", mean = nv_scalar(0, dtype = "f64")),
+    "not promotable"
+  )
 })

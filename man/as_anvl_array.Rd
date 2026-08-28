@@ -17,21 +17,18 @@ Input to standardize.}
 Target device. If \code{x} is an \code{AnvlArray} on a different device, an error
 is raised.}
 
-\item{...}{(\code{\link{arrayish}}, or a nested \code{list} of them)\cr
-Inputs to align. An argument may be a tree of arrayish values -- the device
-and the \code{.promote} target are decided over every leaf of every argument, and
-each argument comes back with the structure it had. Name the arguments to
-be able to point \code{.promote} at one of them.}
+\item{...}{(\code{\link{arrayish}})\cr
+Inputs to align. Name them to be able to point \code{.promote} at one of them.}
 
-\item{.promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}} | \code{list})\cr
+\item{.promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}})\cr
 Which dtype every input is brought to: \code{\link[=promote_common]{promote_common()}} for the common
 one, \code{\link[=promote_like]{promote_like()}} for the one a particular argument has, or
 \code{\link[=promote_dtype]{promote_dtype()}} for one the caller names. \code{NULL} (default) decides
 none, so each input keeps the dtype it has and an R value takes its
 default.
 
-A \emph{list} of rules promotes several groups of arguments independently; they
-must name disjoint sets with \code{only}.
+\code{\link[=promote_grouped]{promote_grouped()}} combines rules to promote several groups of arguments
+independently; they must name disjoint sets with \code{only}.
 
 The name is dotted because the inputs go in \code{...}: an argument the caller
 happens to call \code{promote} is data, not the rule.
@@ -50,7 +47,7 @@ Use this to canonicalize inputs at the start of a function so it works
 both with eager executing and in combination with \code{\link[=jit]{jit()}}.
 Use \code{\link[=as_anvl_array]{as_anvl_array()}} for a single input and \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} for multiple inputs.
 The latter will also ensure all arrays are from the same backend and live on the same device,
-and can additionally bring them all to one dtype (\code{.promote}).
+and can additionally apply type promotion rules via the \code{.promote} argument.
 }
 \details{
 \link[=GraphBox]{Boxes} and \code{\link{AnvlArray}}s are returned as they are -- for an
@@ -89,8 +86,6 @@ as_anvl_arrays(nv_array(1:3), 1L)
 as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
 # ... or to one particular argument's
 as_anvl_arrays(x = nv_array(1L), y = nv_array(1.5), .promote = promote_like("x"))
-# an argument may be a tree, and comes back as one
-as_anvl_arrays(nv_array(1L), list(a = 1.5, b = list(2L)), .promote = promote_common())
 \dontshow{\}) # examplesIf}
 }
 \seealso{

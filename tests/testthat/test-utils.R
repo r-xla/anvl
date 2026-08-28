@@ -17,16 +17,6 @@ test_that("peek_dtype", {
   )
 })
 
-test_that("naxes_abstract", {
-  expect_equal(naxes_abstract(1L), 0L)
-  expect_equal(naxes_abstract(nv_array(1:4, dtype = "f32", shape = c(2, 2))), 2L)
-})
-
-test_that("shape_abstract", {
-  expect_equal(shape_abstract(1L), integer())
-  expect_equal(shape_abstract(nv_array(1:4, dtype = "f32", shape = c(2, 2))), c(2, 2))
-})
-
 describe("gather_clamp_indices", {
   it("clamps indices that exceed upper bound (implicit index vector)", {
     # `x` axis=10, slice_size=3, so max valid start = 10-3+1 = 8

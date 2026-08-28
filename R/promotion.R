@@ -21,6 +21,14 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
   # REVIEW: Maybe it would still be good to support common_dtype("double", "i32") or something?
   # (it should resolve to the default double dtype in this case I guess)
   # Actually, I am not so sure this is a good idea.
+  # RESPONSE: Left as it is, agreeing with your second thought. `common_dtype()`
+  # is the user-facing statement of the data-type lattice, and an R storage type
+  # is not a point in it: `"double"` against `"i32"` is `f32`, but `"double"`
+  # against `"f64"` is `f64` and against `"i8"` is still `f32` -- that is a
+  # different function of two arguments, and it already exists as
+  # `promote_dt_rdata()` / `common_dtype_of()`, which is what the rules call.
+  # Overloading one name with both would make the documented table wrong for
+  # half its inputs.
   promote_dt_known(as_dtype(lhs_dtype), as_dtype(rhs_dtype))
 }
 
@@ -36,26 +44,42 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' * `promote_like()` -- the data type one particular input already has. For a
 #'   function whose result type *is* one argument's type, and whose other
 #'   arguments come along: `nv_clamp(min_val, x, max_val)` is `x`'s type.
-#'   REVIEW: Here we need this `coerce` flag I think.
 #' * `promote_dtype()` -- a data type the function names itself, rather than one
-#'   read off an input. For a function with an explicit `dtype` argument, such as
-#'   [`nv_rnorm()`].
-#'   REVIEW: Also needs `coerce` I think
+#'   read off an input. For a function with an explicit `dtype` argument.
 #' * `promote_yield()` -- the data type the inputs that *have* one already share.
 #'   Unlike the other three it never converts an input that has a data type; only
 #'   the R values move, and only within their own category. This is what the
 #'   primitives use, and what a function wants when its arguments must agree but
 #'   it will not widen the array it was given.
-#'   REVIEW: not so clear whether / what we need this for.
 #'
 #' @details
 #' Inputs are *realized* at the target rather than converted to it: an R value
 #' has no data type to convert from, so it is built at the target directly and
 #' arrives with every digit it had (which is what keeps `x_f64 / sqrt(2)`
-#' exact). An input that already has a data type is converted, **even where that
-#' narrows** -- `promote_like()` and `promote_dtype()` say what the result type
-#' is, they do not negotiate it. `promote_yield()` is the exception: it converts
-#' nothing that has a data type already.
+#' exact). An input that already has a data type is converted.
+#'
+#' @section Narrowing, and `force`:
+#' The two rules that *name* a target -- `promote_like()` and `promote_dtype()`
+#' -- refuse an input the target cannot hold, rather than narrowing it silently.
+#' An input that has a data type must be promotable to the target
+#' ([`common_dtype()`] of the two must be the target), and an R value must
+#' *yield* to it, which it only does within its own category: an R double is
+#' never built at an integer data type, whatever its value, because the same
+#' answer has to hold for a jit argument nobody has seen.
+#'
+#' ```r
+#' nv_clamp(0, nv_array(1L), 1.5)   # error: 1.5 has no place in an i32
+#' nv_pad(nv_array(1L), 0L, 1L, 1L) # fine: write the literal in x's category
+#' ```
+#'
+#' `force = TRUE` says the narrowing is the point and converts anyway. It is for
+#' a function whose contract *is* the conversion, not a way past an error
+#' message: prefer [`nv_convert()`] at the call site where the caller should see
+#' it happening.
+#'
+#' `promote_common()` needs no such flag -- its target is one every input reaches
+#' by construction -- and `promote_yield()` converts nothing that has a data type
+#' at all.
 #'
 #' @section Yielding, and categories:
 #' `promote_yield()` reads its target off the inputs rather than computing one:
@@ -79,21 +103,15 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' has no business taking part in the promotion, such as [`nv_ifelse()`]'s
 #' `pred`, which stays a `bool`.
 #'
-#' A rule names whole arguments, never individual values inside one. An argument
-#' that is a tree therefore takes part as a whole: all of its leaves contribute
-#' to the target, and all of them are brought to it.
-#'
 #' @section Several groups in one call:
-#' `.promote` also takes a *list* of rules, which is how one call promotes
-#' several groups of arguments independently -- `x` and `y` to their common data
-#' type, `a` and `b` to theirs:
-#'
-#' # REVIEW: We should replace list() here with something like `promote_grouped()`.
+#' `promote_grouped()` combines rules, which is how one call promotes several
+#' groups of arguments independently -- `x` and `y` to their common data type,
+#' `a` and `b` to theirs:
 #'
 #' ```r
 #' as_anvl_arrays(
 #'   x = x, y = y, a = a, b = b,
-#'   .promote = list(
+#'   .promote = promote_grouped(
 #'     promote_common(only = c("x", "y")),
 #'     promote_common(only = c("a", "b"))
 #'   )
@@ -110,21 +128,30 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' @param arg (`character(1)` | `numeric(1)`)\cr
 #'   Which input to take the data type from: its name in the
 #'   [`as_anvl_arrays()`] call, or its position. Naming it needs the call's
-#'   arguments to be named. An argument that is a tree contributes the common
-#'   data type of its leaves.
+#'   arguments to be named.
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
 #'   The data type to bring the inputs to.
 #' @param only (`NULL` | `character()` | `numeric()`)\cr
 #'   Which inputs the rule applies to, by name or position. `NULL` (default) is
 #'   all of them.
+#' @param force (`logical(1)`)\cr
+#'   Convert an input the target data type cannot hold, instead of raising an
+#'   error. `FALSE` (default) is what you want unless narrowing is the
+#'   function's contract. See the *Narrowing* section.
+#' @param ... ([`PromoteRule`][promote_rule])\cr
+#'   For `promote_grouped()`: the rules to apply, each covering its own group of
+#'   arguments.
 #' @return (`PromoteRule`)
 #' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
 #' # yielding: the R value takes the array's dtype, the array never moves
 #' as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
-#' as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
+#' as_anvl_arrays(x = nv_array(1L), y = 1L, .promote = promote_like("x"))
 #' as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
+#' # a target that cannot hold an input is an error, unless that is the point
+#' try(as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x")))
+#' as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x", force = TRUE))
 #' # `pred` is aligned and converted, but keeps out of the promotion
 #' as_anvl_arrays(
 #'   pred = nv_array(TRUE),
@@ -136,7 +163,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' as_anvl_arrays(
 #'   x = nv_array(1L), y = 1.5,
 #'   a = nv_array(1L, dtype = "i8"), b = 2L,
-#'   .promote = list(
+#'   .promote = promote_grouped(
 #'     promote_common(only = c("x", "y")),
 #'     promote_common(only = c("a", "b"))
 #'   )
@@ -151,21 +178,43 @@ promote_common <- function(only = NULL) {
 
 #' @rdname promote_rule
 #' @export
-promote_like <- function(arg, only = NULL) {
+promote_like <- function(arg, only = NULL, force = FALSE) {
   assert_arg_ref(arg, "arg", len = 1L)
-  PromoteRule("like", only = only, arg = arg)
+  assert_flag(force)
+  PromoteRule("like", only = only, arg = arg, force = force)
 }
 
 #' @rdname promote_rule
 #' @export
-promote_dtype <- function(dtype, only = NULL) {
-  PromoteRule("dtype", only = only, dtype = as_dtype(dtype))
+promote_dtype <- function(dtype, only = NULL, force = FALSE) {
+  assert_flag(force)
+  PromoteRule("dtype", only = only, dtype = as_dtype(dtype), force = force)
 }
 
+# What the primitives whose arrayish arguments must agree declare, and the reason
+# `prim_mul(x_f64, 2)` works: a primitive must not widen the array it was handed
+# -- that is the `nv_*` layer's job -- but it does have to say what the R values
+# among its operands become, and "the data type the real operands already have"
+# is the only answer that does not invent one.
 #' @rdname promote_rule
 #' @export
 promote_yield <- function(only = NULL) {
   PromoteRule("yield", only = only)
+}
+
+#' @rdname promote_rule
+#' @export
+promote_grouped <- function(...) {
+  rules <- list(...)
+  ok <- length(rules) > 0L &&
+    all(vapply(rules, function(r) is_promote_rule(r) && r$kind != "grouped", logical(1L)))
+  if (!ok) {
+    cli_abort(c(
+      "{.fn promote_grouped} takes promotion rules, one per group of arguments.",
+      i = "Build them with {.fn promote_common}, {.fn promote_like}, {.fn promote_dtype} or {.fn promote_yield}; groups do not nest." # nolint
+    ))
+  }
+  structure(list(kind = "grouped", only = NULL, rules = rules), class = "PromoteRule")
 }
 
 # A tagged union over the four rules. The tag rather than four S3 subclasses:
@@ -201,8 +250,9 @@ format.PromoteRule <- function(x, ...) {
     x$kind,
     common = ,
     yield = "",
-    like = sprintf("(%s)", format_arg_ref(x$arg)),
-    dtype = sprintf("(%s)", repr(x$dtype))
+    like = sprintf("(%s%s)", format_arg_ref(x$arg), if (isTRUE(x$force)) ", force" else ""),
+    dtype = sprintf("(%s%s)", repr(x$dtype), if (isTRUE(x$force)) ", force" else ""),
+    grouped = sprintf("(%s)", paste(vapply(x$rules, format, character(1L)), collapse = ", "))
   )
   only <- if (is.null(x$only)) "" else sprintf(" only %s", format_arg_ref(x$only))
   sprintf("<promote_%s%s%s>", x$kind, detail, only)
@@ -230,24 +280,67 @@ print.PromoteRule <- function(x, ...) {
 # here and whatever consumes the values reports the mismatch.
 apply_promote_rules <- function(args, resolved, ...) {
   for (rule in resolved) {
-    args[rule$positions] <- map_tree(args[rule$positions], realize_at, dtype = rule$dtype, ...)
+    if (isTRUE(rule$strict)) {
+      for (i in rule$positions) {
+        assert_promotes_to(args[[i]], rule$dtype, args, i)
+      }
+    }
+    args[rule$positions] <- lapply(args[rule$positions], realize_at, dtype = rule$dtype, ...)
   }
   args
 }
 
+# Whether `x` reaches `dtype` without losing what it holds: a value that has a
+# data type must be promotable to it, and an R value must *yield* to it -- a
+# double does not become an integer, whatever its value, because the check has
+# to hold for a jit argument whose value nobody has seen.
+assert_promotes_to <- function(x, dtype, args, i) {
+  aval <- to_abstract(x)
+  what <- if (nzchar(rlang::names2(args)[[i]])) {
+    sprintf("`%s`", rlang::names2(args)[[i]])
+  } else {
+    sprintf("argument %d", i)
+  }
+  target <- as.character(dtype)
+  if (is_rdata_array(aval)) {
+    if (promote_dt_rdata(aval$default_dtype, dtype) == dtype) {
+      return(invisible(NULL))
+    }
+    cli_abort(
+      c(
+        "Cannot bring {what} to data type {.val {target}}.",
+        x = "It is an R {aval$r_type}, which is only ever built at a data type of its own category: a double becomes a float, an integer an integer, a logical a {.val bool}.", # nolint
+        i = "Write it in the target's category (e.g. {.code 0L} for an integer data type), convert it with {.fn nv_convert}, or ask for the conversion with {.code force = TRUE}." # nolint
+      ),
+      call = NULL
+    )
+  }
+  if (promotable_to(aval$dtype, dtype)) {
+    return(invisible(NULL))
+  }
+  cli_abort(
+    c(
+      "Cannot bring {what} to data type {.val {target}}.",
+      x = "{.val {as.character(aval$dtype)}} is not promotable to {.val {target}}.",
+      i = "Convert it explicitly with {.fn nv_convert}, or ask for the conversion with {.code force = TRUE}." # nolint
+    ),
+    call = NULL
+  )
+}
+
 # Resolve every rule of a call against its arguments, before any of them is
 # applied: a later rule reads the dtypes the earlier ones have not changed yet.
-# `.promote` is one rule or a list of them; the list is how a call promotes
-# several groups independently, so the rules must cover disjoint arguments.
-# Returns a list of `list(dtype, positions)`.
+# `.promote` is one rule, possibly a `promote_grouped()` of several -- which is
+# how a call promotes groups independently, so those must cover disjoint
+# arguments. Returns a list of `list(dtype, positions)`.
 resolve_promote_rules <- function(promote, args) {
-  rules <- if (is_promote_rule(promote)) list(promote) else promote
-  if (!is.list(rules) || !length(rules) || !all(vapply(rules, is_promote_rule, logical(1L)))) {
+  if (!is_promote_rule(promote)) {
     cli_abort(c(
-      "{.arg .promote} must be a promotion rule or a list of them, not {.cls {class(promote)}}.",
-      i = "Build one with {.fn promote_common}, {.fn promote_like}, {.fn promote_dtype} or {.fn promote_yield}."
+      "{.arg .promote} must be a promotion rule, not {.cls {class(promote)}}.",
+      i = "Build one with {.fn promote_common}, {.fn promote_like}, {.fn promote_dtype} or {.fn promote_yield}, and combine several with {.fn promote_grouped}." # nolint
     ))
   }
+  rules <- if (promote$kind == "grouped") promote$rules else list(promote)
   resolved <- lapply(rules, resolve_promote_rule, args = args)
   positions <- unlist(lapply(resolved, `[[`, "positions"))
   clashing <- unique(positions[duplicated(positions)])
@@ -269,23 +362,24 @@ resolve_promote_rule <- function(rule, args) {
   if (rule$kind == "yield") {
     return(resolve_yield(args, positions))
   }
+  # An R value among the inputs yields: it contributes the dtype it would take
+  # on its own and takes the others' where there is one.
   dtype <- switch(
     rule$kind,
-    # Over the *leaves*: an argument may be a tree, and every value in it counts.
-    # An R value among them yields -- it contributes the dtype it would take on
-    # its own and takes the others' where there is one. For an argument that is a
-    # single value this is just that value's dtype.
-    common = do.call(common_dtype_of, flatten(args[positions])),
-    like = do.call(common_dtype_of, flatten(args[arg_positions(rule$arg, args, "arg")])),
+    common = do.call(common_dtype_of, args[positions]),
+    like = do.call(common_dtype_of, args[arg_positions(rule$arg, args, "arg")]),
     dtype = rule$dtype
   )
-  list(dtype = dtype, positions = positions)
+  # `promote_common()` computes a target every input reaches by construction;
+  # the two rules that *name* one have to check that they do, unless the caller
+  # said the conversion is what it wants (`force`).
+  list(dtype = dtype, positions = positions, strict = !isTRUE(rule$force))
 }
 
 # `promote_yield()`: read the target off the inputs that already have a dtype,
 # never move them, and let the R values take it -- within their own category.
 resolve_yield <- function(args, positions) {
-  avals <- lapply(flatten(args[positions]), to_abstract)
+  avals <- lapply(args[positions], to_abstract)
   is_r <- vapply(avals, is_rdata_array, logical(1L))
   settled <- unique(lapply(avals[!is_r], peek_dtype))
   if (length(settled) > 1L) {

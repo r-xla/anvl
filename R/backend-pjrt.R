@@ -129,11 +129,12 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   - `const_arrays`: Constants needed at execution time.
 #'   - `out_avals`: One `list(dtype, shape)` per output leaf; pjrt's
 #'     dispatcher builds the output wrappers from these.
-#'   - `input_dtypes`: One dtype name per input, or `NA` where the caller
-#'     passes the input through unchanged. Only an input built from bare R
-#'     data names one: the R data has no dtype of its own, so the program
-#'     decides what it is uploaded as.
-#'     REVIEW: Need pjrt upkeep
+#'   - `input_dtypes`: One entry per input: the dtype an input built from bare
+#'     R data is uploaded at, and `NA` for an array input, which is supplied as
+#'     it is. The R data has no dtype of its own, so the program is the only
+#'     thing that knows what it is uploaded as -- pjrt's dispatcher therefore
+#'     requires an entry for every bare R input and rejects a dtype declared
+#'     for an array one. `NULL` for a call whose inputs are all arrays.
 #' @keywords internal
 compile_pjrt <- function(
   f,
@@ -241,8 +242,9 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
     const_arrays = const_arrays,
     out_avals = out_avals,
     # The dtype each input is supplied at. Only an input built from bare R data
-    # names one -- the dispatcher uploads the R data at that dtype instead of
-    # its default, which is how an `f64` program gets the exact R double.
+    # names one -- the dispatcher uploads the R data at that dtype, which is how
+    # an `f64` program gets the exact R double; an array input takes `NA`, and a
+    # call without any R input needs no declaration at all.
     input_dtypes = graph_input_dtypes(graph),
     device = device(exec),
     phantom_specs = phantom_specs

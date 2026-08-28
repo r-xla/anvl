@@ -4,7 +4,7 @@
 \alias{AnvlPrimitive}
 \title{AnvlPrimitive}
 \usage{
-AnvlPrimitive(name, subgraphs = character(), promote = promote_yield())
+AnvlPrimitive(name, subgraphs = character(), promote = NULL)
 }
 \arguments{
 \item{name}{(\code{character()})\cr
@@ -13,7 +13,7 @@ The name of the primitive.}
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs. Only used if \code{higher_order = TRUE}.}
 
-\item{promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}} | \code{list})\cr
+\item{promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}})\cr
 How the primitive brings its arrayish arguments to one data type before it
 records a call. See \code{\link[=new_primitive]{new_primitive()}}.}
 }
