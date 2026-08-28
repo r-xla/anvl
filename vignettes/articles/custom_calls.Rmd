@@ -49,7 +49,18 @@ nv_sqrt(x^2 + y^2)
 The second element should be roughly `1.41e-200`, but `x^2` underflowed to
 zero before the square root ever ran; symmetrically, inputs above `1e154`
 overflow to `Inf`.
-C's `std::hypot` rescales its inputs and gets both right, so we call it.
+`f32` has the same problem, just at a much smaller exponent -- `1e-30`
+already squares to zero:
+
+```{r}
+xf <- nv_array(c(3, 1e-30), dtype = "f32")
+yf <- nv_array(c(4, 1e-30), dtype = "f32")
+nv_sqrt(xf^2 + yf^2)
+```
+
+C's `std::hypot` rescales its inputs and gets both right, so we call it --
+for both dtypes, since a handler that only ever accepted `f64` would be of
+little use in code that computes in single precision.
 
 ## Step 1: Write the handler
 
@@ -73,26 +84,44 @@ is needed to compile against it.
 
 using namespace xla::ffi;
 
-static Error do_hypot(Buffer<DataType::F64> x, Buffer<DataType::F64> y,
-                      Result<Buffer<DataType::F64>> out) {
+// The actual work, once the element type is known.
+template <typename T>
+static Error hypot_impl(AnyBuffer x, AnyBuffer y, Result<AnyBuffer> out) {
   size_t n = out->element_count();
   if (x.element_count() != n || y.element_count() != n) {
     return Error::InvalidArgument("hypot: operands must have the same size");
   }
-  const double *xp = x.typed_data();
-  const double *yp = y.typed_data();
-  double *op = out->typed_data();
+  const T *xp = x.typed_data<T>();
+  const T *yp = y.typed_data<T>();
+  T *op = out->typed_data<T>();
   for (size_t i = 0; i < n; ++i) {
     op[i] = std::hypot(xp[i], yp[i]);
   }
   return Error::Success();
 }
 
+// Dispatch on the operand dtype; f32 and f64 are what std::hypot covers.
+static Error do_hypot(AnyBuffer x, AnyBuffer y, Result<AnyBuffer> out) {
+  DataType dt = x.element_type();
+  if (y.element_type() != dt || out->element_type() != dt) {
+    return Error::InvalidArgument("hypot: operands and result must have the "
+                                  "same dtype");
+  }
+  switch (dt) {
+    case DataType::F32:
+      return hypot_impl<float>(x, y, out);
+    case DataType::F64:
+      return hypot_impl<double>(x, y, out);
+    default:
+      return Error::InvalidArgument("hypot: only f32 and f64 are supported");
+  }
+}
+
 XLA_FFI_DEFINE_HANDLER(hypot_handler, do_hypot,
                        Ffi::Bind()
-                           .Arg<Buffer<DataType::F64>>()
-                           .Arg<Buffer<DataType::F64>>()
-                           .Ret<Buffer<DataType::F64>>());
+                           .Arg<AnyBuffer>()
+                           .Arg<AnyBuffer>()
+                           .Ret<AnyBuffer>());
 
 // [[Rcpp::export]]
 SEXP hypot_handler_ptr() {
@@ -102,10 +131,13 @@ SEXP hypot_handler_ptr() {
 
 Three things are happening here:
 
-- `do_hypot()` is the implementation. `Buffer<DataType::F64>` is a
-  statically typed buffer -- the handler only accepts `f64` and XLA rejects
-  the call otherwise. Use `AnyBuffer` instead to dispatch on dtype and rank
-  yourself.
+- `hypot_impl<T>()` is the implementation, and `do_hypot()` picks the `T` at
+  run time. `AnyBuffer` is a buffer of any dtype and rank, so the handler
+  gets to look at `element_type()` and decide. The alternative is a
+  statically typed `Buffer<DataType::F64>`, which pins the handler to one
+  dtype and makes XLA reject everything else -- fine for a kernel that only
+  ever runs in one precision, but not for one meant to be used from generic
+  code.
 - `XLA_FFI_DEFINE_HANDLER()` attaches the *binding specification* to it.
   Without it the runtime has no way to know that `do_hypot` wants two
   operands and one result, in that order. The macro defines `hypot_handler`,
@@ -116,13 +148,17 @@ Three things are happening here:
   `XLA_FFI_DEFINE_HANDLER_SYMBOL()` instead and look the resulting
   `extern "C"` symbol up with `getNativeSymbolInfo()`.
 
+`AnyBuffer` moves the type checking from XLA into the handler, so the
+handler has to do it: `typed_data<T>()` only asserts that `T` matches in a
+debug build, and reinterprets the bytes otherwise.
+Hence the explicit comparison of the three `element_type()`s and the
+`default:` branch -- an `i32` operand comes back as
+*hypot: only f32 and f64 are supported* rather than as nonsense.
+
 A handler may be called from XLA's worker threads, so it must not touch R's
 C API (no allocation, no `Rf_error()`, no printing).
 Report failures by returning an `Error` instead -- XLA aborts the execution
 and {pjrt} re-raises it as an R error.
-The FFI decoder does the same for a call that does not match the binding, so
-handing this handler an `f32` array fails with *Wrong buffer dtype: expected
-F64 but got F32* rather than reading nonsense.
 
 ## Step 2: Register it with PJRT
 
@@ -149,38 +185,68 @@ the package is unloaded.
 ## Step 3: Call it
 
 [`nv_custom_call()`] takes the target name, the operands, and the shape and
-dtype of each result:
+dtype of each result.
+anvl cannot infer the result types -- the handler decides them -- but
+nothing forces you to write them out as literals: [`dtype()`] and [`shape()`]
+of the operands are available at trace time, so a generic call reads
 
 ```{r}
-nv_custom_call("anvl_hypot", x, y, output_types = vt("f64", 2))
+nv_custom_call("anvl_hypot", x, y, output_types = vt(dtype(x), shape(x)))
+```
+
+and works for `f32` just as well:
+
+```{r}
+nv_custom_call("anvl_hypot", xf, yf, output_types = vt(dtype(xf), shape(xf)))
+```
+
+Wrapping that up gives an ordinary-looking `nv_*` function.
+The handler requires both operands to have the same dtype, and anvl's own
+API functions promote before they compute, so the wrapper does too --
+[`nv_promote_to_common()`] is the same helper the built-in binary operations
+use:
+
+```{r}
+nv_hypot <- function(x, y) {
+  operands <- nv_promote_to_common(x, y)
+  nv_custom_call(
+    "anvl_hypot",
+    operands[[1L]],
+    operands[[2L]],
+    output_types = vt(dtype(operands[[1L]]), shape(operands[[1L]]))
+  )
+}
+
+nv_hypot(x, y)
+nv_hypot(xf, yf)
+# an f32 and an f64 operand meet as f64
+nv_hypot(xf, y)
 ```
 
 That is the whole binding.
 It works the same inside a JIT-compiled function, where the custom call
-becomes one op among the others:
+becomes one op among the others -- and since the output types are derived
+from the traced operands, one `jit()`ed function serves both dtypes:
 
 ```{r}
-f <- jit(function(x, y) {
-  nv_reduce_sum(nv_custom_call("anvl_hypot", x, y, output_types = vt("f64", 2)))
-})
+f <- jit(function(x, y) nv_reduce_sum(nv_hypot(x, y)))
 f(x, y)
+f(xf, yf)
 ```
 
 The arguments worth knowing about:
 
 - `output_types` is a [`stablehlo::ValueType`], or a list of them for a
-  handler with several results, most easily built with [`vt()`]. anvl cannot
-  infer these -- the handler decides them -- which is why they are the one
-  thing you always have to declare. Pass a bare `vt()` and you get a bare
-  array back; pass a list and you get a list.
+  handler with several results, most easily built with [`vt()`]. Pass a bare
+  `vt()` and you get a bare array back; pass a list and you get a list.
 - `attrs` is a named list of values the handler reads through
   `.Attr<T>("name")` or `.Attrs<Dictionary>()`. Scalars, strings and vectors
   are converted using anvl's usual dtype defaults; pass a
   [`stablehlo::ScalarAttr()`] and friends to pin a different one.
 - `operand_layouts` / `result_layouts` fix the memory layout XLA hands the
   handler, in minor-to-major order. They default to row-major, which is what
-  `do_hypot()` -- walking its buffers linearly -- wants. A handler calling a
-  column-major library such as LAPACK wants `c(0L, 1L)` instead.
+  `hypot_impl()` -- walking its buffers linearly -- wants. A handler calling
+  a column-major library such as LAPACK wants `c(0L, 1L)` instead.
 - `aliases` says which operand's buffer each result is written into, so an
   in-place kernel does not force a copy. `aliases = 1L` on a single-result
   call hands the handler the same pointer for operand 1 and the result.
@@ -199,8 +265,11 @@ an operation with a name of its own.
 Both are fixed the same way -- by giving the call its own primitive with a
 reverse rule, exactly as in
 [Adding a Primitive](extending_primitive.html).
-The lowering rule reaches one level lower than `nv_custom_call()` does,
-emitting [`stablehlo::hlo_custom_call()`] directly, because a rule is handed
+The dtype stays generic here too: the shape rule propagates whatever dtype
+the operands were traced with, and the lowering rule is handed the
+`output_types` that follow from it.
+That rule reaches one level lower than `nv_custom_call()` does, emitting
+[`stablehlo::hlo_custom_call()`] directly, because a rule is handed
 `FuncValue`s rather than arrays:
 
 ```{r}
@@ -243,14 +312,19 @@ prim_hypot[["reverse"]] <- rule_reverse(function(
 })
 ```
 
-Now the call differentiates:
+Now the call differentiates, in either precision:
 
 ```{r}
 g <- function(x, y) nv_reduce_sum(prim_hypot(x, y))
 a <- nv_array(c(3, 6), dtype = "f64")
 b <- nv_array(c(4, 8), dtype = "f64")
 jit(gradient(g))(a, b)
+jit(gradient(g))(nv_convert(a, "f32"), nv_convert(b, "f32"))
 ```
+
+A real `nv_hypot()` would then promote its arguments as above and call
+`prim_hypot()` instead of `nv_custom_call()`: the promotion belongs in the
+`nv_*` layer, the primitive takes the dtypes as they come.
 
 ## Shipping this in a package
 
@@ -278,13 +352,13 @@ would:
 Nothing on the R side changes for a GPU.
 A `stablehlo.custom_call` names a *target*, not an implementation, and
 `pjrt_register_custom_call()` already takes one handler per platform, so the
-same `nv_custom_call("anvl_hypot", x, y, ...)` runs the CUDA handler as soon
-as its operands live on a CUDA device:
+same `nv_hypot(x, y)` runs the CUDA handler as soon as its operands live on
+a CUDA device:
 
 ```{r, eval = FALSE}
 x <- nv_array(c(3, 1e-200), dtype = "f64", device = "cuda")
 y <- nv_array(c(4, 1e-200), dtype = "f64", device = "cuda")
-nv_custom_call("anvl_hypot", x, y, output_types = vt("f64", 2))
+nv_hypot(x, y)
 ```
 
 What changes is the handler, and above all how it is built: R's build system
@@ -300,23 +374,36 @@ includes a CUDA header and the `.cu` never includes an XLA one -- which
 matters, because `nvcc`'s C++ support trails the host compiler's.
 This is the same split {pjrt} uses for its own CUDA handlers.
 
+The kernel itself is a template, but `extern "C"` cannot be, so the `.cu`
+exposes one launcher per supported dtype:
+
 ```c++
 // src/hypot_kernel.cu -- compiled by nvcc
 #include <cuda_runtime.h>
 
-__global__ void hypot_kernel(const double *x, const double *y, double *out,
-                             size_t n) {
+template <typename T>
+__global__ void hypot_kernel(const T *x, const T *y, T *out, size_t n) {
   size_t i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i < n) out[i] = hypot(x[i], y[i]);
 }
 
-// The only symbol the rest of the package sees.
-extern "C" void anvl_launch_hypot(void *stream, const double *x,
-                                  const double *y, double *out, size_t n) {
+template <typename T>
+static void launch(void *stream, const T *x, const T *y, T *out, size_t n) {
   const int threads = 256;
   const int blocks = static_cast<int>((n + threads - 1) / threads);
-  hypot_kernel<<<blocks, threads, 0, static_cast<cudaStream_t>(stream)>>>(
+  hypot_kernel<T><<<blocks, threads, 0, static_cast<cudaStream_t>(stream)>>>(
       x, y, out, n);
+}
+
+// The only symbols the rest of the package sees.
+extern "C" void anvl_launch_hypot_f32(void *stream, const float *x,
+                                      const float *y, float *out, size_t n) {
+  launch<float>(stream, x, y, out, n);
+}
+
+extern "C" void anvl_launch_hypot_f64(void *stream, const double *x,
+                                      const double *y, double *out, size_t n) {
+  launch<double>(stream, x, y, out, n);
 }
 ```
 
@@ -326,33 +413,71 @@ extern "C" void anvl_launch_hypot(void *stream, const double *x,
 
 using namespace xla::ffi;
 
-extern "C" void anvl_launch_hypot(void *stream, const double *x,
-                                  const double *y, double *out, size_t n);
+extern "C" void anvl_launch_hypot_f32(void *stream, const float *x,
+                                      const float *y, float *out, size_t n);
+extern "C" void anvl_launch_hypot_f64(void *stream, const double *x,
+                                      const double *y, double *out, size_t n);
 
-static Error do_hypot_cuda(void *stream, Buffer<DataType::F64> x,
-                           Buffer<DataType::F64> y,
-                           Result<Buffer<DataType::F64>> out) {
+static Error do_hypot_cuda(void *stream, AnyBuffer x, AnyBuffer y,
+                           Result<AnyBuffer> out) {
   size_t n = out->element_count();
   if (x.element_count() != n || y.element_count() != n) {
     return Error::InvalidArgument("hypot: operands must have the same size");
   }
+  DataType dt = x.element_type();
+  if (y.element_type() != dt || out->element_type() != dt) {
+    return Error::InvalidArgument("hypot: operands and result must have the "
+                                  "same dtype");
+  }
   // these are *device* pointers; only the kernel may dereference them
-  anvl_launch_hypot(stream, x.typed_data(), y.typed_data(),
-                    out->typed_data(), n);
-  return Error::Success();
+  switch (dt) {
+    case DataType::F32:
+      anvl_launch_hypot_f32(stream, x.typed_data<float>(),
+                            y.typed_data<float>(), out->typed_data<float>(), n);
+      return Error::Success();
+    case DataType::F64:
+      anvl_launch_hypot_f64(stream, x.typed_data<double>(),
+                            y.typed_data<double>(), out->typed_data<double>(),
+                            n);
+      return Error::Success();
+    default:
+      return Error::InvalidArgument("hypot: only f32 and f64 are supported");
+  }
 }
 
 XLA_FFI_DEFINE_HANDLER_SYMBOL(HypotHandlerCuda, do_hypot_cuda,
                               Ffi::Bind()
                                   .Ctx<PlatformStream<void *>>()
-                                  .Arg<Buffer<DataType::F64>>()
-                                  .Arg<Buffer<DataType::F64>>()
-                                  .Ret<Buffer<DataType::F64>>());
+                                  .Arg<AnyBuffer>()
+                                  .Arg<AnyBuffer>()
+                                  .Ret<AnyBuffer>());
 ```
 
 The binding gains one entry: `.Ctx<PlatformStream<void *>>()` puts the CUDA
 stream XLA dispatched the op on in front of the buffers.
 Everything the handler enqueues must go on *that* stream.
+
+### You do not need a system CUDA toolkit
+
+Installing {pjrt}'s CUDA plugin also installs the
+[`cuda12.8`](https://mlverse.r-universe.dev/cuda12.8) R package, which
+downloads the CUDA redistributables from PyPI at install time -- and it keeps
+the `include/` directory of every component it unpacks, plus `nvcc` itself:
+
+```r
+cuda12.8::bin_path("nvcc")           # nvcc, ptxas, cicc
+cuda12.8::include_path("runtime")    # cuda_runtime.h and friends
+cuda12.8::include_path("cublas")     # likewise for cublas, cusolver, cudnn, ...
+cuda12.8::lib_path()                 # all the .so files, libcudart.so included
+```
+
+So everything the kernel above needs to compile and link is already on the
+machine that runs the plugin, and a package can find it from R instead of
+guessing at `/usr/local/cuda`.
+Two caveats: the package is Linux and Windows only (no macOS), and its
+version is pinned -- {pjrt} defaults to `cuda12.8` and only that version is
+known to match the plugin, though `PJRT_CUDA_R_PACKAGE` can point at another
+one.
 
 ### Teaching `R CMD INSTALL` about `.cu`
 
@@ -360,19 +485,24 @@ R has no rule for `.cu`, so `src/Makevars` supplies one and lists every
 object explicitly:
 
 ```make
-CUDA_HOME ?= /usr/local/cuda
-NVCC = $(CUDA_HOME)/bin/nvcc
+CUDA_BIN = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::bin_path("nvcc"))')
+CUDA_INC = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::include_path("runtime"))')
+CUDA_LIB = $(shell "$(R_HOME)/bin/Rscript" -e 'cat(cuda12.8::lib_path())')
+
+NVCC = $(CUDA_BIN)/nvcc
 
 OBJECTS = hypot.o hypot_cuda.o hypot_kernel.o
-PKG_LIBS = -L$(CUDA_HOME)/lib64 -lcudart
+PKG_LIBS = -L$(CUDA_LIB) -lcudart -Wl,-rpath,$(CUDA_LIB)
 
 %.o: %.cu
-	$(NVCC) -std=c++17 -O2 -Xcompiler "$(CXXPICFLAGS)" -c $< -o $@
+	$(NVCC) -std=c++17 -O2 -I$(CUDA_INC) -Xcompiler "$(CXXPICFLAGS)" -c $< -o $@
 ```
 
-A package meant to install on machines without a GPU wants a `configure`
-that looks for `nvcc`, and generates a `Makevars` without the CUDA objects
-when it is missing.
+`nvcc` finds its own CRT headers next to its `bin/`, so only the runtime
+headers have to be named explicitly.
+A package meant to install on machines without a GPU wants a `configure` that
+checks whether `cuda12.8` (or a system `nvcc`) is there at all, and generates
+a `Makevars` without the CUDA objects when it is not.
 
 ### Registering both
 
@@ -398,49 +528,3 @@ symbol <- function(name, pkgname) {
 
 Registering only `cpu` is not an error; a program that needs the missing
 platform is what fails, with *No FFI handler registered for `anvl_hypot`*.
-
-### When the platforms disagree
-
-Layouts sometimes differ between a CPU and a CUDA implementation -- a
-LAPACK kernel wants column-major where a hand-rolled kernel is happy
-row-major.
-`operand_layouts` and `result_layouts` accept a list keyed by platform for
-that case, resolved when the program is lowered, which is the first point at
-which the target platform is known:
-
-```{r, eval = FALSE}
-nv_custom_call(
-  "anvl_hypot",
-  x,
-  y,
-  output_types = vt("f64", 2),
-  operand_layouts = list(
-    cpu = list(0L, 0L),
-    cuda = list(0L, 0L)
-  ),
-  result_layouts = list(cpu = list(0L), cuda = list(0L))
-)
-```
-
-If the two platforms need to differ by more than layouts -- a different
-operand order, an extra attribute, a transpose on one side only -- write a
-primitive instead and branch on [`current_platform()`] in its lowering rule,
-the way {anvl}'s own `prim_svd` does for cuSOLVER.
-
-### Three things to get right
-
-- **Stay on the stream, and do not synchronise it.**
-  `cudaStreamSynchronize()` inside a handler makes the host wait for the GPU
-  and breaks the pipelining XLA depends on. XLA already orders any op that
-  reads your outputs after your kernel.
-- **Ask XLA for scratch, not `cudaMalloc`.** Device memory beyond the FFI
-  buffers comes from `.Ctx<ScratchAllocator>()`, which draws on the same
-  allocator that backs the input and output buffers and frees everything
-  when the handler returns.
-- **Check every status.** CUDA and library calls return an `int` that is `0`
-  on success; a dropped one leaves garbage in the output buffer that
-  surfaces much later as wrong numbers rather than an error. Turn a non-zero
-  status into `Error::Internal`.
-
-{pjrt}'s [Adding Custom Calls](https://r-xla.github.io/pjrt/dev/articles/ffi.html)
-article goes further into all three, and into cuSOLVER specifically.

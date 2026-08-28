@@ -32,3 +32,4 @@ anvl.Rproj
 ^specs$
 ^paper$
 ^vignettes/articles/
+^integrations$

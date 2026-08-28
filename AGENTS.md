@@ -59,6 +59,9 @@ Each rule of each primitive should be tested. Tests are organized as:
 
 Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.
 
+`integrations/` holds tests that `R CMD check` must not run -- currently the custom-call path from the "Custom Calls" article, which compiles an FFI handler against {pjrt}'s headers with `Rcpp::sourceCpp()`.
+They have their own launcher (`Rscript integrations/run.R`) and run in a single CI job (Ubuntu x86, CPU).
+
 Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of the test body.
 This helper skips when quickr is not installed, and also when the `ANVL_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
