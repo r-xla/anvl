@@ -433,3 +433,62 @@ test_that("nv_rnorm takes its data type from mean and sd when none is named", {
     "not promotable"
   )
 })
+
+test_that("an out-of-category R leaf is built in each sub-graph that uses it", {
+  # The convert is recorded in whatever descriptor is being traced, so a memo
+  # entry from one branch must not be handed to the other -- the second branch
+  # would reference a value only the first one computes.
+  f <- jit(function(a, x) {
+    prim_if(nv_scalar(TRUE), function() nv_add(x, a), function() nv_add(x, a))
+  })
+  expect_identical(as_array(f(3L, nv_scalar(2, dtype = "f64"))), 5)
+  g <- jit(function(a, x) {
+    nv_while(list(i = x), function(i) i < nv_add(x, a), function(i) list(i = nv_add(i, a)))
+  })
+  expect_identical(as_array(g(3L, nv_scalar(2, dtype = "f64"))$i), 5)
+})
+
+test_that("a negative R integer reaches an unsigned data type through a convert", {
+  # An R integer is signed, so it is built at i32/i64 and converted: writing it
+  # straight into the IR would not even be valid StableHLO, and the answer has
+  # to be the same eagerly as under jit().
+  x <- nv_array(c(1L, 2L), dtype = "ui32")
+  expect_equal(as_array(nv_add(x, -1L)), as_array(jit(function(x) nv_add(x, -1L))(x)))
+  expect_equal(as.character(as_array(nv_add(x, -1L))), c("0", "1"))
+  expect_equal(as.character(as_array(nv_add(x, 1L))), c("2", "3"))
+  graph <- trace_fn(function(x) nv_add(x, -1L), list(x = nv_aval("ui32", 2L)))
+  src <- repr(stablehlo(graph)[[1L]])
+  expect_match(src, "dense<-1> : tensor<i32>", fixed = TRUE)
+  expect_match(src, "stablehlo.convert", fixed = TRUE)
+})
+
+test_that("nv_solve() and nv_triangular_solve() let an R value yield", {
+  a <- nv_array(matrix(c(2, 0, 0, 2), nrow = 2), dtype = "f64")
+  out <- nv_solve(a, matrix(c(2, 4), ncol = 1L))
+  expect_equal(dtype(out), as_dtype("f64"))
+  expect_equal(as.vector(out), c(1, 2))
+  # ... and two typed arrays that disagree are still rejected, rather than one
+  # of them being widened.
+  expect_error(nv_solve(a, nv_array(matrix(c(2, 4), ncol = 1L), dtype = "f32")))
+  out <- nv_triangular_solve(a, matrix(c(2, 4), ncol = 1L))
+  expect_equal(dtype(out), as_dtype("f64"))
+})
+
+test_that("an R vector that is not arrayish has no abstract value", {
+  expect_error(to_abstract(c(1, 2, 3)), "undefined for a length-3")
+  expect_equal(shape(to_abstract(array(1:6, c(2, 3)))), c(2L, 3L))
+})
+
+test_that("an R argument uploads at the narrowest data type that holds every use site", {
+  dbl <- RDataArray(NULL, integer(), "double")
+  # `f16` and `bf16` are both 16 bits and neither holds the other, so the upload
+  # has to widen -- to `f32`, which holds both, and not to the value's natural
+  # `f64`: a program with no `f64` in it must not acquire one here.
+  expect_equal(resolve_upload_dtype(dbl, c("f16", "bf16")), "f32")
+  # Where one of them does hold the others, that one is used unchanged.
+  expect_equal(resolve_upload_dtype(dbl, c("f32", "f64")), "f64")
+  expect_equal(resolve_upload_dtype(dbl, "f16"), "f16")
+  # A value the body never used commits to its default.
+  expect_equal(resolve_upload_dtype(dbl, character()), "f32")
+  expect_equal(resolve_upload_dtype(RDataArray(NULL, integer(), "integer"), c("i32", "i64")), "i64")
+})

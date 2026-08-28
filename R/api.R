@@ -1578,9 +1578,12 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # `a` and `b` must agree, and neither is widened to meet the other: an R
+  # matrix yields to `a`'s data type, two typed arrays that disagree are
+  # rejected.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_yield())
+  a <- args$a
+  b <- args$b
   a_shape <- shape(a)
   if (length(a_shape) != 2L || a_shape[1L] != a_shape[2L]) {
     cli_abort("{.arg a} must be a square 2-D matrix")
@@ -1660,9 +1663,10 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # As in `nv_solve()`: the two must agree, and neither is widened.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_yield())
+  a <- args$a
+  b <- args$b
 
   a_shape <- shape(a)
   b_shape <- shape(b)

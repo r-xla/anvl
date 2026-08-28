@@ -28,6 +28,20 @@
 
 ## Bug fixes
 
+* A negative R integer used at an unsigned data type produced a different answer
+  in each mode: eagerly it read back as nonsense, and under `jit()` it was
+  written straight into the IR as `dense<-1> : tensor<ui32>`, which is not valid
+  StableHLO. An R integer is signed, so it is now built at `i32`/`i64` and
+  converted by the program, giving XLA's wrap-around in both modes.
+* An R value used at a data type outside its own category from two sibling
+  sub-graphs -- `prim_if()`'s two branches, `prim_while()`'s condition and body
+  -- failed with "GraphValue not found in environment". The conversion is
+  recorded in the sub-graph being traced, so it can no longer be handed to a
+  sibling that does not compute it.
+* `nv_solve()` and `nv_triangular_solve()` let an R value take `a`'s data type
+  instead of committing it to its own default, so `nv_solve(a_f64, b_r_matrix)`
+  works. Two typed arrays that disagree are still rejected rather than one being
+  widened.
 * `nv_pad()` builds its padding value at the array's data type. It used to
   commit the value to its own default first, so `nv_pad(x_f64, 0)` failed with a
   data type mismatch and only an `f32` array with a double padding value

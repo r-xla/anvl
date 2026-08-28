@@ -1313,7 +1313,10 @@ to_abstract <- function(x, pure = FALSE) {
   } else if (is_abstract_array(x)) {
     x
   } else if (test_atomic(x) && (is.logical(x) || is.numeric(x))) {
-    RDataArray(x, shape = if (is.null(dim(x))) integer() else as.integer(dim(x)))
+    # `r_value_shape()` rather than `dim()`: a length-3 vector with no `dim()`
+    # is not an arrayish value, and giving it the scalar shape would build an
+    # `RDataArray` whose data and shape disagree.
+    RDataArray(x, shape = r_value_shape(x))
   } else if (is_graph_box(x)) {
     gnode <- x$gnode
     gnode$aval

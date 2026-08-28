@@ -117,9 +117,16 @@ rdata_in_category <- function(r_type, dtype) {
 # `resolve_upload_dtype()` then has to choose between two dtypes of the same
 # width where the float does not hold every value of the integer. Keeping the
 # candidates inside one category is what makes "the widest holds them all" true.
+#
+# Nor at an *unsigned* dtype, for the same reason it is not built at a narrower
+# one: an R integer is signed, so a negative value has no representation there
+# and writing it straight into the IR is not even valid StableHLO
+# (`dense<-1> : tensor<ui32>`). The value is unknown for a jit argument, so this
+# cannot be decided per value; building at `i32`/`i64` and letting the program
+# convert gives XLA's wrap-around, in eager mode as much as under `jit()`.
 rdata_builds_directly <- function(r_type, dtype) {
   rdata_in_category(r_type, dtype) &&
-    (r_type != "integer" || dtype_width(dtype) >= 32L)
+    (r_type != "integer" || (is_dtype_int(dtype) && dtype_width(dtype) >= 32L))
 }
 
 # Build `box`'s R value into the graph at `dtype`, and return the GraphBox for
@@ -131,7 +138,14 @@ materialize_rdata <- function(box, dtype) {
   node <- box$gnode
   key <- as.character(dtype)
   hit <- node$mat[[key]]
-  if (!is.null(hit)) {
+  # A memoized box is only reusable where it can actually be reached. One built
+  # in the node's own descriptor can: a sub-graph captures it like any other
+  # outer value. The `prim_convert` below is recorded in whatever descriptor was
+  # current, though, so a sibling sub-graph -- `prim_if()`'s other branch,
+  # `prim_while()`'s body after its condition -- has to build its own rather
+  # than reference a value only the first one computes.
+  if (!is.null(hit) && (identical(hit$desc, box$desc) || identical(hit$desc, .current_descriptor(silent = TRUE)))) {
+    # nolint
     return(hit)
   }
   aval <- node$aval
@@ -780,6 +794,21 @@ dtype_holds <- function(dtype, other) {
   all(dtype_capacity(dtype) >= dtype_capacity(other))
 }
 
+# The dtypes an R value of this storage type can be built at, narrowest first.
+# `resolve_upload_dtype()` searches these when no dtype the trace asked for holds
+# the others, so the upload widens only as far as it must.
+rdata_build_candidates <- function(r_type) {
+  switch(
+    r_type,
+    double = c("f16", "bf16", "f32", "f64"),
+    # An R integer is signed and is not built below 32 bits
+    # (`rdata_builds_directly()`), so these are all of them.
+    integer = c("i32", "i64"),
+    logical = "bool",
+    cli_abort("No build candidates for R type {.val {r_type}}")
+  )
+}
+
 # The single dtype an R argument is uploaded at, given every dtype the trace
 # built it at. Those are all in the value's own category (materialize_rdata()
 # converts out of it inside the program instead), so one of them can serve every
@@ -787,9 +816,10 @@ dtype_holds <- function(dtype, other) {
 # from it, rounding exactly once.
 #
 # Not simply the widest. `f16` and `bf16` are both 16 bits and neither holds the
-# other -- `f16` has three more mantissa bits, `bf16` a far wider exponent -- and
-# `i32` and `ui32` likewise. When no candidate holds them all, the value's
-# natural dtype does, by construction.
+# other -- `f16` has three more mantissa bits, `bf16` a far wider exponent. When
+# no dtype the trace asked for holds them all, the narrowest one of the value's
+# category that does is used (`f32` for those two), so a program with no `f64`
+# in it does not acquire one here.
 resolve_upload_dtype <- function(aval, requested) {
   if (!length(requested)) {
     return(as.character(aval$default_dtype))
@@ -797,7 +827,14 @@ resolve_upload_dtype <- function(aval, requested) {
   dtypes <- lapply(requested, as_dtype)
   holds_all <- vapply(dtypes, function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d)), logical(1L))
   if (!any(holds_all)) {
-    return(as.character(rdata_natural_dtype(aval$r_type)))
+    # None of them holds the others, so the upload has to widen -- but only as
+    # far as it takes. The natural dtype would always do (`f64` holds every
+    # float), and it is what the value would be built at on its own; taking it
+    # here would put an `f64` input into a program that has no other `f64` in
+    # it, purely because one argument was asked for at two narrow floats.
+    holds <- function(cand) all(vapply(dtypes, dtype_holds, logical(1L), dtype = as_dtype(cand)))
+    narrowest <- Find(holds, rdata_build_candidates(aval$r_type))
+    return(narrowest %||% as.character(rdata_natural_dtype(aval$r_type)))
   }
   # Several candidates hold them all only when they are equivalent; ordering by
   # name keeps the choice independent of the order the trace happened to ask in.

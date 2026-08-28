@@ -1341,7 +1341,11 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' prim_remainder(1, -3)
 #' 1 %% -3
 #' @export
-prim_remainder <- new_primitive("remainder", make_binary_op(stablehlo::infer_types_remainder), promote = promote_yield())
+prim_remainder <- new_primitive(
+  "remainder",
+  make_binary_op(stablehlo::infer_types_remainder),
+  promote = promote_yield()
+)
 
 #' @title Primitive And
 #' @description
