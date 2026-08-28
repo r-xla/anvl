@@ -56,6 +56,9 @@ makes `x_f64 / sqrt(2)` exact. See `vignette("type-promotion")`.
   `promote` defaults to `NULL`. A primitive whose arrayish arguments must agree
   declares `promote = promote_yield()` (restricted with `only =` where some
   operands are meant to differ), which is what makes `prim_mul(x_f64, 2)` work.
+  The rule is applied *before the body runs*, by the wrapper `new_primitive()`
+  puts around it, so the body may read a data type or trace a sub-graph without
+  meeting an unresolved operand.
   An R value then takes the dtype the other operands have, but only **within its
   own category**: a double becomes a float, an integer an integer, a logical a
   `bool`. Crossing a category is promotion and belongs to the `nv_*` layer, so

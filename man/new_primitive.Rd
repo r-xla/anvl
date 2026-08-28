@@ -28,8 +28,12 @@ the first argument to \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 Names of parameters that are subgraphs (for higher-order primitives).}
 
 \item{promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}})\cr
-How the primitive brings its arrayish arguments to one data type before it
-records a call, applied to the \code{args} of \code{\link[=graph_desc_add]{graph_desc_add()}}.
+How the primitive brings its arrayish arguments to one data type. The rule
+is applied \emph{before the body runs}, to the non-\code{static} formals in formal
+order with \code{...} spliced in where it sits -- the same values the body goes
+on to hand \code{\link[=graph_desc_add]{graph_desc_add()}} -- so the body sees settled data types from
+its first line. That is what a primitive needs when it reads a data type or
+traces a sub-graph before it records its call.
 
 \code{NULL} (default) means no rule: every R value commits to its own default,
 and the arguments may hold any data types the primitive accepts. That is

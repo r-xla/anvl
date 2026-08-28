@@ -17,7 +17,9 @@
   - A primitive no longer promotes its arguments unless it says so: the
     `promote` argument of `new_primitive()` defaults to `NULL`, and the
     primitives whose arrayish arguments must agree declare
-    `promote = promote_yield()`.
+    `promote = promote_yield()`. The rule is applied before the primitive's body
+    runs, so a body may read a data type or trace a sub-graph without meeting an
+    argument that has not taken one yet.
 * `nv_rnorm()`'s `dtype` now defaults to `NULL`, which takes the sample's data
   type from `mean` and `sd` where either is a real array, and falls back to
   `"f32"` where both are bare R values. It used to always be `"f32"` unless the

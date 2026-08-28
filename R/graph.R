@@ -228,10 +228,12 @@ trace_commit_rdata_box <- function(x) {
 # commit to its own default, so whether a call worked would depend on whether the
 # array it met happened to be at that default.
 #
-# `graph_desc_add()` calls this, and so does any primitive that reads its
-# operands' dtypes *before* recording a call -- tracing a sub-graph, or checking
-# a constraint. It is idempotent: once every argument has a dtype there is
-# nothing left to decide, which is also the fast path.
+# Called once per primitive call, from the wrapper `new_primitive()` puts around
+# the body (`wrap_promote_resolution()`), so the body sees settled data types
+# from its first line -- which is what a primitive that reads a dtype or traces
+# a sub-graph before recording its call needs. It is idempotent: once every
+# argument has a dtype there is nothing left to decide, which is also the fast
+# path.
 resolve_primitive_args <- function(primitive, args) {
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
@@ -1169,7 +1171,6 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
-  args <- resolve_primitive_args(primitive, args)
 
   # Box each input and pull out its gnode + aval in one pass (`gnodes_in`
   # unnamed for the PrimitiveCall; `avals_in` keeps arg names for infer_fn).
@@ -1177,14 +1178,13 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    # REVIEW: Why do we need trace_commit_rdata_box when we already resolve the args above?
-    # RESPONSE: Because `resolve_primitive_args()` does not always settle every
-    # argument: a primitive with `promote = NULL` (`prim_sort`, `prim_while`)
-    # resolves nothing, a rule with `only =` leaves the arguments it does not
-    # name, and `promote_yield()` deliberately gives up when the inputs already
-    # carry more than one data type. A node entering the graph must have one, so
-    # this is the last resort -- it commits whatever is left at its default and
-    # lets type inference report the mismatch.
+    # Not every argument has a data type by now: a primitive with
+    # `promote = NULL` (`prim_sort`, `prim_while`) declares no rule, a rule with
+    # `only =` leaves the arguments it does not name, and `promote_yield()`
+    # deliberately gives up when the inputs already carry more than one data
+    # type. A node entering the graph must have one, so this is the last resort
+    # -- it commits whatever is left at its default and lets type inference
+    # report the mismatch.
     gnode <- trace_commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval

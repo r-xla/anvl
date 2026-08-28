@@ -968,13 +968,6 @@ prim_reduce <- new_primitive(
     force(init)
     force(reductor)
 
-    # Early, because the reductor below is traced at `x`'s dtype: by the time
-    # graph_desc_add() would resolve them, the sub-graph's parameter slots would
-    # already have been built from an `init` that committed to its own default.
-    resolved <- resolve_primitive_args(self, list(x = x, init = init))
-    x <- resolved$x
-    init <- resolved$init
-
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     if (!checkmate::test_flag(drop)) {
       cli_abort("{.arg drop} must be a flag")
@@ -2898,17 +2891,6 @@ prim_scatter <- new_primitive(
     }
 
     current_desc <- .current_descriptor(silent = TRUE)
-
-    # Early, for the same reason as prim_reduce(): the update computation below
-    # is traced at these dtypes, so they have to be settled before the sub-graph
-    # is built rather than when the call is recorded.
-    resolved <- resolve_primitive_args(
-      self,
-      list(x = x, scatter_indices = scatter_indices, update = update)
-    )
-    x <- resolved$x
-    scatter_indices <- resolved$scatter_indices
-    update <- resolved$update
 
     # Trace the update computation function
     # For scatter, the update computation takes 2 scalar arguments (current, update)

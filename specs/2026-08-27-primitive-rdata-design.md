@@ -156,7 +156,9 @@ converts only arise out-of-category, i.e. for non-differentiable dtypes.
 
 **At the primitive's entry**, in the callable `new_primitive()` builds, before
 the body runs. The arrayish arguments are the non-`static` formals, which
-`new_primitive()` already knows.
+`new_primitive()` already knows, taken in formal order with `...` spliced in
+where it sits -- the same values, in the same order and under the same names,
+that the body goes on to hand `graph_desc_add()`.
 
 Not in `graph_desc_add()`, which was the first draft's choice and is too late:
 several primitives read their operands' dtypes *before* recording a call.
@@ -167,10 +169,11 @@ commits every R value to its default to make a subgraph parameter slot, so a
 later resolution would leave the parent operand disagreeing with the parameter
 it was traced against.
 
-Resolving at entry fixes all of those at once, is a single place, and leaves
-`graph_desc_add()` unchanged. It also means the whole primitive body sees
-settled operands, which is easier to reason about than "settled by the time they
-are recorded".
+Resolving at entry fixes all of those at once and is a single place, so
+`graph_desc_add()` drops its own resolution and keeps only
+`trace_commit_rdata_box()` for the arguments no rule covers. It also means the
+whole primitive body sees settled operands, which is easier to reason about than
+"settled by the time they are recorded".
 
 The resolution itself is factored out of `as_anvl_arrays()` into a shared
 `resolve_promote(args, promote)`, so the two layers run the same code.

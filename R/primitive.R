@@ -96,8 +96,12 @@ print.AnvlPrimitive <- function(x, ...) {
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param promote (`NULL` | [`PromoteRule`][promote_rule])\cr
-#'   How the primitive brings its arrayish arguments to one data type before it
-#'   records a call, applied to the `args` of [`graph_desc_add()`].
+#'   How the primitive brings its arrayish arguments to one data type. The rule
+#'   is applied *before the body runs*, to the non-`static` formals in formal
+#'   order with `...` spliced in where it sits -- the same values the body goes
+#'   on to hand [`graph_desc_add()`] -- so the body sees settled data types from
+#'   its first line. That is what a primitive needs when it reads a data type or
+#'   traces a sub-graph before it records its call.
 #'
 #'   `NULL` (default) means no rule: every R value commits to its own default,
 #'   and the arguments may hold any data types the primitive accepts. That is
@@ -146,6 +150,10 @@ new_primitive <- function(
   self_env$self <- primitive
   environment(fn) <- self_env
 
+  if (!is.null(promote)) {
+    fn <- wrap_promote_resolution(fn, primitive, static)
+  }
+
   jit_fn <- jit(fn, static = static, backend = "auto", device = device)
   attr(jit_fn, "primitive") <- primitive
   class(jit_fn) <- c("JitPrimitive", class(jit_fn))
@@ -155,6 +163,74 @@ new_primitive <- function(
   }
 
   jit_fn
+}
+
+# Wrap a primitive body so its arrayish arguments are resolved *before* the body
+# runs, rather than when the body records its call. The body then sees settled
+# data types throughout, which is what a primitive that uses an operand before
+# recording needs: `prim_reduce()` reads `dtype(init)` to trace its reductor,
+# and `prim_scatter()` builds its update computation's parameter slots from
+# `peek_dtype(x)`. Both would otherwise see an R value that has not taken the
+# other operand's data type yet.
+#
+# The arrayish arguments are the non-`static` formals in formal order, with
+# `...` spliced in where it sits -- the same list, in the same order and under
+# the same names, that the body goes on to hand `graph_desc_add()`, so a rule's
+# `only =` and `promote_like()` name the same things in both places.
+#
+# Installed only for a primitive that declares a rule; one with `promote = NULL`
+# is called directly. This runs on every traced and eager primitive call, so the
+# wrapper is specialized here rather than branching per call: where the formals
+# hold no `...`, the resolved values are written back over them and the original
+# body is inlined, which costs one `mget` and one `list2env` and no second call
+# frame.
+wrap_promote_resolution <- function(fn, primitive, static) {
+  fmls <- formals(fn)
+  nms <- names(fmls)
+  static_nms <- if (is.character(static)) static else nms[static]
+  arrayish <- setdiff(nms, c(static_nms, "..."))
+  dots_at <- match("...", nms, nomatch = 0L)
+  optional <- arrayish[vapply(fmls[arrayish], function(d) !identical(d, quote(expr = )), logical(1L))]
+  if (length(optional)) {
+    cli_abort(c(
+      "A primitive's arrayish arguments must all be required.",
+      x = "{.val {optional}} {?has/have} a default, so the resolver cannot tell an omitted one from a supplied one.", # nolint
+      i = "Give it no default, or declare it {.arg static}."
+    ))
+  }
+
+  env <- new.env(parent = environment(fn))
+  env$.primitive <- primitive
+  env$.arrayish <- arrayish
+
+  wrapper <- fn
+  environment(wrapper) <- env
+  if (dots_at) {
+    # `...` cannot be written back over, so the body is re-invoked with the
+    # resolved values instead of being inlined.
+    env$.fn <- fn
+    # Where the dots sit among the arrayish arguments, so they are spliced into
+    # the position the body would have built them into.
+    env$.dots_after <- sum(match(arrayish, nms) < dots_at)
+    env$.static_nms <- static_nms
+    body(wrapper) <- quote({
+      .args <- append(mget(.arrayish), list(...), after = .dots_after)
+      do.call(.fn, c(resolve_primitive_args(.primitive, .args), mget(.static_nms)), quote = TRUE)
+    })
+    return(wrapper)
+  }
+  prologue <- quote(list2env(resolve_primitive_args(.primitive, mget(.arrayish)), environment()))
+  body(wrapper) <- as.call(c(as.name("{"), prologue, body_statements(fn)))
+  wrapper
+}
+
+# The statements of a function's body, whether or not it is a `{` block.
+body_statements <- function(fn) {
+  b <- body(fn)
+  if (is.call(b) && identical(b[[1L]], as.name("{"))) {
+    return(as.list(b)[-1L])
+  }
+  list(b)
 }
 
 #' @title Get Subgraphs from Higher-Order Primitive
