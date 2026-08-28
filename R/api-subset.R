@@ -507,6 +507,10 @@ subset_scatter_core <- jit(
     unique_indices,
     update_shape
   ) {
+    # REVIEW: It should be possible to use as_anvl_array(x = x, y = y, .promote = promote_<...>("x")
+    # Currently, promote_like("x") would even coerce a y f32 into an i32 if x were i32.
+    # I think this is also wrong semantics and promote_like("x") should fail by default.
+    # we can add promote_like("x", force = TRUE) to also to float -> int conversions etc.
     x <- as_anvl_array(x)
     dt_x <- dtype(x)
     # An R value is assigned at the dtype of the array it goes into, so it is

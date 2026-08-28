@@ -133,6 +133,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'     passes the input through unchanged. Only an input built from bare R
 #'     data names one: the R data has no dtype of its own, so the program
 #'     decides what it is uploaded as.
+#'     REVIEW: Need pjrt upkeep
 #' @keywords internal
 compile_pjrt <- function(
   f,

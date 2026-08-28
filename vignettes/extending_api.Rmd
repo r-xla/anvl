@@ -43,6 +43,7 @@ You should call them at the top of your function.
 Not only will these functions convert the inputs, they will also check them for compatibility, specifically w.r.t. their device and backend.
 If they don't live on the same device, an error will be thrown.
 
+<!-- REVIEW: Weird wording. It also matters in jit-mode (promotion). We shoul just mention that in eager mode it additionally handles device-placement -->
 This matters most in eager mode: under `jit()`, {anvl} sees the whole call and
 places the inputs itself. But the converters mean the same thing in both modes,
 so writing your function this way costs nothing when it *is* jitted -- and see
@@ -129,6 +130,7 @@ as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x"))
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
 ```
 
+<!--REVIEW: this would be the default expectation anyway, so no need to alk about this so much-->
 Promoting *realizes* an R value at the target rather than converting it there:
 it is built at that data type from the R data, so it arrives with every digit it
 had. Converting afterwards instead -- canonicalizing first and then calling
@@ -136,6 +138,7 @@ had. Converting afterwards instead -- canonicalizing first and then calling
 `x_f64 * sqrt(2)` comes out right only in the first spelling. **If your
 function's result data type depends on its arguments, say so with a rule.**
 
+<!-- REVIEW: no need to mention everythign here. Just say different rules exist and ref the help page -->
 Which rule you want follows from what the function is. `nv_add()` is
 `promote_common()`: neither operand is privileged. `nv_clamp(min_val, x,
 max_val)` is `promote_like("x")`: the result is `x`'s type and the bounds come
@@ -143,6 +146,7 @@ along, even where that narrows them. `nv_rnorm(shape, state, dtype = )` is
 `promote_dtype(dtype)`: the type is the function's own argument, not something
 read off an input.
 
+<!-- REVIEW: Weird wodring "no business". I should write this myself.-->
 An argument that has no business taking part is named out with `only`. Every
 input is still aligned onto one device and converted -- it just does not take
 the target's data type. `nv_ifelse()` is the case: its predicate has to stay a
@@ -190,6 +194,7 @@ as_anvl_arrays(nv_array(1, dtype = "f64"), 1L, .promote = promote_yield())
 
 ### Arguments may be trees
 
+<!-- REVIEW: We don't want this here yet.-->
 An argument can be a nested list of arrayish values rather than a single one.
 The device and the `.promote` target are decided over every *leaf* of every
 argument, and each argument comes back with the structure it had:
@@ -225,6 +230,7 @@ If you only need to *look* at the data type -- an "is this a float?" branch --
 **4. It keeps eager mode and `jit()` in step.** Without it, a function whose
 arguments happen to all be R values never reaches anvl at all: base R evaluates
 it, and you get an R vector rather than an array.
+<!-- REVIEW: Also reformulate. I just have to do the writing -->
 
 ```{r}
 g <- function(x, y) x + y

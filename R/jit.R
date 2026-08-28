@@ -437,6 +437,7 @@ dispatch_arg_devices <- function(info) {
 }
 
 
+# REVIEW: Can just inline this call; it's only called once.
 jit_wrap_outputs <- function(out_flat, out_tree, backend) {
   unflatten(out_tree, lapply(out_flat, nv_array, backend = backend))
 }

@@ -12,6 +12,8 @@
 #' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
 #'   How the primitive brings its arrayish arguments to one data type before it
 #'   records a call. See [`new_primitive()`].
+#'   REVIEW: I don't think promote_yield() should be the default as it ensures all inputs
+#'           have the same dtype.
 #' @return (`AnvlPrimitive`)
 #' @export
 AnvlPrimitive <- function(name, subgraphs = character(), promote = promote_yield()) {
@@ -98,7 +100,7 @@ print.AnvlPrimitive <- function(x, ...) {
 #' @param promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
 #'   How the primitive brings its arrayish arguments to one data type before it
 #'   records a call, applied to the `args` of [`graph_desc_add()`].
-#'
+#'   REVIEW: Also the default here should be changed.
 #'   Defaults to [`promote_yield()`]: all of them must agree, an argument that
 #'   has a data type keeps it, and an R value takes the one the others have --
 #'   within its own category. Restrict it with `only =` for a primitive whose

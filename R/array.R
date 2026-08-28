@@ -150,6 +150,8 @@ nv_array <- function(
     if (!is.null(shape) && !identical(as.integer(shape), shape(data))) {
       cli_abort("Cannot change shape of a traced value from {.val {shape(data)}} to {.val {shape}}")
     }
+    # REVIEW: I believe these are tracing only-functions, so this should be clear from the
+    # argument name trace_commit_rdata() or something?
     if (is.null(dtype)) {
       return(commit_rdata(data))
     }
@@ -195,7 +197,7 @@ nv_array <- function(
 #' both with eager executing and in combination with [`jit()`].
 #' Use [`as_anvl_array()`] for a single input and [`as_anvl_arrays()`] for multiple inputs.
 #' The latter will also ensure all arrays are from the same backend and live on the same device,
-#' and can additionally bring them all to one dtype (`.promote`).
+#' and can additionally apply type promotion rules via the `.promote` argument.
 #'
 #' @details
 #' [Boxes][GraphBox] and [`AnvlArray`]s are returned as they are -- for an
@@ -236,6 +238,11 @@ nv_array <- function(
 #'   Target device. If `x` is an `AnvlArray` on a different device, an error
 #'   is raised.
 #' @param .promote (`NULL` | [`PromoteRule`][promote_rule] | `list`)\cr
+#'   REVIEW(question): How do the promotion rules interact with trees?
+#'   I think we should roll back the tree-support in this PR and add it in a new branch.
+#'   Otherwise we are adding too much in one change.
+#'   Maybe we also use signature as_anvl_arrays(xs, promote) instrea of as_anvl_arrays(..., .promote).
+#'
 #'   Which dtype every input is brought to: [`promote_common()`] for the common
 #'   one, [`promote_like()`] for the one a particular argument has, or
 #'   [`promote_dtype()`] for one the caller names. `NULL` (default) decides
@@ -272,6 +279,7 @@ NULL
 #' @export
 as_anvl_array <- function(x, device = NULL) {
   if (is_box(x)) {
+    # REVIEW: trace_commit_rdata_box()
     return(commit_rdata_box(x))
   }
   if (!is_arrayish(x)) {
@@ -328,6 +336,10 @@ as_anvl_arrays <- function(..., .promote = NULL) {
   args
 }
 
+# REVIEW: Why do we need this when it does not commit?
+# At least the name is weird.
+# Maybe it's just an internal helper?
+
 # Canonicalize one input *without* deciding its dtype: an R value stays the R
 # value while not tracing and becomes an [`RDataArray`] box while tracing, so
 # the caller can build it at the dtype the operation settles on rather than at
@@ -351,6 +363,8 @@ as_anvl_array_lazy <- function(x) {
   as_anvl_array(x)
 }
 
+# REVIEW: This is also an internal helper. It should not be needed in nv_subset_assign(),
+# actual usage should go through as_anvl_arrays() always.
 # The device every input of an operation shares, without converting anything:
 # an R value stays an R value, so the caller can build it at the dtype the
 # operation settles on rather than at the default. Returns the (possibly boxed)
@@ -555,6 +569,7 @@ nv_aval <- function(dtype, shape) {
 # The R storage types `nv_aval()` names, and their spellings. The `r_` prefix
 # says which vocabulary the string belongs to: `"dbl"` next to `"f32"` and
 # `"i32"` would read like one more dtype.
+# Okay, remove r_dbl and just use nv_aval("double", ...) etc.
 r_type_aval_specs <- c(r_dbl = "double", r_int = "integer", r_lgl = "logical")
 
 # The R storage type an `nv_aval()` spec names, or NULL if it names a dtype.
@@ -914,12 +929,17 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' each use site, at the dtype that use site turns out to need. `x_f64 /
 #' sqrt(2)` therefore sees the exact double, rather than one that was rounded
 #' to `f32` on the way in and widened again.
+#' REVIEW: Should mention that usually inputs are canonicalized at the beginning
+#' of a function via `as_anvl_arrays()` and the promotion rules.
 #'
 #' A value that is never combined with a typed array has nothing to take its
 #' dtype from and *commits* to the default for its R type: `f32` for a double,
 #' `i32` for an integer, `bool` for a logical.
 #'
 #' @section Extractors:
+#' REVIEW: So for length-1 vectors we throw an error? Or should we implement
+#' shape.atomic() as returning integer() for length-1 and error otherwise?
+#'
 #' [`shape()`][tengen::shape] and [`naxes()`][tengen::naxes] answer as they
 #' would for the R value. [`dtype()`][tengen::dtype] **errors**: there is no
 #' dtype to report until the value commits, exactly as `dtype(1.5)` has none to
@@ -996,6 +1016,8 @@ is_rdata_array <- function(x) {
 #' graph$inputs[[1]]$aval
 #' @export
 RDataInput <- function(dtype, shape, r_type) {
+  # REVIEW: Why do we need this in addition to RDataArray?
+  # Okay, I get it (known vs dynamic, but do we also have this difference for anvl arrays?)
   structure(
     list(dtype = as_dtype(dtype), shape = as_shape(shape), r_type = r_type),
     class = c("RDataInput", "AbstractArray")
@@ -1019,6 +1041,7 @@ print.RDataInput <- function(x, ...) {
 
 #' @export
 repr.RDataInput <- function(x, ...) {
+  # REVIEW: Want to see how this looks
   sprintf("%s<-%s[%s]", repr(x$dtype), x$r_type, repr(x$shape))
 }
 
@@ -1036,6 +1059,7 @@ dtype.RDataArray <- function(x, ...) {
 #' @method shape numeric
 #' @export
 shape.numeric <- function(x, ...) {
+  # REVIEW: What are the implications of this?
   r_value_shape(x)
 }
 
@@ -1054,6 +1078,8 @@ dtype.numeric <- function(x, ...) {
 #' @method dtype logical
 #' @export
 dtype.logical <- function(x, ...) {
+  # REVIEW: Hmm, here it is kind of un-ambiguous?
+  # but keep it consistent i guess
   abort_no_dtype(default_dtype(x))
 }
 
@@ -1085,6 +1111,7 @@ abort_no_dtype <- function(default_dtype) {
 format.RDataArray <- function(x, ...) {
   sprintf(
     "RDataArray(%s, %s, %s)",
+    # we should not print the data here. Also add test
     if (is.null(x$data)) "<argument>" else deparse1(x$data),
     x$r_type,
     shape2string(x$shape)

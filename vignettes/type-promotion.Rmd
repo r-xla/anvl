@@ -63,6 +63,7 @@ x <- nv_scalar(1, dtype = "f64")
 as_array(x / sqrt(2)) == 1 / sqrt(2)
 ```
 
+<!-- REVIEW: Information w.r.t. old behavior that user does not care about.-->
 The result is exact to the last bit, because the `f64` division was handed `sqrt(2)` itself.
 Had the literal been stamped `f32` on the way in, that `f64` would have been built from a number that had already lost half its digits.
 The same holds for a value passed as an argument:
@@ -76,6 +77,7 @@ This works for length-1 vectors and for `array()`s, in the body of a jitted func
 
 ## What an R Value Becomes
 
+<!-- REVIEW: this is not automatically the case, it depends on the promotion rules -->
 An R value takes the data type of the array it meets, whatever that type is:
 
 ```{r}
@@ -83,6 +85,7 @@ dtype(nv_array(1L, dtype = "i8") + 1L)
 dtype(nv_array(1, dtype = "f64") + 1L)
 ```
 
+<!-- REVIEW: Should reference the problem on accelerators wherre f64 can slow down considerablu and might not even exist (metal) -->
 It does not drag a program to a wider type just because R stores its numbers as doubles -- which is what makes it safe to write `x + 1` without thinking about it.
 Two rules limit the yielding, both because the type simply cannot hold the value:
 
@@ -97,6 +100,7 @@ dtype(nv_array(TRUE) + 1L)
 The full rule, for each of the three R types against every data type it can
 meet:
 
+<!-- REVIEW: need to look at the rendered output here -->
 ```{r, echo = FALSE}
 r_types <- c(logical = "bool", integer = "i32", double = "f32")
 tbl <- matrix(NA_character_, length(r_types), length(dtypes))
@@ -122,6 +126,7 @@ jit(\() list(1L, 1.0, TRUE))()
 
 ## Committing Happens Per Operation
 
+<!-- REVIEW: Also this "where it came from" is confusing to users. Also we should tone tone the pytorch comp. Not sure how similar they really are. -->
 A value commits the first time it takes part in an operation, and from then on it is an ordinary array with an ordinary type.
 Nothing is remembered about where it came from.
 This is the same model PyTorch uses for Python scalars, and it is worth knowing where its edge is:
@@ -155,6 +160,8 @@ jit(function(x) dtype(x))(1)
 ```{r, error = TRUE}
 dtype(1.5)
 ```
+
+<!-- REVIEW: I also think the promotion rules should be described in THIS vignette -->
 
 What you can ask is which type it *would* take if nothing claimed it, which
 `peek_dtype()` answers without settling the value:

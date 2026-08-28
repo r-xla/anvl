@@ -23,6 +23,7 @@ format_literal <- function(node) {
 
 format_aval_short <- function(aval) {
   out <- sprintf("%s[%s]", repr(dtype(aval)), paste(shape(aval), collapse = ", "))
+  # REVIEW: Should also have printer tests when the input is rdata object
   if (is_rdata_input(aval)) {
     # An input the caller supplies as bare R data, which the program uploads at
     # the dtype shown -- worth seeing, since nothing else in the graph says so.

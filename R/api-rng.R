@@ -144,6 +144,9 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
   # inputs', which is what `promote_dtype()` is for -- realizing an R value
   # there directly, instead of converting it from its default and rounding
   # through `f32` on the way.
+  # REVIEW: Is this really how we want the semantics for rnorm? If mean and sd are real arrays
+  # we should probably prefer theirs?
+  # @louisaslett might have an opinion here.
   args <- as_anvl_arrays(mean, sd, .promote = promote_dtype(dtype))
   mean <- args[[1L]]
   sd <- args[[2L]]

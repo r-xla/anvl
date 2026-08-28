@@ -1,3 +1,5 @@
+# REVIEW: This should probably also be integrated into test-rdata.R
+# Probably can deduplicte quite a bit
 test_that("jit: autoconverts length-1 numeric scalar", {
   f <- jit(identity)
   out <- f(1)

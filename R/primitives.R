@@ -573,6 +573,7 @@ prim_dynamic_slice <- new_primitive(
   },
   # Position, not name: the start indices are variadic and unnamed. They are
   # integers whatever `x` is.
+  # REVIEW: Is this really what we want here?
   promote = promote_yield(only = 1L),
   static = "slice_sizes"
 )

@@ -755,6 +755,7 @@ finalize_rdata_inputs <- function(desc) {
 # so an unsigned dtype of the same width holds less of it. Used only to compare
 # dtypes of one category, which is the only comparison that means anything.
 dtype_capacity <- function(dtype) {
+  # REVIEW: What is this needed for?
   switch(
     as.character(dtype),
     f64 = c(52L, 11L),
@@ -1132,6 +1133,7 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
+    # REVIEW: Why do we need commit_rdata_box when we already resolve the args above?
     gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval

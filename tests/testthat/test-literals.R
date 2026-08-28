@@ -1,3 +1,4 @@
+# REVIEW: test-literals should be integrated into test-rdata as literals are rdata.
 test_that("literals are downcast if possible", {
   # literal (has default type i32 for ints) is downcast to i16
   f1 <- function(x) {

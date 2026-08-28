@@ -279,6 +279,7 @@ nv_repeat_along <- prim_repeat_along
 Note that in the `nv_*` wrapper function, the input may still be a bare R value -- one that has no data type yet (see `?RDataArray`).
 `shape_abstract()` and `naxes_abstract()` answer for any arrayish input by first converting it to an `AbstractArray`.
 For the data type there is `peek_dtype()`, which reports the type the value *would* commit to; `dtype()` errors on an R value, because there is nothing to report until it is used.
+<!-- we should use consistent names: peek_naxes() and peek_shape(); Also, do we even need naxes and shape if we implement the generics for the R values (numeric and logical)?-->
 
 ### Using Your Primitive
 

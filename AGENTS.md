@@ -28,6 +28,8 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 ## R Values Have No Data Type
 
+<!-- That's way too much text. We should use the claude function to re-generate the AGENTS.md-->
+
 An R value entering a program -- a length-1 vector or an `array()`, written in
 the body of a traced function or passed as an argument to a jitted one -- is
 *not* converted at the boundary. It is carried as [`RDataArray`] (an

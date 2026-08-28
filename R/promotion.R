@@ -18,6 +18,9 @@
 #' common_dtype("i32", "i64")
 #' @export
 common_dtype <- function(lhs_dtype, rhs_dtype) {
+  # REVIEW: Maybe it would still be good to support common_dtype("double", "i32") or something?
+  # (it should resolve to the default double dtype in this case I guess)
+  # Actually, I am not so sure this is a good idea.
   promote_dt_known(as_dtype(lhs_dtype), as_dtype(rhs_dtype))
 }
 
@@ -33,14 +36,17 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' * `promote_like()` -- the data type one particular input already has. For a
 #'   function whose result type *is* one argument's type, and whose other
 #'   arguments come along: `nv_clamp(min_val, x, max_val)` is `x`'s type.
+#'   REVIEW: Here we need this `coerce` flag I think.
 #' * `promote_dtype()` -- a data type the function names itself, rather than one
 #'   read off an input. For a function with an explicit `dtype` argument, such as
 #'   [`nv_rnorm()`].
+#'   REVIEW: Also needs `coerce` I think
 #' * `promote_yield()` -- the data type the inputs that *have* one already share.
 #'   Unlike the other three it never converts an input that has a data type; only
 #'   the R values move, and only within their own category. This is what the
 #'   primitives use, and what a function wants when its arguments must agree but
 #'   it will not widen the array it was given.
+#'   REVIEW: not so clear whether / what we need this for.
 #'
 #' @details
 #' Inputs are *realized* at the target rather than converted to it: an R value
@@ -81,6 +87,8 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' `.promote` also takes a *list* of rules, which is how one call promotes
 #' several groups of arguments independently -- `x` and `y` to their common data
 #' type, `a` and `b` to theirs:
+#'
+#' # REVIEW: We should replace list() here with something like `promote_grouped()`.
 #'
 #' ```r
 #' as_anvl_arrays(
