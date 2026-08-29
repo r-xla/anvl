@@ -191,7 +191,7 @@ as_anvl_arrays(nv_array(1, dtype = "f64"), 1L, .promote = promote_yield())
 **3. Everything downstream is then well-defined.** After the call each argument
 is an `AnvlArray` (or, under `jit()`, a traced box), so `dtype()`, `device()`
 and `backend()` answer. On a bare R value they do not -- an R value has no data
-type of its own until it is used (see `?RDataArray`):
+type of its own until it is used (see `?RData`):
 
 ```{r, error = TRUE}
 (function(x) dtype(x))(2)

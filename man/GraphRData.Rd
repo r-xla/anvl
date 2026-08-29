@@ -7,7 +7,7 @@
 GraphRData(aval)
 }
 \arguments{
-\item{aval}{(\code{\link{RDataArray}})\cr
+\item{aval}{(\code{\link{RData}})\cr
 The R value.}
 }
 \value{
@@ -15,12 +15,12 @@ The R value.}
 }
 \description{
 Node of an \code{\link{AnvlGraph}} standing for an R value whose data type is not
-decided yet -- see \code{\link{RDataArray}}. It is not part of any primitive call:
+decided yet -- see \code{\link{RData}}. It is not part of any primitive call:
 it is \emph{materialized} first, into a \code{\link{GraphLiteral}} (an in-body scalar), a
 constant (an in-body R array), or a \code{\link{GraphValue}} input (an argument of the
 jitted function), at the dtype the use site asks for. This is a mutable
 class.
 }
 \seealso{
-\link{RDataArray}
+\link{RData}
 }

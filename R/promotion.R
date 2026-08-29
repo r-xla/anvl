@@ -4,7 +4,7 @@
 #' described in `vignette("type-promotion")`.
 #'
 #' R values entering a program have no data type of their own (see
-#' [`RDataArray`]) and are not promoted with this: they *take* the dtype of
+#' [`RData`]) and are not promoted with this: they *take* the dtype of
 #' whatever they are combined with, and commit to a default only when nothing
 #' claims them.
 #'
@@ -18,17 +18,6 @@
 #' common_dtype("i32", "i64")
 #' @export
 common_dtype <- function(lhs_dtype, rhs_dtype) {
-  # REVIEW: Maybe it would still be good to support common_dtype("double", "i32") or something?
-  # (it should resolve to the default double dtype in this case I guess)
-  # Actually, I am not so sure this is a good idea.
-  # RESPONSE: Left as it is, agreeing with your second thought. `common_dtype()`
-  # is the user-facing statement of the data-type lattice, and an R storage type
-  # is not a point in it: `"double"` against `"i32"` is `f32`, but `"double"`
-  # against `"f64"` is `f64` and against `"i8"` is still `f32` -- that is a
-  # different function of two arguments, and it already exists as
-  # `promote_dt_rdata()` / `common_dtype_of()`, which is what the rules call.
-  # Overloading one name with both would make the documented table wrong for
-  # half its inputs.
   promote_dt_known(as_dtype(lhs_dtype), as_dtype(rhs_dtype))
 }
 
@@ -302,7 +291,7 @@ assert_promotes_to <- function(x, dtype, args, i) {
     sprintf("argument %d", i)
   }
   target <- as.character(dtype)
-  if (is_rdata_array(aval)) {
+  if (is_rdata(aval)) {
     if (promote_dt_rdata(aval$default_dtype, dtype) == dtype) {
       return(invisible(NULL))
     }
@@ -380,7 +369,7 @@ resolve_promote_rule <- function(rule, args) {
 # never move them, and let the R values take it -- within their own category.
 resolve_yield <- function(args, positions) {
   avals <- lapply(args[positions], to_abstract)
-  is_r <- vapply(avals, is_rdata_array, logical(1L))
+  is_r <- vapply(avals, is_rdata, logical(1L))
   settled <- unique(lapply(avals[!is_r], peek_dtype))
   if (length(settled) > 1L) {
     # The inputs cannot be brought together without converting one of them.
@@ -453,19 +442,19 @@ common_dtype_of <- function(...) {
   cdt_is_rdata <- TRUE
   for (arg in args) {
     aval <- to_abstract(arg)
-    is_rdata <- is_rdata_array(aval)
+    arg_is_rdata <- is_rdata(aval)
     dt <- peek_dtype(aval)
     if (is.null(cdt)) {
       cdt <- dt
-      cdt_is_rdata <- is_rdata
+      cdt_is_rdata <- arg_is_rdata
       next
     }
-    if (cdt_is_rdata && is_rdata) {
+    if (cdt_is_rdata && arg_is_rdata) {
       cdt <- promote_dt_known(cdt, dt)
     } else if (cdt_is_rdata) {
       cdt <- promote_dt_rdata(cdt, dt)
       cdt_is_rdata <- FALSE
-    } else if (is_rdata) {
+    } else if (arg_is_rdata) {
       cdt <- promote_dt_rdata(dt, cdt)
     } else {
       cdt <- promote_dt_known(cdt, dt)

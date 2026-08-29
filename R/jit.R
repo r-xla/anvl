@@ -329,11 +329,11 @@ avals_from_dispatch <- function(info) {
       }
       if (av$kind == "rdata") {
         # Bare R data: it has no dtype of its own, and the program decides what
-        # it is uploaded as (see `RDataArray`). Only the leaf's R type is read,
+        # it is uploaded as (see `RData`). Only the leaf's R type is read,
         # never its value -- the dispatcher keyed this entry on the type and
         # the shape, so a program that looked at the value would be served back
         # for a different one.
-        return(RDataArray(NULL, shape = av$shape, r_type = typeof(leaf)))
+        return(RData(NULL, shape = av$shape, r_type = typeof(leaf)))
       }
       nv_aval(as_dtype(av$dtype), av$shape)
     },

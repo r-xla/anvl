@@ -44,7 +44,7 @@ The following extractors are available on \code{AbstractArray} objects:
 \section{R data}{
 
 A value can also be one that has \emph{no} dtype yet -- a bare R value, which only
-takes one where it is used (see \code{\link{RDataArray}}). \code{nv_aval()} builds that aval
+takes one where it is used (see \code{\link{RData}}). \code{nv_aval()} builds that aval
 from the R storage type instead of a dtype: \code{"double"}, \code{"integer"} or
 \code{"logical"}. This is the aval of a bare R argument of a jitted function,
 whose value is unknown while tracing.
@@ -71,5 +71,5 @@ graph$inputs[[1]]$aval
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link{LiteralArray}, \link{ConcreteArray}, \link{IotaArray}, \link{RDataArray}, \link{GraphValue}, \code{\link[=to_abstract]{to_abstract()}}, \link{GraphBox}
+\link{LiteralArray}, \link{ConcreteArray}, \link{IotaArray}, \link{RData}, \link{GraphValue}, \code{\link[=to_abstract]{to_abstract()}}, \link{GraphBox}
 }

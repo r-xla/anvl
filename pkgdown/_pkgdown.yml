@@ -389,7 +389,7 @@ reference:
       - AbstractArray
       - ConcreteArray
       - LiteralArray
-      - RDataArray
+      - RData
       - RDataInput
       - IotaArray
       - peek_dtype

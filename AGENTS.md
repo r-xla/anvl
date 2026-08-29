@@ -30,7 +30,7 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 An R value entering a program -- a length-1 vector or an `array()`, written in
 the body of a traced function or passed as an argument to a jitted one -- is
-*not* converted at the boundary. It is carried as an `RDataArray` (an
+*not* converted at the boundary. It is carried as an `RData` (an
 `AbstractArray` with no dtype, boxed in a `GraphRData` node) and built into the
 program at the dtype its use site needs, from the R data itself. That is what
 makes `x_f64 / sqrt(2)` exact. See `vignette("type-promotion")`.

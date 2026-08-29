@@ -236,7 +236,7 @@ test_that("a literal that only meets other literals takes the default", {
   expect_false(isTRUE(all.equal(as_array(out), 2 * sqrt(2) + 1, tolerance = 1e-15)))
 })
 
-test_that("a bare R value answers the extractors like an RDataArray", {
+test_that("a bare R value answers the extractors like an RData", {
   # Eagerly the R value *is* the uncommitted value, so it has to answer the way
   # the boxed one does under jit().
   expect_equal(shape(1.5), integer())
@@ -286,12 +286,12 @@ test_that("nv_pad builds the padding value at the array's dtype", {
   expect_identical(as.vector(nv_pad(x, sqrt(2), 1L, 0L)), c(sqrt(2), 1, 2))
 })
 
-test_that("RDataArray reports what the R value can answer", {
-  x <- RDataArray(1.5, integer())
+test_that("RData reports what the R value can answer", {
+  x <- RData(1.5, integer())
   expect_equal(shape(x), integer())
   expect_error(dtype(x), "no data type of its own")
 
-  y <- RDataArray(array(1:6, c(2, 3)), c(2L, 3L))
+  y <- RData(array(1:6, c(2, 3)), c(2L, 3L))
   expect_equal(shape(y), c(2L, 3L))
   expect_equal(naxes(y), 2L)
 })
@@ -384,20 +384,20 @@ test_that("quickr: bare vector errors", {
   expect_snapshot(f(c(1, 2, 3)), error = TRUE)
 })
 
-test_that("an RDataArray does not print the R data it carries", {
+test_that("an RData does not print the R data it carries", {
   # The data can be a whole array, and what matters about the value is what it
   # is, not what it holds.
-  expect_identical(format(RDataArray(1.5, integer())), "RDataArray(double, ())")
+  expect_identical(format(RData(1.5, integer())), "RData(double, ())")
   expect_identical(
-    format(RDataArray(array(1:6, c(2, 3)), c(2L, 3L))),
-    "RDataArray(integer, (2,3))"
+    format(RData(array(1:6, c(2, 3)), c(2L, 3L))),
+    "RData(integer, (2,3))"
   )
   # An argument of a jitted function has no data to print in the first place.
   expect_identical(
-    format(RDataArray(NULL, integer(), "logical")),
-    "RDataArray(logical, ())"
+    format(RData(NULL, integer(), "logical")),
+    "RData(logical, ())"
   )
-  expect_identical(repr(RDataArray(1.5, c(2L, 3L))), "double[2x3]")
+  expect_identical(repr(RData(1.5, c(2L, 3L))), "double[2x3]")
 })
 
 test_that("an RDataInput names both data types it stands between", {
@@ -480,7 +480,7 @@ test_that("an R vector that is not arrayish has no abstract value", {
 })
 
 test_that("an R argument uploads at the narrowest data type that holds every use site", {
-  dbl <- RDataArray(NULL, integer(), "double")
+  dbl <- RData(NULL, integer(), "double")
   # `f16` and `bf16` are both 16 bits and neither holds the other, so the upload
   # has to widen -- to `f32`, which holds both, and not to the value's natural
   # `f64`: a program with no `f64` in it must not acquire one here.
@@ -490,5 +490,5 @@ test_that("an R argument uploads at the narrowest data type that holds every use
   expect_equal(resolve_upload_dtype(dbl, "f16"), "f16")
   # A value the body never used commits to its default.
   expect_equal(resolve_upload_dtype(dbl, character()), "f32")
-  expect_equal(resolve_upload_dtype(RDataArray(NULL, integer(), "integer"), c("i32", "i64")), "i64")
+  expect_equal(resolve_upload_dtype(RData(NULL, integer(), "integer"), c("i32", "i64")), "i64")
 })

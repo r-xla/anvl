@@ -59,7 +59,7 @@ thing in both modes: an \verb{nv_*} function built on them must not do two
 different things depending on whether it is called under \code{\link[=jit]{jit()}}.
 
 Which dtype it is converted at is the question these functions answer. An R
-value has none of its own (see \code{\link{RDataArray}}); it can take the one the
+value has none of its own (see \code{\link{RData}}); it can take the one the
 operation settles on, which is what makes \code{x_f64 / sqrt(2)} exact, or -- with
 nothing to take it from -- its default (\code{f32} for a double, \code{i32} for an
 integer, \code{bool} for a logical).

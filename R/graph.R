@@ -38,15 +38,15 @@ is_graph_literal <- function(x) {
 #' @title Graph R Data
 #' @description
 #' Node of an [`AnvlGraph`] standing for an R value whose data type is not
-#' decided yet -- see [`RDataArray`]. It is not part of any primitive call:
+#' decided yet -- see [`RData`]. It is not part of any primitive call:
 #' it is *materialized* first, into a [`GraphLiteral`] (an in-body scalar), a
 #' constant (an in-body R array), or a [`GraphValue`] input (an argument of the
 #' jitted function), at the dtype the use site asks for. This is a mutable
 #' class.
-#' @param aval ([`RDataArray`])\cr
+#' @param aval ([`RData`])\cr
 #'   The R value.
 #' @return (`GraphRData`)
-#' @seealso [RDataArray]
+#' @seealso [RData]
 #' @export
 GraphRData <- function(aval) {
   env <- new.env(parent = emptyenv())
@@ -178,7 +178,7 @@ materialize_rdata <- function(box, dtype) {
   out
 }
 
-# Materialize an [`RDataArray`] box at the dtype the value commits to when
+# Materialize an [`RData`] box at the dtype the value commits to when
 # nothing else decided. Tracing only -- a box exists only inside a trace.
 trace_commit_rdata <- function(box) {
   materialize_rdata(box, peek_dtype(box))
@@ -190,7 +190,7 @@ trace_commit_rdata <- function(box) {
 #' where it has one, and the one it *would* commit to where it has none.
 #'
 #' An R value entering a program has no data type until it is used (see
-#' [`RDataArray`]), so [`dtype()`][tengen::dtype] has nothing to report for one
+#' [`RData`]), so [`dtype()`][tengen::dtype] has nothing to report for one
 #' and errors. `peek_dtype()` answers instead with the value's default (`f32`
 #' for a double, `i32` for an integer, `bool` for a logical) -- *without*
 #' committing it, which is the point: an `nv_*` function that needs a dtype only
@@ -206,7 +206,7 @@ trace_commit_rdata <- function(box) {
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
 #' @return ([`tengen::DataType`])
-#' @seealso [as_anvl_arrays()], [RDataArray], [shape()][tengen::shape]
+#' @seealso [as_anvl_arrays()], [RData], [shape()][tengen::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)
 #' peek_dtype(1L)
@@ -214,7 +214,7 @@ trace_commit_rdata <- function(box) {
 #' @export
 peek_dtype <- function(x) {
   aval <- to_abstract(x)
-  if (is_rdata_array(aval)) aval$default_dtype else aval$dtype
+  if (is_rdata(aval)) aval$default_dtype else aval$dtype
 }
 
 # A traced box, with any R value in it committed to its default dtype. Anything
@@ -568,7 +568,7 @@ format.GraphBox <- function(x, ...) {
   sprintf("GraphBox(%s)", format(x$gnode))
 }
 
-# Box an arrayish value for `desc`, keeping an R value as an [`RDataArray`] --
+# Box an arrayish value for `desc`, keeping an R value as an [`RData`] --
 # with no dtype, to be built at the one its use site needs. That is what the API
 # layer wants, since it canonicalizes its inputs long before it knows what they
 # are combined with. A caller that needs a typed value -- every primitive call,
@@ -669,7 +669,7 @@ maybe_box_input <- function(x, desc, mode) {
     gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
     return(register_input(desc, gval))
   }
-  if (is_rdata_array(x)) {
+  if (is_rdata(x)) {
     # Bare R data passed to a jitted function. It takes an input slot like any
     # other argument -- the call has to supply the value -- but which dtype
     # that input has is only known once the body has used it, so the slot is
@@ -772,13 +772,6 @@ finalize_rdata_inputs <- function(desc) {
 # so an unsigned dtype of the same width holds less of it. Used only to compare
 # dtypes of one category, which is the only comparison that means anything.
 dtype_capacity <- function(dtype) {
-  # REVIEW: What is this needed for?
-  # RESPONSE: Only for `resolve_upload_dtype()` below: an R argument used at
-  # several data types in one program is uploaded once, and the upload has to
-  # *hold* every one of them so each use site can convert down from it. Width
-  # alone does not answer that -- `f16` and `bf16` are both 16 bits and neither
-  # holds the other, and `i32` does not hold `ui32` -- so the comparison is on
-  # (precision, range) instead.
   switch(
     as.character(dtype),
     f64 = c(52L, 11L),

@@ -227,10 +227,10 @@ test_that("== and != operators throw errors for AbstractArray", {
 
 test_that("to_abstract", {
   # an R value, which has no dtype of its own yet
-  expect_equal(to_abstract(TRUE), RDataArray(TRUE, c()))
-  expect_equal(to_abstract(1L), RDataArray(1L, c()))
-  expect_equal(to_abstract(1.0), RDataArray(1.0, c()))
-  expect_equal(to_abstract(array(1:6, c(2, 3))), RDataArray(array(1:6, c(2, 3)), c(2L, 3L)))
+  expect_equal(to_abstract(TRUE), RData(TRUE, c()))
+  expect_equal(to_abstract(1L), RData(1L, c()))
+  expect_equal(to_abstract(1.0), RData(1.0, c()))
+  expect_equal(to_abstract(array(1:6, c(2, 3))), RData(array(1:6, c(2, 3)), c(2L, 3L)))
   # anvl array
   x <- nv_array(1:4, dtype = "f32", shape = c(2, 2))
   expect_equal(to_abstract(x), ConcreteArray(x))
@@ -262,10 +262,10 @@ test_that("nv_aval creates AbstractArray", {
   )
 })
 
-test_that("nv_aval creates RDataArray from an R storage type", {
-  expect_equal(nv_aval("double", c()), RDataArray(NULL, integer(), "double"))
-  expect_equal(nv_aval("integer", 1:2), RDataArray(NULL, 1:2, "integer"))
-  expect_equal(nv_aval("logical", c()), RDataArray(NULL, integer(), "logical"))
+test_that("nv_aval creates RData from an R storage type", {
+  expect_equal(nv_aval("double", c()), RData(NULL, integer(), "double"))
+  expect_equal(nv_aval("integer", 1:2), RData(NULL, 1:2, "integer"))
+  expect_equal(nv_aval("logical", c()), RData(NULL, integer(), "logical"))
   # the value is deliberately unknown, and there is no dtype to report
   expect_error(dtype(nv_aval("double", c())), "no data type of its own")
   expect_equal(shape(nv_aval("double", 1:2)), 1:2)
