@@ -46,29 +46,40 @@ build_node_ids <- function(inputs, constants, calls) {
 }
 
 format_param <- function(param) {
-  if (identical(param, list())) {
+  if (is.null(param) || (is.list(param) && length(param) == 0L)) {
     return("")
   }
-  if (test_scalar(param)) {
-    as.character(param)
-  } else if (is.atomic(param) && length(param) > 1L) {
-    sprintf("c(%s)", paste(param, collapse = ", "))
-  } else if (is_graph(param)) {
-    sprintf("graph[%s -> %s]", length(param$inputs), length(param$outputs))
-  } else if (is_dtype(param)) {
-    repr(param)
-  } else if (is.list(param)) {
-    if (!is.null(names(param))) {
-      sprintf("[%s]", paste(names(param), "=", sapply(param, format_param), collapse = ", "))
-    } else {
-      sprintf("[%s]", paste(sapply(param, format_param), collapse = ", "))
+  format_param_value(param)
+}
+
+format_param_value <- function(p) {
+  if (is.null(p)) {
+    return("NULL")
+  }
+  if (is_graph(p)) {
+    return(sprintf("graph[%d -> %d]", length(p$inputs), length(p$outputs)))
+  }
+  if (is_dtype(p)) {
+    return(repr(p))
+  }
+  if (is.atomic(p)) {
+    if (length(p) == 0L) {
+      return(sprintf("%s(0)", typeof(p)))
     }
+    elts <- if (is.character(p)) sprintf('"%s"', p) else format(p)
+    if (length(p) == 1L) elts else sprintf("c(%s)", paste(elts, collapse = ", "))
+  } else if (is.list(p)) {
+    parts <- vapply(p, format_param_value, character(1))
+    if (!is.null(names(p))) {
+      parts <- paste0(names(p), " = ", parts)
+    }
+    sprintf("[%s]", paste(parts, collapse = ", "))
   } else {
-    x <- try(format(param), silent = TRUE)
-    if (length(x) == 1L) {
-      x
+    out <- try(deparse(p, nlines = 1L), silent = TRUE)
+    if (inherits(out, "try-error") || length(out) != 1L) {
+      sprintf("<%s>", class(p)[[1L]])
     } else {
-      "<any>"
+      out
     }
   }
 }
