@@ -279,17 +279,20 @@ apply_promote_rules <- function(args, resolved, ...) {
   args
 }
 
+# How an argument is named in an error: by its own name where the call gave it
+# one, by its position otherwise.
+arg_label <- function(args, i) {
+  nm <- rlang::names2(args)[[i]]
+  if (nzchar(nm)) sprintf("`%s`", nm) else sprintf("argument %d", i)
+}
+
 # Whether `x` reaches `dtype` without losing what it holds: a value that has a
 # data type must be promotable to it, and an R value must *yield* to it -- a
 # double does not become an integer, whatever its value, because the check has
 # to hold for a jit argument whose value nobody has seen.
 assert_promotes_to <- function(x, dtype, args, i) {
   aval <- to_abstract(x)
-  what <- if (nzchar(rlang::names2(args)[[i]])) {
-    sprintf("`%s`", rlang::names2(args)[[i]])
-  } else {
-    sprintf("argument %d", i)
-  }
+  what <- arg_label(args, i)
   target <- as.character(dtype)
   if (is_rdata(aval)) {
     if (promote_dt_rdata(aval$default_dtype, dtype) == dtype) {
@@ -299,7 +302,7 @@ assert_promotes_to <- function(x, dtype, args, i) {
       c(
         "Cannot bring {what} to data type {.val {target}}.",
         x = "It is an R {aval$r_type}, which is only ever built at a data type of its own category: a double becomes a float, an integer an integer, a logical a {.val bool}.", # nolint
-        i = "Write it in the target's category (e.g. {.code 0L} for an integer data type), convert it with {.fn nv_convert}, or ask for the conversion with {.code force = TRUE}." # nolint
+        i = "Write it in the target's category (e.g. {.code 0L} for an integer data type), or convert it with {.fn nv_convert}." # nolint
       ),
       call = NULL
     )
@@ -311,7 +314,8 @@ assert_promotes_to <- function(x, dtype, args, i) {
     c(
       "Cannot bring {what} to data type {.val {target}}.",
       x = "{.val {as.character(aval$dtype)}} is not promotable to {.val {target}}.",
-      i = "Convert it explicitly with {.fn nv_convert}, or ask for the conversion with {.code force = TRUE}." # nolint
+      i = "Convert it explicitly with {.fn nv_convert}."
+
     ),
     call = NULL
   )
@@ -370,6 +374,8 @@ resolve_promote_rule <- function(rule, args) {
 resolve_yield <- function(args, positions) {
   avals <- lapply(args[positions], to_abstract)
   is_r <- vapply(avals, is_rdata, logical(1L))
+  # An error here is about one particular argument, so it says which.
+  labels <- vapply(positions, function(i) arg_label(args, i), character(1L))
   settled <- unique(lapply(avals[!is_r], peek_dtype))
   if (length(settled) > 1L) {
     # The inputs cannot be brought together without converting one of them.
@@ -379,27 +385,28 @@ resolve_yield <- function(args, positions) {
   if (!length(settled)) {
     # Every input is an R value. They agree only if they are of one storage
     # type; there is no data type for a mix of them to meet at.
-    r_types <- unique(vapply(avals[is_r], function(a) a$r_type, character(1L)))
-    if (length(r_types) > 1L) {
+    r_types <- vapply(avals[is_r], function(a) a$r_type, character(1L))
+    if (length(unique(r_types)) > 1L) {
+      described <- sprintf("%s is an R %s", labels[is_r], r_types)
       cli_abort(
         c(
           "The R values here have no data type to agree on.",
-          x = "Got {.val {r_types}} values, which belong to different data type categories.",
+          x = "{described} -- these belong to different data type categories.",
           i = "Give one of them a data type with {.fn nv_scalar} or {.fn nv_array}, or use an operation that promotes across categories." # nolint
         ),
         call = NULL
       )
     }
-    return(list(dtype = default_dtype_r(r_types), positions = positions))
+    return(list(dtype = default_dtype_r(r_types[[1L]]), positions = positions))
   }
   target <- settled[[1L]]
   # Each R value must be able to take the target without leaving its category.
-  for (aval in avals[is_r]) {
-    r_type <- aval$r_type
+  for (j in which(is_r)) {
+    r_type <- avals[[j]]$r_type
     if (!rdata_in_category(r_type, target)) {
       cli_abort(
         c(
-          "An R {r_type} cannot be used at the {.val {as.character(target)}} data type here.",
+          "{labels[[j]]} is an R {r_type}, which cannot be used at the {.val {as.character(target)}} data type here.", # nolint
           i = "A literal is only ever built at a data type of its own category: a double becomes a float, an integer an integer, a logical a {.val bool}.", # nolint
           i = "Use an operation that promotes across categories, or convert explicitly with {.fn nv_convert}."
         ),

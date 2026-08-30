@@ -4,11 +4,16 @@
 \alias{GraphRData}
 \title{Graph R Data}
 \usage{
-GraphRData(aval)
+GraphRData(aval, outer = NULL)
 }
 \arguments{
 \item{aval}{(\code{\link{RData}})\cr
 The R value.}
+
+\item{outer}{(\code{NULL} | \code{\link{GraphBox}})\cr
+For the input of an inline trace (\code{\link[=gradient]{gradient()}}'s forward body), the box
+of the enclosing trace's node for the same R value, which is where that
+trace's own materializations live. \code{NULL} everywhere else.}
 }
 \value{
 (\code{GraphRData})

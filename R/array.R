@@ -890,6 +890,20 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' dtype from and *commits* to the default for its R type: `f32` for a double,
 #' `i32` for an integer, `bool` for a logical.
 #'
+#' @section Sub-graph parameters:
+#' The same commitment happens where a data type is needed *before* any use site
+#' can name one. A higher-order primitive that traces a sub-graph has to give
+#' that sub-graph's parameters a data type up front, so a bare R value passed as
+#' one takes its default rather than whatever the sub-graph's body turns out to
+#' use it with. That is [`prim_while()`]'s `init`: in
+#' `nv_while(list(i = 1), ...)` the state `i` is `f32`, and a body that adds an
+#' `f64` to it is a data type error rather than an `f64` loop. Say which type
+#' the loop carries -- `nv_scalar(1, dtype = "f64")`, or [`nv_convert()`] for a
+#' value the caller passed in.
+#'
+#' A value that merely *flows into* a sub-graph body is not affected: it is
+#' built at the data type its use site asks for, as anywhere else.
+#'
 #' @section Extractors:
 #' [`shape()`][tengen::shape] and [`naxes()`][tengen::naxes] answer as they
 #' would for the R value: `()` for a length-1 vector, `dim()` for an

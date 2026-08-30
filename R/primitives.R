@@ -2218,7 +2218,8 @@ prim_iota <- new_primitive(
 #' Pads an array with a given padding value.
 #' @template param_prim_x_any
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. Must have the same dtype as `x`.
+#'   Scalar value to use for padding. An R value is built at `x`'s data type,
+#'   within its own category; anything that already has one must have `x`'s.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -2332,6 +2333,13 @@ prim_convert <- new_primitive(
   "convert",
   function(x, dtype) {
     dtype <- as_dtype(dtype)
+    # A literal written in the body of a traced function arrives here unboxed,
+    # and `prim_convert` declares no `promote` rule that would have boxed it.
+    # Box it without committing, so the branch below builds it at `dtype`
+    # rather than at its default with a convert on top.
+    if (currently_tracing() && has_no_dtype(x)) {
+      x <- maybe_box_arrayish(x)
+    }
     if (is_rdata_box(x)) {
       # There is nothing to convert: an R value is built at the dtype asked
       # for, so the result holds every digit the R value had.
@@ -2468,8 +2476,7 @@ prim_if <- new_primitive(
 #' `while` loop. The loop state is initialized with `init` and
 #' passed through each iteration.
 #' Otherwise, no state is maintained between iterations.
-#' @param init (`named list()`)\cr
-#'   Named list of initial state values.
+#' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function that receives the current state as arguments
 #'   and outputs whether to continue the loop.
@@ -2540,11 +2547,42 @@ prim_while <- new_primitive(
       outs <- list(...)
       outs_body <- lapply(body_graph$outputs, \(out) out$aval)
       inputs_body <- lapply(body_graph$inputs, \(inp) inp$aval)
-      if (!all(sapply(seq_along(outs), \(i) eq_type(outs[[i]], outs_body[[i]])))) {
-        cli_abort("outs must be have same type as outs_body")
+      # Names the state member that disagrees, since the usual cause is an R
+      # value in `init` that committed to its default: the loop is built before
+      # its body runs, so the state cannot take a data type from it.
+      labels <- if (length(state_names) == length(outs)) {
+        state_names
+      } else {
+        sprintf("state %d", seq_along(outs))
       }
-      if (!all(sapply(seq_along(inputs_body), \(i) eq_type(inputs_body[[i]], outs_body[[i]])))) {
-        cli_abort("inputs_body must be have same type as outs_body")
+      mismatch <- function(a, b) {
+        which(!vapply(seq_along(a), \(i) eq_type(a[[i]], b[[i]]), logical(1L)))
+      }
+      describe <- function(i, a, b, verb) {
+        sprintf("`%s` %s %s and %s %s", labels[i], verb[[1L]], repr(a[[i]]), verb[[2L]], repr(b[[i]]))
+      }
+      bad <- mismatch(outs, outs_body)
+      if (length(bad)) {
+        described <- describe(bad, outs, outs_body, c("enters as", "comes back as"))
+        cli_abort(
+          c(
+            "{.arg init} and what {.arg body} returns must have the same type.",
+            x = "{described}.",
+            i = "An R value in {.arg init} commits to its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
+          ),
+          call = NULL
+        )
+      }
+      bad <- mismatch(inputs_body, outs_body)
+      if (length(bad)) {
+        described <- describe(bad, inputs_body, outs_body, c("is", "is returned as"))
+        cli_abort(
+          c(
+            "{.arg body} must return the state it was given, unchanged in type.",
+            x = "{described}."
+          ),
+          call = NULL
+        )
       }
       # the body's outputs are what the loop carries, so we return those
       return(outs_body)

@@ -40,6 +40,22 @@ A value that is never combined with a typed array has nothing to take its
 dtype from and \emph{commits} to the default for its R type: \code{f32} for a double,
 \code{i32} for an integer, \code{bool} for a logical.
 }
+\section{Sub-graph parameters}{
+
+The same commitment happens where a data type is needed \emph{before} any use site
+can name one. A higher-order primitive that traces a sub-graph has to give
+that sub-graph's parameters a data type up front, so a bare R value passed as
+one takes its default rather than whatever the sub-graph's body turns out to
+use it with. That is \code{\link[=prim_while]{prim_while()}}'s \code{init}: in
+\code{nv_while(list(i = 1), ...)} the state \code{i} is \code{f32}, and a body that adds an
+\code{f64} to it is a data type error rather than an \code{f64} loop. Say which type
+the loop carries -- \code{nv_scalar(1, dtype = "f64")}, or \code{\link[=nv_convert]{nv_convert()}} for a
+value the caller passed in.
+
+A value that merely \emph{flows into} a sub-graph body is not affected: it is
+built at the data type its use site asks for, as anywhere else.
+}
+
 \section{Extractors}{
 
 \code{\link[tengen:shape]{shape()}} and \code{\link[tengen:naxes]{naxes()}} answer as they

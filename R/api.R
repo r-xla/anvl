@@ -430,7 +430,10 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @export
 #' @jit
 nv_rbind <- function(...) {
-  args <- as_anvl_arrays(...)
+  # Promoted here rather than in `nv_concatenate()` below: an R value has to be
+  # built at the common dtype directly, where committing it first would round
+  # it through its default on the way there.
+  args <- as_anvl_arrays(..., .promote = promote_common())
   target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
   args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 1L)
@@ -440,7 +443,7 @@ nv_rbind <- function(...) {
 #' @export
 #' @jit
 nv_cbind <- function(...) {
-  args <- as_anvl_arrays(...)
+  args <- as_anvl_arrays(..., .promote = promote_common())
   target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
   args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 2L)
@@ -1437,7 +1440,8 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' Pads an array with a given value at the edges and optionally between elements.
 #' @template param_x
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. Must have the same dtype as `x`.
+#'   Scalar value to use for padding. An R value is built at `x`'s data type,
+#'   within its own category; anything that already has one must have `x`'s.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -1453,9 +1457,11 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  # The padding value goes into `x`, so it is `x`'s dtype it has to arrive at --
-  # an R value is built there directly, and a typed one is converted.
-  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_like("x"))
+  # The padding value goes into `x`, so it is `x`'s dtype it has to arrive at.
+  # `promote_yield()` rather than `promote_like("x")`: an R value is built at
+  # that dtype, and a typed one is left where it is -- a padding value that
+  # disagrees with `x` is a mistake to report, not one to convert away.
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_yield())
   x <- args$x
   padding_value <- args$padding_value
   rank <- naxes(x)
@@ -2335,8 +2341,7 @@ nv_if <- prim_if
 #' @title While Loop
 #' @description
 #' Executes a functional while loop.
-#' @param init (`list()`)\cr
-#'   Named list of initial state values.
+#' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function returning a scalar boolean.
 #'   Receives the state values as arguments.
@@ -2776,7 +2781,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -2802,7 +2807,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }

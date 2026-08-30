@@ -45,16 +45,23 @@ is_graph_literal <- function(x) {
 #' class.
 #' @param aval ([`RData`])\cr
 #'   The R value.
+#' @param outer (`NULL` | [`GraphBox`])\cr
+#'   For the input of an inline trace ([`gradient()`]'s forward body), the box
+#'   of the enclosing trace's node for the same R value, which is where that
+#'   trace's own materializations live. `NULL` everywhere else.
 #' @return (`GraphRData`)
 #' @seealso [RData]
 #' @export
-GraphRData <- function(aval) {
+GraphRData <- function(aval, outer = NULL) {
   env <- new.env(parent = emptyenv())
   env$aval <- aval
   # dtype name -> the GraphBox this value was materialized into for it. One
   # entry per dtype the trace asked for, so asking twice reuses the value
   # rather than building it again.
   env$mat <- list()
+  # The same R value in the enclosing trace, for an inline trace's input:
+  # `finalize_inline_rdata_inputs()` settles this node's uses against it.
+  env$outer <- outer
 
   structure(env, class = "GraphRData")
 }
@@ -604,10 +611,12 @@ maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
 #   to AnvlArrays. Each arrayish arg becomes a fresh AbstractArray-typed
 #   gval -- a clean parameter slot for the subgraph. Non-arrayish args are
 #   an error.
-# - "inline": traced graph that will be later be inlined into the paren
+# - "inline": traced graph that will later be inlined into the parent
 #   (gradient/value_and_gradient). Inputs that are not already boxed
-#   are registered in the parent graph and then the inputs alias them
-#   which simplified subsequent inlining
+#   are registered in the parent graph and then the inputs alias them,
+#   which simplifies subsequent inlining. An R argument that is still open in
+#   the parent trace stays open here too (see register_rdata_input()); an R
+#   value written in the parent's body enters as the R value itself.
 maybe_box_input <- function(x, desc, mode) {
   if (mode == "subgraph") {
     # e.g.: prim_while(list(i = 1), ...)
@@ -651,9 +660,22 @@ maybe_box_input <- function(x, desc, mode) {
       parent_box <- get_box_or_register_const(parent_desc, x)
       return(register_input(desc, parent_box$gnode))
     }
+    if (is_rdata_box(x)) {
+      aval <- x$gnode$aval
+      if (is.null(aval$data)) {
+        # jit(gradient(f))(sqrt(2)): an R argument of the jitted call, still
+        # open in the outer trace. Keep it open here too, so the traced body
+        # decides which dtypes it is used at, exactly as it does under plain
+        # jit(). The input slot is settled by finalize_inline_rdata_inputs().
+        return(register_rdata_input(desc, aval, outer = x))
+      }
+      # An R value written in the outer body: it is not an input of any graph,
+      # so hand the body the R value itself -- a use site embeds it at the
+      # dtype it needs, like any in-body R value.
+      return(aval$data)
+    }
     # \(x) gradient(f)(x)
     if (is_graph_box(x)) {
-      x <- trace_commit_rdata_box(x)
       return(register_input(desc, x$gnode))
     }
     # don't convert R values because they might be static.
@@ -711,11 +733,18 @@ register_input <- function(desc, x) {
 }
 
 # Reserve `desc`'s next input slot for an R argument. The slot holds the
-# GraphRData node itself until finalize_rdata_inputs() replaces it with the
-# value the body materialized, which keeps the input order the same as the
-# argument order (the caller supplies its inputs in that order).
-register_rdata_input <- function(desc, aval) {
-  node <- GraphRData(aval)
+# GraphRData node itself until finalize_rdata_inputs() (or, for an inline
+# trace, finalize_inline_rdata_inputs()) replaces it with the value the body
+# materialized, which keeps the input order the same as the argument order
+# (the caller supplies its inputs in that order).
+#
+# `outer` links an inline trace's node to the enclosing trace's box the
+# argument came from. The node is fresh rather than shared so the inline
+# body's materializations land in `desc` -- where transform_gradient() can
+# differentiate the converts between them -- and cannot clobber the outer
+# node's memo.
+register_rdata_input <- function(desc, aval, outer = NULL) {
+  node <- GraphRData(aval, outer = outer)
   desc$inputs <- c(desc$inputs, list(node))
   GraphBox(node, desc)
 }
@@ -741,13 +770,7 @@ finalize_rdata_inputs <- function(desc) {
   for (i in which(is_rdata)) {
     node <- inputs[[i]]
     aval <- node$aval
-    # Only the dtypes the value was *built* at can be uploaded; the memo also
-    # holds the results of converting out of its category, which the program
-    # computes from one of these.
-    requested <- Filter(
-      function(dt) rdata_builds_directly(aval$r_type, as_dtype(dt)),
-      names(node$mat)
-    )
+    requested <- rdata_requested_dtypes(node)
     resolved <- resolve_upload_dtype(aval, requested)
     main <- node$mat[[resolved]] %||%
       GraphBox(GraphValue(AbstractArray(resolved, aval$shape)), desc)
@@ -760,6 +783,75 @@ finalize_rdata_inputs <- function(desc) {
         params = list(dtype = as_dtype(other)),
         outputs = list(node$mat[[other]]$gnode)
       )
+    }
+  }
+  desc$inputs <- inputs
+  desc$pre_calls <- c(desc$pre_calls, pre_calls)
+  invisible(NULL)
+}
+
+# The dtypes a finished trace built `node`'s R value at directly. Only these
+# can be uploaded (or serve as a graph input); the memo also holds the results
+# of converting out of the value's category, which the program computes from
+# one of these.
+rdata_requested_dtypes <- function(node) {
+  Filter(
+    function(dt) rdata_builds_directly(node$aval$r_type, as_dtype(dt)),
+    names(node$mat)
+  )
+}
+
+# Settle every R argument of a finished inline trace (the forward body of
+# `gradient()` / `value_and_gradient()`). Unlike a toplevel trace, its inputs
+# are not program inputs: the R value is an argument of the *enclosing* trace
+# and is still open there. So the input becomes the enclosing trace's
+# materialization at the resolved dtype -- feeding this use into the enclosing
+# graph's own resolution, which settles the upload at the end seeing the union
+# of every use -- while the converts to any further dtype the body used stay in
+# this graph, where transform_gradient() differentiates through them.
+finalize_inline_rdata_inputs <- function(desc) {
+  inputs <- desc$inputs
+  is_rdata <- vapply(inputs, is_graph_rdata, logical(1L))
+  if (!any(is_rdata)) {
+    return(invisible(NULL))
+  }
+  pre_calls <- list()
+  add_convert <- function(input, dtype, output) {
+    pre_calls[[length(pre_calls) + 1L]] <<- PrimitiveCall(
+      primitive = prim_convert,
+      inputs = list(input),
+      params = list(dtype = as_dtype(dtype)),
+      outputs = list(output)
+    )
+  }
+  for (i in which(is_rdata)) {
+    node <- inputs[[i]]
+    requested <- rdata_requested_dtypes(node)
+    resolved <- resolve_upload_dtype(node$aval, requested)
+    outer <- node$outer
+    local_box <- node$mat[[resolved]]
+    if (is.null(local_box)) {
+      # The body never built the value at `resolved` itself (it was never
+      # used, or `resolved` widened past every use): the enclosing trace's
+      # materialization serves directly, with a convert per use below.
+      main <- materialize_rdata(outer, as_dtype(resolved))$gnode
+    } else if (is.null(outer$gnode$mat[[resolved]])) {
+      # The value at `resolved` exists in this graph and nowhere else: hand
+      # the gval itself up, so the enclosing trace's own finalize defines it
+      # (as the upload input, or a convert from it) ahead of this graph's
+      # calls, and later uses there reuse it.
+      main <- local_box$gnode
+      outer$gnode$mat[[resolved]] <- register_gval(outer$desc, main)
+    } else {
+      # The enclosing trace built `resolved` too, so the body's gval is a
+      # second value for it: take the outer one as the input and define the
+      # body's from it.
+      main <- materialize_rdata(outer, as_dtype(resolved))$gnode
+      add_convert(main, resolved, local_box$gnode)
+    }
+    inputs[[i]] <- main
+    for (other in setdiff(requested, resolved)) {
+      add_convert(main, other, node$mat[[other]]$gnode)
     }
   }
   desc$inputs <- inputs
@@ -1032,6 +1124,8 @@ trace_fn <- function(
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
   if (mode == "toplevel") {
     finalize_rdata_inputs(desc)
+  } else if (mode == "inline") {
+    finalize_inline_rdata_inputs(desc)
   }
   if (!is.null(desc$is_static_flat) && isTRUE(any(desc$is_static_flat))) {
     desc$static_args_flat <- args_flat[desc$is_static_flat]

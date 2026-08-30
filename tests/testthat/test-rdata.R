@@ -211,6 +211,32 @@ test_that("nv_convert builds an R value at the target dtype directly", {
   expect_equal(as_array(nv_convert(-1.9, "i32")), -1L)
 })
 
+test_that("prim_convert builds an R value at the target dtype directly", {
+  # The primitive has no `promote` rule to box a literal written in the body,
+  # so without boxing it here the value would commit at its default and be
+  # converted from `f32`, giving a different answer than the same call eagerly.
+  expect_identical(as_array(jit(function() prim_convert(sqrt(2), "f64"))()), sqrt(2))
+  expect_identical(as_array(prim_convert(sqrt(2), "f64")), sqrt(2))
+  expect_identical(as_array(jit(function(x) x * prim_convert(sqrt(2), "f64"))(nv_scalar(1, dtype = "f64"))), sqrt(2)) # nolint
+  # An R array takes the same route as a scalar.
+  expect_identical(as.vector(jit(function() prim_convert(array(c(0.1, sqrt(2))), "f64"))()), c(0.1, sqrt(2))) # nolint
+})
+
+test_that("binding and cross products build an R value at the common dtype", {
+  # These combine their arguments downstream (`nv_concatenate()`, `nv_matmul()`),
+  # so they have to decide the dtype up front: committing an R value first would
+  # round it through `f32` on its way to the `f64` it is combined with.
+  x <- nv_matrix(c(1, 1), nrow = 1L, dtype = "f64")
+  r <- matrix(c(0.1, sqrt(2)), nrow = 1L)
+  expect_identical(as.vector(nv_rbind(x, r)), as.vector(rbind(c(1, 1), c(0.1, sqrt(2)))))
+  expect_identical(as.vector(nv_cbind(nv_matrix(1, nrow = 1L, dtype = "f64"), matrix(sqrt(2)))), c(1, sqrt(2))) # nolint
+  y <- nv_matrix(1, nrow = 1L, dtype = "f64")
+  expect_identical(as.vector(nv_crossprod(y, matrix(sqrt(2)))), sqrt(2))
+  expect_identical(as.vector(nv_tcrossprod(y, matrix(sqrt(2)))), sqrt(2))
+  # The common dtype is still the one both sides agree on.
+  expect_equal(dtype(nv_rbind(nv_matrix(1L, nrow = 1L), matrix(1))), as_dtype("f32"))
+})
+
 test_that("assigning an R value into an array uses the array's dtype", {
   x <- nv_array(c(1, 2, 3), dtype = "f64")
   x[2] <- 0.1
@@ -273,17 +299,19 @@ test_that("the graph records the dtype each R input is uploaded at", {
 test_that("nv_pad builds the padding value at the array's dtype", {
   for (dt in c("f64", "f32", "i8", "i32")) {
     x <- nv_array(c(1L, 2L), dtype = dt)
-    # An integer literal reaches any of them; a double only the floats, since
-    # it would have to leave its category to become an integer.
-    expect_equal(dtype(nv_pad(x, 0L, 1L, 1L)), as_dtype(dt), info = dt)
-    if (is_dtype_float(as_dtype(dt))) {
-      expect_equal(dtype(nv_pad(x, 0, 1L, 1L)), as_dtype(dt), info = dt)
-    } else {
-      expect_error(nv_pad(x, 0, 1L, 1L), "R double", info = dt)
-    }
+    # The padding value yields to `x`, so a literal is built at `x`'s dtype --
+    # but only from its own category, so it has to be written in the one `x` is
+    # in: a double for a float array, an integer for an integer one.
+    is_float <- is_dtype_float(as_dtype(dt))
+    expect_equal(dtype(nv_pad(x, if (is_float) 0 else 0L, 1L, 1L)), as_dtype(dt), info = dt)
+    expect_error(nv_pad(x, if (is_float) 0L else 0, 1L, 1L), "cannot be used at", info = dt)
   }
   x <- nv_array(c(1, 2), dtype = "f64")
   expect_identical(as.vector(nv_pad(x, sqrt(2), 1L, 0L)), c(sqrt(2), 1, 2))
+  # A value that already has a dtype is never moved: one that disagrees with
+  # `x` is a mistake to report rather than a conversion to make silently.
+  expect_identical(as.vector(nv_pad(x, nv_scalar(0, dtype = "f64"), 1L, 0L)), c(0, 1, 2))
+  expect_error(nv_pad(x, nv_scalar(0, dtype = "f32"), 1L, 0L), "must have the same dtype")
 })
 
 test_that("RData reports what the R value can answer", {
@@ -477,6 +505,54 @@ test_that("nv_solve() and nv_triangular_solve() let an R value yield", {
 test_that("an R vector that is not arrayish has no abstract value", {
   expect_error(to_abstract(c(1, 2, 3)), "undefined for a length-3")
   expect_equal(shape(to_abstract(array(1:6, c(2, 3)))), c(2L, 3L))
+})
+
+test_that("an R value used as a sub-graph parameter commits to its default", {
+  # A loop's state is a parameter of its sub-graphs, and those are traced before
+  # the state meets anything, so there is nothing for a bare R value there to
+  # take a data type from. Documented in `?RData`.
+  out <- nv_while(list(i = 1), \(i) i < 10, \(i) list(i = i * 2))
+  expect_equal(dtype(out$i), as_dtype("f32"))
+  # ... so a body that carries another data type is an error, not an f64 loop.
+  expect_error(
+    nv_while(list(i = 1), \(i) i < 10, \(i) list(i = i * nv_scalar(2, dtype = "f64"))),
+    "same type"
+  )
+  # Naming the data type is what makes the loop carry it, exactly.
+  out <- nv_while(
+    list(i = nv_convert(sqrt(2), "f64")),
+    \(i) i < nv_scalar(10, dtype = "f64"),
+    \(i) list(i = i * nv_scalar(2, dtype = "f64"))
+  )
+  expect_identical(as_array(out$i), sqrt(2) * 8)
+  # A value that merely flows into a sub-graph body is unaffected: it meets a
+  # data type at its use site there and is built at it.
+  f <- jit(function(v, s) nv_while(list(s = s), \(s) s < nv_scalar(10, dtype = "f64"), \(s) list(s = s + v)))
+  expect_identical(as_array(f(sqrt(2), nv_scalar(0, dtype = "f64"))$s), sum(rep(sqrt(2), 8)))
+})
+
+test_that("an R argument used at two data types is uploaded at one that holds both", {
+  # The whole-program counterpart of the unit test below, and the only branch of
+  # `finalize_rdata_inputs()` where the upload dtype is one no use site asked
+  # for: `f16` and `bf16` are both 16 bits and neither holds the other, so the
+  # input is uploaded at `f32` and each use site converts down from it.
+  # (Asserted on the graph rather than by running it: this backend has no 16-bit
+  # float buffers to run it with.)
+  graph <- trace_fn(
+    function(a, b, v) list(a * v, b * v),
+    list(a = nv_aval("f16", integer()), b = nv_aval("bf16", integer()), v = nv_aval("double", integer()))
+  )
+  expect_equal(graph_input_dtypes(graph), c(NA, NA, "f32"))
+  expect_equal(repr(graph$inputs[[3L]]$aval), "f32[]<-double")
+  converts <- Filter(function(call) call$primitive$name == "convert", graph$calls)
+  expect_length(converts, 2L)
+  expect_setequal(
+    vapply(converts, function(call) as.character(call$outputs[[1L]]$aval$dtype), character(1L)),
+    c("f16", "bf16")
+  )
+  # Both converts read the input itself, rather than one of them converting the
+  # other's result.
+  expect_true(all(vapply(converts, function(call) identical(call$inputs[[1L]], graph$inputs[[3L]]), logical(1L))))
 })
 
 test_that("an R argument uploads at the narrowest data type that holds every use site", {

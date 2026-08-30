@@ -10,10 +10,14 @@
     See the *type promotion* vignette for more details on the improved type system.
   - The `ambiguity` concept no longer exists in the type system.
   - `promote_like()` and `promote_dtype()` refuse an input the target data type
-    cannot hold, rather than narrowing it silently: `nv_clamp(0, x_i32, 1.5)`
-    and `nv_pad(x_i32, 0)` are now errors (write the literal in the array's
-    category, e.g. `0L`), and so is `x_i32[i] <- 1.5`. Pass `force = TRUE` to
-    the rule where the narrowing is the point.
+    cannot hold, rather than narrowing it silently: `nv_clamp(0, x_i32, 1.5)` is
+    now an error (write the literal in the array's category, e.g. `0L`), and so
+    is `x_i32[i] <- 1.5`. Pass `force = TRUE` to the rule where the narrowing is
+    the point.
+  - `nv_pad()`'s `padding_value` now *yields* to `x` instead of being promoted
+    to it: an R value is built at `x`'s data type, within its own category
+    (`nv_pad(x_f64, 0)`, not `0L`), and a value that already has a data type
+    must have `x`'s -- one that disagrees is reported rather than widened.
   - A primitive no longer promotes its arguments unless it says so: the
     `promote` argument of `new_primitive()` defaults to `NULL`, and the
     primitives whose arrayish arguments must agree declare

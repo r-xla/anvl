@@ -17,7 +17,8 @@ nv_pad(
 Input array.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
-Scalar value to use for padding. Must have the same dtype as \code{x}.}
+Scalar value to use for padding. An R value is built at \code{x}'s data type,
+within its own category; anything that already has one must have \code{x}'s.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
 Amount of padding to add at the start of each axis.}
