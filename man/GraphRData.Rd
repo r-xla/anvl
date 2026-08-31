@@ -8,7 +8,8 @@ GraphRData(aval, outer = NULL)
 }
 \arguments{
 \item{aval}{(\code{\link{RData}})\cr
-The R value.}
+The argument's abstract value: its R storage type and shape, with no data
+type yet.}
 
 \item{outer}{(\code{NULL} | \code{\link{GraphBox}})\cr
 For the input of an inline trace (\code{\link[=gradient]{gradient()}}'s forward body), the box
@@ -19,12 +20,13 @@ trace's own materializations live. \code{NULL} everywhere else.}
 (\code{GraphRData})
 }
 \description{
-Node of an \code{\link{AnvlGraph}} standing for an R value whose data type is not
-decided yet -- see \code{\link{RData}}. It is not part of any primitive call:
-it is \emph{materialized} first, into a \code{\link{GraphLiteral}} (an in-body scalar), a
-constant (an in-body R array), or a \code{\link{GraphValue}} input (an argument of the
-jitted function), at the dtype the use site asks for. This is a mutable
-class.
+Node of a trace standing for an \strong{argument} the caller supplies as bare R
+data -- the one value whose data type is not decided yet, see \code{\link{RData}}. It
+is not part of any primitive call: it is \emph{materialized} first, into a
+\code{\link{GraphValue}} input at each dtype the body uses it at, and
+\code{finalize_rdata_inputs()} then settles which of those the input is supplied
+at. An R value written in the body of a traced function gets no such node:
+it is built at its use site directly. This is a mutable class.
 }
 \seealso{
 \link{RData}

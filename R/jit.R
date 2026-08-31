@@ -333,7 +333,7 @@ avals_from_dispatch <- function(info) {
         # never its value -- the dispatcher keyed this entry on the type and
         # the shape, so a program that looked at the value would be served back
         # for a different one.
-        return(RData(NULL, shape = av$shape, r_type = typeof(leaf)))
+        return(nv_aval(typeof(leaf), av$shape))
       }
       nv_aval(as_dtype(av$dtype), av$shape)
     },

@@ -146,17 +146,20 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   # names neither falls back to the default float rather than to whatever R
   # stores its numbers as.
   dtype <- if (is.null(dtype)) {
-    dt <- common_dtype_of(mean, sd)
-    assert_float_dtype(if (is_dtype_float(dt)) dt else default_dtype_r("double"), arg = "mean/sd")
+    assert_float_dtype(
+      common_dtype_of(mean, sd, .fallback = default_dtype_r("double")),
+      arg = "mean/sd",
+      hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
+    )
   } else {
     assert_float_dtype(dtype)
   }
   # The draws come out of the generator at `dtype`, and `mean`/`sd` shift and
   # scale them, so they are realized there -- an R value built at `dtype`
   # directly instead of converted from its default and rounded through `f32`.
-  args <- as_anvl_arrays(mean, sd, .promote = promote_dtype(dtype))
-  mean <- args[[1L]]
-  sd <- args[[2L]]
+  args <- as_anvl_arrays(mean = mean, sd = sd, .promote = promote_dtype(dtype))
+  mean <- args$mean
+  sd <- args$sd
   # n: amount of rvs needed
   n <- prod(shape)
 

@@ -17,7 +17,7 @@ It is essentially like an R array, with some differences:
 
 1. It supports more data types, such as different precisions or unsigned integers.
 2. The array is managed by a specific backend (which we will ignore for now) and can live on different *device*s, such as CPU (aka host) or a GPU.
-3. 0-dimensional arrays can be used to represent scalars.
+3. 0-dimensional arrays are used to represent scalars.
 
 We can create an `AnvlArray` from R objects using `nv_array()`.
 Below, we create a 0-dimensional array (i.e., a scalar) that holds a 16-bit integer living on the CPU.

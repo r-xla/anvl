@@ -1,6 +1,6 @@
 test_that("common_dtype_of: single argument", {
   expect_equal(common_dtype_of(AbstractArray("i32", Shape(c(1, 2)))), as_dtype("i32"))
-  expect_equal(common_dtype_of(RData(1.5, integer())), as_dtype("f32"))
+  expect_equal(common_dtype_of(RData(integer(), "double")), as_dtype("f32"))
 })
 
 test_that("common_dtype_of: two typed arguments", {
@@ -19,7 +19,7 @@ test_that("common_dtype_of: two typed arguments", {
 
 test_that("common_dtype_of: an R value yields to a typed one", {
   check <- function(data, dt, expected) {
-    rd <- RData(data, integer())
+    rd <- RData(integer(), typeof(data))
     known <- AbstractArray(dt, Shape(c(2, 1)))
     expect_equal(common_dtype_of(rd, known), as_dtype(expected))
     expect_equal(common_dtype_of(known, rd), as_dtype(expected))
@@ -40,8 +40,8 @@ test_that("common_dtype_of: an R value yields to a typed one", {
 
 test_that("common_dtype_of: R values among themselves take their defaults", {
   check <- function(d1, d2, expected) {
-    r1 <- RData(d1, integer())
-    r2 <- RData(d2, integer())
+    r1 <- RData(integer(), typeof(d1))
+    r2 <- RData(integer(), typeof(d2))
     expect_equal(common_dtype_of(r1, r2), as_dtype(expected))
     expect_equal(common_dtype_of(r2, r1), as_dtype(expected))
   }
@@ -62,9 +62,9 @@ test_that("common_dtype_of: multiple arguments", {
   expect_equal(common_dtype_of(f64, f32, i32), as_dtype("f64"))
   expect_equal(common_dtype_of(i32, i32, i32), as_dtype("i32"))
   # An R value in the middle still yields to the typed ones around it.
-  expect_equal(common_dtype_of(RData(1L, integer()), AbstractArray("i64", Shape(2))), as_dtype("i64"))
+  expect_equal(common_dtype_of(RData(integer(), "integer"), AbstractArray("i64", Shape(2))), as_dtype("i64"))
   expect_equal(
-    common_dtype_of(RData(1.5, integer()), i32, AbstractArray("f64", Shape(1))),
+    common_dtype_of(RData(integer(), "double"), i32, AbstractArray("f64", Shape(1))),
     as_dtype("f64")
   )
 })
@@ -150,4 +150,58 @@ test_that("a rule that cannot place an argument says which one", {
   err <- tryCatch(as_anvl_arrays(v = 1.5, .promote = promote_dtype("i32")), error = identity)
   expect_false(any(grepl("force", conditionMessage(err), fixed = TRUE)))
   expect_equal(dtype(as_anvl_arrays(v = 1.5, .promote = promote_dtype("i32", force = TRUE))$v), as_dtype("i32")) # nolint
+})
+
+test_that("common_dtype_of: a fallback settles what R values alone commit to", {
+  rint <- RData(integer(), "integer")
+  rdbl <- RData(integer(), "double")
+  rlgl <- RData(integer(), "logical")
+
+  # With nothing to read a dtype off, the fallback replaces the default the R
+  # values would take on their own.
+  expect_equal(common_dtype_of(rint, rint, .fallback = "f32"), as_dtype("f32"))
+  expect_equal(common_dtype_of(rdbl, rdbl, .fallback = "f64"), as_dtype("f64"))
+  expect_equal(common_dtype_of(rlgl, .fallback = "i8"), as_dtype("i8"))
+  # ... and no fallback leaves them their default.
+  expect_equal(common_dtype_of(rint, rint), as_dtype("i32"))
+
+  # The R values yield to it as they do to any dtype, so one in a lower
+  # category leaves them where they are.
+  expect_equal(common_dtype_of(rdbl, .fallback = "i32"), as_dtype("f32"))
+  expect_equal(common_dtype_of(rint, .fallback = "bool"), as_dtype("i32"))
+
+  # An argument that brings a dtype of its own claims them instead: the
+  # fallback is ignored, whatever it named.
+  expect_equal(
+    common_dtype_of(AbstractArray("i32", Shape(2)), rint, .fallback = "f64"),
+    as_dtype("i32")
+  )
+  expect_equal(
+    common_dtype_of(AbstractArray("f64", Shape(2)), rdbl, .fallback = "f32"),
+    as_dtype("f64")
+  )
+})
+
+test_that("promote_common(fallback = ) realizes R values at the fallback", {
+  # Nothing brings a dtype: every argument is built at the fallback.
+  args <- as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
+  expect_equal(dtype(args[[1L]]), as_dtype("f64"))
+  expect_equal(dtype(args[[2L]]), as_dtype("f64"))
+
+  # An argument that has one wins over the fallback.
+  args <- as_anvl_arrays(nv_array(1L), 2L, .promote = promote_common(fallback = "f64"))
+  expect_equal(dtype(args[[1L]]), as_dtype("i32"))
+  expect_equal(dtype(args[[2L]]), as_dtype("i32"))
+
+  # `only` still restricts which arguments the rule covers.
+  args <- as_anvl_arrays(
+    x = 1,
+    y = 2,
+    .promote = promote_common(only = "x", fallback = "f64")
+  )
+  expect_equal(dtype(args$x), as_dtype("f64"))
+  expect_equal(dtype(args$y), as_dtype("f32"))
+
+  expect_equal(format(promote_common(fallback = "f64")), "<promote_common(fallback f64)>")
+  expect_equal(format(promote_common()), "<promote_common>")
 })

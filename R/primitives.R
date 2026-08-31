@@ -2333,16 +2333,14 @@ prim_convert <- new_primitive(
   "convert",
   function(x, dtype) {
     dtype <- as_dtype(dtype)
-    # A literal written in the body of a traced function arrives here unboxed,
-    # and `prim_convert` declares no `promote` rule that would have boxed it.
-    # Box it without committing, so the branch below builds it at `dtype`
-    # rather than at its default with a convert on top.
-    if (currently_tracing() && has_no_dtype(x)) {
-      x <- maybe_box_arrayish(x)
+    # There is nothing to convert: an R value is built at the dtype asked for,
+    # so the result holds every digit the R value had. A literal written in the
+    # body of a traced function arrives here unboxed, since `prim_convert`
+    # declares no `promote` rule that would have boxed it.
+    if (currently_tracing() && is_bare_r_value(x)) {
+      return(build_r_at(x, dtype))
     }
     if (is_rdata_box(x)) {
-      # There is nothing to convert: an R value is built at the dtype asked
-      # for, so the result holds every digit the R value had.
       return(materialize_rdata(x, dtype))
     }
     infer_fn <- function(x, dtype) {

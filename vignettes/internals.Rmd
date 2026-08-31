@@ -296,6 +296,38 @@ Further note that:
 1. R literals are embedded directly into the program.
 2. Currently, constants with the same value (that refer to different `AnvlArray`s) are not deduplicated, which we might change in the future.
 
+### R Values Without a Data Type
+
+An R value entering a program -- a length-1 vector or an `array()` -- has no data
+type of its own. It is built into the program at the data type its use site
+needs, from the R data itself, which is what keeps `x / sqrt(2)` exact for an
+`f64` `x`. The machinery lives in `R/graph.R`.
+
+A value written in the body of a traced function is built where it is used. An
+*argument* of a jitted function cannot be: its value is unknown while tracing
+(the cache keys on R storage type and shape only), so it becomes a `GraphRData`
+node, and which data type its input is supplied at is settled only once the body
+has run. `finalize_rdata_inputs()` picks the narrowest data type that holds every
+use site, records it on the input's own aval as an `RDataInput`, and adds a
+convert for each further data type the body asked for.
+
+```{r}
+graph <- trace_fn(
+  function(x, v) list(x * v, nv_convert(v, "f32")),
+  list(x = nv_aval("f64", integer()), v = nv_aval("double", integer()))
+)
+graph
+```
+
+The `f64[] <- double` marks an input the caller supplies as an R double and the
+runtime uploads as `f64` -- rather than at the default for its R storage type.
+`graph_input_dtypes()` reads those off for the backends.
+
+A value is only ever built directly at a data type of its own R category: a
+double at a float, an integer at an integer, a logical at `bool`. Any other
+target is built at the category's natural type (`f64` / `i32` / `bool`) and
+converted by the program, so narrowing follows XLA's semantics rather than R's.
+
 ## Device Inference in `jit()`
 
 Device handling in `jit()` is quite complicated.

@@ -29,7 +29,8 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' type it has and a bare R value takes its default.
 #'
 #' * `promote_common()` -- the common data type of the inputs
-#'   (see [`common_dtype()`]). What a binary operator does.
+#'   (see [`common_dtype()`]). What a binary operator does. `fallback` names the
+#'   data type to settle on where no input brings one.
 #' * `promote_like()` -- the data type one particular input already has. For a
 #'   function whose result type *is* one argument's type, and whose other
 #'   arguments come along: `nv_clamp(min_val, x, max_val)` is `x`'s type.
@@ -92,6 +93,31 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' has no business taking part in the promotion, such as [`nv_ifelse()`]'s
 #' `pred`, which stays a `bool`.
 #'
+#' @section Falling back:
+#' `promote_common()` reads its target off the inputs, and an input that is a
+#' bare R value has none to give -- so a call whose arguments are *all* R values
+#' has nothing to read, and they commit to the default of their R storage type
+#' (`f32` / `i32` / `bool`). `fallback` is the data type to settle on there
+#' instead, for a function that has a type in mind but would rather take one
+#' from its arguments:
+#'
+#' ```r
+#' # nothing brings a data type: the fallback decides
+#' as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
+#' # an argument does: the fallback is ignored, whatever it named
+#' as_anvl_arrays(nv_array(1), 2L, .promote = promote_common(fallback = "f64"))
+#' ```
+#'
+#' It is a fallback and not a floor: it applies only where nothing else claims
+#' the R values, so an input that *has* a data type wins over it even when that
+#' data type is narrower or of another category. A function that needs the
+#' result to be of some category regardless -- a sampler that must draw at a
+#' float -- checks that for itself.
+#'
+#' The R values yield to a fallback the way they yield to any data type, within
+#' their own category (see the previous section): a fallback of `"i32"` on a
+#' call holding an R double leaves it a float.
+#'
 #' @section Several groups in one call:
 #' `promote_grouped()` combines rules, which is how one call promotes several
 #' groups of arguments independently -- `x` and `y` to their common data type,
@@ -120,6 +146,10 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #'   arguments to be named.
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
 #'   The data type to bring the inputs to.
+#' @param fallback (`NULL` | [`tengen::DataType`] | `character(1)`)\cr
+#'   For `promote_common()`: the data type to settle on when *every* input is a
+#'   bare R value, in place of the default those would commit to on their own.
+#'   `NULL` (default) leaves them their default. See the *Falling back* section.
 #' @param only (`NULL` | `character()` | `numeric()`)\cr
 #'   Which inputs the rule applies to, by name or position. `NULL` (default) is
 #'   all of them.
@@ -138,6 +168,9 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
 #' as_anvl_arrays(x = nv_array(1L), y = 1L, .promote = promote_like("x"))
 #' as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
+#' # with nothing to read a data type off, `fallback` decides
+#' as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
+#' as_anvl_arrays(nv_array(1L), 2L, .promote = promote_common(fallback = "f64"))
 #' # a target that cannot hold an input is an error, unless that is the point
 #' try(as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x")))
 #' as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x", force = TRUE))
@@ -161,8 +194,12 @@ NULL
 
 #' @rdname promote_rule
 #' @export
-promote_common <- function(only = NULL) {
-  PromoteRule("common", only = only)
+promote_common <- function(only = NULL, fallback = NULL) {
+  PromoteRule(
+    "common",
+    only = only,
+    fallback = if (!is.null(fallback)) as_dtype(fallback)
+  )
 }
 
 #' @rdname promote_rule
@@ -237,7 +274,7 @@ assert_arg_ref <- function(x, what, len = NULL) {
 format.PromoteRule <- function(x, ...) {
   detail <- switch(
     x$kind,
-    common = ,
+    common = if (is.null(x$fallback)) "" else sprintf("(fallback %s)", repr(x$fallback)),
     yield = "",
     like = sprintf("(%s%s)", format_arg_ref(x$arg), if (isTRUE(x$force)) ", force" else ""),
     dtype = sprintf("(%s%s)", repr(x$dtype), if (isTRUE(x$force)) ", force" else ""),
@@ -315,7 +352,6 @@ assert_promotes_to <- function(x, dtype, args, i) {
       "Cannot bring {what} to data type {.val {target}}.",
       x = "{.val {as.character(aval$dtype)}} is not promotable to {.val {target}}.",
       i = "Convert it explicitly with {.fn nv_convert}."
-
     ),
     call = NULL
   )
@@ -359,7 +395,7 @@ resolve_promote_rule <- function(rule, args) {
   # on its own and takes the others' where there is one.
   dtype <- switch(
     rule$kind,
-    common = do.call(common_dtype_of, args[positions]),
+    common = do.call(common_dtype_of, c(args[positions], list(.fallback = rule$fallback))),
     like = do.call(common_dtype_of, args[arg_positions(rule$arg, args, "arg")]),
     dtype = rule$dtype
   )
@@ -440,7 +476,7 @@ arg_positions <- function(ref, args, what) {
 # it meets, and contributes only the dtype it would commit to when it meets
 # nothing but other R values.
 # For internal use.
-common_dtype_of <- function(...) {
+common_dtype_of <- function(..., .fallback = NULL) {
   args <- list(...)
   if (length(args) == 0L) {
     cli_abort("No arguments provided")
@@ -466,6 +502,14 @@ common_dtype_of <- function(...) {
     } else {
       cdt <- promote_dt_known(cdt, dt)
     }
+  }
+  # `.fallback` is the data type the R values commit to when nothing in the call
+  # has one of its own to give them -- it replaces the default they would
+  # otherwise take, and is ignored the moment any argument brings a real data
+  # type. They yield to it as they would to any data type, within their own
+  # category, so a fallback below them leaves them where they are.
+  if (!is.null(.fallback) && cdt_is_rdata) {
+    return(promote_dt_rdata(cdt, as_dtype(.fallback)))
   }
   cdt
 }

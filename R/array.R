@@ -358,15 +358,15 @@ align_arrayish <- function(args) {
   list(args = args, device = dev)
 }
 
-# Build `x` at `dtype`. An R value -- an [`RData`] while tracing, the R
-# value itself when not -- is built from its R data, so it arrives with every
-# digit it had; anything that already has a dtype is converted.
+# Build `x` at `dtype`. An R value -- an open argument's [`RData`] while
+# tracing, the R value itself otherwise -- is built from its R data, so it
+# arrives with every digit it had; anything that already has a dtype is
+# converted.
 realize_at <- function(x, dtype, device = NULL) {
-  if (!is_box(x) && !is_anvl_array(x) && is_valid_r(x) && currently_tracing()) {
-    # Inside a trace, box the value *without* committing it first, so that
-    # materializing it below yields the node kind it would have had anyway --
-    # an inlined literal for a scalar, a constant for an R array.
-    x <- maybe_box_arrayish(x)
+  if (currently_tracing() && is_bare_r_value(x)) {
+    # Inside a trace the value is built straight into the graph: an inlined
+    # literal for a scalar, a constant for an R array.
+    return(build_r_at(x, dtype))
   }
   if (is_rdata_box(x)) {
     return(materialize_rdata(x, dtype))
@@ -513,7 +513,7 @@ nv_empty <- function(dtype, shape, device = NULL, backend = NULL) {
 nv_aval <- function(dtype, shape) {
   r_type <- r_type_of_aval_spec(dtype)
   if (!is.null(r_type)) {
-    return(RData(NULL, shape = shape, r_type = r_type))
+    return(RData(shape = shape, r_type = r_type))
   }
   AbstractArray(dtype = dtype, shape = shape)
 }
@@ -868,264 +868,6 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
   )
 }
 
-#' @title R Data Class
-#' @description
-#' An [`AbstractArray`] for an R value that entered a program without a data
-#' type: a length-1 vector or an [`array()`], either written in the body of a
-#' traced function (`x / sqrt(2)`) or passed as an argument to a jitted one.
-#'
-#' Unlike every other abstract array it has **no** data type. R has no dtype to
-#' give -- `1.5` is neither an `f32` nor an `f64` -- so instead of stamping one
-#' at the boundary, the value is kept as R data and built into the program at
-#' each use site, at the dtype that use site turns out to need. `x_f64 /
-#' sqrt(2)` therefore sees the exact double, rather than one that was rounded
-#' to `f32` on the way in and widened again.
-#'
-#' Which dtype a use site needs is normally not decided value by value: an
-#' `nv_*` function canonicalizes its whole argument set once at the top with
-#' [`as_anvl_arrays()`], and the [`.promote` rule][promote_rule] it passes
-#' there is what names the dtype every R value among them is built at.
-#'
-#' A value that is never combined with a typed array has nothing to take its
-#' dtype from and *commits* to the default for its R type: `f32` for a double,
-#' `i32` for an integer, `bool` for a logical.
-#'
-#' @section Sub-graph parameters:
-#' The same commitment happens where a data type is needed *before* any use site
-#' can name one. A higher-order primitive that traces a sub-graph has to give
-#' that sub-graph's parameters a data type up front, so a bare R value passed as
-#' one takes its default rather than whatever the sub-graph's body turns out to
-#' use it with. That is [`prim_while()`]'s `init`: in
-#' `nv_while(list(i = 1), ...)` the state `i` is `f32`, and a body that adds an
-#' `f64` to it is a data type error rather than an `f64` loop. Say which type
-#' the loop carries -- `nv_scalar(1, dtype = "f64")`, or [`nv_convert()`] for a
-#' value the caller passed in.
-#'
-#' A value that merely *flows into* a sub-graph body is not affected: it is
-#' built at the data type its use site asks for, as anywhere else.
-#'
-#' @section Extractors:
-#' [`shape()`][tengen::shape] and [`naxes()`][tengen::naxes] answer as they
-#' would for the R value: `()` for a length-1 vector, `dim()` for an
-#' [`array()`], and an error for a longer vector without a `dim()`, which is not
-#' an arrayish value at all. [`dtype()`][tengen::dtype] **errors**: there is no
-#' dtype to report until the value commits, exactly as `dtype(1.5)` has none to
-#' report. Give the value a dtype (e.g. [`nv_array()`], [`nv_scalar()`]) to ask.
-#'
-#' @param data (`NULL` | `numeric()` | `logical()`)\cr
-#'   The R data. `NULL` for an argument of a jitted function, whose value is
-#'   deliberately unknown while tracing: the compiled program is cached by the
-#'   argument's R type and shape, so it must not depend on the value.
-#' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
-#'   The shape of the value: `()` for a length-1 vector, its `dim()` for an
-#'   R array.
-#' @param r_type (`character(1)`)\cr
-#'   The R storage type: `"double"`, `"integer"` or `"logical"`. Inferred from
-#'   `data` when that is given.
-#'
-#' @seealso [AbstractArray], [LiteralArray]
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- RData(1.5, shape = integer())
-#' x
-#' shape(x)
-#' # dtype(x) would error: 1.5 has no data type of its own
-#'
-#' # How it appears during tracing
-#' graph <- trace_fn(function(x) x, list(x = RData(NULL, integer(), "double")))
-#' graph
-#' @export
-RData <- function(data, shape, r_type = typeof(data)) {
-  shape <- as_shape(shape)
-  r_type <- match.arg(r_type, c("double", "integer", "logical"))
-  structure(
-    list(
-      data = data,
-      r_type = r_type,
-      # The dtype this value commits to when nothing tells it otherwise. Not
-      # called `dtype`: it is what the value *would* become, and code that
-      # reaches for `$dtype` must not silently get it.
-      default_dtype = default_dtype_r(r_type),
-      shape = shape
-    ),
-    class = c("RData", "AbstractArray")
-  )
-}
-
-is_rdata <- function(x) {
-  inherits(x, "RData")
-}
-
-#' @title R Data Input Class
-#' @description
-#' The [`AbstractArray`] of a program input that the caller supplies as bare R
-#' data. Unlike every other input it has no data type of its own to be supplied
-#' at: the program decides one (see [`RData`]), and the runtime uploads the
-#' R value at that dtype rather than at the default for its R storage type.
-#'
-#' It is the resolved form of an [`RData`]: an `RData` is a value whose dtype
-#' is still open, an `RDataInput` is the same value once the finished trace has
-#' settled which dtype its input is supplied at.
-#'
-#' It does not resolve to a plain [`AbstractArray`], because the two say
-#' different things about the caller. `AbstractArray(f64, [2x3])` on an input
-#' means the caller hands over something that already *is* an `f64[2x3]` -- an
-#' array, passed through as it is. `RDataInput(f64, [2x3], "double")` means the
-#' caller hands over an R `double`, which the runtime *uploads* at `f64` instead
-#' of at the default for its R storage type -- that is what keeps `x_f64 /
-#' sqrt(2)` exact. Collapsing the two would lose the mark of which arguments
-#' need uploading at a chosen dtype, which is what makes an [`AnvlGraph`]
-#' self-describing about its inputs: `graph_input_dtypes()` reads an upload
-#' dtype off each R-data input and `NA` off each array one, and both backends
-#' dispatch on that. The `r_type` field records which R storage type arrives,
-#' and so pins down the category the settled dtype had to stay within.
-#'
-#' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
-#'   The dtype the R value is uploaded at.
-#' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
-#'   The shape of the value.
-#' @param r_type (`character(1)`)\cr
-#'   The R storage type the caller passes: `"double"`, `"integer"` or
-#'   `"logical"`.
-#' @return (`RDataInput`)
-#' @seealso [RData], [AbstractArray]
-#' @examplesIf pjrt::plugins_downloaded()
-#' # An f64 program consuming an R double argument uploads it as f64.
-#' graph <- trace_fn(function(x) nv_scalar(1, dtype = "f64") + x, list(x = nv_aval("double", integer()))) # nolint
-#' graph$inputs[[1]]$aval
-#' @export
-# REVIEW: Why do we need this in addition to RData?
-# Okay, I get it (known vs dynamic, but do we also have this difference for anvl
-# arrays?)
-# RESPONSE: Not in the same shape -- a typed value needs only one class:
-# `AbstractArray(dtype, shape)` is the aval of an input whose value is unknown,
-# and `ConcreteArray` / `LiteralArray` / `IotaArray` are the ones that also
-# carry the value, but all four already have a dtype, so the input form is just
-# the aval with the data left out. `RData` is the one value with *no* dtype, so
-# it has no such input form; why the resolved form is its own class and not a
-# plain `AbstractArray` is now spelled out in the docs above.
-RDataInput <- function(dtype, shape, r_type) {
-  structure(
-    list(dtype = as_dtype(dtype), shape = as_shape(shape), r_type = r_type),
-    class = c("RDataInput", "AbstractArray")
-  )
-}
-
-is_rdata_input <- function(x) {
-  inherits(x, "RDataInput")
-}
-
-#' @export
-format.RDataInput <- function(x, ...) {
-  sprintf("RDataInput(%s, %s, %s)", as.character(x$dtype), x$r_type, shape2string(x$shape))
-}
-
-#' @export
-print.RDataInput <- function(x, ...) {
-  cat(format(x), "\n")
-  invisible(x)
-}
-
-#' @export
-repr.RDataInput <- function(x, ...) {
-  # The shape belongs to the dtype the program takes the value at, so it is
-  # written next to it: `f64[2x3]<-double` reads as "an f64[2x3], supplied as an
-  # R double", the way the graph printer spells it.
-  sprintf("%s[%s]<-%s", repr(x$dtype), repr(x$shape), x$r_type)
-}
-
-#' @method dtype RData
-#' @export
-dtype.RData <- function(x, ...) {
-  abort_no_dtype(x$default_dtype)
-}
-
-# An R value is the same value whether it is boxed for a trace or not, so the
-# extractors have to answer the same way in both places -- otherwise an `nv_*`
-# function means one thing under `jit()` and another eagerly. `shape.array()`
-# (tengen) already covers an R array; these cover a length-1 vector, and refuse
-# a dtype for either.
-# REVIEW: What are the implications of this?
-# RESPONSE: Three. (1) `shape(1.5)` answers instead of erroring, so an `nv_*`
-# function can ask for a shape before anything has decided a dtype, and gets the
-# same answer eagerly as it does for the boxed value under `jit()` -- which is
-# the whole point, since a function must not mean two things depending on where
-# it is called. (2) `shape(c(1, 2, 3))` errors rather than returning `3`: a
-# length-3 vector with no `dim()` is not an arrayish value, and reporting a
-# shape for it would only push the error further downstream. (3) It made
-# `shape_abstract()` redundant, which is why that is gone. This is a method on
-# our own generic (`tengen::shape`), so it only affects code that already calls
-# it; base R is untouched.
-#' @method shape numeric
-#' @export
-shape.numeric <- function(x, ...) {
-  r_value_shape(x)
-}
-
-#' @method shape logical
-#' @export
-shape.logical <- function(x, ...) {
-  r_value_shape(x)
-}
-
-#' @method dtype numeric
-#' @export
-dtype.numeric <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
-}
-
-# REVIEW: Hmm, here it is kind of un-ambiguous? but keep it consistent i guess
-# RESPONSE: Consistent, and also right on its own: a logical yields like any
-# other R value -- `nv_array(1:2) + TRUE` is `i32`, not `bool` -- so `TRUE` has
-# no more of a data type of its own than `1.5` has. `bool` is only what it
-# commits to when nothing claims it, which is what `peek_dtype()` reports.
-#' @method dtype logical
-#' @export
-dtype.logical <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
-}
-
-r_value_shape <- function(x) {
-  if (!is.null(dim(x))) {
-    return(as.integer(dim(x)))
-  }
-  if (length(x) != 1L) {
-    cli_abort(c(
-      "{.fn shape} is undefined for a length-{length(x)} R vector.",
-      i = "Only a length-1 R value and an {.fn array} are arrayish; use {.fn nv_array} to make one an array."
-    ))
-  }
-  integer()
-}
-
-abort_no_dtype <- function(default_dtype) {
-  cli_abort(
-    c(
-      "An R value has no data type of its own until it is used.",
-      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it commits to the default ({.val {as.character(default_dtype)}}).", # nolint
-      i = "Give it one explicitly, e.g. {.fn nv_array} or {.fn nv_scalar} with {.arg dtype}."
-    ),
-    call = NULL
-  )
-}
-
-#' @export
-format.RData <- function(x, ...) {
-  # The data itself is deliberately left out: it can be a whole array, and what
-  # matters about an RData is what it is, not what it holds.
-  sprintf("RData(%s, %s)", x$r_type, shape2string(x$shape))
-}
-
-#' @export
-print.RData <- function(x, ...) {
-  cat(format(x), "\n")
-  invisible(x)
-}
-
-#' @export
-repr.RData <- function(x, ...) {
-  sprintf("%s[%s]", x$r_type, repr(x$shape))
-}
-
 #' @title Iota Array Class
 #' @description
 #' An [`AbstractArray`] representing an integer sequence.
@@ -1338,8 +1080,8 @@ to_abstract <- function(x, pure = FALSE) {
   } else if (test_atomic(x) && (is.logical(x) || is.numeric(x))) {
     # `r_value_shape()` rather than `dim()`: a length-3 vector with no `dim()`
     # is not an arrayish value, and giving it the scalar shape would build an
-    # `RData` whose data and shape disagree.
-    RData(x, shape = r_value_shape(x))
+    # `RData` whose shape disagrees with the value.
+    RData(shape = r_value_shape(x), r_type = typeof(x))
   } else if (is_graph_box(x)) {
     gnode <- x$gnode
     gnode$aval

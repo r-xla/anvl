@@ -9,7 +9,7 @@
 \alias{promote_grouped}
 \title{Promotion Rules}
 \usage{
-promote_common(only = NULL)
+promote_common(only = NULL, fallback = NULL)
 
 promote_like(arg, only = NULL, force = FALSE)
 
@@ -23,6 +23,11 @@ promote_grouped(...)
 \item{only}{(\code{NULL} | \code{character()} | \code{numeric()})\cr
 Which inputs the rule applies to, by name or position. \code{NULL} (default) is
 all of them.}
+
+\item{fallback}{(\code{NULL} | \code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
+For \code{promote_common()}: the data type to settle on when \emph{every} input is a
+bare R value, in place of the default those would commit to on their own.
+\code{NULL} (default) leaves them their default. See the \emph{Falling back} section.}
 
 \item{arg}{(\code{character(1)} | \code{numeric(1)})\cr
 Which input to take the data type from: its name in the
@@ -50,7 +55,8 @@ as that function's \code{.promote} argument; without one, each input keeps the d
 type it has and a bare R value takes its default.
 \itemize{
 \item \code{promote_common()} -- the common data type of the inputs
-(see \code{\link[=common_dtype]{common_dtype()}}). What a binary operator does.
+(see \code{\link[=common_dtype]{common_dtype()}}). What a binary operator does. \code{fallback} names the
+data type to settle on where no input brings one.
 \item \code{promote_like()} -- the data type one particular input already has. For a
 function whose result type \emph{is} one argument's type, and whose other
 arguments come along: \code{nv_clamp(min_val, x, max_val)} is \code{x}'s type.
@@ -118,6 +124,32 @@ has no business taking part in the promotion, such as \code{\link[=nv_ifelse]{nv
 \code{pred}, which stays a \code{bool}.
 }
 
+\section{Falling back}{
+
+\code{promote_common()} reads its target off the inputs, and an input that is a
+bare R value has none to give -- so a call whose arguments are \emph{all} R values
+has nothing to read, and they commit to the default of their R storage type
+(\code{f32} / \code{i32} / \code{bool}). \code{fallback} is the data type to settle on there
+instead, for a function that has a type in mind but would rather take one
+from its arguments:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{# nothing brings a data type: the fallback decides
+as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
+# an argument does: the fallback is ignored, whatever it named
+as_anvl_arrays(nv_array(1), 2L, .promote = promote_common(fallback = "f64"))
+}\if{html}{\out{</div>}}
+
+It is a fallback and not a floor: it applies only where nothing else claims
+the R values, so an input that \emph{has} a data type wins over it even when that
+data type is narrower or of another category. A function that needs the
+result to be of some category regardless -- a sampler that must draw at a
+float -- checks that for itself.
+
+The R values yield to a fallback the way they yield to any data type, within
+their own category (see the previous section): a fallback of \code{"i32"} on a
+call holding an R double leaves it a float.
+}
+
 \section{Several groups in one call}{
 
 \code{promote_grouped()} combines rules, which is how one call promotes several
@@ -148,6 +180,9 @@ as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
 as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
 as_anvl_arrays(x = nv_array(1L), y = 1L, .promote = promote_like("x"))
 as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
+# with nothing to read a data type off, `fallback` decides
+as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
+as_anvl_arrays(nv_array(1L), 2L, .promote = promote_common(fallback = "f64"))
 # a target that cannot hold an input is an error, unless that is the point
 try(as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x")))
 as_anvl_arrays(x = nv_array(1L), y = 1.5, .promote = promote_like("x", force = TRUE))

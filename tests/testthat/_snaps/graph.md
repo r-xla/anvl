@@ -40,3 +40,126 @@
     Output
       GraphLiteral(1, i32, ()) 
 
+# an R argument of a jitted call / errors for a bare vector with no shape
+
+    Code
+      f(c(1, 2, 3))
+    Condition
+      Error:
+      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <numeric> of length 3
+
+# an R argument of a jitted call / errors for a leaf that is not an array or a scalar
+
+    Code
+      f("hello")
+    Condition
+      Error:
+      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
+
+# an R argument of a jitted call / names the path to a bad nested list element
+
+    Code
+      f(list(list(a = "abc")))
+    Condition
+      Error:
+      ! invalid input `l[[1]]$a`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
+
+# an R argument of a jitted call / names the path to a bad unnamed nested element
+
+    Code
+      f(list("bad", nv_scalar(1)))
+    Condition
+      Error:
+      ! invalid input `pair[[1]]`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
+
+# an R argument of a jitted call / errors for a bare vector on the quickr backend
+
+    Code
+      f(c(1, 2, 3))
+    Condition
+      Error:
+      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <numeric> of length 3
+
+# how an R value is built into a graph / builds an R scalar as an inlined literal and an R array as a constant
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: f32[2, 2]
+        Constants:
+          %c1: f32[2, 2]
+        Body:
+          %1: f32[2, 2] = broadcast_in_axes [shape = c(2, 2), broadcast_axes = <any>] (2:f32)
+          %2: f32[2, 2] = mul(%x1, %1)
+          %3: f32[2, 2] = add(%x1, %c1)
+          %4: f32[2, 2] = add(%2, %3)
+        Outputs:
+          %4: f32[2, 2] 
+
+# how an R value is built into a graph / builds a closed-over R array used twice as one constant
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: f32[2, 2]
+        Constants:
+          %c1: f32[2, 2]
+        Body:
+          %1: f32[2, 2] = add(%x1, %c1)
+          %2: f32[2, 2] = add(%1, %c1)
+        Outputs:
+          %2: f32[2, 2] 
+
+# how an R value is built into a graph / converts inside the program when the value crosses its category
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: i32[]
+        Body:
+          %1: i32[] = convert [dtype = i32] (1.5:f64)
+          %2: i32[] = add(%x1, %1)
+        Outputs:
+          %2: i32[] 
+
+# how an R value is built into a graph / uploads an R argument used at two data types once and converts
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: f32[]
+          %x2: f64[] <- double
+        Body:
+          %1: f32[] = convert [dtype = f32] (%x2)
+          %2: f32[] = mul(%x1, %1)
+          %3: f64[] = convert [dtype = f64] (%2)
+          %4: f64[] = add(%3, %x2)
+        Outputs:
+          %4: f64[] 
+
+# how an R value is built into a graph / keeps an R argument open under an inlined gradient
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: f32[] <- double
+        Constants:
+          %c1: f32[]
+        Body:
+          %1: f32[] = mul(%x1, %x1)
+          %2: f32[] = mul(%c1, %x1)
+          %3: f32[] = mul(%c1, %x1)
+          %4: f32[] = add(%2, %3)
+        Outputs:
+          %4: f32[] 
+

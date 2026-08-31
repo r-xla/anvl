@@ -159,6 +159,16 @@ as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
 `nv_clamp(min_val, x, max_val)` is `promote_like("x")`: the result is `x`'s type and the bounds come along.
 `nv_rnorm(shape, initial_state, dtype = )` is `promote_dtype(dtype)`: the type is the function's own argument rather than one read off an input.
 
+A function that would rather read the type off its arguments but has one in mind for the case where they bring none gives `promote_common()` a `fallback`.
+It applies only where *every* argument is an R value, so an argument that has a type still wins:
+
+```{r}
+as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
+as_anvl_arrays(nv_array(1L), 2L, .promote = promote_common(fallback = "f64"))
+```
+
+This is how `nv_rnorm(mean = , sd = )` settles on a type when called with neither: the sample is whatever `mean` and `sd` are, and `f32` where they are bare R values with nothing to say.
+
 The two rules that *name* a target refuse an argument that type cannot hold, rather than narrowing it silently:
 
 ```{r, error = TRUE}

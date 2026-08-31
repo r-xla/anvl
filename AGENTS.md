@@ -30,10 +30,15 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 An R value entering a program -- a length-1 vector or an `array()`, written in
 the body of a traced function or passed as an argument to a jitted one -- is
-*not* converted at the boundary. It is carried as an `RData` (an
-`AbstractArray` with no dtype, boxed in a `GraphRData` node) and built into the
-program at the dtype its use site needs, from the R data itself. That is what
-makes `x_f64 / sqrt(2)` exact. See `vignette("type-promotion")`.
+*not* converted at the boundary. It is built into the program at the dtype its
+use site needs, from the R data itself. That is what makes `x_f64 / sqrt(2)`
+exact. See `vignette("type-promotion")`.
+
+A value written in the body is built where it is used (`build_r_at()`) and is
+carried as the bare R value until then. An *argument* of a jitted function
+cannot be: its value is unknown while tracing, so it becomes an `RData` (an
+`AbstractArray` with no dtype) in a `GraphRData` node, and the finished trace
+settles which dtype its input is supplied at -- an `RDataInput`.
 
 - **Canonicalize once, with a rule.** Call `as_anvl_arrays()` over the whole
   argument set at the top of an `nv_*` function: it aligns devices and backends,

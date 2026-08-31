@@ -182,3 +182,38 @@ test_that("nv_rng_state works the same across devices (eager)", {
   s1 <- nv_rng_state(42L, device = dev1)
   expect_equal(as_array(s0), as_array(s1))
 })
+
+test_that("nv_rnorm takes the sample's dtype from mean and sd", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  draw <- function(...) dtype(nv_rnorm(2L, state, ...)[[2L]])
+
+  # Neither brings a data type, so the sample falls back to the default float
+  # rather than to whatever R stores its numbers as.
+  expect_equal(draw(), as_dtype("f32"))
+  expect_equal(draw(mean = 0L, sd = 1L), as_dtype("f32"))
+
+  # Either one that has a data type gives the sample its own.
+  expect_equal(draw(mean = nv_scalar(1, dtype = "f64")), as_dtype("f64"))
+  expect_equal(draw(sd = nv_scalar(1, dtype = "f64")), as_dtype("f64"))
+  expect_equal(
+    draw(mean = nv_scalar(1, dtype = "f64"), sd = nv_scalar(1, dtype = "f32")),
+    as_dtype("f64")
+  )
+  # An R value keeps the sample a float even where the other is an integer.
+  expect_equal(draw(mean = nv_scalar(1L)), as_dtype("f32"))
+
+  # `dtype` is the caller's word over the arguments', and is refused where the
+  # sample could not hold them.
+  expect_equal(draw(dtype = "f64"), as_dtype("f64"))
+  expect_error(
+    draw(dtype = "f32", mean = nv_scalar(1, dtype = "f64")),
+    "Cannot bring `mean` to data type \"f32\""
+  )
+
+  # Arguments that agree on a data type the generator cannot draw at say so.
+  expect_error(
+    draw(mean = nv_scalar(1L), sd = nv_scalar(2L)),
+    "must be a floating-point dtype"
+  )
+  expect_error(draw(mean = nv_scalar(1L), sd = nv_scalar(2L)), "Pass `dtype`")
+})

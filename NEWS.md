@@ -27,7 +27,13 @@
 * `nv_rnorm()`'s `dtype` now defaults to `NULL`, which takes the sample's data
   type from `mean` and `sd` where either is a real array, and falls back to
   `"f32"` where both are bare R values. It used to always be `"f32"` unless the
-  caller said otherwise, so an `f64` `mean` was silently narrowed.
+  caller said otherwise, so an `f64` `mean` was silently narrowed. A `mean` and
+  `sd` that agree on a data type the generator cannot draw at (both integer
+  arrays, say) is an error naming `dtype`, rather than a silent `"f32"`.
+* `promote_common()` gained a `fallback` argument: the data type to settle on
+  when every input is a bare R value and there is none to read off the inputs,
+  in place of the default those would commit to on their own. An input that has
+  a data type wins over it. This is how `nv_rnorm()` reaches the default float.
 * `shape_abstract()` and `naxes_abstract()` have been removed: `shape()` and
   `naxes()` now answer for every arrayish value, bare R values included, so the
   two were the same function under a second name.

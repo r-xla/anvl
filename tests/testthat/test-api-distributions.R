@@ -350,3 +350,14 @@ describe("nv_qnorm", {
     expect_equal(dtype(out), as_dtype("f32"))
   })
 })
+
+describe("eager/jit equivalence", {
+  it("agrees for nv_dnorm(), nv_pnorm() and nv_qnorm()", {
+    f64 <- function() nv_array(c(0.25, 0.75), dtype = "f64")
+    expect_eager_jit_equal_grid(list(
+      dnorm = function(x, v) nv_dnorm(f64(), mean = v),
+      pnorm = function(x, v) nv_pnorm(f64(), sd = v),
+      qnorm = function(x, v) nv_qnorm(f64(), mean = v)
+    ))
+  })
+})
