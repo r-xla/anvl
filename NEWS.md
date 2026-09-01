@@ -30,6 +30,25 @@
   caller said otherwise, so an `f64` `mean` was silently narrowed. A `mean` and
   `sd` that agree on a data type the generator cannot draw at (both integer
   arrays, say) is an error naming `dtype`, rather than a silent `"f32"`.
+* The trace no longer has a node class for an R argument whose data type is not
+  decided yet. `GraphRData` is gone: such an argument is an input like any
+  other, a `GraphValue` whose aval is an `RData`, and the bookkeeping the trace
+  needs for it lives on the descriptor rather than on a node of the graph.
+* `RDataInput` is gone with it. A finished graph's inputs all carry a plain
+  `AbstractArray`, and `graph$rdata_types` says, one entry per input, which R
+  storage type an input is uploaded from (`NA` for one the caller passes through
+  as an array). The two together carry what the subclass did, without an
+  `AbstractArray` subclass every aval consumer has to tolerate.
+  As a side effect the graph printer's `<- integer` annotation, which used to
+  follow the aval, now follows the input slot -- so it no longer appears in the
+  Outputs section for a graph like `jit(identity)` whose output *is* its input.
+* A primitive no longer declares how it promotes. `new_primitive()` and
+  `AnvlPrimitive()` lost their `promote` argument, and the wrapper that applied
+  the rule around a primitive's body is gone; a primitive whose operands must
+  agree calls `promote_operands()` at the top of its own body instead. The
+  promotion is where the operands are, rather than in an argument whose effect
+  is applied out of sight, and `only =` is no longer needed anywhere: a body
+  passes just the operands that have to agree.
 * A promotion rule is now a **function** of the call's arguments that returns the
   data type each one is brought to, rather than an opaque `PromoteRule` object
   the framework knows how to interpret. `promote_common()`, `promote_like()`,

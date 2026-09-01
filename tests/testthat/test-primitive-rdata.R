@@ -1,6 +1,6 @@
-describe("resolve_primitive_args", {
-  # A primitive brings its arrayish arguments to one data type before it records a
-  # call, following the rule it declared (see `new_primitive()`). Without that, an
+describe("a primitive's operands", {
+  # A primitive whose operands must agree brings them to one data type in its own
+  # body, before it records a call (see `promote_operands()`). Without that, an
   # R value would commit to its own default and whether the call worked would
   # depend on whether the array it met happened to be at that default -- which is
   # a fact about `default_dtype_r()`, not about the call.

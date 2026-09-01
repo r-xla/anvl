@@ -6,6 +6,6 @@
 \description{
 Virtual base class for nodes in an \code{\link{AnvlGraph}}.
 Is a \code{\link{GraphValue}}, a \code{\link{GraphLiteral}}, or -- only while tracing, and never
-as part of a primitive call -- a \code{\link{GraphRData}}.
+as part of a primitive call -- an input whose aval is an \code{\link{RData}}.
 Cannot be instantiated directly - use \code{\link[=GraphValue]{GraphValue()}} or \code{\link[=GraphLiteral]{GraphLiteral()}} instead.
 }

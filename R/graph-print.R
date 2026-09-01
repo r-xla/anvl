@@ -21,12 +21,17 @@ format_literal <- function(node) {
   sprintf("%s:%s%s", val, dt, if (length(shp)) sprintf("[%s]", shape2string(shp)) else "")
 }
 
-format_aval_short <- function(aval) {
+# `r_type` is the R storage type this value is uploaded from, out of the graph's
+# `rdata_types`. Only the Inputs section has one to pass: the "<- <r type>" note
+# says what the caller supplies and what the program uploads it as, which is a
+# fact about the input. An output that happens to *be* an input
+# (`jit(identity)`) is still just a value of its data type.
+format_aval_short <- function(aval, r_type = NA_character_) {
   out <- sprintf("%s[%s]", repr(dtype(aval)), paste(shape(aval), collapse = ", "))
-  if (is_rdata_input(aval)) {
+  if (!is.na(r_type)) {
     # An input the caller supplies as bare R data, which the program uploads at
     # the dtype shown -- worth seeing, since nothing else in the graph says so.
-    return(paste0(out, " <- ", aval$r_type))
+    return(paste0(out, " <- ", r_type))
   }
   out
 }
@@ -98,7 +103,7 @@ format_call <- function(call, node_ids, indent = "  ") {
   sprintf("%s%s = %s%s(%s)", indent, outputs_str, call$primitive$name, params_str, inputs_str)
 }
 
-format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph") {
+format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph", rdata_types = NULL) {
   lines <- character()
 
   # Build node ID mapping
@@ -109,10 +114,16 @@ format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph"
 
   # Inputs section
   if (length(inputs) > 0L) {
+    r_types <- rdata_types %||% rep(NA_character_, length(inputs))
     input_strs <- vapply(
-      inputs,
-      function(node) {
-        sprintf("    %s: %s", format_node_id(node, node_ids), format_aval_short(node$aval))
+      seq_along(inputs),
+      function(i) {
+        node <- inputs[[i]]
+        sprintf(
+          "    %s: %s",
+          format_node_id(node, node_ids),
+          format_aval_short(node$aval, r_types[[i]])
+        )
       },
       character(1)
     )
@@ -192,7 +203,8 @@ format.AnvlGraph <- function(x, ...) {
     constants = x$constants,
     calls = x$calls,
     outputs = x$outputs,
-    title = "AnvlGraph"
+    title = "AnvlGraph",
+    rdata_types = x$rdata_types
   )
 }
 
@@ -211,7 +223,8 @@ format.GraphDescriptor <- function(x, ...) {
     constants = constants,
     calls = x$calls$as_list(),
     outputs = x$outputs,
-    title = "GraphDescriptor"
+    title = "GraphDescriptor",
+    rdata_types = x$rdata_types
   )
 }
 

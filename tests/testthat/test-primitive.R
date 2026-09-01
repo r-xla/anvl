@@ -101,22 +101,23 @@ test_that("a primitive's arguments are resolved before its body runs", {
   y[2] <- 0.5
   expect_identical(as.vector(y), c(1, 0.5, 3))
 
-  # The body itself sees the resolved values, not just `graph_desc_add()`.
+  # A body that promotes its operands at the top sees the resolved values from
+  # its next line on.
   seen <- NULL
   p <- new_primitive(
     "test_resolved_at_entry",
     function(lhs, rhs) {
-      seen <<- as.character(c(peek_dtype(lhs), peek_dtype(rhs)))
-      prim_add(lhs, rhs)
+      operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+      seen <<- as.character(c(peek_dtype(operands$lhs), peek_dtype(operands$rhs)))
+      prim_add(operands$lhs, operands$rhs)
     },
-    promote = promote_yield(),
     register = FALSE
   )
   invisible(p(nv_scalar(1, dtype = "f64"), 2))
   expect_equal(seen, c("f64", "f64"))
 })
 
-test_that("a primitive with no rule leaves its arguments alone", {
+test_that("a primitive that promotes nothing leaves its arguments alone", {
   seen <- NULL
   p <- new_primitive(
     "test_unresolved_at_entry",
@@ -130,16 +131,4 @@ test_that("a primitive with no rule leaves its arguments alone", {
   # `rhs` is still the R value it was: it reports the data type it *would*
   # commit to, not `lhs`'s.
   expect_equal(seen, c("f64", "f32"))
-})
-
-test_that("an arrayish formal with a default is refused", {
-  expect_error(
-    new_primitive(
-      "test_optional_arrayish",
-      function(lhs, rhs = NULL) prim_add(lhs, rhs),
-      promote = promote_yield(),
-      register = FALSE
-    ),
-    "must all be required"
-  )
 })

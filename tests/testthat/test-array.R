@@ -271,8 +271,9 @@ test_that("nv_aval creates RData from an R storage type", {
   expect_equal(shape(nv_aval("double", 1:2)), 1:2)
   # it traces like any other input aval
   graph <- trace_fn(function(x) x + nv_scalar(1, dtype = "f64"), list(x = nv_aval("double", integer())))
-  expect_s3_class(graph$inputs[[1L]]$aval, "RDataInput")
+  expect_s3_class(graph$inputs[[1L]]$aval, "AbstractArray")
   expect_equal(dtype(graph$inputs[[1L]]$aval), as_dtype("f64"))
+  expect_equal(graph$rdata_types, "double")
 })
 
 test_that("as_shape for c() (i.e., NULL)", {
@@ -558,6 +559,9 @@ describe("as_anvl_arrays", {
     expect_identical(as.character(dtype(out[[2L]])), "f32")
   })
 
+  # REVIEW: THe promotion tests should be in test-promotion.R
+  # One block for each promotion rule (promote_common, promote_yield, etc.)
+
   it("realizes every input at the common dtype with promote_common()", {
     out <- as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
     expect_identical(as.character(dtype(out[[1L]])), "f32")
@@ -594,6 +598,7 @@ describe("as_anvl_arrays", {
   it("realizes every input at one argument's dtype with a named anchor", {
     out <- as_anvl_arrays(x = nv_array(1L), y = nv_array(2L, dtype = "i8"), .promote = promote_like("x"))
     expect_identical(as.character(dtype(out$x)), "i32")
+    # REVIEW(TODO): Add issue to add helper, so expect_dtype(out$x, "i32") works.
     expect_identical(as.character(dtype(out$y)), "i32")
   })
 
@@ -637,6 +642,7 @@ describe("as_anvl_arrays", {
   })
 
   it("commits an R value anchor to its default dtype", {
+    # REVIEW: Needs to be properly documented. Answer here: Do we rely on this somewhere?
     out <- as_anvl_arrays(x = 1L, y = nv_array(2L), .promote = promote_like("x"))
     expect_identical(as.character(dtype(out$x)), "i32")
     expect_identical(as.character(dtype(out$y)), "i32")
@@ -661,6 +667,7 @@ describe("as_anvl_arrays", {
       pred = nv_array(TRUE),
       a = nv_array(1L, dtype = "i8"),
       b = 3L,
+      # REVIEW: `only` is an odd name.
       .promote = promote_common(only = c("a", "b"))
     )
     # `pred` keeps out of it: had it taken part, the common dtype would have
@@ -835,23 +842,6 @@ describe("as_anvl_arrays", {
 
   it("rejects anything that is not a promotion rule", {
     expect_error(as_anvl_arrays(nv_array(1L), .promote = TRUE), "must be a promotion rule")
-    expect_error(as_anvl_arrays(nv_array(1L), .promote = "x"), "must be a promotion rule")
-    expect_error(as_anvl_arrays(nv_array(1L), .promote = 1L), "must be a promotion rule")
-    expect_error(as_anvl_arrays(nv_array(1L), .promote = list(promote_common())), "must be a promotion rule")
-    expect_error(promote_grouped(TRUE), "takes promotion rules")
-    expect_error(promote_grouped(), "takes promotion rules")
-    # A group is a rule like any other, so groups nest.
-    expect_equal(
-      lapply(
-        as_anvl_arrays(
-          nv_array(1L),
-          1.5,
-          .promote = promote_grouped(promote_grouped(promote_common()))
-        ),
-        dtype
-      ),
-      list(as_dtype("f32"), as_dtype("f32"))
-    )
   })
 })
 

@@ -8,7 +8,6 @@ new_primitive(
   name,
   fn,
   subgraphs = character(),
-  promote = NULL,
   static = character(),
   device = NULL,
   register = TRUE
@@ -26,27 +25,6 @@ the first argument to \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs (for higher-order primitives).}
-
-\item{promote}{(\code{NULL} | \code{function})\cr
-How the primitive brings its arrayish arguments to one data type. The rule
-is applied \emph{before the body runs}, to the non-\code{static} formals in formal
-order with \code{...} spliced in where it sits -- the same values the body goes
-on to hand \code{\link[=graph_desc_add]{graph_desc_add()}} -- so the body sees settled data types from
-its first line. That is what a primitive needs when it reads a data type or
-traces a sub-graph before it records its call.
-
-\code{NULL} (default) means no rule: every R value commits to its own default,
-and the arguments may hold any data types the primitive accepts. That is
-right for a primitive with one arrayish argument, and for one whose
-operands are deliberately heterogeneous (\code{\link[=prim_sort]{prim_sort()}}'s payload,
-\code{\link[=prim_while]{prim_while()}}'s loop state).
-
-A primitive whose arrayish arguments must \emph{agree} says so with
-\code{\link[=promote_yield]{promote_yield()}}: an argument that has a data type keeps it, and an R
-value takes the one the others have -- within its own category. This is
-what makes \code{prim_mul(x_f64, 2)} work whatever \code{x}'s data type is. Restrict
-it with \verb{only =} where some of the operands are meant to differ, such as
-\code{\link[=prim_ifelse]{prim_ifelse()}}'s \code{pred} or a gather's indices.}
 
 \item{static}{(\code{character()} | \code{integer()})\cr
 Passed to \code{\link[=jit]{jit()}}.}
@@ -70,3 +48,33 @@ the primitive registry.
 
 The backend is always \code{"auto"} and cannot be configured.
 }
+\section{Operands that must agree}{
+
+A primitive promotes nothing on its own. Where its operands have to agree on
+a data type, the body says so itself, on the values it goes on to hand
+\code{\link[=graph_desc_add]{graph_desc_add()}}:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{function(lhs, rhs) \{
+  operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+  graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
+\}
+}\if{html}{\out{</div>}}
+
+\code{\link[=promote_yield]{promote_yield()}} is the rule for it: an operand that has a data type keeps
+it, and an R value takes the one the others have, within its own category.
+That is what makes \code{prim_mul(x_f64, 2)} work whatever \code{x}'s data type is,
+while keeping a primitive from widening the array it was handed -- which is
+the \verb{nv_*} layer's job.
+
+Pass only the operands that must agree. \code{prim_ifelse()} promotes its two
+branches and leaves \code{pred} a \code{bool}; \code{prim_scatter()} promotes \code{x} and
+\code{update} and leaves the indices alone. A primitive with one arrayish operand,
+or with deliberately heterogeneous ones (\code{\link[=prim_sort]{prim_sort()}}'s payload,
+\code{\link[=prim_while]{prim_while()}}'s loop state), calls nothing.
+
+Put the call before the body uses the operands for anything else, so it sees
+settled data types throughout: \code{prim_reduce()} reads \code{dtype(init)} to trace
+its reductor and \code{prim_scatter()} builds its update computation's parameter
+slots from \code{peek_dtype(x)}, both before recording a call.
+}
+

@@ -305,10 +305,12 @@ needs, from the R data itself, which is what keeps `x / sqrt(2)` exact for an
 
 A value written in the body of a traced function is built where it is used. An
 *argument* of a jitted function cannot be: its value is unknown while tracing
-(the cache keys on R storage type and shape only), so it becomes a `GraphRData`
-node, and which data type its input is supplied at is settled only once the body
-has run. `finalize_rdata_inputs()` picks the narrowest data type that holds every
-use site, records it on the input's own aval as an `RDataInput`, and adds a
+(the cache keys on R storage type and shape only), so it becomes an input whose
+aval is an `RData` -- an input like any other, except that it has no data type
+yet -- and which data type it is supplied at is settled only once the body has
+run. `finalize_rdata_inputs()` picks the narrowest data type that holds every
+use site, stamps the input's aval with it and records the R storage type in
+the graph's `rdata_types` beside it, and adds a
 convert for each further data type the body asked for.
 
 ```{r}

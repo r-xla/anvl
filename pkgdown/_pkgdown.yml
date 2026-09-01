@@ -370,7 +370,6 @@ reference:
       - GraphValue
       - GraphBox
       - GraphLiteral
-      - GraphRData
       - AnvlBox
       - graph_desc_add
       - local_descriptor
@@ -390,7 +389,6 @@ reference:
       - ConcreteArray
       - LiteralArray
       - RData
-      - RDataInput
       - IotaArray
       - peek_dtype
       - to_abstract

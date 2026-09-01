@@ -9,12 +9,9 @@
 #'   The name of the primitive.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs. Only used if `higher_order = TRUE`.
-#' @param promote (`NULL` | `function`)\cr
-#'   How the primitive brings its arrayish arguments to one data type before it
-#'   records a call. See [`new_primitive()`].
 #' @return (`AnvlPrimitive`)
 #' @export
-AnvlPrimitive <- function(name, subgraphs = character(), promote = NULL) {
+AnvlPrimitive <- function(name, subgraphs = character()) {
   checkmate::assert_string(name)
   checkmate::assert_character(subgraphs)
 
@@ -22,7 +19,6 @@ AnvlPrimitive <- function(name, subgraphs = character(), promote = NULL) {
   env$name <- name
   env$rules <- list()
   env$subgraphs <- subgraphs
-  env$promote <- promote
 
   structure(env, class = "AnvlPrimitive")
 }
@@ -95,26 +91,34 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   the first argument to [`graph_desc_add()`].
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
-#' @param promote (`NULL` | `function`)\cr
-#'   How the primitive brings its arrayish arguments to one data type. The rule
-#'   is applied *before the body runs*, to the non-`static` formals in formal
-#'   order with `...` spliced in where it sits -- the same values the body goes
-#'   on to hand [`graph_desc_add()`] -- so the body sees settled data types from
-#'   its first line. That is what a primitive needs when it reads a data type or
-#'   traces a sub-graph before it records its call.
+#' @section Operands that must agree:
+#' A primitive promotes nothing on its own. Where its operands have to agree on
+#' a data type, the body says so itself, on the values it goes on to hand
+#' [`graph_desc_add()`]:
 #'
-#'   `NULL` (default) means no rule: every R value commits to its own default,
-#'   and the arguments may hold any data types the primitive accepts. That is
-#'   right for a primitive with one arrayish argument, and for one whose
-#'   operands are deliberately heterogeneous ([`prim_sort()`]'s payload,
-#'   [`prim_while()`]'s loop state).
+#' ```r
+#' function(lhs, rhs) {
+#'   operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+#'   graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
+#' }
+#' ```
 #'
-#'   A primitive whose arrayish arguments must *agree* says so with
-#'   [`promote_yield()`]: an argument that has a data type keeps it, and an R
-#'   value takes the one the others have -- within its own category. This is
-#'   what makes `prim_mul(x_f64, 2)` work whatever `x`'s data type is. Restrict
-#'   it with `only =` where some of the operands are meant to differ, such as
-#'   [`prim_ifelse()`]'s `pred` or a gather's indices.
+#' [`promote_yield()`] is the rule for it: an operand that has a data type keeps
+#' it, and an R value takes the one the others have, within its own category.
+#' That is what makes `prim_mul(x_f64, 2)` work whatever `x`'s data type is,
+#' while keeping a primitive from widening the array it was handed -- which is
+#' the `nv_*` layer's job.
+#'
+#' Pass only the operands that must agree. `prim_ifelse()` promotes its two
+#' branches and leaves `pred` a `bool`; `prim_scatter()` promotes `x` and
+#' `update` and leaves the indices alone. A primitive with one arrayish operand,
+#' or with deliberately heterogeneous ones ([`prim_sort()`]'s payload,
+#' [`prim_while()`]'s loop state), calls nothing.
+#'
+#' Put the call before the body uses the operands for anything else, so it sees
+#' settled data types throughout: `prim_reduce()` reads `dtype(init)` to trace
+#' its reductor and `prim_scatter()` builds its update computation's parameter
+#' slots from `peek_dtype(x)`, both before recording a call.
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
 #' @param device (`NULL` | `character(1)` | `device_arg()`)\cr
@@ -129,7 +133,6 @@ new_primitive <- function(
   name,
   fn,
   subgraphs = character(),
-  promote = NULL,
   static = character(),
   device = NULL,
   register = TRUE
@@ -139,7 +142,7 @@ new_primitive <- function(
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
-  primitive <- AnvlPrimitive(name, subgraphs = subgraphs, promote = promote)
+  primitive <- AnvlPrimitive(name, subgraphs = subgraphs)
 
   # Bind `self` (the AnvlPrimitive) in a per-primitive env wrapped around fn's
   # existing enclosing env, so the body can reference the primitive directly —
@@ -149,10 +152,6 @@ new_primitive <- function(
   self_env <- new.env(parent = environment(fn))
   self_env$self <- primitive
   environment(fn) <- self_env
-
-  if (!is.null(promote)) {
-    fn <- wrap_promote_resolution(fn, primitive, static)
-  }
 
   jit_fn <- jit(fn, static = static, backend = "auto", device = device)
   attr(jit_fn, "primitive") <- primitive
@@ -165,73 +164,6 @@ new_primitive <- function(
   jit_fn
 }
 
-# Wrap a primitive body so its arrayish arguments are resolved *before* the body
-# runs, rather than when the body records its call. The body then sees settled
-# data types throughout, which is what a primitive that uses an operand before
-# recording needs: `prim_reduce()` reads `dtype(init)` to trace its reductor,
-# and `prim_scatter()` builds its update computation's parameter slots from
-# `peek_dtype(x)`. Both would otherwise see an R value that has not taken the
-# other operand's data type yet.
-#
-# The arrayish arguments are the non-`static` formals in formal order, with
-# `...` spliced in where it sits -- the same list, in the same order and under
-# the same names, that the body goes on to hand `graph_desc_add()`, so a rule's
-# `only =` and `promote_like()` name the same things in both places.
-#
-# Installed only for a primitive that declares a rule; one with `promote = NULL`
-# is called directly. This runs on every traced and eager primitive call, so the
-# wrapper is specialized here rather than branching per call: where the formals
-# hold no `...`, the resolved values are written back over them and the original
-# body is inlined, which costs one `mget` and one `list2env` and no second call
-# frame.
-wrap_promote_resolution <- function(fn, primitive, static) {
-  fmls <- formals(fn)
-  nms <- names(fmls)
-  static_nms <- if (is.character(static)) static else nms[static]
-  arrayish <- setdiff(nms, c(static_nms, "..."))
-  dots_at <- match("...", nms, nomatch = 0L)
-  optional <- arrayish[vapply(fmls[arrayish], function(d) !identical(d, quote(expr = )), logical(1L))]
-  if (length(optional)) {
-    cli_abort(c(
-      "A primitive's arrayish arguments must all be required.",
-      x = "{.val {optional}} {?has/have} a default, so the resolver cannot tell an omitted one from a supplied one.", # nolint
-      i = "Give it no default, or declare it {.arg static}."
-    ))
-  }
-
-  env <- new.env(parent = environment(fn))
-  env$.primitive <- primitive
-  env$.arrayish <- arrayish
-
-  wrapper <- fn
-  environment(wrapper) <- env
-  if (dots_at) {
-    # `...` cannot be written back over, so the body is re-invoked with the
-    # resolved values instead of being inlined.
-    env$.fn <- fn
-    # Where the dots sit among the arrayish arguments, so they are spliced into
-    # the position the body would have built them into.
-    env$.dots_after <- sum(match(arrayish, nms) < dots_at)
-    env$.static_nms <- static_nms
-    body(wrapper) <- quote({
-      .args <- append(mget(.arrayish), list(...), after = .dots_after)
-      do.call(.fn, c(resolve_primitive_args(.primitive, .args), mget(.static_nms)), quote = TRUE)
-    })
-    return(wrapper)
-  }
-  prologue <- quote(list2env(resolve_primitive_args(.primitive, mget(.arrayish)), environment()))
-  body(wrapper) <- as.call(c(as.name("{"), prologue, body_statements(fn)))
-  wrapper
-}
-
-# The statements of a function's body, whether or not it is a `{` block.
-body_statements <- function(fn) {
-  b <- body(fn)
-  if (is.call(b) && identical(b[[1L]], as.name("{"))) {
-    return(as.list(b)[-1L])
-  }
-  list(b)
-}
 
 #' @title Get Subgraphs from Higher-Order Primitive
 #' @description

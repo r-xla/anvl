@@ -85,29 +85,38 @@ describe("RData", {
   })
 })
 
-describe("RDataInput", {
-  it("names both data types it stands between", {
-    x <- RDataInput("f64", c(2L, 3L), "double")
-    expect_identical(format(x), "RDataInput(f64, double, (2,3))")
-    expect_identical(repr(x), "f64[2x3]<-double")
-  })
-
-  it("records on the input itself which data type it is uploaded at", {
+describe("a finished graph's R inputs", {
+  it("records which data type each is uploaded at, and from which R type", {
     graph <- trace_fn(
       function(x, y) x + y,
       list(x = nv_aval("f64", 2L), y = nv_aval("double", integer()))
     )
-    # It lives on the input's own aval, not beside it.
+    # Every input's aval is a plain AbstractArray: the data type it is supplied
+    # at, and nothing else.
     expect_s3_class(graph$inputs[[1L]]$aval, "AbstractArray")
-    expect_false(is_rdata_input(graph$inputs[[1L]]$aval))
-    expect_s3_class(graph$inputs[[2L]]$aval, "RDataInput")
+    expect_s3_class(graph$inputs[[2L]]$aval, "AbstractArray")
     expect_equal(dtype(graph$inputs[[2L]]$aval), as_dtype("f64"))
-    expect_equal(graph$inputs[[2L]]$aval$r_type, "double")
-    # ... and the vector the backends read is derived from it.
+    # Which of them the caller supplies as bare R data, and as what, is beside
+    # them -- one entry per input, NA for an array the caller passes through.
+    expect_equal(graph$rdata_types, c(NA_character_, "double"))
+    expect_length(graph$rdata_types, length(graph$inputs))
+    # ... and the vector the backends read is derived from the two together.
     expect_equal(graph_input_dtypes(graph), c(NA, "f64"))
     # No R input at all means nothing to upload, and the backends skip the step.
     plain <- trace_fn(function(x) x + 1, list(x = nv_aval("f64", 2L)))
     expect_null(graph_input_dtypes(plain))
+    expect_true(is.null(plain$rdata_types) || all(is.na(plain$rdata_types)))
+  })
+
+  it("survives the graph passes, which replace inputs but never reorder them", {
+    graph <- optimize_graph(
+      trace_fn(
+        function(x, y) x + y,
+        list(x = nv_aval("f64", 2L), y = nv_aval("double", integer()))
+      )
+    )
+    expect_length(graph$rdata_types, length(graph$inputs))
+    expect_equal(graph_input_dtypes(graph), c(NA, "f64"))
   })
 })
 
@@ -149,7 +158,8 @@ describe("resolve_upload_dtype", {
       list(a = nv_aval("f16", integer()), b = nv_aval("bf16", integer()), v = nv_aval("double", integer()))
     )
     expect_equal(graph_input_dtypes(graph), c(NA, NA, "f32"))
-    expect_equal(repr(graph$inputs[[3L]]$aval), "f32[]<-double")
+    expect_equal(repr(graph$inputs[[3L]]$aval), "f32[]")
+    expect_equal(graph$rdata_types, c(NA_character_, NA_character_, "double"))
     converts <- Filter(function(call) call$primitive$name == "convert", graph$calls)
     expect_length(converts, 2L)
     expect_setequal(

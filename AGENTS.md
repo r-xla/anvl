@@ -36,9 +36,10 @@ exact. See `vignette("type-promotion")`.
 
 A value written in the body is built where it is used (`build_r_at()`) and is
 carried as the bare R value until then. An *argument* of a jitted function
-cannot be: its value is unknown while tracing, so it becomes an `RData` (an
-`AbstractArray` with no dtype) in a `GraphRData` node, and the finished trace
-settles which dtype its input is supplied at -- an `RDataInput`.
+cannot be: its value is unknown while tracing, so it takes an input whose aval
+is an `RData` (an `AbstractArray` with no dtype) -- an input like any other,
+except that it has no dtype yet -- and the finished trace settles which dtype it
+is supplied at.
 
 - **Canonicalize once, with a rule.** Call `as_anvl_arrays()` over the whole
   argument set at the top of an `nv_*` function: it aligns devices and backends,
@@ -58,22 +59,20 @@ settles which dtype its input is supplied at -- an `RDataInput`.
   covers is written as one rather than added to them -- see the *Writing a rule*
   section of `?promote_rule`. The framework realizes what a rule names and checks
   nothing, so a rule that names a target does its own refusing.
-  A rule is just a *function* of the call's arguments returning the dtype each
-  is brought to (`NULL` to leave one alone), so a promotion none of the four
-  covers is written as one rather than added to them -- see the *Writing a rule*
-  section of `?promote_rule`. The framework realizes what a rule names and checks
-  nothing, so a rule that names a target does its own refusing.
 - **Never call `dtype()` on an argument that may be a bare R value** -- there is
   nothing to report yet, so it errors. Use `peek_dtype()` to ask what it *would*
   commit to (a category test, a `nan_rm` branch), and commit it only where that
   dtype becomes the operation's own. `shape()` and `naxes()` answer as usual.
-- **A primitive** promotes nothing unless it says so: `new_primitive()`'s
-  `promote` defaults to `NULL`. A primitive whose arrayish arguments must agree
-  declares `promote = promote_yield()` (restricted with `only =` where some
-  operands are meant to differ), which is what makes `prim_mul(x_f64, 2)` work.
-  The rule is applied *before the body runs*, by the wrapper `new_primitive()`
-  puts around it, so the body may read a data type or trace a sub-graph without
-  meeting an unresolved operand.
+- **A primitive** promotes nothing unless its body says so. One whose operands
+  must agree calls `promote_operands()` on them, on the same list it goes on to
+  hand `graph_desc_add()`:
+  `operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())`.
+  That is what makes `prim_mul(x_f64, 2)` work. Pass only the operands that must
+  agree -- `prim_ifelse()` leaves `pred` a `bool` and `prim_scatter()` leaves its
+  indices alone -- and put the call before the body uses them for anything else,
+  so a body that reads a data type or traces a sub-graph never meets an
+  unresolved operand (`prim_reduce()` reads `dtype(init)`, `prim_scatter()`
+  reads `peek_dtype(x)`).
   An R value then takes the dtype the other operands have, but only **within its
   own category**: a double becomes a float, an integer an integer, a logical a
   `bool`. Crossing a category is promotion and belongs to the `nv_*` layer, so
@@ -87,9 +86,11 @@ settles which dtype its input is supplied at -- an `RDataInput`.
   `nv_convert()` and the primitives take it as it is.
 - **As a jitted function's argument** the value is unknown at trace time (the
   cache keys it by R type and shape only, so the program must not depend on it).
-  Its input aval is an `RDataInput` carrying the dtype the trace decided it is
-  uploaded at; `graph_input_dtypes()` reads those off for pjrt's dispatcher and
-  the quickr wrapper.
+  Once the trace is finished its input aval is a plain `AbstractArray` at the
+  dtype the trace decided it is uploaded at, and `graph$rdata_types` says, one
+  entry per input, which R storage type it is uploaded *from* (`NA` for an input
+  the caller passes through as an array). `graph_input_dtypes()` reads the two
+  together for pjrt's dispatcher and the quickr wrapper.
 
 ## Primitive System
 

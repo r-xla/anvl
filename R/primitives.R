@@ -10,7 +10,8 @@ make_binary_op <- function(stablehlo_infer) {
     list(vt2at(stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]))
   }
   function(lhs, rhs) {
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
+    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
 
@@ -108,7 +109,7 @@ prim_fill <- new_primitive(
 #' y <- nv_array(c(4, 5, 6))
 #' prim_add(x, y)
 #' @export
-prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add), promote = promote_yield())
+prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 
 #' @title Primitive Multiplication
 #' @description
@@ -125,7 +126,7 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add), pro
 #' y <- nv_array(c(4, 5, 6))
 #' prim_mul(x, y)
 #' @export
-prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply), promote = promote_yield())
+prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply))
 
 #' @title Primitive Subtraction
 #' @description
@@ -142,7 +143,7 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #' y <- nv_array(c(4, 5, 6))
 #' prim_sub(x, y)
 #' @export
-prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract), promote = promote_yield())
+prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract))
 
 #' @title Primitive Negation
 #' @description
@@ -176,7 +177,7 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' y <- nv_array(c(2, 5, 10))
 #' prim_div(x, y)
 #' @export
-prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide), promote = promote_yield())
+prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide))
 
 #' @title Primitive Power
 #' @description
@@ -193,7 +194,7 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' y <- nv_array(c(3, 2, 1))
 #' prim_pow(x, y)
 #' @export
-prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power), promote = promote_yield())
+prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 
 #' @title Primitive Broadcast
 #' @description
@@ -290,9 +291,10 @@ prim_dot_general <- new_primitive(
       out <- stablehlo::infer_types_dot_general(at2vt(lhs), at2vt(rhs), dot_dimension_numbers = ddn)[[1L]]
       list(vt2at(out))
     }
+    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
     graph_desc_add(
       self,
-      list(lhs = lhs, rhs = rhs),
+      operands,
       list(
         contracting_axes = contracting_axes,
         batching_axes = batching_axes,
@@ -301,8 +303,7 @@ prim_dot_general <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = 3:5,
-  promote = promote_yield()
+  static = 3:5
 )
 
 #' @title Primitive Transpose
@@ -433,13 +434,12 @@ prim_concatenate <- new_primitive(
     }
     graph_desc_add(
       self,
-      args = dots,
+      args = promote_operands(dots, promote_yield()),
       params = list(axis = axis),
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = "axis",
-  promote = promote_yield()
+  static = "axis"
 )
 
 #' @title Primitive Static Slice
@@ -629,15 +629,14 @@ prim_dynamic_update_slice <- new_primitive(
       out <- AbstractArray(dtype = x$dtype, shape = shape(x))
       list(out)
     }
+    operands <- promote_operands(list(x = x, update = update), promote_yield())
     graph_desc_add(
       self,
-      args = c(list(x = x, update = update), start_indices),
+      args = c(operands, start_indices),
       params = list(),
       infer_fn = infer_fn
     )[[1L]]
-  },
-  # `x` and `update` must agree; the variadic start indices are integers.
-  promote = promote_yield(only = 1:2)
+  }
 )
 
 
@@ -967,6 +966,10 @@ prim_reduce <- new_primitive(
     force(x)
     force(init)
     force(reductor)
+    # Settled before the reductor is traced below, which reads `dtype(init)`.
+    operands <- promote_operands(list(x = x, init = init), promote_yield())
+    x <- operands$x
+    init <- operands$init
 
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     if (!checkmate::test_flag(drop)) {
@@ -1042,15 +1045,14 @@ prim_reduce <- new_primitive(
 
     graph_desc_add(
       self,
-      args = list(x = x, init = init),
+      args = operands,
       params = list(axes = axes, drop = drop, reductor_graph = reductor_graph),
       infer_fn = infer_fn,
       desc = current_desc
     )[[1L]]
   },
   subgraphs = "reductor_graph",
-  static = c("axes", "drop", "reductor"),
-  promote = promote_yield()
+  static = c("axes", "drop", "reductor")
 )
 
 # Shared shape inference for prim_argmax / prim_argmin: x -> i32
@@ -1176,7 +1178,8 @@ make_compare_op <- function(direction) {
   force(direction)
   infer_fn <- function(lhs, rhs) infer_compare(lhs, rhs, direction)
   function(lhs, rhs) {
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
+    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
 
@@ -1195,7 +1198,7 @@ make_compare_op <- function(direction) {
 #' y <- nv_array(c(1, 3, 2))
 #' prim_eq(x, y)
 #' @export
-prim_eq <- new_primitive("equal", make_compare_op("EQ"), promote = promote_yield())
+prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 
 #' @title Primitive Not Equal
 #' @description
@@ -1212,7 +1215,7 @@ prim_eq <- new_primitive("equal", make_compare_op("EQ"), promote = promote_yield
 #' y <- nv_array(c(1, 3, 2))
 #' prim_ne(x, y)
 #' @export
-prim_ne <- new_primitive("not_equal", make_compare_op("NE"), promote = promote_yield())
+prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 
 #' @title Primitive Greater Than
 #' @description
@@ -1229,7 +1232,7 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"), promote = promote_y
 #' y <- nv_array(c(3, 2, 1))
 #' prim_gt(x, y)
 #' @export
-prim_gt <- new_primitive("greater", make_compare_op("GT"), promote = promote_yield())
+prim_gt <- new_primitive("greater", make_compare_op("GT"))
 
 #' @title Primitive Greater Equal
 #' @description
@@ -1246,7 +1249,7 @@ prim_gt <- new_primitive("greater", make_compare_op("GT"), promote = promote_yie
 #' y <- nv_array(c(3, 2, 1))
 #' prim_ge(x, y)
 #' @export
-prim_ge <- new_primitive("greater_equal", make_compare_op("GE"), promote = promote_yield())
+prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 
 #' @title Primitive Less Than
 #' @description
@@ -1263,7 +1266,7 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"), promote = promo
 #' y <- nv_array(c(3, 2, 1))
 #' prim_lt(x, y)
 #' @export
-prim_lt <- new_primitive("less", make_compare_op("LT"), promote = promote_yield())
+prim_lt <- new_primitive("less", make_compare_op("LT"))
 
 #' @title Primitive Less Equal
 #' @description
@@ -1280,7 +1283,7 @@ prim_lt <- new_primitive("less", make_compare_op("LT"), promote = promote_yield(
 #' y <- nv_array(c(3, 2, 1))
 #' prim_le(x, y)
 #' @export
-prim_le <- new_primitive("less_equal", make_compare_op("LE"), promote = promote_yield())
+prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 
 # additional simple binary primitives -----------------------------------------
 
@@ -1299,7 +1302,7 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"), promote = promote_
 #' y <- nv_array(c(4, 2, 6))
 #' prim_max(x, y)
 #' @export
-prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum), promote = promote_yield())
+prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
 
 #' @title Primitive Minimum
 #' @description
@@ -1316,7 +1319,7 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #' y <- nv_array(c(4, 2, 6))
 #' prim_min(x, y)
 #' @export
-prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum), promote = promote_yield())
+prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
 
 #' @title Primitive Remainder
 #' @description
@@ -1336,8 +1339,7 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' @export
 prim_remainder <- new_primitive(
   "remainder",
-  make_binary_op(stablehlo::infer_types_remainder),
-  promote = promote_yield()
+  make_binary_op(stablehlo::infer_types_remainder)
 )
 
 #' @title Primitive And
@@ -1355,7 +1357,7 @@ prim_remainder <- new_primitive(
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_and(x, y)
 #' @export
-prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and), promote = promote_yield())
+prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 
 #' @title Primitive Not
 #' @description
@@ -1389,7 +1391,7 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_or(x, y)
 #' @export
-prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or), promote = promote_yield())
+prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 
 #' @title Primitive Xor
 #' @description
@@ -1406,7 +1408,7 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or), promot
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' prim_xor(x, y)
 #' @export
-prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor), promote = promote_yield())
+prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
 
 infer_shift <- function(lhs, rhs, shift_fn) {
   out <- shift_fn(at2vt(lhs), at2vt(rhs))[[1L]]
@@ -1433,9 +1435,9 @@ prim_shift_left <- new_primitive(
   "shift_left",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_left)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  },
-  promote = promote_yield()
+    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
+  }
 )
 
 #' @title Primitive Logical Shift Right
@@ -1457,9 +1459,9 @@ prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_logical)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  },
-  promote = promote_yield()
+    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
+  }
 )
 
 #' @title Primitive Arithmetic Shift Right
@@ -1481,9 +1483,9 @@ prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_arithmetic)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
-  },
-  promote = promote_yield()
+    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
+  }
 )
 
 #' @title Primitive Atan2
@@ -1501,7 +1503,7 @@ prim_shift_right_arithmetic <- new_primitive(
 #' x <- nv_array(c(0, 1, 0))
 #' prim_atan2(y, x)
 #' @export
-prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2), promote = promote_yield())
+prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2))
 
 #' @title Primitive Bitcast Convert
 #' @description
@@ -1981,9 +1983,9 @@ prim_polygamma <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
-    graph_desc_add(self, list(n = n, x = x), infer_fn = infer_fn)[[1L]]
-  },
-  promote = promote_yield()
+    operands <- promote_operands(list(n = n, x = x), promote_yield())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
+  }
 )
 
 #' @title Primitive Error Function
@@ -2115,16 +2117,16 @@ prim_clamp <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
+    operands <- promote_operands(list(min_val = min_val, x = x, max_val = max_val), promote_yield())
     graph_desc_add(
       self,
-      list(min_val = min_val, x = x, max_val = max_val),
+      operands,
       list(),
       infer_fn = infer_fn
     )[[
       1L
     ]]
-  },
-  promote = promote_yield()
+  }
 )
 
 #' @title Primitive Reverse
@@ -2258,9 +2260,10 @@ prim_pad <- new_primitive(
       list(out)
     }
 
+    operands <- promote_operands(list(x = x, padding_value = padding_value), promote_yield())
     graph_desc_add(
       self,
-      list(x = x, padding_value = padding_value),
+      operands,
       list(
         edge_padding_low = edge_padding_low,
         edge_padding_high = edge_padding_high,
@@ -2269,8 +2272,7 @@ prim_pad <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = 3:5,
-  promote = promote_yield()
+  static = 3:5
 )
 
 #' @title Primitive Round
@@ -2390,16 +2392,16 @@ prim_ifelse <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
+    # `pred` is a bool and keeps out of it; the two branches must agree.
+    operands <- promote_operands(list(true_value = true_value, false_value = false_value), promote_yield())
     graph_desc_add(
       self,
-      list(pred = pred, true_value = true_value, false_value = false_value),
+      c(list(pred = pred), operands),
       infer_fn = infer_fn
     )[[
       1L
     ]]
-  },
-  # `pred` is a bool and keeps out of it; the two branches must agree.
-  promote = promote_yield(only = c("true_value", "false_value"))
+  }
 )
 
 # Higher order primitives -------------------------------------------------------
@@ -2920,6 +2922,12 @@ prim_scatter <- new_primitive(
     force(x)
     force(scatter_indices)
     force(update)
+    # Settled before `peek_dtype(x)` below builds the update computation's
+    # parameter slots. `scatter_indices` keeps out of it: it is an index array,
+    # not an operand `x` and `update` have to agree with.
+    operands <- promote_operands(list(x = x, update = update), promote_yield())
+    x <- operands$x
+    update <- operands$update
     if (is.null(update_computation)) {
       update_computation <- function(old, new) new
     } else if (!is.function(update_computation)) {
@@ -3012,8 +3020,6 @@ prim_scatter <- new_primitive(
 
     out[[1L]]
   },
-  # The value operands must agree; the scatter indices are integers.
-  promote = promote_yield(only = c("x", "update")),
   subgraphs = "update_computation_graph",
   static = 4:12
 )
@@ -3277,9 +3283,10 @@ prim_triangular_solve <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
+    operands <- promote_operands(list(a = a, b = b), promote_yield())
     graph_desc_add(
       self,
-      list(a = a, b = b),
+      operands,
       list(
         left_side = left_side,
         lower = lower,
@@ -3289,8 +3296,7 @@ prim_triangular_solve <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = 3:6,
-  promote = promote_yield()
+  static = 3:6
 )
 
 #' @title Primitive QR Decomposition
@@ -3596,9 +3602,10 @@ prim_convolution <- new_primitive(
       )[[1L]]
       list(vt2at(out))
     }
+    operands <- promote_operands(list(x = x, kernel = kernel), promote_yield())
     graph_desc_add(
       self,
-      list(x = x, kernel = kernel),
+      operands,
       list(
         input_batch_axis = input_batch_axis,
         input_feature_axis = input_feature_axis,
@@ -3620,6 +3627,5 @@ prim_convolution <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = 3:18,
-  promote = promote_yield()
+  static = 3:18
 )

@@ -22,6 +22,7 @@ The \code{\link{AbstractArray}} of a non-static R value that was passed to a jit
 function.
 It is special, because it does not have a data type and calling \code{dtype()} on it
 results in an error.
+it only exists during tracing, never in a finalized graph.
 
 It carries no data. Nothing needs the R data \emph{through} the aval: a value
 written in the body of a traced function is built from the R value itself at
@@ -30,10 +31,12 @@ in the first place -- it is deliberately unknown while tracing, since the
 compiled program is cached by the argument's R storage type and shape and so
 must not depend on the value.
 
-Only that argument gets a node of its own, a \code{\link{GraphRData}}, whose input
-dtype the finished trace settles -- see \code{\link{RDataInput}}. An in-body value gets
-none; \code{\link[=to_abstract]{to_abstract()}} still answers with an \code{RData} for one, which is how
-the \link[=promote_rule]{promotion rules} recognise "an R value, data type open".
+Only that argument takes an input of its own, whose data type the finished
+trace settles: the input's aval is this class while the trace runs, and a
+plain \code{\link{AbstractArray}} once resolved, with the R storage type recorded in
+the graph's \code{rdata_types} beside it. An in-body value gets no input at all;
+\code{\link[=to_abstract]{to_abstract()}} still answers with an \code{RData} for one, which is how the
+\link[=promote_rule]{promotion rules} recognise "an R value, data type open".
 
 Which dtype a use site needs is normally not decided value by value: an
 \verb{nv_*} function canonicalizes its whole argument set once at the top with
@@ -74,10 +77,10 @@ report. Give the value a dtype (e.g. \code{\link[=nv_array]{nv_array()}}, \code{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- RData(integer(), "double")
 x
-# same as
-nv_aval("double", integer())
 shape(x)
 # dtype(x) would error: an R double has no data type of its own
+# same as
+nv_aval("double", integer())
 
 # How it appears during tracing
 graph <- trace_fn(function(x) x, list(x = RData(integer(), "double")))
@@ -85,5 +88,5 @@ graph
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link{AbstractArray}, \link{RDataInput}, \link{GraphRData}
+\link{AbstractArray}, \link{AnvlGraph}
 }
