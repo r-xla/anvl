@@ -27,20 +27,15 @@ differentiation. Programs can run on CPU and NVIDIA GPU.
 install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-The PJRT plugins anvl runs on are downloaded separately, on demand. To
-download them right away instead of when they are first needed:
+Afterwards, install the additional dependencies as follows:
 
 ``` r
 anvl::install_anvl()
 ```
 
-CUDA support is only available on Linux (x86_64 and ARM). There, this
-also installs the CUDA plugin when an NVIDIA GPU is detected; pass
-`cuda = TRUE` to install it regardless.
-
 See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
-details, including prebuilt Docker images.
+details and prebuilt Docker images.
 
 ## Why anvl
 
