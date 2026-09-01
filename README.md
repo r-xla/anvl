@@ -13,7 +13,7 @@ Package website: [release](https://r-xla.github.io/anvl/) \|
 status](https://www.r-pkg.org/badges/version/anvl)](https://CRAN.R-project.org/package=anvl)
 [![codecov](https://codecov.io/gh/r-xla/anvl/branch/main/graph/badge.svg)](https://codecov.io/gh/r-xla/anvl)
 [![r-universe](https://r-xla.r-universe.dev/badges/anvl)](https://r-xla.r-universe.dev/anvl)
-![CUDA 12.8](https://img.shields.io/badge/CUDA-12.8-green.svg)
+![CUDA 13.3](https://img.shields.io/badge/CUDA-13.3-green.svg)
 <!-- badges: end -->
 
 Accelerated array computing and code transformations for R, allowing you
@@ -34,8 +34,8 @@ download them right away instead of when they are first needed:
 anvl::install_anvl()
 ```
 
-CUDA support is only available on linux x86_64 (amd64). There, this also
-installs the CUDA plugin when an NVIDIA GPU is detected; pass
+CUDA support is only available on Linux (x86_64 and ARM). There, this
+also installs the CUDA plugin when an NVIDIA GPU is detected; pass
 `cuda = TRUE` to install it regardless.
 
 See the [installation
@@ -117,13 +117,14 @@ the package website.
 
 ## Platform Support
 
-| Platform              | CPU |    CUDA     |
-|-----------------------|:---:|:-----------:|
-| Linux (x86_64)        |  ✓  |      ✓      |
-| Linux (ARM)           |  ✓  |      ✓      |
-| Windows               |  ✓  | ◐ WSL2 only |
-| macOS (Apple Silicon) |  ✓  |      ✗      |
-| macOS (Intel)         |  ✓  |      ✗      |
+| OS      | Architecture   | CPU |    CUDA     |
+|---------|----------------|:---:|:-----------:|
+| Linux   | x86_64         |  ✓  |      ✓      |
+| Linux   | ARM (aarch64)  |  ✓  |      ✓      |
+| Windows | x86_64         |  ✓  | ◐ WSL2 only |
+| Windows | ARM            |  ✗  |      ✗      |
+| macOS   | Apple silicon  |  ✓  |      ✗      |
+| macOS   | Intel (x86_64) |  ✓  |      ✗      |
 
 ✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
 
