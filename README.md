@@ -117,16 +117,16 @@ the package website.
 
 ## Platform Support
 
-| OS      | Architecture | CPU |    CUDA     |
-|---------|--------------|:---:|:-----------:|
-| Linux   | x86_64       |  ✓  |      ✓      |
-| Linux   | arm64        |  ✓  |      ✓      |
-| Windows | x86_64       |  ✓  | ◐ WSL2 only |
-| Windows | arm64        |  ✗  |      ✗      |
-| macOS   | x86_64       |  ✓  |      ✗      |
-| macOS   | arm64        |  ✓  |      ✗      |
+| OS      | Architecture | CPU | CUDA |
+|---------|--------------|:---:|:----:|
+| Linux   | x86_64       |  ✓  |  ✓   |
+| Linux   | arm64        |  ✓  |  ✓   |
+| Windows | x86_64       |  ✓  | WSL2 |
+| Windows | arm64        |  ✗  |  ✗   |
+| macOS   | x86_64       |  ✓  |  ✗   |
+| macOS   | arm64        |  ✓  |  ✗   |
 
-✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
+✓ fully supported  ·  ✗ not supported
 
 ## Acknowledgments
 

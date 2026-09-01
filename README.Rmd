@@ -99,12 +99,12 @@ For more complex examples, such as implementing a Gaussian Process, see the pack
 | ------- | ------------ | :---: | :------------: |
 | Linux   | x86_64       |   ✓   |   ✓            |
 | Linux   | arm64        |   ✓   |   ✓            |
-| Windows | x86_64       |   ✓   |   ◐ WSL2 only  |
+| Windows | x86_64       |   ✓   |   WSL2         |
 | Windows | arm64        |   ✗   |   ✗            |
 | macOS   | x86_64       |   ✓   |   ✗            |
 | macOS   | arm64        |   ✓   |   ✗            |
 
-✓ fully supported &nbsp;·&nbsp; ◐ limited support &nbsp;·&nbsp; ✗ not supported
+✓ fully supported &nbsp;·&nbsp; ✗ not supported
 
 ## Acknowledgments
 
