@@ -130,7 +130,7 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
   A1 <- nv_array(
     1:12,
     shape = c(2, 2, 3),
-    dtype = "f32",
+    dtype = "f32"
   )
   B1 <- nv_array(
     1:12,
@@ -788,6 +788,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("1D: full", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(6L), )
   })
 
@@ -800,6 +801,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("2D: range + full", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(6L, 4L), 2:4, )
   })
 
@@ -808,6 +810,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("2D: gather in first, full second", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(6L, 4L), array(c(1L, 3L, 5L)), )
   })
 
@@ -816,6 +819,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("3D: range, single, full", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(4L, 5L, 3L), 1:3, 2L, )
   })
 })
