@@ -15,21 +15,16 @@ differentiation. Programs can run on CPU and NVIDIA GPU.
 install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-The PJRT plugins anvl runs on are downloaded separately, on demand. To
-download them right away instead of when they are first needed:
+Afterwards, install the additional dependencies as follows:
 
 ``` r
 
 anvl::install_anvl()
 ```
 
-CUDA support is only available on linux x86_64 (amd64). There, this also
-installs the CUDA plugin when an NVIDIA GPU is detected; pass
-`cuda = TRUE` to install it regardless.
-
 See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
-details, including prebuilt Docker images.
+details and prebuilt Docker images.
 
 ## Why anvl
 
@@ -97,8 +92,8 @@ g_jit(a, b, x)
 #> $a
 #> AnvlArray
 #>  3
-#> [ CPUf32{} ]
-#>
+#> [ CPUf32{} ] 
+#> 
 #> $b
 #> AnvlArray
 #>  1
@@ -110,15 +105,16 @@ the package website.
 
 ## Platform Support
 
-| Platform              | CPU |        GPU         |
-|-----------------------|:---:|:------------------:|
-| Linux (x86_64)        |  ✓  |       ✓ CUDA       |
-| Linux (ARM)           |  ✓  |         ✗          |
-| Windows               |  ✓  | ◐ WSL2 only (CUDA) |
-| macOS (Apple Silicon) |  ✓  |         ✗          |
-| macOS (Intel)         |  ✗  |         ✗          |
+| OS      | Architecture | CPU | CUDA |
+|---------|--------------|:---:|:----:|
+| Linux   | x86_64       |  ✓  |  ✓   |
+| Linux   | arm64        |  ✓  |  ✓   |
+| Windows | x86_64       |  ✓  | WSL2 |
+| Windows | arm64        |  ✗  |  ✗   |
+| macOS   | x86_64       |  ✓  |  ✗   |
+| macOS   | arm64        |  ✓  |  ✗   |
 
-✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
+✓ fully supported  ·  ✗ not supported
 
 ## Acknowledgments
 

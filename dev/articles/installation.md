@@ -71,21 +71,21 @@ nv_scalar(1, device = "cpu")
 Running {anvl} with GPU support currently only works on Linux
 (amd64/x86-64) or via WSL2 on Windows (experimental).
 
-The recommended way to use CUDA there is to install the {cuda12.8} R
+The recommended way to use CUDA there is to install the {pjrt.cuda} R
 package, which only requires a compatible driver to be installed. You
 can install it from GitHub or r-universe:
 
 ``` r
 
-pak::pak("mlverse/cudatoolkit/cuda12.8")
-install.packages("cuda12.8", repos = "https://mlverse.r-universe.dev")
+pak::pak("r-xla/pjrt.cuda")
+install.packages("pjrt.cuda", repos = "https://r-xla.r-universe.dev")
 ```
 
-When the {cuda12.8} package is not installed, the correct runtime
+When the {pjrt.cuda} package is not installed, the correct runtime
 libraries need to be installed on the system and discoverable via
 `LD_LIBRARY_PATH`. The specific versions of the CUDA runtime libraries
-provided with {cuda12.8} are listed
-[here](https://github.com/mlverse/cudatoolkit/blob/main/cuda12.8/inst/components.tsv).
+provided with {pjrt.cuda} are listed
+[here](https://github.com/r-xla/pjrt.cuda/blob/main/inst/components.tsv).
 
 To confirm that your CUDA installation is working, run:
 
