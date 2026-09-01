@@ -15,7 +15,7 @@ Accelerated array computing and code transformations for R. Numerical programs o
 The \code{anvl} package itself is MIT-licensed. The CUDA backend dynamically
 loads NVIDIA software which is not bundled with \code{anvl}, but downloaded
 from NVIDIA's official redistributable channels by the CUDA toolkit R
-package (e.g. \code{cuda12.8}) at install time. Its use is governed by the
+package (e.g. \code{pjrt.cuda}) at install time. Its use is governed by the
 \href{https://docs.nvidia.com/cuda/eula/}{NVIDIA CUDA Toolkit EULA}, with the
 exception of cuDNN, which is covered by the
 \href{https://docs.nvidia.com/deeplearning/cudnn/sla/index.html}{NVIDIA cuDNN SLA},

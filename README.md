@@ -13,7 +13,7 @@ Package website: [release](https://r-xla.github.io/anvl/) \|
 status](https://www.r-pkg.org/badges/version/anvl)](https://CRAN.R-project.org/package=anvl)
 [![codecov](https://codecov.io/gh/r-xla/anvl/branch/main/graph/badge.svg)](https://codecov.io/gh/r-xla/anvl)
 [![r-universe](https://r-xla.r-universe.dev/badges/anvl)](https://r-xla.r-universe.dev/anvl)
-![CUDA 12.8](https://img.shields.io/badge/CUDA-12.8-green.svg)
+![CUDA 13.3](https://img.shields.io/badge/CUDA-13.3-green.svg)
 <!-- badges: end -->
 
 Accelerated array computing and code transformations for R, allowing you
@@ -27,20 +27,15 @@ differentiation. Programs can run on CPU and NVIDIA GPU.
 install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-The PJRT plugins anvl runs on are downloaded separately, on demand. To
-download them right away instead of when they are first needed:
+Afterwards, install the additional dependencies as follows:
 
 ``` r
 anvl::install_anvl()
 ```
 
-CUDA support is only available on linux x86_64 (amd64). There, this also
-installs the CUDA plugin when an NVIDIA GPU is detected; pass
-`cuda = TRUE` to install it regardless.
-
 See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
-details, including prebuilt Docker images.
+details and prebuilt Docker images.
 
 ## Why anvl
 
@@ -104,8 +99,8 @@ g_jit(a, b, x)
 #> $a
 #> AnvlArray
 #>  3
-#> [ CPUf32{} ]
-#>
+#> [ CPUf32{} ] 
+#> 
 #> $b
 #> AnvlArray
 #>  1
@@ -117,15 +112,16 @@ the package website.
 
 ## Platform Support
 
-| Platform              | CPU |        GPU         |
-|-----------------------|:---:|:------------------:|
-| Linux (x86_64)        |  ✓  |       ✓ CUDA       |
-| Linux (ARM)           |  ✓  |         ✗          |
-| Windows               |  ✓  | ◐ WSL2 only (CUDA) |
-| macOS (Apple Silicon) |  ✓  |         ✗          |
-| macOS (Intel)         |  ✗  |         ✗          |
+| OS      | Architecture | CPU | CUDA |
+|---------|--------------|:---:|:----:|
+| Linux   | x86_64       |  ✓  |  ✓   |
+| Linux   | arm64        |  ✓  |  ✓   |
+| Windows | x86_64       |  ✓  | WSL2 |
+| Windows | arm64        |  ✗  |  ✗   |
+| macOS   | x86_64       |  ✓  |  ✗   |
+| macOS   | arm64        |  ✓  |  ✗   |
 
-✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
+✓ fully supported  ·  ✗ not supported
 
 ## Acknowledgments
 

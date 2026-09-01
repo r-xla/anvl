@@ -29,7 +29,7 @@ Imports:
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.5.0),
+    pjrt (>= 0.5.0.9000),
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.4.0),
@@ -44,6 +44,8 @@ Suggests:
     testthat (>= 3.0.0)
 Additional_repositories:
     https://r-xla.r-universe.dev
+Remotes:
+    r-xla/pjrt
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
