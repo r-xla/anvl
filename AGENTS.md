@@ -53,6 +53,16 @@ settles which dtype its input is supplied at -- an `RDataInput`.
   is what keeps the R values exact. The two rules that name a target
   (`promote_like()`, `promote_dtype()`) refuse an input it cannot hold; say
   `force = TRUE` only where the narrowing is the function's contract.
+  A rule is just a *function* of the call's arguments returning the dtype each
+  is brought to (`NULL` to leave one alone), so a promotion none of the four
+  covers is written as one rather than added to them -- see the *Writing a rule*
+  section of `?promote_rule`. The framework realizes what a rule names and checks
+  nothing, so a rule that names a target does its own refusing.
+  A rule is just a *function* of the call's arguments returning the dtype each
+  is brought to (`NULL` to leave one alone), so a promotion none of the four
+  covers is written as one rather than added to them -- see the *Writing a rule*
+  section of `?promote_rule`. The framework realizes what a rule names and checks
+  nothing, so a rule that names a target does its own refusing.
 - **Never call `dtype()` on an argument that may be a bare R value** -- there is
   nothing to report yet, so it errors. Use `peek_dtype()` to ask what it *would*
   commit to (a category test, a `nan_rm` branch), and commit it only where that

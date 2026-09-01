@@ -232,7 +232,7 @@ nv_array <- function(
 #' @param device (`NULL` | [`device`])\cr
 #'   Target device. If `x` is an `AnvlArray` on a different device, an error
 #'   is raised.
-#' @param .promote (`NULL` | [`PromoteRule`][promote_rule])\cr
+#' @param .promote (`NULL` | `function`)\cr
 #'   Which dtype every input is brought to: [`promote_common()`] for the common
 #'   one, [`promote_like()`] for the one a particular argument has, or
 #'   [`promote_dtype()`] for one the caller names. `NULL` (default) decides
@@ -306,12 +306,16 @@ as_anvl_arrays <- function(..., .promote = NULL) {
   # `realize_at()`), with every digit it had.
   # Every rule is resolved before any is applied, so a rule's target is read off
   # the arguments as the caller passed them.
-  resolved <- resolve_promote_rules(.promote, args)
-  args <- apply_promote_rules(args, resolved, device = aligned$device)
-  # An argument no rule names is still aligned and converted, just not to a
-  # target.
-  rest <- setdiff(seq_along(args), unlist(lapply(resolved, `[[`, "positions")))
-  args[rest] <- lapply(args[rest], as_anvl_array, device = aligned$device)
+  dtypes <- resolve_promote(.promote, args)
+  for (i in seq_along(args)) {
+    args[[i]] <- if (is.null(dtypes[[i]])) {
+      # An argument no rule names is still aligned and converted, just not to a
+      # target.
+      as_anvl_array(args[[i]], device = aligned$device)
+    } else {
+      realize_at(args[[i]], dtype = dtypes[[i]], device = aligned$device)
+    }
+  }
   args
 }
 

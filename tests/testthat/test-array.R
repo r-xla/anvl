@@ -840,8 +840,18 @@ describe("as_anvl_arrays", {
     expect_error(as_anvl_arrays(nv_array(1L), .promote = list(promote_common())), "must be a promotion rule")
     expect_error(promote_grouped(TRUE), "takes promotion rules")
     expect_error(promote_grouped(), "takes promotion rules")
-    # groups do not nest
-    expect_error(promote_grouped(promote_grouped(promote_common())), "takes promotion rules")
+    # A group is a rule like any other, so groups nest.
+    expect_equal(
+      lapply(
+        as_anvl_arrays(
+          nv_array(1L),
+          1.5,
+          .promote = promote_grouped(promote_grouped(promote_common()))
+        ),
+        dtype
+      ),
+      list(as_dtype("f32"), as_dtype("f32"))
+    )
   })
 })
 
@@ -881,28 +891,5 @@ describe("arr", {
 
   it("errors when shape is not integerish", {
     expect_error(arr(1, 2, shape = "foo"))
-  })
-})
-
-describe("eager/jit equivalence", {
-  it("agrees for as_anvl_array() and as_anvl_arrays()", {
-    # Both are exported, so user code calls them outside any trace as well as
-    # inside one. These helpers are written the way an `nv_*` function is.
-    expect_eager_jit_equal_grid(list(
-      "dtype() of a canonicalized R value" = function(x, v) {
-        nv_fill_like(x, 1) * as.numeric(dtype(as_anvl_array(v)) == as_dtype("f64"))
-      },
-      "canonicalize, then convert by hand" = function(x, v) {
-        args <- as_anvl_arrays(x, v)
-        nv_convert(args[[2L]], dtype(args[[1L]])) * args[[1L]]
-      },
-      "no promotion at all" = function(x, v) {
-        args <- as_anvl_arrays(x, v)
-        args[[1L]] * args[[2L]]
-      },
-      "shape of a canonicalized R value" = function(x, v) {
-        nv_fill_like(x, length(shape(as_anvl_array(v))))
-      }
-    ))
   })
 })

@@ -96,6 +96,8 @@ is_graph_literal <- function(x) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- RData(integer(), "double")
 #' x
+#' # same as
+#' nv_aval("double", integer())
 #' shape(x)
 #' # dtype(x) would error: an R double has no data type of its own
 #'
@@ -526,7 +528,7 @@ resolve_primitive_args <- function(primitive, args) {
   if (is.null(promote) || !length(args) || !any(vapply(args, has_no_dtype, logical(1L)))) {
     return(args)
   }
-  apply_promote_rules(args, resolve_promote_rules(promote, args))
+  promote_args(args, promote)
 }
 
 # Whether a value has no dtype yet -- an RData box, or a bare R value that has

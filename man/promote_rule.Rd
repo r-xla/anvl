@@ -25,9 +25,9 @@ Which inputs the rule applies to, by name or position. \code{NULL} (default) is
 all of them.}
 
 \item{fallback}{(\code{NULL} | \code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
-For \code{promote_common()}: the data type to settle on when \emph{every} input is a
-bare R value, in place of the default those would commit to on their own.
-\code{NULL} (default) leaves them their default. See the \emph{Falling back} section.}
+The data type to settle on when \emph{every} input is a bare R value, in place
+of the default those would commit to on their own. \code{NULL} (default) leaves
+them their default.}
 
 \item{arg}{(\code{character(1)} | \code{numeric(1)})\cr
 Which input to take the data type from: its name in the
@@ -42,32 +42,75 @@ function's contract. See the \emph{Narrowing} section.}
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
 The data type to bring the inputs to.}
 
-\item{...}{(\code{\link[=promote_rule]{PromoteRule}})\cr
-For \code{promote_grouped()}: the rules to apply, each covering its own group of
-arguments.}
+\item{...}{(\code{function})\cr
+The rules to apply, each covering its own group of arguments.}
 }
 \value{
-(\code{PromoteRule})
+(\code{function})\cr
+The rule: a function of the call's arguments returning the data type each is
+brought to. The built-in ones carry a \code{PromoteRule} class so they say which
+rule they are when printed.
 }
 \description{
 Which data type \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} brings its inputs to. A rule is passed
 as that function's \code{.promote} argument; without one, each input keeps the data
 type it has and a bare R value takes its default.
-\itemize{
-\item \code{promote_common()} -- the common data type of the inputs
-(see \code{\link[=common_dtype]{common_dtype()}}). What a binary operator does. \code{fallback} names the
-data type to settle on where no input brings one.
-\item \code{promote_like()} -- the data type one particular input already has. For a
-function whose result type \emph{is} one argument's type, and whose other
-arguments come along: \code{nv_clamp(min_val, x, max_val)} is \code{x}'s type.
-\item \code{promote_dtype()} -- a data type the function names itself, rather than one
-read off an input. For a function with an explicit \code{dtype} argument.
-\item \code{promote_yield()} -- the data type the inputs that \emph{have} one already share.
-Unlike the other three it never converts an input that has a data type; only
-the R values move, and only within their own category. This is what the
-primitives use, and what a function wants when its arguments must agree but
-it will not widen the array it was given.
-}
+
+A rule is a \strong{function of the call's arguments} that answers with the data
+type each one is brought to (see the \emph{Writing a rule} section).
+
+\code{promote_common()}, \code{promote_like()}, \code{promote_dtype()} and \code{promote_yield()}
+are the four anvl builds for itself, and \code{promote_grouped()} combines them;
+each says below what it decides. A package with a promotion of its own writes
+another and passes it the same way.
+
+\code{promote_common()} brings every input to their common data type
+(\code{\link[=common_dtype]{common_dtype()}}) -- the one they all reach, chosen so nothing is lost on
+the way. No input is privileged, which is what a binary operator wants:
+\code{nv_add(x_i32, y_f64)} is \code{f64} whichever operand came first. An R value
+among them yields rather than contributing a data type of its own, so an
+\code{i8} array meeting \code{1L} stays \code{i8}.
+
+Where \emph{no} input brings a data type, there is nothing to read one off and
+they commit to the default of their R storage type; \code{fallback} names what
+they take instead. See the \emph{Falling back} section.
+
+\code{promote_like()} brings every input to the data type one particular input
+already has. For a function whose result \emph{is} one argument's type and whose
+other arguments come along for the ride: \code{nv_clamp(min_val, x, max_val)} is
+\code{x}'s type, and the bounds are built at it.
+
+Because it names a target rather than computing one, it refuses an input that
+target cannot hold instead of narrowing it silently -- see the \emph{Narrowing}
+section, and \code{force} for the case where the narrowing is the point.
+
+\code{promote_dtype()} brings every input to a data type the function names
+itself, rather than one read off an input. For a function with an explicit
+\code{dtype} argument, where the caller's word settles the matter and the
+arguments follow.
+
+Like \code{\link[=promote_like]{promote_like()}} it names a target, so it refuses an input that target
+cannot hold unless \code{force} says the narrowing is the contract.
+
+\code{promote_yield()} reads the data type off the inputs that already have one
+and never moves them: only the R values take it, and only within their own
+category. It is the odd one out -- the other three may convert an input, and
+this one never does.
+
+It is what the primitives declare, because a primitive must not widen the
+array it was handed (that is the \verb{nv_*} layer's job) while still having to say
+what the R values among its operands become. It is also what an \verb{nv_*}
+function wants when its arguments must \emph{agree} rather than meet: a padding
+value that disagrees with the array is a mistake to report, not one to convert
+away. If the inputs carry several data types it places nothing and leaves the
+mismatch to whatever consumes them. See the \emph{Yielding, and categories}
+section.
+
+\code{promote_grouped()} applies several rules in one call, each to its own group
+of arguments -- \code{x} and \code{y} to their common data type, \code{a} and \code{b} to theirs.
+The rules may be of any kind, anvl's own and yours together, and a group is
+itself a rule, so groups nest. They must cover disjoint arguments. See the
+\emph{Several groups in one call} section.
 }
 \details{
 Inputs are \emph{realized} at the target rather than converted to it: an R value
@@ -75,6 +118,39 @@ has no data type to convert from, so it is built at the target directly and
 arrives with every digit it had (which is what keeps \code{x_f64 / sqrt(2)}
 exact). An input that already has a data type is converted.
 }
+\section{Writing a rule}{
+
+A rule is a function of one argument -- the call's arguments, as a list, named
+where the call named them and holding each value exactly as the caller passed
+it. It returns a list of the same length: the data type each argument is
+realized at, or \code{NULL} for one it leaves where it is.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{# every argument at the widest float in the call, and never below f32
+promote_widest_float <- function(args) \{
+  widths <- vapply(args, function(a) \{
+    dt <- peek_dtype(to_abstract(a))
+    if (is_dtype_float(dt)) dtype_width(dt) else 0L
+  \}, integer(1))
+  rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
+\}
+as_anvl_arrays(nv_array(1L), 2.5, .promote = promote_widest_float)
+}\if{html}{\out{</div>}}
+
+An argument may still be a bare R value when the rule sees it, which is the
+point -- that is what lets the rule decide what the value becomes. So ask it
+for a data type with \code{\link[=peek_dtype]{peek_dtype()}} rather than \code{dtype()}, which an R value
+has nothing to answer with.
+
+A rule is asked once per call, before anything is realized, so it always sees
+the arguments as they were passed. \code{\link[=promote_grouped]{promote_grouped()}} combines rules of any
+kind, anvl's own and yours together.
+
+The framework realizes what the rule names and checks nothing about it: a rule
+that names a data type an argument cannot hold narrows it silently. The two
+built-in rules that name a target refuse that themselves, which is what the
+next section describes.
+}
+
 \section{Narrowing, and \code{force}}{
 
 The two rules that \emph{name} a target -- \code{promote_like()} and \code{promote_dtype()}
@@ -165,12 +241,12 @@ groups of arguments independently -- \code{x} and \code{y} to their common data 
 )
 }\if{html}{\out{</div>}}
 
-The rules may be of different kinds, and they are all resolved against the
-call's arguments before any of them is applied, so one group's target never
-depends on another's having been applied first. They must cover disjoint
-arguments -- a value cannot be brought to two data types -- and an argument
-no rule names is aligned and converted, as it would be without a rule at
-all.
+The rules may be of different kinds -- anvl's own and yours together, and a
+group is itself a rule, so groups nest. They are all asked before any of their
+answers is used, so one group's target never depends on another's having been
+applied first. They must cover disjoint arguments -- a value cannot be brought
+to two data types -- and an argument no rule names is aligned and converted,
+as it would be without a rule at all.
 }
 
 \examples{

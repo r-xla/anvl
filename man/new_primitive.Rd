@@ -27,7 +27,7 @@ the first argument to \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs (for higher-order primitives).}
 
-\item{promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}})\cr
+\item{promote}{(\code{NULL} | \code{function})\cr
 How the primitive brings its arrayish arguments to one data type. The rule
 is applied \emph{before the body runs}, to the non-\code{static} formals in formal
 order with \code{...} spliced in where it sits -- the same values the body goes

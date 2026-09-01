@@ -197,6 +197,24 @@ An argument that should stay out of the promotion is named out with `only`; it i
 Groups of arguments that promote independently are combined with `promote_grouped()`.
 See `?promote_rule` for the full set, and `vignette("extending_api")` for writing a function around them.
 
+These four are not a closed set.
+A rule is a *function* of the call's arguments that answers with the data type each one is brought to, so a promotion {anvl} has never heard of is written the same way its own are:
+
+```{r}
+# every argument at the widest float in the call, and never below f32
+promote_widest_float <- function(args) {
+  widths <- vapply(args, function(a) {
+    dt <- peek_dtype(to_abstract(a))
+    if (is_dtype_float(dt)) dtype_width(dt) else 0L
+  }, integer(1))
+  rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
+}
+as_anvl_arrays(nv_array(1L), 2.5, nv_array(1, dtype = "f64"), .promote = promote_widest_float)
+```
+
+The arguments reach the rule as the caller passed them, R values still uncommitted -- which is what lets the rule decide what they become, and why it asks `peek_dtype()` rather than `dtype()`.
+`promote_grouped()` mixes rules of either origin.
+
 Whichever rule applies, an R value among the arguments is *built* at the target rather than converted to it -- which is what makes the exactness of the previous sections hold for `nv_*` functions too, and not just for a literal that happens to meet an array.
 
 ## Asking for the Type of an R Value

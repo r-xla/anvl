@@ -30,6 +30,13 @@
   caller said otherwise, so an `f64` `mean` was silently narrowed. A `mean` and
   `sd` that agree on a data type the generator cannot draw at (both integer
   arrays, say) is an error naming `dtype`, rather than a silent `"f32"`.
+* A promotion rule is now a **function** of the call's arguments that returns the
+  data type each one is brought to, rather than an opaque `PromoteRule` object
+  the framework knows how to interpret. `promote_common()`, `promote_like()`,
+  `promote_dtype()` and `promote_yield()` are unchanged to call -- they now
+  return such a function -- and a package can write a rule of its own and pass it
+  as `.promote`, or combine it with anvl's through `promote_grouped()`. See the
+  *Writing a rule* section of `?promote_rule`.
 * `promote_common()` gained a `fallback` argument: the data type to settle on
   when every input is a bare R value and there is none to read off the inputs,
   in place of the default those would commit to on their own. An input that has

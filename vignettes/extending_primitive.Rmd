@@ -221,6 +221,9 @@ Note that the reverse rule will only be called if at least one input gradient is
 
 #### Optional: alternative-forward rule
 
+
+<!-- REVIEW: We also need to mention the type promotion here. -->
+
 For most primitives the backward-only form above is enough.
 If the gradient computation can be made significantly more efficient by running an alternative forward pass that exposes intermediate values for reuse, use the alternative-forward form: `rule_reverse(forward = ...)`.
 The forward hook receives `(inputs, params)`, emits whatever forward primitives it likes via the normal `prim_*` callables, and returns a list with the primal outputs and a `backward` closure.

@@ -9,7 +9,7 @@
 #'   The name of the primitive.
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs. Only used if `higher_order = TRUE`.
-#' @param promote (`NULL` | [`PromoteRule`][promote_rule])\cr
+#' @param promote (`NULL` | `function`)\cr
 #'   How the primitive brings its arrayish arguments to one data type before it
 #'   records a call. See [`new_primitive()`].
 #' @return (`AnvlPrimitive`)
@@ -95,7 +95,7 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   the first argument to [`graph_desc_add()`].
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
-#' @param promote (`NULL` | [`PromoteRule`][promote_rule])\cr
+#' @param promote (`NULL` | `function`)\cr
 #'   How the primitive brings its arrayish arguments to one data type. The rule
 #'   is applied *before the body runs*, to the non-`static` formals in formal
 #'   order with `...` spliced in where it sits -- the same values the body goes

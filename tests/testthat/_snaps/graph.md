@@ -40,46 +40,6 @@
     Output
       GraphLiteral(1, i32, ()) 
 
-# an R argument of a jitted call / errors for a bare vector with no shape
-
-    Code
-      f(c(1, 2, 3))
-    Condition
-      Error:
-      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <numeric> of length 3
-
-# an R argument of a jitted call / errors for a leaf that is not an array or a scalar
-
-    Code
-      f("hello")
-    Condition
-      Error:
-      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
-
-# an R argument of a jitted call / names the path to a bad nested list element
-
-    Code
-      f(list(list(a = "abc")))
-    Condition
-      Error:
-      ! invalid input `l[[1]]$a`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
-
-# an R argument of a jitted call / names the path to a bad unnamed nested element
-
-    Code
-      f(list("bad", nv_scalar(1)))
-    Condition
-      Error:
-      ! invalid input `pair[[1]]`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <character> of length 1
-
-# an R argument of a jitted call / errors for a bare vector on the quickr backend
-
-    Code
-      f(c(1, 2, 3))
-    Condition
-      Error:
-      ! invalid input `x`: expected an AnvlArray, a length-1 atomic scalar, or an is.array() value; got <numeric> of length 3
-
 # how an R value is built into a graph / builds an R scalar as an inlined literal and an R array as a constant
 
     Code

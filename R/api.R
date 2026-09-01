@@ -1440,8 +1440,7 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' Pads an array with a given value at the edges and optionally between elements.
 #' @template param_x
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. An R value is built at `x`'s data type,
-#'   within its own category; anything that already has one must have `x`'s.
+#'   Scalar value to use for padding.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -1457,10 +1456,6 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  # The padding value goes into `x`, so it is `x`'s dtype it has to arrive at.
-  # `promote_yield()` rather than `promote_like("x")`: an R value is built at
-  # that dtype, and a typed one is left where it is -- a padding value that
-  # disagrees with `x` is a mistake to report, not one to convert away.
   args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_yield())
   x <- args$x
   padding_value <- args$padding_value

@@ -20,7 +20,7 @@ is raised.}
 \item{...}{(\code{\link{arrayish}})\cr
 Inputs to align. Name them to be able to point \code{.promote} at one of them.}
 
-\item{.promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}})\cr
+\item{.promote}{(\code{NULL} | \code{function})\cr
 Which dtype every input is brought to: \code{\link[=promote_common]{promote_common()}} for the common
 one, \code{\link[=promote_like]{promote_like()}} for the one a particular argument has, or
 \code{\link[=promote_dtype]{promote_dtype()}} for one the caller names. \code{NULL} (default) decides

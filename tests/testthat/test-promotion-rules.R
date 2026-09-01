@@ -205,3 +205,70 @@ test_that("promote_common(fallback = ) realizes R values at the fallback", {
   expect_equal(format(promote_common(fallback = "f64")), "<promote_common(fallback f64)>")
   expect_equal(format(promote_common()), "<promote_common>")
 })
+
+test_that("a promotion rule is a function of the call's arguments", {
+  # A rule anvl knows nothing about, written the way a package would: every
+  # argument at the widest float in the call, and never below f32.
+  widest_float <- function(args) {
+    widths <- vapply(
+      args,
+      function(a) {
+        dt <- peek_dtype(to_abstract(a))
+        if (is_dtype_float(dt)) dtype_width(dt) else 0L
+      },
+      integer(1L)
+    )
+    rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
+  }
+
+  out <- as_anvl_arrays(nv_array(1L), 2.5, .promote = widest_float)
+  expect_equal(lapply(out, dtype), list(as_dtype("f32"), as_dtype("f32")))
+  out <- as_anvl_arrays(nv_array(1L), 2.5, nv_array(1, dtype = "f64"), .promote = widest_float)
+  expect_equal(unique(lapply(out, dtype)), list(as_dtype("f64")))
+
+  # `NULL` leaves an argument where it is.
+  keeps_second <- function(args) list(as_dtype("f64"), NULL)
+  out <- as_anvl_arrays(nv_array(1L), nv_array(1L, dtype = "i8"), .promote = keeps_second)
+  expect_equal(lapply(out, dtype), list(as_dtype("f64"), as_dtype("i8")))
+
+  # It sees the arguments as the caller passed them, R values uncommitted.
+  seen <- NULL
+  spy <- function(args) {
+    seen <<- args
+    vector("list", length(args))
+  }
+  as_anvl_arrays(nv_array(1L), 2.5, .promote = spy)
+  expect_true(is_anvl_array(seen[[1L]]))
+  expect_identical(seen[[2L]], 2.5)
+
+  # ... and composes with anvl's own through promote_grouped().
+  out <- as_anvl_arrays(
+    x = nv_array(1L),
+    y = 2.5,
+    a = nv_array(1L, dtype = "i8"),
+    b = 2L,
+    .promote = promote_grouped(
+      function(args) c(rep(list(as_dtype("f64")), 2L), vector("list", 2L)),
+      promote_common(only = c("a", "b"))
+    )
+  )
+  expect_equal(
+    lapply(out, dtype),
+    list(x = as_dtype("f64"), y = as_dtype("f64"), a = as_dtype("i8"), b = as_dtype("i8"))
+  )
+})
+
+test_that("a rule that does not answer per argument is reported against the rule", {
+  expect_error(
+    as_anvl_arrays(nv_array(1L), 1.5, .promote = function(args) "f64"),
+    "must answer with one data type per argument"
+  )
+  expect_error(
+    as_anvl_arrays(nv_array(1L), 1.5, .promote = function(args) list(as_dtype("f64"))),
+    "must answer with one data type per argument"
+  )
+  expect_error(
+    as_anvl_arrays(nv_array(1L), 1.5, .promote = function(args) list("f64", "f64")),
+    "must answer with one data type per argument"
+  )
+})

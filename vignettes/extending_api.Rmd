@@ -48,6 +48,8 @@ The advantage of this input standardization is best illustrated with an example.
 
 Consider the naive implementation of reshaping, which will fail when called on an R vector:
 
+<!-- REVIEW: THis example does not make sense anymore. Can use nv_convert_naive where we skip the conv when dtype != dtype(x) and x can be RData -->
+
 ```{r, error = TRUE}
 library(anvl)
 # x: dynamic, shape: static
@@ -60,6 +62,7 @@ nv_reshape_naive <- function(x, shape) {
 }
 nv_reshape_naive(1L, c(2, 2))
 ```
+
 
 This is because `shape()` reports the shape of the *value*, and an R vector that is neither length-1 nor an `array()` is not an anvl value at all -- canonicalizing at the top is what turns a valid input into something the rest of the function can work with uniformly.
 
@@ -88,6 +91,9 @@ When a function takes more than one arrayish input, normalize **all of them in
 one `as_anvl_arrays(...)` call** at the top. Not one `as_anvl_array()` per
 argument, and not part-way down the body -- the call has to see the whole set,
 because three of the four things it does are decisions *across* the arguments.
+
+<!-- REVIEW: as_anvl_arrays() should also support .device so for some complicated promotions we can first extract the common device and then use
+  as_anvl_arrays() on multiple subsets of the arguments.-->
 
 ```{r}
 nv_scaled_sum <- function(x, y, z) {

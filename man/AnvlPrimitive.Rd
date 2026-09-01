@@ -13,7 +13,7 @@ The name of the primitive.}
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs. Only used if \code{higher_order = TRUE}.}
 
-\item{promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}})\cr
+\item{promote}{(\code{NULL} | \code{function})\cr
 How the primitive brings its arrayish arguments to one data type before it
 records a call. See \code{\link[=new_primitive]{new_primitive()}}.}
 }

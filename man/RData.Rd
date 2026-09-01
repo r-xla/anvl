@@ -20,18 +20,8 @@ The R storage type: \code{"double"}, \code{"integer"} or \code{"logical"}.}
 \description{
 The \code{\link{AbstractArray}} of a non-static R value that was passed to a jit-compiled
 function.
-It is special, because it does not have a data type (calling \code{dtype()} on it throws an error).
-
-The \code{\link{AbstractArray}} of an R value that entered a program without a data
-type: a length-1 vector or an \code{\link[=array]{array()}}, described by its R storage type
-and shape alone.
-
-Unlike every other abstract array it has \strong{no} data type. R has no dtype to
-give -- \code{1.5} is neither an \code{f32} nor an \code{f64} -- so instead of stamping one
-at the boundary, the value is built into the program at each use site, at the
-dtype that use site turns out to need. \code{x_f64 / sqrt(2)} therefore sees the
-exact double, rather than one that was rounded to \code{f32} on the way in and
-widened again.
+It is special, because it does not have a data type and calling \code{dtype()} on it
+results in an error.
 
 It carries no data. Nothing needs the R data \emph{through} the aval: a value
 written in the body of a traced function is built from the R value itself at
@@ -84,6 +74,8 @@ report. Give the value a dtype (e.g. \code{\link[=nv_array]{nv_array()}}, \code{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- RData(integer(), "double")
 x
+# same as
+nv_aval("double", integer())
 shape(x)
 # dtype(x) would error: an R double has no data type of its own
 

@@ -88,7 +88,7 @@
 #' @return A `JitFunction` (a `function` with the same formals as `f`).
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
-#' @seealso [`jit_eval()`] for evaluating an expression once,
+#' @seealso
 #'   [`jit_roclet()`] for the `@jit` tag used inside R packages.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -434,27 +434,4 @@ static_path <- function(path, name, i) {
 dispatch_arg_devices <- function(info) {
   is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1))
   lapply(info$leaves[is_array], tengen::device)
-}
-
-
-#' @title JIT-compile and evaluate an expression
-#' @description
-#' Convenience wrapper that JIT-compiles and immediately evaluates a single expression.
-#' Equivalent to wrapping `expr` in an anonymous function, calling [`jit()`] on it, and
-#' invoking the result.
-#' Useful if you want to evaluate an expression once.
-#' @param expr (NSE)\cr
-#'   Expression to compile and evaluate.
-#' @param ... Backend-specific options forwarded to [`jit()`] (e.g. `device`
-#'   for the `"pjrt"` backend, `unwrap` for the `"quickr"` backend).
-#' @return (`any`)\cr
-#'   Result of the compiled and evaluated expression.
-#' @export
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3), dtype = "f32")
-#' jit_eval(x + x)
-jit_eval <- function(expr, ...) {
-  expr <- substitute(expr)
-  eval_env <- new.env(parent = parent.frame())
-  jit(\() eval(expr, envir = eval_env), ...)()
 }
