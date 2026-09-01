@@ -20,7 +20,11 @@ jobs:
       matrix:
         config:
           - { os: "macos", r: "release", platform: "cpu" }
-          - { os: "macos-intel", r: "release", platform: "cpu" }
+          # zml is the source of the PJRT plugins. Its v14 darwin-amd64 CPU
+          # artifact mistakenly contains an arm64 binary; the first correct
+          # x86_64 build is v18. Drop the override once the pjrt release
+          # pins >= v18.
+          - { os: "macos-intel", r: "release", platform: "cpu", zml: "18.0.0" }
           - { os: "ubuntu", r: "release", platform: "cpu" }
           - { os: "ubuntu", r: "release", platform: "cpu", torch: true }
           - { os: "windows", r: "release", platform: "cpu"}
@@ -47,6 +51,7 @@ jobs:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
       PJRT_PLATFORM: ${{ matrix.config.platform }}
+      PJRT_ZML_ARTIFACT_VERSION: ${{ matrix.config.zml || '' }}
       ANVL_TEST: "1"
       PJRT_INSTALL: "1"
 
