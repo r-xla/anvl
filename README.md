@@ -117,13 +117,13 @@ the package website.
 
 ## Platform Support
 
-| Platform              | CPU |        GPU         |
-|-----------------------|:---:|:------------------:|
-| Linux (x86_64)        |  ✓  |       ✓ CUDA       |
-| Linux (ARM)           |  ✓  |       ✓ CUDA       |
-| Windows               |  ✓  | ◐ WSL2 only (CUDA) |
-| macOS (Apple Silicon) |  ✓  |         ✗          |
-| macOS (Intel)         |  ✓  |         ✗          |
+| Platform              | CPU |    CUDA     |
+|-----------------------|:---:|:-----------:|
+| Linux (x86_64)        |  ✓  |      ✓      |
+| Linux (ARM)           |  ✓  |      ✓      |
+| Windows               |  ✓  | ◐ WSL2 only |
+| macOS (Apple Silicon) |  ✓  |      ✗      |
+| macOS (Intel)         |  ✓  |      ✗      |
 
 ✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
 
