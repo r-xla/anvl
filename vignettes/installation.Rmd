@@ -74,12 +74,12 @@ The recommended way to use CUDA there is to install the {`r cuda_pkg`} R package
 You can install it from GitHub or r-universe:
 
 ```{r, echo = FALSE, results = "asis"}
-cat(sprintf('```r\npak::pak("mlverse/cudatoolkit/%s")\n', cuda_pkg))
-cat(sprintf('install.packages("%s", repos = "https://mlverse.r-universe.dev")\n```', cuda_pkg))
+cat(sprintf('```r\npak::pak("r-xla/%s")\n', cuda_pkg))
+cat(sprintf('install.packages("%s", repos = "https://r-xla.r-universe.dev")\n```', cuda_pkg))
 ```
 
 When the {`r cuda_pkg`} package is not installed, the correct runtime libraries need to be installed on the system and discoverable via `LD_LIBRARY_PATH`.
-The specific versions of the CUDA runtime libraries provided with {`r cuda_pkg`} are listed [here](`r sprintf("https://github.com/mlverse/cudatoolkit/blob/main/%s/inst/components.tsv", cuda_pkg)`).
+The specific versions of the CUDA runtime libraries provided with {`r cuda_pkg`} are listed [here](`r sprintf("https://github.com/r-xla/%s/blob/main/inst/components.tsv", cuda_pkg)`).
 
 To confirm that your CUDA installation is working, run:
 
