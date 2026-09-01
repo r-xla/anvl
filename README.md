@@ -104,8 +104,8 @@ g_jit(a, b, x)
 #> $a
 #> AnvlArray
 #>  3
-#> [ CPUf32{} ]
-#>
+#> [ CPUf32{} ] 
+#> 
 #> $b
 #> AnvlArray
 #>  1
@@ -120,10 +120,10 @@ the package website.
 | Platform              | CPU |        GPU         |
 |-----------------------|:---:|:------------------:|
 | Linux (x86_64)        |  ✓  |       ✓ CUDA       |
-| Linux (ARM)           |  ✓  |         ✗          |
+| Linux (ARM)           |  ✓  |       ✓ CUDA       |
 | Windows               |  ✓  | ◐ WSL2 only (CUDA) |
 | macOS (Apple Silicon) |  ✓  |         ✗          |
-| macOS (Intel)         |  ✗  |         ✗          |
+| macOS (Intel)         |  ✓  |         ✗          |
 
 ✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
 

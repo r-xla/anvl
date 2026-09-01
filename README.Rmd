@@ -98,10 +98,10 @@ For more complex examples, such as implementing a Gaussian Process, see the pack
 | Platform                  |  CPU  |          GPU          |
 | ------------------------- | :---: | :-------------------: |
 | Linux (x86_64)            |   ✓   |   ✓ CUDA              |
-| Linux (ARM)               |   ✓   |   ✗                   |
+| Linux (ARM)               |   ✓   |   ✓ CUDA              |
 | Windows                   |   ✓   |   ◐ WSL2 only (CUDA)  |
 | macOS (Apple Silicon)     |   ✓   |   ✗                   |
-| macOS (Intel)             |   ✗   |   ✗                   |
+| macOS (Intel)             |   ✓   |   ✗                   |
 
 ✓ fully supported &nbsp;·&nbsp; ◐ limited support &nbsp;·&nbsp; ✗ not supported
 
