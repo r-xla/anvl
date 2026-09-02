@@ -45,7 +45,10 @@ Suggests:
 Additional_repositories:
     https://r-xla.r-universe.dev
 Remotes:
-    r-xla/pjrt
+    r-xla/pjrt,
+    r-xla/tengen,
+    r-xla/stablehlo,
+    r-xla/xlamisc
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
