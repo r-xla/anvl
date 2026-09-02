@@ -5,6 +5,22 @@
 `anvl` is a code transformation framework for R, similar to JAX.
 It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()`, `value_and_gradient()`).
 
+## Commands
+
+The generic R workflow (`devtools::test()`, `make format`, `jarl check .`, ...) is in the shared
+config above. anvl-specific:
+
+- **Tests are gated behind `ANVL_TEST=1`** -- `tests/testthat.R` only calls `test_check()` when it
+  is set, so `R CMD check` in a shell without it runs *no* tests. `.Renviron` sets it (together with
+  `PJRT_INSTALL=1`) for work inside the package.
+- Single file: `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
+  `devtools::test(filter = "reverse")`.
+- `ANVL_SKIP_QUICKR=1` skips the (slow) quickr tests; `PJRT_PLATFORM=cuda` runs the suite on the CUDA
+  plugin (`is_cpu()` / `is_cuda()` in `helper.R` branch on it). `setup.R` sets
+  `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to spread over.
+- anvl tracks the **dev** versions of its r-xla dependencies:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
+
 ## Two-Layer API
 
 - **`nv_*` functions** (e.g. `nv_fill()`, `nv_matmul()`) -- user-facing API in `R/api.R` and `R/api-*.R`. These handle broadcasting, type promotion, default arguments, and then delegate to `prim_*` primitives.
@@ -26,74 +42,18 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 - there is currently no support for complex numbers.
 
-## R Values Have No Data Type
+## Type Promotion
 
-An R value entering a program -- a length-1 vector or an `array()`, written in
-the body of a traced function or passed as an argument to a jitted one -- is
-*not* converted at the boundary. It is built into the program at the dtype its
-use site needs, from the R data itself. That is what makes `x_f64 / sqrt(2)`
-exact. See `vignette("type-promotion")`.
+An R value entering a program is not converted at the boundary -- it is built into the program at the
+dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
+is the reference for how this works and for the `.promote` rules (`promote_common()`,
+`promote_like()`, `promote_dtype()`, `promote_rdata_common()`) that `nv_*` functions pass to
+`as_anvl_arrays()`. Two rules that bite while writing code:
 
-A value written in the body is built where it is used (`build_r_at()`) and is
-carried as the bare R value until then. An *argument* of a jitted function
-cannot be: its value is unknown while tracing, so it takes an input whose aval
-is an `RData` (an `AbstractArray` with no dtype) -- an input like any other,
-except that it has no dtype yet -- and the finished trace settles which dtype it
-is supplied at.
-
-- **Canonicalize once, with a rule.** Call `as_anvl_arrays()` over the whole
-  argument set at the top of an `nv_*` function: it aligns devices and backends,
-  applies the `.promote` rule, and leaves every argument something `dtype()` and
-  `device()` answer for. It always converts, and means the same thing eagerly
-  and under `jit()`. *Without* a rule an R value converts at its default, so a
-  function whose result dtype depends on its arguments must say so with one --
-  `promote_common()`, `promote_like(arg)`, `promote_dtype(dtype)` or
-  `promote_rdata_common()`, each restrictable with `only =` and combinable with
-  `promote_grouped()` -- rather than canonicalize first and `nv_convert()`
-  afterwards. A rule *realizes* an input at the target (`realize_at()`), which
-  is what keeps the R values exact. The two rules that name a target
-  (`promote_like()`, `promote_dtype()`) refuse an input it cannot hold; say
-  `force = TRUE` only where the narrowing is the function's contract.
-  A rule is just a *function* of the call's arguments returning the dtype each
-  is brought to (`NULL` to leave one alone), so a promotion none of the four
-  covers is written as one rather than added to them -- see the *Writing a rule*
-  section of `?promote_rule`. The framework realizes what a rule names and checks
-  nothing, so a rule that names a target does its own refusing.
-- **Never call `dtype()` on an argument that may be a bare R value** -- there is
-  nothing to report yet, so it errors. Use `peek_dtype()` to ask what it *would*
-  commit to (a category test, a `nan_rm` branch), and commit it only where that
-  dtype becomes the operation's own. `shape()` and `naxes()` answer as usual.
-- **A primitive** promotes nothing unless its body says so. One whose operands
-  must agree calls `apply_promotion()` on them, on the same list it goes on to
-  hand `graph_desc_add()`:
-  `operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())`.
-  That is what makes `prim_mul(x_f64, 2)` work. Pass only the operands that must
-  agree -- `prim_ifelse()` leaves `pred` a `bool` and `prim_scatter()` leaves its
-  indices alone -- and put the call before the body uses them for anything else,
-  so a body that reads a data type or traces a sub-graph never meets an
-  unresolved operand (`prim_reduce()` reads `dtype(init)`, `prim_scatter()`
-  reads `peek_dtype(x)`).
-  An R value then takes the dtype the other operands have, but only **within its
-  own category**: a double becomes a float, an integer an integer, a logical a
-  `bool`. Crossing a category is promotion and belongs to the `nv_*` layer, so
-  `prim_add(x_f64, 1L)` is an error where `nv_add(x_f64, 1L)` is `f64`. Operands
-  that carry *several* dtypes have no common one the rule can reach without
-  converting one of them, so it reports that too, naming them as the caller
-  wrote them rather than leaving it to type inference. A trace output commits
-  whatever is left, at `default_dtype_r()`.
-- **Built, not converted.** A value is built directly only at a dtype that holds
-  it faithfully; any other target is built at its natural dtype (`f64` / `i32` /
-  `bool`) and converted by the program, because R's coercion and XLA's `convert`
-  disagree on overflow and `NaN`.
-- **To hold a value open** until the dtype is known, do not canonicalize it:
-  `nv_convert()` and the primitives take it as it is.
-- **As a jitted function's argument** the value is unknown at trace time (the
-  cache keys it by R type and shape only, so the program must not depend on it).
-  Once the trace is finished its input aval is a plain `AbstractArray` at the
-  dtype the trace decided it is uploaded at, and `graph$rdata_types` says, one
-  entry per input, which R storage type it is uploaded *from* (`NA` for an input
-  the caller passes through as an array). `graph_input_dtypes()` reads the two
-  together for pjrt's dispatcher and the quickr wrapper.
+- Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
+  `peek_dtype()` to ask what it *would* commit to.
+- A primitive promotes nothing unless its body says so: one whose operands must agree calls
+  `apply_promotion()` on them before anything else reads them.
 
 ## Primitive System
 
@@ -102,6 +62,14 @@ Primitives are `JitPrimitive` callables constructed by `new_primitive()` (define
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
+
+## `@jit` Roclet
+
+`R/jit-registry.R` is **generated** by `anvl::jit_roclet` (activated in the `Roxygen` field of
+`DESCRIPTION`): tagging a function with `#' @jit [static = ...]` makes `devtools::document()` add it
+to the registry, and `R/zzz.R` rebinds those functions to their jitted versions at build time. Never
+edit `R/jit-registry.R` by hand; because the roclet lives in anvl itself, documenting requires an
+installed anvl that already exports it.
 
 ## Broadcasting
 

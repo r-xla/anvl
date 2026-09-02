@@ -1,13 +1,3 @@
-# An R value entering a program has no data type of its own: it is built into the
-# program at the data type its use site needs, from the R data itself. These
-# tests assert concrete numbers rather than comparing against another framework,
-# so a missing optional dependency cannot silently skip a precision check.
-
-# An R value entering a program has no data type of its own: it is built into the
-# program at the data type its use site needs, from the R data itself. These
-# tests assert concrete numbers rather than comparing against another framework,
-# so a missing optional dependency cannot silently skip a precision check.
-
 describe("RData", {
   it("reports the shape the R value can answer for", {
     x <- RData(integer(), "double")
