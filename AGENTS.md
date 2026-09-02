@@ -48,7 +48,7 @@ is supplied at.
   and under `jit()`. *Without* a rule an R value converts at its default, so a
   function whose result dtype depends on its arguments must say so with one --
   `promote_common()`, `promote_like(arg)`, `promote_dtype(dtype)` or
-  `promote_yield()`, each restrictable with `only =` and combinable with
+  `promote_rdata_common()`, each restrictable with `only =` and combinable with
   `promote_grouped()` -- rather than canonicalize first and `nv_convert()`
   afterwards. A rule *realizes* an input at the target (`realize_at()`), which
   is what keeps the R values exact. The two rules that name a target
@@ -64,9 +64,9 @@ is supplied at.
   commit to (a category test, a `nan_rm` branch), and commit it only where that
   dtype becomes the operation's own. `shape()` and `naxes()` answer as usual.
 - **A primitive** promotes nothing unless its body says so. One whose operands
-  must agree calls `promote_operands()` on them, on the same list it goes on to
+  must agree calls `apply_promotion()` on them, on the same list it goes on to
   hand `graph_desc_add()`:
-  `operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())`.
+  `operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())`.
   That is what makes `prim_mul(x_f64, 2)` work. Pass only the operands that must
   agree -- `prim_ifelse()` leaves `pred` a `bool` and `prim_scatter()` leaves its
   indices alone -- and put the call before the body uses them for anything else,
@@ -76,8 +76,11 @@ is supplied at.
   An R value then takes the dtype the other operands have, but only **within its
   own category**: a double becomes a float, an integer an integer, a logical a
   `bool`. Crossing a category is promotion and belongs to the `nv_*` layer, so
-  `prim_add(x_f64, 1L)` is an error where `nv_add(x_f64, 1L)` is `f64`. A trace
-  output commits whatever is left, at `default_dtype_r()`.
+  `prim_add(x_f64, 1L)` is an error where `nv_add(x_f64, 1L)` is `f64`. Operands
+  that carry *several* dtypes have no common one the rule can reach without
+  converting one of them, so it reports that too, naming them as the caller
+  wrote them rather than leaving it to type inference. A trace output commits
+  whatever is left, at `default_dtype_r()`.
 - **Built, not converted.** A value is built directly only at a dtype that holds
   it faithfully; any other target is built at its natural dtype (`f64` / `i32` /
   `bool`) and converted by the program, because R's coercion and XLA's `convert`

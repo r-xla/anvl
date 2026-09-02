@@ -36,205 +36,28 @@ While the subsequent sections mostly address issues that are relevant in eager m
 
 ## Consistent Input and Output Types
 
-Functions in anvl have dynamic (arrayish) and static (standard R values) inputs.
-However, it can also be convenient to pass R objects as dynamic inputs and let anvl convert them.
-To enable this, there are the `as_anvl_array()` and `as_anvl_arrays()` converters.
-You should call them at the top of your function.
-Not only will these functions convert the inputs, they will also decide the data type they are all brought to (see `.promote` below).
-In eager mode they additionally handle device placement: every input is put on one device, and a call that mixes devices or backends is rejected.
-The converters mean the same thing in both modes, so a function written this way behaves the same eagerly and under `jit()`.
+Functions in anvl have `AnvlArray` inputs and R data inputs.
+R data can be used dynamically, when it is passed to an argument that expects an `AnvlArray`, or statically, when it is passed to an argument that `jit()` marked as static.
+To make this work, you should call `as_anvl_arrays()` on all dynamic input values.
+If there is only a single one, you can also use `as_anvl_array()`.
 
-The advantage of this input standardization is best illustrated with an example.
+They do four things, and three of them are decisions *across* the whole argument set, which is why a function with several arrayish arguments should normalize them in **one** `as_anvl_arrays()` call rather than one `as_anvl_array()` per argument:
 
-Consider the naive implementation of reshaping, which will fail when called on an R vector:
+1. every input is put on one device, and a call mixing devices or backends is rejected,
+2. the type promotion rules of the `.promote` argument are appleid, which handle both placement of R values, as well as conversions between
+   `AnvlArray`s, e.g., to make `nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))` work.
+3. afterwards, `dtype()` is well defined and the remaining body does not have to distinguish between R value inputs and `AnvlArray` inputs.
+4. it reduces differences between eager and jit mode, see the `vignette("gotachs")` for a discussion.
 
-<!-- REVIEW: THis example does not make sense anymore. Can use nv_convert_naive where we skip the conv when dtype != dtype(x) and x can be RData -->
+Below, we add a function that performs the addition after coercing all inputs to `f32`;
 
-```{r, error = TRUE}
-library(anvl)
-# x: dynamic, shape: static
-nv_reshape_naive <- function(x, shape) {
-  if (!identical(shape(x), shape)) {
-    prim_reshape(x, shape)
-  } else {
-    x
-  }
+```{r}
+nv_add_f32 <- function(x, y) {
+  args <- as_anvl_arrays(x, y, .promote = promote_dtype("f32", coerce = TRUE))
+  do.call(prim_add, args)
 }
-nv_reshape_naive(1L, c(2, 2))
+nv_add_f32(1, nv_scalar(1, "f64"))
 ```
-
-
-This is because `shape()` reports the shape of the *value*, and an R vector that is neither length-1 nor an `array()` is not an anvl value at all -- canonicalizing at the top is what turns a valid input into something the rest of the function can work with uniformly.
-
-Also, consider this function that converts an input to a specific dtype (or keeps it as-is if `dtype` is `NULL`).
-The problem is that in the no-op case, we return a static R object instead of (as intended) an `AnvlArray`.
-
-```{r}
-# x: dynamic, dtype: static
-nv_convert_naive <- function(x, dtype) {
-  if (is.null(dtype)) {
-    return(x)
-  }
-  prim_convert(x, dtype)
-}
-nv_convert_naive(1L, "i16")
-nv_convert_naive(1L, NULL)
-```
-
-By canonicalizing inputs, such pitfalls can be avoided.
-
-Finally, note that primitives such as `prim_convert()` already canonicalize their inputs, so if you are only wrapping primitives (or other `nv_<op>` functions that already canonicalize), you might not have to do this yourself.
-
-### Start an eager function with a single `as_anvl_arrays()` call
-
-When a function takes more than one arrayish input, normalize **all of them in
-one `as_anvl_arrays(...)` call** at the top. Not one `as_anvl_array()` per
-argument, and not part-way down the body -- the call has to see the whole set,
-because three of the four things it does are decisions *across* the arguments.
-
-<!-- REVIEW: as_anvl_arrays() should also support .device so for some complicated promotions we can first extract the common device and then use
-  as_anvl_arrays() on multiple subsets of the arguments.-->
-
-```{r}
-nv_scaled_sum <- function(x, y, z) {
-  args <- as_anvl_arrays(x, y, z)
-  args[[1L]] * nv_add(args[[2L]], args[[3L]])
-}
-```
-
-**1. It puts every input on one device.** An R value has no device, so it is
-placed on one when it is converted -- and on its own it would be placed on the
-*default* device, whatever the other arguments are on. Converting the set
-together places it where its `AnvlArray` siblings live instead:
-
-```r
-naive <- function(x, y, z) x * nv_add(y, z)
-naive(nv_scalar(1, device = "cuda"), 2, 3)
-#> Error: invalid input `rhs`: it lives on a different device than an earlier
-#> input; all inputs must share a device unless a target device is fixed
-
-nv_scaled_sum(nv_scalar(1, device = "cuda"), 2, 3)   # fine
-```
-
-It also rejects a call that mixes devices or backends, which is the check you
-want at the boundary rather than somewhere in the middle of the body.
-
-**2. It does the type promotion.** With a `.promote` rule the whole set comes
-back at one data type. Which one is the rule's job to say, and there are three:
-
-```{r}
-# the common data type of the inputs -- what a binary operator does
-as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
-# the data type one particular input already has
-as_anvl_arrays(x = nv_array(1, dtype = "f64"), y = 1.5, .promote = promote_like("x"))
-# a data type the function names itself
-as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
-```
-
-An R value is *built* at the target rather than converted to it, so it arrives
-with every digit it had. **If your function's result data type depends on its
-arguments, say so with a rule** rather than canonicalizing first and calling
-`nv_convert()` afterwards, which rounds through the default `f32` on the way.
-
-`promote_like()` and `promote_dtype()` refuse an argument the target data type
-cannot hold rather than narrowing it silently; pass `force = TRUE` where the
-narrowing is your function's contract.
-
-```{r, error = TRUE}
-as_anvl_arrays(x = nv_array(1L), y = nv_array(1.5), .promote = promote_like("x"))
-```
-
-Which rule fits which function, and what each of them does exactly, is in
-`?promote_rule`.
-
-<!-- REVIEW: Weird wodring "no business". I should write this myself.-->
-<!-- RESPONSE: left for you to write; the paragraph below is untouched. -->
-An argument that has no business taking part is named out with `only`. Every
-input is still aligned onto one device and converted -- it just does not take
-the target's data type. `nv_ifelse()` is the case: its predicate has to stay a
-`bool`, or the primitive underneath would be handed a float predicate.
-
-```{r}
-as_anvl_arrays(
-  pred = nv_array(c(TRUE, FALSE)),
-  true_value = nv_array(c(1L, 2L), dtype = "i8"),
-  false_value = 3L,
-  .promote = promote_common(only = c("true_value", "false_value"))
-)
-```
-
-`promote_grouped()` combines rules, for a function whose arguments fall into
-several groups that are promoted independently:
-
-```{r}
-as_anvl_arrays(
-  x = nv_array(1L), y = 1.5,
-  a = nv_array(1L, dtype = "i8"), b = 2L,
-  .promote = promote_grouped(
-    promote_common(only = c("x", "y")),
-    promote_common(only = c("a", "b"))
-  )
-)
-```
-
-The rules must name disjoint sets -- a value cannot be brought to two data types
--- and all of them are resolved before any is applied, so one group's target
-never depends on another group having been converted first.
-
-`promote_yield()` is the fourth rule, and the odd one out: it reads its target
-off the inputs that already have a data type and *never converts them*, so only
-the R values move. It is what the primitives use, and what you want for a
-function whose arguments must agree but which should not silently widen the
-array it was handed.
-
-```{r, error = TRUE}
-# the R value takes the array's data type
-as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
-# ... but only within its own category: an integer literal stays an integer
-as_anvl_arrays(nv_array(1, dtype = "f64"), 1L, .promote = promote_yield())
-```
-
-**3. Everything downstream is then well-defined.** After the call each argument
-is an `AnvlArray` (or, under `jit()`, a traced box), so `dtype()`, `device()`
-and `backend()` answer. On a bare R value they do not -- an R value has no data
-type of its own until it is used (see `?RData`):
-
-```{r, error = TRUE}
-(function(x) dtype(x))(2)
-```
-
-```{r}
-(function(x) dtype(as_anvl_array(x)))(2)
-```
-
-If you only need to *look* at the data type -- an "is this a float?" branch --
-`peek_dtype()` answers for a bare R value too, with the one it would take.
-
-**4. It keeps eager mode and `jit()` in step.** Without it, a function whose
-arguments happen to all be R values never reaches anvl at all: base R evaluates
-it, and you get an R vector rather than an array.
-<!-- REVIEW: Also reformulate. I just have to do the writing -->
-<!-- RESPONSE: left for you to write. -->
-
-```{r}
-g <- function(x, y) x + y
-g(1, 2)         # base R's `+`: an R double
-jit(g)(1, 2)    # anvl: an f32 array
-```
-
-```{r}
-h <- function(x, y) {
-  args <- as_anvl_arrays(x, y)
-  args[[1L]] + args[[2L]]
-}
-h(1, 2)
-jit(h)(1, 2)
-```
-
-`as_anvl_array()` and `as_anvl_arrays()` convert -- always, and the same way in
-both modes. That is what makes the two columns above agree, and it is worth
-insisting on: a function that meant two different things depending on whether it
-was called under `jit()` would silently give two different answers for one call.
 
 ## Arbitrary Devices
 

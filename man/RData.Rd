@@ -20,71 +20,36 @@ The R storage type: \code{"double"}, \code{"integer"} or \code{"logical"}.}
 \description{
 The \code{\link{AbstractArray}} of a non-static R value that was passed to a jit-compiled
 function.
-It is special, because it does not have a data type and calling \code{dtype()} on it
+It is special, because it does not have a data type, i.e., calling \code{dtype()} on it
 results in an error.
-it only exists during tracing, never in a finalized graph.
-
-It carries no data. Nothing needs the R data \emph{through} the aval: a value
-written in the body of a traced function is built from the R value itself at
-its use site, and an \strong{argument} of a jitted function has no value to carry
-in the first place -- it is deliberately unknown while tracing, since the
-compiled program is cached by the argument's R storage type and shape and so
-must not depend on the value.
-
-Only that argument takes an input of its own, whose data type the finished
-trace settles: the input's aval is this class while the trace runs, and a
-plain \code{\link{AbstractArray}} once resolved, with the R storage type recorded in
-the graph's \code{rdata_types} beside it. An in-body value gets no input at all;
-\code{\link[=to_abstract]{to_abstract()}} still answers with an \code{RData} for one, which is how the
-\link[=promote_rule]{promotion rules} recognise "an R value, data type open".
-
-Which dtype a use site needs is normally not decided value by value: an
-\verb{nv_*} function canonicalizes its whole argument set once at the top with
-\code{\link[=as_anvl_arrays]{as_anvl_arrays()}}, and the \link[=promote_rule]{\code{.promote} rule} it passes
-there is what names the dtype every R value among them is built at.
-
-A value that is never combined with a typed array has nothing to take its
-dtype from and \emph{commits} to the default for its R type: \code{f32} for a double,
-\code{i32} for an integer, \code{bool} for a logical.
 }
-\section{Sub-graph parameters}{
-
-The same commitment happens where a data type is needed \emph{before} any use site
-can name one. A higher-order primitive that traces a sub-graph has to give
-that sub-graph's parameters a data type up front, so a bare R value passed as
-one takes its default rather than whatever the sub-graph's body turns out to
-use it with. That is \code{\link[=prim_while]{prim_while()}}'s \code{init}: in
-\code{nv_while(list(i = 1), ...)} the state \code{i} is \code{f32}, and a body that adds an
-\code{f64} to it is a data type error rather than an \code{f64} loop. Say which type
-the loop carries -- \code{nv_scalar(1, dtype = "f64")}, or \code{\link[=nv_convert]{nv_convert()}} for a
-value the caller passed in.
-
-A value that merely \emph{flows into} a sub-graph body is not affected: it is
-built at the data type its use site asks for, as anywhere else.
+\details{
+It only exists \emph{during} tracing, never in a finalized graph.
 }
-
 \section{Extractors}{
 
-\code{\link[tengen:shape]{shape()}} and \code{\link[tengen:naxes]{naxes()}} answer as they
-would for the R value: \verb{()} for a length-1 vector, \code{dim()} for an
-\code{\link[=array]{array()}}, and an error for a longer vector without a \code{dim()}, which is not
-an arrayish value at all. \code{\link[tengen:dtype]{dtype()}} \strong{errors}: there is no
-dtype to report until the value commits, exactly as \code{dtype(1.5)} has none to
-report. Give the value a dtype (e.g. \code{\link[=nv_array]{nv_array()}}, \code{\link[=nv_scalar]{nv_scalar()}}) to ask.
+Just like \code{\link{AbstractArray}}, with the exception that \code{dtype()} errs.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- RData(integer(), "double")
-x
-shape(x)
-# dtype(x) would error: an R double has no data type of its own
-# same as
-nv_aval("double", integer())
-
-# How it appears during tracing
-graph <- trace_fn(function(x) x, list(x = RData(integer(), "double")))
-graph
+RData(c(2, 3), "double")
+# is equivalent to
+nv_aval("double", c(2, 3))
+# Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
+# dtype becomes f64.
+# By NOT converting RData to their default data type we prevent loss of precision
+# (double -> f32 -> f64 roundrips)
+graph <- trace_fn(function(x) {
+    print(x)
+    list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))
+  }, list(x = nv_aval("double", c()))
+)
+print(graph)
+# The actual inputs to the compiled program
+graph$inputs
+# The data types of the R values; AnvlArrays get NA here
+graph$rdata_types
 \dontshow{\}) # examplesIf}
 }
 \seealso{

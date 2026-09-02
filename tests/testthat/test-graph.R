@@ -193,9 +193,11 @@ test_that("error handling", {
 
 test_that("error handling: stablehlo errors use anvl's terminology", {
   # `cli_abort()` errors from stablehlo store an already formatted message in
-  # the condition's fields
-  expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))))
-  err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))), error = identity)
+  # the condition's fields. Shapes rather than data types, since operands whose
+  # data types disagree are refused by `promote_rdata_common()` before inference
+  # ever sees them.
+  expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
+  err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
   # stablehlo's `operand` is anvl's `x`
@@ -308,7 +310,10 @@ describe("how an R value is built into a graph", {
     # An R double built at an integer data type is built at f64 -- where it is
     # exact -- and converted by the program, so narrowing follows XLA.
     f <- function(x) nv_add(x, nv_convert(1.5, "i32"))
-    graph <- trace_fn(f, list(x = nv_aval("i32", integer())))
+    # The f64 the staging brings in is what `anvl_staging_widens_warning`
+    # reports; here the point is the graph it produces.
+    expect_warning(trace_fn(f, list(x = nv_aval("i32", integer()))))
+    graph <- suppressWarnings(trace_fn(f, list(x = nv_aval("i32", integer()))))
     expect_snapshot(graph)
   })
 
@@ -318,18 +323,15 @@ describe("how an R value is built into a graph", {
     expect_snapshot(graph)
   })
 
-  # REVIEW: Why is the constant here not inlined?
-  # I think in gradient() we need to re-run some of the
-  # optimization passes.
-  it("keeps an R argument open under an inlined gradient", {
+  it("inlines a gradient into the enclosing graph", {
+    # The argument has to have a data type: `gradient()` refuses to
+    # differentiate with respect to a value that has not decided on one.
     f <- function(t) gradient(function(z) z * z)(t)
-    graph <- trace_fn(f, list(t = nv_aval("double", integer())))
+    graph <- trace_fn(f, list(t = nv_aval("f64", integer())))
     expect_snapshot(graph)
   })
 
   it("builds an R literal inside the sub-graph body that uses it", {
-    # prim_if's branches are traced as their own graphs, and the printer elides
-    # sub-graph bodies, so this is checked by value.
     f <- jit(function(x) nv_if(nv_scalar(TRUE), function() nv_add(x, 0.5), function() nv_mul(x, 2)))
     expect_equal(as_array(f(nv_scalar(1, dtype = "f64"))), 1.5)
     g <- jit(function(x) nv_if(nv_scalar(FALSE), function() nv_add(x, 0.5), function() nv_mul(x, 2)))

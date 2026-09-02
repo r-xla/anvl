@@ -1,27 +1,3 @@
-# The data type a sampler draws at, as a promotion rule: the one the caller
-# named, or the one the distribution's parameters bring -- falling back to the
-# default float where they bring none, since a bare R value has no data type to
-# give. Either way it has to be one the generator can draw at: `nv_unif_rand()`
-# lays random bits into a mantissa, which only means anything for f32 and f64.
-#
-# The samplers need the data type as a *value* -- it parameterises the
-# generator, so the draws are made at it before `mean`/`sd` are touched -- and a
-# rule is a function, so the whole decision fits in one and the value is read
-# back off an argument the rule placed.
-promote_sample_dtype <- function(dtype = NULL, arg = "mean/sd") {
-  if (!is.null(dtype)) {
-    return(promote_dtype(assert_float_dtype(dtype)))
-  }
-  function(args) {
-    dtype <- assert_float_dtype(
-      do.call(common_dtype_of, c(args, list(.fallback = default_dtype_r("double")))),
-      arg = arg,
-      hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
-    )
-    promote_dtype(dtype)(args)
-  }
-}
-
 nv_unif_rand <- function(
   shape,
   initial_state,
@@ -164,14 +140,20 @@ nv_runif <- function(
 #' @jit static c(1L, 3L)
 nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   shape <- assert_shapevec(shape)
-  # `mean` and `sd` are arrayish: they may be traced values, so they cannot be
-  # validated here and are only required to broadcast against `shape`. The rule
-  # settles what the sample is drawn at and brings them to it, so reading the
-  # data type back off one of them is reading the sample's own.
-  args <- as_anvl_arrays(mean = mean, sd = sd, .promote = promote_sample_dtype(dtype))
+
+  rule <- if (is.null(dtype)) {
+    promote_common(fallback = default_dtype_r("double"))
+  } else {
+    promote_dtype(assert_float_dtype(dtype))
+  }
+  args <- as_anvl_arrays(mean = mean, sd = sd, .promote = rule)
   mean <- args$mean
   sd <- args$sd
-  dtype <- dtype(mean)
+  dtype <- assert_float_dtype(
+    dtype(mean),
+    arg = "mean/sd",
+    hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
+  )
   # n: amount of rvs needed
   n <- prod(shape)
 

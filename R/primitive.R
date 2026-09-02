@@ -76,11 +76,8 @@ print.AnvlPrimitive <- function(x, ...) {
 
 #' @title Create a Primitive
 #' @description
-#' Builds an [`AnvlPrimitive`] metadata object, wraps `fn` with [`jit()`],
-#' attaches the metadata via `attr(., "primitive")`, prepends class
-#' `"JitPrimitive"`, and (by default) registers the result under `name` in
-#' the primitive registry.
-#'
+#' Create a new primitive.
+#' For details on how to do this, see the article on *Adding a Primitive*.
 #' The backend is always `"auto"` and cannot be configured.
 #' @param name (`character(1)`)\cr
 #'   Primitive name.
@@ -91,34 +88,6 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   the first argument to [`graph_desc_add()`].
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
-#' @section Operands that must agree:
-#' A primitive promotes nothing on its own. Where its operands have to agree on
-#' a data type, the body says so itself, on the values it goes on to hand
-#' [`graph_desc_add()`]:
-#'
-#' ```r
-#' function(lhs, rhs) {
-#'   operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
-#'   graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
-#' }
-#' ```
-#'
-#' [`promote_yield()`] is the rule for it: an operand that has a data type keeps
-#' it, and an R value takes the one the others have, within its own category.
-#' That is what makes `prim_mul(x_f64, 2)` work whatever `x`'s data type is,
-#' while keeping a primitive from widening the array it was handed -- which is
-#' the `nv_*` layer's job.
-#'
-#' Pass only the operands that must agree. `prim_ifelse()` promotes its two
-#' branches and leaves `pred` a `bool`; `prim_scatter()` promotes `x` and
-#' `update` and leaves the indices alone. A primitive with one arrayish operand,
-#' or with deliberately heterogeneous ones ([`prim_sort()`]'s payload,
-#' [`prim_while()`]'s loop state), calls nothing.
-#'
-#' Put the call before the body uses the operands for anything else, so it sees
-#' settled data types throughout: `prim_reduce()` reads `dtype(init)` to trace
-#' its reductor and `prim_scatter()` builds its update computation's parameter
-#' slots from `peek_dtype(x)`, both before recording a call.
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
 #' @param device (`NULL` | `character(1)` | `device_arg()`)\cr

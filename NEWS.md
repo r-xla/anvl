@@ -12,16 +12,22 @@
   - `promote_like()` and `promote_dtype()` refuse an input the target data type
     cannot hold, rather than narrowing it silently: `nv_clamp(0, x_i32, 1.5)` is
     now an error (write the literal in the array's category, e.g. `0L`), and so
-    is `x_i32[i] <- 1.5`. Pass `force = TRUE` to the rule where the narrowing is
-    the point.
+    is `x_i32[i] <- 1.5`. Pass `coerce = TRUE` to the rule where the conversion
+    is the point.
   - `nv_pad()`'s `padding_value` now *yields* to `x` instead of being promoted
     to it: an R value is built at `x`'s data type, within its own category
     (`nv_pad(x_f64, 0)`, not `0L`), and a value that already has a data type
     must have `x`'s -- one that disagrees is reported rather than widened.
+  - `promote_rdata_common()` is the rule for arguments that must *agree* rather
+    than meet: it brings the R values among them to the common data type, within
+    their own category, and converts nothing that already has one. Arguments
+    carrying several data types have no common one to reach that way, and the
+    rule says so -- naming them as the caller wrote them -- rather than leaving
+    the mismatch to type inference.
   - A primitive no longer promotes its arguments unless it says so: the
     `promote` argument of `new_primitive()` defaults to `NULL`, and the
     primitives whose arrayish arguments must agree declare
-    `promote = promote_yield()`. The rule is applied before the primitive's body
+    `promote = promote_rdata_common()`. The rule is applied before the primitive's body
     runs, so a body may read a data type or trace a sub-graph without meeting an
     argument that has not taken one yet.
 * `nv_rnorm()`'s `dtype` now defaults to `NULL`, which takes the sample's data
@@ -45,17 +51,42 @@
 * A primitive no longer declares how it promotes. `new_primitive()` and
   `AnvlPrimitive()` lost their `promote` argument, and the wrapper that applied
   the rule around a primitive's body is gone; a primitive whose operands must
-  agree calls `promote_operands()` at the top of its own body instead. The
+  agree calls `apply_promotion()` at the top of its own body instead. The
   promotion is where the operands are, rather than in an argument whose effect
-  is applied out of sight, and `only =` is no longer needed anywhere: a body
+  is applied out of sight, and `on =` is no longer needed anywhere: a body
   passes just the operands that have to agree.
+* `nv_array()` and `nv_scalar()` no longer accept a traced R value. A
+  constructor does not give such a value a data type: reaching one outside the
+  value's own category would have to stage through the natural one, bringing an
+  `f64` into a program that never asked for it. `nv_convert()` is where a
+  conversion belongs, and the `dtype()` error now points there.
+* `promote_like()` and `promote_dtype()`'s `force` argument is now called
+  `coerce`, and says what it is for: bringing an input to the target where that
+  is not a promotion -- a float reaching an integer data type, which no category
+  crosses to on its own, or narrowing a value the target cannot hold.
+* `apply_promotion()` is exported: it applies a promotion rule to a primitive's
+  operands from inside the primitive's own body, which is how a primitive whose
+  operands must agree says so. See `vignette("extending_primitive")`.
+* `promotion_rule()` is exported: it wraps a function of the call's arguments as a
+  promotion rule, so it prints as one and can be grouped with anvl's own.
+  Passing a bare function as `.promote` still works and needs nothing; wrapping
+  is what lets a rule be *grouped*, since a group has to know which arguments
+  each rule covers before it calls any of them.
+* `promote_grouped()` now takes only `PromotionRule`s, and checks the groups are
+  disjoint where the group is built rather than on the first call that reaches
+  it. Every rule in a group must name its `on`; one that does not covers any
+  argument and can only stand alone. A group declares what its own rules cover
+  together, so groups nest and the check sees through them.
+* The promotion rules' `only` argument is now called `on`:
+  `promote_common(on = c("x", "y"))`. It names which of a call's arguments the
+  rule covers, and reads as a selector rather than as an adverb.
 * A promotion rule is now a **function** of the call's arguments that returns the
-  data type each one is brought to, rather than an opaque `PromoteRule` object
+  data type each one is brought to, rather than an opaque `PromotionRule` object
   the framework knows how to interpret. `promote_common()`, `promote_like()`,
-  `promote_dtype()` and `promote_yield()` are unchanged to call -- they now
+  `promote_dtype()` and `promote_rdata_common()` are unchanged to call -- they now
   return such a function -- and a package can write a rule of its own and pass it
   as `.promote`, or combine it with anvl's through `promote_grouped()`. See the
-  *Writing a rule* section of `?promote_rule`.
+  *Writing a rule* section of `?promotion_rule`.
 * `promote_common()` gained a `fallback` argument: the data type to settle on
   when every input is a bare R value and there is none to read off the inputs,
   in place of the default those would commit to on their own. An input that has
@@ -64,8 +95,32 @@
   `naxes()` now answer for every arrayish value, bare R values included, so the
   two were the same function under a second name.
 
+* Converting an R value to a data type it cannot be built at directly now warns
+  when the staging brings a data type into the program that nothing asked for.
+  An R double reaches `i32` through `f64` -- the one float that holds it exactly
+  -- so a program with no `f64` in it acquires one, which a backend without
+  `f64` cannot run at all. The behaviour is unchanged, since the exactness is
+  usually what the caller wants; the warning (class
+  `anvl_staging_widens_warning`) says the `f64` is there and how to keep it out.
+  An R integer and an R logical stage at their own defaults, so they never warn.
+
 ## Bug fixes
 
+* `prim_print()` / `nv_print()` no longer report a data type for a value that
+  has not decided on one. Printing is not a use site that settles an R value, so
+  naming the data type the print committed it to reported one nothing else in
+  the program had: `jit(\(x) {prim_print(x); x + nv_scalar(0.3, "f64")})(1)`
+  said `[ f32{} ]` for an argument the program uploads at `f64`. The footer now
+  reads `[ double{} printed at f32 ]`: the R storage type stands where the data
+  type would -- unambiguous, because `double`, `integer` and `logical` are never
+  data type names -- and the data type named is the one the *rendering* used,
+  which is the value's default rather than whatever the program settles on.
+* `prim_print()` / `nv_print()` now hand their argument back untouched, so
+  inserting a print can no longer change what a program computes. It used to
+  return the value it had committed for the printing, so
+  `prim_print(x) * nv_scalar(1, "f64")` on `sqrt(2)` rounded through `f32` and
+  gave `1.4142135381698608` where the same expression without the print gave
+  `1.4142135623730951`.
 * A negative R integer used at an unsigned data type produced a different answer
   in each mode: eagerly it read back as nonsense, and under `jit()` it was
   written straight into the IR as `dense<-1> : tensor<ui32>`, which is not valid
@@ -84,6 +139,10 @@
   commit the value to its own default first, so `nv_pad(x_f64, 0)` failed with a
   data type mismatch and only an `f32` array with a double padding value
   happened to line up.
+
+## Tests
+
+* Moved some of pjrt's dispatcher tests into anvl.
 
 # anvl 0.4.0
 

@@ -39,54 +39,12 @@ is_graph_literal <- function(x) {
 #' @description
 #' The [`AbstractArray`] of a non-static R value that was passed to a jit-compiled
 #' function.
-#' It is special, because it does not have a data type and calling `dtype()` on it
+#' It is special, because it does not have a data type, i.e., calling `dtype()` on it
 #' results in an error.
-#' it only exists during tracing, never in a finalized graph.
-#'
-#' It carries no data. Nothing needs the R data *through* the aval: a value
-#' written in the body of a traced function is built from the R value itself at
-#' its use site, and an **argument** of a jitted function has no value to carry
-#' in the first place -- it is deliberately unknown while tracing, since the
-#' compiled program is cached by the argument's R storage type and shape and so
-#' must not depend on the value.
-#'
-#' Only that argument takes an input of its own, whose data type the finished
-#' trace settles: the input's aval is this class while the trace runs, and a
-#' plain [`AbstractArray`] once resolved, with the R storage type recorded in
-#' the graph's `rdata_types` beside it. An in-body value gets no input at all;
-#' [`to_abstract()`] still answers with an `RData` for one, which is how the
-#' [promotion rules][promote_rule] recognise "an R value, data type open".
-#'
-#' Which dtype a use site needs is normally not decided value by value: an
-#' `nv_*` function canonicalizes its whole argument set once at the top with
-#' [`as_anvl_arrays()`], and the [`.promote` rule][promote_rule] it passes
-#' there is what names the dtype every R value among them is built at.
-#'
-#' A value that is never combined with a typed array has nothing to take its
-#' dtype from and *commits* to the default for its R type: `f32` for a double,
-#' `i32` for an integer, `bool` for a logical.
-#'
-#' @section Sub-graph parameters:
-#' The same commitment happens where a data type is needed *before* any use site
-#' can name one. A higher-order primitive that traces a sub-graph has to give
-#' that sub-graph's parameters a data type up front, so a bare R value passed as
-#' one takes its default rather than whatever the sub-graph's body turns out to
-#' use it with. That is [`prim_while()`]'s `init`: in
-#' `nv_while(list(i = 1), ...)` the state `i` is `f32`, and a body that adds an
-#' `f64` to it is a data type error rather than an `f64` loop. Say which type
-#' the loop carries -- `nv_scalar(1, dtype = "f64")`, or [`nv_convert()`] for a
-#' value the caller passed in.
-#'
-#' A value that merely *flows into* a sub-graph body is not affected: it is
-#' built at the data type its use site asks for, as anywhere else.
-#'
+#' @details
+#' It only exists *during* tracing, never in a finalized graph.
 #' @section Extractors:
-#' [`shape()`][tengen::shape] and [`naxes()`][tengen::naxes] answer as they
-#' would for the R value: `()` for a length-1 vector, `dim()` for an
-#' [`array()`], and an error for a longer vector without a `dim()`, which is not
-#' an arrayish value at all. [`dtype()`][tengen::dtype] **errors**: there is no
-#' dtype to report until the value commits, exactly as `dtype(1.5)` has none to
-#' report. Give the value a dtype (e.g. [`nv_array()`], [`nv_scalar()`]) to ask.
+#' Just like [`AbstractArray`], with the exception that `dtype()` errs.
 #'
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the value: `()` for a length-1 vector, its `dim()` for an
@@ -97,16 +55,23 @@ is_graph_literal <- function(x) {
 #' @return (`RData`)
 #' @seealso [AbstractArray], [AnvlGraph]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- RData(integer(), "double")
-#' x
-#' shape(x)
-#' # dtype(x) would error: an R double has no data type of its own
-#' # same as
-#' nv_aval("double", integer())
-#'
-#' # How it appears during tracing
-#' graph <- trace_fn(function(x) x, list(x = RData(integer(), "double")))
-#' graph
+#' RData(c(2, 3), "double")
+#' # is equivalent to
+#' nv_aval("double", c(2, 3))
+#' # Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
+#' # dtype becomes f64.
+#' # By NOT converting RData to their default data type we prevent loss of precision
+#' # (double -> f32 -> f64 roundrips)
+#' graph <- trace_fn(function(x) {
+#'     print(x)
+#'     list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))
+#'   }, list(x = nv_aval("double", c()))
+#' )
+#' print(graph)
+#' # The actual inputs to the compiled program
+#' graph$inputs
+#' # The data types of the R values; AnvlArrays get NA here
+#' graph$rdata_types
 #' @export
 RData <- function(shape, r_type) {
   shape <- as_shape(shape)
@@ -114,9 +79,6 @@ RData <- function(shape, r_type) {
   structure(
     list(
       r_type = r_type,
-      # The dtype this value commits to when nothing tells it otherwise. Not
-      # called `dtype`: it is what the value *would* become, and code that
-      # reaches for `$dtype` must not silently get it.
       default_dtype = default_dtype_r(r_type),
       shape = shape
     ),
@@ -134,52 +96,10 @@ dtype.RData <- function(x, ...) {
   abort_no_dtype(x$default_dtype)
 }
 
-# An R value is the same value whether it is boxed for a trace or not, so the
-# extractors have to answer the same way in both places -- otherwise an `nv_*`
-# function means one thing under `jit()` and another eagerly. `shape.array()`
-# (tengen) already covers an R array; these cover a length-1 vector, and refuse
-# a dtype for either.
-# REVIEW: What are the implications of this?
-# RESPONSE: Three. (1) `shape(1.5)` answers instead of erroring, so an `nv_*`
-# function can ask for a shape before anything has decided a dtype, and gets the
-# same answer eagerly as it does for the boxed value under `jit()` -- which is
-# the whole point, since a function must not mean two things depending on where
-# it is called. (2) `shape(c(1, 2, 3))` errors rather than returning `3`: a
-# length-3 vector with no `dim()` is not an arrayish value, and reporting a
-# shape for it would only push the error further downstream. (3) It made
-# `shape_abstract()` redundant, which is why that is gone. This is a method on
-# our own generic (`tengen::shape`), so it only affects code that already calls
-# it; base R is untouched.
+
 #' @method shape numeric
 #' @export
 shape.numeric <- function(x, ...) {
-  r_value_shape(x)
-}
-
-#' @method shape logical
-#' @export
-shape.logical <- function(x, ...) {
-  r_value_shape(x)
-}
-
-#' @method dtype numeric
-#' @export
-dtype.numeric <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
-}
-
-# REVIEW: Hmm, here it is kind of un-ambiguous? but keep it consistent i guess
-# RESPONSE: Consistent, and also right on its own: a logical yields like any
-# other R value -- `nv_array(1:2) + TRUE` is `i32`, not `bool` -- so `TRUE` has
-# no more of a data type of its own than `1.5` has. `bool` is only what it
-# commits to when nothing claims it, which is what `peek_dtype()` reports.
-#' @method dtype logical
-#' @export
-dtype.logical <- function(x, ...) {
-  abort_no_dtype(default_dtype(x))
-}
-
-r_value_shape <- function(x) {
   if (!is.null(dim(x))) {
     return(as.integer(dim(x)))
   }
@@ -192,12 +112,28 @@ r_value_shape <- function(x) {
   integer()
 }
 
+#' @method shape logical
+#' @export
+shape.logical <- shape.numeric
+
+#' @method dtype numeric
+#' @export
+dtype.numeric <- function(x, ...) {
+  abort_no_dtype(default_dtype(x))
+}
+
+#' @method dtype logical
+#' @export
+dtype.logical <- function(x, ...) {
+  abort_no_dtype(default_dtype(x))
+}
+
 abort_no_dtype <- function(default_dtype) {
   cli_abort(
     c(
       "An R value has no data type of its own until it is used.",
       i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it commits to the default ({.val {as.character(default_dtype)}}).", # nolint
-      i = "Give it one explicitly, e.g. {.fn nv_array} or {.fn nv_scalar} with {.arg dtype}."
+      i = "Give it one explicitly with {.fn nv_convert}."
     ),
     call = NULL
   )
@@ -205,8 +141,6 @@ abort_no_dtype <- function(default_dtype) {
 
 #' @export
 format.RData <- function(x, ...) {
-  # The data itself is deliberately left out: it can be a whole array, and what
-  # matters about an RData is what it is, not what it holds.
   sprintf("RData(%s, %s)", x$r_type, shape2string(x$shape))
 }
 
@@ -221,8 +155,6 @@ repr.RData <- function(x, ...) {
   sprintf("%s[%s]", x$r_type, repr(x$shape))
 }
 
-# An argument the caller supplies as bare R data, while its data type is still
-# open: an input like any other, whose aval has no data type yet.
 is_rdata_box <- function(x) {
   inherits(x, "GraphBox") && is_rdata(x$gnode$aval)
 }
@@ -241,140 +173,155 @@ rdata_mat_set <- function(desc, gval, key, box) {
   invisible(box)
 }
 
-# The dtype that holds an R value of this storage type exactly. Building at it
-# is always faithful; every other dtype is reached by converting from it, so
-# that narrowing follows the program's own conversion semantics rather than R's
-# (they disagree: XLA clamps a float that overflows an integer dtype and maps
-# NaN to zero, R wraps or yields NA).
 rdata_natural_dtype <- function(r_type) {
   switch(r_type, double = as_dtype("f64"), integer = as_dtype("i32"), logical = as_dtype("bool"))
 }
 
-# The dtypes an R value of this storage type may be built at at all: the ones of
-# its own category. A double becomes a float, an integer an integer, a logical a
-# `bool`. Anything else is *promotion*, which is the API layer's business -- and
-# out of the category R's coercion and XLA's `convert` disagree, so it has to be
-# the program's conversion rather than R's.
+# The dtype an R value is built at on its way to `dtype`, for a `dtype` it
+# cannot be built at directly. Building it where it is exact is what keeps the
+# conversion the program's rather than R's -- but where that is wider than the
+# dtype the value would commit to on its own, the program acquires one nothing
+# asked for. An R double reaches `i32` through `f64`, so a program with no `f64`
+# in it gets one, and a backend without `f64` (Metal) cannot run it at all.
+#
+# That is worth saying out loud rather than refusing: the alternative rounds the
+# value through its default before converting, which is a different answer
+# (`2^25 + 1` reaches `i32` as 33554432 rather than 33554433), and the caller may
+# well want the exact one. `double` is the only R type this can happen for --
+# an integer and a logical are exact at their own defaults.
+
+# This is one of THE core functios of the RData mechanism, as it specifies how
+# we obtain RData inputs at the requested data type.
+# When an RData input is only requested at it's category, we use the dtype within that category
+# that holds enough precision so everybody gets the value at its requested dtype without losing precision.
+# To understand this, consider a program that receives an R double and compare two programs:
+# 1. a single primitive call uses the R double and requires it in f32 -> input becomes f32
+# 2. one primitive requires f32, the other f64. -> input becomes f64
+#    this only works, because the f32 obtained from the f32 is the same as we obtain from the f64.
+# Where we do cross-category concversions, a double input must e.g. always be materialized at
+# f64, otherwise the result of an i32 request might depend on the float requests of that double,
+# which MUST NOT HAPPEN. This is also why prim_convert(1, "i32") errs:
+# We need to introduce an f64 into the program although nobody ever requested one, but otherwise
+# would be even worse.
+rdata_staging_dtype <- function(r_type, dtype) {
+  staged <- rdata_natural_dtype(r_type)
+  if (staged != default_dtype_r(r_type)) {
+    cli_warn(
+      c(
+        "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
+        x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts -- and nothing else here asked for {.val {as.character(staged)}}.", # nolint
+        i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(default_dtype_r(r_type))}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
+      ),
+      class = "anvl_staging_widens_warning"
+    )
+  }
+  staged
+}
+
 rdata_in_category <- function(r_type, dtype) {
   dtype_category(dtype) == dtype_category(default_dtype_r(r_type))
 }
 
-# Whether an R value of this storage type can be built at `dtype` *directly*,
-# i.e. whether doing so gives the same value as building it at its natural dtype
-# and converting. That is the category test plus enough width: float to float
-# rounds once either way, and an R integer reaches any 32-bit-or-wider integer
-# dtype unchanged, but a narrower one has to be the program's convert.
-#
-# An R integer is deliberately not built at a float here. It would be exact, but
-# it would let one argument leaf be built at both `i32` and `f32`, and
-# `resolve_upload_dtype()` then has to choose between two dtypes of the same
-# width where the float does not hold every value of the integer. Keeping the
-# candidates inside one category is what makes "the widest holds them all" true.
-#
-# Nor at an *unsigned* dtype, for the same reason it is not built at a narrower
-# one: an R integer is signed, so a negative value has no representation there
-# and writing it straight into the IR is not even valid StableHLO
-# (`dense<-1> : tensor<ui32>`). The value is unknown for a jit argument, so this
-# cannot be decided per value; building at `i32`/`i64` and letting the program
-# convert gives XLA's wrap-around, in eager mode as much as under `jit()`.
+# TODO: bit64 support
 rdata_builds_directly <- function(r_type, dtype) {
   rdata_in_category(r_type, dtype) &&
     (r_type != "integer" || (is_dtype_int(dtype) && dtype_width(dtype) >= 32L))
 }
 
+# Bring an R value of storage type `r_type` into the program at `dtype`. `build`
+# makes it at a data type it can be built at faithfully; a target it cannot is
+# reached by building at the natural one and letting the *program* convert the
+# rest of the way, so narrowing follows XLA's semantics rather than R's.
+#
+# The three ways an R value enters a program -- a literal in a traced body, the
+# input an open argument is supplied at, an array built eagerly -- differ only
+# in `build`, and this is what they share.
+build_r_staged <- function(r_type, dtype, build) {
+  if (rdata_builds_directly(r_type, dtype)) {
+    return(build(dtype))
+  }
+  prim_convert(build(rdata_staging_dtype(r_type, dtype)), dtype = dtype)
+}
+
 # Build `box`'s R argument into the graph at `dtype`, and return the GraphBox
 # for it. Memoized per dtype on the node: an argument used twice at one dtype
-# takes one input. The value is always built at the dtype asked for, never
-# converted from one built at another dtype in the same category -- that is what
-# keeps `x_f64 / sqrt(2)` exact.
+# takes one input.
 materialize_rdata <- function(box, dtype) {
-  gval <- box$gnode
-  key <- as.character(dtype)
-  hit <- rdata_mat(box$desc, gval)[[key]]
-  # A memoized box is only reusable where it can actually be reached. One built
-  # in the node's own descriptor can: a sub-graph captures it like any other
-  # outer value. The `prim_convert` below is recorded in whatever descriptor was
-  # current, though, so a sibling sub-graph -- `prim_if()`'s other branch,
-  # `prim_while()`'s body after its condition -- has to build its own rather
-  # than reference a value only the first one computes.
-  if (!is.null(hit) && (identical(hit$desc, box$desc) || identical(hit$desc, .current_descriptor(silent = TRUE)))) {
-    # nolint
+  hit <- rdata_mat_hit(box, dtype)
+  if (!is.null(hit)) {
     return(hit)
   }
-  aval <- gval$aval
-  if (!rdata_builds_directly(aval$r_type, dtype)) {
-    # Out of the value's own category: build it where it is exact and let the
-    # program convert, so the result is the one `nv_convert()` gives for a
-    # typed array of the same value.
-    out <- prim_convert(materialize_rdata(box, rdata_natural_dtype(aval$r_type)), dtype = dtype)
-    return(rdata_mat_set(box$desc, gval, key, out))
+  out <- build_r_staged(box$gnode$aval$r_type, dtype, function(dt) rdata_input_at(box, dt))
+  rdata_mat_set(box$desc, box$gnode, as.character(dtype), out)
+}
+
+# The input `box`'s R argument is supplied at, for a dtype it can be uploaded at
+# directly. Its value is unknown here (the compiled program must not depend on
+# it), so it becomes an input of this dtype and the call uploads the R data at
+# it; `finalize_rdata_inputs()` puts it in the input list. Memoized like the
+# converts above it, so a staged build and a later request for the same natural
+# dtype share one input.
+rdata_input_at <- function(box, dtype) {
+  hit <- rdata_mat_hit(box, dtype)
+  if (!is.null(hit)) {
+    return(hit)
   }
-  # The argument's value is unknown here (the compiled program must not depend
-  # on it), so it becomes an input of this dtype and the call uploads the R data
-  # at that dtype. finalize_rdata_inputs() puts it in the input list.
-  out <- register_gval(box$desc, GraphValue(AbstractArray(dtype = dtype, shape = aval$shape)))
-  rdata_mat_set(box$desc, gval, key, out)
+  aval <- box$gnode$aval
+  rdata_mat_set(
+    box$desc,
+    box$gnode,
+    as.character(dtype),
+    register_gval(box$desc, GraphValue(AbstractArray(dtype = dtype, shape = aval$shape)))
+  )
 }
 
-# An R value with no data type of its own, not yet boxed and not an array that
-# has one. What `build_r_at()` takes.
-is_bare_r_value <- function(x) {
-  !is_box(x) && !is_anvl_array(x) && is_valid_r(x)
+# A memoized box is only reusable where it can actually be reached. One built in
+# the node's own descriptor can: a sub-graph captures it like any other outer
+# value. A `prim_convert` is recorded in whatever descriptor was current,
+# though, so a sibling sub-graph -- `prim_if()`'s other branch, `prim_while()`'s
+# body after its condition -- has to build its own rather than reference a value
+# only the first one computes.
+rdata_mat_hit <- function(box, dtype) {
+  hit <- rdata_mat(box$desc, box$gnode)[[as.character(dtype)]]
+  if (is.null(hit)) {
+    return(NULL)
+  }
+  reachable <- identical(hit$desc, box$desc) || identical(hit$desc, .current_descriptor(silent = TRUE))
+  if (reachable) hit else NULL
 }
 
-# Build the bare R value `x` into `desc` at `dtype`, and return its GraphBox.
-# Tracing only. The value is built from the R data itself, so it arrives with
-# every digit it had -- that is what keeps `x_f64 / sqrt(2)` exact. A dtype
-# outside the value's own category is reached by building at the natural one and
-# letting the program convert, so narrowing follows the program's semantics
-# rather than R's.
+# Build the bare R value `x` -- an actual length-1 vector or array -- into
+# `desc` at `dtype` as a constant, and return its GraphBox. Tracing only. The
+# value is built from the R data itself, so it arrives with every digit it had,
+# which is what keeps `x_f64 / sqrt(2)` exact.
 build_r_at <- function(x, dtype, desc = .current_descriptor()) {
+  force(desc)
   if (!is_valid_r_lit(x) && !is_valid_r_array(x)) {
     # An `NA` reaches here: it is a length-1 numeric, but there is no dtype it
     # obviously belongs at. Refused the same way it is anywhere else a value
     # enters a graph.
     cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
   }
-  dtype <- as_dtype(dtype)
-  if (!rdata_builds_directly(typeof(x), dtype)) {
-    natural <- build_r_at(x, rdata_natural_dtype(typeof(x)), desc)
-    return(prim_convert(natural, dtype = dtype))
-  }
+  build_r_staged(typeof(x), as_dtype(dtype), function(dt) r_const_at(x, dt, desc))
+}
+
+# The graph's constant for the R value `x` at `dtype`: an inlined literal for a
+# scalar, a registered constant for an array. Deduplicated per descriptor, so
+# the same value written twice is built once.
+r_const_at <- function(x, dtype, desc) {
   if (is.null(dim(x))) {
     return(get_box_or_register_const(
       desc,
-      GraphLiteral(LiteralArray(x, shape = r_value_shape(x), dtype = dtype))
+      GraphLiteral(LiteralArray(x, shape = shape(x), dtype = dtype))
     ))
   }
-  # An R array becomes a constant of the graph, built at the dtype the program
-  # uses it at.
   get_box_or_register_const(desc, nv_array(x, dtype = dtype))
-}
-
-# Materialize an [`RData`] box at the dtype the value commits to when
-# nothing else decided. Tracing only -- a box exists only inside a trace.
-trace_commit_rdata <- function(box) {
-  materialize_rdata(box, peek_dtype(box))
 }
 
 #' @title Peek at a Data Type
 #' @description
-#' The data type `x` would use if an operation needed one right now: its own
-#' where it has one, and the one it *would* commit to where it has none.
-#'
-#' An R value entering a program has no data type until it is used (see
-#' [`RData`]), so [`dtype()`][tengen::dtype] has nothing to report for one
-#' and errors. `peek_dtype()` answers instead with the value's default (`f32`
-#' for a double, `i32` for an integer, `bool` for a logical) -- *without*
-#' committing it, which is the point: an `nv_*` function that needs a dtype only
-#' to decide something with (a category test, a `nan_rm` branch) must not force
-#' the value to settle just by asking.
-#'
-#' Where the dtype becomes the operation's own -- what the other arguments are
-#' converted to, or what the result is built `_like` -- the value has to commit
-#' for real; that is a `.promote` rule of [`as_anvl_arrays()`] (exact, because it
-#' decides and converts in one step) or, failing that, [`as_anvl_array()`],
-#' which converts at the default. Not this.
+#' The data type `x` would use if was conveted to an `AnvlArray`.
+#' Relevant for R objects and their [`RData`] trace-time analogon.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
@@ -392,36 +339,20 @@ peek_dtype <- function(x) {
 
 # A traced box, with any R value in it committed to its default dtype. Anything
 # that already has a dtype is returned unchanged.
-trace_commit_rdata_box <- function(x) {
-  if (is_rdata_box(x)) trace_commit_rdata(x) else x
+commit_rdata_box <- function(x) {
+  if (is_rdata_box(x)) {
+    materialize_rdata(x, peek_dtype(x))
+  } else {
+    x
+  }
 }
 
-# Bring a primitive's operands to one dtype. Without this an R value would
-# commit to its own default, so whether a call worked would depend on whether the
-# array it met happened to be at that default.
-#
-# Called at the top of the bodies that need it, before they use the operands for
-# anything else -- which is what a primitive that reads a dtype or traces a
-# sub-graph before recording its call needs: `prim_reduce()` reads `dtype(init)`
-# to trace its reductor and `prim_scatter()` builds its update computation's
-# parameter slots from `peek_dtype(x)`. Name the operands here as the
-# `graph_desc_add()` call below names them, so a rule's `only =` means the same
-# thing in both places.
-#
-# Idempotent: once every operand has a dtype there is nothing left to decide,
-# which is also the fast path.
-promote_operands <- function(operands, promote) {
-  if (!length(operands) || !any(vapply(operands, has_no_dtype, logical(1L)))) {
-    return(operands)
-  }
-  promote_args(operands, promote)
-}
 
 # Whether a value has no dtype yet -- an RData box, or a bare R value that has
 # not been boxed. Deliberately cheap: it runs once per argument of every traced
 # primitive call.
 has_no_dtype <- function(x) {
-  is_rdata_box(x) || (!is_anvl_array(x) && !is_box(x) && is_valid_r(x))
+  is_rdata_box(x) || is_valid_r(x)
 }
 
 #' @export
@@ -551,14 +482,6 @@ AnvlGraph <- function(
   structure(env, class = "AnvlGraph")
 }
 
-# The dtype each of the graph's inputs is supplied at, for the backends that
-# have to upload it: one entry per input, `NA` for one the caller passes through
-# unchanged (an array, which already has its dtype). Only an input built from
-# bare R data names one -- it has no dtype of its own, so the program decided
-# what it is uploaded as. `graph$rdata_types` says which inputs those are and
-# the input's own aval says at which dtype; `NULL` when no input came from R
-# data, which is the overwhelmingly common case and lets the callers skip the
-# whole step.
 graph_input_dtypes <- function(graph) {
   r_types <- graph$rdata_types
   if (is.null(r_types) || !any(!is.na(r_types))) {
@@ -639,7 +562,7 @@ GraphDescriptor <- function(
   # argument that one program used at more than one dtype.
   env$pre_calls <- list()
   # Bookkeeping for the R arguments, which are inputs whose data type is not
-  # decided yet (an `RData` aval). Kept beside the graph rather than on a node
+  # decided yet (an `RData` aval). Kept beside the descriptor rather than on a node
   # of it: none of it outlives the trace.
   #   rdata_mat:   input GraphValue -> list(dtype name -> GraphBox), the values
   #                the body built the argument at. One entry per dtype asked
@@ -762,17 +685,12 @@ format.GraphBox <- function(x, ...) {
   sprintf("GraphBox(%s)", format(x$gnode))
 }
 
-# Box an arrayish value for `desc`. An R value written in the body has no dtype
-# and nothing here decides one, so it is built at its default; a caller that
-# knows the dtype it needs calls `build_r_at()` directly instead. An open R
-# *argument*'s box passes through as it is -- it commits only where a caller
-# says so, with `trace_commit_rdata_box()`.
 maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
     # An R value belongs to the graph it was written in, so one reaching
     # another graph has to commit before it can be captured there.
     if (is_rdata_box(x) && !identical(x$desc, desc)) {
-      x <- trace_commit_rdata(x)
+      materialize_rdata(x, peek_dtype(x))
     }
     if (identical(x$desc, desc)) {
       return(x)
@@ -824,7 +742,7 @@ maybe_box_input <- function(x, desc, mode) {
     if (is_graph_box(x)) {
       # A subgraph parameter needs a dtype, and the subgraph is traced before
       # its operands meet anything, so an R value commits here.
-      x <- trace_commit_rdata_box(x)
+      x <- commit_rdata_box(x)
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
@@ -847,8 +765,8 @@ maybe_box_input <- function(x, desc, mode) {
       return(register_input(desc, parent_box$gnode))
     }
     if (is_rdata_box(x)) {
-      # jit(gradient(f))(sqrt(2)): an R argument of the jitted call, still open
-      # in the outer trace. Keep it open here too, so the traced body decides
+      # When we trace within a trace
+      # Keep it open here too, so the traced body decides
       # which dtypes it is used at, exactly as it does under plain jit(). The
       # input slot is settled by finalize_inline_rdata_inputs().
       return(register_rdata_input(desc, x$gnode$aval, outer = x))
@@ -878,7 +796,7 @@ maybe_box_input <- function(x, desc, mode) {
     return(register_rdata_input(desc, x))
   }
   if (is_graph_box(x)) {
-    x <- trace_commit_rdata_box(x)
+    x <- commit_rdata_box(x)
     return(register_input(desc, x$gnode))
   }
   if (is_abstract_array(x)) {
@@ -937,19 +855,10 @@ is_open_rdata_input <- function(gval) {
   is_rdata(gval$aval)
 }
 
-# Settle every R argument of a finished trace: which dtype its input is
-# supplied at, and the converts for any further dtype the body used it at. The
-# The input's aval becomes a plain [`AbstractArray`] at the resolved dtype, and
-# `desc$rdata_types` records which R storage type each input is uploaded from --
-# `NA` for one that arrives as an array. The two together say everything about
-# how a call's arguments are uploaded.
-#
-# The upload dtype is the highest precision the body asked for, staying in the
-# R value's own category where it can -- an R integer used as both `i64` and
-# `f32` is uploaded as `i64`, so the `i64` use site is exact and the `f32` one
-# rounds once, as it would have from the R value itself. A value the body never
-# used commits to its default, so the input is still there for the caller to
-# supply.
+# modifies the descriptor in-place
+# and finalizes the rdata inputs by:
+# 1. Resolving the data type the input gets
+# 2. Appending pre_calls with the conversions.
 finalize_rdata_inputs <- function(desc) {
   inputs <- desc$inputs
   is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
@@ -969,6 +878,8 @@ finalize_rdata_inputs <- function(desc) {
     inputs[[i]] <- main$gnode
     r_types[[i]] <- aval$r_type
     for (other in setdiff(requested, resolved)) {
+      # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
+      # always results in the same value
       pre_calls[[length(pre_calls) + 1L]] <- PrimitiveCall(
         primitive = prim_convert,
         inputs = list(main$gnode),
@@ -994,14 +905,8 @@ rdata_requested_dtypes <- function(aval, mat) {
   )
 }
 
-# Settle every R argument of a finished inline trace (the forward body of
-# `gradient()` / `value_and_gradient()`). Unlike a toplevel trace, its inputs
-# are not program inputs: the R value is an argument of the *enclosing* trace
-# and is still open there. So the input becomes the enclosing trace's
-# materialization at the resolved dtype -- feeding this use into the enclosing
-# graph's own resolution, which settles the upload at the end seeing the union
-# of every use -- while the converts to any further dtype the body used stay in
-# this graph, where transform_gradient() differentiates through them.
+# Finalize Rdata inputs of a sub-trace.
+# E.g. used with gradent()
 finalize_inline_rdata_inputs <- function(desc) {
   inputs <- desc$inputs
   is_open <- vapply(inputs, is_open_rdata_input, logical(1L))
@@ -1010,6 +915,8 @@ finalize_inline_rdata_inputs <- function(desc) {
   }
   pre_calls <- list()
   add_convert <- function(input, dtype, output) {
+    # The invariance we need to uphold is we resolve the inputs in such a way, that this convert
+    # always results in the same value
     pre_calls[[length(pre_calls) + 1L]] <<- PrimitiveCall(
       primitive = prim_convert,
       inputs = list(input),
@@ -1025,22 +932,28 @@ finalize_inline_rdata_inputs <- function(desc) {
     resolved <- resolve_upload_dtype(aval, requested)
     outer <- desc$rdata_outer[[gval]]
     local_box <- mat[[resolved]]
+    # In the examples below, `x` is `nv_scalar(1, "f64")` and `b` is the R
+    # value this iteration settles.
     if (is.null(local_box)) {
-      # The body never built the value at `resolved` itself (it was never
-      # used, or `resolved` widened past every use): the enclosing trace's
-      # materialization serves directly, with a convert per use below.
+      # The sub-trace never built at the resolved data type
+      # (e.g., if sub-trace uses input 1 at f16 and bf16, resolved would be f32, i.e. the one that
+      # can hold both, even though nobody requested it)
       main <- materialize_rdata(outer, as_dtype(resolved))$gnode
     } else if (is.null(rdata_mat(outer$desc, outer$gnode)[[resolved]])) {
       # The value at `resolved` exists in this graph and nowhere else: hand
       # the gval itself up, so the enclosing trace's own finalize defines it
       # (as the upload input, or a convert from it) ahead of this graph's
       # calls, and later uses there reuse it.
+      # e.g. the body builds `q` at `f64`, the enclosing trace never uses `b`:
+      #   jit(\(a, b) gradient(\(p, q) p * q, wrt = "p")(a, b))(x, 2)
       main <- local_box$gnode
       rdata_mat_set(outer$desc, outer$gnode, resolved, register_gval(outer$desc, main))
     } else {
       # The enclosing trace built `resolved` too, so the body's gval is a
       # second value for it: take the outer one as the input and define the
       # body's from it.
+      # e.g. `a + b` builds `b` at `f64` before the body builds its own:
+      #   jit(\(a, b) { w <- a + b; gradient(\(p, q) p * q, wrt = "p")(a, b) })(x, 2)
       main <- materialize_rdata(outer, as_dtype(resolved))$gnode
       add_convert(main, resolved, local_box$gnode)
     }
@@ -1313,13 +1226,25 @@ trace_fn <- function(
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
-  outputs_flat <- lapply(output[[2L]], function(x) trace_commit_rdata_box(maybe_box_arrayish(x)))
+  outputs_flat <- lapply(output[[2L]], function(x) commit_rdata_box(maybe_box_arrayish(x)))
 
   desc$out_tree <- out_tree
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
+  # Where this trace's still-open R arguments end up, which is what the two
+  # differ in. A toplevel trace owns them: they become its own inputs, at the
+  # dtype the caller uploads them at. An inline trace does not -- they belong to
+  # the enclosing trace and stay open there, so the input is handed back up to
+  # it and only the converts between dtypes stay here, where
+  # transform_gradient() differentiates them. A sub-graph has none to settle:
+  # its R values commit when `maybe_box_input()` builds the parameter slots.
+  # We might
   if (mode == "toplevel") {
+    # Standard case:
     finalize_rdata_inputs(desc)
   } else if (mode == "inline") {
+    # This e.g. happens in:  jit(\(x, y) gradient(\(x, y) x * y, wrt = "x")(x, y))(nv_scalar(1, "f64"), 2)
+    # There, the data type at which pi is materialized depends on the result of the sub-trace
+    # but it needs to be regsitered for the toplevel trace
     finalize_inline_rdata_inputs(desc)
   }
   if (!is.null(desc$is_static_flat) && isTRUE(any(desc$is_static_flat))) {
@@ -1460,14 +1385,9 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    # Not every argument has a data type by now: a primitive with
-    # `promote = NULL` (`prim_sort`, `prim_while`) declares no rule, a rule with
-    # `only =` leaves the arguments it does not name, and `promote_yield()`
-    # deliberately gives up when the inputs already carry more than one data
-    # type. A node entering the graph must have one, so this is the last resort
-    # -- it commits whatever is left at its default and lets type inference
-    # report the mismatch.
-    gnode <- trace_commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
+    # Commit R values to their default dtype, which happens when no promotion rule
+    # materialized them (default behavior)
+    gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval
   }

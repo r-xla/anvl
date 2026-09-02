@@ -515,7 +515,7 @@ nv_ifelse <- function(pred, true_value, false_value) {
     pred = pred,
     true_value = true_value,
     false_value = false_value,
-    .promote = promote_common(only = c("true_value", "false_value"))
+    .promote = promote_common(on = c("true_value", "false_value"))
   )
   args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
@@ -1456,7 +1456,7 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_yield())
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_rdata_common())
   x <- args$x
   padding_value <- args$padding_value
   rank <- naxes(x)
@@ -1582,7 +1582,7 @@ nv_solve <- function(a, b) {
   # `a` and `b` must agree, and neither is widened to meet the other: an R
   # matrix yields to `a`'s data type, two typed arrays that disagree are
   # rejected.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_yield())
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
   a <- args$a
   b <- args$b
   a_shape <- shape(a)
@@ -1665,7 +1665,7 @@ nv_triangular_solve <- function(
   transpose_a = FALSE
 ) {
   # As in `nv_solve()`: the two must agree, and neither is widened.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_yield())
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
   a <- args$a
   b <- args$b
 

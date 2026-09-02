@@ -111,6 +111,25 @@ When doing so, you need to:
 2. Call the stablehlo inference function and obtain a list of `ValueType`s.
 3. Convert the `ValueType`s back to abstract arrays using `vt2at()`.
 
+#### Handling of R inputs
+
+One question that the primitive needs to answer is how it materializes R inputs:
+The default rule is to materialize an R input at its default data type, which is `f32` for doubles, `i32` for integers, and `bool` for logicals.
+
+For functions taking a single dynamic input, as does `prim_repeat_along` from above, this is almost always the right thing to do.
+The inputs section of the printed graph shows both halves of it: the input's data type is the default the value committed to, and the `<- double` records that the caller supplies an R double rather than an array that already had one.
+
+```{r}
+trace_fn(prim_repeat_along, list(nv_aval("double", c(2, 3)), 2, 1))
+```
+
+Where the default goes wrong is when a primitive has several operands that must agree.
+Committing each to its own default would make `prim_add(1, nv_scalar(2, "f64"))` an error -- the literal would become `f32` and meet an `f64` -- where it should give `f64`.
+In such cases, you should call `apply_promotion()` in the primitive and pass the rules you want to apply.
+This needs to be done before calling `graph_desc_add()`.
+These should *not* change the data type of any `AnvlArray` inputs, which is what the `promote_rdata_common()` rule is for.
+See `vignette("type-promotion")` for more information on these rules.
+
 #### Special case: primitives with 0 dynamic inputs
 
 Array *constructors* (e.g. `prim_fill`, `prim_iota`) have no dynamic array inputs -- every argument is static. Two things change in this case:
@@ -221,8 +240,6 @@ Note that the reverse rule will only be called if at least one input gradient is
 
 #### Optional: alternative-forward rule
 
-
-<!-- REVIEW: We also need to mention the type promotion here. -->
 
 For most primitives the backward-only form above is enough.
 If the gradient computation can be made significantly more efficient by running an alternative forward pass that exposes intermediate values for reuse, use the alternative-forward form: `rule_reverse(forward = ...)`.

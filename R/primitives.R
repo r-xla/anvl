@@ -10,7 +10,7 @@ make_binary_op <- function(stablehlo_infer) {
     list(vt2at(stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]))
   }
   function(lhs, rhs) {
-    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
@@ -291,7 +291,7 @@ prim_dot_general <- new_primitive(
       out <- stablehlo::infer_types_dot_general(at2vt(lhs), at2vt(rhs), dot_dimension_numbers = ddn)[[1L]]
       list(vt2at(out))
     }
-    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -434,7 +434,7 @@ prim_concatenate <- new_primitive(
     }
     graph_desc_add(
       self,
-      args = promote_operands(dots, promote_yield()),
+      args = apply_promotion(dots, promote_rdata_common()),
       params = list(axis = axis),
       infer_fn = infer_fn
     )[[1L]]
@@ -629,7 +629,7 @@ prim_dynamic_update_slice <- new_primitive(
       out <- AbstractArray(dtype = x$dtype, shape = shape(x))
       list(out)
     }
-    operands <- promote_operands(list(x = x, update = update), promote_yield())
+    operands <- apply_promotion(list(x = x, update = update), promote_rdata_common())
     graph_desc_add(
       self,
       args = c(operands, start_indices),
@@ -967,7 +967,7 @@ prim_reduce <- new_primitive(
     force(init)
     force(reductor)
     # Settled before the reductor is traced below, which reads `dtype(init)`.
-    operands <- promote_operands(list(x = x, init = init), promote_yield())
+    operands <- apply_promotion(list(x = x, init = init), promote_rdata_common())
     x <- operands$x
     init <- operands$init
 
@@ -979,14 +979,8 @@ prim_reduce <- new_primitive(
       cli_abort("{.arg reductor} must be a function")
     }
 
+    # `x` and `init` agree: the rule above brought them together or refused.
     op_dtype <- dtype(x)
-    init_dtype <- dtype(init)
-    if (init_dtype != op_dtype) {
-      cli_abort(c(
-        "{.arg init} must have the same dtype as {.arg x}.",
-        x = "Got {.arg x} dtype {.field {repr(op_dtype)}} and init dtype {.field {repr(init_dtype)}}."
-      ))
-    }
     if (naxes(init) != 0L) {
       cli_abort("{.arg init} must be a scalar (0-dimensional)")
     }
@@ -1178,7 +1172,7 @@ make_compare_op <- function(direction) {
   force(direction)
   infer_fn <- function(lhs, rhs) infer_compare(lhs, rhs, direction)
   function(lhs, rhs) {
-    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
@@ -1435,7 +1429,7 @@ prim_shift_left <- new_primitive(
   "shift_left",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_left)
-    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -1459,7 +1453,7 @@ prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_logical)
-    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -1483,7 +1477,7 @@ prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_arithmetic)
-    operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -1983,7 +1977,7 @@ prim_polygamma <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
-    operands <- promote_operands(list(n = n, x = x), promote_yield())
+    operands <- apply_promotion(list(n = n, x = x), promote_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -2117,7 +2111,7 @@ prim_clamp <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
-    operands <- promote_operands(list(min_val = min_val, x = x, max_val = max_val), promote_yield())
+    operands <- apply_promotion(list(min_val = min_val, x = x, max_val = max_val), promote_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -2260,7 +2254,7 @@ prim_pad <- new_primitive(
       list(out)
     }
 
-    operands <- promote_operands(list(x = x, padding_value = padding_value), promote_yield())
+    operands <- apply_promotion(list(x = x, padding_value = padding_value), promote_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -2334,12 +2328,11 @@ prim_round <- new_primitive(
 prim_convert <- new_primitive(
   "convert",
   function(x, dtype) {
+    # We need to be careful w.r.t. to handling R inputs so we prim_convert(pi, "f64")
+    # is faithful and does not round-trip through f32
     dtype <- as_dtype(dtype)
-    # There is nothing to convert: an R value is built at the dtype asked for,
-    # so the result holds every digit the R value had. A literal written in the
-    # body of a traced function arrives here unboxed, since `prim_convert`
-    # declares no `promote` rule that would have boxed it.
-    if (currently_tracing() && is_bare_r_value(x)) {
+    # Directly materialize
+    if (currently_tracing() && is_valid_r(x)) {
       return(build_r_at(x, dtype))
     }
     if (is_rdata_box(x)) {
@@ -2393,7 +2386,7 @@ prim_ifelse <- new_primitive(
       list(out)
     }
     # `pred` is a bool and keeps out of it; the two branches must agree.
-    operands <- promote_operands(list(true_value = true_value, false_value = false_value), promote_yield())
+    operands <- apply_promotion(list(true_value = true_value, false_value = false_value), promote_rdata_common())
     graph_desc_add(
       self,
       c(list(pred = pred), operands),
@@ -2772,11 +2765,40 @@ prim_print <- new_primitive(
     # it is not really one: stablehlo does not carry the dtype the way anvl
     # prints it.
     # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
-    x <- as_anvl_array(x)
-    footer <- sprintf("[ %s{%s} ]", as.character(dtype(x)), paste0(shape(x), collapse = ","))
-    graph_desc_add(self, list(x = x), list(footer = footer), infer_fn = function(x, ...) {
+    #
+    # The footer is read off the operand *before* it is committed, because a
+    # print is not a use site that should get to name a data type. An R value
+    # arrives here with none decided -- printing it is not what settles it, and
+    # whatever the program goes on to do with the value usually settles it
+    # elsewhere:
+    #
+    #   jit(\(x) {prim_print(x); x + nv_scalar(0.3, "f64")})(1)
+    #
+    # uploads `x` at `f64` for the addition. Reporting the `f32` this call
+    # commits it to on the way in would name a data type nothing else in the
+    # program has. So the footer shows the R storage type in the data type's
+    # place -- `double`, `integer` and `logical` are never data type names, so
+    # there is nothing to confuse them with -- and names the data type the
+    # *rendering* used, since printing the value does have to build it at one
+    # and that is the default rather than whatever the program settles on.
+    aval <- to_abstract(x)
+    dims <- paste0(shape(aval), collapse = ",")
+    footer <- if (is_rdata(aval)) {
+      sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
+    } else {
+      sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
+    }
+    # `x` is printed, not consumed: the call takes a rendering of it and the
+    # original is handed straight back. Inserting a print therefore cannot
+    # change what the program computes -- an R value in particular stays
+    # uncommitted, so `prim_print(x) * nv_scalar(1, "f64")` is still exact where
+    # committing `x` to its default first would have rounded it through `f32`.
+    # The stablehlo rule threads the operand through the same way, and marks the
+    # custom call `has_side_effect` so it survives with its result unused.
+    graph_desc_add(self, list(x = as_anvl_array(x)), list(footer = footer), infer_fn = function(x, ...) {
       list(x)
-    })[[1L]]
+    })
+    x
   }
 )
 
@@ -2925,7 +2947,7 @@ prim_scatter <- new_primitive(
     # Settled before `peek_dtype(x)` below builds the update computation's
     # parameter slots. `scatter_indices` keeps out of it: it is an index array,
     # not an operand `x` and `update` have to agree with.
-    operands <- promote_operands(list(x = x, update = update), promote_yield())
+    operands <- apply_promotion(list(x = x, update = update), promote_rdata_common())
     x <- operands$x
     update <- operands$update
     if (is.null(update_computation)) {
@@ -2941,11 +2963,8 @@ prim_scatter <- new_primitive(
     desc_update <- local_descriptor()
 
     # Create dummy arguments for tracing - use the input's dtype
+    # `x` and `update` agree: the rule above brought them together or refused.
     x_dtype <- peek_dtype(x)
-    update_dtype <- peek_dtype(update)
-    if (x_dtype != update_dtype) {
-      cli_abort("{.arg x} and {.arg update} must have the same dtype")
-    }
 
     dummy_args <- list(
       AbstractArray(dtype = x_dtype, shape = Shape(integer())),
@@ -3283,7 +3302,7 @@ prim_triangular_solve <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
-    operands <- promote_operands(list(a = a, b = b), promote_yield())
+    operands <- apply_promotion(list(a = a, b = b), promote_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -3602,7 +3621,7 @@ prim_convolution <- new_primitive(
       )[[1L]]
       list(vt2at(out))
     }
-    operands <- promote_operands(list(x = x, kernel = kernel), promote_yield())
+    operands <- apply_promotion(list(x = x, kernel = kernel), promote_rdata_common())
     graph_desc_add(
       self,
       operands,

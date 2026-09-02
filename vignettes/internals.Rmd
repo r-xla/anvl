@@ -296,39 +296,112 @@ Further note that:
 1. R literals are embedded directly into the program.
 2. Currently, constants with the same value (that refer to different `AnvlArray`s) are not deduplicated, which we might change in the future.
 
-### R Values Without a Data Type
+### R Values in Compiled Programs
 
-An R value entering a program -- a length-1 vector or an `array()` -- has no data
-type of its own. It is built into the program at the data type its use site
-needs, from the R data itself, which is what keeps `x / sqrt(2)` exact for an
-`f64` `x`. The machinery lives in `R/graph.R`.
+R values can appear in two forms in compiled programs:
 
-A value written in the body of a traced function is built where it is used. An
-*argument* of a jitted function cannot be: its value is unknown while tracing
-(the cache keys on R storage type and shape only), so it becomes an input whose
-aval is an `RData` -- an input like any other, except that it has no data type
-yet -- and which data type it is supplied at is settled only once the body has
-run. `finalize_rdata_inputs()` picks the narrowest data type that holds every
-use site, stamps the input's aval with it and records the R storage type in
-the graph's `rdata_types` beside it, and adds a
-convert for each further data type the body asked for.
+1. As constants
+2. As non-static R inputs (`RData`).
 
-```{r}
-graph <- trace_fn(
-  function(x, v) list(x * v, nv_convert(v, "f32")),
-  list(x = nv_aval("f64", integer()), v = nv_aval("double", integer()))
-)
-graph
+The `RData` object can be though of as the dynamic version of an R value within the program and they behave similarly.
+
+Both have a shape, but no data type.
+
+```{r, error = TRUE}
+trace_fn(function(x) {
+  print(x)
+  print(shape(x))
+  print(dtype(x))
+  x
+}, list(RData(c(), "integer")))
 ```
 
-The `f64[] <- double` marks an input the caller supplies as an R double and the
-runtime uploads as `f64` -- rather than at the default for its R storage type.
-`graph_input_dtypes()` reads those off for the backends.
+```{r, error = TRUE}
+trace_fn(function() {
+  x <- 1
+  print(shape(x))
+  print(dtype(x))
+  x
+}, list())
+```
 
-A value is only ever built directly at a data type of its own R category: a
-double at a float, an integer at an integer, a logical at `bool`. Any other
-target is built at the category's natural type (`f64` / `i32` / `bool`) and
-converted by the program, so narrowing follows XLA's semantics rather than R's.
+An `RData` object resolves its data type when something materializes it, which is either a primitive or a call to `apply_promotion()` or `as_anvl_arrays()`.
+Generally, there are two situations:
+
+1. An `RData` object is combined with an object that has a concrete data type
+2. None of the inputs to a primitive has a concrete data type.
+
+In the first case, the `RData` object yields (`promote_rdata_common()`) to the concrete data type.
+Below, `nv_aval("integer", c())` is equivalent to `RData(c(), "integer")`.
+In the resulting graph, the `%x1` input has the data type it yielded to, and the `<- integer` records that the caller supplies it as an R integer, which the runtime uploads at that data type.
+
+```{r}
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1L, "i64"))
+}, list(nv_aval("integer", c())))
+```
+
+Yielding stays within the value's own category, so an R integer meeting an `f32` is an error rather than a promotion -- crossing a category is the job of the `nv_*` layer.
+
+In the second case, it assumes its default data type:
+
+```{r}
+trace_fn(\(x) {
+  prim_exp(x)
+}, list(nv_aval("double", c())))
+```
+
+When the same `RData` input is used at several data types, it is supplied at the narrowest one that holds them all, and each use site converts down from it.
+Below the input is uploaded as `i64`; the `i8` and `i16` uses convert from it, via `i32` because an R integer is not built below 32 bits.
+
+```{r}
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1L, "i8"))
+  prim_add(x, nv_scalar(1L, "i16"))
+  prim_add(x, nv_scalar(1L, "i64"))
+}, list(nv_aval("integer", c())))
+```
+
+This design tries to balance correctness with hardware compatibility.
+Another approach would be to always represent R doubles as `f64`, which is their natural representation.
+The problem with this approach is that:
+
+1. modern accelerators run much faster in `f32` than `f64`, and
+2. some accelerators (such as Metal) do not support `f64` at all.
+
+Therefore, one of the underlying ideas is to only introduce `f64` values when someone actually requested
+this data type.
+
+```{r}
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1, "f64"))
+}, list(nv_aval("double", c())))
+```
+
+Otherwise, the `double` input is fed as an `f32` to the pjrt program:
+
+```{r}
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1, "f32"))
+}, list(nv_aval("double", c())))
+```
+
+
+There is one special case, however: operations that explicitly request a data type, such as `prim_convert()` and the `nv_array()` constructor.
+If `prim_convert()` were to follow the usual rule of committing its R inputs to their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to an `f32` (the default data type for floats) and then to an `i32`, which would result in a loss of precision.
+In order to prevent this, `prim_convert()` materializes its input at its natural representation.
+
+```{r}
+trace_fn(\(x) {
+  prim_convert(x, "i32")
+}, list(nv_aval("double", c())))
+```
+
+Because of its possibly problematic implications, a warning message is thrown when this happens.
+In the future, we might also implement a better solution to this problem.
+One idea would be to convert the `double` input directly to an `i32` before passing it to the compiled program.
+
+This is why API functions and primitives should always canonicalize the inputs right at the beginning, so this problem rarely happens.
 
 ## Device Inference in `jit()`
 

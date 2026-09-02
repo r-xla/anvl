@@ -51,201 +51,71 @@ colnames(tbl) <- dtypes
 knitr::kable(tbl, format = "html", caption = "Type promotion rules (row × column)")
 ```
 
+The biggest differentiator between our type system and the one from JAX is the handling of array objects from the host language, which is R in our case.
+While introducing more complexity, these rules prevent the loss of precision present in JAX's type system.
+We describe it below.
+
 ## R Values Have No Data Type
 
-Every array in an {anvl} program has a data type -- except the R values you write into it.
-`1.5` is neither an `f32` nor an `f64`; `sqrt(2)` is a number, not a number *at some precision*.
-So {anvl} does not give an R value a data type when it enters a program.
-It keeps the R data, and builds the value into the program at the type its use site turns out to need.
-
-```{r}
-x <- nv_scalar(1, dtype = "f64")
-as_array(x / sqrt(2)) == 1 / sqrt(2)
-```
-
-The result is exact to the last bit, because the `f64` division was handed `sqrt(2)` itself.
-The same holds for a value passed as an argument:
-
-```{r}
-f <- jit(function(a, b) a / b)
-as_array(f(x, sqrt(2))) == 1 / sqrt(2)
-```
-
-This works for length-1 vectors and for `array()`s, in the body of a jitted function and as its arguments alike.
-
-## What an R Value Becomes
-
-An R value takes the data type of the array it meets, whatever that type is:
-
-```{r}
-dtype(nv_array(1L, dtype = "i8") + 1L)
-dtype(nv_array(1, dtype = "f64") + 1L)
-```
-
-It does not drag a program to a wider type just because R stores its numbers as doubles -- which is what makes it safe to write `x + 1` without thinking about it.
-That matters on accelerators: `f64` arithmetic is far slower than `f32` on most GPUs, and the Metal backend does not support it at all, so an `f32` program that silently became an `f64` one because of a literal would be a real cost.
-
-Two rules limit the yielding, both because the type simply cannot hold the value:
-
-1. A value from an R `double` meets an integer type: it stays a float (the default one).
-2. Any value meets `bool`: it stays what it is.
-
-```{r}
-dtype(nv_array(1L, dtype = "i32") + 1.5)
-dtype(nv_array(TRUE) + 1L)
-```
-
-The full rule, for each of the three R types against every data type it can
-meet:
-
-```{r, echo = FALSE}
-r_types <- c(logical = "bool", integer = "i32", double = "f32")
-tbl <- matrix(NA_character_, length(r_types), length(dtypes))
-for (i in seq_along(r_types)) {
-  for (j in seq_along(dtypes)) {
-    tbl[i, j] <- as.character(promote_dt_rdata(as_dtype(r_types[[i]]), as_dtype(dtypes[[j]])))
-  }
-}
-rownames(tbl) <- sprintf("%s()", names(r_types))
-colnames(tbl) <- dtypes
-knitr::kable(tbl, format = "html", caption = "What an R value becomes: R type (row) meeting a data type (column)")
-```
-
-When an R value meets nothing but other R values, there is nothing to take a type from, and it **commits to the default** for its R type:
-
-* `double()` -> `f32`
-* `integer()` -> `i32`
-* `logical()` -> `bool`
-
-```{r}
-jit(\() list(1L, 1.0, TRUE))()
-```
-
-## Committing Happens Per Operation
-
-A value commits the first time it takes part in an operation, and from then on it is an ordinary array with an ordinary type, which will not yield again.
-It is worth knowing where that puts the edge:
-
-```{r}
-f <- jit(function(x) {
-  y <- x * 2
-  y + nv_scalar(1, dtype = "f64")
-})
-f(sqrt(2))
-```
-
-Here `x` is only ever combined with the literal `2`, so at that point the best {anvl} knows is "a float, no width demanded" and both commit to `f32`.
-The `f64` arrives one step later, on `y`, when `x` is already spent.
-If you need the wider type, say so where the value enters:
-
-```{r}
-f(nv_scalar(sqrt(2), dtype = "f64"))
-```
-
-## Which Type a Function Promotes To
-
-The rules above say what *one* type two values meet at. Which of them an `nv_*` function applies is the function's own decision, stated once at the top of it: the arguments are canonicalized together with `as_anvl_arrays()`, and its `.promote` argument names the rule.
-
-```{r}
-# the common type of the inputs -- what a binary operator does
-as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_common())
-# the type one particular argument already has
-as_anvl_arrays(x = nv_array(1, dtype = "f64"), y = 1.5, .promote = promote_like("x"))
-# a type the function names itself
-as_anvl_arrays(nv_array(1L), 1.5, .promote = promote_dtype("f64"))
-```
-
-`nv_add()` is `promote_common()`: neither operand is privileged, so the table above decides.
-`nv_clamp(min_val, x, max_val)` is `promote_like("x")`: the result is `x`'s type and the bounds come along.
-`nv_rnorm(shape, initial_state, dtype = )` is `promote_dtype(dtype)`: the type is the function's own argument rather than one read off an input.
-
-A function that would rather read the type off its arguments but has one in mind for the case where they bring none gives `promote_common()` a `fallback`.
-It applies only where *every* argument is an R value, so an argument that has a type still wins:
-
-```{r}
-as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
-as_anvl_arrays(nv_array(1L), 2L, .promote = promote_common(fallback = "f64"))
-```
-
-This is how `nv_rnorm(mean = , sd = )` settles on a type when called with neither: the sample is whatever `mean` and `sd` are, and `f32` where they are bare R values with nothing to say.
-
-The two rules that *name* a target refuse an argument that type cannot hold, rather than narrowing it silently:
+In {anvl}'s type system, R objects do not have a concrete data type.
 
 ```{r, error = TRUE}
-nv_clamp(0, nv_array(1L), 1.5)
+dtype(1)
 ```
 
-Write the literal in the array's own category instead -- an R integer reaches any data type an integer can, a double only the floats:
+The type promotion table from above therefore does not apply to them.
+However, it is possible to apply an {anvl} function to R values (length-1 vectors and arrays):
 
 ```{r}
-nv_clamp(0L, nv_array(1L), 2L)
+nv_exp(1)
+nv_add(1, nv_scalar(1, "f64"))
+nv_add(1, 2)
 ```
 
+It is therefore important to understand to understand the rules that govern the materialization of R objects as `AnvlArray`s.
+Generally, there are two routes:
 
-`promote_yield()` is the fourth rule and the odd one out: it reads the target off the arguments that already have a type and *never converts them*, so only the R values move -- and only within their own category.
-It is what the primitives use, because a primitive should not silently widen the array it was handed.
+1. An R values it commited at its default data type (`double -> f32`, `integer -> i32`, `logical -> bool`).
+   This is e.g. the case in unary functions such as `nv_exp`.
+2. The R values data type is inferred from other arguments, as is the case of the `nv_add` call above.
+   When no concrete data type is present, `nv_add(1, 2)` falls back to the default, which is `f32` for `double`s.
+
+Note that these rules are not universal and exceptions exist.
+Some functions, such as `nv_clamp`, prioritize the data type of a specific argument, in this case `x`, the value that is being clamped.
+It fails if the the boundary values cannot be promoted to `x` without loss of precision:
 
 ```{r, error = TRUE}
-as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_yield())
-# an integer literal cannot become a float this way -- that is promotion, and
-# belongs to the `nv_*` layer
-as_anvl_arrays(nv_array(1, dtype = "f64"), 1L, .promote = promote_yield())
+nv_clamp(
+  min_val = nv_scalar(0, "f64"),
+  x = nv_scalar(0, "f32"),
+  max_val = nv_scalar(0, "f64")
+)
 ```
 
-An argument that should stay out of the promotion is named out with `only`; it is still converted, just not to the target.
-`nv_ifelse()` needs this, since its predicate has to stay a `bool`.
-Groups of arguments that promote independently are combined with `promote_grouped()`.
-See `?promote_rule` for the full set, and `vignette("extending_api")` for writing a function around them.
+Functions document their behavior, so consult their respective help page for more information.
 
-These four are not a closed set.
-A rule is a *function* of the call's arguments that answers with the data type each one is brought to, so a promotion {anvl} has never heard of is written the same way its own are:
+You can canonicalize and promote inputs to a function via the `.promote` field of `as_anvl_arrays()`.
+It takes a `PromotionRule`, which is a special function that takes in the arguments and outputs a data type for each one.
 
 ```{r}
-# every argument at the widest float in the call, and never below f32
-promote_widest_float <- function(args) {
-  widths <- vapply(args, function(a) {
-    dt <- peek_dtype(to_abstract(a))
-    if (is_dtype_float(dt)) dtype_width(dt) else 0L
-  }, integer(1))
-  rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
-}
-as_anvl_arrays(nv_array(1L), 2.5, nv_array(1, dtype = "f64"), .promote = promote_widest_float)
+as_anvl_arrays(1, 2, .promote = promote_like("f64"))
 ```
 
-The arguments reach the rule as the caller passed them, R values still uncommitted -- which is what lets the rule decide what they become, and why it asks `peek_dtype()` rather than `dtype()`.
-`promote_grouped()` mixes rules of either origin.
+One common rule is `promote_common()`, which is used by functions such as `nv_add` above.
+It computes the common data type of the inputs.
+In this case, it returns `f32`, which is the default data type of R `double`s.
 
-Whichever rule applies, an R value among the arguments is *built* at the target rather than converted to it -- which is what makes the exactness of the previous sections hold for `nv_*` functions too, and not just for a literal that happens to meet an array.
-
-## Asking for the Type of an R Value
-
-Because an R value has no type until it is used, asking for one is an error. This is
-the same answer inside a program and outside one -- `dtype(1.5)` has none to give
-either:
-
-```{r, error = TRUE}
-jit(function(x) dtype(x))(1)
-```
-
-```{r, error = TRUE}
-dtype(1.5)
-```
-
-What you can ask is which type it *would* take if nothing claimed it, which
-`peek_dtype()` answers without settling the value:
 
 ```{r}
-peek_dtype(1.5)
-peek_dtype(1L)
+promote_fn <- promote_common()
+args <- list(1, 2, nv_scalar(1L, "i8"))
+promote_fn(args)
 ```
 
-Its *shape* is a different matter, and is answered as usual: `()` for a length-1 vector, `dim()` for an `array()`.
-This also means the `nv_*_like()` family, which takes its result's type from its argument, needs an argument that has one:
-
-```{r, error = TRUE}
-jit(function(x) nv_fill_like(x, 3))(1)
-```
+And when used in `as_anvl_arrys()` it moves the inputs there:
 
 ```{r}
-jit(function(x) nv_fill_like(x, 3))(nv_scalar(1))
+as_anvl_arrays(args, promote_fn)
 ```
+
+For more information about the available rules, see `?promotion_rule`.

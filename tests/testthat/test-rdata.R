@@ -38,7 +38,7 @@ describe("RData", {
   it("has no data type to report", {
     expect_error(jit(function(x) dtype(x))(1), "no data type of its own")
     # The message names the way out.
-    expect_error(jit(function(x) dtype(x))(1), "nv_array")
+    expect_error(jit(function(x) dtype(x))(1), "nv_convert")
     expect_error(jit(function(x) x + dtype(x))(array(1:4)), "no data type of its own")
     # `nv_*_like` derives the result's dtype from its argument, so it errors too.
     expect_error(jit(function(x) nv_fill_like(x, 3))(1), "no data type of its own")
@@ -134,14 +134,16 @@ describe("peek_dtype", {
   })
 
   it("means the same thing eagerly and under jit()", {
-    expect_eager_jit_equal_grid(list(
+    # The first case converts an R double to an integer data type, which stages
+    # through f64 and says so.
+    suppressWarnings(expect_eager_jit_equal_grid(list(
       "convert without canonicalizing first" = function(x, v) {
         nv_convert(v, peek_dtype(x)) * x
       },
       "peek_dtype() branch" = function(x, v) {
         if (is_dtype_float(peek_dtype(v))) x * v else x + v
       }
-    ))
+    )))
   })
 })
 
@@ -242,10 +244,13 @@ describe("an R value at its use site", {
 
   it("keeps every digit when an R double is converted to an integer data type", {
     # The double is uploaded as f64 -- the one float that holds it exactly -- so
-    # the conversion sees the value itself rather than an f32 of it.
+    # the conversion sees the value itself rather than an f32 of it. That is the
+    # exactness the staging buys, and the reason it is kept rather than dropped
+    # to the value's default; it warns because the f64 is unrequested, which is
+    # what the warning above pins.
     # `i64` comes back as a bit64::integer64; compare its digits, which is the
     # only comparison that stays exact past 2^53.
-    f <- function(x) format(as_array(jit(function(v) nv_convert(v, "i64"))(x)))
+    f <- function(x) suppressWarnings(format(as_array(jit(function(v) nv_convert(v, "i64"))(x))))
     expect_equal(f(3e9), "3000000000")
     expect_equal(f(1e18), "1000000000000000000")
     expect_equal(f(-3e9), "-3000000000")
@@ -357,16 +362,23 @@ describe("an R value at its use site", {
 })
 
 describe("nv_array", {
-  it("gives a traced R value a data type", {
-    # This is what the `dtype()` error tells the user to reach for, so it has to
-    # work -- and it has to be exact.
-    f <- jit(function(v) nv_array(v, dtype = "f64"))
-    expect_identical(as_array(f(sqrt(2))), sqrt(2))
-    expect_equal(dtype(jit(function(v) nv_scalar(v, dtype = "i64"))(2L)), as_dtype("i64"))
-    # Without a dtype it commits to its default.
-    expect_equal(dtype(jit(function(v) nv_array(v))(1)), as_dtype("f32"))
-    # A value that already has a dtype is not rebuilt this way.
+  it("refuses a traced R value, whatever data type is asked for", {
+    # A constructor does not give a traced R value a data type: reaching one
+    # outside the value's own category would have to stage through the natural
+    # one, bringing in a data type nobody asked for. `nv_convert()` is where a
+    # conversion belongs, and it is what the `dtype()` error points at.
+    expect_error(jit(function(v) nv_array(v, dtype = "f64"))(sqrt(2)), "traced R value")
+    expect_error(jit(function(v) nv_scalar(v, dtype = "i64"))(2L), "traced R value")
+    expect_error(jit(function(v) nv_array(v))(1), "traced R value")
+    expect_error(jit(function(v) nv_array(v, dtype = "f64"))(sqrt(2)), "nv_convert")
+    # A value that already has a data type is refused too, with its own message.
     expect_error(jit(function(v) nv_array(v + 1, dtype = "f64"))(1), "traced value")
+  })
+
+  it("points at nv_convert(), which is exact", {
+    f <- jit(function(v) nv_convert(v, "f64"))
+    expect_identical(as_array(f(sqrt(2))), sqrt(2))
+    expect_equal(dtype(jit(function(v) nv_convert(v, "i64"))(2L)), as_dtype("i64"))
   })
 })
 
@@ -375,8 +387,8 @@ describe("nv_convert", {
     expect_identical(as_array(jit(function() nv_convert(sqrt(2), "f64"))()), sqrt(2))
     expect_identical(as_array(nv_convert(sqrt(2), "f64")), sqrt(2))
     # Converting to an integer dtype truncates, as it does for a typed array.
-    expect_equal(as_array(nv_convert(1.9, "i32")), 1L)
-    expect_equal(as_array(nv_convert(-1.9, "i32")), -1L)
+    expect_equal(suppressWarnings(as_array(nv_convert(1.9, "i32"))), 1L)
+    expect_equal(suppressWarnings(as_array(nv_convert(-1.9, "i32"))), -1L)
   })
 })
 
@@ -443,7 +455,7 @@ describe("an R value in an nv_* function", {
     # A value that already has a dtype is never moved: one that disagrees with
     # `x` is a mistake to report rather than a conversion to make silently.
     expect_identical(as.vector(nv_pad(x, nv_scalar(0, dtype = "f64"), 1L, 0L)), c(0, 1, 2))
-    expect_error(nv_pad(x, nv_scalar(0, dtype = "f32"), 1L, 0L), "must have the same dtype")
+    expect_error(nv_pad(x, nv_scalar(0, dtype = "f32"), 1L, 0L), "no common data type")
   })
 
   it("yields to the array in nv_solve() and nv_triangular_solve()", {
@@ -484,5 +496,45 @@ describe("an R value in an nv_* function", {
       nv_rnorm(4L, state, dtype = "f32", mean = nv_scalar(0, dtype = "f64")),
       "not promotable"
     )
+  })
+})
+
+describe("staging an R value out of its own category", {
+  it("warns when it brings a data type nothing asked for into the program", {
+    # An R double cannot be built at an integer or boolean data type, so it is
+    # built at f64 and converted -- and a program with no f64 in it acquires
+    # one, which some backends cannot run at all.
+    expect_warning(
+      trace_fn(function(x) prim_convert(x, "i32"), list(x = nv_aval("double", integer()))),
+      class = "anvl_staging_widens_warning"
+    )
+    # Every route into the staging warns, not just the traced one.
+    expect_warning(nv_convert(1.9, "i32"), class = "anvl_staging_widens_warning")
+    # ... including an in-body literal, which leaves the f64 as a constant
+    # rather than an input.
+    expect_warning(
+      trace_fn(function() prim_convert(2.5, "i32"), list()),
+      class = "anvl_staging_widens_warning"
+    )
+    # ... and the eager path, which has to agree with the traced one.
+    expect_warning(nv_convert(1.9, "i32"), class = "anvl_staging_widens_warning")
+    # ... and a promotion rule told to let the value cross its own category,
+    # which is the one route into the staging that does not name a data type at
+    # the call site.
+    expect_warning(
+      as_anvl_arrays(v = 1.9, .promote = promote_dtype("i32", coerce = TRUE)),
+      class = "anvl_staging_widens_warning"
+    )
+  })
+
+  it("stays quiet where the staging introduces nothing", {
+    # An R integer stages at i32 and a logical at bool -- their own defaults, so
+    # nothing is brought in that the value would not have committed to anyway.
+    quiet <- function(expr) expect_no_warning(expr, class = "anvl_staging_widens_warning")
+    quiet(trace_fn(function(x) prim_convert(x, "f32"), list(x = nv_aval("integer", integer()))))
+    quiet(trace_fn(function(x) prim_convert(x, "i8"), list(x = nv_aval("integer", integer()))))
+    quiet(trace_fn(function(x) prim_convert(x, "f32"), list(x = nv_aval("logical", integer()))))
+    # An in-category target is built directly: there is no staging at all.
+    quiet(trace_fn(function(x) prim_convert(x, "f64"), list(x = nv_aval("double", integer()))))
   })
 })

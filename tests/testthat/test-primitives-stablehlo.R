@@ -848,6 +848,40 @@ test_that("prim_print", {
   expect_equal(x, out)
 })
 
+test_that("prim_print shows the R type where a value has no data type yet", {
+  # A print is not a use site that settles an R value: reporting the data type
+  # this call commits it to would name one nothing else in the program has --
+  # here `x` is uploaded at f64 for the addition. Rendering the value does need
+  # a data type, so the footer says which one it used.
+  g <- jit(function(x) {
+    prim_print(x)
+    x + nv_scalar(0.3, "f64")
+  })
+  expect_snapshot(invisible(g(1)))
+  # The shape and the R storage type are known, and are reported.
+  h <- jit(function(x) prim_print(x))
+  expect_snapshot(invisible(h(matrix(1:4, nrow = 2))))
+})
+
+test_that("prim_print hands its argument back untouched", {
+  # A print is an observation: it must not change what the program computes.
+  # `x` stays uncommitted, so the multiplication still sees a value with no data
+  # type and settles it at f64 -- committing it to its default first would have
+  # rounded it through f32.
+  with_print <- jit(function(x) prim_print(x) * nv_scalar(1, dtype = "f64"))
+  without <- jit(function(x) x * nv_scalar(1, dtype = "f64"))
+  # `expect_output()` hands the value back, so the print is checked without an
+  # assignment buried in the call.
+  out <- expect_output(with_print(sqrt(2)))
+  expect_identical(as_array(out), sqrt(2))
+  expect_identical(as_array(out), as_array(without(sqrt(2))))
+
+  # A value that already has a data type comes back as itself.
+  x <- nv_array(c(1, 2, 3), dtype = "f32")
+  same <- expect_output(jit(function(x) prim_print(x))(x))
+  expect_equal(same, x)
+})
+
 describe("prim_sort", {
   it("sorts a 1D vector", {
     x <- nv_array(c(3, 1, 4, 2, 5))
@@ -1073,9 +1107,10 @@ describe("prim_reduce", {
   })
 
   it("rejects mismatched init dtype", {
+    # `x` and `init` must agree, and the rule converts neither.
     expect_error(
       prim_reduce(nv_array(c(1, 2, 3)), init = nv_scalar(0L, dtype = "i32"), axes = 1L, reductor = prim_add),
-      "same dtype"
+      "no common data type"
     )
   })
 

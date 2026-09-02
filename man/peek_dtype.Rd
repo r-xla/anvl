@@ -14,22 +14,8 @@ The value to ask about.}
 (\code{\link[tengen:DataType]{tengen::DataType}})
 }
 \description{
-The data type \code{x} would use if an operation needed one right now: its own
-where it has one, and the one it \emph{would} commit to where it has none.
-
-An R value entering a program has no data type until it is used (see
-\code{\link{RData}}), so \code{\link[tengen:dtype]{dtype()}} has nothing to report for one
-and errors. \code{peek_dtype()} answers instead with the value's default (\code{f32}
-for a double, \code{i32} for an integer, \code{bool} for a logical) -- \emph{without}
-committing it, which is the point: an \verb{nv_*} function that needs a dtype only
-to decide something with (a category test, a \code{nan_rm} branch) must not force
-the value to settle just by asking.
-
-Where the dtype becomes the operation's own -- what the other arguments are
-converted to, or what the result is built \verb{_like} -- the value has to commit
-for real; that is a \code{.promote} rule of \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} (exact, because it
-decides and converts in one step) or, failing that, \code{\link[=as_anvl_array]{as_anvl_array()}},
-which converts at the default. Not this.
+The data type \code{x} would use if was conveted to an \code{AnvlArray}.
+Relevant for R objects and their \code{\link{RData}} trace-time analogon.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

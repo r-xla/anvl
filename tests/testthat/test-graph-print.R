@@ -49,8 +49,6 @@ test_that("params", {
 })
 
 test_that("an input the caller supplies as bare R data names its R type", {
-  # The upload dtype is the program's decision, so the input line shows both:
-  # what the program takes it as, and what the caller passes.
   f <- function(x, y) x + y
   graph <- trace_fn(
     f,
@@ -58,8 +56,6 @@ test_that("an input the caller supplies as bare R data names its R type", {
   )
   expect_snapshot(graph)
 
-  # An R integer argument used at a float dtype is uploaded as an integer and
-  # converted inside the program.
-  graph <- trace_fn(f, list(x = nv_scalar(1, dtype = "f32"), y = nv_aval("integer", 2L)))
+  graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("integer", 2L)))
   expect_snapshot(graph)
 })

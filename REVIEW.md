@@ -97,9 +97,9 @@ Addressed on this branch, except where noted:
 6. **`padding_value` docs contradict the new behavior.**
    `R/api.R:1440` and `R/primitives.R:2221` both still say "Must have the same dtype as `x`."
    `nv_pad()` now uses `promote_like("x")` — a promotable typed value is converted, an R value
-   is built at `x`'s dtype (within its category) — and `prim_pad()`'s `promote_yield()` accepts
+   is built at `x`'s dtype (within its category) — and `prim_pad()`'s `promote_rdata_common()` accepts
    an R value of `x`'s category. Reword both `@param` entries (the nv-level one should describe
-   the promote-like contract, the prim-level one the yield/category contract) and re-document.
+   the promote-like contract, the prim-level one the rdata-common/category contract) and re-document.
 
 ## Nice to have
 
@@ -109,7 +109,7 @@ Addressed on this branch, except where noted:
    implemented messages say "An R double cannot be used at..." / "The R values here have no
    data type to agree on" with no argument name, which hurts exactly the multi-operand calls
    (`prim_pad(x, 0)`, `prim_clamp(0, x, 1)`) the design set out to diagnose well. The
-   positions/names are available in `resolve_yield()`. Separately, `assert_promotes_to()`
+   positions/names are available in `resolve_rdata_common()`. Separately, `assert_promotes_to()`
    (`R/promotion.R:302`, `R/promotion.R:314`) tells the user to "ask for the conversion with
    `force = TRUE`", but `force` is an argument of the *rule*, not of `nv_clamp()` /
    `[<-` — a user hitting `x_i32[2] <- 1.5` cannot pass it. Drop that bullet from the

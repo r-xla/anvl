@@ -26,7 +26,7 @@ NULL
 #' @importFrom utils gethash hashtab maphash numhash
 #' @importFrom xlamisc seq_len0 seq_along0
 #' @importFrom utils head tail getFromNamespace install.packages
-#' @importFrom cli cli_abort
+#' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%
 #' @importFrom methods formalArgs
 #' @importFrom utils capture.output

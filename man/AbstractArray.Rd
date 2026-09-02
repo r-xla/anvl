@@ -11,8 +11,8 @@ AbstractArray(dtype, shape)
 }
 \arguments{
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
-The data type of the array, or -- for \code{nv_aval()} -- one of \code{"double"},
-\code{"integer"}, \code{"logical"} for a value that has none yet.}
+The data type of the array.
+To create an \code{\link{RData}} object, specify \code{"double"}, \code{"integer"}, or \code{"logical"}.}
 
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array. Can be provided as an integer vector.}
@@ -27,6 +27,7 @@ The base class represents an \emph{unknown} value, but child classes exist for:
 \item closed-over constants: \code{\link{ConcreteArray}}
 \item scalar arrays arising from R literals: \code{\link{LiteralArray}}
 \item sequence patterns: \code{\link{IotaArray}}
+\item R values \code{\link{RData}}. They are special because they do not have a data type.
 }
 
 To convert a \code{\link{arrayish}} value to an abstract array, use \code{\link[=to_abstract]{to_abstract()}}.
@@ -39,15 +40,6 @@ The following extractors are available on \code{AbstractArray} objects:
 \item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
 \item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
 }
-}
-
-\section{R data}{
-
-A value can also be one that has \emph{no} dtype yet -- a bare R value, which only
-takes one where it is used (see \code{\link{RData}}). \code{nv_aval()} builds that aval
-from the R storage type instead of a dtype: \code{"double"}, \code{"integer"} or
-\code{"logical"}. This is the aval of a bare R argument of a jitted function,
-whose value is unknown while tracing.
 }
 
 \examples{

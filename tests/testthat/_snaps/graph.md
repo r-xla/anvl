@@ -27,11 +27,11 @@
 # error handling: stablehlo errors use anvl's terminology
 
     Code
-      jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4)))
+      jit(prim_add)(nv_array(1:4), nv_array(1:6))
     Condition
       Error in `prim_add()`:
       ! `lhs` and `rhs` must have the same array type.
-      x Got array<4xi32> and array<4xf32>.
+      x Got array<4xi32> and array<6xi32>.
 
 # can print GraphLiteral if it holds scalar array
 
@@ -105,21 +105,21 @@
         Outputs:
           %4: f64[] 
 
-# how an R value is built into a graph / keeps an R argument open under an inlined gradient
+# how an R value is built into a graph / inlines a gradient into the enclosing graph
 
     Code
       graph
     Output
       <AnvlGraph>
         Inputs:
-          %x1: f32[] <- double
+          %x1: f64[]
         Constants:
-          %c1: f32[]
+          %c1: f64[]
         Body:
-          %1: f32[] = mul(%x1, %x1)
-          %2: f32[] = mul(%c1, %x1)
-          %3: f32[] = mul(%c1, %x1)
-          %4: f32[] = add(%2, %3)
+          %1: f64[] = mul(%x1, %x1)
+          %2: f64[] = mul(%c1, %x1)
+          %3: f64[] = mul(%c1, %x1)
+          %4: f64[] = add(%2, %3)
         Outputs:
-          %4: f32[] 
+          %4: f64[] 
 

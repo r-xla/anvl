@@ -1,6 +1,6 @@
 describe("a primitive's operands", {
   # A primitive whose operands must agree brings them to one data type in its own
-  # body, before it records a call (see `promote_operands()`). Without that, an
+  # body, before it records a call (see `apply_promotion()`). Without that, an
   # R value would commit to its own default and whether the call worked would
   # depend on whether the array it met happened to be at that default -- which is
   # a fact about `default_dtype_r()`, not about the call.
@@ -68,12 +68,25 @@ describe("a primitive's operands", {
     expect_equal(dtype(nv_add(nv_scalar(1L, dtype = "i8"), 1.5)), as_dtype("f32"))
   })
 
-  it("a group with several data types present is left to type inference", {
-    # The rule never converts an operand that has a data type, so a call whose
-    # typed operands disagree fails where it always did.
+  it("a group with several data types present is reported by the rule", {
+    # The rule never converts an operand that has a data type, so operands
+    # carrying several have no common one to reach. Reported here, naming the
+    # operands the caller wrote, rather than by type inference several frames
+    # down talking about `array<f32>`.
     expect_error(
       prim_add(nv_scalar(1, dtype = "f32"), nv_scalar(1, dtype = "f64")),
-      "same array type"
+      "no common data type"
+    )
+    expect_error(
+      prim_add(nv_scalar(1, dtype = "f32"), nv_scalar(1, dtype = "f64")),
+      "`lhs` is `f32` and `rhs` is `f64`",
+      fixed = TRUE
+    )
+    # A rule that leaves an operand out says nothing about it: `pred` is a bool
+    # whatever the branches are.
+    expect_equal(
+      dtype(prim_ifelse(nv_scalar(TRUE), nv_scalar(1L, dtype = "i8"), nv_scalar(2L, dtype = "i8"))),
+      as_dtype("i8")
     )
   })
 

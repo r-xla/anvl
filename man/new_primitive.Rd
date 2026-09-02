@@ -41,40 +41,7 @@ registry.}
 A callable of class \code{c("JitPrimitive", "JitFunction")}.
 }
 \description{
-Builds an \code{\link{AnvlPrimitive}} metadata object, wraps \code{fn} with \code{\link[=jit]{jit()}},
-attaches the metadata via \code{attr(., "primitive")}, prepends class
-\code{"JitPrimitive"}, and (by default) registers the result under \code{name} in
-the primitive registry.
-
+Create a new primitive.
+For details on how to do this, see the article on \emph{Adding a Primitive}.
 The backend is always \code{"auto"} and cannot be configured.
 }
-\section{Operands that must agree}{
-
-A primitive promotes nothing on its own. Where its operands have to agree on
-a data type, the body says so itself, on the values it goes on to hand
-\code{\link[=graph_desc_add]{graph_desc_add()}}:
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{function(lhs, rhs) \{
-  operands <- promote_operands(list(lhs = lhs, rhs = rhs), promote_yield())
-  graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
-\}
-}\if{html}{\out{</div>}}
-
-\code{\link[=promote_yield]{promote_yield()}} is the rule for it: an operand that has a data type keeps
-it, and an R value takes the one the others have, within its own category.
-That is what makes \code{prim_mul(x_f64, 2)} work whatever \code{x}'s data type is,
-while keeping a primitive from widening the array it was handed -- which is
-the \verb{nv_*} layer's job.
-
-Pass only the operands that must agree. \code{prim_ifelse()} promotes its two
-branches and leaves \code{pred} a \code{bool}; \code{prim_scatter()} promotes \code{x} and
-\code{update} and leaves the indices alone. A primitive with one arrayish operand,
-or with deliberately heterogeneous ones (\code{\link[=prim_sort]{prim_sort()}}'s payload,
-\code{\link[=prim_while]{prim_while()}}'s loop state), calls nothing.
-
-Put the call before the body uses the operands for anything else, so it sees
-settled data types throughout: \code{prim_reduce()} reads \code{dtype(init)} to trace
-its reductor and \code{prim_scatter()} builds its update computation's parameter
-slots from \code{peek_dtype(x)}, both before recording a call.
-}
-

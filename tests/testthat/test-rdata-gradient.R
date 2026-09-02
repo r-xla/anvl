@@ -1,104 +1,61 @@
 describe("gradient", {
-  # An R argument of a jitted call stays open through gradient()'s inline trace:
-  # the differentiated body decides which data types the value is used at, exactly
-  # as it does under plain jit().
+  # A value with no data type of its own cannot be differentiated with respect
+  # to: the gradient would come back at whatever data type the forward pass
+  # settled the value at, so the answer would depend on how the body used it
+  # rather than on what the caller passed. Everywhere *else* in a gradient an R
+  # value stays open exactly as it does under plain jit() -- as an argument
+  # outside `wrt`, and as a literal in the differentiated body.
 
-  it("takes a bare R value as an argument", {
-    expect_equal(as_array(jit(gradient(function(v) v * v))(2)[[1L]]), 4)
+  it("refuses a value with no data type as the differentiated argument", {
+    expect_error(
+      jit(gradient(function(v) nv_mean(v * 2)))(array(c(1, 2, 3))),
+      "no data type"
+    )
+    # ... however it reaches the gradient: as the jitted call's own argument,
+    expect_error(jit(function(x) gradient(identity)(x))(1), "no data type")
+    # or as a literal written where the gradient is taken.
+    expect_error(jit(function() gradient(identity)(1))(), "no data type")
+  })
+
+  it("takes an argument that has one, at either width", {
     expect_equal(as_array(jit(gradient(function(v) v * v))(nv_scalar(2))[[1L]]), 4)
-    # ... and as a literal in the body of the function being differentiated
-    expect_equal(jit(gradient(function(x) x * 2, wrt = "x"))(nv_scalar(1)), list(x = nv_scalar(2)))
+    expect_equal(
+      as_array(jit(gradient(function(v) v * v))(nv_scalar(2, dtype = "f64"))[[1L]]),
+      4
+    )
+    expect_equal(
+      jit(gradient(function(x) x * 2, wrt = "x"))(nv_scalar(1)),
+      list(x = nv_scalar(2))
+    )
   })
 
-  it("reaches an f64 use site exactly through the inline trace", {
-    # d/dv of v^2 at f64 is 2v; sqrt(2) is not representable at f32, so this
-    # catches a commit at the default dtype.
-    f <- function(v) nv_scalar(1, dtype = "f64") * v * v
-    r <- jit(gradient(f))(sqrt(2))[[1L]]
-    expect_equal(dtype(r), as_dtype("f64"))
-    expect_identical(as_array(r), 2 * sqrt(2))
-  })
-
-  it("keeps a bare R argument exact in value_and_gradient()", {
-    f <- function(v) v * nv_scalar(1, dtype = "f64")
-    vg <- jit(value_and_gradient(f))(sqrt(2))
-    expect_identical(as_array(vg$value), sqrt(2))
-    expect_identical(as_array(vg$grad[[1L]]), 1)
-    expect_equal(dtype(vg$value), as_dtype("f64"))
-  })
-
-  it("matches plain jit() for an argument used at two data types", {
-    # v enters at f64 and, through nv_convert, at f32: the input is supplied at
-    # f64 and the f32 use is the program's own convert -- one answer whether the
-    # body is differentiated or not.
-    f <- function(v) v * nv_scalar(1, dtype = "f64") + nv_convert(nv_convert(v, "f32"), "f64")
-    vg <- jit(value_and_gradient(f))(sqrt(2))
-    expect_identical(as_array(vg$value), as_array(jit(f)(sqrt(2))))
-    # both use sites contribute 1 to the gradient, converted losslessly
-    expect_identical(as_array(vg$grad[[1L]]), 2)
-  })
-
-  it("widens the input past every use when no used data type holds the others", {
-    # f16 and bf16 ask for different halves of f32: the gradient's input widens
-    # to f32, like a toplevel trace's upload does.
-    f <- function(v) nv_convert(nv_convert(v, "f16"), "f32") * nv_convert(nv_convert(v, "bf16"), "f32")
-    vg <- jit(value_and_gradient(f))(sqrt(2))
-    expect_identical(as_array(vg$value), as_array(jit(f)(sqrt(2))))
-    expect_equal(dtype(vg$grad[[1L]]), as_dtype("f32"))
-  })
-
-  it("matches plain jit() for a body that commits the value at its default", {
-    # v * v meets no dtype, so v commits at f32 -- under gradient() exactly as
-    # under plain jit().
-    f <- function(v) v * v * nv_scalar(1, dtype = "f64")
-    vg <- jit(value_and_gradient(f))(sqrt(2))
-    expect_identical(as_array(vg$value), as_array(jit(f)(sqrt(2))))
-  })
-
-  it("shares the argument's value with the enclosing body", {
-    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
-    # the enclosing trace materializes v at f64 before the gradient call ...
-    f <- jit(function(v) {
-      w <- v * nv_scalar(1, dtype = "f64")
-      w + gradient(q)(v)[[1L]]
-    })
-    expect_identical(as_array(f(sqrt(2))), sqrt(2) + 2 * sqrt(2))
-    # ... and after it, reusing the value the gradient's trace built
-    g <- jit(function(v) gradient(q)(v)[[1L]] + v * nv_scalar(1, dtype = "f64"))
-    expect_identical(as_array(g(sqrt(2))), 2 * sqrt(2) + sqrt(2))
-  })
-
-  it("agrees between two gradient calls on the same bare R argument", {
-    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
-    f <- jit(function(v) gradient(q)(v)[[1L]] + gradient(q)(v)[[1L]])
-    expect_identical(as_array(f(sqrt(2))), 4 * sqrt(2))
-  })
-
-  it("keeps a bare R argument exact through a nested gradient", {
-    # d/da (2a * a) = 4a, with the inner 2a itself a gradient
-    f <- jit(function(v) {
-      gradient(function(a) {
-        gradient(function(b) nv_scalar(1, dtype = "f64") * b * b)(a)[[1L]] * a
-      })(v)[[1L]]
-    })
-    r <- f(sqrt(2))
-    expect_equal(dtype(r), as_dtype("f64"))
-    expect_identical(as_array(r), 4 * sqrt(2))
-  })
-
-  it("keeps a bare R value outside wrt open too", {
+  it("keeps a bare R value outside wrt open", {
     # n is an R integer used out of its category: it is supplied at i32 and the
     # program converts, like everywhere else.
     f <- jit(gradient(function(x, n) x * nv_convert(n, dtype = "f64"), wrt = "x"))
     expect_identical(as_array(f(nv_scalar(2, dtype = "f64"), 3L)$x), 3)
   })
 
+  it("keeps a bare R value outside wrt exact through the inline trace", {
+    # `k` is an R double used at f64. sqrt(2) is not representable at f32, so a
+    # commit at the default would show up in the gradient.
+    f <- jit(gradient(function(v, k) v * k, wrt = "v"))
+    r <- f(nv_scalar(1, dtype = "f64"), sqrt(2))
+    expect_equal(dtype(r$v), as_dtype("f64"))
+    expect_identical(as_array(r$v), sqrt(2))
+  })
+
   it("gives an unused bare R argument an input slot at its default", {
-    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a))
-    r <- f(sqrt(2), pi)
-    expect_identical(as_array(r[[1L]]), 2 * sqrt(2))
-    expect_identical(as_array(r[[2L]]), 0)
-    expect_equal(dtype(r[[2L]]), as_dtype("f32"))
+    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a, wrt = "a"))
+    r <- f(nv_scalar(sqrt(2), dtype = "f64"), pi)
+    expect_identical(as_array(r$a), 2 * sqrt(2))
+  })
+
+  it("does not bake a bare R argument into the compiled gradient", {
+    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a, wrt = "a"))
+    expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"), pi)$a), 2 * sqrt(2))
+    # same key, so this is a cache hit -- and it must return its own gradient
+    expect_identical(as_array(f(nv_scalar(pi, dtype = "f64"), 7)$a), 2 * pi)
   })
 
   it("takes an R value written in the enclosing body exactly", {
@@ -108,21 +65,37 @@ describe("gradient", {
     r <- f(nv_scalar(1, dtype = "f64"))
     expect_equal(dtype(r), as_dtype("f64"))
     expect_identical(as_array(r), sqrt(2))
-    # ... and asking for its gradient says what a plain R value would.
-    g <- jit(function(x) gradient(function(a, b) a * b)(x, sqrt(2)))
-    expect_error(g(nv_scalar(1, dtype = "f64")), "passed as a plain R value")
   })
 
-  it("does not bake the R value into the compiled gradient", {
-    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a))
-    expect_identical(as_array(f(sqrt(2), pi)[[1L]]), 2 * sqrt(2))
-    # same key, so this is a cache hit -- and it must return its own gradient
-    expect_identical(as_array(f(pi, 7)[[1L]]), 2 * pi)
+  it("keeps an f64 argument exact through a nested gradient", {
+    # d/da (2a * a) = 4a, with the inner 2a itself a gradient
+    f <- jit(function(v) {
+      gradient(function(a) {
+        gradient(function(b) nv_scalar(1, dtype = "f64") * b * b)(a)[[1L]] * a
+      })(v)[[1L]]
+    })
+    r <- f(nv_scalar(sqrt(2), dtype = "f64"))
+    expect_equal(dtype(r), as_dtype("f64"))
+    expect_identical(as_array(r), 4 * sqrt(2))
+  })
+
+  it("shares an argument's value with the enclosing body", {
+    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
+    # the enclosing trace uses v before the gradient call ...
+    f <- jit(function(v) {
+      w <- v * nv_scalar(1, dtype = "f64")
+      w + gradient(q)(v)[[1L]]
+    })
+    v <- nv_scalar(sqrt(2), dtype = "f64")
+    expect_identical(as_array(f(v)), sqrt(2) + 2 * sqrt(2))
+    # ... and after it
+    g <- jit(function(v) gradient(q)(v)[[1L]] + v * nv_scalar(1, dtype = "f64"))
+    expect_identical(as_array(g(v)), 2 * sqrt(2) + sqrt(2))
+  })
+
+  it("agrees between two gradient calls on the same argument", {
+    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
+    f <- jit(function(v) gradient(q)(v)[[1L]] + gradient(q)(v)[[1L]])
+    expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"))), 4 * sqrt(2))
   })
 })
-
-# An R value written in the body of a traced function, and one passed as an
-# argument, are built into the graph at the data type their use site needs.
-# These snapshots pin *how* they are built -- an inlined literal for a scalar, a
-# constant for an R array, a convert only out of the value's own category --
-# which value-level tests cannot see.
