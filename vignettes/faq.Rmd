@@ -52,9 +52,14 @@ x <- nv_array(rnorm(1e8))
 # Ensure buffer creation is finished
 await(x)
 
-# Bad (does not capture the whole computation):
+# Bad:
+# 1. Does not await the result
+# 2. Includes compilation time
 system.time(mul_n(x, 20))
-# Good (also measures actual computation):
+
+# Good:
+# 1. Awaits the computation
+# 2. Excludes compilation time
 system.time(await(mul_n(x, 20)))
 ```
 
