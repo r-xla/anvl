@@ -8,6 +8,14 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
+  `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
+  Type inference declared a `bool` output whatever the input was, so an
+  integer operand reached the lowering and failed with `Data types of inputs
+  and init_values must match`.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.
