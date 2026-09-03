@@ -7,7 +7,6 @@
 #' `dtype` and `shape` with unspecified contents. Called by [`nv_empty()`].
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
 #' @param shape (`function`)\cr Extracts the shape from an AnvlArray.
-#' @param ambiguous (`function`)\cr Extracts the ambiguous flag from an AnvlArray.
 #' @param as_array (`function(x, check)`)\cr Converts an AnvlArray to an R
 #'   array. The `check` flag is forwarded from [`as_array()`]; backends may use
 #'   it to abort when materialization would lose information (e.g. ui64 values
@@ -30,7 +29,6 @@ AnvlBackend <- function(
   new_empty,
   dtype,
   shape,
-  ambiguous,
   as_array,
   as_raw,
   platform,
@@ -46,7 +44,6 @@ AnvlBackend <- function(
       new_empty = new_empty,
       dtype = dtype,
       shape = shape,
-      ambiguous = ambiguous,
       as_array = as_array,
       as_raw = as_raw,
       platform = platform,
@@ -115,7 +112,7 @@ globals$backends <- list()
 register_backend(
   "plain",
   AnvlBackend(
-    new_data = function(data, dtype, shape, device, ambiguous) {
+    new_data = function(data, dtype, shape, device) {
       if (is.null(dtype)) {
         dtype <- default_dtype(data)
       }
@@ -141,11 +138,11 @@ register_backend(
         as.double(data)
       )
       structure(
-        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "plain"),
+        list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"
       )
     },
-    new_empty = function(dtype, shape, device, ambiguous) {
+    new_empty = function(dtype, shape, device) {
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
@@ -159,13 +156,12 @@ register_backend(
       )
       data <- array(vector(storage_mode, prod(shape)), dim = shape)
       structure(
-        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "plain"),
+        list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"
       )
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    ambiguous = function(x) x$ambiguous,
     as_array = function(x, check) x$data,
     as_raw = function(x, row_major) cli_abort("as_raw not supported for plain backend"),
     platform = function(x) "cpu",

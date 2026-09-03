@@ -514,7 +514,7 @@ test_that("prim_reshape", {
 test_that("prim_convert", {
   target_dtype <- "f64"
   verify_grad_uni_tensor(
-    \(x, dtype) prim_convert(x, dtype = dtype, ambiguous = FALSE),
+    \(x, dtype) prim_convert(x, dtype = dtype),
     function(x, dtype) x$to(dtype = dtype),
     dtypes = "f32",
     args_f = function(shp, dtype) {

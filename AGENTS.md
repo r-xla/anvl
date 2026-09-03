@@ -5,6 +5,22 @@
 `anvl` is a code transformation framework for R, similar to JAX.
 It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()`, `value_and_gradient()`).
 
+## Commands
+
+The generic R workflow (`devtools::test()`, `make format`, `jarl check .`, ...) is in the shared
+config above. anvl-specific:
+
+- **Tests are gated behind `ANVL_TEST=1`** -- `tests/testthat.R` only calls `test_check()` when it
+  is set, so `R CMD check` in a shell without it runs *no* tests. `.Renviron` sets it (together with
+  `PJRT_INSTALL=1`) for work inside the package.
+- Single file: `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
+  `devtools::test(filter = "reverse")`.
+- `ANVL_SKIP_QUICKR=1` skips the (slow) quickr tests; `PJRT_PLATFORM=cuda` runs the suite on the CUDA
+  plugin (`is_cpu()` / `is_cuda()` in `helper.R` branch on it). `setup.R` sets
+  `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to spread over.
+- anvl tracks the **dev** versions of its r-xla dependencies:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
+
 ## Two-Layer API
 
 - **`nv_*` functions** (e.g. `nv_fill()`, `nv_matmul()`) -- user-facing API in `R/api.R` and `R/api-*.R`. These handle broadcasting, type promotion, default arguments, and then delegate to `prim_*` primitives.
@@ -12,7 +28,7 @@ It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()
 
 When adding new functionality, decide which layer it belongs to. Most new operations need both: a `prim_*` primitive with rules, and an `nv_*` wrapper with R-idiomatic semantics.
 
-Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`.
+Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets, so write it in the *category* the operand is in -- `0` for a float array, `0L` for an integer one. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
 
 ## Terminology
 
@@ -26,6 +42,19 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 - there is currently no support for complex numbers.
 
+## Type Promotion
+
+An R value entering a program is not converted at the boundary -- it is built into the program at the
+dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
+is the reference for how this works and for the `.promote` rules (`promote_common()`,
+`promote_like()`, `promote_dtype()`, `promote_rdata_common()`) that `nv_*` functions pass to
+`as_anvl_arrays()`. Two rules that bite while writing code:
+
+- Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
+  `peek_dtype()` to ask what it *would* commit to.
+- A primitive promotes nothing unless its body says so: one whose operands must agree calls
+  `apply_promotion()` on them before anything else reads them.
+
 ## Primitive System
 
 Primitives are `JitPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`. Primitives are stored as `prim_<name>` variables. `new_primitive()` lexically binds `self` (the `AnvlPrimitive`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
@@ -33,6 +62,14 @@ Primitives are `JitPrimitive` callables constructed by `new_primitive()` (define
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
+
+## `@jit` Roclet
+
+`R/jit-registry.R` is **generated** by `anvl::jit_roclet` (activated in the `Roxygen` field of
+`DESCRIPTION`): tagging a function with `#' @jit [static = ...]` makes `devtools::document()` add it
+to the registry, and `R/zzz.R` rebinds those functions to their jitted versions at build time. Never
+edit `R/jit-registry.R` by hand; because the roclet lives in anvl itself, documenting requires an
+installed anvl that already exports it.
 
 ## Broadcasting
 

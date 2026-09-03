@@ -13,7 +13,6 @@ Arrayish value of data type floating-point.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape as the input and boolean data type.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise check if values are finite (not Inf, -Inf, or NaN).

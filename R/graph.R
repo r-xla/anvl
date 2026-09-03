@@ -35,7 +35,6 @@ is_graph_literal <- function(x) {
   inherits(x, "GraphLiteral")
 }
 
-
 #' @export
 format.GraphValue <- function(x, ...) {
   sprintf("GraphValue(%s)", format(x$aval))
@@ -56,7 +55,7 @@ format.GraphLiteral <- function(x, ...) {
   } else {
     as.character(x$aval$data)
   }
-  sprintf("GraphLiteral(%s, %s, %s)", val, dtype2string(x$aval$dtype, x$aval$ambiguous), shape2string(x$aval$shape))
+  sprintf("GraphLiteral(%s, %s, %s)", val, repr(x$aval$dtype), shape2string(x$aval$shape))
 }
 
 #' @export
@@ -68,7 +67,8 @@ print.GraphLiteral <- function(x, ...) {
 #' @title Graph Node
 #' @description
 #' Virtual base class for nodes in an [`AnvlGraph`].
-#' Is either a [`GraphValue`] or a [`GraphLiteral`].
+#' Is a [`GraphValue`], a [`GraphLiteral`], or -- only while tracing, and never
+#' as part of a primitive call -- an input whose aval is an [`RData`].
 #' Cannot be instantiated directly - use [`GraphValue()`] or [`GraphLiteral()`] instead.
 #' @name GraphNode
 NULL
@@ -127,6 +127,13 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'   `NULL` when all args are array inputs.
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
+#' @param rdata_types (`NULL | character()`)\cr
+#'   One entry per input: the R storage type of an input the caller supplies as
+#'   bare R data (`"double"`, `"integer"`, `"logical"`), and `NA` for one that
+#'   arrives as an array and already has a data type. `NULL` when no input comes
+#'   from R data, which is the common case. Together with the inputs\' own avals
+#'   this says everything about how a call\'s arguments are uploaded: the aval
+#'   gives the data type and shape, this gives the R type it is uploaded from.
 #' @return (`AnvlGraph`)
 # @export
 AnvlGraph <- function(
@@ -137,7 +144,8 @@ AnvlGraph <- function(
   outputs = list(),
   constants = list(),
   is_static_flat = NULL,
-  static_args_flat = NULL
+  static_args_flat = NULL,
+  rdata_types = NULL
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -149,6 +157,7 @@ AnvlGraph <- function(
   env$constants <- constants
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
+  env$rdata_types <- rdata_types
 
   structure(env, class = "AnvlGraph")
 }
@@ -216,6 +225,23 @@ GraphDescriptor <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$devices <- devices
+  # Calls that have to run before everything else, because they only depend on
+  # the graph's inputs: the converts finalize_rdata_inputs() adds for an R
+  # argument that one program used at more than one dtype.
+  env$pre_calls <- list()
+  # Bookkeeping for the R arguments, which are inputs whose data type is not
+  # decided yet (an `RData` aval). Kept beside the descriptor rather than on a node
+  # of it: none of it outlives the trace.
+  #   rdata_mat:   input GraphValue -> list(dtype name -> GraphBox), the values
+  #                the body built the argument at. One entry per dtype asked
+  #                for, so asking twice reuses the value.
+  #   rdata_outer: input GraphValue -> the enclosing trace's box for the same R
+  #                argument, for an inline trace. Empty elsewhere.
+  env$rdata_mat <- hashtab()
+  env$rdata_outer <- hashtab()
+  # One entry per input, set by finalize: the R storage type of an input the
+  # caller supplies as bare R data, `NA` for one that arrives as an array.
+  env$rdata_types <- NULL
 
   structure(env, class = "GraphDescriptor")
 }
@@ -231,11 +257,6 @@ dtype.GraphValue <- function(x, ...) {
 }
 
 #' @export
-ambiguous.GraphValue <- function(x, ...) {
-  x$aval$ambiguous
-}
-
-#' @export
 shape.GraphLiteral <- function(x, ...) {
   shape(x$aval)
 }
@@ -245,11 +266,6 @@ dtype.GraphLiteral <- function(x, ...) {
   x$aval$dtype
 }
 
-#' @export
-ambiguous.GraphLiteral <- function(x, ...) {
-  x$aval$ambiguous
-}
-
 
 is_graph_descriptor <- function(x) {
   inherits(x, "GraphDescriptor")
@@ -257,14 +273,15 @@ is_graph_descriptor <- function(x) {
 
 descriptor_to_graph <- function(descriptor) {
   graph <- AnvlGraph(
-    calls = descriptor$calls$as_list(),
+    calls = c(descriptor$pre_calls, descriptor$calls$as_list()),
     in_tree = descriptor$in_tree,
     out_tree = descriptor$out_tree,
     inputs = descriptor$inputs,
     outputs = descriptor$outputs,
     constants = descriptor$constants,
     is_static_flat = descriptor$is_static_flat,
-    static_args_flat = descriptor$static_args_flat
+    static_args_flat = descriptor$static_args_flat,
+    rdata_types = descriptor$rdata_types
   )
   maybe_restore_previous_desc(descriptor)
   graph
@@ -283,7 +300,6 @@ descriptor_to_graph <- function(descriptor) {
 #' - [`dtype()`][tengen::dtype]
 #' - [`shape()`][tengen::shape]
 #' - [`naxes()`][tengen::naxes]
-#' - [`ambiguous()`]
 #'
 #' @param gnode ([`GraphNode`])\cr
 #'   The graph node -- either a [`GraphValue`] or a [`GraphLiteral`].
@@ -309,11 +325,6 @@ shape.GraphBox <- function(x, ...) {
 #' @export
 dtype.GraphBox <- function(x, ...) {
   dtype(x$gnode)
-}
-
-#' @export
-ambiguous.GraphBox <- function(x, ...) {
-  ambiguous(x$gnode)
 }
 
 #' @export
@@ -344,17 +355,20 @@ format.GraphBox <- function(x, ...) {
 
 maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
+    # An R value belongs to the graph it was written in, so one reaching
+    # another graph has to commit before it can be captured there.
+    if (is_rdata_box(x) && !identical(x$desc, desc)) {
+      materialize_rdata(x, peek_dtype(x))
+    }
     if (identical(x$desc, desc)) {
       return(x)
     }
     return(get_box_or_register_const(desc, x$gnode))
   }
-  if (is_valid_r_array(x)) {
-    # Materialize R arrays as plain-backend AnvlArrays so they can be
-    # registered as named constants in the current graph.
-    x <- nv_array(x, ambiguous = !is.logical(x))
+  if (is_valid_r_lit(x) || is_valid_r_array(x)) {
+    return(build_r_at(x, peek_dtype(x), desc))
   }
-  if (is_anvl_array(x) || is_valid_r_lit(x)) {
+  if (is_anvl_array(x)) {
     return(get_box_or_register_const(desc, x))
   }
   cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
@@ -370,18 +384,19 @@ maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
 #   to AnvlArrays. Each arrayish arg becomes a fresh AbstractArray-typed
 #   gval -- a clean parameter slot for the subgraph. Non-arrayish args are
 #   an error.
-# - "inline": traced graph that will be later be inlined into the paren
+# - "inline": traced graph that will later be inlined into the parent
 #   (gradient/value_and_gradient). Inputs that are not already boxed
-#   are registered in the parent graph and then the inputs alias them
-#   which simplified subsequent inlining
+#   are registered in the parent graph and then the inputs alias them,
+#   which simplifies subsequent inlining. An R argument that is still open in
+#   the parent trace stays open here too (see register_rdata_input()).
 maybe_box_input <- function(x, desc, mode) {
   if (mode == "subgraph") {
     # e.g.: prim_while(list(i = 1), ...)
     # we know which inputs are dynamic/static -> convert
     if (is_valid_r_lit(x)) {
-      x <- nv_scalar(x, ambiguous = !is.logical(x))
+      x <- nv_scalar(x)
     } else if (is_valid_r_array(x)) {
-      x <- nv_array(x, ambiguous = !is.logical(x))
+      x <- nv_array(x)
     }
     # e.g.: prim_while(list(i = nv_scalar(1)), ...)
     if (is_anvl_array(x)) {
@@ -393,6 +408,9 @@ maybe_box_input <- function(x, desc, mode) {
     }
     # e.g.: \(x) prim_while(list(i = x), ...)
     if (is_graph_box(x)) {
+      # A subgraph parameter needs a dtype, and the subgraph is traced before
+      # its operands meet anything, so an R value commits here.
+      x <- commit_rdata_box(x)
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
@@ -414,6 +432,13 @@ maybe_box_input <- function(x, desc, mode) {
       parent_box <- get_box_or_register_const(parent_desc, x)
       return(register_input(desc, parent_box$gnode))
     }
+    if (is_rdata_box(x)) {
+      # When we trace within a trace
+      # Keep it open here too, so the traced body decides
+      # which dtypes it is used at, exactly as it does under plain jit(). The
+      # input slot is settled by finalize_inline_rdata_inputs().
+      return(register_rdata_input(desc, x$gnode$aval, outer = x))
+    }
     # \(x) gradient(f)(x)
     if (is_graph_box(x)) {
       return(register_input(desc, x$gnode))
@@ -431,7 +456,15 @@ maybe_box_input <- function(x, desc, mode) {
     gval <- GraphValue(aval = to_abstract(x, pure = TRUE))
     return(register_input(desc, gval))
   }
+  if (is_rdata(x)) {
+    # Bare R data passed to a jitted function. It takes an input slot like any
+    # other argument -- the call has to supply the value -- but which dtype
+    # that input has is only known once the body has used it, so the slot is
+    # filled in by finalize_rdata_inputs().
+    return(register_rdata_input(desc, x))
+  }
   if (is_graph_box(x)) {
+    x <- commit_rdata_box(x)
     return(register_input(desc, x$gnode))
   }
   if (is_abstract_array(x)) {
@@ -442,10 +475,10 @@ maybe_box_input <- function(x, desc, mode) {
 }
 
 # Strip data from a (possibly concrete) array aval, returning a pure
-# AbstractArray with the same dtype/shape/ambiguity.
+# AbstractArray with the same dtype and shape.
 abstract_aval <- function(aval) {
   if (is_concrete_tensor(aval)) {
-    AbstractArray(dtype = aval$dtype, shape = aval$shape, ambiguous = aval$ambiguous)
+    AbstractArray(dtype = aval$dtype, shape = aval$shape)
   } else {
     aval
   }
@@ -497,8 +530,7 @@ get_box_or_register_const <- function(desc, x) {
     return(box)
   }
   if (is_valid_r_lit(x)) {
-    ambiguous <- !is.logical(x)
-    gval <- GraphLiteral(LiteralArray(x, shape = integer(), ambiguous = ambiguous))
+    gval <- GraphLiteral(LiteralArray(x, shape = integer()))
     box <- desc$gval_to_box[[gval]] <- GraphBox(gval, desc)
     return(box)
   }
@@ -654,10 +686,27 @@ trace_fn <- function(
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
-  outputs_flat <- lapply(output[[2L]], maybe_box_arrayish)
+  outputs_flat <- lapply(output[[2L]], function(x) commit_rdata_box(maybe_box_arrayish(x)))
 
   desc$out_tree <- out_tree
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
+  # Where this trace's still-open R arguments end up, which is what the two
+  # differ in. A toplevel trace owns them: they become its own inputs, at the
+  # dtype the caller uploads them at. An inline trace does not -- they belong to
+  # the enclosing trace and stay open there, so the input is handed back up to
+  # it and only the converts between dtypes stay here, where
+  # transform_gradient() differentiates them. A sub-graph has none to settle:
+  # its R values commit when `maybe_box_input()` builds the parameter slots.
+  # We might
+  if (mode == "toplevel") {
+    # Standard case:
+    finalize_rdata_inputs(desc)
+  } else if (mode == "inline") {
+    # This e.g. happens in:  jit(\(x, y) gradient(\(x, y) x * y, wrt = "x")(x, y))(nv_scalar(1, "f64"), 2)
+    # There, the data type at which pi is materialized depends on the result of the sub-trace
+    # but it needs to be regsitered for the toplevel trace
+    finalize_inline_rdata_inputs(desc)
+  }
   if (!is.null(desc$is_static_flat) && isTRUE(any(desc$is_static_flat))) {
     desc$static_args_flat <- args_flat[desc$is_static_flat]
   } else {
@@ -796,7 +845,9 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    gnode <- maybe_box_arrayish(args[[i]], desc)$gnode
+    # Commit R values to their default dtype, which happens when no promotion rule
+    # materialized them (default behavior)
+    gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval
   }

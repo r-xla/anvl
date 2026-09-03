@@ -43,32 +43,25 @@ test_that("nv_save and nv_read work for quickr backend", {
   expect_equal(dtype(reloaded$x), dtype(x))
 })
 
-test_that("serialization preserves ambiguity", {
-  # Create arrays with different ambiguity
-  ambiguous_tensor <- nv_scalar(1.0, ambiguous = TRUE) # ambiguous
-  non_ambiguous_tensor <- nv_array(1.0, dtype = "f32") # non-ambiguous
+test_that("serialization round-trips scalars and typed arrays", {
+  scalar_tensor <- nv_scalar(1.0)
+  typed_tensor <- nv_array(1.0, dtype = "f32")
 
   lst <- list(
-    ambiguous = ambiguous_tensor,
-    non_ambiguous = non_ambiguous_tensor
+    scalar = scalar_tensor,
+    typed = typed_tensor
   )
 
   # Test with nv_serialize/nv_unserialize
   raw_data <- nv_serialize(lst)
   reloaded <- nv_unserialize(raw_data)
-
-  expect_true(ambiguous(reloaded$ambiguous))
-  expect_false(ambiguous(reloaded$non_ambiguous))
-  expect_equal(lst$ambiguous, reloaded$ambiguous)
-  expect_equal(lst$non_ambiguous, reloaded$non_ambiguous)
+  expect_equal(lst$scalar, reloaded$scalar)
+  expect_equal(lst$typed, reloaded$typed)
 
   # Test with nv_save/nv_read
   tmp <- tempfile(fileext = ".safetensors")
   nv_save(lst, tmp)
   reloaded2 <- nv_read(tmp)
-
-  expect_true(ambiguous(reloaded2$ambiguous))
-  expect_false(ambiguous(reloaded2$non_ambiguous))
-  expect_equal(lst$ambiguous, reloaded2$ambiguous)
-  expect_equal(lst$non_ambiguous, reloaded2$non_ambiguous)
+  expect_equal(lst$scalar, reloaded2$scalar)
+  expect_equal(lst$typed, reloaded2$typed)
 })

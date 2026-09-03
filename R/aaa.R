@@ -5,7 +5,7 @@ NULL
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
 #' loads NVIDIA software which is not bundled with `anvl`, but downloaded
 #' from NVIDIA's official redistributable channels by the CUDA toolkit R
-#' package (e.g. `cuda12.8`) at install time. Its use is governed by the
+#' package (e.g. `pjrt.cuda`) at install time. Its use is governed by the
 #' [NVIDIA CUDA Toolkit EULA](https://docs.nvidia.com/cuda/eula/), with the
 #' exception of cuDNN, which is covered by the
 #' [NVIDIA cuDNN SLA](https://docs.nvidia.com/deeplearning/cudnn/sla/index.html),
@@ -26,9 +26,9 @@ NULL
 #' @importFrom utils gethash hashtab maphash numhash
 #' @importFrom xlamisc seq_len0 seq_along0
 #' @importFrom utils head tail getFromNamespace install.packages
-#' @importFrom cli cli_abort
+#' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%
-#' @importFrom methods formalArgs
+#' @importFrom methods formalArgs is
 #' @importFrom utils capture.output
 #' @importFrom stats median
 ## usethis namespace: end

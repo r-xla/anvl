@@ -8,7 +8,7 @@
 #' Creates an array filled with a scalar value. More memory-efficient than
 #' `nv_array(value, shape = shape)` for large arrays.
 #'
-#' `nv_fill_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
+#' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with.
@@ -19,7 +19,6 @@
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_fill_like()`).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and `dtype`.
@@ -29,7 +28,7 @@
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_fill_like(x, 0)
 #' @export
-nv_fill <- function(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL) {
+nv_fill <- function(value, shape, dtype = NULL, device = NULL) {
   if (!is_valid_r_lit(value)) {
     cli_abort(
       "{.arg value} must be an R vector of length 1 of type double, integer, or logical, not {.cls {class(value)[1]}}."
@@ -40,7 +39,7 @@ nv_fill <- function(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL
   } else {
     as_dtype(dtype)
   }
-  prim_fill(value, shape, dtype, ambiguous, device = device)
+  prim_fill(value, shape, dtype, device = device)
 }
 
 ## Conversion ------------------------------------------------------------------
@@ -129,18 +128,12 @@ nv_broadcast_scalars <- function(...) {
 #' nv_promote_to_common(x, y)
 #' @export
 nv_promote_to_common <- function(...) {
-  args <- as_anvl_arrays(...)
-  tmp <- do.call(common_type_info, args)
-  cdt <- tmp[[1L]]
-  ambiguous <- tmp[[2L]]
-  out <- lapply(seq_along(args), \(i) {
-    if (cdt == dtype(args[[i]])) {
-      args[[i]]
-    } else {
-      prim_convert(args[[i]], dtype = cdt, ambiguous = ambiguous)
-    }
-  })
-  return(out)
+  # An R value has no dtype to convert *from*: it is built at the common one
+  # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
+  # converting an f32 `sqrt(2)` would only widen a number that had already lost
+  # its digits. So the values are aligned first and built afterwards, once the
+  # common dtype is known. `promote_common()` is that sequence.
+  as_anvl_arrays(..., .promote = promote_common())
 }
 
 #' @title Broadcast Arrays to a Common Shape
@@ -209,12 +202,13 @@ nv_broadcast_to <- function(x, shape) {
 #' nv_convert(x, dtype = "f32")
 #' @export
 nv_convert <- function(x, dtype) {
-  x <- as_anvl_array(x)
-  if (dtype(x) != as_dtype(dtype)) {
-    prim_convert(x, dtype = as_dtype(dtype), ambiguous = FALSE)
-  } else {
-    x
+  if (!is_arrayish(x)) {
+    cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
+  # `realize_at()` rather than canonicalizing first: an R value is *built* at
+  # the target dtype, keeping every digit it had, where converting it from its
+  # own default would round through `f32` on the way.
+  realize_at(x, as_dtype(dtype))
 }
 
 #' @rdname nv_transpose
@@ -436,7 +430,10 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @export
 #' @jit
 nv_rbind <- function(...) {
-  args <- as_anvl_arrays(...)
+  # Promoted here rather than in `nv_concatenate()` below: an R value has to be
+  # built at the common dtype directly, where committing it first would round
+  # it through its default on the way there.
+  args <- as_anvl_arrays(..., .promote = promote_common())
   target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
   args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 1L)
@@ -446,7 +443,7 @@ nv_rbind <- function(...) {
 #' @export
 #' @jit
 nv_cbind <- function(...) {
-  args <- as_anvl_arrays(...)
+  args <- as_anvl_arrays(..., .promote = promote_common())
   target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
   args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 2L)
@@ -511,13 +508,16 @@ nv_print <- prim_print
 #' @export
 #' @jit
 nv_ifelse <- function(pred, true_value, false_value) {
-  # Canonicalize all three inputs together so an R literal `true_value` /
-  # `false_value` inherits the device of `pred` (and vice versa). Doing the
-  # `nv_promote_to_common` step first would convert literals on the default
-  # device and then conflict with a non-default-device `pred`.
-  args <- as_anvl_arrays(pred, true_value, false_value)
-  promoted <- nv_promote_to_common(args[[2L]], args[[3L]])
-  args <- nv_broadcast_scalars(args[[1L]], promoted[[1L]], promoted[[2L]])
+  # All three are aligned together -- so an R literal branch is built on the
+  # device of `pred` rather than on the default one and then conflicting with it
+  # -- but only the two branches are promoted, `pred` staying a bool.
+  args <- as_anvl_arrays(
+    pred = pred,
+    true_value = true_value,
+    false_value = false_value,
+    .promote = promote_common(on = c("true_value", "false_value"))
+  )
+  args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
 }
 
@@ -1334,14 +1334,8 @@ nv_popcnt <- prim_popcnt
 #' @export
 #' @jit
 nv_clamp <- function(min_val, x, max_val) {
-  args <- as_anvl_arrays(min_val, x, max_val)
-  min_val <- args[[1L]]
-  x <- args[[2L]]
-  max_val <- args[[3L]]
-  op_dtype <- dtype(x)
-  min_val <- nv_convert(min_val, op_dtype)
-  max_val <- nv_convert(max_val, op_dtype)
-  prim_clamp(min_val, x, max_val)
+  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promote_like("x"))
+  prim_clamp(args$min_val, args$x, args$max_val)
 }
 
 #' @title Reverse
@@ -1365,7 +1359,7 @@ nv_reverse <- prim_reverse
 #' Creates an array with values increasing along the specified axis,
 #' starting from `start`.
 #'
-#' `nv_iota_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
+#' `nv_iota_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which values increase.
@@ -1378,7 +1372,6 @@ nv_reverse <- prim_reverse
 #' @template param_shape
 #' @param start (`integer(1)`)\cr
 #'   Starting value (default 1).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and `shape`.
@@ -1397,7 +1390,7 @@ nv_iota <- prim_iota
 #' Without `steps`, behaves like R's `seq(start, end)` producing integer values.
 #' With `steps`, produces `steps` evenly spaced values (like `seq(start, end, length.out = steps)`).
 #'
-#' `nv_seq_like()` is a variant where `dtype`, `ambiguous`, and `device`
+#' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
 #' @param start,end (`numeric(1)`)\cr
 #'   Start and end values. When `steps` is `NULL`, must satisfy `start <= end`.
@@ -1410,7 +1403,6 @@ nv_iota <- prim_iota
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   1-D array of length `end - start + 1`.
@@ -1419,8 +1411,8 @@ nv_iota <- prim_iota
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
-#' @jit static 1:6
-nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, device = NULL) {
+#' @jit static 1:5
+nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
   if (is.null(steps)) {
     dtype <- dtype %||% "i32"
     assert_int(start)
@@ -1429,7 +1421,6 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, de
     return(nv_iota(
       shape = end - start + 1,
       dtype = dtype,
-      ambiguous = ambiguous,
       axis = 1L,
       start = start,
       device = device
@@ -1449,7 +1440,11 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, de
 #' Pads an array with a given value at the edges and optionally between elements.
 #' @template param_x
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. Must have the same dtype as `x`.
+#'   Scalar value to use for padding. It is brought to `x`'s data type: an R
+#'   value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as well),
+#'   and a value that already has one is converted, unless `x`'s data type
+#'   cannot hold it -- an `f64` padding value for an `f32` array is an error
+#'   rather than a silent narrowing.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -1465,9 +1460,12 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, de
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  args <- as_anvl_arrays(x, padding_value)
-  x <- args[[1L]]
-  padding_value <- args[[2L]]
+  # `promote_like("x")` rather than the primitive's own rule: crossing a
+  # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
+  # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_like("x"))
+  x <- args$x
+  padding_value <- args$padding_value
   rank <- naxes(x)
   if (is.null(interior_padding)) {
     interior_padding <- rep(0L, rank)
@@ -1588,9 +1586,12 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # `a` and `b` must agree, and neither is widened to meet the other: an R
+  # matrix yields to `a`'s data type, two typed arrays that disagree are
+  # rejected.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  a <- args$a
+  b <- args$b
   a_shape <- shape(a)
   if (length(a_shape) != 2L || a_shape[1L] != a_shape[2L]) {
     cli_abort("{.arg a} must be a square 2-D matrix")
@@ -1670,9 +1671,10 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # As in `nv_solve()`: the two must agree, and neither is widened.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  a <- args$a
+  b <- args$b
 
   a_shape <- shape(a)
   b_shape <- shape(b)
@@ -1692,7 +1694,7 @@ nv_triangular_solve <- function(
   # primitive requires rank(b) == rank(a); for left_side = TRUE we append
   # a trailing 1 (column vector per batch), for left_side = FALSE we
   # insert a 1 before the last axis (row vector per batch). The shape is
-  # restored on the way out. There's no ambiguity from broadcasting since
+  # restored on the way out. Nothing is ambiguous about the broadcast since
   # we require exact shape match for the batch axes.
   b_is_vector <- rank_b == rank_a - 1L
   if (b_is_vector) {
@@ -2029,7 +2031,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_reduce_sum(x, axes = axes, drop = drop)
@@ -2055,7 +2057,7 @@ nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     is_nan <- nv_is_nan(x)
     total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
     count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
@@ -2083,7 +2085,7 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_reduce_prod(x, axes = axes, drop = drop)
@@ -2137,7 +2139,7 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 # to re-inject NaN — no input substitution can coax the kernel into emitting
 # NaN on output.
 .nv_reduce_extreme <- function(x, axes, drop, nan_rm, identity_val, prim_reduce) {
-  if (!is_dtype_float(dtype(x))) {
+  if (!is_dtype_float(peek_dtype(x))) {
     return(prim_reduce(x, axes = axes, drop = drop))
   }
   is_nan <- nv_is_nan(x)
@@ -2211,7 +2213,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
   prim_cumsum(x, axis = axis)
@@ -2242,7 +2244,7 @@ nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
   prim_cumprod(x, axis = axis)
@@ -2309,7 +2311,7 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
   }
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
@@ -2341,8 +2343,7 @@ nv_if <- prim_if
 #' @title While Loop
 #' @description
 #' Executes a functional while loop.
-#' @param init (`list()`)\cr
-#'   Named list of initial state values.
+#' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function returning a scalar boolean.
 #'   Receives the state values as arguments.
@@ -2461,7 +2462,7 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   )
   diff <- x - mean_bc
   ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
-  if (nan_rm && is_dtype_float(dtype(x))) {
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
     count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), "i32"), axes, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
@@ -2782,7 +2783,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -2808,7 +2809,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -3094,7 +3095,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- is_dtype_float(dtype(x))
+  is_float <- is_dtype_float(peek_dtype(x))
   shp_kd <- replace(shp, axis, 1L)
   shp_K <- replace(shp, axis, K)
 
@@ -3272,7 +3273,7 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #
 .nv_arg_extreme <- function(x, axis, drop, nan_rm, prim_arg) {
   result <- prim_arg(x, axis = axis, drop = drop)
-  if (nan_rm || !is_dtype_float(dtype(x))) {
+  if (nan_rm || !is_dtype_float(peek_dtype(x))) {
     return(result)
   }
   # argmax on the bool mask returns the index of the first TRUE (tie-break:

@@ -72,13 +72,10 @@ NULL
 #' @jit static "log"
 nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
   assert_flag(log)
-  args <- as_anvl_arrays(x, mean, sd)
-  x <- args[[1L]]
-  mean <- args[[2L]]
-  sd <- args[[3L]]
-  op_dtype <- dtype(x)
-  mean <- nv_convert(mean, op_dtype)
-  sd <- nv_convert(sd, op_dtype)
+  args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promote_like("x"))
+  x <- args$x
+  mean <- args$mean
+  sd <- args$sd
 
   z <- (x - mean) / sd
   log_density <- -0.5 * (z * z) - nv_log(sd) - 0.5 * base::log(2 * pi)
@@ -95,13 +92,11 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
 nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(q, mean, sd)
-  q <- args[[1L]]
-  mean <- args[[2L]]
-  sd <- args[[3L]]
+  args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promote_like("q"))
+  q <- args$q
+  mean <- args$mean
+  sd <- args$sd
   op_dtype <- dtype(q)
-  mean <- nv_convert(mean, op_dtype)
-  sd <- nv_convert(sd, op_dtype)
 
   # Standardise, flipping sign if computing upper tail
   d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
@@ -291,13 +286,11 @@ qnorm_f32_coefs <- list(
 nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(p, mean, sd)
-  p <- args[[1L]]
-  mean <- args[[2L]]
-  sd <- args[[3L]]
+  args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promote_like("p"))
+  p <- args$p
+  mean <- args$mean
+  sd <- args$sd
   op_dtype <- dtype(p)
-  mean <- nv_convert(mean, op_dtype)
-  sd <- nv_convert(sd, op_dtype)
 
   is_f32 <- op_dtype == "f32"
 

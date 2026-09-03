@@ -4,7 +4,7 @@
 \alias{prim_fill}
 \title{Primitive Fill}
 \usage{
-prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
+prim_fill(value, shape, dtype, device = NULL)
 }
 \arguments{
 \item{value}{(\code{numeric(1)})\cr
@@ -15,11 +15,6 @@ Shape of the output array.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

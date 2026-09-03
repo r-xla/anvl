@@ -24,7 +24,6 @@ If \code{FALSE}, the reduced axes are set to 1.}
 Has the same data type as the input.
 When \code{drop = TRUE}, the shape is that of \code{x} with \code{axes} removed.
 When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 1.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Finds the minimum of array elements along the specified axes.

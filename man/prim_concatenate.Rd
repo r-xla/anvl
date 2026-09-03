@@ -20,7 +20,6 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 Has the same data type as the inputs.
 The output shape matches the inputs in all axes except \code{axis},
 which is the sum of the input sizes along that axis.
-It is ambiguous if all inputs are ambiguous.
 }
 \description{
 Concatenates arrays along an axis.

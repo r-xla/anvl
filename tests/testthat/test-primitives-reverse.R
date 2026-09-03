@@ -130,7 +130,7 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
   A1 <- nv_array(
     1:12,
     shape = c(2, 2, 3),
-    dtype = "f32",
+    dtype = "f32"
   )
   B1 <- nv_array(
     1:12,
@@ -349,7 +349,7 @@ test_that("prim_convert reverse converts gradients to the input dtype", {
   x_arr <- array(1:6, c(2, 3))
   x <- nv_array(x_arr, dtype = "f32")
   f <- jit(gradient(function(x) {
-    y <- prim_convert(x, dtype = "f64", ambiguous = FALSE)
+    y <- prim_convert(x, dtype = "f64")
     nv_reduce_sum(y, axes = 1:2, drop = TRUE)
   }))
 
@@ -658,7 +658,7 @@ describe("boolean ops", {
 
 describe("prim_gather", {
   it("out of bounds", {
-    out <- jit_eval({
+    out <- jit(\() {
       x <- nv_array(1:4, "f32")
       g1 <- gradient(function(x) {
         mean(x[nv_array(5:7)]^2)
@@ -667,7 +667,7 @@ describe("prim_gather", {
         mean(x[array(c(4L, 4L, 4L, 4L))]^2)
       })(x)
       list(g1[[1L]], g2[[1L]])
-    })
+    })()
     expect_equal(out[[1]], out[[2]])
   })
 
@@ -788,6 +788,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("1D: full", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(6L), )
   })
 
@@ -800,6 +801,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("2D: range + full", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(6L, 4L), 2:4, )
   })
 
@@ -808,6 +810,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("2D: gather in first, full second", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(6L, 4L), array(c(1L, 3L, 5L)), )
   })
 
@@ -816,6 +819,7 @@ describe("gather/scatter reverse via subset operators", {
   })
 
   it("3D: range, single, full", {
+    # jarl-ignore missing_argument: the empty arg deliberately selects the full axis
     check(c(4L, 5L, 3L), 1:3, 2L, )
   })
 })
@@ -826,7 +830,7 @@ test_that("prim_argmax / prim_argmin have zero gradient", {
   for (prim in list(prim_argmax, prim_argmin)) {
     verify_zero_grad_unary(prim, x, f_wrapper = function(x) {
       out <- prim(x, axis = 1L)
-      prim_convert(out, "f32", ambiguous = FALSE)
+      prim_convert(out, "f32")
     })
   }
 })

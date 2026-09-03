@@ -17,7 +17,7 @@ It is essentially like an R array, with some differences:
 
 1. It supports more data types, such as different precisions or unsigned integers.
 2. The array is managed by a specific backend (which we will ignore for now) and can live on different *device*s, such as CPU (aka host) or a GPU.
-3. 0-dimensional arrays can be used to represent scalars.
+3. 0-dimensional arrays are used to represent scalars.
 
 We can create an `AnvlArray` from R objects using `nv_array()`.
 Below, we create a 0-dimensional array (i.e., a scalar) that holds a 16-bit integer living on the CPU.
@@ -157,8 +157,7 @@ This applies to both `nv_*` calls and your own `jit()`-compiled functions:
 nv_add(1, array(2:3))
 ```
 
-Note the `?` after the dtype in the printed output (`f32?`): it marks the dtype as *ambiguous*.
-A dtype is ambiguous when it was inferred from an auto-converted R value rather than pinned by the user (e.g. via `nv_array(..., dtype = "f32")`), so the type-promotion rules are allowed to coerce it more freely when combining it with a non-ambiguous operand.
+An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to a default (`f32` for doubles, `i32` for integers, `bool` for logicals) when it meets nothing else.
 See `vignette("type-promotion")` for the full rules.
 
 Note that we only auto-convert `double`/`integer`/`logical`s that are

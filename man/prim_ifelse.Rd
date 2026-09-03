@@ -17,7 +17,6 @@ Values to select from. Must have the same dtype and shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same dtype and shape as \code{true_value}.
-It is ambiguous if both \code{true_value} and \code{false_value} are ambiguous.
 }
 \description{
 Element-wise selection based on a boolean predicate, like R's \code{\link[=ifelse]{ifelse()}}.

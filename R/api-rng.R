@@ -116,7 +116,10 @@ nv_runif <- function(
 #' @rdname nv_normal
 #' @template param_shape
 #' @template param_initial_state
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#'   Data type of the sample, `"f32"` or `"f64"`. `NULL` (default) takes it from
+#'   `mean` and `sd` where either is a real array, and falls back to the default
+#'   float data type (`"f32"`) where both are bare R values, which have none.
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -135,14 +138,22 @@ nv_runif <- function(
 #' nv_rnorm(c(2, 3), state, sd = sds)[[2]]
 #' @export
 #' @jit static c(1L, 3L)
-nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
-  dtype <- assert_float_dtype(dtype)
+nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   shape <- assert_shapevec(shape)
-  # `mean` and `sd` are arrayish: they may be traced values, so they cannot be
-  # validated here and are only required to broadcast against `shape`.
-  args <- as_anvl_arrays(mean, sd)
-  mean <- nv_convert(args[[1L]], dtype)
-  sd <- nv_convert(args[[2L]], dtype)
+
+  rule <- if (is.null(dtype)) {
+    promote_common(fallback = default_dtype_r("double"))
+  } else {
+    promote_dtype(assert_float_dtype(dtype))
+  }
+  args <- as_anvl_arrays(mean = mean, sd = sd, .promote = rule)
+  mean <- args$mean
+  sd <- args$sd
+  dtype <- assert_float_dtype(
+    dtype(mean),
+    arg = "mean/sd",
+    hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
+  )
   # n: amount of rvs needed
   n <- prod(shape)
 
@@ -307,7 +318,7 @@ nv_sample_int <- function(shape, initial_state, n, dtype = "i32") {
 nv_sample <- function(shape, initial_state, x) {
   shape <- assert_shapevec(shape)
   x <- as_anvl_array(x)
-  x_shape <- shape_abstract(x)
+  x_shape <- shape(x)
   if (length(x_shape) != 1L) {
     cli_abort("{.arg x} must be a 1-D array, but has {length(x_shape)} axes.")
   }

@@ -144,7 +144,7 @@ test_that("can pass constant to nested trace_fn call if it is defined in the par
 })
 
 test_that("GraphLiteral", {
-  gl <- GraphLiteral(LiteralArray(1L, integer(), ambiguous = TRUE))
+  gl <- GraphLiteral(LiteralArray(1L, integer()))
   expect_equal(dtype(gl), as_dtype("i32"))
   expect_equal(shape(gl), integer())
   expect_snapshot(gl)
@@ -193,9 +193,11 @@ test_that("error handling", {
 
 test_that("error handling: stablehlo errors use anvl's terminology", {
   # `cli_abort()` errors from stablehlo store an already formatted message in
-  # the condition's fields
-  expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))))
-  err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(c(1, 2, 3, 4))), error = identity)
+  # the condition's fields. Shapes rather than data types, since operands whose
+  # data types disagree are refused by `promote_rdata_common()` before inference
+  # ever sees them.
+  expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
+  err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
   expect_false(grepl("tensor", conditionMessage(err), fixed = TRUE))
 
   # stablehlo's `operand` is anvl's `x`
@@ -222,7 +224,7 @@ test_that("user_terminology() rewrites words but not identifiers", {
 })
 
 test_that("can print GraphLiteral if it holds scalar array", {
-  expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer(), ambiguous = TRUE)))
+  expect_snapshot(GraphLiteral(LiteralArray(nv_scalar(1L), dtype = "i32", shape = integer())))
 })
 
 test_that("trace_fn(mode = 'toplevel') errors when called inside an existing descriptor", {
@@ -281,4 +283,68 @@ test_that("trace_fn(mode = 'subgraph') errors on non-arrayish args", {
     ),
     "all args must be arrayish"
   )
+})
+
+# An R value written in the body of a traced function, and one passed as an
+# argument, are built into the graph at the data type their use site needs.
+# These snapshots pin *how* they are built -- an inlined literal for a scalar, a
+# constant for an R array, a convert only out of the value's own category --
+# which value-level tests cannot see.
+describe("how an R value is built into a graph", {
+  it("builds an R scalar as an inlined literal and an R array as a constant", {
+    m <- matrix(c(1, 2, 3, 4), 2, 2)
+    f <- function(x) nv_add(nv_mul(x, 2), nv_add(x, m))
+    graph <- trace_fn(f, list(x = nv_aval("f32", c(2L, 2L))))
+    expect_snapshot(graph)
+  })
+
+  it("builds a closed-over R array used twice as one constant", {
+    m <- matrix(c(1, 2, 3, 4), 2, 2)
+    f <- function(x) nv_add(nv_add(x, m), m)
+    graph <- trace_fn(f, list(x = nv_aval("f32", c(2L, 2L))))
+    expect_length(graph$constants, 1L)
+    expect_snapshot(graph)
+  })
+
+  it("converts inside the program when the value crosses its category", {
+    # An R double built at an integer data type is built at f64 -- where it is
+    # exact -- and converted by the program, so narrowing follows XLA.
+    f <- function(x) nv_add(x, nv_convert(1.5, "i32"))
+    # The f64 the staging brings in is what `anvl_staging_widens_warning`
+    # reports; here the point is the graph it produces.
+    expect_warning(trace_fn(f, list(x = nv_aval("i32", integer()))))
+    graph <- suppressWarnings(trace_fn(f, list(x = nv_aval("i32", integer()))))
+    expect_snapshot(graph)
+  })
+
+  it("uploads an R argument used at two data types once and converts", {
+    f <- function(x, y) nv_add(nv_convert(nv_mul(x, y), "f64"), nv_convert(y, "f64"))
+    graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("double", integer())))
+    expect_snapshot(graph)
+  })
+
+  it("inlines a gradient into the enclosing graph", {
+    # The argument has to have a data type: `gradient()` refuses to
+    # differentiate with respect to a value that has not decided on one.
+    f <- function(t) gradient(function(z) z * z)(t)
+    graph <- trace_fn(f, list(t = nv_aval("f64", integer())))
+    expect_snapshot(graph)
+  })
+
+  it("builds an R literal inside the sub-graph body that uses it", {
+    f <- jit(function(x) nv_if(nv_scalar(TRUE), function() nv_add(x, 0.5), function() nv_mul(x, 2)))
+    expect_equal(as_array(f(nv_scalar(1, dtype = "f64"))), 1.5)
+    g <- jit(function(x) nv_if(nv_scalar(FALSE), function() nv_add(x, 0.5), function() nv_mul(x, 2)))
+    expect_equal(as_array(g(nv_scalar(1, dtype = "f64"))), 2)
+  })
+
+  it("keeps the loop's data type for an R value in a while body", {
+    f <- jit(function(x) {
+      nv_while(list(i = nv_scalar(0, dtype = "f64"), acc = x), function(i, acc) i < 3, function(i, acc) {
+        list(i = i + 1, acc = acc * 2)
+      })
+    })
+    out <- f(nv_scalar(1, dtype = "f64"))
+    expect_equal(as_array(out$acc), 8)
+  })
 })

@@ -4,7 +4,7 @@
 \alias{prim_convert}
 \title{Primitive Convert}
 \usage{
-prim_convert(x, dtype, ambiguous = FALSE)
+prim_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -12,16 +12,10 @@ Arrayish value of any data type.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Target data type.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the given \code{dtype} and the same shape as \code{x}.
-Ambiguity is controlled by the \code{ambiguous} parameter.
 }
 \description{
 Converts the elements of an array to a different data type.

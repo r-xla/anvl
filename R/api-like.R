@@ -7,7 +7,6 @@ like_defaults <- function(like, ...) {
     # GraphBox (during tracing) they stay NULL so downstream constructors
     # pick them up from the tracing context.
     device = function(x) if (is_anvl_array(x)) device(x),
-    ambiguous = ambiguous,
     backend = function(x) if (is_anvl_array(x)) backend(x)
   )
   for (name in names(args)) {
@@ -20,71 +19,71 @@ like_defaults <- function(like, ...) {
 
 #' @rdname AnvlArray
 #' @param like ([`AnvlArray`])\cr
-#'   An existing array. Any of `dtype`, `device`, `shape`, `ambiguous`, and
-#'   `backend` that are `NULL` (the default) are taken from `like`.
+#'   An existing array. Any of `dtype`, `device`, `shape`, and `backend`
+#'   that are `NULL` (the default) are taken from `like`.
 #' @export
-nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = NULL, ambiguous = NULL, backend = NULL) {
+nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = NULL, backend = NULL) {
   do.call(
     nv_array,
     c(
       list(data = data),
-      like_defaults(like, dtype = dtype, device = device, shape = shape, ambiguous = ambiguous, backend = backend)
+      like_defaults(like, dtype = dtype, device = device, shape = shape, backend = backend)
     )
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar_like <- function(like, data, dtype = NULL, device = NULL, ambiguous = NULL, backend = NULL) {
+nv_scalar_like <- function(like, data, dtype = NULL, device = NULL, backend = NULL) {
   do.call(
     nv_scalar,
     c(
       list(data = data),
-      like_defaults(like, dtype = dtype, device = device, ambiguous = ambiguous, backend = backend)
+      like_defaults(like, dtype = dtype, device = device, backend = backend)
     )
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-#' @jit static 2:5
-nv_empty_like <- function(like, dtype = NULL, shape = NULL, device = NULL, ambiguous = NULL) {
-  do.call(nv_empty, like_defaults(like, dtype = dtype, shape = shape, device = device, ambiguous = ambiguous))
+#' @jit static 2:4
+nv_empty_like <- function(like, dtype = NULL, shape = NULL, device = NULL) {
+  do.call(nv_empty, like_defaults(like, dtype = dtype, shape = shape, device = device))
 }
 
 #' @rdname nv_fill
 #' @export
-nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, ambiguous = NULL, device = NULL) {
+nv_fill_like <- function(like, value, shape = NULL, dtype = NULL, device = NULL) {
   do.call(
     nv_fill,
     c(
       list(value = value),
-      like_defaults(like, shape = shape, dtype = dtype, ambiguous = ambiguous, device = device)
+      like_defaults(like, shape = shape, dtype = dtype, device = device)
     )
   )
 }
 
 #' @rdname nv_iota
 #' @export
-nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, ambiguous = NULL, device = NULL) {
+nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL) {
   do.call(
     nv_iota,
     c(
       list(axis = axis, start = start),
-      like_defaults(like, shape = shape, dtype = dtype, ambiguous = ambiguous, device = device)
+      like_defaults(like, shape = shape, dtype = dtype, device = device)
     )
   )
 }
 
 #' @rdname nv_seq
 #' @export
-#' @jit static 2:7
-nv_seq_like <- function(like, start, end, steps = NULL, dtype = NULL, ambiguous = NULL, device = NULL) {
+#' @jit static 2:6
+nv_seq_like <- function(like, start, end, steps = NULL, dtype = NULL, device = NULL) {
   do.call(
     nv_seq,
     c(
       list(start = start, end = end, steps = steps),
-      like_defaults(like, dtype = dtype, ambiguous = ambiguous, device = device)
+      like_defaults(like, dtype = dtype, device = device)
     )
   )
 }

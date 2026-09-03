@@ -21,7 +21,7 @@ If \code{FALSE}, the reduced axes are set to 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Boolean array. Never ambiguous.
+Boolean array.
 When \code{drop = TRUE}, the shape is that of \code{x} with \code{axes} removed.
 When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 1.
 }

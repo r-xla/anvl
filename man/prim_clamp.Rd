@@ -19,7 +19,6 @@ Maximum value. Must be scalar or the same shape as \code{x}.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type and shape as \code{x}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Clamps every element of \code{x} to the range \verb{[min_val, max_val]},

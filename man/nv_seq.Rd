@@ -5,24 +5,9 @@
 \alias{nv_seq_like}
 \title{Sequence}
 \usage{
-nv_seq(
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = FALSE,
-  device = NULL
-)
+nv_seq(start, end, steps = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(
-  like,
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_seq_like(like, start, end, steps = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
 \item{start, end}{(\code{numeric(1)})\cr
@@ -35,11 +20,6 @@ When \code{NULL} (default), generates consecutive integer values from \code{star
 \item{dtype}{(\code{character(1)})\cr
 Data type. Default \code{"i32"} when \code{steps} is \code{NULL}, \code{"f32"} when \code{steps} is given.
 For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -69,7 +49,7 @@ Creates a 1-D array with values from \code{start} to \code{end} (inclusive).
 Without \code{steps}, behaves like R's \code{seq(start, end)} producing integer values.
 With \code{steps}, produces \code{steps} evenly spaced values (like \code{seq(start, end, length.out = steps)}).
 
-\code{nv_seq_like()} is a variant where \code{dtype}, \code{ambiguous}, and \code{device}
+\code{nv_seq_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.
 }
 \examples{

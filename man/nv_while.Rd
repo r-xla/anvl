@@ -7,8 +7,9 @@
 nv_while(init, cond, body)
 }
 \arguments{
-\item{init}{(\code{list()})\cr
-Named list of initial state values.}
+\item{init}{(\verb{named list()})\cr
+Named list of initial state values. Each one becomes a parameter of the
+loop's sub-graphs. R values are committed at their default data type.}
 
 \item{cond}{(\code{function})\cr
 Condition function returning a scalar boolean.

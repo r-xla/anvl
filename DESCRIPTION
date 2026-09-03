@@ -29,7 +29,7 @@ Imports:
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.5.0),
+    pjrt (>= 0.5.0.9000),
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.4.0),
@@ -44,6 +44,11 @@ Suggests:
     testthat (>= 3.0.0)
 Additional_repositories:
     https://r-xla.r-universe.dev
+Remotes:
+    r-xla/pjrt,
+    r-xla/tengen,
+    r-xla/stablehlo,
+    r-xla/xlamisc
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
@@ -56,6 +61,7 @@ Collate:
     'device.R'
     'backend.R'
     'jit.R'
+    'promotion.R'
     'primitive.R'
     'type-converters.R'
     'utils.R'
@@ -73,12 +79,12 @@ Collate:
     'box.R'
     'graph-passes.R'
     'graph.R'
+    'rdata.R'
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
     'jit-registry.R'
     'jit-roclet.R'
-    'promotion.R'
     'quickr.R'
     'reexports.R'
     'reverse.R'
@@ -88,5 +94,4 @@ Collate:
     'serialize.R'
     'stablehlo.R'
     'zzz.R'
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0

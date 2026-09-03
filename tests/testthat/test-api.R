@@ -104,16 +104,14 @@ describe("nv_concatenate", {
     )
   })
   it("can concatenate literals", {
-    # Pure literals produce ambiguous output
     expect_equal(
       nv_concatenate(1L, 2L),
-      nv_array(1:2, ambiguous = TRUE)
+      nv_array(1:2)
     )
     expect_equal(
       nv_concatenate(1L, 2L, axis = 1L),
-      nv_array(1:2, ambiguous = TRUE)
+      nv_array(1:2)
     )
-    # Mixed array + literal: non-ambiguous array determines output ambiguity
     expect_equal(
       nv_concatenate(nv_array(1:2), 3L),
       nv_array(1:3)
@@ -1115,7 +1113,7 @@ describe("nv_tcrossprod", {
 })
 
 describe("nv_fill_like", {
-  it("inherits shape, dtype, ambiguous, device from like", {
+  it("inherits shape, dtype, device from like", {
     like <- nv_matrix(1:6, nrow = 2, dtype = "i16")
     out <- nv_fill_like(like, 0L)
     expect_equal(shape(out), shape(like))
@@ -1133,7 +1131,7 @@ describe("nv_fill_like", {
 })
 
 describe("nv_iota_like", {
-  it("inherits shape, dtype, ambiguous, device from like", {
+  it("inherits shape, dtype, device from like", {
     like <- nv_fill(0L, shape = c(2, 3), dtype = "i16")
     out <- nv_iota_like(like, axis = 1L)
     expect_equal(shape(out), shape(like))
@@ -1155,7 +1153,7 @@ describe("nv_iota_like", {
 })
 
 describe("nv_seq_like", {
-  it("inherits dtype, ambiguous, device from like (length determined by start/end)", {
+  it("inherits dtype, device from like (length determined by start/end)", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
     out <- nv_seq_like(like, 1L, 5L)
     expect_equal(dtype(out), dtype(like))
@@ -1554,6 +1552,31 @@ describe("literals adopt device of array siblings", {
     fv <- nv_array(c(3, 4), device = dev1)
     out <- nv_ifelse(arr(TRUE, FALSE), tv, fv)
     expect_true(eq_device(device(out), dev1))
+  })
+
+  it("nv_ifelse when only one of the three names a device", {
+    # `nv_ifelse()` aligns all three arguments but promotes only the two values,
+    # which is why it works below `as_anvl_arrays()`. Each direction of that is
+    # load-bearing: dropping either half puts an input on the default device and
+    # the call fails.
+    #
+    # Only `pred` names one -- the branches are built on its device rather than
+    # on the default one.
+    out <- nv_ifelse(nv_array(c(TRUE, FALSE), device = dev1), 1, 0)
+    expect_true(eq_device(device(out), dev1))
+    # Only a branch names one, and `pred` is a bare R value.
+    out <- nv_ifelse(TRUE, nv_array(c(1, 2), dtype = "f64", device = dev1), 0)
+    expect_true(eq_device(device(out), dev1))
+  })
+
+  it("nv_ifelse promotes only the branches, leaving pred a bool", {
+    # An R branch value yields to the other branch's dtype; including `pred` in
+    # the promotion would convert it out of `bool`, which prim_ifelse rejects.
+    out <- nv_ifelse(arr(TRUE, FALSE), nv_array(c(1L, 2L), dtype = "i8"), 3L)
+    expect_equal(dtype(out), as_dtype("i8"))
+    out <- nv_ifelse(arr(TRUE, FALSE), nv_array(c(1, 2), dtype = "f64"), sqrt(2))
+    expect_equal(dtype(out), as_dtype("f64"))
+    expect_identical(as.vector(out)[[2L]], sqrt(2))
   })
 
   it("nv_rbind with literal", {
