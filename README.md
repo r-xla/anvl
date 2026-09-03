@@ -35,7 +35,7 @@ anvl::install_anvl()
 
 See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
-details and prebuilt Docker images.
+details, including prebuilt Docker images.
 
 ## Why anvl
 
@@ -72,21 +72,21 @@ f <- function(a, b, x) {
   a * x + b
 }
 
-a <- nv_scalar(1.0, "f32")
-b <- nv_scalar(-2.0, "f32")
-x <- nv_scalar(3.0, "f32")
+a <- nv_scalar(1, "f32")
+b <- nv_scalar(2, "f32")
+x <- nv_scalar(3, "f32")
 
 # Eager mode
 f(a, b, x)
 #> AnvlArray
-#>  1
+#>  5
 #> [ CPUf32{} ]
 
 # JIT mode
 f_jit <- jit(f)
 f_jit(a, b, x)
 #> AnvlArray
-#>  1
+#>  5
 #> [ CPUf32{} ]
 ```
 
@@ -126,9 +126,9 @@ the package website.
 ## Acknowledgments
 
 - This work is supported by [MaRDI](https://www.mardi4nfdi.de).
-- The design of this package was inspired by and borrows from:
-  - JAX, especially the [autodidax
-    tutorial](https://docs.jax.dev/en/latest/autodidax.html).
-  - The [microjax](https://github.com/joey00072/microjax) project.
-- For JIT compilation, we leverage the [OpenXLA](https://openxla.org/)
+- The design of this package is inspired by
+  [JAX](https://github.com/jax-ml/jax).
+- For JIT compilation, we build on the [OpenXLA](https://openxla.org/)
   project.
+- Most of the compiler binaries are downloaded from
+  [zml](https://github.com/zml/pjrt-artifacts/).
