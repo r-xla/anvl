@@ -252,7 +252,12 @@ prim_broadcast_in_axes <- new_primitive(
 #' @description
 #' General dot product of two arrays, supporting contraction over arbitrary
 #' axes and batching.
-#' @template params_lhs_rhs
+#' @param lhs,rhs ([`arrayish`])\cr
+#'   Left and right operand. Both must reach one data type: an R value takes
+#'   the other operand's, within its own category, and two operands that
+#'   already have a data type must agree -- neither is widened to meet the
+#'   other. Their shapes are constrained by `contracting_axes` and
+#'   `batching_axes` rather than having to match.
 #' @param contracting_axes (`list(integer(), integer())`)\cr
 #'   A list of two integer vectors specifying which axes of `lhs` and
 #'   `rhs` to contract over. The contracted axes must have matching sizes.
