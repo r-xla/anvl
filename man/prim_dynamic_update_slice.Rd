@@ -16,8 +16,8 @@ data type and number of axes as \code{x}, with
 \code{nv_shape(update) <= nv_shape(x)} per axis.}
 
 \item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per axis of \code{x}.
-Each must be a scalar array.}
+Scalar start indices, one per axis of \code{x}. All must reach one integer
+data type; see \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}.}
 }
 \value{
 \code{\link{arrayish}}\cr

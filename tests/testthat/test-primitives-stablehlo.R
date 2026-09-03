@@ -1214,3 +1214,88 @@ test_that("nv_matmul exposes precision and defaults to highest", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("index operands of the slicing primitives", {
+  x <- nv_array(c(1, 2, 3, 4, 5), dtype = "f64")
+  m <- nv_array(1:6, shape = c(2, 3))
+
+  it("brings a dynamic slice's start indices to one data type", {
+    # StableHLO requires all start indices to share an element type, so the
+    # bare `1L` has to yield to its `i64` sibling rather than take its default.
+    expect_equal(
+      as.numeric(prim_dynamic_slice(m, nv_scalar(1L, "i64"), 1L, slice_sizes = c(1L, 2L))),
+      c(1, 3)
+    )
+    expect_equal(as.numeric(prim_dynamic_slice(x, 2L, slice_sizes = 2L)), c(2, 3))
+    expect_equal(as.numeric(prim_dynamic_slice(x, nv_scalar(2L, "i64"), slice_sizes = 2L)), c(2, 3))
+  })
+
+  it("names the start index whose data type cannot be reached", {
+    expect_error(
+      prim_dynamic_update_slice(m, nv_array(1L, shape = c(1, 1)), nv_scalar(1L, "i64"), nv_scalar(1L, "i32")),
+      "`start index 1` is `i64` and `start index 2` is `i32`"
+    )
+  })
+
+  it("rejects a non-integer index instead of failing in the lowering", {
+    expect_error(prim_dynamic_slice(x, 1, slice_sizes = 2L), "`start index 1` must be an index of integer data type")
+    expect_error(prim_dynamic_slice(x, 1, slice_sizes = 2L), "Write it as an R integer")
+    expect_error(
+      prim_dynamic_update_slice(x, nv_array(9, dtype = "f64"), 1),
+      "`start index 1` must be an index of integer data type"
+    )
+    expect_error(
+      jit(function(x) prim_dynamic_slice(x, 1, slice_sizes = 2L))(x),
+      "must be an index of integer data type"
+    )
+  })
+
+  it("rejects non-integer gather and scatter indices", {
+    expect_error(
+      prim_gather(
+        nv_array(1:9, shape = c(3, 3)),
+        matrix(c(1, 3), ncol = 1),
+        slice_sizes = c(1L, 3L),
+        offset_axes = 2L,
+        collapsed_slice_axes = 1L,
+        x_batching_axes = integer(0),
+        start_indices_batching_axes = integer(0),
+        start_index_map = 1L,
+        index_vector_axis = 2L
+      ),
+      "`start_indices` must be an index of integer data type"
+    )
+    expect_error(
+      prim_scatter(
+        nv_array(c(0, 0, 0)),
+        matrix(c(1, 3), ncol = 1),
+        nv_array(c(10, 30)),
+        update_window_axes = integer(0),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(0),
+        scatter_indices_batching_axes = integer(0),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L
+      ),
+      "`scatter_indices` must be an index of integer data type"
+    )
+  })
+
+  it("still accepts indices that are integers", {
+    expect_equal(
+      as.numeric(prim_scatter(
+        nv_array(c(0, 0, 0)),
+        nv_array(matrix(c(1L, 3L), ncol = 1)),
+        nv_array(c(10, 30)),
+        update_window_axes = integer(0),
+        inserted_window_axes = 1L,
+        x_batching_axes = integer(0),
+        scatter_indices_batching_axes = integer(0),
+        scatter_axes_to_x_axes = 1L,
+        index_vector_axis = 2L
+      )),
+      c(10, 0, 30)
+    )
+    expect_equal(as.numeric(nv_subset(x, 2:3)), c(2, 3))
+  })
+})
