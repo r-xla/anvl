@@ -59,7 +59,8 @@ system.time(mul_n(x, 20))
 
 # Good:
 # 1. Awaits the computation
-# 2. Excludes compilation time
+# 2. Excludes compilation time, as the program was
+#    already compiled above.
 system.time(await(mul_n(x, 20)))
 ```
 

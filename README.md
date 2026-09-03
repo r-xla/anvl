@@ -35,7 +35,7 @@ anvl::install_anvl()
 
 See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
-details and prebuilt Docker images.
+details, including prebuilt Docker images.
 
 ## Why anvl
 
