@@ -14,9 +14,11 @@ prim_dot_general(
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Left and right operand. Both must reach one data type: an R value takes
+the other operand's, within its own category, and two operands that
+already have a data type must agree -- neither is widened to meet the
+other. Their shapes are constrained by \code{contracting_axes} and
+\code{batching_axes} rather than having to match.}
 
 \item{contracting_axes}{(\code{list(integer(), integer())})\cr
 A list of two integer vectors specifying which axes of \code{lhs} and
