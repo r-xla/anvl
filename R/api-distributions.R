@@ -442,7 +442,7 @@ NULL
 #' @jit static "log"
 nv_dunif <- function(x, min = 0, max = 1, log = FALSE) {
   assert_flag(log)
-  args <- as_anvl_arrays(x, min, max)
+  args <- as_anvl_arrays(x, min, max, .promote = promote_like(1))
   x <- args[[1L]]
   min <- args[[2L]]
   max <- args[[3L]]
@@ -472,7 +472,7 @@ nv_dunif <- function(x, min = 0, max = 1, log = FALSE) {
 nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(q, min, max)
+  args <- as_anvl_arrays(q, min, max, .promote = promote_like(1))
   q <- args[[1L]]
   min <- args[[2L]]
   max <- args[[3L]]
@@ -528,7 +528,7 @@ nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
 nv_qunif <- function(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(p, min, max)
+  args <- as_anvl_arrays(p, min, max, promote = promote_like(1))
   p <- args[[1L]]
   min <- args[[2L]]
   max <- args[[3L]]
