@@ -8,6 +8,13 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* `prim_scatter()` now checks that `update_computation` returns one value of
+  `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
+  combiner returning something else made type inference declare a data type
+  the call could not produce, and failed in the backend.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

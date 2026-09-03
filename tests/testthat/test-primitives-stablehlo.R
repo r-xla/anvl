@@ -1214,3 +1214,38 @@ test_that("nv_matmul exposes precision and defaults to highest", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("prim_scatter update_computation", {
+  scatter_with <- function(update_computation) {
+    prim_scatter(
+      nv_array(c(0, 0, 0), dtype = "f64"),
+      nv_array(matrix(c(1L, 3L), ncol = 1)),
+      nv_array(c(10, 30), dtype = "f64"),
+      update_window_axes = integer(0),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(0),
+      scatter_indices_batching_axes = integer(0),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      update_computation = update_computation
+    )
+  }
+
+  it("scatters with the default and with a combiner", {
+    expect_equal(as.numeric(scatter_with(NULL)), c(10, 0, 30))
+    expect_equal(as.numeric(scatter_with(function(old, new) prim_add(old, new))), c(10, 0, 30))
+  })
+
+  it("rejects a combiner that returns another data type", {
+    # Type inference took the operand's data type for the result, so a
+    # combiner returning something else made the inferred type a lie.
+    expect_error(
+      scatter_with(function(old, new) prim_convert(new, "f32")),
+      "`update_computation` must return a value with the same data type as `x`"
+    )
+    expect_error(
+      scatter_with(function(old, new) prim_gt(new, old)),
+      "`update_computation` returns \"bool\""
+    )
+  })
+})
