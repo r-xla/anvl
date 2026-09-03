@@ -54,8 +54,7 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as `b`. It is ambiguous if both `a` and
-`b` are ambiguous.
+Has the same shape and data type as `b`.
 
 ## Implemented Rules
 

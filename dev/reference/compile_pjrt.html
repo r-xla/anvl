@@ -148,8 +148,14 @@ front of it) falls back to <code><a href="default_device.html">default_device()<
     <p>A <code>list</code> with elements:</p><ul><li><p><code>exec</code>: The compiled PJRT executable.</p></li>
 <li><p><code>out_tree</code>: The output tree structure.</p></li>
 <li><p><code>const_arrays</code>: Constants needed at execution time.</p></li>
-<li><p><code>out_avals</code>: One <code>list(dtype, shape, ambiguous)</code> per output leaf; pjrt's
+<li><p><code>out_avals</code>: One <code>list(dtype, shape)</code> per output leaf; pjrt's
 dispatcher builds the output wrappers from these.</p></li>
+<li><p><code>input_dtypes</code>: One entry per input: the dtype an input built from bare
+R data is uploaded at, and <code>NA</code> for an array input, which is supplied as
+it is. The R data has no dtype of its own, so the program is the only
+thing that knows what it is uploaded as – pjrt's dispatcher therefore
+requires an entry for every bare R input and rejects a dtype declared
+for an array one. <code>NULL</code> for a call whose inputs are all arrays.</p></li>
 </ul></div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

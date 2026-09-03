@@ -176,8 +176,8 @@ The banana distribution has known analytical moments. Since \\\theta_1
 &nbsp;
 
     ##   Parameter     MH_Mean True_Mean    MH_SD   True_SD
-    ## 1    theta1  0.03383964         0 9.928612 10.000000
-    ## 2    theta2 -0.01169006         0 1.703516  1.732051
+    ## 1    theta1 0.032508472         0 9.977817 10.000000
+    ## 2    theta2 0.008427101         0 1.720547  1.732051
 
 The Metropolis-Hastings estimates closely match the analytical moments,
 confirming the correctness of our implementation.

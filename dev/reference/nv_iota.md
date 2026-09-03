@@ -3,23 +3,15 @@
 Creates an array with values increasing along the specified axis,
 starting from `start`.
 
-`nv_iota_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
-`device` default to those of `like`.
+`nv_iota_like()` is a variant where `dtype`, `shape`, and `device`
+default to those of `like`.
 
 ## Usage
 
 ``` r
-nv_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+nv_iota(axis, dtype, shape, start = 1L, device = NULL)
 
-nv_iota_like(
-  like,
-  axis,
-  shape = NULL,
-  start = 1L,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -45,15 +37,6 @@ nv_iota_like(
 
   (`integer(1)`)  
   Starting value (default 1).
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
 
 - device:
 

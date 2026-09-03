@@ -30,8 +30,7 @@ prim_chol(x, lower = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same shape and data type as the input. The values in the
-triangle not specified by `lower` are implementation-defined. It is
-ambiguous if the input is ambiguous.
+triangle not specified by `lower` are implementation-defined.
 
 ## Implemented Rules
 

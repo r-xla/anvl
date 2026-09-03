@@ -6,30 +6,15 @@ Without `steps`, behaves like R's `seq(start, end)` producing integer
 values. With `steps`, produces `steps` evenly spaced values (like
 `seq(start, end, length.out = steps)`).
 
-`nv_seq_like()` is a variant where `dtype`, `ambiguous`, and `device`
-default to those of `like`.
+`nv_seq_like()` is a variant where `dtype` and `device` default to those
+of `like`.
 
 ## Usage
 
 ``` r
-nv_seq(
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = FALSE,
-  device = NULL
-)
+nv_seq(start, end, steps = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(
-  like,
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_seq_like(like, start, end, steps = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -52,15 +37,6 @@ nv_seq_like(
   (`character(1)`)  
   Data type. Default `"i32"` when `steps` is `NULL`, `"f32"` when
   `steps` is given. For `nv_seq_like()`, `NULL` uses `dtype(like)`.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
 
 - device:
 

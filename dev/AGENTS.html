@@ -81,13 +81,23 @@
 <p><code>anvl</code> is a code transformation framework for R, similar to JAX. It provides JIT compilation (<code><a href="reference/jit.html">jit()</a></code>) and automatic differentiation (<code><a href="reference/gradient.html">gradient()</a></code>, <code><a href="reference/value_and_gradient.html">value_and_gradient()</a></code>).</p>
 </div>
 <div class="section level2">
+<h2 id="commands">Commands<a class="anchor" aria-label="anchor" href="#commands"></a></h2>
+<p>The generic R workflow (<code>devtools::test()</code>, <code>make format</code>, <code>jarl check .</code>, …) is in the shared config above. anvl-specific:</p>
+<ul><li>
+<strong>Tests are gated behind <code>ANVL_TEST=1</code></strong> – <code>tests/testthat.R</code> only calls <code>test_check()</code> when it is set, so <code>R CMD check</code> in a shell without it runs <em>no</em> tests. <code>.Renviron</code> sets it (together with <code>PJRT_INSTALL=1</code>) for work inside the package.</li>
+<li>Single file: <code>testthat::test_active_file("tests/testthat/test-reverse.R")</code>, or <code>devtools::test(filter = "reverse")</code>.</li>
+<li>
+<code>ANVL_SKIP_QUICKR=1</code> skips the (slow) quickr tests; <code>PJRT_PLATFORM=cuda</code> runs the suite on the CUDA plugin (<code>is_cpu()</code> / <code>is_cuda()</code> in <code>helper.R</code> branch on it). <code>setup.R</code> sets <code>PJRT_CPU_DEVICE_COUNT=2</code> so multi-device tests have something to spread over.</li>
+<li>anvl tracks the <strong>dev</strong> versions of its r-xla dependencies: <code>pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))</code>.</li>
+</ul></div>
+<div class="section level2">
 <h2 id="two-layer-api">Two-Layer API<a class="anchor" aria-label="anchor" href="#two-layer-api"></a></h2>
 <ul><li>
 <strong><code>nv_*</code> functions</strong> (e.g. <code><a href="reference/nv_fill.html">nv_fill()</a></code>, <code><a href="reference/nv_matmul.html">nv_matmul()</a></code>) – user-facing API in <code>R/api.R</code> and <code>R/api-*.R</code>. These handle broadcasting, type promotion, default arguments, and then delegate to <code>prim_*</code> primitives.</li>
 <li>
 <strong><code>prim_*</code> functions</strong> (e.g. <code><a href="reference/prim_fill.html">prim_fill()</a></code>, <code><a href="reference/prim_mul.html">prim_mul()</a></code>) – low-level primitives in <code>R/primitives.R</code>, exported directly under their <code>prim_&lt;name&gt;</code> R symbols. Calling a primitive records an operation into the computation graph during tracing (or executes it eagerly).</li>
 </ul><p>When adding new functionality, decide which layer it belongs to. Most new operations need both: a <code>prim_*</code> primitive with rules, and an <code>nv_*</code> wrapper with R-idiomatic semantics.</p>
-<p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>.</p>
+<p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>. The literal takes the dtype of the operands it meets, so write it in the <em>category</em> the operand is in – <code>0</code> for a float array, <code>0L</code> for an integer one. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction’s <code>init</code>). For an elementwise primitive, broadcast first with <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code>.</p>
 </div>
 <div class="section level2">
 <h2 id="terminology">Terminology<a class="anchor" aria-label="anchor" href="#terminology"></a></h2>
@@ -105,6 +115,12 @@
 <ul><li>there is currently no support for complex numbers.</li>
 </ul></div>
 <div class="section level2">
+<h2 id="type-promotion">Type Promotion<a class="anchor" aria-label="anchor" href="#type-promotion"></a></h2>
+<p>An R value entering a program is not converted at the boundary – it is built into the program at the dtype its use site needs, which is what makes <code>x_f64 / sqrt(2)</code> exact. <code><a href="articles/type-promotion.html">vignette("type-promotion")</a></code> is the reference for how this works and for the <code>.promote</code> rules (<code><a href="reference/promotion_rule.html">promote_common()</a></code>, <code><a href="reference/promotion_rule.html">promote_like()</a></code>, <code><a href="reference/promotion_rule.html">promote_dtype()</a></code>, <code><a href="reference/promotion_rule.html">promote_rdata_common()</a></code>) that <code>nv_*</code> functions pass to <code><a href="reference/as_anvl_array.html">as_anvl_arrays()</a></code>. Two rules that bite while writing code:</p>
+<ul><li>Never call <code><a href="reference/dtype.html">dtype()</a></code> on an argument that may still be a bare R value – it errors. Use <code><a href="reference/peek_dtype.html">peek_dtype()</a></code> to ask what it <em>would</em> commit to.</li>
+<li>A primitive promotes nothing unless its body says so: one whose operands must agree calls <code><a href="reference/apply_promotion.html">apply_promotion()</a></code> on them before anything else reads them.</li>
+</ul></div>
+<div class="section level2">
 <h2 id="primitive-system">Primitive System<a class="anchor" aria-label="anchor" href="#primitive-system"></a></h2>
 <p>Primitives are <code>JitPrimitive</code> callables constructed by <code><a href="reference/new_primitive.html">new_primitive()</a></code> (defined in <code>R/primitive.R</code>). The returned object is both callable (it wraps <code>fn</code> with <code><a href="reference/jit.html">jit()</a></code>) and carries an <code>AnvlPrimitive</code> metadata object via <code>attr(., "primitive")</code>. Primitives are stored as <code>prim_&lt;name&gt;</code> variables. <code><a href="reference/new_primitive.html">new_primitive()</a></code> lexically binds <code>self</code> (the <code>AnvlPrimitive</code>) into the body’s enclosing environment, so inside a primitive body you write <code>graph_desc_add(self, ...)</code> — never the primitive name as a string. Interpretation rules are accessed via <code>prim_&lt;name&gt;[["&lt;rule_type&gt;"]]</code>:</p>
 <ul><li>
@@ -114,6 +130,11 @@
 <li>
 <strong><code>quickr</code></strong> – R-native lowering rules in <code>R/rules-quickr.R</code> for the quickr backend.</li>
 </ul></div>
+<div class="section level2">
+<h2 id="jit-roclet">
+<code>@jit</code> Roclet<a class="anchor" aria-label="anchor" href="#jit-roclet"></a></h2>
+<p><code>R/jit-registry.R</code> is <strong>generated</strong> by <code><a href="reference/jit_roclet.html">anvl::jit_roclet</a></code> (activated in the <code>Roxygen</code> field of <code>DESCRIPTION</code>): tagging a function with <code>#' @jit [static = ...]</code> makes <code>devtools::document()</code> add it to the registry, and <code>R/zzz.R</code> rebinds those functions to their jitted versions at build time. Never edit <code>R/jit-registry.R</code> by hand; because the roclet lives in anvl itself, documenting requires an installed anvl that already exports it.</p>
+</div>
 <div class="section level2">
 <h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>
 <p>Anvl’s elementwise binary operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>nv_add</code>, <code>nv_mul</code>, …) only <strong>auto-broadcast scalars</strong> — i.e. operands with <code>shape = integer()</code>. They do <strong>not</strong> do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code> errors like <em>“All non-scalar arrays must have the same shape, … Use <code><a href="reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> for general broadcasting.”</em></p>

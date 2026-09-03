@@ -18,8 +18,7 @@ prim_ne(lhs, rhs)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape as the inputs and boolean data type. It is ambiguous
-if both inputs are ambiguous.
+Has the same shape as the inputs and boolean data type.
 
 ## Implemented Rules
 

@@ -19,8 +19,7 @@ prim_shift_right_logical(lhs, rhs)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+Has the same shape and data type as the inputs.
 
 ## Implemented Rules
 

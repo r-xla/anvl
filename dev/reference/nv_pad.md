@@ -25,7 +25,11 @@ nv_pad(
 - padding_value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar value to use for padding. Must have the same dtype as `x`.
+  Scalar value to use for padding. It is brought to `x`'s data type: an
+  R value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as
+  well), and a value that already has one is converted, unless `x`'s
+  data type cannot hold it – an `f64` padding value for an `f32` array
+  is an error rather than a silent narrowing.
 
 - edge_padding_low:
 

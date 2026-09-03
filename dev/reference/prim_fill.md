@@ -9,7 +9,7 @@ efficiently represented in the compiled program, while the latter uses
 ## Usage
 
 ``` r
-prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
+prim_fill(value, shape, dtype, device = NULL)
 ```
 
 ## Arguments
@@ -29,15 +29,6 @@ prim_fill(value, shape, dtype, ambiguous = FALSE, device = NULL)
   (`character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
 
 - device:
 

@@ -51,21 +51,26 @@ x <- nv_array(rnorm(1e8))
 # Ensure buffer creation is finished
 await(x)
 
-# Bad (does not capture the whole computation):
+# Bad:
+# 1. Does not await the result
+# 2. Includes compilation time
 system.time(mul_n(x, 20))
 ```
 
     ##    user  system elapsed 
-    ##   1.396   0.399   0.889
+    ##   1.252   0.452   0.833
 
 ``` r
 
-# Good (also measures actual computation):
+# Good:
+# 1. Awaits the computation
+# 2. Excludes compilation time, as the program was
+#    already compiled above.
 system.time(await(mul_n(x, 20)))
 ```
 
     ##    user  system elapsed 
-    ##   0.784   0.442   0.491
+    ##   0.764   0.570   0.550
 
 ## How do I control the number of threads used by XLA?
 

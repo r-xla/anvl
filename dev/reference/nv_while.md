@@ -12,8 +12,10 @@ nv_while(init, cond, body)
 
 - init:
 
-  ([`list()`](https://rdrr.io/r/base/list.html))  
-  Named list of initial state values.
+  (`named list()`)  
+  Named list of initial state values. Each one becomes a parameter of
+  the loop's sub-graphs. R values are committed at their default data
+  type.
 
 - cond:
 

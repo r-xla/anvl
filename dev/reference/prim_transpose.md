@@ -26,7 +26,7 @@ prim_transpose(x, permutation)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as the input and shape
-`nv_shape(x)[permutation]`. It is ambiguous if the input is ambiguous.
+`nv_shape(x)[permutation]`.
 
 ## Implemented Rules
 

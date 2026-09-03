@@ -5,7 +5,7 @@ Creates an array with values increasing along the specified axis.
 ## Usage
 
 ``` r
-prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+prim_iota(axis, dtype, shape, start = 1L, device = NULL)
 ```
 
 ## Arguments
@@ -31,15 +31,6 @@ prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
 
   (`integer(1)`)  
   Starting value.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
 
 - device:
 

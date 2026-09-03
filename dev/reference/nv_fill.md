@@ -3,22 +3,15 @@
 Creates an array filled with a scalar value. More memory-efficient than
 `nv_array(value, shape = shape)` for large arrays.
 
-`nv_fill_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
-`device` default to those of `like`.
+`nv_fill_like()` is a variant where `dtype`, `shape`, and `device`
+default to those of `like`.
 
 ## Usage
 
 ``` r
-nv_fill(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL)
+nv_fill(value, shape, dtype = NULL, device = NULL)
 
-nv_fill_like(
-  like,
-  value,
-  shape = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -37,15 +30,6 @@ nv_fill_like(
 
   (`character(1)` \| `NULL`)  
   Data type.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
 
 - device:
 

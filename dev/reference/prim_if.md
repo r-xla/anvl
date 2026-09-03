@@ -27,7 +27,6 @@ prim_if(pred, true, false)
 ## Value
 
 Result of the executed branch.  
-An output is ambiguous if it is ambiguous in both branches.
 
 ## Implemented Rules
 

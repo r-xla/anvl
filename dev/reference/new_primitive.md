@@ -1,14 +1,8 @@
 # Create a Primitive
 
-Builds an
-[`AnvlPrimitive`](https://r-xla.github.io/anvl/dev/reference/AnvlPrimitive.md)
-metadata object, wraps `fn` with
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md), attaches
-the metadata via `attr(., "primitive")`, prepends class
-`"JitPrimitive"`, and (by default) registers the result under `name` in
-the primitive registry.
-
-The backend is always `"auto"` and cannot be configured.
+Create a new primitive. For details on how to do this, see the article
+on *Adding a Primitive*. The backend is always `"auto"` and cannot be
+configured.
 
 ## Usage
 

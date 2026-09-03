@@ -113,8 +113,7 @@ prim_scatter(
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type and shape as `x`. It is ambiguous if `x` is
-ambiguous.
+Has the same data type and shape as `x`.
 
 ## Out Of Bounds Behavior
 

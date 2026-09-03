@@ -40,8 +40,6 @@ Functions for querying array properties
 
 - [`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md) :
   Get Backend of an Array
-- [`ambiguous()`](https://r-xla.github.io/anvl/dev/reference/ambiguous.md)
-  : Get Ambiguity of an Array
 - [`dtype()`](https://r-xla.github.io/anvl/dev/reference/dtype.md) : Get
   the data type of an array
 - [`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) : Get
@@ -108,6 +106,15 @@ Functions for type conversion, promotion, and broadcasting
   : Broadcast to Shape
 - [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
   : Type Promotion Rules
+- [`promote_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promote_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promote_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promote_grouped()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_rule()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  : Promotion Rules
+- [`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)
+  : Bring a Primitive's Operands to One Data Type
 
 ### Array Manipulation
 
@@ -570,13 +577,12 @@ Internal data structures and functions
   : Concrete Array Class
 - [`LiteralArray()`](https://r-xla.github.io/anvl/dev/reference/LiteralArray.md)
   : Literal Array Class
+- [`RData()`](https://r-xla.github.io/anvl/dev/reference/RData.md) : R
+  Data Class
 - [`IotaArray()`](https://r-xla.github.io/anvl/dev/reference/IotaArray.md)
   : Iota Array Class
-- [`shape_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-  [`naxes_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-  [`dtype_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-  [`ambiguous_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-  : Abstract Properties
+- [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
+  : Peek at a Data Type
 - [`to_abstract()`](https://r-xla.github.io/anvl/dev/reference/to_abstract.md)
   : Convert to Abstract Array
 - [`is_arrayish()`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
@@ -605,9 +611,6 @@ Internal data structures and functions
 
 - [`graph_to_quickr_r_function()`](https://r-xla.github.io/anvl/dev/reference/graph_to_quickr_r_function.md)
   : Convert an AnvlGraph to a plain R function
-
-- [`jit_eval()`](https://r-xla.github.io/anvl/dev/reference/jit_eval.md)
-  : JIT-compile and evaluate an expression
 
 - [`compile_pjrt()`](https://r-xla.github.io/anvl/dev/reference/compile_pjrt.md)
   : Trace, lower, and compile a function to an XLA executable

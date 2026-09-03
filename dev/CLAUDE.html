@@ -74,84 +74,9 @@
       <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/CLAUDE.md" class="external-link"><code>CLAUDE.md</code></a></small>
     </div>
 
+<p>@AGENTS.md</p>
 
-<p>@../claude-config/CLAUDE.md</p>
-<div class="section level2">
-<h2 id="package-overview">Package Overview<a class="anchor" aria-label="anchor" href="#package-overview"></a></h2>
-<p><code>anvl</code> is a code transformation framework for R, similar to JAX. It provides JIT compilation (<code><a href="reference/jit.html">jit()</a></code>) and automatic differentiation (<code><a href="reference/gradient.html">gradient()</a></code>, <code><a href="reference/value_and_gradient.html">value_and_gradient()</a></code>).</p>
-</div>
-<div class="section level2">
-<h2 id="two-layer-api">Two-Layer API<a class="anchor" aria-label="anchor" href="#two-layer-api"></a></h2>
-<ul><li>
-<strong><code>nv_*</code> functions</strong> (e.g. <code><a href="reference/nv_fill.html">nv_fill()</a></code>, <code><a href="reference/nv_matmul.html">nv_matmul()</a></code>) – user-facing API in <code>R/api.R</code> and <code>R/api-*.R</code>. These handle broadcasting, type promotion, default arguments, and then delegate to <code>prim_*</code> primitives.</li>
-<li>
-<strong><code>prim_*</code> functions</strong> (e.g. <code><a href="reference/prim_fill.html">prim_fill()</a></code>, <code><a href="reference/prim_mul.html">prim_mul()</a></code>) – low-level primitives in <code>R/primitives.R</code>, exported directly under their <code>prim_&lt;name&gt;</code> R symbols. Calling a primitive records an operation into the computation graph during tracing (or executes it eagerly).</li>
-</ul><p>When adding new functionality, decide which layer it belongs to. Most new operations need both: a <code>prim_*</code> primitive with rules, and an <code>nv_*</code> wrapper with R-idiomatic semantics.</p>
-<p>Inside <code>nv_*</code> API functions, pass plain R literals (e.g. <code>0</code>, <code>1</code>, <code>NaN</code>) directly to primitives instead of wrapping them in <code><a href="reference/AnvlArray.html">nv_scalar()</a></code> / <code><a href="reference/AnvlArray.html">nv_scalar_like()</a></code>.</p>
-</div>
-<div class="section level2">
-<h2 id="terminology">Terminology<a class="anchor" aria-label="anchor" href="#terminology"></a></h2>
-<ul><li>
-<strong>Axis, axis size, shape.</strong> An <em>axis</em> is an index that identifies a direction of an array; the <em>size</em> of that axis (its <em>axis size</em>) is the extent along it; the <em>shape</em> is the vector of all axis sizes. For a <code>20x5x3</code> array the axes are <code>1</code>, <code>2</code>, <code>3</code> and the shape is <code>c(20, 5, 3)</code>, so the size of axis <code>1</code> is <code>20</code>. Name identifiers accordingly: use <code>axis</code>/<code>axes</code> when the value is an index (or vector of indices) and <code>shape</code> for the vector of sizes; for a single size use an <em>axis size</em> name (e.g. <code>axis_size</code>, <code>n</code>). Helpers reflect this: <code>naxes(x)</code> is the number of axes (the rank), so <code>seq_len(naxes(x))</code> is the axis indices, and <code>shape(x)</code> returns the axis sizes.</li>
-<li>
-<strong>Don’t use “dim”/“dimension” for anvl concepts.</strong> We don’t speak of an array’s “dimensions” or name size-valued identifiers <code>dim</code>/<code>dims</code> — say <em>axis size</em> (a single size) or <em>shape</em> (the vector) instead. <code>dim</code>/<code>dimensions</code> is reserved for foreign call boundaries only (next point).</li>
-<li>Speak of the <strong>size of an axis</strong>, never the “length of an axis” (reserve “length” for vectors and 1-D arrays).</li>
-<li>Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of “dimensions”, so calls into them keep those argument names (e.g. <code>hlo_reduce(dimensions = axes - 1L)</code>, <code>array(dim = ...)</code>) with the anvl-side axis variable on the right.</li>
-<li>
-<strong>Arrays, not tensors.</strong> In anvl-facing docs, messages, and identifiers, say <em>array</em> rather than <em>tensor</em>. The primary array argument of <code>nv_*</code> / <code>prim_*</code> functions is called <code>x</code>.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="supported-dtypes">Supported dtypes<a class="anchor" aria-label="anchor" href="#supported-dtypes"></a></h2>
-<ul><li>there is currently no support for complex numbers.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="primitive-system">Primitive System<a class="anchor" aria-label="anchor" href="#primitive-system"></a></h2>
-<p>Primitives are <code>JitPrimitive</code> callables constructed by <code><a href="reference/new_primitive.html">new_primitive()</a></code> (defined in <code>R/primitive.R</code>). The returned object is both callable (it wraps <code>fn</code> with <code><a href="reference/jit.html">jit()</a></code>) and carries an <code>AnvlPrimitive</code> metadata object via <code>attr(., "primitive")</code>. Primitives are stored as <code>prim_&lt;name&gt;</code> variables. <code><a href="reference/new_primitive.html">new_primitive()</a></code> lexically binds <code>self</code> (the <code>AnvlPrimitive</code>) into the body’s enclosing environment, so inside a primitive body you write <code>graph_desc_add(self, ...)</code> — never the primitive name as a string. Interpretation rules are accessed via <code>prim_&lt;name&gt;[["&lt;rule_type&gt;"]]</code>:</p>
-<ul><li>
-<strong><code>stablehlo</code></strong> – JIT lowering rules in <code>R/rules-stablehlo.R</code>. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.</li>
-<li>
-<strong><code>reverse</code></strong> – Autodiff rules in <code>R/rules-reverse.R</code>, built with <code><a href="reference/rule_reverse.html">rule_reverse()</a></code>.</li>
-<li>
-<strong><code>quickr</code></strong> – R-native lowering rules in <code>R/rules-quickr.R</code> for the quickr backend.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>
-<p>Anvl’s elementwise binary operators (<code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>nv_add</code>, <code>nv_mul</code>, …) only <strong>auto-broadcast scalars</strong> — i.e. operands with <code>shape = integer()</code>. They do <strong>not</strong> do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises <code><a href="reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code> errors like <em>“All non-scalar arrays must have the same shape, … Use <code><a href="reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code> for general broadcasting.”</em></p>
-<p>When two non-scalar arrays need to be combined and only differ by size-1 axes (e.g. <code>[2, 3] * [1, 3]</code>), explicitly broadcast first via <code>nv_broadcast_arrays(a, b)</code> (or <code>nv_broadcast_to(x, target_shape)</code> / <code><a href="reference/prim_broadcast_in_axes.html">prim_broadcast_in_axes()</a></code> for a one-sided broadcast).</p>
-</div>
-<div class="section level2">
-<h2 id="graph-tracing">Graph Tracing<a class="anchor" aria-label="anchor" href="#graph-tracing"></a></h2>
-<p>When a function is JIT-compiled, anvl traces it by executing with <code>GraphBox</code> objects instead of real data. Operations record themselves into an <code>AnvlGraph</code> (see <code>R/graph.R</code>). The graph is then lowered to StableHLO IR or quickr code for compilation.</p>
-<p>Key types: <code>GraphValue</code> (traced variable), <code>GraphLiteral</code> (embedded constant), <code>AbstractArray</code> (shape + dtype metadata), <code>AnvlGraph</code>.</p>
-</div>
-<div class="section level2">
-<h2 id="nse-and-tracing">NSE and Tracing<a class="anchor" aria-label="anchor" href="#nse-and-tracing"></a></h2>
-<p><code><a href="https://rdrr.io/r/base/force.html" class="external-link">force()</a></code> is only needed in higher-order primitives that trace R functions internally (e.g. <code>prim_sort</code> traces a comparator, <code>prim_scatter</code> traces an update computation). In those cases, force all arrayish inputs first so they aren’t accidentally captured as unevaluated promises in the sub-graph descriptor — R’s lazy evaluation otherwise causes hard-to-debug errors. Plain primitives that don’t open a sub-descriptor don’t need <code><a href="https://rdrr.io/r/base/force.html" class="external-link">force()</a></code>.</p>
-</div>
-<div class="section level2">
-<h2 id="testing">Testing<a class="anchor" aria-label="anchor" href="#testing"></a></h2>
-<p>Each rule of each primitive should be tested. Tests are organized as:</p>
-<ul><li>
-<code>tests/testthat/test-primitives-stablehlo.R</code> – sources <code>inst/extra-tests/test-primitives-stablehlo-torch.R</code>
-</li>
-<li>
-<code>tests/testthat/test-primitives-reverse.R</code> – sources <code>inst/extra-tests/test-primitives-reverse-torch.R</code>
-</li>
-</ul><p>Prefer testing by comparing with the corresponding torch function. If the test is trivial or the functionality is not covered by torch, test manually instead. Write one or the other, not both.</p>
-<p>Tests that use the quickr backend must call <code>skip_if_no_quickr()</code> at the top of the test body. This helper skips when quickr is not installed, and also when the <code>ANVL_SKIP_QUICKR</code> environment variable is set (quickr tests can be slow and are often skipped locally). To test a different backend, use <code><a href="reference/local_backend.html">local_backend()</a></code> (not <code><a href="https://withr.r-lib.org/reference/with_options.html" class="external-link">withr::local_options()</a></code> directly).</p>
-</div>
-<div class="section level2">
-<h2 id="documentation">Documentation<a class="anchor" aria-label="anchor" href="#documentation"></a></h2>
-<p>When writing roxygen2 documentation for primitives or API functions:</p>
-<ul><li>Do not mention “1-based” indexing. Since this is an R package, 1-based indexing is the default.</li>
-<li>Use <code>@templateVar primitive_id &lt;name&gt;</code> with <code>@template section_rules</code> to auto-generate the “Implemented Rules” section.</li>
-<li>Use <code>@rdname</code> or <code>@inheritParams</code> to share documentation between <code>prim_*</code> and <code>nv_*</code> variants.</li>
-<li>Where a <code>man-roxygen/</code> template is too generic for a specific primitive (e.g. the input has specific dtype constraints), write the <code>@param</code> inline instead.</li>
-</ul></div>
-
-
-  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
-    </nav></aside></div>
+  </main></div>
 
 
     <footer><div class="pkgdown-footer-left">

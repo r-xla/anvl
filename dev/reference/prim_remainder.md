@@ -22,8 +22,7 @@ prim_remainder(lhs, rhs)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the inputs. It is ambiguous if both
-inputs are ambiguous.
+Has the same shape and data type as the inputs.
 
 ## Implemented Rules
 
@@ -46,7 +45,7 @@ Lowers to
 prim_remainder(1, -3)
 #> AnvlArray
 #>  1
-#> [ CPUf32?{} ] 
+#> [ CPUf32{} ] 
 1 %% -3
 #> [1] -2
 ```

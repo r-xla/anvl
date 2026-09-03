@@ -26,20 +26,18 @@ of precision.
 
 The rules are defined by the
 [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
-function. It returns a [`list()`](https://rdrr.io/r/base/list.html) with
-two values: the common dtype and a flag indicating whether the result is
-ambiguous, which we will cover later.
+function.
 
 ``` r
 
-common_dtype("f64", "f32")$dtype
+common_dtype("f64", "f32")
 ```
 
     ## <f64>
 
 ``` r
 
-common_dtype("i64", "f32")$dtype
+common_dtype("i64", "f32")
 ```
 
     ## <f32>
@@ -48,7 +46,7 @@ A table with the promotion rules is below.
 
 |      | bool | i8  | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
 |:-----|:-----|:----|:----|:----|:----|:-----|:-----|:-----|:-----|:----|:----|
-| bool | i1   | i8  | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
+| bool | bool | i8  | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
 | i8   | i8   | i8  | i16 | i32 | i64 | i16  | i32  | i64  | i64  | f32 | f64 |
 | i16  | i16  | i16 | i16 | i32 | i64 | i16  | i32  | i64  | i64  | f32 | f64 |
 | i32  | i32  | i32 | i32 | i32 | i64 | i32  | i32  | i64  | i64  | f32 | f64 |
@@ -62,167 +60,159 @@ A table with the promotion rules is below.
 
 Type promotion rules (row × column) {.table}
 
-## Literals as Ambiguous Types
+The biggest differentiator between our type system and the one from JAX
+is the handling of array objects from the host language, which is R in
+our case. While introducing more complexity, these rules prevent the
+loss of precision present in JAX’s type system. We describe it below.
 
-Usually, the types in an {anvl} program can be deterministically
-inferred from the input types. The only case where this is not possible
-is when you use R literals. The default types for literals are as
-follows:
+## R Values Have No Data Type
 
-- [`double()`](https://rdrr.io/r/base/double.html) -\> `f32`
-- [`integer()`](https://rdrr.io/r/base/integer.html) -\> `i32`
-- [`logical()`](https://rdrr.io/r/base/logical.html) -\> `i1` (bool)
+In {anvl}’s type system, R objects do not have a concrete data type.
 
 ``` r
 
-jit(\() list(1L, 1.0, TRUE))()
+dtype(1)
+```
+
+    ## Error:
+    ## ! An R value has no data type of its own until it is used.
+    ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
+    ##   only takes a data type when it meets a typed array, or when it commits to the
+    ##   default ("f32").
+    ## ℹ Give it one explicitly with `nv_convert()`.
+
+The type promotion table from above therefore does not apply to them.
+However, it is possible to apply an {anvl} function to R values
+(length-1 vectors and arrays):
+
+``` r
+
+nv_exp(1)
+```
+
+    ## AnvlArray
+    ##  2.7183
+    ## [ CPUf32{} ]
+
+``` r
+
+nv_add(1, nv_scalar(1, "f64"))
+```
+
+    ## AnvlArray
+    ##  2
+    ## [ CPUf64{} ]
+
+``` r
+
+nv_add(1, 2)
+```
+
+    ## AnvlArray
+    ##  3
+    ## [ CPUf32{} ]
+
+It is therefore important to understand to understand the rules that
+govern the materialization of R objects as `AnvlArray`s. Generally,
+there are two routes:
+
+1.  An R values it commited at its default data type (`double -> f32`,
+    `integer -> i32`, `logical -> bool`). This is e.g. the case in unary
+    functions such as `nv_exp`.
+2.  The R values data type is inferred from other arguments, as is the
+    case of the `nv_add` call above. When no concrete data type is
+    present, `nv_add(1, 2)` falls back to the default, which is `f32`
+    for `double`s.
+
+Note that these rules are not universal and exceptions exist. Some
+functions, such as `nv_clamp`, prioritize the data type of a specific
+argument, in this case `x`, the value that is being clamped. It fails if
+the the boundary values cannot be promoted to `x` without loss of
+precision:
+
+``` r
+
+nv_clamp(
+  min_val = nv_scalar(0, "f64"),
+  x = nv_scalar(0, "f32"),
+  max_val = nv_scalar(0, "f64")
+)
+```
+
+    ## Error:
+    ## ! Cannot bring `min_val` to data type "f32".
+    ## ✖ "f64" is not promotable to "f32".
+    ## ℹ Convert it explicitly with `nv_convert()`.
+
+Functions document their behavior, so consult their respective help page
+for more information.
+
+You can canonicalize and promote inputs to a function via the `.promote`
+field of
+[`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md).
+It takes a `PromotionRule`, which is a special function that takes in
+the arguments and outputs a data type for each one.
+
+``` r
+
+as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
 ```
 
     ## [[1]]
     ## AnvlArray
     ##  1
-    ## [ CPUi32?{} ] 
+    ## [ CPUf64{} ] 
     ## 
     ## [[2]]
     ## AnvlArray
+    ##  2
+    ## [ CPUf64{} ]
+
+One common rule is
+[`promote_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
+which is used by functions such as `nv_add` above. It computes the
+common data type of the inputs. In this case, it returns `f32`, which is
+the default data type of R `double`s.
+
+``` r
+
+promote_fn <- promote_common()
+args <- list(1, 2, nv_scalar(1L, "i8"))
+promote_fn(args)
+```
+
+    ## [[1]]
+    ## <f32>
+    ## 
+    ## [[2]]
+    ## <f32>
+    ## 
+    ## [[3]]
+    ## <f32>
+
+And when used in
+[`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md)
+it moves the inputs there:
+
+``` r
+
+do.call(as_anvl_arrays, c(args, list(.promote = promote_fn)))
+```
+
+    ## [[1]]
+    ## AnvlArray
     ##  1
-    ## [ CPUf32?{} ] 
+    ## [ CPUf32{} ] 
+    ## 
+    ## [[2]]
+    ## AnvlArray
+    ##  2
+    ## [ CPUf32{} ] 
     ## 
     ## [[3]]
     ## AnvlArray
     ##  1
-    ## [ CPUbool{} ]
+    ## [ CPUf32{} ]
 
-However, because this is just a guess, they behave differently than
-known types during promotion. Therefore, the `common_dtype` function has
-two arguments indicating which of the data types are ambiguous. Below,
-the first type is a known `f64` and the second is an ambiguous `f32`.
-Within anvl, we denote the latter as `i32?`. The result is an `f64`,
-although we would promote to an `f64` if both were known. If both types
-are ambiguous, the result is generally the same as if both were known.
-
-``` r
-
-common_dtype("f32", "f64", FALSE, TRUE)
-```
-
-    ## $dtype
-    ## <f32>
-    ## 
-    ## $ambiguous
-    ## [1] FALSE
-
-``` r
-
-common_dtype("f32", "f64", TRUE, TRUE)
-```
-
-    ## $dtype
-    ## <f64>
-    ## 
-    ## $ambiguous
-    ## [1] TRUE
-
-``` r
-
-common_dtype("f32", "f64", FALSE, FALSE)
-```
-
-    ## $dtype
-    ## <f64>
-    ## 
-    ## $ambiguous
-    ## [1] FALSE
-
-The promotion rules only change when one type is ambiguous and the other
-is not. There, we usually promote the ambiguous type to the known type,
-unless:
-
-1.  The ambiguous type is a float and the known type is not.
-2.  The known type is a bool but the ambiguous type is not.
-
-In both case, we promote the known type to the default type of the
-ambiguous type. The table below shows the promotion rules, where the
-rows are ambiguous and the columns are known.
-
-|      | bool | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-|:-----|:-----|:----|:----|:----|:----|:----|:-----|:-----|:-----|:----|:----|
-| bool | i1   | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| i8   | i8   | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| i16  | i16  | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| i32  | i32  | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| i64  | i64  | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| ui8  | ui8  | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| ui16 | ui16 | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| ui32 | ui32 | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| ui64 | ui64 | i8  | i16 | i32 | i64 | ui8 | ui16 | ui32 | ui64 | f32 | f64 |
-| f32  | f32  | f32 | f32 | f32 | f32 | f32 | f32  | f32  | f32  | f32 | f64 |
-| f64  | f64  | f64 | f64 | f64 | f64 | f64 | f64  | f64  | f64  | f32 | f64 |
-
-Promotion rules: ambiguous (row) × known (column) {.table}
-
-## Creating Tensors with Different Ambiguity
-
-Both
-[`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-and
-[`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-create **non-ambiguous** arrays by default. You can explicitly control
-ambiguity using the `ambiguous` parameter:
-
-``` r
-
-s1 <- nv_scalar(1.0)
-ambiguous(s1)
-```
-
-    ## [1] FALSE
-
-``` r
-
-s2 <- nv_scalar(1.0, ambiguous = TRUE)
-ambiguous(s2)
-```
-
-    ## [1] TRUE
-
-``` r
-
-t1 <- nv_array(c(1.0, 2.0, 3.0))
-ambiguous(t1)
-```
-
-    ## [1] FALSE
-
-``` r
-
-t2 <- nv_array(c(1.0, 2.0, 3.0), ambiguous = TRUE)
-ambiguous(t2)
-```
-
-    ## [1] TRUE
-
-## Propagating Ambiguity
-
-Ambiguity is propagated through operations. Consider the following
-example:
-
-``` r
-
-f <- jit(function(x, y) {
-  z <- x + 1L
-  z * y
-})
-f(nv_scalar(TRUE), nv_scalar(2L, dtype = "i16"))
-```
-
-    ## AnvlArray
-    ##  4
-    ## [ CPUi16{} ]
-
-The type of `z` is `i32?`, because `x` is promoted to an `i32`, the
-default type of the `1L` literal. If `z` was not ambiguous, the output
-would be an `i32`, because the `y` would be promoted to an `i32` in the
-multiplication. Because we propagate the ambiguity, the `z` is actually
-down-promoted to an `i16`, because the `z` is ambiguous, while the `y`
-is known.
+For more information about the available rules, see
+[`?promotion_rule`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md).

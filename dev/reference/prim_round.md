@@ -24,8 +24,7 @@ prim_round(x, method = "nearest_even")
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same dtype and shape as `x`. It is ambiguous if the input is
-ambiguous.
+Has the same dtype and shape as `x`.
 
 ## Implemented Rules
 

@@ -27,7 +27,7 @@ prim_concatenate(..., axis)
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as the inputs. The output shape matches the
 inputs in all axes except `axis`, which is the sum of the input sizes
-along that axis. It is ambiguous if all inputs are ambiguous.
+along that axis.
 
 ## Implemented Rules
 

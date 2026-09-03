@@ -151,66 +151,42 @@ function.</p>
 <div class="section level2">
 <h2 id="consistent-input-and-output-types">Consistent Input and Output Types<a class="anchor" aria-label="anchor" href="#consistent-input-and-output-types"></a>
 </h2>
-<p>Functions in anvl have dynamic (arrayish) and static (standard R
-values) inputs. However, it can also be convenient to pass R objects as
-dynamic inputs and let anvl convert them. To enable this, there are the
-<code><a href="../reference/as_anvl_array.html">as_anvl_array()</a></code> and <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code>
-converters. You should call them at the top of your function. Not only
-will these functions convert the inputs, they will also check them for
-compatibility, specifically w.r.t. their device and backend. If they
-don’t live on the same device, an error will be thrown.</p>
-<p>Note that this is only really necessary for using your function in
-eager mode (i.e. without <code><a href="../reference/jit.html">jit()</a></code>). This is because when a
-function is wrapped in <code><a href="../reference/jit.html">jit()</a></code>, {anvl} itself can perform
-these checks automatically.</p>
-<p>The advantage of this input standardization is best illustrated with
-an example.</p>
-<p>Consider the naive implementation of reshaping, which will fail when
-called on an R vector:</p>
+<p>Functions in anvl have <code>AnvlArray</code> inputs and R data
+inputs. R data can be used dynamically, when it is passed to an argument
+that expects an <code>AnvlArray</code>, or statically, when it is passed
+to an argument that <code><a href="../reference/jit.html">jit()</a></code> marked as static. To make this
+work, you should call <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> on all dynamic input
+values. If there is only a single one, you can also use
+<code><a href="../reference/as_anvl_array.html">as_anvl_array()</a></code>.</p>
+<p>They do four things, and three of them are decisions <em>across</em>
+the whole argument set, which is why a function with several arrayish
+arguments should normalize them in <strong>one</strong>
+<code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> call rather than one
+<code><a href="../reference/as_anvl_array.html">as_anvl_array()</a></code> per argument:</p>
+<ol style="list-style-type: decimal">
+<li>every input is put on one device, and a call mixing devices or
+backends is rejected,</li>
+<li>the type promotion rules of the <code>.promote</code> argument are
+applied, which handle both placement of R values, as well as conversions
+between <code>AnvlArray</code>s, e.g., to make
+<code>nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))</code> work.</li>
+<li>afterwards, <code><a href="../reference/dtype.html">dtype()</a></code> is well defined and the remaining
+body does not have to distinguish between R value inputs and
+<code>AnvlArray</code> inputs.</li>
+<li>it reduces differences between eager and jit mode, see the
+<code><a href="../articles/gotchas.html">vignette("gotchas")</a></code> for a discussion.</li>
+</ol>
+<p>Below, we add a function that performs the addition after coercing
+all inputs to <code>f32</code>;</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
-<span><span class="co"># x: dynamic, shape: static</span></span>
-<span><span class="va">nv_reshape_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">shape</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="va">shape</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="../reference/prim_reshape.html">prim_reshape</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">shape</span><span class="op">)</span></span>
-<span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
-<span>    <span class="va">x</span></span>
-<span>  <span class="op">}</span></span>
+<code class="sourceCode R"><span><span class="va">nv_add_f32</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, .promote <span class="op">=</span> <span class="fu"><a href="../reference/promotion_rule.html">promote_dtype</a></span><span class="op">(</span><span class="st">"f32"</span>, coerce <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">prim_add</span>, <span class="va">args</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="fu">nv_reshape_naive</span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `UseMethod()`:</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> no applicable method for 'shape' applied to an object of class "c('integer', 'numeric')"</span></span></code></pre></div>
-<p>This is because the attribute-getters such as <code><a href="../reference/shape.html">shape()</a></code>,
-<code><a href="../reference/dtype.html">dtype()</a></code>, etc. are only implemented for
-<code>AnvlArray</code>s, not for R vectors, so canonicalizing inputs at
-the top ensures the function works correctly.</p>
-<p>Also, consider this function that converts an input to a specific
-dtype (or keeps it as-is if <code>dtype</code> is <code>NULL</code>).
-The problem is that in the no-op case, we return a static R object
-instead of (as intended) an <code>AnvlArray</code>.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># x: dynamic, dtype: static</span></span>
-<span><span class="va">nv_convert_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">dtype</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">dtype</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="kw"><a href="https://rdrr.io/r/base/function.html" class="external-link">return</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span>  <span class="fu"><a href="../reference/prim_convert.html">prim_convert</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">dtype</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="fu">nv_convert_naive</span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i16"</span><span class="op">)</span></span>
+<span><span class="fu">nv_add_f32</span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  1</span></span>
-<span><span class="co">#&gt; [ CPUi16{} ]</span></span>
-<span><span class="fu">nv_convert_naive</span><span class="op">(</span><span class="fl">1L</span>, <span class="cn">NULL</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1</span></span></code></pre></div>
-<p>By canonicalizing inputs, such pitfalls can be avoided.</p>
-<p>Finally, note that primitives such as <code><a href="../reference/prim_convert.html">prim_convert()</a></code>
-already canonicalize their inputs, so if you are only wrapping
-primitives (or other <code>nv_&lt;op&gt;</code> functions that already
-canonicalize), you might not have to do this yourself.</p>
-<p>When a function takes multiple arrayish inputs, normalize them in a
-single <code>as_anvl_arrays(...)</code> call covering all of them, so R
-literals/arrays adopt the device of their AnvlArray siblings instead of
-landing on the default device.</p>
+<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="arbitrary-devices">Arbitrary Devices<a class="anchor" aria-label="anchor" href="#arbitrary-devices"></a>
@@ -219,7 +195,7 @@ landing on the default device.</p>
 arbitrary devices, you need to be careful when creating new constants
 within your function. Let’s say you are creating your function and
 working on GPU:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_one_naive</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, device <span class="op">=</span> <span class="st">"cuda"</span><span class="op">)</span></span>
@@ -232,8 +208,9 @@ inputs and you called <code><a href="../reference/as_anvl_array.html">as_anvl_ar
 you know that there is only a single device.</p>
 <p>One way to achieve this is to simply pass the input’s device to
 <code><a href="../reference/nv_fill.html">nv_fill()</a></code>:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_one1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="co"># Converting is what gives the value a device to read back here.</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, device <span class="op">=</span> <span class="fu"><a href="../reference/device.html">device</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -242,7 +219,7 @@ functions. These take in another <code>AnvlArray</code> as their first
 input and use its properties as the defaults for their arguments. In
 this case, the created array will assume the data type, shape and device
 from the input array.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_one2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill_like</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">1L</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -263,7 +240,7 @@ so you need to make it a static input. Don’t convert it to an
 it will actually be converted, but from XLA’s point of view, it will
 just be a constant within the compiled program and not a dynamic
 input.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_rbernoulli</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">initial_state</span>, <span class="va">p</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">initial_state</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">initial_state</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="op">(</span><span class="va">p</span> <span class="op">&gt;=</span> <span class="fl">0</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="op">(</span><span class="va">p</span> <span class="op">&lt;=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
@@ -289,7 +266,7 @@ eagerly. The wrapping is driven by the <code>@jit</code> roclet (see
 <code><a href="../reference/jit_roclet.html">?jit_roclet</a></code>).</p>
 <p>In <code>R/api*.R</code>, tag any function that performs more than
 one primitive operation with <code>#' @jit</code>:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#' @export</span></span>
 <span><span class="co">#' @jit</span></span>
 <span><span class="va">nv_log2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
@@ -300,7 +277,7 @@ one primitive operation with <code>#' @jit</code>:</p>
 arrayish input – axes, shape, dtype, control flags, functions used as
 templates, …), list them with <code>static = c(...)</code> using either
 positional indices or argument names:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#' @export</span></span>
 <span><span class="co">#' @jit static = c(2L, 3L)</span></span>
 <span><span class="va">nv_mean</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">axes</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">drop</span> <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">{</span></span>

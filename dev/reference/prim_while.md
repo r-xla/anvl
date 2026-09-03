@@ -15,7 +15,9 @@ prim_while(init, cond, body)
 - init:
 
   (`named list()`)  
-  Named list of initial state values.
+  Named list of initial state values. Each one becomes a parameter of
+  the loop's sub-graphs. R values are committed at their default data
+  type.
 
 - cond:
 

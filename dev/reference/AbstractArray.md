@@ -23,6 +23,10 @@ for:
 - sequence patterns:
   [`IotaArray`](https://r-xla.github.io/anvl/dev/reference/IotaArray.md)
 
+- R values
+  [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md). They
+  are special because they do not have a data type.
+
 To convert a
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 value to an abstract array, use
@@ -31,9 +35,9 @@ value to an abstract array, use
 ## Usage
 
 ``` r
-nv_aval(dtype, shape, ambiguous = FALSE)
+nv_aval(dtype, shape)
 
-AbstractArray(dtype, shape, ambiguous = FALSE)
+AbstractArray(dtype, shape)
 ```
 
 ## Arguments
@@ -42,22 +46,15 @@ AbstractArray(dtype, shape, ambiguous = FALSE)
 
   ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
   \| `character(1)`)  
-  The data type of the array.
+  The data type of the array. To create an
+  [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md) object,
+  specify `"double"`, `"integer"`, or `"logical"`.
 
 - shape:
 
   ([`stablehlo::Shape`](https://r-xla.github.io/stablehlo/reference/Shape.html)
   \| [`integer()`](https://rdrr.io/r/base/integer.html))  
   The shape of the array. Can be provided as an integer vector.
-
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
 
 ## Extractors
 
@@ -69,9 +66,6 @@ The following extractors are available on `AbstractArray` objects:
 - [`shape()`](https://r-xla.github.io/tengen/reference/shape.html): Get
   the shape (axis sizes) of the array.
 
-- [`ambiguous()`](https://r-xla.github.io/anvl/dev/reference/ambiguous.md):
-  Get whether the dtype is ambiguous.
-
 - [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html): Get
   the number of axes.
 
@@ -80,6 +74,7 @@ The following extractors are available on `AbstractArray` objects:
 [LiteralArray](https://r-xla.github.io/anvl/dev/reference/LiteralArray.md),
 [ConcreteArray](https://r-xla.github.io/anvl/dev/reference/ConcreteArray.md),
 [IotaArray](https://r-xla.github.io/anvl/dev/reference/IotaArray.md),
+[RData](https://r-xla.github.io/anvl/dev/reference/RData.md),
 [GraphValue](https://r-xla.github.io/anvl/dev/reference/GraphValue.md),
 [`to_abstract()`](https://r-xla.github.io/anvl/dev/reference/to_abstract.md),
 [GraphBox](https://r-xla.github.io/anvl/dev/reference/GraphBox.md)
@@ -95,12 +90,14 @@ dtype(a)
 #> <f32>
 shape(a)
 #> [1] 2 3
-ambiguous(a)
-#> [1] FALSE
 
 # Shorthand
 nv_aval("f32", c(2L, 3L))
 #> AbstractArray(dtype=f32, shape=2x3) 
+
+# An R value, which has no dtype until it is used
+nv_aval("double", c(2L, 3L))
+#> RData(double, (2,3)) 
 
 # How AbstractArrays appear in an AnvlGraph
 graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
@@ -109,11 +106,11 @@ graph
 #>   Inputs:
 #>     %x1: i32[4]
 #>   Body:
-#>     %1: f32?[4] = convert [dtype = f32, ambiguous = TRUE] (%x1)
-#>     %2: f32?[4] = broadcast_in_axes [shape = 4, broadcast_axes = <any>] (1:f32?)
-#>     %3: f32?[4] = add(%1, %2)
+#>     %1: f32[4] = convert [dtype = f32] (%x1)
+#>     %2: f32[4] = broadcast_in_axes [shape = 4, broadcast_axes = <any>] (1:f32)
+#>     %3: f32[4] = add(%1, %2)
 #>   Outputs:
-#>     %3: f32?[4] 
+#>     %3: f32[4] 
 graph$inputs[[1]]$aval
 #> AbstractArray(dtype=i32, shape=4) 
 ```

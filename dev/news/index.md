@@ -2,6 +2,16 @@
 
 ## anvl (development version)
 
+### Breaking changes
+
+- The type system of {anvl} was changed to avoid the problems reported
+  in issue [\#373](https://github.com/r-xla/anvl/issues/373).
+  Specifically, the ambiguity system was replaced with the `RData`
+  system and a new system of rules for type promotions. With it, also
+  the promotion behavior of various primitives and API functions was
+  improved.
+- `jit_eval()` was removed as it is no longer needed.
+
 ### Tests
 
 - Moved some of pjrt’s dispatcher tests into anvl.

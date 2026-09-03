@@ -494,10 +494,10 @@ graph
     ##   Constants:
     ##     %c1: f32[1000000]
     ##   Body:
-    ##     %1: f32[] = convert [dtype = f32, ambiguous = FALSE] (%x1)
+    ##     %1: f32[] = convert [dtype = f32] (%x1)
     ##     %2: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = <any>] (%1)
     ##     %3: f32[1000000] = add(%2, %c1)
-    ##     %4: f32?[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = <any>] (1:f32?)
+    ##     %4: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = <any>] (1:f32)
     ##     %5: f32[1000000] = add(%3, %4)
     ##   Outputs:
     ##     %5: f32[1000000]
@@ -573,6 +573,238 @@ Further note that:
 2.  Currently, constants with the same value (that refer to different
     `AnvlArray`s) are not deduplicated, which we might change in the
     future.
+
+### R Values in Compiled Programs
+
+R values can appear in two forms in compiled programs:
+
+1.  As constants
+2.  As non-static R inputs (`RData`).
+
+The `RData` object can be though of as the dynamic version of an R value
+within the program and they behave similarly.
+
+Both have a shape, but no data type.
+
+``` r
+
+trace_fn(function(x) {
+  print(x)
+  print(shape(x))
+  print(dtype(x))
+  x
+}, list(RData(c(), "integer")))
+```
+
+    ## GraphBox(GraphValue(RData(integer, ()))) 
+    ## integer(0)
+
+    ## Error:
+    ## ! An R value has no data type of its own until it is used.
+    ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
+    ##   only takes a data type when it meets a typed array, or when it commits to the
+    ##   default ("i32").
+    ## ℹ Give it one explicitly with `nv_convert()`.
+
+``` r
+
+trace_fn(function() {
+  x <- 1
+  print(shape(x))
+  print(dtype(x))
+  x
+}, list())
+```
+
+    ## integer(0)
+
+    ## Error:
+    ## ! An R value has no data type of its own until it is used.
+    ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
+    ##   only takes a data type when it meets a typed array, or when it commits to the
+    ##   default ("f32").
+    ## ℹ Give it one explicitly with `nv_convert()`.
+
+An `RData` object resolves its data type when something materializes it,
+which is either a primitive or a call to
+[`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)
+or
+[`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md).
+Generally, there are two situations:
+
+1.  An `RData` object is combined with an object that has a concrete
+    data type
+2.  None of the inputs to a primitive has a concrete data type.
+
+In the first case, the `RData` object yields
+([`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md))
+to the concrete data type. Below, `nv_aval("integer", c())` is
+equivalent to `RData(c(), "integer")`. In the resulting graph, the `%x1`
+input has the data type it yielded to, and the `<- integer` records that
+the caller supplies it as an R integer, which the runtime uploads at
+that data type.
+
+``` r
+
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1L, "i64"))
+}, list(nv_aval("integer", c())))
+```
+
+    ## <AnvlGraph>
+    ##   Inputs:
+    ##     %x1: i64[] <- integer
+    ##   Constants:
+    ##     %c1: i64[]
+    ##   Body:
+    ##     %1: i64[] = add(%x1, %c1)
+    ##   Outputs:
+    ##     %1: i64[]
+
+Yielding stays within the value’s own category, so an R integer meeting
+an `f32` is an error rather than a promotion – crossing a category is
+the job of the `nv_*` layer.
+
+In the second case, it assumes its default data type:
+
+``` r
+
+trace_fn(\(x) {
+  prim_exp(x)
+}, list(nv_aval("double", c())))
+```
+
+    ## <AnvlGraph>
+    ##   Inputs:
+    ##     %x1: f32[] <- double
+    ##   Body:
+    ##     %1: f32[] = exp(%x1)
+    ##   Outputs:
+    ##     %1: f32[]
+
+When the same `RData` input is used at several data types, it is
+supplied at the narrowest one that holds them all, and each use site
+converts down from it. Below the input is uploaded as `i64`; the `i8`
+and `i16` uses convert from it, via `i32` because an R integer is not
+built below 32 bits.
+
+``` r
+
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1L, "i8"))
+  prim_add(x, nv_scalar(1L, "i16"))
+  prim_add(x, nv_scalar(1L, "i64"))
+}, list(nv_aval("integer", c())))
+```
+
+    ## <AnvlGraph>
+    ##   Inputs:
+    ##     %x1: i64[] <- integer
+    ##   Constants:
+    ##     %c1: i8[]
+    ##     %c2: i16[]
+    ##     %c3: i64[]
+    ##   Body:
+    ##     %1: i32[] = convert [dtype = i32] (%x1)
+    ##     %2: i8[] = convert [dtype = i8] (%1)
+    ##     %3: i8[] = add(%2, %c1)
+    ##     %4: i16[] = convert [dtype = i16] (%1)
+    ##     %5: i16[] = add(%4, %c2)
+    ##     %6: i64[] = add(%x1, %c3)
+    ##   Outputs:
+    ##     %6: i64[]
+
+This design tries to balance correctness with hardware compatibility.
+Another approach would be to always represent R doubles as `f64`, which
+is their natural representation. The problem with this approach is that:
+
+1.  modern accelerators run much faster in `f32` than `f64`, and
+2.  some accelerators (such as Metal) do not support `f64` at all.
+
+Therefore, one of the underlying ideas is to only introduce `f64` values
+when someone actually requested this data type.
+
+``` r
+
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1, "f64"))
+}, list(nv_aval("double", c())))
+```
+
+    ## <AnvlGraph>
+    ##   Inputs:
+    ##     %x1: f64[] <- double
+    ##   Constants:
+    ##     %c1: f64[]
+    ##   Body:
+    ##     %1: f64[] = add(%x1, %c1)
+    ##   Outputs:
+    ##     %1: f64[]
+
+Otherwise, the `double` input is fed as an `f32` to the pjrt program:
+
+``` r
+
+trace_fn(\(x) {
+  prim_add(x, nv_scalar(1, "f32"))
+}, list(nv_aval("double", c())))
+```
+
+    ## <AnvlGraph>
+    ##   Inputs:
+    ##     %x1: f32[] <- double
+    ##   Constants:
+    ##     %c1: f32[]
+    ##   Body:
+    ##     %1: f32[] = add(%x1, %c1)
+    ##   Outputs:
+    ##     %1: f32[]
+
+There is one special case, however: operations that explicitly request a
+data type, such as
+[`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
+and the
+[`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+constructor. If
+[`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
+were to follow the usual rule of committing its R inputs to their
+default data type, then `prim_convert(large_double, "i32")` would first
+convert the R `double` to an `f32` (the default data type for floats)
+and then to an `i32`, which would result in a loss of precision. In
+order to prevent this,
+[`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
+materializes its input at its natural representation.
+
+``` r
+
+trace_fn(\(x) {
+  prim_convert(x, "i32")
+}, list(nv_aval("double", c())))
+```
+
+    ## Warning: Converting an R double to "i32" brings "f64" into the program.
+    ## ✖ An R double cannot be built at "i32" directly, so it is built at "f64" and
+    ##   the program converts -- and nothing else here asked for "f64".
+    ## ℹ To keep it out, convert in its own category first: `nv_convert(nv_convert(x,
+    ##   "f32"), "i32")`. The result differs for values its data type cannot hold
+    ##   exactly.
+
+    ## <AnvlGraph>
+    ##   Inputs:
+    ##     %x1: f64[] <- double
+    ##   Body:
+    ##     %1: i32[] = convert [dtype = i32] (%x1)
+    ##   Outputs:
+    ##     %1: i32[]
+
+Because of its possibly problematic implications, a warning message is
+thrown when this happens. In the future, we might also implement a
+better solution to this problem. One idea would be to convert the
+`double` input directly to an `i32` before passing it to the compiled
+program.
+
+This is why API functions and primitives should always canonicalize the
+inputs right at the beginning, so this problem rarely happens.
 
 ## Device Inference in `jit()`
 

@@ -32,8 +32,7 @@ prim_broadcast_in_axes(x, shape, broadcast_axes)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input and the given `shape`. It is
-ambiguous if the input is ambiguous.
+Has the same data type as the input and the given `shape`.
 
 ## Implemented Rules
 

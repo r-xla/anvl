@@ -11,20 +11,12 @@ nv_array(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  ambiguous = NULL,
   backend = NULL,
   byrow = FALSE,
   check = FALSE
 )
 
-nv_scalar(
-  data,
-  dtype = NULL,
-  device = NULL,
-  ambiguous = NULL,
-  backend = NULL,
-  check = FALSE
-)
+nv_scalar(data, dtype = NULL, device = NULL, backend = NULL, check = FALSE)
 
 nv_matrix(
   data,
@@ -32,12 +24,11 @@ nv_matrix(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  ambiguous = NULL,
   backend = NULL,
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, ambiguous = FALSE, backend = NULL)
+nv_empty(dtype, shape, device = NULL, backend = NULL)
 
 nv_array_like(
   like,
@@ -45,26 +36,12 @@ nv_array_like(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  ambiguous = NULL,
   backend = NULL
 )
 
-nv_scalar_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  ambiguous = NULL,
-  backend = NULL
-)
+nv_scalar_like(like, data, dtype = NULL, device = NULL, backend = NULL)
 
-nv_empty_like(
-  like,
-  dtype = NULL,
-  shape = NULL,
-  device = NULL,
-  ambiguous = NULL
-)
+nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -118,12 +95,6 @@ nv_empty_like(
   vectors as having shape `(1)`. To create a "scalar" with no axes
   (shape `()`), use `nv_scalar` or explicitly specify `shape = c()`.
 
-- ambiguous:
-
-  (`NULL` \| `logical(1)`)  
-  Whether the dtype should be marked as ambiguous. Defaults to `FALSE`
-  for new arrays.
-
 - backend:
 
   (`NULL` \| `character(1)`)  
@@ -168,8 +139,8 @@ nv_empty_like(
 - like:
 
   (`AnvlArray`)  
-  An existing array. Any of `dtype`, `device`, `shape`, `ambiguous`, and
-  `backend` that are `NULL` (the default) are taken from `like`.
+  An existing array. Any of `dtype`, `device`, `shape`, and `backend`
+  that are `NULL` (the default) are taken from `like`.
 
 ## Value
 
@@ -209,9 +180,6 @@ an `AnvlArray`:
 
 - [`platform()`](https://r-xla.github.io/anvl/dev/reference/platform.md):
   Get the platform (e.g. `"cpu"`, `"cuda"`).
-
-- [`ambiguous()`](https://r-xla.github.io/anvl/dev/reference/ambiguous.md):
-  Get whether the dtype is ambiguous.
 
 ## Serialization
 
@@ -284,8 +252,8 @@ nv_scalar(3.14)
 # An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  9.8091e-45 1.1210e-44 1.2612e-44
-#>  1.4013e-44 1.5414e-44 1.6816e-44
+#>  1.1635e+27 3.0649e-41 1.1635e+27
+#>  3.0649e-41 1.1635e+27 3.0649e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
@@ -300,8 +268,6 @@ device(x)
 #> <CpuDevice(id=0)>
 platform(x)
 #> [1] "cpu"
-ambiguous(x)
-#> [1] FALSE
 
 # --- Transforming arrays with jit ---
 add_one <- jit(function(x) x + 1)
@@ -311,7 +277,7 @@ add_one(nv_array(1:4))
 #>  3
 #>  4
 #>  5
-#> [ CPUf32?{4} ] 
+#> [ CPUf32{4} ] 
 
 # --- Eager mode (calling operations directly) ---
 nv_add(nv_array(1:3), nv_array(4:6))

@@ -89,20 +89,12 @@ Its type is determined by a data type and a shape.</p>
 <span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  shape <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  backend <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  byrow <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  check <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_scalar</span><span class="op">(</span></span>
-<span>  <span class="va">data</span>,</span>
-<span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  backend <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  check <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span>
+<span><span class="fu">nv_scalar</span><span class="op">(</span><span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, backend <span class="op">=</span> <span class="cn">NULL</span>, check <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_matrix</span><span class="op">(</span></span>
 <span>  <span class="va">data</span>,</span>
@@ -110,12 +102,11 @@ Its type is determined by a data type and a shape.</p>
 <span>  ncol <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  backend <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  byrow <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_empty</span><span class="op">(</span><span class="va">dtype</span>, <span class="va">shape</span>, device <span class="op">=</span> <span class="cn">NULL</span>, ambiguous <span class="op">=</span> <span class="cn">FALSE</span>, backend <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">nv_empty</span><span class="op">(</span><span class="va">dtype</span>, <span class="va">shape</span>, device <span class="op">=</span> <span class="cn">NULL</span>, backend <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">nv_array_like</span><span class="op">(</span></span>
 <span>  <span class="va">like</span>,</span>
@@ -123,26 +114,12 @@ Its type is determined by a data type and a shape.</p>
 <span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  shape <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  backend <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_scalar_like</span><span class="op">(</span></span>
-<span>  <span class="va">like</span>,</span>
-<span>  <span class="va">data</span>,</span>
-<span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  backend <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span>
+<span><span class="fu">nv_scalar_like</span><span class="op">(</span><span class="va">like</span>, <span class="va">data</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span>, backend <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">nv_empty_like</span><span class="op">(</span></span>
-<span>  <span class="va">like</span>,</span>
-<span>  dtype <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  shape <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  ambiguous <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">nv_empty_like</span><span class="op">(</span><span class="va">like</span>, dtype <span class="op">=</span> <span class="cn">NULL</span>, shape <span class="op">=</span> <span class="cn">NULL</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -179,12 +156,6 @@ The output shape of the array.
 The default (<code>NULL</code>) is to infer it from the data if possible.
 Note that <code>nv_array</code> interprets length 1 vectors as having shape <code>(1)</code>.
 To create a "scalar" with no axes (shape <code>()</code>), use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
-
-
-<dt id="arg-ambiguous">ambiguous<a class="anchor" aria-label="anchor" href="#arg-ambiguous"></a></dt>
-<dd><p>(<code>NULL</code> | <code>logical(1)</code>)<br>
-Whether the dtype should be marked as ambiguous.
-Defaults to <code>FALSE</code> for new arrays.</p></dd>
 
 
 <dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
@@ -228,8 +199,8 @@ Defaults to <code>1</code> when <code>data</code> is a scalar.</p></dd>
 
 <dt id="arg-like">like<a class="anchor" aria-label="anchor" href="#arg-like"></a></dt>
 <dd><p>(<code>AnvlArray</code>)<br>
-An existing array. Any of <code>dtype</code>, <code>device</code>, <code>shape</code>, <code>ambiguous</code>, and
-<code>backend</code> that are <code>NULL</code> (the default) are taken from <code>like</code>.</p></dd>
+An existing array. Any of <code>dtype</code>, <code>device</code>, <code>shape</code>, and <code>backend</code>
+that are <code>NULL</code> (the default) are taken from <code>like</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -259,7 +230,6 @@ overloaded as it is used to refer to both the axis and it's size.</p>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code>: Get the number of axes.</p></li>
 <li><p><code><a href="https://r-xla.github.io/tengen/reference/device.html" class="external-link">device()</a></code>: Get the device of the array.</p></li>
 <li><p><code><a href="platform.html">platform()</a></code>: Get the platform (e.g. <code>"cpu"</code>, <code>"cuda"</code>).</p></li>
-<li><p><code><a href="ambiguous.html">ambiguous()</a></code>: Get whether the dtype is ambiguous.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="serialization">Serialization<a class="anchor" aria-label="anchor" href="#serialization"></a></h2>
@@ -325,8 +295,8 @@ The supported data types and devices differ between backends.</p>
 <span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  9.8091e-45 1.1210e-44 1.2612e-44</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013e-44 1.5414e-44 1.6816e-44</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.1635e+27 3.0649e-41 1.1635e+27</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0649e-41 1.1635e+27 3.0649e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>
@@ -341,8 +311,6 @@ The supported data types and devices differ between backends.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;CpuDevice(id=0)&gt;</span>
 <span class="r-in"><span><span class="fu"><a href="platform.html">platform</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "cpu"</span>
-<span class="r-in"><span><span class="fu"><a href="ambiguous.html">ambiguous</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Transforming arrays with jit ---</span></span></span>
 <span class="r-in"><span><span class="va">add_one</span> <span class="op">&lt;-</span> <span class="fu"><a href="jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span></span></span>
@@ -352,7 +320,7 @@ The supported data types and devices differ between backends.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32?{4} ] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{4} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Eager mode (calling operations directly) ---</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="nv_add.html">nv_add</a></span><span class="op">(</span><span class="fu">nv_array</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span>, <span class="fu">nv_array</span><span class="op">(</span><span class="fl">4</span><span class="op">:</span><span class="fl">6</span><span class="op">)</span><span class="op">)</span></span></span>

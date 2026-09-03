@@ -10,7 +10,6 @@ AnvlBackend(
   new_empty,
   dtype,
   shape,
-  ambiguous,
   as_array,
   as_raw,
   platform,
@@ -49,11 +48,6 @@ AnvlBackend(
 
   (`function`)  
   Extracts the shape from an AnvlArray.
-
-- ambiguous:
-
-  (`function`)  
-  Extracts the ambiguous flag from an AnvlArray.
 
 - as_array:
 

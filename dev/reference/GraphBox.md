@@ -43,8 +43,6 @@ GraphBox(gnode, desc)
 
 - [`naxes()`](https://r-xla.github.io/tengen/reference/naxes.html)
 
-- [`ambiguous()`](https://r-xla.github.io/anvl/dev/reference/ambiguous.md)
-
 ## See also
 
 [AnvlBox](https://r-xla.github.io/anvl/dev/reference/AnvlBox.md),

@@ -96,8 +96,7 @@ prim_repeat_along <- new_primitive(
       new_shape[axis] <- new_shape[axis] * times
       list(AbstractArray(
         dtype = dtype(x),
-        shape = Shape(new_shape),
-        ambiguous = x$ambiguous
+        shape = Shape(new_shape)
       ))
     }
 
@@ -132,9 +131,6 @@ Key points:
   clear error messages — {anvl} programs are otherwise hard to debug.
 - [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
   returns a list of outputs; use `[[1L]]` for single-output primitives.
-- Propagate the `ambiguous` flag from inputs to outputs, see [type
-  promotion](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for what this means.
 
 Every argument that is *not* a dynamic array must be listed in `static`.
 `new_primitive` calls
@@ -154,9 +150,48 @@ When doing so, you need to:
     `ValueType`s.
 3.  Convert the `ValueType`s back to abstract arrays using
     [`vt2at()`](https://r-xla.github.io/anvl/dev/reference/vt2at.md).
-4.  Set the `ambiguous` flag of the output depending on the inputs
-    (`ambiguity` is strictly an {anvl} concept, not a stablehlo
-    concept).
+
+#### Handling of R inputs
+
+One question that the primitive needs to answer is how it materializes R
+inputs: The default rule is to materialize an R input at its default
+data type, which is `f32` for doubles, `i32` for integers, and `bool`
+for logicals.
+
+For functions taking a single dynamic input, as does `prim_repeat_along`
+from above, this is almost always the right thing to do. The inputs
+section of the printed graph shows both halves of it: the input’s data
+type is the default the value committed to, and the `<- double` records
+that the caller supplies an R double rather than an array that already
+had one.
+
+``` r
+
+trace_fn(prim_repeat_along, list(nv_aval("double", c(2, 3)), 2, 1))
+#> <AnvlGraph>
+#>   Inputs:
+#>     %x1: f32[2, 3] <- double
+#>   Body:
+#>     %1: f32[4, 3] = repeat_along [times = 2, axis = 1] (%x1)
+#>   Outputs:
+#>     %1: f32[4, 3]
+```
+
+Where the default goes wrong is when a primitive has several operands
+that must agree. Committing each to its own default would make
+`prim_add(1, nv_scalar(2, "f64"))` an error – the literal would become
+`f32` and meet an `f64` – where it should give `f64`. In such cases, you
+should call
+[`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)
+in the primitive and pass the rules you want to apply. This needs to be
+done before calling
+[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md).
+These should *not* change the data type of any `AnvlArray` inputs, which
+is what the
+[`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+rule is for. See
+[`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
+for more information on these rules.
 
 #### Special case: primitives with 0 dynamic inputs
 
@@ -181,10 +216,10 @@ For example, the real definition of `prim_fill` looks like this:
 
 prim_fill <- new_primitive(
   "fill",
-  function(value, shape, dtype, ambiguous = FALSE, device = NULL) {
+  function(value, shape, dtype, device = NULL) {
     # ... graph_desc_add(self, ...) ...
   },
-  static = 1:5,
+  static = 1:4,
   device = device_arg("device")
 )
 ```
@@ -397,7 +432,7 @@ prim_repeat_along
 #>     }
 #>     run(args)
 #> }
-#> <environment: 0x55fd5771aeb0>
+#> <environment: 0x55e2898628b0>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"backend")
@@ -434,21 +469,16 @@ the `prim_*` function to an `nv_*` function:
 nv_repeat_along <- prim_repeat_along
 ```
 
-Note that in the `nv_*` wrapper function, you can only access certain
-properties of the input arrayish values via:
-
-- [`shape_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-- [`naxes_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-- [`dtype_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-- [`ambiguous_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md)
-
-If you, for example, use
-[`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) instead
-of
-[`shape_abstract()`](https://r-xla.github.io/anvl/dev/reference/abstract_properties.md),
-your function won’t work with R literals. I.e., `<extract>_abstract()`
-first converts the input to an `AbstractArray` (if possible) and then
-extracts the property.
+Note that in the `nv_*` wrapper function, the input may still be a bare
+R value – one that has no data type yet (see
+[`?RData`](https://r-xla.github.io/anvl/dev/reference/RData.md)).
+[`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) and
+[`naxes()`](https://r-xla.github.io/anvl/dev/reference/naxes.md) answer
+for it as they do for an array. For the data type there is
+[`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md),
+which reports the type the value *would* commit to;
+[`dtype()`](https://r-xla.github.io/anvl/dev/reference/dtype.md) errors
+on an R value, because there is nothing to report until it is used.
 
 ### Using Your Primitive
 

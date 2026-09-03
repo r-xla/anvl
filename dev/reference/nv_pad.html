@@ -101,7 +101,11 @@ Input array.</p></dd>
 
 <dt id="arg-padding-value">padding_value<a class="anchor" aria-label="anchor" href="#arg-padding-value"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Scalar value to use for padding. Must have the same dtype as <code>x</code>.</p></dd>
+Scalar value to use for padding. It is brought to <code>x</code>'s data type: an R
+value is built at it (<code>nv_pad(x_f64, 0)</code>, and <code>0L</code> does just as well),
+and a value that already has one is converted, unless <code>x</code>'s data type
+cannot hold it – an <code>f64</code> padding value for an <code>f32</code> array is an error
+rather than a silent narrowing.</p></dd>
 
 
 <dt id="arg-edge-padding-low">edge_padding_low<a class="anchor" aria-label="anchor" href="#arg-edge-padding-low"></a></dt>

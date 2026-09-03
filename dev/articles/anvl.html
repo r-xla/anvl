@@ -132,7 +132,7 @@ unsigned integers.</li>
 <li>The array is managed by a specific backend (which we will ignore for
 now) and can live on different <em>device</em>s, such as CPU (aka host)
 or a GPU.</li>
-<li>0-dimensional arrays can be used to represent scalars.</li>
+<li>0-dimensional arrays are used to represent scalars.</li>
 </ol>
 <p>We can create an <code>AnvlArray</code> from R objects using
 <code><a href="../reference/AnvlArray.html">nv_array()</a></code>. Below, we create a 0-dimensional array (i.e., a
@@ -244,9 +244,12 @@ functionality.</li>
 <span><span class="co">## [ CPUi32{2,3} ]</span></span></code></pre>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">y</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `prim_add()`:</span></span></span>
-<span><span class="co">## <span style="color: #BBBB00;">!</span> `lhs` and `rhs` must have the same array type.</span></span>
-<span><span class="co">## <span style="color: #BB0000;">✖</span> Got <span style="color: #0000BB;">tensor&lt;2x3xi32&gt;</span> and <span style="color: #0000BB;">tensor&lt;i16&gt;</span>.</span></span></code></pre>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> These inputs have no common data type to reach without converting one</span></span>
+<span><span class="co">##   of them.</span></span>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> `lhs` is `i32` and `rhs` is `i16`.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Use an operation that promotes across data types, or convert one explicitly</span></span>
+<span><span class="co">##   with `nv_convert()`.</span></span></code></pre>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">y</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -330,15 +333,13 @@ calls and your own <code><a href="../reference/jit.html">jit()</a></code>-compil
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  3</span></span>
 <span><span class="co">##  4</span></span>
-<span><span class="co">## [ CPUf32?{2} ]</span></span></code></pre>
-<p>Note the <code>?</code> after the dtype in the printed output
-(<code>f32?</code>): it marks the dtype as <em>ambiguous</em>. A dtype
-is ambiguous when it was inferred from an auto-converted R value rather
-than pinned by the user (e.g. via
-<code>nv_array(..., dtype = "f32")</code>), so the type-promotion rules
-are allowed to coerce it more freely when combining it with a
-non-ambiguous operand. See <code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for
-the full rules.</p>
+<span><span class="co">## [ CPUf32{2} ]</span></span></code></pre>
+<p>An R value does not carry a data type of its own – <code>1</code> is
+neither an <code>f32</code> nor an <code>f64</code> – so it takes the
+one of the array it is combined with, and falls back to a default
+(<code>f32</code> for doubles, <code>i32</code> for integers,
+<code>bool</code> for logicals) when it meets nothing else. See
+<code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for the full rules.</p>
 <p>Note that we only auto-convert
 <code>double</code>/<code>integer</code>/<code>logical</code>s that
 are</p>
@@ -520,7 +521,7 @@ and returns a new state.</li>
 <span><span class="co">## $i</span></span>
 <span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  100</span></span>
-<span><span class="co">## [ CPUf32?{} ]</span></span></code></pre>
+<span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <p>The same approach works analogously for <code>if</code>-statements,
 where the {anvl} primitive <code><a href="../reference/nv_if.html">nv_if()</a></code> is available.</p>
 </div>

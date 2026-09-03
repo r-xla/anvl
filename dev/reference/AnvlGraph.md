@@ -14,7 +14,8 @@ AnvlGraph(
   outputs = list(),
   constants = list(),
   is_static_flat = NULL,
-  static_args_flat = NULL
+  static_args_flat = NULL,
+  rdata_types = NULL
 )
 ```
 
@@ -63,6 +64,17 @@ AnvlGraph(
   (`NULL | list()`)  
   Flattened traced values for the static arguments indicated by
   `is_static_flat`.
+
+- rdata_types:
+
+  (`NULL | character()`)  
+  One entry per input: the R storage type of an input the caller
+  supplies as bare R data (`"double"`, `"integer"`, `"logical"`), and
+  `NA` for one that arrives as an array and already has a data type.
+  `NULL` when no input comes from R data, which is the common case.
+  Together with the inputs\\ own avals this says everything about how a
+  call\\s arguments are uploaded: the aval gives the data type and
+  shape, this gives the R type it is uploaded from.
 
 ## Value
 

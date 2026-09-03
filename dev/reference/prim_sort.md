@@ -52,7 +52,7 @@ prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
 `list` of
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 One sorted output per element of `xs`, in the same order. Each output
-has the same shape, data type, and ambiguity as the corresponding input.
+has the same shape and data type as the corresponding input.
 
 ## Implemented Rules
 

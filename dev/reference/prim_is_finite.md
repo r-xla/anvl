@@ -18,8 +18,7 @@ prim_is_finite(x)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape as the input and boolean data type. It is ambiguous
-if the input is ambiguous.
+Has the same shape as the input and boolean data type.
 
 ## Implemented Rules
 

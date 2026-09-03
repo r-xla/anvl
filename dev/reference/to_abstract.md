@@ -29,13 +29,13 @@ to_abstract(x, pure = FALSE)
 ## Examples
 
 ``` r
-# R literals become LiteralArrays (ambiguous by default, except logicals)
+# R literals become LiteralArrays
 to_abstract(1.5)
-#> LiteralArray(1.5, f32?, ()) 
+#> RData(double, ()) 
 to_abstract(1L)
-#> LiteralArray(1, i32?, ()) 
+#> RData(integer, ()) 
 to_abstract(TRUE)
-#> LiteralArray(TRUE, i1, ()) 
+#> RData(logical, ()) 
 
 # AnvlArrays become ConcreteArrays
 to_abstract(nv_array(1:4))

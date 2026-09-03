@@ -72,5 +72,13 @@ A `list` with elements:
 
 - `const_arrays`: Constants needed at execution time.
 
-- `out_avals`: One `list(dtype, shape, ambiguous)` per output leaf;
-  pjrt's dispatcher builds the output wrappers from these.
+- `out_avals`: One `list(dtype, shape)` per output leaf; pjrt's
+  dispatcher builds the output wrappers from these.
+
+- `input_dtypes`: One entry per input: the dtype an input built from
+  bare R data is uploaded at, and `NA` for an array input, which is
+  supplied as it is. The R data has no dtype of its own, so the program
+  is the only thing that knows what it is uploaded as – pjrt's
+  dispatcher therefore requires an entry for every bare R input and
+  rejects a dtype declared for an array one. `NULL` for a call whose
+  inputs are all arrays.

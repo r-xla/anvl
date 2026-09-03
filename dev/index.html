@@ -123,7 +123,7 @@
 <p>Afterwards, install the additional dependencies as follows:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">anvl</span><span class="fu">::</span><span class="fu"><a href="reference/install_anvl.html">install_anvl</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>See the <a href="https://r-xla.github.io/anvl/articles/installation.html">installation guide</a> for more details and prebuilt Docker images.</p>
+<p>See the <a href="https://r-xla.github.io/anvl/articles/installation.html">installation guide</a> for more details, including prebuilt Docker images.</p>
 </div>
 <div class="section level2">
 <h2 id="why-anvl">Why anvl<a class="anchor" aria-label="anchor" href="#why-anvl"></a>
@@ -150,21 +150,21 @@
 <span>  <span class="va">a</span> <span class="op">*</span> <span class="va">x</span> <span class="op">+</span> <span class="va">b</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1.0</span>, <span class="st">"f32"</span><span class="op">)</span></span>
-<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2.0</span>, <span class="st">"f32"</span><span class="op">)</span></span>
-<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3.0</span>, <span class="st">"f32"</span><span class="op">)</span></span>
+<span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span></span>
+<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span>, <span class="st">"f32"</span><span class="op">)</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">3</span>, <span class="st">"f32"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Eager mode</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  5</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span>
 <span></span>
 <span><span class="co"># JIT mode</span></span>
 <span><span class="va">f_jit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jit.html">jit</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span>
 <span><span class="fu">f_jit</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, <span class="va">x</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  1</span></span>
+<span><span class="co">#&gt;  5</span></span>
 <span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
 <p>Through automatic differentiation, we can also obtain the gradient of the above function.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -237,13 +237,9 @@
 </h2>
 <ul>
 <li>This work is supported by <a href="https://www.mardi4nfdi.de" class="external-link">MaRDI</a>.</li>
-<li>The design of this package was inspired by and borrows from:
-<ul>
-<li>JAX, especially the <a href="https://docs.jax.dev/en/latest/autodidax.html" class="external-link">autodidax tutorial</a>.</li>
-<li>The <a href="https://github.com/joey00072/microjax" class="external-link">microjax</a> project.</li>
-</ul>
-</li>
-<li>For JIT compilation, we leverage the <a href="https://openxla.org/" class="external-link">OpenXLA</a> project.</li>
+<li>The design of this package is inspired by <a href="https://github.com/jax-ml/jax" class="external-link">JAX</a>.</li>
+<li>For JIT compilation, we build on the <a href="https://openxla.org/" class="external-link">OpenXLA</a> project.</li>
+<li>Most of the compiler binaries are downloaded from <a href="https://github.com/zml/pjrt-artifacts/" class="external-link">zml</a>.</li>
 </ul>
 </div>
 </div>

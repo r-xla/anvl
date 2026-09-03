@@ -13,7 +13,7 @@ internally. Inherits from
 ## Usage
 
 ``` r
-IotaArray(shape, dtype, axis, start = 1L, ambiguous = FALSE)
+IotaArray(shape, dtype, axis, start = 1L)
 ```
 
 ## Arguments
@@ -39,15 +39,6 @@ IotaArray(shape, dtype, axis, start = 1L, ambiguous = FALSE)
   (`integer(1)`)  
   The starting value.
 
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
-
 ## Lowering
 
 When lowering to stableHLO, these become `iota` operations that generate
@@ -63,8 +54,6 @@ optionally shifting the starting value via
 x <- IotaArray(shape = 4L, dtype = "i32", axis = 1L)
 x
 #> IotaArray(shape=(4), dtype=i32, axis=1, start=1) 
-ambiguous(x)
-#> [1] FALSE
 shape(x)
 #> [1] 4
 naxes(x)
@@ -77,7 +66,7 @@ graph
 #> <AnvlGraph>
 #>   Inputs: (none)
 #>   Body:
-#>     %1: i32[4] = iota [axis = 1, dtype = i32, shape = 4, start = 1, ambiguous = FALSE] ()
+#>     %1: i32[4] = iota [axis = 1, dtype = i32, shape = 4, start = 1] ()
 #>   Outputs:
 #>     %1: i32[4] 
 graph$outputs[[1]]$aval

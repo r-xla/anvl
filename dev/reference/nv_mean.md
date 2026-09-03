@@ -66,13 +66,13 @@ x <- nv_matrix(1:6, nrow = 2)
 nv_mean(x)            # all axes -> scalar
 #> AnvlArray
 #>  3.5000
-#> [ CPUf32?{} ] 
+#> [ CPUf32{} ] 
 nv_mean(x, axes = 1L)
 #> AnvlArray
 #>  1.5000
 #>  3.5000
 #>  5.5000
-#> [ CPUf32?{3} ] 
+#> [ CPUf32{3} ] 
 nv_mean(nv_array(c(1, NaN, 3)))
 #> AnvlArray
 #>  nan

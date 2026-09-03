@@ -164,15 +164,20 @@ related discussion in JAX.</p>
 <span><span class="co"># Ensure buffer creation is finished</span></span>
 <span><span class="fu"><a href="../reference/await.html">await</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Bad (does not capture the whole computation):</span></span>
+<span><span class="co"># Bad:</span></span>
+<span><span class="co"># 1. Does not await the result</span></span>
+<span><span class="co"># 2. Includes compilation time</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   1.396   0.399   0.889</span></span></code></pre>
+<span><span class="co">##   1.252   0.452   0.833</span></span></code></pre>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Good (also measures actual computation):</span></span>
+<code class="sourceCode R"><span><span class="co"># Good:</span></span>
+<span><span class="co"># 1. Awaits the computation</span></span>
+<span><span class="co"># 2. Excludes compilation time, as the program was</span></span>
+<span><span class="co">#    already compiled above.</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/await.html">await</a></span><span class="op">(</span><span class="fu">mul_n</span><span class="op">(</span><span class="va">x</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   0.784   0.442   0.491</span></span></code></pre>
+<span><span class="co">##   0.764   0.570   0.550</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="how-do-i-control-the-number-of-threads-used-by-xla">How do I control the number of threads used by XLA?<a class="anchor" aria-label="anchor" href="#how-do-i-control-the-number-of-threads-used-by-xla"></a>

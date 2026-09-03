@@ -10,7 +10,7 @@ create a constant.
 ## Usage
 
 ``` r
-LiteralArray(data, shape, dtype = default_dtype(data), ambiguous)
+LiteralArray(data, shape, dtype = default_dtype(data))
 ```
 
 ## Arguments
@@ -33,22 +33,6 @@ LiteralArray(data, shape, dtype = default_dtype(data), ambiguous)
   The data type. Defaults to the current backend's default floating
   dtype, `i32` for integer, and `bool` for logical.
 
-- ambiguous:
-
-  (`logical(1)`)  
-  Whether the type is ambiguous. Ambiguous types usually arise from R
-  literals (e.g., `1L`, `1.0`) and follow special promotion rules. See
-  the
-  [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-  for more details.
-
-## Type Ambiguity
-
-When arising from R literals, the resulting `LiteralArray` is ambiguous
-because no type information was available. See the
-[`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
-for more details.
-
 ## Lowering
 
 `LiteralArray`s become constants inlined into the stableHLO program.
@@ -58,11 +42,9 @@ I.e., they lower to
 ## Examples
 
 ``` r
-x <- LiteralArray(1L, shape = integer(), ambiguous = TRUE)
+x <- LiteralArray(1L, shape = integer())
 x
-#> LiteralArray(1, i32?, ()) 
-ambiguous(x)
-#> [1] TRUE
+#> LiteralArray(1, i32, ()) 
 shape(x)
 #> integer(0)
 naxes(x)
@@ -77,16 +59,16 @@ graph
 #>   Inputs: (none)
 #>   Body: (empty)
 #>   Outputs:
-#>     1:f32? 
+#>     1:f32 
 graph$outputs[[1]]$aval
-#> LiteralArray(1, f32?, ()) 
+#> LiteralArray(1, f32, ()) 
 # 2. via nv_fill()
 graph <- trace_fn(function() nv_fill(2L, shape = c(2, 2)), list())
 graph
 #> <AnvlGraph>
 #>   Inputs: (none)
 #>   Body:
-#>     %1: i32[2, 2] = fill [value = 2, dtype = i32, shape = c(2, 2), ambiguous = FALSE] ()
+#>     %1: i32[2, 2] = fill [value = 2, dtype = i32, shape = c(2, 2)] ()
 #>   Outputs:
 #>     %1: i32[2, 2] 
 graph$outputs[[1]]$aval

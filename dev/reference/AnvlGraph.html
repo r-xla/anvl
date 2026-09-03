@@ -92,7 +92,8 @@ This is a mutable class.</p>
 <span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  constants <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  is_static_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  static_args_flat <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  static_args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rdata_types <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -141,6 +142,16 @@ Boolean mask indicating which flat positions in <code>in_tree</code> are static 
 <dt id="arg-static-args-flat">static_args_flat<a class="anchor" aria-label="anchor" href="#arg-static-args-flat"></a></dt>
 <dd><p>(<code>NULL | list()</code>)<br>
 Flattened traced values for the static arguments indicated by <code>is_static_flat</code>.</p></dd>
+
+
+<dt id="arg-rdata-types">rdata_types<a class="anchor" aria-label="anchor" href="#arg-rdata-types"></a></dt>
+<dd><p>(<code>NULL | character()</code>)<br>
+One entry per input: the R storage type of an input the caller supplies as
+bare R data (<code>"double"</code>, <code>"integer"</code>, <code>"logical"</code>), and <code>NA</code> for one that
+arrives as an array and already has a data type. <code>NULL</code> when no input comes
+from R data, which is the common case. Together with the inputs\' own avals
+this says everything about how a call\'s arguments are uploaded: the aval
+gives the data type and shape, this gives the R type it is uploaded from.</p></dd>
 
 </dl></div>
     <div class="section level2">

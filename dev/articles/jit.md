@@ -101,8 +101,9 @@ depending on whether it is *dynamic* (an arrayish value, the default) or
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)):
 
 - **Dynamic inputs** contribute their *abstract value* – the
-  `nv_aval(dtype, shape, ambiguous)` triple. Two arrays with the same
-  abstract value but different data hit the same cache entry.
+  `nv_aval(dtype, shape)` pair, or, for a bare R value, its R type and
+  shape. Two arrays with the same abstract value but different data hit
+  the same cache entry.
 - **Static inputs** contribute their *exact R value*, compared with
   [`identical()`](https://rdrr.io/r/base/identical.html). They stay as
   regular R values during the compilation, but their value is fixed for
@@ -130,11 +131,11 @@ linear_maybe_jit <- jit(linear_maybe, static = "use_bias")
 linear_maybe_jit(2, 3, 1, use_bias = TRUE)
 #> AnvlArray
 #>  7
-#> [ CPUf32?{} ]
+#> [ CPUf32{} ]
 linear_maybe_jit(2, 3, use_bias = FALSE)
 #> AnvlArray
 #>  6
-#> [ CPUf32?{} ]
+#> [ CPUf32{} ]
 ```
 
 Each call with a new static value forces a re-trace and re-compile, so
@@ -223,8 +224,8 @@ communicates back to the R interpreter via it’s return values.
 Concretely, the function’s execution path – the specific sequence of
 primitive calls it performs – must depend only on:
 
-1.  The *abstract* representation (shape, dtype, ambiguity) of each
-    dynamic input, and
+1.  The *abstract* representation (shape and dtype) of each dynamic
+    input, and
 2.  The *value* of each static input.
 
 The next subsections each show what tracing does to particular R code
@@ -317,7 +318,7 @@ trace_fn(h, args = list(x = f32_scalar))
 #>   Inputs:
 #>     %x1: f32[]
 #>   Body:
-#>     %1: f32[] = add(%x1, 1:f32?)
+#>     %1: f32[] = add(%x1, 1:f32)
 #>   Outputs:
 #>     %1: f32[]
 ```
@@ -351,7 +352,7 @@ trace_fn(linear_default_b, args = list(x = f32_scalar, w = f32_scalar))
 #>     %x2: f32[]
 #>   Body:
 #>     %1: f32[] = mul(%x1, %x2)
-#>     %2: f32[] = add(%1, 5:f32?)
+#>     %2: f32[] = add(%1, 5:f32)
 #>   Outputs:
 #>     %2: f32[]
 ```

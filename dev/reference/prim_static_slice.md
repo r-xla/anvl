@@ -43,8 +43,7 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as the input and shape
-`ceiling((limit_indices - start_indices + 1) / strides)`. It is
-ambiguous if the input is ambiguous.
+`ceiling((limit_indices - start_indices + 1) / strides)`.
 
 ## Implemented Rules
 

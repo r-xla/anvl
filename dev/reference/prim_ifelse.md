@@ -28,8 +28,7 @@ prim_ifelse(pred, true_value, false_value)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same dtype and shape as `true_value`. It is ambiguous if both
-`true_value` and `false_value` are ambiguous.
+Has the same dtype and shape as `true_value`.
 
 ## Implemented Rules
 

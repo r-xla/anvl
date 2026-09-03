@@ -47,7 +47,7 @@ nv_flatten(m)
     ##  3
     ##  2
     ##  4
-    ## [ CPUi32?{4} ]
+    ## [ CPUi32{4} ]
 
 If you need column-major flattening in {anvl}, transpose first:
 
@@ -61,7 +61,7 @@ nv_flatten(t(m))
     ##  2
     ##  3
     ##  4
-    ## [ CPUi32?{4} ]
+    ## [ CPUi32{4} ]
 
 ## No recycling
 
@@ -322,3 +322,61 @@ as_array(big, check = TRUE)
     ## ℹ Exactly `2^63` becomes `NA_integer64_`; larger values become negative
     ##   <integer64>.
     ## ℹ Set `check = FALSE` to skip this check.
+
+## Differences between eager and jit-mode
+
+We try to keep the semantics of eager and jit-mode as close as possible.
+There are a few reasons why this might not be the case, which are listed
+here:
+
+## The function does not canonicalize its inputs.
+
+One difference arises when eager functions do not canonicalize their
+inputs. Here, canoicalizing refers to the conversion or dynamic R inputs
+to `AnvlArray`s. This can be done via `as_anvl_array` for single
+arguments and `as_anvl_arrays` for multiple arguments.
+
+E.g., the following function does not behave eagerly between jit-mode
+and eager mode. For example, the following is not equivalent:
+
+``` r
+
+add_pi <- function(x) {
+  x + pi
+}
+as.numeric(jit(add_pi)(1)) == add_pi(1)
+```
+
+    ## [1] FALSE
+
+We can fix this, by canonicalizing the inputs:
+
+``` r
+
+add_pi2 <- function(x) {
+  x <- as_anvl_array(x)
+  x + pi
+}
+jit(add_pi2)(1) == add_pi2(1)
+```
+
+    ## AnvlArray
+    ##  1
+    ## [ CPUbool{} ]
+
+Not canonicalizing inputs can also be a problem for device placement. If
+we were to call the function below as
+`threeway_add(1, 2, nv_scalar(3, "cuda"))`, then the `1 + 2` would first
+move the `1` and `2` to the default device (which is CPU by default) and
+the second addition would then fail because it would attempt to call
+`nv_add` with mixed-device inputs.
+
+``` r
+
+threeway_add <- function(x, y, z) {
+  nv_add(nv_add(x, y), z)
+}
+```
+
+Therefore, you should always canonicalize your inputs in eager
+functions.

@@ -383,7 +383,9 @@ x[, 3] <- nv_array(c(1.5, 2.5, 3.5))
 ```
 
     ## Error:
-    ## ! Value type f32 is not promotable to left-hand side type i32
+    ## ! Cannot bring `value` to data type "i32".
+    ## ✖ "f32" is not promotable to "i32".
+    ## ℹ Convert it explicitly with `nv_convert()`.
 
 ``` r
 

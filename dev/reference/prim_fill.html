@@ -93,7 +93,7 @@ efficiently represented in the compiled program, while the latter uses
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_fill</span><span class="op">(</span><span class="va">value</span>, <span class="va">shape</span>, <span class="va">dtype</span>, ambiguous <span class="op">=</span> <span class="cn">FALSE</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_fill</span><span class="op">(</span><span class="va">value</span>, <span class="va">shape</span>, <span class="va">dtype</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -113,13 +113,6 @@ Shape of the output array.</p></dd>
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
 Data type.</p></dd>
-
-
-<dt id="arg-ambiguous">ambiguous<a class="anchor" aria-label="anchor" href="#arg-ambiguous"></a></dt>
-<dd><p>(<code>logical(1)</code>)<br>
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., <code>1L</code>, <code>1.0</code>) and follow special promotion rules.
-See the <code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for more details.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>

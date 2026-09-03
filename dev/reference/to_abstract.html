@@ -105,13 +105,13 @@ Whether to convert to a pure <code>AbstractArray</code> and not e.g. <code>Liter
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># R literals become LiteralArrays (ambiguous by default, except logicals)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># R literals become LiteralArrays</span></span></span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fl">1.5</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(1.5, f32?, ()) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> RData(double, ()) </span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(1, i32?, ()) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> RData(integer, ()) </span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(TRUE, i1, ()) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> RData(logical, ()) </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># AnvlArrays become ConcreteArrays</span></span></span>
 <span class="r-in"><span><span class="fu">to_abstract</span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span><span class="op">)</span></span></span>

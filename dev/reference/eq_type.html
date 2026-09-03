@@ -81,9 +81,9 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">e1</span>, <span class="va">e2</span>, <span class="va">ambiguity</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">e1</span>, <span class="va">e2</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">neq_type</span><span class="op">(</span><span class="va">e1</span>, <span class="va">e2</span>, <span class="va">ambiguity</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">neq_type</span><span class="op">(</span><span class="va">e1</span>, <span class="va">e2</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -99,13 +99,6 @@ First array to compare.</p></dd>
 <dd><p>(<code><a href="AbstractArray.html">AbstractArray</a></code>)<br>
 Second array to compare.</p></dd>
 
-
-<dt id="arg-ambiguity">ambiguity<a class="anchor" aria-label="anchor" href="#arg-ambiguity"></a></dt>
-<dd><p>(<code>logical(1)</code>)<br>
-Whether to consider the ambiguous field when comparing.
-If <code>TRUE</code>, arrays with different ambiguity are not equal.
-If <code>FALSE</code>, only dtype and shape are compared.</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -118,26 +111,19 @@ If <code>FALSE</code>, only dtype and shape are compared.</p></dd>
 <span class="r-in"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Same dtype and shape</span></span></span>
-<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, ambiguity <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Different dtype</span></span></span>
-<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"i32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span>, ambiguity <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"i32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Different shape</span></span></span>
-<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span>, ambiguity <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># ambiguity parameter controls whether ambiguous field is compared</span></span></span>
-<span class="r-in"><span><span class="va">c</span> <span class="op">&lt;-</span> <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, ambiguous <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="va">c</span>, ambiguity <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
-<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="va">c</span>, ambiguity <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># neq_type is the negation of eq_type</span></span></span>
-<span class="r-in"><span><span class="fu">neq_type</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span>, ambiguity <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">neq_type</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 </code></pre></div>
     </div>

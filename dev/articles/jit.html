@@ -209,9 +209,9 @@ argument of <code><a href="../reference/jit.html">jit()</a></code>):</p>
 <ul>
 <li>
 <strong>Dynamic inputs</strong> contribute their <em>abstract
-value</em> – the <code>nv_aval(dtype, shape, ambiguous)</code> triple.
-Two arrays with the same abstract value but different data hit the same
-cache entry.</li>
+value</em> – the <code>nv_aval(dtype, shape)</code> pair, or, for a bare
+R value, its R type and shape. Two arrays with the same abstract value
+but different data hit the same cache entry.</li>
 <li>
 <strong>Static inputs</strong> contribute their <em>exact R
 value</em>, compared with <code><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical()</a></code>. They stay as regular
@@ -240,11 +240,11 @@ works if <code>p</code> is static.</p>
 <span><span class="fu">linear_maybe_jit</span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">1</span>, use_bias <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  7</span></span>
-<span><span class="co">#&gt; [ CPUf32?{} ]</span></span>
+<span><span class="co">#&gt; [ CPUf32{} ]</span></span>
 <span><span class="fu">linear_maybe_jit</span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span>, use_bias <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
 <span><span class="co">#&gt;  6</span></span>
-<span><span class="co">#&gt; [ CPUf32?{} ]</span></span></code></pre></div>
+<span><span class="co">#&gt; [ CPUf32{} ]</span></span></code></pre></div>
 <p>Each call with a new static value forces a re-trace and re-compile,
 so static arguments cause more re-compiles than dynamic ones. Only use
 them when you really need them.</p>
@@ -326,8 +326,8 @@ R and only communicates back to the R interpreter via it’s return
 values. Concretely, the function’s execution path – the specific
 sequence of primitive calls it performs – must depend only on:</p>
 <ol style="list-style-type: decimal">
-<li>The <em>abstract</em> representation (shape, dtype, ambiguity) of
-each dynamic input, and</li>
+<li>The <em>abstract</em> representation (shape and dtype) of each
+dynamic input, and</li>
 <li>The <em>value</em> of each static input.</li>
 </ol>
 <p>The next subsections each show what tracing does to particular R code
@@ -414,7 +414,7 @@ enclosing environment:</p>
 <span><span class="co">#&gt;   Inputs:</span></span>
 <span><span class="co">#&gt;     %x1: f32[]</span></span>
 <span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[] = add(%x1, 1:f32?)</span></span>
+<span><span class="co">#&gt;     %1: f32[] = add(%x1, 1:f32)</span></span>
 <span><span class="co">#&gt;   Outputs:</span></span>
 <span><span class="co">#&gt;     %1: f32[]</span></span></code></pre></div>
 <p>The trace itself runs correctly, but it becomes a problem in
@@ -446,7 +446,7 @@ argument:</p>
 <span><span class="co">#&gt;     %x2: f32[]</span></span>
 <span><span class="co">#&gt;   Body:</span></span>
 <span><span class="co">#&gt;     %1: f32[] = mul(%x1, %x2)</span></span>
-<span><span class="co">#&gt;     %2: f32[] = add(%1, 5:f32?)</span></span>
+<span><span class="co">#&gt;     %2: f32[] = add(%1, 5:f32)</span></span>
 <span><span class="co">#&gt;   Outputs:</span></span>
 <span><span class="co">#&gt;     %2: f32[]</span></span></code></pre></div>
 <p>The graph contains <code>add(%1, 5:f32?)</code> – the value

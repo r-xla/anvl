@@ -13,7 +13,7 @@ nv_pnorm(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
 nv_qnorm(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE)
 
-nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
+nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
 ```
 
 ## Arguments
@@ -65,9 +65,12 @@ nv_rnorm(shape, initial_state, dtype = "f32", mean = 0, sd = 1)
 
 - dtype:
 
-  (`character(1)` \|
+  (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Data type of the sample, `"f32"` or `"f64"`. `NULL` (default) takes it
+  from `mean` and `sd` where either is a real array, and falls back to
+  the default float data type (`"f32"`) where both are bare R values,
+  which have none.
 
 ## Value
 

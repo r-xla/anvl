@@ -29,8 +29,7 @@ prim_clamp(min_val, x, max_val)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type and shape as `x`. It is ambiguous if the input is
-ambiguous.
+Has the same data type and shape as `x`.
 
 ## Implemented Rules
 

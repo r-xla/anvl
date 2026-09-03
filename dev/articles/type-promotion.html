@@ -137,15 +137,13 @@ because it’s more expressive.</p>
 <p>The type-promotion rules are inspired by JAX, and they are designed
 for execution on accelerators like GPUs, where one often wants speed
 instead of precision.</p>
-<p>The rules are defined by the <code><a href="../reference/common_dtype.html">common_dtype()</a></code> function. It
-returns a <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> with two values: the common dtype and a
-flag indicating whether the result is ambiguous, which we will cover
-later.</p>
+<p>The rules are defined by the <code><a href="../reference/common_dtype.html">common_dtype()</a></code>
+function.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"f64"</span>, <span class="st">"f32"</span><span class="op">)</span><span class="op">$</span><span class="va">dtype</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"f64"</span>, <span class="st">"f32"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;f64&gt;</span></span></code></pre>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"i64"</span>, <span class="st">"f32"</span><span class="op">)</span><span class="op">$</span><span class="va">dtype</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"i64"</span>, <span class="st">"f32"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;f32&gt;</span></span></code></pre>
 <p>A table with the promotion rules is below.</p>
 <table class="table">
@@ -195,7 +193,7 @@ f64
 bool
 </td>
 <td style="text-align:left;">
-i1
+bool
 </td>
 <td style="text-align:left;">
 i8
@@ -610,588 +608,124 @@ f64
 </tr>
 </tbody>
 </table>
+<p>The biggest differentiator between our type system and the one from
+JAX is the handling of array objects from the host language, which is R
+in our case. While introducing more complexity, these rules prevent the
+loss of precision present in JAX’s type system. We describe it
+below.</p>
 </div>
 <div class="section level2">
-<h2 id="literals-as-ambiguous-types">Literals as Ambiguous Types<a class="anchor" aria-label="anchor" href="#literals-as-ambiguous-types"></a>
+<h2 id="r-values-have-no-data-type">R Values Have No Data Type<a class="anchor" aria-label="anchor" href="#r-values-have-no-data-type"></a>
 </h2>
-<p>Usually, the types in an {anvl} program can be deterministically
-inferred from the input types. The only case where this is not possible
-is when you use R literals. The default types for literals are as
-follows:</p>
-<ul>
-<li>
-<code><a href="https://rdrr.io/r/base/double.html" class="external-link">double()</a></code> -&gt; <code>f32</code>
-</li>
-<li>
-<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> -&gt; <code>i32</code>
-</li>
-<li>
-<code><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical()</a></code> -&gt; <code>i1</code> (bool)</li>
-</ul>
+<p>In {anvl}’s type system, R objects do not have a concrete data
+type.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fl">1.0</span>, <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> An R value has no data type of its own until it is used.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value</span></span>
+<span><span class="co">##   only takes a data type when it meets a typed array, or when it commits to the</span></span>
+<span><span class="co">##   default (<span style="color: #0000BB;">"f32"</span>).</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
+<p>The type promotion table from above therefore does not apply to them.
+However, it is possible to apply an {anvl} function to R values
+(length-1 vectors and arrays):</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_exp.html">nv_exp</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2.7183</span></span>
+<span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  3</span></span>
+<span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
+<p>It is therefore important to understand to understand the rules that
+govern the materialization of R objects as <code>AnvlArray</code>s.
+Generally, there are two routes:</p>
+<ol style="list-style-type: decimal">
+<li>An R values it commited at its default data type
+(<code>double -&gt; f32</code>, <code>integer -&gt; i32</code>,
+<code>logical -&gt; bool</code>). This is e.g. the case in unary
+functions such as <code>nv_exp</code>.</li>
+<li>The R values data type is inferred from other arguments, as is the
+case of the <code>nv_add</code> call above. When no concrete data type
+is present, <code>nv_add(1, 2)</code> falls back to the default, which
+is <code>f32</code> for <code>double</code>s.</li>
+</ol>
+<p>Note that these rules are not universal and exceptions exist. Some
+functions, such as <code>nv_clamp</code>, prioritize the data type of a
+specific argument, in this case <code>x</code>, the value that is being
+clamped. It fails if the the boundary values cannot be promoted to
+<code>x</code> without loss of precision:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_clamp.html">nv_clamp</a></span><span class="op">(</span></span>
+<span>  min_val <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span>, <span class="st">"f64"</span><span class="op">)</span>,</span>
+<span>  x <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span>, <span class="st">"f32"</span><span class="op">)</span>,</span>
+<span>  max_val <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0</span>, <span class="st">"f64"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> Cannot bring `min_val` to data type <span style="color: #0000BB;">"f32"</span>.</span></span>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">"f64"</span> is not promotable to <span style="color: #0000BB;">"f32"</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Convert it explicitly with `nv_convert()`.</span></span></code></pre>
+<p>Functions document their behavior, so consult their respective help
+page for more information.</p>
+<p>You can canonicalize and promote inputs to a function via the
+<code>.promote</code> field of <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code>. It takes a
+<code>PromotionRule</code>, which is a special function that takes in
+the arguments and outputs a data type for each one.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, .promote <span class="op">=</span> <span class="fu"><a href="../reference/promotion_rule.html">promote_dtype</a></span><span class="op">(</span><span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [[1]]</span></span>
 <span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1</span></span>
-<span><span class="co">## [ CPUi32?{} ] </span></span>
+<span><span class="co">## [ CPUf64{} ] </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## [[2]]</span></span>
 <span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
+<p>One common rule is <code><a href="../reference/promotion_rule.html">promote_common()</a></code>, which is used by
+functions such as <code>nv_add</code> above. It computes the common data
+type of the inputs. In this case, it returns <code>f32</code>, which is
+the default data type of R <code>double</code>s.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">promote_fn</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/promotion_rule.html">promote_common</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i8"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">promote_fn</span><span class="op">(</span><span class="va">args</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [[1]]</span></span>
+<span><span class="co">## &lt;f32&gt;</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## [[2]]</span></span>
+<span><span class="co">## &lt;f32&gt;</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## [[3]]</span></span>
+<span><span class="co">## &lt;f32&gt;</span></span></code></pre>
+<p>And when used in <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code> it moves the inputs
+there:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">as_anvl_arrays</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">args</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>.promote <span class="op">=</span> <span class="va">promote_fn</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [[1]]</span></span>
+<span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1</span></span>
-<span><span class="co">## [ CPUf32?{} ] </span></span>
+<span><span class="co">## [ CPUf32{} ] </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## [[2]]</span></span>
+<span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">## [ CPUf32{} ] </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## [[3]]</span></span>
 <span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1</span></span>
-<span><span class="co">## [ CPUbool{} ]</span></span></code></pre>
-<p>However, because this is just a guess, they behave differently than
-known types during promotion. Therefore, the <code>common_dtype</code>
-function has two arguments indicating which of the data types are
-ambiguous. Below, the first type is a known <code>f64</code> and the
-second is an ambiguous <code>f32</code>. Within anvl, we denote the
-latter as <code>i32?</code>. The result is an <code>f64</code>, although
-we would promote to an <code>f64</code> if both were known. If both
-types are ambiguous, the result is generally the same as if both were
-known.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="st">"f64"</span>, <span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## $dtype</span></span>
-<span><span class="co">## &lt;f32&gt;</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## $ambiguous</span></span>
-<span><span class="co">## [1] FALSE</span></span></code></pre>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="st">"f64"</span>, <span class="cn">TRUE</span>, <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## $dtype</span></span>
-<span><span class="co">## &lt;f64&gt;</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## $ambiguous</span></span>
-<span><span class="co">## [1] TRUE</span></span></code></pre>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/common_dtype.html">common_dtype</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="st">"f64"</span>, <span class="cn">FALSE</span>, <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## $dtype</span></span>
-<span><span class="co">## &lt;f64&gt;</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## $ambiguous</span></span>
-<span><span class="co">## [1] FALSE</span></span></code></pre>
-<p>The promotion rules only change when one type is ambiguous and the
-other is not. There, we usually promote the ambiguous type to the known
-type, unless:</p>
-<ol style="list-style-type: decimal">
-<li>The ambiguous type is a float and the known type is not.</li>
-<li>The known type is a bool but the ambiguous type is not.</li>
-</ol>
-<p>In both case, we promote the known type to the default type of the
-ambiguous type. The table below shows the promotion rules, where the
-rows are ambiguous and the columns are known.</p>
-<table class="table">
-<caption>
-Promotion rules: ambiguous (row) × known (column)
-</caption>
-<thead><tr>
-<th style="text-align:left;">
-</th>
-<th style="text-align:left;">
-bool
-</th>
-<th style="text-align:left;">
-i8
-</th>
-<th style="text-align:left;">
-i16
-</th>
-<th style="text-align:left;">
-i32
-</th>
-<th style="text-align:left;">
-i64
-</th>
-<th style="text-align:left;">
-ui8
-</th>
-<th style="text-align:left;">
-ui16
-</th>
-<th style="text-align:left;">
-ui32
-</th>
-<th style="text-align:left;">
-ui64
-</th>
-<th style="text-align:left;">
-f32
-</th>
-<th style="text-align:left;">
-f64
-</th>
-</tr></thead>
-<tbody>
-<tr>
-<td style="text-align:left;">
-bool
-</td>
-<td style="text-align:left;">
-i1
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-i8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui16
-</td>
-<td style="text-align:left;">
-ui32
-</td>
-<td style="text-align:left;">
-ui64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-<tr>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f64
-</td>
-<td style="text-align:left;">
-f32
-</td>
-<td style="text-align:left;">
-f64
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="section level2">
-<h2 id="creating-tensors-with-different-ambiguity">Creating Tensors with Different Ambiguity<a class="anchor" aria-label="anchor" href="#creating-tensors-with-different-ambiguity"></a>
-</h2>
-<p>Both <code><a href="../reference/AnvlArray.html">nv_scalar()</a></code> and <code><a href="../reference/AnvlArray.html">nv_array()</a></code> create
-<strong>non-ambiguous</strong> arrays by default. You can explicitly
-control ambiguity using the <code>ambiguous</code> parameter:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">s1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1.0</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/ambiguous.html">ambiguous</a></span><span class="op">(</span><span class="va">s1</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] FALSE</span></span></code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1.0</span>, ambiguous <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/ambiguous.html">ambiguous</a></span><span class="op">(</span><span class="va">s2</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] TRUE</span></span></code></pre>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">t1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.0</span>, <span class="fl">2.0</span>, <span class="fl">3.0</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/ambiguous.html">ambiguous</a></span><span class="op">(</span><span class="va">t1</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] FALSE</span></span></code></pre>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">t2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.0</span>, <span class="fl">2.0</span>, <span class="fl">3.0</span><span class="op">)</span>, ambiguous <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/ambiguous.html">ambiguous</a></span><span class="op">(</span><span class="va">t2</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] TRUE</span></span></code></pre>
-</div>
-<div class="section level2">
-<h2 id="propagating-ambiguity">Propagating Ambiguity<a class="anchor" aria-label="anchor" href="#propagating-ambiguity"></a>
-</h2>
-<p>Ambiguity is propagated through operations. Consider the following
-example:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">z</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1L</span></span>
-<span>  <span class="va">z</span> <span class="op">*</span> <span class="va">y</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">TRUE</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2L</span>, dtype <span class="op">=</span> <span class="st">"i16"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  4</span></span>
-<span><span class="co">## [ CPUi16{} ]</span></span></code></pre>
-<p>The type of <code>z</code> is <code>i32?</code>, because
-<code>x</code> is promoted to an <code>i32</code>, the default type of
-the <code>1L</code> literal. If <code>z</code> was not ambiguous, the
-output would be an <code>i32</code>, because the <code>y</code> would be
-promoted to an <code>i32</code> in the multiplication. Because we
-propagate the ambiguity, the <code>z</code> is actually down-promoted to
-an <code>i16</code>, because the <code>z</code> is ambiguous, while the
-<code>y</code> is known.</p>
+<span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
+<p>For more information about the available rules, see
+<code><a href="../reference/promotion_rule.html">?promotion_rule</a></code>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

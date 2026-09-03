@@ -540,10 +540,10 @@ below:</p>
 <span><span class="co">##   Constants:</span></span>
 <span><span class="co">##     %c1: f32[1000000]</span></span>
 <span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f32[] = convert [dtype = f32, ambiguous = FALSE] (%x1)</span></span>
+<span><span class="co">##     %1: f32[] = convert [dtype = f32] (%x1)</span></span>
 <span><span class="co">##     %2: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = &lt;any&gt;] (%1)</span></span>
 <span><span class="co">##     %3: f32[1000000] = add(%2, %c1)</span></span>
-<span><span class="co">##     %4: f32?[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = &lt;any&gt;] (1:f32?)</span></span>
+<span><span class="co">##     %4: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = &lt;any&gt;] (1:f32)</span></span>
 <span><span class="co">##     %5: f32[1000000] = add(%3, %4)</span></span>
 <span><span class="co">##   Outputs:</span></span>
 <span><span class="co">##     %5: f32[1000000]</span></span></code></pre>
@@ -603,6 +603,194 @@ ourselves.</p>
 the future.</li>
 </ol>
 </div>
+<div class="section level3">
+<h3 id="r-values-in-compiled-programs">R Values in Compiled Programs<a class="anchor" aria-label="anchor" href="#r-values-in-compiled-programs"></a>
+</h3>
+<p>R values can appear in two forms in compiled programs:</p>
+<ol style="list-style-type: decimal">
+<li>As constants</li>
+<li>As non-static R inputs (<code>RData</code>).</li>
+</ol>
+<p>The <code>RData</code> object can be though of as the dynamic version
+of an R value within the program and they behave similarly.</p>
+<p>Both have a shape, but no data type.</p>
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">x</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/RData.html">RData</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"integer"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## GraphBox(GraphValue(RData(integer, ()))) </span></span>
+<span><span class="co">## integer(0)</span></span></code></pre>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> An R value has no data type of its own until it is used.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value</span></span>
+<span><span class="co">##   only takes a data type when it meets a typed array, or when it commits to the</span></span>
+<span><span class="co">##   default (<span style="color: #0000BB;">"i32"</span>).</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">x</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## integer(0)</span></span></code></pre>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> An R value has no data type of its own until it is used.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value</span></span>
+<span><span class="co">##   only takes a data type when it meets a typed array, or when it commits to the</span></span>
+<span><span class="co">##   default (<span style="color: #0000BB;">"f32"</span>).</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
+<p>An <code>RData</code> object resolves its data type when something
+materializes it, which is either a primitive or a call to
+<code><a href="../reference/apply_promotion.html">apply_promotion()</a></code> or <code><a href="../reference/as_anvl_array.html">as_anvl_arrays()</a></code>.
+Generally, there are two situations:</p>
+<ol style="list-style-type: decimal">
+<li>An <code>RData</code> object is combined with an object that has a
+concrete data type</li>
+<li>None of the inputs to a primitive has a concrete data type.</li>
+</ol>
+<p>In the first case, the <code>RData</code> object yields
+(<code><a href="../reference/promotion_rule.html">promote_rdata_common()</a></code>) to the concrete data type. Below,
+<code>nv_aval("integer", c())</code> is equivalent to
+<code>RData(c(), "integer")</code>. In the resulting graph, the
+<code>%x1</code> input has the data type it yielded to, and the
+<code>&lt;- integer</code> records that the caller supplies it as an R
+integer, which the runtime uploads at that data type.</p>
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"integer"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
+<span><span class="co">##   Inputs:</span></span>
+<span><span class="co">##     %x1: i64[] &lt;- integer</span></span>
+<span><span class="co">##   Constants:</span></span>
+<span><span class="co">##     %c1: i64[]</span></span>
+<span><span class="co">##   Body:</span></span>
+<span><span class="co">##     %1: i64[] = add(%x1, %c1)</span></span>
+<span><span class="co">##   Outputs:</span></span>
+<span><span class="co">##     %1: i64[]</span></span></code></pre>
+<p>Yielding stays within the value’s own category, so an R integer
+meeting an <code>f32</code> is an error rather than a promotion –
+crossing a category is the job of the <code>nv_*</code> layer.</p>
+<p>In the second case, it assumes its default data type:</p>
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/prim_exp.html">prim_exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
+<span><span class="co">##   Inputs:</span></span>
+<span><span class="co">##     %x1: f32[] &lt;- double</span></span>
+<span><span class="co">##   Body:</span></span>
+<span><span class="co">##     %1: f32[] = exp(%x1)</span></span>
+<span><span class="co">##   Outputs:</span></span>
+<span><span class="co">##     %1: f32[]</span></span></code></pre>
+<p>When the same <code>RData</code> input is used at several data types,
+it is supplied at the narrowest one that holds them all, and each use
+site converts down from it. Below the input is uploaded as
+<code>i64</code>; the <code>i8</code> and <code>i16</code> uses convert
+from it, via <code>i32</code> because an R integer is not built below 32
+bits.</p>
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i8"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i16"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"integer"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
+<span><span class="co">##   Inputs:</span></span>
+<span><span class="co">##     %x1: i64[] &lt;- integer</span></span>
+<span><span class="co">##   Constants:</span></span>
+<span><span class="co">##     %c1: i8[]</span></span>
+<span><span class="co">##     %c2: i16[]</span></span>
+<span><span class="co">##     %c3: i64[]</span></span>
+<span><span class="co">##   Body:</span></span>
+<span><span class="co">##     %1: i32[] = convert [dtype = i32] (%x1)</span></span>
+<span><span class="co">##     %2: i8[] = convert [dtype = i8] (%1)</span></span>
+<span><span class="co">##     %3: i8[] = add(%2, %c1)</span></span>
+<span><span class="co">##     %4: i16[] = convert [dtype = i16] (%1)</span></span>
+<span><span class="co">##     %5: i16[] = add(%4, %c2)</span></span>
+<span><span class="co">##     %6: i64[] = add(%x1, %c3)</span></span>
+<span><span class="co">##   Outputs:</span></span>
+<span><span class="co">##     %6: i64[]</span></span></code></pre>
+<p>This design tries to balance correctness with hardware compatibility.
+Another approach would be to always represent R doubles as
+<code>f64</code>, which is their natural representation. The problem
+with this approach is that:</p>
+<ol style="list-style-type: decimal">
+<li>modern accelerators run much faster in <code>f32</code> than
+<code>f64</code>, and</li>
+<li>some accelerators (such as Metal) do not support <code>f64</code> at
+all.</li>
+</ol>
+<p>Therefore, one of the underlying ideas is to only introduce
+<code>f64</code> values when someone actually requested this data
+type.</p>
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
+<span><span class="co">##   Inputs:</span></span>
+<span><span class="co">##     %x1: f64[] &lt;- double</span></span>
+<span><span class="co">##   Constants:</span></span>
+<span><span class="co">##     %c1: f64[]</span></span>
+<span><span class="co">##   Body:</span></span>
+<span><span class="co">##     %1: f64[] = add(%x1, %c1)</span></span>
+<span><span class="co">##   Outputs:</span></span>
+<span><span class="co">##     %1: f64[]</span></span></code></pre>
+<p>Otherwise, the <code>double</code> input is fed as an
+<code>f32</code> to the pjrt program:</p>
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
+<span><span class="co">##   Inputs:</span></span>
+<span><span class="co">##     %x1: f32[] &lt;- double</span></span>
+<span><span class="co">##   Constants:</span></span>
+<span><span class="co">##     %c1: f32[]</span></span>
+<span><span class="co">##   Body:</span></span>
+<span><span class="co">##     %1: f32[] = add(%x1, %c1)</span></span>
+<span><span class="co">##   Outputs:</span></span>
+<span><span class="co">##     %1: f32[]</span></span></code></pre>
+<p>There is one special case, however: operations that explicitly
+request a data type, such as <code><a href="../reference/prim_convert.html">prim_convert()</a></code> and the
+<code><a href="../reference/AnvlArray.html">nv_array()</a></code> constructor. If <code><a href="../reference/prim_convert.html">prim_convert()</a></code> were
+to follow the usual rule of committing its R inputs to their default
+data type, then <code>prim_convert(large_double, "i32")</code> would
+first convert the R <code>double</code> to an <code>f32</code> (the
+default data type for floats) and then to an <code>i32</code>, which
+would result in a loss of precision. In order to prevent this,
+<code><a href="../reference/prim_convert.html">prim_convert()</a></code> materializes its input at its natural
+representation.</p>
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/prim_convert.html">prim_convert</a></span><span class="op">(</span><span class="va">x</span>, <span class="st">"i32"</span><span class="op">)</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Warning: Converting an R double to <span style="color: #0000BB;">"i32"</span> brings <span style="color: #0000BB;">"f64"</span> into the program.</span></span>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> An R double cannot be built at <span style="color: #0000BB;">"i32"</span> directly, so it is built at <span style="color: #0000BB;">"f64"</span> and</span></span>
+<span><span class="co">##   the program converts -- and nothing else here asked for <span style="color: #0000BB;">"f64"</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> To keep it out, convert in its own category first: `nv_convert(nv_convert(x,</span></span>
+<span><span class="co">##   "f32"), "i32")`. The result differs for values its data type cannot hold</span></span>
+<span><span class="co">##   exactly.</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
+<span><span class="co">##   Inputs:</span></span>
+<span><span class="co">##     %x1: f64[] &lt;- double</span></span>
+<span><span class="co">##   Body:</span></span>
+<span><span class="co">##     %1: i32[] = convert [dtype = i32] (%x1)</span></span>
+<span><span class="co">##   Outputs:</span></span>
+<span><span class="co">##     %1: i32[]</span></span></code></pre>
+<p>Because of its possibly problematic implications, a warning message
+is thrown when this happens. In the future, we might also implement a
+better solution to this problem. One idea would be to convert the
+<code>double</code> input directly to an <code>i32</code> before passing
+it to the compiled program.</p>
+<p>This is why API functions and primitives should always canonicalize
+the inputs right at the beginning, so this problem rarely happens.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="device-inference-in-jit">Device Inference in <code>jit()</code><a class="anchor" aria-label="anchor" href="#device-inference-in-jit"></a>
@@ -622,7 +810,7 @@ But with the current implementation of <code><a href="../reference/jit.html">jit
 is handled by the backend’s <code>jit</code> method, so we need to
 determine the backend from the input arguments. Therefore, the
 <code>device = device_arg("dev")</code> needs to be specified:</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">dev</span><span class="op">)</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="va">dev</span><span class="op">)</span>, backend <span class="op">=</span> <span class="st">"auto"</span>, device <span class="op">=</span> <span class="fu"><a href="../reference/device_arg.html">device_arg</a></span><span class="op">(</span><span class="st">"dev"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="../reference/nv_device.html">nv_device</a></span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"pjrt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>If we made the main <code><a href="../reference/jit.html">jit()</a></code> function trace eagerly, we
@@ -659,13 +847,13 @@ arrays.</li>
 programs.</li>
 </ol>
 <p>With our implementation, the following is possible:</p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  3</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times_2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_mul.html">nv_mul</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -678,13 +866,13 @@ programs.</li>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  4</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">times_4</span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  8</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <p>Otherwise, we would need the following:</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">times_2_r</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_mul.html">nv_mul</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>

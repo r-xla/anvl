@@ -24,7 +24,9 @@ prim_pad(
 - padding_value:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar value to use for padding. Must have the same dtype as `x`.
+  Scalar value to use for padding. An R value is built at `x`'s data
+  type, within its own category; anything that already has one must have
+  `x`'s.
 
 - edge_padding_low:
 
@@ -47,7 +49,6 @@ prim_pad(
 Has the same data type as `x`. For the output shape see the underlying
 stablehlo documentation
 ([`hlo_pad()`](https://r-xla.github.io/stablehlo/reference/hlo_pad.html)).
-It is ambiguous if the input is ambiguous.
 
 ## Implemented Rules
 

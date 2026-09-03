@@ -42,11 +42,11 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/IotaArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/LiteralArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/PrimitiveCall.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/RData.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/Shape-constructor.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/abstract_properties.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/ambiguous.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/anvl-package.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/apply_jit_registry.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/apply_promotion.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/arr.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/arrayish.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/as-AnvlArray.html</loc></url>
@@ -77,7 +77,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/is_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/is_dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/jit_eval.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit_roclet.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_descriptor.html</loc></url>
@@ -228,6 +227,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_var.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_while.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_xor.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/peek_dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/platform.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_abs.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_acos.html</loc></url>
@@ -329,6 +329,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_triangular_solve.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_while.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_xor.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/promotion_rule.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/quickr_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/reexports.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/rule_reverse.html</loc></url>

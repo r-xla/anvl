@@ -14,7 +14,7 @@ We will start by introducing the main data structure, which is the
 2.  The array is managed by a specific backend (which we will ignore for
     now) and can live on different *device*s, such as CPU (aka host) or
     a GPU.
-3.  0-dimensional arrays can be used to represent scalars.
+3.  0-dimensional arrays are used to represent scalars.
 
 We can create an `AnvlArray` from R objects using
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md).
@@ -182,9 +182,12 @@ prim_add(y, y)
 prim_add(y, x)
 ```
 
-    ## Error in `prim_add()`:
-    ## ! `lhs` and `rhs` must have the same array type.
-    ## ✖ Got tensor<2x3xi32> and tensor<i16>.
+    ## Error:
+    ## ! These inputs have no common data type to reach without converting one
+    ##   of them.
+    ## ✖ `lhs` is `i32` and `rhs` is `i16`.
+    ## ℹ Use an operation that promotes across data types, or convert one explicitly
+    ##   with `nv_convert()`.
 
 ``` r
 
@@ -302,14 +305,12 @@ nv_add(1, array(2:3))
     ## AnvlArray
     ##  3
     ##  4
-    ## [ CPUf32?{2} ]
+    ## [ CPUf32{2} ]
 
-Note the `?` after the dtype in the printed output (`f32?`): it marks
-the dtype as *ambiguous*. A dtype is ambiguous when it was inferred from
-an auto-converted R value rather than pinned by the user (e.g. via
-`nv_array(..., dtype = "f32")`), so the type-promotion rules are allowed
-to coerce it more freely when combining it with a non-ambiguous operand.
-See
+An R value does not carry a data type of its own – `1` is neither an
+`f32` nor an `f64` – so it takes the one of the array it is combined
+with, and falls back to a default (`f32` for doubles, `i32` for
+integers, `bool` for logicals) when it meets nothing else. See
 [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
 for the full rules.
 
@@ -525,7 +526,7 @@ train_while(X, beta, alpha, y, nv_scalar(100L), lr = 0.1)
     ## $i
     ## AnvlArray
     ##  100
-    ## [ CPUf32?{} ]
+    ## [ CPUf32{} ]
 
 The same approach works analogously for `if`-statements, where the
 {anvl} primitive

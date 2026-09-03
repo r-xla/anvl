@@ -5,9 +5,9 @@ Compare two abstract arrays for type equality.
 ## Usage
 
 ``` r
-eq_type(e1, e2, ambiguity)
+eq_type(e1, e2)
 
-neq_type(e1, e2, ambiguity)
+neq_type(e1, e2)
 ```
 
 ## Arguments
@@ -22,13 +22,6 @@ neq_type(e1, e2, ambiguity)
   ([`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))  
   Second array to compare.
 
-- ambiguity:
-
-  (`logical(1)`)  
-  Whether to consider the ambiguous field when comparing. If `TRUE`,
-  arrays with different ambiguity are not equal. If `FALSE`, only dtype
-  and shape are compared.
-
 ## Value
 
 `logical(1)` - `TRUE` if the arrays are equal, `FALSE` otherwise.
@@ -40,25 +33,18 @@ a <- nv_aval("f32", c(2L, 3L))
 b <- nv_aval("f32", c(2L, 3L))
 
 # Same dtype and shape
-eq_type(a, b, ambiguity = FALSE)
+eq_type(a, b)
 #> [1] TRUE
 
 # Different dtype
-eq_type(a, nv_aval("i32", c(2L, 3L)), ambiguity = FALSE)
+eq_type(a, nv_aval("i32", c(2L, 3L)))
 #> [1] FALSE
 
 # Different shape
-eq_type(a, nv_aval("f32", c(3L, 2L)), ambiguity = FALSE)
-#> [1] FALSE
-
-# ambiguity parameter controls whether ambiguous field is compared
-c <- nv_aval("f32", c(2L, 3L), ambiguous = TRUE)
-eq_type(a, c, ambiguity = FALSE)
-#> [1] TRUE
-eq_type(a, c, ambiguity = TRUE)
+eq_type(a, nv_aval("f32", c(3L, 2L)))
 #> [1] FALSE
 
 # neq_type is the negation of eq_type
-neq_type(a, b, ambiguity = FALSE)
+neq_type(a, b)
 #> [1] FALSE
 ```

@@ -30,5 +30,5 @@ nv_flatten(matrix(1:4, nrow = 2))
 #>  3
 #>  2
 #>  4
-#> [ CPUi32?{4} ] 
+#> [ CPUi32{4} ] 
 ```
