@@ -1005,3 +1005,28 @@ test_that("prim_reduce_prod: drop = FALSE matches drop = TRUE", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-reverse-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("prim_if", {
+  x <- nv_array(c(1, 2, 3), dtype = "f64")
+
+  it("refuses rather than returning a zero gradient for a captured value", {
+    # `prim_if()`'s only operand is `pred`, so a value its branches close over
+    # reaches the backward pass through no operand at all. Answering zero here
+    # would be a silent wrong answer.
+    f <- function(x) {
+      prim_if(nv_scalar(TRUE), function() prim_reduce_sum(x, axes = 1L), function() nv_scalar(0, "f64"))
+    }
+    expect_equal(as_array(jit(f)(x)), 6)
+    expect_error(jit(gradient(f))(x), "Cannot compute a gradient through `prim_if\\(\\)`")
+    expect_error(jit(gradient(f))(x), "close over a value the gradient is taken with respect to")
+  })
+
+  it("still differentiates an if whose branches capture nothing needing a gradient", {
+    h <- function(x) {
+      prim_reduce_sum(x, axes = 1L) *
+        prim_if(nv_scalar(TRUE), function() nv_scalar(2, "f64"), function() nv_scalar(3, "f64"))
+    }
+    expect_equal(as_array(jit(h)(x)), 12)
+    expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(2, 2, 2))
+  })
+})

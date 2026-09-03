@@ -492,3 +492,11 @@ describe("rdata", {
     expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"))), 4 * sqrt(2))
   })
 })
+
+describe("gradients that involve no sub-graph at all", {
+  it("are unaffected by the capture check", {
+    x <- nv_array(c(1, 2, 3), dtype = "f64")
+    f <- function(x) prim_reduce_sum(prim_mul(x, x), axes = 1L)
+    expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(2, 4, 6))
+  })
+})

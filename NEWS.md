@@ -8,6 +8,15 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* `gradient()` no longer returns a zero gradient for a value that a
+  higher-order primitive's sub-graph closes over. `prim_if()`'s only operand is
+  its predicate, so a branch capturing a value the gradient is taken with
+  respect to was invisible to the backward pass and silently answered zero.
+  Such a capture is now refused with an error; differentiating through
+  `prim_if()` / `nv_if()` is still not implemented.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

@@ -125,6 +125,7 @@ transform_gradient <- function(graph, wrt) {
 transform_gradient_impl <- function(graph, wrt) {
   out <- validate_gradient_output(graph$outputs)
   reqs <- compute_requirements(graph, wrt)
+  assert_no_captured_grads(graph, reqs$required_env)
 
   # Phase 1 -- rebuild the forward into a fresh descriptor. For each call
   # either clone it verbatim (default-reverse / no rule) or hand off to the
@@ -237,6 +238,59 @@ compute_requirements <- function(graph, wrt) {
   }
 
   list(required_env = required_env, requires_grad = requires_grad)
+}
+
+# A higher-order primitive's sub-graphs may use values of the enclosing graph
+# without the call listing them as operands: `prim_if()`'s branches take no
+# arguments at all and simply close over what they need. The backward pass
+# walks operands, so such a capture is invisible to it -- the call looks
+# unreachable from anything that requires a gradient, gets skipped, and the
+# captured value comes back with a gradient of zero instead of its own.
+# No reverse rule accounts for captures yet, so refuse rather than answer wrong.
+assert_no_captured_grads <- function(graph, required_env) {
+  for (call in graph$calls) {
+    if (!any(vapply(subgraph_refs(call), \(gval) isTRUE(required_env[[gval]]), logical(1L)))) {
+      next
+    }
+    name <- call$primitive$name
+    cli_abort(
+      c(
+        "Cannot compute a gradient through {.fn prim_{name}}.",
+        x = "Its {.arg {call$primitive$subgraphs}} {?closes/close} over a value the gradient is taken with respect to, and no reverse rule accounts for such a capture.", # nolint
+        i = if (name == "if") {
+          "Where both branches can be evaluated, {.fn nv_ifelse} selects element-wise and is differentiable."
+        } else {
+          "Pass the value into {.fn prim_{name}} as an operand instead of closing over it."
+        }
+      ),
+      call = NULL
+    )
+  }
+  invisible(NULL)
+}
+
+# Every value a call's sub-graphs mention that the *enclosing* graph knows
+# about. A sub-graph records a captured value among its own constants, so its
+# constants are part of the answer; a value the sub-graph creates itself is
+# not in `required_env` and drops out at the call site above.
+subgraph_refs <- function(call) {
+  refs <- list()
+  visit <- function(graph) {
+    refs <<- c(refs, graph$constants)
+    for (sub_call in graph$calls) {
+      refs <<- c(refs, Filter(is_graph_value, sub_call$inputs))
+      visit_subgraphs(sub_call)
+    }
+  }
+  visit_subgraphs <- function(x) {
+    for (sub in x$params[x$primitive$subgraphs]) {
+      if (!is.null(sub)) {
+        visit(sub)
+      }
+    }
+  }
+  visit_subgraphs(call)
+  refs
 }
 
 # Set up a fresh descriptor, seed it with `graph`'s inputs/constants, and
