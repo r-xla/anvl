@@ -11,7 +11,7 @@ SubsetIndex <- function(index) {
   if (static) {
     if (length(index) != 1L) cli_abort("Internal error")
   } else {
-    if (naxes_abstract(index) != 0L) cli_abort("Internal error")
+    if (naxes(index) != 0L) cli_abort("Internal error")
   }
   structure(list(index = index, size = 1L, static = static), class = "SubsetIndex")
 }
@@ -21,11 +21,11 @@ SubsetIndices <- function(indices) {
   if (static) {
     size <- length(indices)
   } else {
-    nd <- naxes_abstract(indices)
+    nd <- naxes(indices)
     if (nd != 1L) {
       cli_abort("Internal error")
     }
-    size <- shape_abstract(indices)[1L]
+    size <- shape(indices)[1L]
   }
   structure(list(indices = indices, size = size, static = static), class = "SubsetIndices")
 }
@@ -72,7 +72,7 @@ subset_start_positions <- function(subsets) {
 # Shape [rank] if all scalar, or [multi_index_sizes..., rank] otherwise.
 dynamic_start_indices <- function(starts) {
   rank <- length(starts)
-  sizes <- vapply(starts, function(s) shape_abstract(s)[1L], integer(1L))
+  sizes <- vapply(starts, function(s) shape(s)[1L], integer(1L))
   multi_index_axes <- which(sizes > 1L)
 
   if (length(multi_index_axes) == 0L) {
@@ -90,7 +90,7 @@ dynamic_start_indices <- function(starts) {
   slices <- vector("list", rank)
   multi_index_i <- 1L
   for (d in seq_len(rank)) {
-    if (identical(shape_abstract(starts[[d]]), 1L)) {
+    if (identical(shape(starts[[d]]), 1L)) {
       slices[[d]] <- nv_broadcast_to(starts[[d]], c(multi_index_sizes, 1L))
     } else {
       slices[[d]] <- prim_broadcast_in_axes(starts[[d]], c(multi_index_sizes, 1L), multi_index_i)
@@ -109,14 +109,14 @@ static_start_indices <- function(starts, like = NULL) {
     if (is.null(like)) {
       return(nv_array(data, dtype = "i32"))
     }
-    return(nv_array_like(like, data, dtype = "i32", shape = length(data), ambiguous = FALSE))
+    return(nv_array_like(like, data, dtype = "i32", shape = length(data)))
   }
   grid <- as.matrix(do.call(expand.grid, starts))
   out <- array(grid, dim = c(sizes[multi_index_axes], length(starts)))
   if (is.null(like)) {
     return(nv_array(out, dtype = "i32"))
   }
-  nv_array_like(like, out, dtype = "i32", shape = dim(out), ambiguous = FALSE)
+  nv_array_like(like, out, dtype = "i32", shape = dim(out))
 }
 
 
@@ -146,9 +146,9 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
         if (is.null(like)) {
           nv_array(s, dtype = "i32")
         } else {
-          nv_array_like(like, s, dtype = "i32", shape = length(s), ambiguous = FALSE)
+          nv_array_like(like, s, dtype = "i32", shape = length(s))
         }
-      } else if (naxes_abstract(s) == 0L) {
+      } else if (naxes(s) == 0L) {
         nv_reshape(s, 1L)
       } else {
         s
@@ -419,11 +419,11 @@ parse_subset_spec <- function(quo, axis_size) {
 
   # Array indices (AnvlArray or GraphBox)
   if (is_arrayish(e) && !is.atomic(e)) {
-    dt <- dtype_abstract(e)
+    dt <- peek_dtype(e)
     if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
       cli_abort("Dynamic indices must be integers, but got {.val {as.character(dt)}}")
     }
-    nd <- naxes_abstract(e)
+    nd <- naxes(e)
     if (nd > 1L) {
       cli_abort("Dynamic indices must be at most 1D, but got {nd}D array")
     }
@@ -465,7 +465,7 @@ nv_subset <- function(x, ...) {
       "x" = "Got {.cls {class(x)[1]}}"
     ))
   }
-  x_shape <- shape_abstract(x)
+  x_shape <- shape(x)
   quos <- rlang::enquos(...)
 
   subsets <- parse_subset_specs(quos, x_shape)
@@ -507,17 +507,8 @@ subset_scatter_core <- jit(
     unique_indices,
     update_shape
   ) {
-    if (dtype(x) != dtype(value)) {
-      dt_x <- dtype(x)
-      dt_value <- dtype(value)
-      if (!promotable_to(dt_value, dt_x)) {
-        cli_abort(
-          "Value type {dtype2string(dt_value)} is not promotable to left-hand side type {dtype2string(dt_x)}"
-        )
-      }
-      value <- nv_convert(value, dtype = dt_x)
-    }
-
+    # `x` and `value` arrive at one data type: nv_subset_assign() brought them
+    # there, which is also where a value `x`'s data type cannot hold is refused.
     if (!naxes(value)) {
       value <- nv_broadcast_to(value, update_shape)
     } else {
@@ -585,11 +576,14 @@ nv_subset_assign <- function(x, ..., value) {
   if (!is_arrayish(value)) {
     cli_abort("Expected arrayish `value`, but got {.cls {class(value)[1]}}")
   }
-  aligned <- as_anvl_arrays(x, value)
-  x <- aligned[[1L]]
-  value <- aligned[[2L]]
+  # `value` is assigned at the data type of the array it goes into, so an R
+  # value is *built* there rather than converted to it -- and one that data type
+  # cannot hold (`x_i32[i] <- 1.5`) is an error, not a silent truncation.
+  args <- as_anvl_arrays(x = x, value = value, .promote = promote_like("x"))
+  x <- args$x
+  value <- args$value
 
-  lhs_shape <- shape_abstract(x)
+  lhs_shape <- shape(x)
   # because we do NSE to determine `:`-calls
   quos <- rlang::enquos(...)
 

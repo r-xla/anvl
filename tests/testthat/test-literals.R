@@ -10,19 +10,21 @@ test_that("literals are downcast if possible", {
 })
 
 test_that("can combine literals", {
+  # Nothing in either program has a data type of its own, so the literals
+  # commit to the default of their R storage type.
   f1 <- function() {
     nv_mul(2, 3)
   }
   expect_equal(
     jit(f1)(),
-    nv_scalar(6, dtype = "f32", ambiguous = TRUE)
+    nv_scalar(6, dtype = "f32")
   )
   f2 <- function() {
     nv_mul(2, 3L)
   }
   expect_equal(
     jit(f2)(),
-    nv_scalar(6, dtype = "f32", ambiguous = TRUE)
+    nv_scalar(6, dtype = "f32")
   )
 })
 
@@ -42,7 +44,7 @@ test_that("literals can be returned in jit", {
   }
   expect_equal(
     jit(f2)(),
-    nv_scalar(1, dtype = "f32", ambiguous = TRUE)
+    nv_scalar(1, dtype = "f32")
   )
 })
 

@@ -13,7 +13,6 @@ Arrayish value of data type integer or floating-point.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Negates an array element-wise.

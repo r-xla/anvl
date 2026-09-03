@@ -26,7 +26,6 @@ selects every element; a stride of \code{2} selects every other element, etc.}
 \code{\link{arrayish}}\cr
 Has the same data type as the input and shape
 \code{ceiling((limit_indices - start_indices + 1) / strides)}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Extracts a slice from an array using static (compile-time) indices.

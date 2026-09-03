@@ -13,14 +13,6 @@ test_that("literals", {
   expect_snapshot(graph)
 })
 
-test_that("ambiguity is printed via ?", {
-  f <- function(x) {
-    x * 1
-  }
-  graph <- trace_fn(f, list(x = nv_scalar(TRUE)))
-  expect_snapshot(graph)
-})
-
 test_that("constants", {
   y <- nv_scalar(1, dtype = "f32")
   f <- function(x) {
@@ -53,5 +45,17 @@ test_that("params", {
     nv_reduce_max(x, axes = 1, drop = TRUE)
   }
   graph <- trace_fn(f, list(x = nv_array(1:10)))
+  expect_snapshot(graph)
+})
+
+test_that("an input the caller supplies as bare R data names its R type", {
+  f <- function(x, y) x + y
+  graph <- trace_fn(
+    f,
+    list(x = nv_scalar(1, dtype = "f64"), y = nv_aval("double", integer()))
+  )
+  expect_snapshot(graph)
+
+  graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("integer", 2L)))
   expect_snapshot(graph)
 })

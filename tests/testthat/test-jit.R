@@ -127,12 +127,12 @@ test_that("jit(jit(f)) works (#220)", {
   expect_equal(f_jit2(nv_array(3L)), nv_array(4L))
 })
 
-test_that("jit returns R literals and arrays as ambiguous AnvlArrays", {
-  expect_equal(jit(\() 1L)(), nv_scalar(1L, ambiguous = TRUE))
-  expect_equal(jit(\() array(1L))(), nv_array(1L, shape = 1L, ambiguous = TRUE))
+test_that("jit returns R literals and arrays as AnvlArrays", {
+  expect_equal(jit(\() 1L)(), nv_scalar(1L))
+  expect_equal(jit(\() array(1L))(), nv_array(1L, shape = 1L))
   expect_equal(
     jit(\() array(c(1L, 2L, 3L)))(),
-    nv_array(c(1L, 2L, 3L), ambiguous = TRUE)
+    nv_array(c(1L, 2L, 3L))
   )
 })
 
@@ -254,14 +254,6 @@ test_that("good error message when passing AbstractArrays", {
     jit(nv_negate)(nv_aval("f32", c(2, 2))),
     "invalid input `x`.*<AbstractArray>"
   )
-})
-
-test_that("jit_eval does not modify calling environment", {
-  x <- nv_array(1:2)
-  jit_eval({
-    x <- nv_array(3:4)
-  })
-  expect_equal(x, nv_array(1:2))
 })
 
 test_that("nested jit: jitted function can be called inside jit (#220)", {

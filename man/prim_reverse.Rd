@@ -17,7 +17,6 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type and shape as \code{x}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Reverses the order of elements along specified axes.

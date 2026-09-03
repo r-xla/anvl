@@ -91,7 +91,6 @@ reference:
     desc: Functions for querying array properties
     contents:
       - backend
-      - ambiguous
       - dtype
       - shape
       - naxes
@@ -129,6 +128,13 @@ reference:
       - nv_broadcast_arrays
       - nv_broadcast_to
       - common_dtype
+      - promote_common
+      - promote_like
+      - promote_dtype
+      - promote_rdata_common
+      - promote_grouped
+      - promotion_rule
+      - apply_promotion
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
@@ -384,11 +390,9 @@ reference:
       - AbstractArray
       - ConcreteArray
       - LiteralArray
+      - RData
       - IotaArray
-      - dtype_abstract
-      - shape_abstract
-      - naxes_abstract
-      - ambiguous_abstract
+      - peek_dtype
       - to_abstract
       - arrayish
 
@@ -400,7 +404,6 @@ reference:
       - transform_gradient
       - rule_reverse
       - graph_to_quickr_r_function
-      - jit_eval
       - compile_pjrt
       - stablehlo
       - current_platform

@@ -16,20 +16,12 @@ nv_array(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  ambiguous = NULL,
   backend = NULL,
   byrow = FALSE,
   check = FALSE
 )
 
-nv_scalar(
-  data,
-  dtype = NULL,
-  device = NULL,
-  ambiguous = NULL,
-  backend = NULL,
-  check = FALSE
-)
+nv_scalar(data, dtype = NULL, device = NULL, backend = NULL, check = FALSE)
 
 nv_matrix(
   data,
@@ -37,12 +29,11 @@ nv_matrix(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  ambiguous = NULL,
   backend = NULL,
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, ambiguous = FALSE, backend = NULL)
+nv_empty(dtype, shape, device = NULL, backend = NULL)
 
 nv_array_like(
   like,
@@ -50,26 +41,12 @@ nv_array_like(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  ambiguous = NULL,
   backend = NULL
 )
 
-nv_scalar_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  ambiguous = NULL,
-  backend = NULL
-)
+nv_scalar_like(like, data, dtype = NULL, device = NULL, backend = NULL)
 
-nv_empty_like(
-  like,
-  dtype = NULL,
-  shape = NULL,
-  device = NULL,
-  ambiguous = NULL
-)
+nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 }
 \arguments{
 \item{data}{(any)\cr
@@ -101,10 +78,6 @@ The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
 To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
-\item{ambiguous}{(\code{NULL} | \code{logical(1)})\cr
-Whether the dtype should be marked as ambiguous.
-Defaults to \code{FALSE} for new arrays.}
-
 \item{backend}{(\code{NULL} | \code{character(1)})\cr
 Backend the array belongs to (\code{"pjrt"} or \code{"quickr"}).
 The default (\code{NULL}) is inferred from \code{device} when \code{device} is a
@@ -135,8 +108,8 @@ Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
-An existing array. Any of \code{dtype}, \code{device}, \code{shape}, \code{ambiguous}, and
-\code{backend} that are \code{NULL} (the default) are taken from \code{like}.}
+An existing array. Any of \code{dtype}, \code{device}, \code{shape}, and \code{backend}
+that are \code{NULL} (the default) are taken from \code{like}.}
 }
 \value{
 (\code{\link{AnvlArray}})
@@ -167,7 +140,6 @@ The following generic functions can be used to extract information from an \code
 \item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
 \item \code{\link[tengen:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
-\item \code{\link[=ambiguous]{ambiguous()}}: Get whether the dtype is ambiguous.
 }
 }
 
@@ -216,7 +188,6 @@ shape(x)
 naxes(x)
 device(x)
 platform(x)
-ambiguous(x)
 
 # --- Transforming arrays with jit ---
 add_one <- jit(function(x) x + 1)

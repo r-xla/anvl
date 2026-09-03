@@ -5,16 +5,9 @@
 \alias{nv_fill_like}
 \title{Fill Constant}
 \usage{
-nv_fill(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL)
+nv_fill(value, shape, dtype = NULL, device = NULL)
 
-nv_fill_like(
-  like,
-  value,
-  shape = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
 \item{value}{(\code{numeric(1)})\cr
@@ -25,11 +18,6 @@ Shape of the output array.}
 
 \item{dtype}{(\code{character(1)} | \code{NULL})\cr
 Data type.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -57,7 +45,7 @@ Has the given \code{shape} and \code{dtype}.
 Creates an array filled with a scalar value. More memory-efficient than
 \code{nv_array(value, shape = shape)} for large arrays.
 
-\code{nv_fill_like()} is a variant where \code{dtype}, \code{shape}, \code{ambiguous}, and
+\code{nv_fill_like()} is a variant where \code{dtype}, \code{shape}, and
 \code{device} default to those of \code{like}.
 }
 \examples{

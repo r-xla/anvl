@@ -8,6 +8,7 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+library(anvl)
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -36,55 +37,28 @@ While the subsequent sections mostly address issues that are relevant in eager m
 
 ## Consistent Input and Output Types
 
-Functions in anvl have dynamic (arrayish) and static (standard R values) inputs.
-However, it can also be convenient to pass R objects as dynamic inputs and let anvl convert them.
-To enable this, there are the `as_anvl_array()` and `as_anvl_arrays()` converters.
-You should call them at the top of your function.
-Not only will these functions convert the inputs, they will also check them for compatibility, specifically w.r.t. their device and backend.
-If they don't live on the same device, an error will be thrown.
+Functions in anvl have `AnvlArray` inputs and R data inputs.
+R data can be used dynamically, when it is passed to an argument that expects an `AnvlArray`, or statically, when it is passed to an argument that `jit()` marked as static.
+To make this work, you should call `as_anvl_arrays()` on all dynamic input values.
+If there is only a single one, you can also use `as_anvl_array()`.
 
-Note that this is only really necessary for using your function in eager mode (i.e. without `jit()`).
-This is because when a function is wrapped in `jit()`, {anvl} itself can perform these checks automatically.
+They do four things, and three of them are decisions *across* the whole argument set, which is why a function with several arrayish arguments should normalize them in **one** `as_anvl_arrays()` call rather than one `as_anvl_array()` per argument:
 
-The advantage of this input standardization is best illustrated with an example.
+1. every input is put on one device, and a call mixing devices or backends is rejected,
+2. the type promotion rules of the `.promote` argument are applied, which handle both placement of R values, as well as conversions between
+   `AnvlArray`s, e.g., to make `nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))` work.
+3. afterwards, `dtype()` is well defined and the remaining body does not have to distinguish between R value inputs and `AnvlArray` inputs.
+4. it reduces differences between eager and jit mode, see the `vignette("gotchas")` for a discussion.
 
-Consider the naive implementation of reshaping, which will fail when called on an R vector:
-
-```{r, error = TRUE}
-library(anvl)
-# x: dynamic, shape: static
-nv_reshape_naive <- function(x, shape) {
-  if (!identical(shape(x), shape)) {
-    prim_reshape(x, shape)
-  } else {
-    x
-  }
-}
-nv_reshape_naive(1L, c(2, 2))
-```
-
-This is because the attribute-getters such as `shape()`, `dtype()`, etc. are only implemented for `AnvlArray`s, not for R vectors, so canonicalizing inputs at the top ensures the function works correctly.
-
-Also, consider this function that converts an input to a specific dtype (or keeps it as-is if `dtype` is `NULL`).
-The problem is that in the no-op case, we return a static R object instead of (as intended) an `AnvlArray`.
+Below, we add a function that performs the addition after coercing all inputs to `f32`;
 
 ```{r}
-# x: dynamic, dtype: static
-nv_convert_naive <- function(x, dtype) {
-  if (is.null(dtype)) {
-    return(x)
-  }
-  prim_convert(x, dtype)
+nv_add_f32 <- function(x, y) {
+  args <- as_anvl_arrays(x, y, .promote = promote_dtype("f32", coerce = TRUE))
+  do.call(prim_add, args)
 }
-nv_convert_naive(1L, "i16")
-nv_convert_naive(1L, NULL)
+nv_add_f32(1, nv_scalar(1, "f64"))
 ```
-
-By canonicalizing inputs, such pitfalls can be avoided.
-
-Finally, note that primitives such as `prim_convert()` already canonicalize their inputs, so if you are only wrapping primitives (or other `nv_<op>` functions that already canonicalize), you might not have to do this yourself.
-
-When a function takes multiple arrayish inputs, normalize them in a single `as_anvl_arrays(...)` call covering all of them, so R literals/arrays adopt the device of their AnvlArray siblings instead of landing on the default device.
 
 ## Arbitrary Devices
 
@@ -107,6 +81,7 @@ One way to achieve this is to simply pass the input's device to `nv_fill()`:
 
 ```{r}
 nv_add_one1 <- function(x) {
+  # Converting is what gives the value a device to read back here.
   x <- as_anvl_array(x)
   x + nv_fill(1L, shape(x), device = device(x))
 }

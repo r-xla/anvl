@@ -76,11 +76,8 @@ print.AnvlPrimitive <- function(x, ...) {
 
 #' @title Create a Primitive
 #' @description
-#' Builds an [`AnvlPrimitive`] metadata object, wraps `fn` with [`jit()`],
-#' attaches the metadata via `attr(., "primitive")`, prepends class
-#' `"JitPrimitive"`, and (by default) registers the result under `name` in
-#' the primitive registry.
-#'
+#' Create a new primitive.
+#' For details on how to do this, see the article on *Adding a Primitive*.
 #' The backend is always `"auto"` and cannot be configured.
 #' @param name (`character(1)`)\cr
 #'   Primitive name.
@@ -101,7 +98,14 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   registry.
 #' @return A callable of class `c("JitPrimitive", "JitFunction")`.
 #' @export
-new_primitive <- function(name, fn, subgraphs = character(), static = character(), device = NULL, register = TRUE) {
+new_primitive <- function(
+  name,
+  fn,
+  subgraphs = character(),
+  static = character(),
+  device = NULL,
+  register = TRUE
+) {
   checkmate::assert_string(name)
   checkmate::assert_function(fn)
   checkmate::assert_character(subgraphs)
@@ -128,6 +132,7 @@ new_primitive <- function(name, fn, subgraphs = character(), static = character(
 
   jit_fn
 }
+
 
 #' @title Get Subgraphs from Higher-Order Primitive
 #' @description

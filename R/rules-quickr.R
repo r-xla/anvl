@@ -182,7 +182,9 @@ quickr_emit_convert <- function(out_sym, operand_expr, shape_in, in_aval, out_av
   }
 
   cast_expr <- function(expr) {
-    if (dt_out == "f64") {
+    # quickr has no single-precision type: it carries `f32` as a double, so
+    # both float dtypes cast the same way.
+    if (dt_out == "f64" || dt_out == "f32") {
       return(rlang::call2("as.double", expr))
     }
 
@@ -896,6 +898,12 @@ quickr_emit_gather <- function(
 
 quickr_expr_of_node <- function(node, node_expr) {
   if (is_graph_literal(node)) {
+    # A NaN / +-Inf literal has been bound to a temp by the caller (quickr
+    # rejects them as literals); everything else inlines as it is.
+    bound <- node_expr[[node]]
+    if (!is.null(bound)) {
+      return(bound)
+    }
     return(quickr_scalar_cast(node$aval$data, as.character(dtype(node))))
   }
   expr <- node_expr[[node]]
@@ -1479,6 +1487,22 @@ quickr_lower_graph_calls <- function(graph, ctx) {
 
   stmts <- list()
   for (call in graph$calls) {
+    # quickr rejects NaN / +-Inf as literals, so a literal holding one is bound
+    # to a temp that computes it at runtime and the call reads that instead.
+    for (node in call$inputs) {
+      if (
+        is_graph_literal(node) &&
+          is.null(node_expr[[node]]) &&
+          .is_special_float_literal(node$aval$data)
+      ) {
+        sym <- new_tmp_sym()
+        stmts <- c(
+          stmts,
+          .quickr_emit_special_float(sym, node$aval$data, as.character(dtype(node)), ctx)
+        )
+        node_expr[[node]] <- sym
+      }
+    }
     input_exprs_call <- lapply(call$inputs, quickr_expr_of_node, node_expr = node_expr)
     out_syms_call <- vector("list", length(call$outputs))
     out_avals_call <- vector("list", length(call$outputs))
@@ -1548,6 +1572,18 @@ local({
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
       dt_chr <- as.character(params$dtype)
+      # quickr rejects NaN / +-Inf as literals, so those values are computed at
+      # runtime and the array is filled from the result.
+      if (.is_special_float_literal(params$value)) {
+        if (!length(params$shape)) {
+          return(.quickr_emit_special_float(out_sym, params$value, dt_chr, ctx))
+        }
+        value_sym <- ctx$new_tmp_sym()
+        return(c(
+          .quickr_emit_special_float(value_sym, params$value, dt_chr, ctx),
+          quickr_emit_full_like(out_sym, value_sym, params$shape, out_aval)
+        ))
+      }
       value_expr <- quickr_scalar_cast(params$value, dt_chr)
       quickr_emit_full_like(out_sym, value_expr, params$shape, out_aval)
     }

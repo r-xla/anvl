@@ -4,7 +4,7 @@
 \alias{prim_iota}
 \title{Primitive Iota}
 \usage{
-prim_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+prim_iota(axis, dtype, shape, start = 1L, device = NULL)
 }
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
@@ -19,11 +19,6 @@ Shape of the output array.}
 
 \item{start}{(\code{integer(1)})\cr
 Starting value.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

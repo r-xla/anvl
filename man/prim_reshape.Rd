@@ -18,7 +18,6 @@ the remaining entries and the number of elements of \code{x}.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input and the given \code{shape}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Reshapes an array to a new shape without changing the underlying data.

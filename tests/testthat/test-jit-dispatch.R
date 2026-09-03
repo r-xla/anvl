@@ -70,16 +70,6 @@ test_that("jit() preserves nested output structure and names", {
   expect_equal(arr_of(res$nested$sq), c(4, 9))
 })
 
-test_that("the dispatcher correctly sets the output ambiguity", {
-  skip_if_no_jit()
-  # x + 1 keeps a committed f32's dtype: the output is unambiguous. A literal
-  # alone stays ambiguous. Both bits are stamped by the dispatcher's wrap.
-  f <- jit(function(x) x + 1)
-  expect_false(f(nv_array(1, dtype = "f32"))$ambiguous)
-  g <- jit(function(x) x + 1)
-  expect_true(g(2)$ambiguous)
-})
-
 test_that("jit() with static args compiles per static value", {
   skip_if_no_jit()
   f <- jit(function(x, flag) if (flag) x + 1 else x * 2, static = "flag")
@@ -111,17 +101,17 @@ test_that("jit() uploads bare R literals and arrays", {
   expect_equal(arr_of(f(x, 50)), c(51, 52))
   expect_equal(jit_size(f), 1L)
 
-  # kArray and kRData are the same key material: an ambiguous rank-0 f32 array
-  # has the literal's aval, so both trace to the same program and share the
-  # entry. Only where execution reads the input from differs -- the leaf's
-  # buffer, or an upload of the leaf -- and that is decided per call.
-  # (nv_scalar(5) would not share it: it commits ambiguous = FALSE.)
-  expect_equal(arr_of(f(x, nv_scalar(5, ambiguous = TRUE))), c(6, 7))
-  expect_equal(jit_size(f), 1L)
-
-  # A differing aval still splits the key: `3L` defaults to i32, not f32.
-  invisible(try(f(x, 3L), silent = TRUE))
+  # kArray and kRData are *different* key material: bare R data has no dtype of
+  # its own, so it cannot share an entry with an array that has one -- the two
+  # compile to different programs, one taking an f32 input and one uploading the
+  # R value at whatever dtype the trace decided.
+  expect_equal(arr_of(f(x, nv_scalar(5, dtype = "f32"))), c(6, 7))
   expect_equal(jit_size(f), 2L)
+
+  # A different R storage type is a different key again: `3L` is an R integer,
+  # keyed apart from an R double even though both end up at f32 here.
+  expect_equal(arr_of(f(x, 3L)), c(4, 5))
+  expect_equal(jit_size(f), 3L)
 
   # An R array leaf uploads column-major, like pjrt_buffer().
   g <- jit(function(x) x)

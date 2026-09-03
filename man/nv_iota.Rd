@@ -5,17 +5,9 @@
 \alias{nv_iota_like}
 \title{Iota}
 \usage{
-nv_iota(axis, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+nv_iota(axis, dtype, shape, start = 1L, device = NULL)
 
-nv_iota_like(
-  like,
-  axis,
-  shape = NULL,
-  start = 1L,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
 }
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
@@ -31,11 +23,6 @@ Shape.}
 
 \item{start}{(\code{integer(1)})\cr
 Starting value (default 1).}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -63,7 +50,7 @@ Has the given \code{dtype} and \code{shape}.
 Creates an array with values increasing along the specified axis,
 starting from \code{start}.
 
-\code{nv_iota_like()} is a variant where \code{dtype}, \code{shape}, \code{ambiguous}, and
+\code{nv_iota_like()} is a variant where \code{dtype}, \code{shape}, and
 \code{device} default to those of \code{like}.
 }
 \examples{

@@ -226,7 +226,7 @@ sort.AnvlBox <- sort.AnvlArray
   # nargs() sees trailing missing args (e.g. the last `,` in x[1:5, , ])
   # that rlang::enquos() silently drops.
   n_args <- nargs() - 1L
-  rank <- length(shape_abstract(x))
+  rank <- naxes(x)
   if (n_args > rank) {
     cli_abort("Too many subset specifications: got {n_args}, expected at most {rank}")
   }
@@ -243,7 +243,7 @@ sort.AnvlBox <- sort.AnvlArray
 #' @export
 `[<-.AnvlArray` <- function(x, ..., value) {
   n_args <- nargs() - 2L
-  rank <- length(shape_abstract(x))
+  rank <- naxes(x)
   if (n_args > rank) {
     cli_abort("Too many subset specifications: got {n_args}, expected at most {rank}")
   }

@@ -27,7 +27,6 @@ This is to avoid increasing compilation time and bloating the size of the execut
 y <- nv_array(c(0.5, 0.6))
 x <- ConcreteArray(y)
 x
-ambiguous(x)
 shape(x)
 naxes(x)
 dtype(x)

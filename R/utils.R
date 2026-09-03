@@ -140,53 +140,21 @@ shapes2string <- function(shapes) {
   paste0(sapply(shapes, shape2string), sep = ", ")
 }
 
-zeros <- function(dtype, shape, ambiguous) {
-  prim_fill(0L, dtype = dtype, shape = shape, ambiguous = ambiguous)
+zeros <- function(dtype, shape) {
+  prim_fill(0L, dtype = dtype, shape = shape)
 }
 
-ones <- function(dtype, shape, ambiguous) {
-  prim_fill(1L, dtype = dtype, shape = shape, ambiguous = ambiguous)
+ones <- function(dtype, shape) {
+  prim_fill(1L, dtype = dtype, shape = shape)
 }
 
 
-zeros_like <- function(x, ambiguous = FALSE) {
-  zeros(dtype(x), shape(x), ambiguous)
+zeros_like <- function(x) {
+  zeros(dtype(x), shape(x))
 }
 
-ones_like <- function(x, ambiguous = FALSE) {
-  ones(dtype(x), shape(x), ambiguous)
-}
-
-#' @title Abstract Properties
-#' @name abstract_properties
-#' @description
-#' Calls the extractor after converting the input to an [`AbstractArray`].
-#' @param x ([`arrayish`])\cr
-#' @export
-shape_abstract <- function(x) {
-  shape(to_abstract(x))
-}
-
-#' @rdname abstract_properties
-#' @export
-naxes_abstract <- function(x) {
-  length(shape_abstract(x))
-}
-
-#' @rdname abstract_properties
-#' @export
-dtype_abstract <- function(x) {
-  dtype(to_abstract(x))
-}
-
-#' @export
-#' @rdname abstract_properties
-ambiguous_abstract <- function(x) {
-  to_abstract(x)$ambiguous
-}
-
-dtype2string <- function(dtype, ambiguous = FALSE) {
-  paste0(repr(dtype), if (ambiguous) "?")
+ones_like <- function(x) {
+  ones(dtype(x), shape(x))
 }
 
 is_valid_r_lit <- function(x) {

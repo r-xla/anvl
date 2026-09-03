@@ -4,12 +4,7 @@
 \alias{common_dtype}
 \title{Type Promotion Rules}
 \usage{
-common_dtype(
-  lhs_dtype,
-  rhs_dtype,
-  lhs_ambiguous = FALSE,
-  rhs_ambiguous = FALSE
-)
+common_dtype(lhs_dtype, rhs_dtype)
 }
 \arguments{
 \item{lhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
@@ -17,19 +12,14 @@ The left-hand side type.}
 
 \item{rhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
 The right-hand side type.}
-
-\item{lhs_ambiguous}{(\code{logical(1)})\cr
-Whether the left-hand side type is ambiguous.}
-
-\item{rhs_ambiguous}{(\code{logical(1)})\cr
-Whether the right-hand side type is ambiguous.}
 }
 \value{
-(\verb{list(dtype = [}tengen::DataType\verb{], ambiguous = }logical(1)`)\cr
+(\code{\link[tengen:DataType]{tengen::DataType}})
 }
 \description{
-Computes the common dtype for a set of abstract types, respecting whether a type is ambiguous or not.
-A type is ambiguous if it comes from a literal (like 1 or 1.0) or was promoted
-to an ambiguous type.
-Promoting to an ambiguous type can happen in scenarios like \code{x + 1.2}, where \code{x} is a bool or an int.
+Compute the common data type.
+}
+\examples{
+common_dtype("i32", "f32")
+common_dtype("i32", "i64")
 }

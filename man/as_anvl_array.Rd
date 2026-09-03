@@ -7,7 +7,7 @@
 \usage{
 as_anvl_array(x, device = NULL)
 
-as_anvl_arrays(...)
+as_anvl_arrays(..., .promote = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -18,26 +18,28 @@ Target device. If \code{x} is an \code{AnvlArray} on a different device, an erro
 is raised.}
 
 \item{...}{(\code{\link{arrayish}})\cr
-Inputs to align.}
+Inputs to align. Name them to be able to point \code{.promote} at one of them.}
+
+\item{.promote}{(\code{NULL} | \code{function})\cr
+Which dtype every input is brought to. See \code{\link{promotion_rule}} for more information.}
 }
 \value{
-(\code{\link{AnvlArray}} for \code{as_anvl_array()}, \code{list} of \code{\link{AnvlArray}}s
-for \code{as_anvl_arrays()}).
+(One or more \code{\link{arrayish}} values).
 }
 \description{
 Use this to canonicalize inputs at the start of a function so it works
 both with eager executing and in combination with \code{\link[=jit]{jit()}}.
 Use \code{\link[=as_anvl_array]{as_anvl_array()}} for a single input and \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} for multiple inputs.
-The latter will also ensure all arrays are from the same backend and live on the same device.
-}
-\details{
-During tracing, \link[=GraphBox]{boxes} are returned as is.
-During eager mode, R literals and arrays are converted to \code{AnvlArray}s on the specified device.
-For \code{AnvlArray} inputs, we check that they live on provided device (if specified).
+The latter will also ensure all arrays are from the same backend and live on the same device,
+and can additionally apply type promotion rules via the \code{.promote} argument.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_anvl_array(1L)
 as_anvl_arrays(nv_array(1:3), 1L)
+as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
 \dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=peek_dtype]{peek_dtype()}}, \code{\link[=nv_promote_to_common]{nv_promote_to_common()}}
 }

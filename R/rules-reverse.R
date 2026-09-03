@@ -538,13 +538,13 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   true_value <- inputs[[2L]]
   grad <- grads[[1L]]
   zero <- if (required[[2L]] || required[[3L]]) {
-    zeros_like(true_value, ambiguous = TRUE)
+    zeros_like(true_value)
   }
 
   # Predicate is boolean -- its cotangent is zero a.e. Matches the JAX
   # `select` transpose rule, which returns no contribution for `which`.
   list(
-    if (required[[1L]]) zeros_like(pred, ambiguous = TRUE),
+    if (required[[1L]]) zeros_like(pred),
     if (required[[2L]]) prim_ifelse(pred, grad, zero),
     if (required[[3L]]) prim_ifelse(prim_not(pred), grad, zero)
   )
@@ -559,9 +559,8 @@ prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, re
 prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   grad <- grads[[1L]]
-  # the ambiguity is determined by the input, not the `ambiguous` parameter
   list(
-    if (required[[1L]]) prim_convert(grad, dtype(x), inputs[[1L]]$gnode$aval$ambiguous)
+    if (required[[1L]]) prim_convert(grad, dtype(x))
   )
 })
 
@@ -571,7 +570,7 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 # But, we never read the final gradients of such inputs (because we can only differentiate
 # with respect to floats)
 # so it's okay if the dtype of the gradient does not match the input type
-# Instead, we just return ambiguous zeros, that will be promoted to any dtype required
+# Instead, we just return zeros, which take any dtype required
 
 reverse_zero_bin <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
@@ -820,8 +819,7 @@ prim_top_k[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   zero_input <- prim_fill(
     0,
     dtype = dtype(grad_values),
-    shape = full_shape,
-    ambiguous = FALSE
+    shape = full_shape
   )
 
   # All axes are iteration axes and we have a single index vector axis that
@@ -989,7 +987,7 @@ prim_static_slice[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, 
       interior_padding <- strides - 1L
       prim_pad(
         grad,
-        zeros(dtype(grad), integer(), FALSE),
+        zeros(dtype(grad), integer()),
         edge_padding_low,
         edge_padding_high,
         interior_padding

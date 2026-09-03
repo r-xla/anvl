@@ -22,7 +22,6 @@ upper triangular factor \code{U} such that \code{x = t(U) \%*\% U}. If
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
 The values in the triangle not specified by \code{lower} are implementation-defined.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.

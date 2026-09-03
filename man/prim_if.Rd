@@ -16,7 +16,6 @@ with the same structure, dtypes, and shapes.}
 }
 \value{
 Result of the executed branch.\cr
-An output is ambiguous if it is ambiguous in both branches.
 }
 \description{
 Conditional execution of one of two branches based on a scalar boolean

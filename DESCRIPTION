@@ -61,6 +61,7 @@ Collate:
     'device.R'
     'backend.R'
     'jit.R'
+    'promotion.R'
     'primitive.R'
     'type-converters.R'
     'utils.R'
@@ -78,12 +79,12 @@ Collate:
     'box.R'
     'graph-passes.R'
     'graph.R'
+    'rdata.R'
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
     'jit-registry.R'
     'jit-roclet.R'
-    'promotion.R'
     'quickr.R'
     'reexports.R'
     'reverse.R'
@@ -93,5 +94,4 @@ Collate:
     'serialize.R'
     'stablehlo.R'
     'zzz.R'
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0

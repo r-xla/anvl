@@ -139,3 +139,29 @@ test_that("throws error for unsupported dtype", {
 
   expect_error(graph_to_quickr_function(graph), "Unsupported dtype.*i8")
 })
+
+test_that("quickr computes NaN and infinite literals at runtime", {
+  skip_if_no_quickr()
+  local_backend("quickr")
+
+  # quickr rejects NaN / +-Inf as literals in the code it compiles, so anvl
+  # binds each one to a temp that computes it instead. Every route a special
+  # float takes into a program goes through that.
+  fill <- jit(function() nv_fill(NaN, shape = c(2L, 2L), dtype = "f64"))
+  expect_true(all(is.nan(as.vector(fill()))))
+  # ... a scalar fill takes the shapeless branch
+  expect_equal(as.vector(jit(function() nv_fill(-Inf, shape = integer(), dtype = "f64"))()), -Inf)
+
+  # As an operand of a call, where it is bound to a temp the call then reads.
+  x <- nv_array(c(1, 2), dtype = "f64")
+  expect_equal(as.vector(jit(function(v) nv_min(v, Inf))(x)), c(1, 2))
+  expect_equal(as.vector(jit(function(v) nv_max(v, -Inf))(x)), c(1, 2))
+  expect_true(all(is.nan(as.vector(jit(function(v) v + NaN)(x)))))
+
+  # `nan_rm = TRUE` reductions seed themselves with +-Inf, the path that made
+  # this necessary in the first place.
+  y <- nv_array(c(1, NaN, 3), dtype = "f64")
+  expect_equal(as.vector(nv_reduce_max(y, nan_rm = TRUE)), 3)
+  expect_equal(as.vector(nv_reduce_min(y, nan_rm = TRUE)), 1)
+  expect_equal(as.vector(nv_reduce_sum(y, nan_rm = TRUE)), 4)
+})
