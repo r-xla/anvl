@@ -8,6 +8,16 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* `prim_fill()` / `nv_fill()` now check that `value` is something `dtype` can
+  hold, instead of letting it reach the backend. `prim_fill(TRUE, dtype =
+  "f32")` produced a PJRT buffer-aliasing error and now fills with `1`;
+  `prim_fill(-1L, dtype = "ui32")` and `prim_fill(300L, dtype = "i8")` produced
+  raw MLIR errors and are now refused by name; `prim_fill(1.5, dtype = "i32")`
+  truncated silently; and a `value` of length greater than one was silently
+  recycled although it is documented as a scalar.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

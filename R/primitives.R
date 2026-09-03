@@ -26,6 +26,74 @@ make_unary_op <- function(stablehlo_infer) {
 }
 
 
+# `value` is a literal the caller pins to `dtype`: `prim_fill()` is a
+# constructor, so naming a data type outside the value's own category is the
+# point here (`prim_fill(1, dtype = "i32")`), unlike promotion. What it must
+# not do is reach the backend as something `dtype` cannot represent -- the
+# constant is then emitted at the R value's own storage type and the program
+# fails at execute time with a buffer-aliasing error, or MLIR refuses to parse
+# it. Bringing the value to the target's storage type here settles both.
+resolve_fill_value <- function(value, dtype) {
+  ok <- (is.numeric(value) || is.logical(value)) &&
+    length(value) == 1L &&
+    (!is.na(value) || is.nan(value))
+  if (!ok) {
+    cli_abort(
+      c(
+        "{.arg value} must be a single non-missing number or logical.",
+        x = "Got {.obj_type_friendly {value}} of length {length(value)}."
+      ),
+      call = NULL
+    )
+  }
+  if (is_dtype_bool(dtype)) {
+    return(as.logical(value))
+  }
+  value <- as.double(value)
+  if (is_dtype_float(dtype)) {
+    return(value)
+  }
+  target <- as.character(dtype)
+  if (!is.finite(value)) {
+    cli_abort(
+      c(
+        "{.arg value} must be finite at data type {.val {target}}.",
+        x = "Got {.val {value}}."
+      ),
+      call = NULL
+    )
+  }
+  if (value != trunc(value)) {
+    cli_abort(
+      c(
+        "{.arg value} must be a whole number at data type {.val {target}}.",
+        x = "Got {.val {value}}.",
+        i = "Round it first, or build the array at a float data type."
+      ),
+      call = NULL
+    )
+  }
+  limits <- dtype_limits(dtype)
+  if (value < limits[[1L]] || value > limits[[2L]]) {
+    cli_abort(
+      c(
+        "{.arg value} is out of range for data type {.val {target}}.",
+        x = "Got {.val {value}}, but {.val {target}} holds {limits[[1L]]} to {limits[[2L]]}."
+      ),
+      call = NULL
+    )
+  }
+  value
+}
+
+dtype_limits <- function(dtype) {
+  width <- dtype_width(dtype)
+  if (is_dtype_uint(dtype)) {
+    return(c(0, 2^width - 1))
+  }
+  c(-2^(width - 1L), 2^(width - 1L) - 1)
+}
+
 infer_reduce <- function(x, axes, drop) {
   old_shape <- shape(x)
   if (drop) {
@@ -61,8 +129,11 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' `nv_array(1, shape = c(100, 100))` is that lowering of [prim_fill()] is
 #' efficiently represented in the compiled program, while the latter uses
 #' 100 * 100 * 4 bytes of memory.
-#' @param value (`numeric(1)`)\cr
-#'   Scalar value to fill the array with.
+#' @param value (`numeric(1)` | `logical(1)`)\cr
+#'   Scalar value to fill the array with. It is built at `dtype`, whatever its
+#'   own category -- `prim_fill(1, dtype = "i32")` is an integer array -- but
+#'   it must be something `dtype` can hold: a whole number in range for an
+#'   integer data type, and any number for a float one.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @template param_dtype
@@ -80,6 +151,7 @@ infer_reduce_boolean <- function(x, axes, drop) {
 prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
+    value <- resolve_fill_value(value, as_dtype(dtype))
     infer_fill <- function(value, shape, dtype) {
       list(AbstractArray(dtype = as_dtype(dtype), shape = shape))
     }
