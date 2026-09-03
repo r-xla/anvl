@@ -28,7 +28,7 @@ NULL
 #' @importFrom utils head tail getFromNamespace install.packages
 #' @importFrom cli cli_abort cli_warn
 #' @importFrom rlang %||%
-#' @importFrom methods formalArgs
+#' @importFrom methods formalArgs is
 #' @importFrom utils capture.output
 #' @importFrom stats median
 ## usethis namespace: end

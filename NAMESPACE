@@ -466,7 +466,10 @@ importFrom(cli,
   cli_abort,
   cli_warn
 )
-importFrom(methods,formalArgs)
+importFrom(methods,
+  formalArgs,
+  is
+)
 importFrom(pjrt,
   await,
   build_tree,
