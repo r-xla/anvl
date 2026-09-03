@@ -124,6 +124,42 @@ assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt
 }
 
+# The float-only half of `assert_linalg_matrix()`, for operations that
+# constrain the data type but not the shape. Without it an integer operand
+# reaches the backend and fails with a raw MLIR dump.
+assert_float_operand <- function(x, arg) {
+  dt <- peek_dtype(to_abstract(x))
+  if (is_dtype_float(dt)) {
+    return(invisible(NULL))
+  }
+  cli_abort(
+    c(
+      "{.arg {arg}} must have a floating-point dtype.",
+      "x" = "Got dtype {.val {as.character(dt)}}.",
+      "i" = "Convert it with {.fn nv_convert}."
+    ),
+    call = NULL
+  )
+}
+
+# The backend has no convolution over booleans -- it answers `Unsupported type:
+# pred` -- while integers and floats both work, so this is narrower than
+# `assert_float_operand()`.
+assert_numeric_operand <- function(x, arg) {
+  dt <- peek_dtype(to_abstract(x))
+  if (!is_dtype_bool(dt)) {
+    return(invisible(NULL))
+  }
+  cli_abort(
+    c(
+      "{.arg {arg}} must have an integer or floating-point dtype.",
+      "x" = "Got dtype {.val {as.character(dt)}}.",
+      "i" = "Convert it with {.fn nv_convert}."
+    ),
+    call = NULL
+  )
+}
+
 assert_linalg_matrix <- function(x, arg, square = FALSE) {
   s <- shape(x)
   if (length(s) != 2L) {

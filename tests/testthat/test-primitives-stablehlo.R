@@ -1214,3 +1214,38 @@ test_that("nv_matmul exposes precision and defaults to highest", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("data type checks on prim_triangular_solve and prim_convolution", {
+  it("rejects a non-float triangular solve at trace time", {
+    a <- nv_array(matrix(c(2L, 0L, 1L, 3L), nrow = 2))
+    b <- nv_array(matrix(c(4L, 3L), nrow = 2))
+    expect_error(
+      prim_triangular_solve(a, b, TRUE, TRUE, FALSE, FALSE),
+      "`a` must have a floating-point dtype"
+    )
+  })
+
+  it("still solves a float triangular system", {
+    a <- nv_array(matrix(c(2, 0, 1, 3), nrow = 2), dtype = "f32")
+    b <- nv_array(matrix(c(4, 3), nrow = 2), dtype = "f32")
+    expect_equal(as.numeric(prim_triangular_solve(a, b, TRUE, TRUE, FALSE, FALSE)), c(2, 1))
+  })
+
+  it("rejects a boolean convolution, which the backend cannot lower", {
+    expect_error(
+      nv_conv1d(nv_array(array(TRUE, c(1, 1, 4))), nv_array(array(TRUE, c(1, 1, 2)))),
+      "`x` must have an integer or floating-point dtype"
+    )
+  })
+
+  it("leaves integer and float convolution working", {
+    expect_equal(as.numeric(nv_conv1d(nv_array(array(1L, c(1, 1, 4))), nv_array(array(1L, c(1, 1, 2))))), c(2, 2, 2))
+    expect_equal(
+      as.numeric(nv_conv1d(
+        nv_array(array(1, c(1, 1, 4)), dtype = "f32"),
+        nv_array(array(1, c(1, 1, 2)), dtype = "f32")
+      )),
+      c(2, 2, 2)
+    )
+  })
+})

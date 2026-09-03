@@ -8,6 +8,14 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* `prim_triangular_solve()` now rejects a non-float operand, and
+  `prim_convolution()` a boolean one, when the call is traced. Both used to
+  reach the backend and fail with a raw MLIR dump; the other linear-algebra
+  primitives (`prim_qr()`, `prim_lu()`, `prim_svd()`, `prim_eigh()`) already
+  checked. Integer convolution, which the backend does support, is unaffected.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

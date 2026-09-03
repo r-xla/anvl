@@ -3303,6 +3303,8 @@ prim_triangular_solve <- new_primitive(
       list(out)
     }
     operands <- apply_promotion(list(a = a, b = b), promote_rdata_common())
+    assert_float_operand(operands$a, "a")
+    assert_float_operand(operands$b, "b")
     graph_desc_add(
       self,
       operands,
@@ -3622,6 +3624,8 @@ prim_convolution <- new_primitive(
       list(vt2at(out))
     }
     operands <- apply_promotion(list(x = x, kernel = kernel), promote_rdata_common())
+    assert_numeric_operand(operands$x, "x")
+    assert_numeric_operand(operands$kernel, "kernel")
     graph_desc_add(
       self,
       operands,
