@@ -8,14 +8,21 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Features
+
+* `prim_if()` / `nv_if()` are now differentiable. The backward pass is itself
+  an `if` on the same predicate, so only the taken branch's gradient is
+  computed, and a value only the other branch uses gets a zero.
+
 ## Bug fixes
 
 * `gradient()` no longer returns a zero gradient for a value that a
-  higher-order primitive's sub-graph closes over. `prim_if()`'s only operand is
-  its predicate, so a branch capturing a value the gradient is taken with
-  respect to was invisible to the backward pass and silently answered zero.
-  Such a capture is now refused with an error; differentiating through
-  `prim_if()` / `nv_if()` is still not implemented.
+  higher-order primitive's sub-graph closes over. `prim_if()`'s only operand
+  used to be its predicate, so a branch capturing a value the gradient is taken
+  with respect to was invisible to the backward pass and silently answered
+  zero. `prim_if()` now lists what its branches capture among its operands; for
+  a primitive that does not (`prim_while()`), such a capture is refused with an
+  error rather than answered wrongly.
 
 ## Tests
 

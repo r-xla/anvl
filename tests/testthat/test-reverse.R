@@ -493,36 +493,121 @@ describe("rdata", {
   })
 })
 
-describe("gradients through a sub-graph that captures", {
+describe("gradients through prim_if", {
   x <- nv_array(c(1, 2, 3), dtype = "f64")
+  y <- nv_array(c(4, 5, 6), dtype = "f64")
+  true_ <- nv_scalar(TRUE)
+  false_ <- nv_scalar(FALSE)
 
-  it("refuses rather than returning a zero gradient for a captured value", {
-    # `prim_if()`'s only operand is `pred`, so a value its branches close over
-    # reaches the backward pass through no operand at all. Answering zero here
-    # would be a silent wrong answer.
-    f <- function(x) {
-      prim_if(nv_scalar(TRUE), function() prim_reduce_sum(x, axes = 1L), function() nv_scalar(0, "f64"))
+  it("differentiates a value the branches close over", {
+    # `prim_if()`'s branches take no arguments; the values they use reach them
+    # by capture, and are listed as operands so the backward pass can see them.
+    f <- function(p, x) {
+      prim_if(p, function() prim_reduce_sum(x, axes = 1L), function() nv_scalar(0, "f64"))
     }
-    expect_equal(as_array(jit(f)(x)), 6)
-    expect_error(jit(gradient(f))(x), "Cannot compute a gradient through `prim_if\\(\\)`")
+    expect_equal(as.numeric(jit(f)(true_, x)), 6)
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(true_, x)[[1L]]), c(1, 1, 1))
+    expect_equal(as.numeric(jit(f)(false_, x)), 0)
+    expect_equal(as.numeric(jit(gradient(f, wrt = "x"))(false_, x)[[1L]]), c(0, 0, 0))
   })
 
-  it("refuses through nv_if() the same way", {
-    g <- function(x) nv_if(nv_scalar(TRUE), function() nv_reduce_sum(x), function() nv_scalar(0, "f64"))
-    expect_error(jit(gradient(g))(x), "close over a value the gradient is taken with respect to")
+  it("takes the gradient of the branch the predicate selects", {
+    g <- function(p, x) nv_if(p, function() nv_reduce_sum(x * x), function() nv_reduce_sum(x))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(2, 4, 6))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(1, 1, 1))
   })
 
-  it("still differentiates an if whose branches capture nothing needing a gradient", {
-    h <- function(x) {
-      prim_reduce_sum(x, axes = 1L) *
-        prim_if(nv_scalar(TRUE), function() nv_scalar(2, "f64"), function() nv_scalar(3, "f64"))
+  it("differentiates several captured values", {
+    g <- function(p, x, y) nv_if(p, function() nv_reduce_sum(x * y), function() nv_reduce_sum(x + y))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(true_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(4, 5, 6))
+    expect_equal(as.numeric(grads[[2L]]), c(1, 2, 3))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(false_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(1, 1, 1))
+    expect_equal(as.numeric(grads[[2L]]), c(1, 1, 1))
+  })
+
+  it("gives a zero to a value the taken branch does not use", {
+    g <- function(p, x, y) nv_if(p, function() nv_reduce_sum(x * x), function() nv_reduce_sum(y * y))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(true_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(2, 4, 6))
+    expect_equal(as.numeric(grads[[2L]]), c(0, 0, 0))
+    grads <- jit(gradient(g, wrt = c("x", "y")))(false_, x, y)
+    expect_equal(as.numeric(grads[[1L]]), c(0, 0, 0))
+    expect_equal(as.numeric(grads[[2L]]), c(8, 10, 12))
+  })
+
+  it("carries the gradient on into what uses the result", {
+    g <- function(p, x) {
+      nv_reduce_sum(nv_if(p, function() x * x, function() x) * nv_array(c(2, 2, 2), dtype = "f64"))
     }
-    expect_equal(as_array(jit(h)(x)), 12)
-    expect_equal(as.numeric(jit(gradient(h))(x)[[1L]]), c(2, 2, 2))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(4, 8, 12))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(2, 2, 2))
+  })
+
+  it("differentiates branches that return several values", {
+    g <- function(p, x) {
+      r <- nv_if(p, function() list(a = x * x, b = x), function() list(a = x, b = x * x))
+      nv_reduce_sum(r$a) + nv_reduce_sum(r$b)
+    }
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(3, 5, 7))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(3, 5, 7))
+  })
+
+  it("differentiates a nested if", {
+    g <- function(p, q, x) {
+      nv_if(
+        p,
+        function() nv_if(q, function() nv_reduce_sum(x * x), function() nv_reduce_sum(x)),
+        function() nv_scalar(0, "f64")
+      )
+    }
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, true_, x)[[1L]]), c(2, 4, 6))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, false_, x)[[1L]]), c(1, 1, 1))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, true_, x)[[1L]]), c(0, 0, 0))
+  })
+
+  it("differentiates an if whose branches capture nothing", {
+    g <- function(p, x) {
+      nv_reduce_sum(x) * nv_if(p, function() nv_scalar(2, "f64"), function() nv_scalar(3, "f64"))
+    }
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(true_, x)[[1L]]), c(2, 2, 2))
+    expect_equal(as.numeric(jit(gradient(g, wrt = "x"))(false_, x)[[1L]]), c(3, 3, 3))
+  })
+
+  it("keeps the operand's data type", {
+    g <- function(p, x) nv_if(p, function() nv_reduce_sum(x * x), function() nv_reduce_sum(x))
+    grad <- jit(gradient(g, wrt = "x"))(true_, nv_array(c(1, 2, 3), dtype = "f32"))[[1L]]
+    expect_equal(dtype(grad), as_dtype("f32"))
+    expect_equal(as.numeric(grad), c(2, 4, 6))
+  })
+
+  it("works through value_and_gradient()", {
+    g <- function(p, x) nv_if(p, function() nv_reduce_sum(x * x), function() nv_reduce_sum(x))
+    out <- jit(value_and_gradient(g, wrt = "x"))(true_, x)
+    expect_equal(as.numeric(out[[1L]]), 14)
+    expect_equal(as.numeric(out[[2L]][[1L]]), c(2, 4, 6))
   })
 
   it("leaves gradients without any sub-graph alone", {
     f <- function(x) prim_reduce_sum(prim_mul(x, x), axes = 1L)
     expect_equal(as.numeric(jit(gradient(f))(x)[[1L]]), c(2, 4, 6))
+  })
+})
+
+describe("gradients through a sub-graph that still captures implicitly", {
+  it("refuses rather than returning a zero gradient", {
+    # `prim_while()` does not hoist what its body closes over, so a captured
+    # value would reach the backward pass through no operand at all.
+    x <- nv_array(c(1, 2, 3), dtype = "f64")
+    f <- function(x) {
+      r <- prim_while(
+        init = list(i = nv_scalar(0L), acc = nv_scalar(0, "f64")),
+        cond = function(i, acc) i < nv_scalar(2L),
+        body = function(i, acc) list(i = i + 1L, acc = acc + prim_reduce_sum(x, axes = 1L))
+      )
+      r$acc
+    }
+    expect_error(jit(gradient(f))(x), "Cannot compute a gradient through `prim_while\\(\\)`")
   })
 })

@@ -674,7 +674,10 @@ prim_print[["stablehlo"]] <- function(x, footer) {
 
 # higher order primitives --------------------------------------------------------
 
-prim_if[["stablehlo"]] <- function(pred, true_graph, false_graph, .env) {
+# The captured values arrive as operands so the graph records what the branches
+# read (see `prim_if()`); the regions still reference them through `.env`, the
+# way MLIR regions capture, so there is nothing to do with them here.
+prim_if[["stablehlo"]] <- function(pred, ..., true_graph, false_graph, .env) {
   true_func <- stablehlo(true_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
   false_func <- stablehlo(false_graph, id = "", constants_as_inputs = FALSE, env = .env)[[1L]]
   hlo_if(pred, true_func, false_func, simplify = FALSE)
