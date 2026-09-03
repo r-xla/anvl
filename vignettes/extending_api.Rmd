@@ -8,6 +8,7 @@ vignette: >
 ---
 
 ```{r, include = FALSE}
+library(anvl)
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -44,10 +45,10 @@ If there is only a single one, you can also use `as_anvl_array()`.
 They do four things, and three of them are decisions *across* the whole argument set, which is why a function with several arrayish arguments should normalize them in **one** `as_anvl_arrays()` call rather than one `as_anvl_array()` per argument:
 
 1. every input is put on one device, and a call mixing devices or backends is rejected,
-2. the type promotion rules of the `.promote` argument are appleid, which handle both placement of R values, as well as conversions between
+2. the type promotion rules of the `.promote` argument are applied, which handle both placement of R values, as well as conversions between
    `AnvlArray`s, e.g., to make `nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))` work.
 3. afterwards, `dtype()` is well defined and the remaining body does not have to distinguish between R value inputs and `AnvlArray` inputs.
-4. it reduces differences between eager and jit mode, see the `vignette("gotachs")` for a discussion.
+4. it reduces differences between eager and jit mode, see the `vignette("gotchas")` for a discussion.
 
 Below, we add a function that performs the addition after coercing all inputs to `f32`;
 

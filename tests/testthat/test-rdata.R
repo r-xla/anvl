@@ -334,7 +334,13 @@ describe("an R value at its use site", {
     # A value that merely flows into a sub-graph body is unaffected: it meets a
     # data type at its use site there and is built at it.
     f <- jit(function(v, s) nv_while(list(s = s), \(s) s < nv_scalar(10, dtype = "f64"), \(s) list(s = s + v)))
-    expect_identical(as_array(f(sqrt(2), nv_scalar(0, dtype = "f64"))$s), sum(rep(sqrt(2), 8)))
+    # Not `sum()`: it accumulates in `LDOUBLE`, so where that is wider than a
+    # double it rounds once at the end and lands an ulp away from the loop's
+    # sequential f64 additions. `Reduce()` adds in double on every platform.
+    expect_identical(
+      as_array(f(sqrt(2), nv_scalar(0, dtype = "f64"))$s),
+      Reduce(`+`, rep(sqrt(2), 8), 0)
+    )
   })
 
   it("is embedded as f64 with no convert when anchored", {
