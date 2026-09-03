@@ -1214,3 +1214,29 @@ test_that("nv_matmul exposes precision and defaults to highest", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("prim_pow data types", {
+  it("raises signed integers and floats", {
+    expect_equal(as.numeric(prim_pow(nv_array(c(2L, 3L)), nv_array(c(2L, 2L)))), c(4, 9))
+    expect_equal(as.numeric(prim_pow(nv_array(c(2, 3)), nv_array(c(2, 2)))), c(4, 9))
+  })
+
+  it("rejects unsigned integers instead of failing in the backend", {
+    # XLA lowers integer `power` through `math.ipowi`, which is signed-only.
+    expect_error(
+      prim_pow(nv_array(c(2L, 3L), dtype = "ui32"), nv_array(c(2L, 2L), dtype = "ui32")),
+      "does not support unsigned integer data types"
+    )
+    expect_error(
+      nv_pow(nv_array(c(2L, 3L), dtype = "ui8"), nv_array(c(2L, 2L), dtype = "ui8")),
+      "Got \"ui8\""
+    )
+  })
+
+  it("leaves the other unsigned binary operations alone", {
+    expect_equal(
+      as.numeric(prim_add(nv_array(c(2L, 3L), dtype = "ui32"), nv_array(c(1L, 1L), dtype = "ui32"))),
+      c(3, 4)
+    )
+  })
+})

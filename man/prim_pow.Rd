@@ -8,7 +8,9 @@ prim_pow(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type integer, unsigned integer, or floating-point.
+Arrayish values of data type signed integer or floating-point.
+Unsigned integers are not supported: XLA lowers an integer power through
+an operation that takes signed integers only.
 Must have the same shape.}
 }
 \value{

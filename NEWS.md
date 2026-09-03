@@ -8,6 +8,13 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* `prim_pow()` / `nv_pow()` now reject unsigned integer operands with an error
+  naming the data type, instead of failing in the backend with
+  `'math.ipowi' op operand #0 must be signless-integer-like`. XLA lowers an
+  integer power through an operation that takes signed integers only.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

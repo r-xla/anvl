@@ -4,15 +4,42 @@
 #' @include primitive.R
 #' @include jit.R
 
-make_binary_op <- function(stablehlo_infer) {
+# `check`, when given, is called with the promoted operands and rejects data
+# types the operation cannot take. It runs after promotion so it sees settled
+# data types, and before recording, so the error names the argument rather than
+# surfacing from the backend.
+make_binary_op <- function(stablehlo_infer, check = NULL) {
   force(stablehlo_infer)
+  force(check)
   infer_fn <- function(lhs, rhs) {
     list(vt2at(stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]))
   }
   function(lhs, rhs) {
     operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+    if (!is.null(check)) {
+      check(operands)
+    }
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
+}
+
+# XLA lowers an integer `power` through `math.ipowi`, which takes signless
+# integers only. An unsigned operand passes StableHLO's own type inference --
+# the spec allows any integer type here -- and then fails in the backend with
+# `'math.ipowi' op operand #0 must be signless-integer-like`.
+assert_pow_dtype <- function(operands) {
+  dt <- peek_dtype(to_abstract(operands$lhs))
+  if (!is_dtype_uint(dt)) {
+    return(invisible(NULL))
+  }
+  cli_abort(
+    c(
+      "{.fn prim_pow} does not support unsigned integer data types.",
+      x = "Got {.val {as.character(dt)}}.",
+      i = "Convert to a signed integer or a float first, e.g. {.code nv_convert(x, \"i64\")}."
+    ),
+    call = NULL
+  )
 }
 
 make_unary_op <- function(stablehlo_infer) {
@@ -182,7 +209,11 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' @title Primitive Power
 #' @description
 #' Raises lhs to the power of rhs element-wise.
-#' @template params_prim_lhs_rhs_numeric
+#' @param lhs,rhs ([`arrayish`])\cr
+#'   Arrayish values of data type signed integer or floating-point.
+#'   Unsigned integers are not supported: XLA lowers an integer power through
+#'   an operation that takes signed integers only.
+#'   Must have the same shape.
 #' @template return_prim_binary
 #' @templateVar primitive_id power
 #' @template section_rules
@@ -194,7 +225,7 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' y <- nv_array(c(3, 2, 1))
 #' prim_pow(x, y)
 #' @export
-prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
+prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power, check = assert_pow_dtype))
 
 #' @title Primitive Broadcast
 #' @description
