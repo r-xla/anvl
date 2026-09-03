@@ -1,5 +1,22 @@
 # anvl (development version)
 
+## Features
+
+* New `nv_custom_call()` (and the `prim_custom_call()` primitive behind it) calls
+  an XLA FFI handler registered with `pjrt::pjrt_register_custom_call()`,
+  without having to define a primitive and a StableHLO lowering rule by
+  hand. Operand and result layouts default to row-major, attributes are
+  taken as a named list, and results can be aliased onto operands so an
+  in-place handler avoids a copy. Layouts may also be given per platform
+  (`list(cpu = ..., cuda = ...)`), resolved when the program is lowered, for
+  handlers whose CPU and CUDA implementations disagree.
+
+## Documentation
+
+* New article "Custom Calls", showing how to write an XLA FFI handler,
+  register it with {pjrt} and call it -- on CPU, and on CUDA with a
+  hand-written kernel.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.
