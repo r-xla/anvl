@@ -528,7 +528,7 @@ nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
 nv_qunif <- function(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(p, min, max, promote = promote_like(1))
+  args <- as_anvl_arrays(p, min, max, .promote = promote_like(1))
   p <- args[[1L]]
   min <- args[[2L]]
   max <- args[[3L]]
