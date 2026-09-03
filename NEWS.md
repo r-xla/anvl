@@ -8,6 +8,15 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* The gradient of a conversion into a non-float data type is now zero instead
+  of one. `prim_convert()` / `nv_convert()` passed the cotangent through
+  whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
+  reported a gradient of 1 where `nv_floor()` -- the same function on the
+  reals -- correctly reported 0. Conversions between floats still pass the
+  gradient through.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.
