@@ -8,6 +8,13 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Bug fixes
+
+* `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
+  `rhs`. They were passed by name, so `function(a, b)` failed with
+  `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
+  as `prim_scatter()` already matched its `update_computation`.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.
