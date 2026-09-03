@@ -1214,3 +1214,33 @@ test_that("nv_matmul exposes precision and defaults to highest", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
+
+describe("prim_fill value", {
+  it("builds the value at the requested data type across categories", {
+    # `prim_fill()` is a constructor: naming a data type outside the value's
+    # own category is the point, unlike promotion.
+    expect_equal(as.numeric(prim_fill(0L, shape = 2L, dtype = "f32")), c(0, 0))
+    expect_equal(as.numeric(prim_fill(TRUE, shape = 2L, dtype = "f32")), c(1, 1))
+    expect_equal(as.numeric(prim_fill(1, shape = 2L, dtype = "i32")), c(1, 1))
+    expect_equal(as.logical(prim_fill(TRUE, shape = 2L, dtype = "bool")), c(TRUE, TRUE))
+  })
+
+  it("keeps the float specials", {
+    expect_true(all(is.nan(as.numeric(prim_fill(NaN, shape = 2L, dtype = "f32")))))
+    expect_equal(as.numeric(prim_fill(Inf, shape = 2L, dtype = "f32")), c(Inf, Inf))
+  })
+
+  it("rejects a value the data type cannot hold", {
+    expect_error(prim_fill(1.5, shape = 2L, dtype = "i32"), "must be a whole number")
+    expect_error(prim_fill(-1L, shape = 2L, dtype = "ui32"), "out of range")
+    expect_error(prim_fill(300L, shape = 2L, dtype = "i8"), "out of range")
+    expect_error(prim_fill(Inf, shape = 2L, dtype = "i32"), "must be finite")
+    expect_equal(as.numeric(prim_fill(255L, shape = 2L, dtype = "ui8")), c(255, 255))
+  })
+
+  it("rejects a value that is not a single number", {
+    expect_error(prim_fill(c(1, 2), shape = 4L, dtype = "f32"), "must be a single non-missing")
+    expect_error(prim_fill(NA, shape = 2L, dtype = "f32"), "must be a single non-missing")
+    expect_error(prim_fill("a", shape = 2L, dtype = "f32"), "must be a single non-missing")
+  })
+})

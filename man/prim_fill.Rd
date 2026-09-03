@@ -7,8 +7,11 @@
 prim_fill(value, shape, dtype, device = NULL)
 }
 \arguments{
-\item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+\item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
+Scalar value to fill the array with. It is built at \code{dtype}, whatever its
+own category -- \code{prim_fill(1, dtype = "i32")} is an integer array -- but
+it must be something \code{dtype} can hold: a whole number in range for an
+integer data type, and any number for a float one.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
