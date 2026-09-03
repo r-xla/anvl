@@ -371,3 +371,184 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   # Unstandardise as necessary
   mean + sd * res_std
 }
+
+#' @title The Uniform Distribution
+#' @name nv_uniform
+#' @description
+#' Density (`nv_dunif`), distribution function (`nv_punif`), and quantile
+#' function (`nv_qunif`) for the Uniform distribution on the interval from
+#' `min` to `max`.
+#' @param x,q ([`arrayish`])\cr
+#'   Quantiles at which to evaluate the density (`x`) or the distribution
+#'   function (`q`).
+#' @param p ([`arrayish`])\cr
+#'   Probabilities at which to evaluate the quantile function. Values outside
+#'   \eqn{[0, 1]} give `NaN`.
+#' @param min,max ([`arrayish`])\cr
+#'   Lower and upper limits of the distribution. Either scalars, or arrays of
+#'   exactly the same shape as `x`/`q`/`p`, in which case the interval varies
+#'   elementwise and each element of `x`/`q`/`p` is evaluated against its own
+#'   `min`/`max`.
+#' @param log,log_p (`logical(1)`)\cr
+#'   If `TRUE`, the densities/probabilities are given as logarithms. For
+#'   `nv_qunif` this describes the input `p`.
+#' @param lower_tail (`logical(1)`)\cr
+#'   If `TRUE` (default), probabilities are \eqn{P(X \le x)}; otherwise,
+#'   \eqn{P(X > x)}.
+#' @details
+#' The Uniform distribution has probability density function:
+#' \deqn{f(x) = \frac{1}{b - a}, \quad a \le x \le b}
+#' and zero elsewhere, where \eqn{a} is `min` and \eqn{b} is `max`.
+#' The `min` and `max` are converted to the data type of `x`/`q`/`p`.
+#'
+#' All three are univariate functions evaluated elementwise, returning one
+#' value per element of `x`/`q`/`p`. Non-scalar `min`/`max` therefore give a
+#' separate univariate Uniform per element, *not* a multivariate Uniform over
+#' the hyper-rectangle \eqn{\prod_i [a_i, b_i]}. For that, reduce over the
+#' result: `nv_reduce_prod(nv_dunif(x, min, max))`, or
+#' `nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
+#'
+#' @seealso [nv_runif()] for sampling from a uniform distribution.
+#' @return
+#' `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an [`arrayish`] with the
+#' same shape and data type as `x`/`q`/`p`.
+#'
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(-0.5, 0, 0.25, 1, 1.5))
+#' nv_dunif(x)
+#' nv_dunif(x, min = -1, max = 2)
+#' nv_dunif(x, log = TRUE)
+#'
+#' # `min`/`max` may vary elementwise, giving one univariate Uniform per
+#' # element rather than a single distribution over a hyper-rectangle
+#' lower <- nv_array(c(-1, -1, 0, 0, 1))
+#' upper <- nv_array(c(0, 1, 1, 2, 2))
+#' nv_dunif(x, min = lower, max = upper)
+#'
+#' nv_punif(x)
+#' nv_punif(x, min = -1, max = 2)
+#' nv_punif(x, lower_tail = FALSE)
+#' nv_punif(x, log_p = TRUE)
+#'
+#' p <- nv_array(c(0.025, 0.5, 0.975))
+#' nv_qunif(p)
+#' nv_qunif(p, min = -1, max = 2)
+#' nv_qunif(p, lower_tail = FALSE)
+#' nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
+NULL
+
+#' @rdname nv_uniform
+#' @export
+#' @jit static "log"
+nv_dunif <- function(x, min = 0, max = 1, log = FALSE) {
+  assert_flag(log)
+  args <- as_anvl_arrays(x, min, max, .promote = promote_like(1))
+  x <- args[[1L]]
+  min <- args[[2L]]
+  max <- args[[3L]]
+  op_dtype <- dtype(x)
+  min <- nv_convert(min, op_dtype)
+  max <- nv_convert(max, op_dtype)
+
+  # Density constant on support, just need support indicator
+  in_support <- (x >= min) & (x <= max)
+  width <- max - min
+
+  density <- if (log) {
+    nv_ifelse(in_support, -nv_log(width), -Inf)
+  } else {
+    nv_ifelse(in_support, 1 / width, 0)
+  }
+  # NOTE: `in_support` will eval to FALSE when x is NaN, so need to restore a
+  #       NaN result there. Similarly, the `max > min` check ensures NaN is
+  #       restored for same reason if either is NaN while also rejecting
+  #       reversed interval ends
+  nv_ifelse(!nv_is_nan(x) & (max > min), density, NaN)
+}
+
+#' @rdname nv_uniform
+#' @export
+#' @jit static c("lower_tail", "log_p")
+nv_punif <- function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
+  assert_flag(lower_tail)
+  assert_flag(log_p)
+  args <- as_anvl_arrays(q, min, max, .promote = promote_like(1))
+  q <- args[[1L]]
+  min <- args[[2L]]
+  max <- args[[3L]]
+  op_dtype <- dtype(q)
+  min <- nv_convert(min, op_dtype)
+  max <- nv_convert(max, op_dtype)
+
+  width <- max - min
+  # Resolve q against the endpoints before dividing, to match base R behaviour.
+  # Also avoids degenerate 0 / 0 for edge case q == min == max.
+  at_or_above <- q >= max
+  at_or_below <- q <= min
+  resolve_ends <- function(above_val, below_val, interior_val) {
+    nv_ifelse(at_or_above, above_val, nv_ifelse(at_or_below, below_val, interior_val))
+  }
+
+  # Ensure all branches have safe value for gradients
+  q_int <- nv_ifelse(at_or_above | at_or_below, min, q)
+
+  u <- if (lower_tail) {
+    resolve_ends(1, 0, (q_int - min) / width)
+  } else {
+    resolve_ends(0, 1, (max - q_int) / width)
+  }
+
+  # Reversed/non-finite interval is NaN to match base R: `valid` flag to track
+  valid <- nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+
+  if (!log_p) {
+    return(nv_ifelse(valid, u, NaN))
+  }
+
+  # To maintain accuracy of log near 1, switch to log1p in opposite tail mid way
+  v <- if (lower_tail) {
+    resolve_ends(0, 1, (max - q_int) / width)
+  } else {
+    resolve_ends(1, 0, (q_int - min) / width)
+  }
+  # So flag if can use log, else switch to log1p() of the opposite tail
+  use_log <- u <= 0.5
+  # Include inner clamp of a safe input on branch not taken for gradient calcs
+  res <- nv_ifelse(
+    use_log,
+    nv_log(nv_ifelse(use_log, u, 1)),
+    nv_log1p(-nv_ifelse(use_log, 0, v))
+  )
+  nv_ifelse(valid, res, NaN)
+}
+
+#' @rdname nv_uniform
+#' @export
+#' @jit static c("lower_tail", "log_p")
+nv_qunif <- function(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
+  assert_flag(lower_tail)
+  assert_flag(log_p)
+  args <- as_anvl_arrays(p, min, max, .promote = promote_like(1))
+  p <- args[[1L]]
+  min <- args[[2L]]
+  max <- args[[3L]]
+  op_dtype <- dtype(p)
+  min <- nv_convert(min, op_dtype)
+  max <- nv_convert(max, op_dtype)
+
+  # Out-of-range `p` is resolved to NaN by `valid`, but also need `p_safe` to
+  # avoid poisoning gradients
+  if (log_p) {
+    in_range <- p <= 0
+    p_safe <- nv_ifelse(in_range, p, 0)
+    u <- if (lower_tail) nv_exp(p_safe) else -nv_expm1(p_safe)
+  } else {
+    in_range <- (p >= 0) & (p <= 1)
+    p_safe <- nv_ifelse(in_range, p, 0)
+    u <- if (lower_tail) p_safe else 1 - p_safe
+  }
+
+  # Conditions to match NaN behaviour of base R
+  valid <- in_range & nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+  nv_ifelse(valid, min + u * (max - min), NaN)
+}

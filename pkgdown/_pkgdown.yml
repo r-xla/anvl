@@ -315,6 +315,7 @@ reference:
     desc: Densities, distribution functions, and samplers for probability distributions
     contents:
       - nv_normal
+      - nv_uniform
       - nv_runif
       - nv_rbinom
       - nv_sample
