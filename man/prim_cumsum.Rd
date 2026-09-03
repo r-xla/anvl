@@ -21,6 +21,10 @@ Has the same shape and data type as the input.
 \description{
 Cumulative sum of array elements along a single axis.
 Output position \code{j} along \code{axis} equals the sum of input positions \code{1:j}.
+
+The reducer is StableHLO's \code{add}, which is a logical OR on a boolean array,
+so a boolean input accumulates as a running OR rather than as a count.
+\code{\link[=nv_cumsum]{nv_cumsum()}} counts instead.
 }
 \section{Implemented Rules}{
 

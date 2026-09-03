@@ -658,6 +658,10 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @title Primitive Sum Reduction
 #' @description
 #' Sums array elements along the specified axes.
+#'
+#' The reducer is StableHLO's `add`, which is a logical OR on a boolean array,
+#' so a boolean input reduces to a boolean rather than to a count.
+#' [nv_reduce_sum()] counts instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -681,6 +685,10 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @title Primitive Product Reduction
 #' @description
 #' Multiplies array elements along the specified axes.
+#'
+#' The reducer is StableHLO's `multiply`, which is a logical AND on a boolean
+#' array, so a boolean input reduces to a boolean.
+#' [nv_reduce_prod()] multiplies zeroes and ones instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -843,6 +851,10 @@ cum_extreme_op <- function(x, axis) {
 #' @description
 #' Cumulative sum of array elements along a single axis.
 #' Output position `j` along `axis` equals the sum of input positions `1:j`.
+#'
+#' The reducer is StableHLO's `add`, which is a logical OR on a boolean array,
+#' so a boolean input accumulates as a running OR rather than as a count.
+#' [nv_cumsum()] counts instead.
 #' @template param_prim_x_any
 #' @template param_prim_cum_axis
 #' @template return_prim_unary
@@ -861,6 +873,10 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' @description
 #' Cumulative product of array elements along a single axis.
 #' Output position `j` along `axis` equals the product of input positions `1:j`.
+#'
+#' The reducer is StableHLO's `multiply`, which is a logical AND on a boolean
+#' array, so a boolean input accumulates as a running AND.
+#' [nv_cumprod()] multiplies zeroes and ones instead.
 #' @template param_prim_x_any
 #' @template param_prim_cum_axis
 #' @template return_prim_unary
