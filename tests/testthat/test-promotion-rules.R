@@ -140,8 +140,8 @@ test_that("common_dtype is the promotion of two known dtypes", {
 test_that("a rule that cannot place an argument says which one", {
   # The diagnosis is only useful if it points at the operand to change, which
   # is what the multi-operand calls need it for.
-  x <- nv_array(c(1, 2), dtype = "f64")
-  expect_error(nv_pad(x, 0L, 1L, 1L), "`padding_value` is an R integer")
+  x <- nv_array(c(1L, 2L), dtype = "i32")
+  expect_error(nv_pad(x, 0, 1L, 1L), "Cannot bring `padding_value`")
   expect_error(prim_pad(1.5, 1L, 0L, 0L, 0L), "`x` is an R double and `padding_value` is an R integer")
   expect_error(as_anvl_arrays(1.5, 1L, .promote = promote_rdata_common()), "argument 1 is an R double")
   expect_error(as_anvl_arrays(v = 1.5, .promote = promote_dtype("i32")), "Cannot bring `v`")

@@ -94,7 +94,8 @@ promote_common(c(1, 2))(list(-3, 4, 1))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 promote_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
-print(promote_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")), silent = TRUE))
+# Without `coerce`, a target the input cannot hold is refused.
+try(promote_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Every input at the widest float in the call, and never below f32.
@@ -102,7 +103,7 @@ widest_float <- promotion_rule(
   function(args) {
     widths <- vapply(args, function(a) {
       dt <- peek_dtype(to_abstract(a))
-      if (is_dtype_float(dt)) dtype_width(dt) else 0L
+      if (tengen::is_dtype_float(dt)) tengen::dtype_width(dt) else 0L
     }, integer(1))
     rep(list(as_dtype(paste0("f", max(c(32L, widths))))), length(args))
   },

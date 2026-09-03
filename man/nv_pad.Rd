@@ -17,7 +17,11 @@ nv_pad(
 Input array.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
-Scalar value to use for padding.}
+Scalar value to use for padding. It is brought to \code{x}'s data type: an R
+value is built at it (\code{nv_pad(x_f64, 0)}, and \code{0L} does just as well),
+and a value that already has one is converted, unless \code{x}'s data type
+cannot hold it -- an \code{f64} padding value for an \code{f32} array is an error
+rather than a silent narrowing.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
 Amount of padding to add at the start of each axis.}

@@ -74,6 +74,7 @@ Collate:
     'box.R'
     'graph-passes.R'
     'graph.R'
+    'rdata.R'
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'

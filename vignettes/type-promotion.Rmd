@@ -98,7 +98,7 @@ You can canonicalize and promote inputs to a function via the `.promote` field o
 It takes a `PromotionRule`, which is a special function that takes in the arguments and outputs a data type for each one.
 
 ```{r}
-as_anvl_arrays(1, 2, .promote = promote_like("f64"))
+as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
 ```
 
 One common rule is `promote_common()`, which is used by functions such as `nv_add` above.
@@ -112,10 +112,10 @@ args <- list(1, 2, nv_scalar(1L, "i8"))
 promote_fn(args)
 ```
 
-And when used in `as_anvl_arrys()` it moves the inputs there:
+And when used in `as_anvl_arrays()` it moves the inputs there:
 
 ```{r}
-as_anvl_arrays(args, promote_fn)
+do.call(as_anvl_arrays, c(args, list(.promote = promote_fn)))
 ```
 
 For more information about the available rules, see `?promotion_rule`.

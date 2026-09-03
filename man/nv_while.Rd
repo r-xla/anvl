@@ -9,12 +9,7 @@ nv_while(init, cond, body)
 \arguments{
 \item{init}{(\verb{named list()})\cr
 Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs, and those are traced before the state meets anything,
-so a bare R value here commits to its default data type (\code{f32} for a
-double, \code{i32} for an integer, \code{bool} for a logical) instead of taking one
-from the body. Where the loop carries another data type, say so:
-\code{nv_scalar(0, dtype = "f64")}, or \code{\link[=nv_convert]{nv_convert()}} for a value the caller
-passed in, which builds it at that data type exactly.}
+loop's sub-graphs. R values are committed at their default data type.}
 
 \item{cond}{(\code{function})\cr
 Condition function returning a scalar boolean.

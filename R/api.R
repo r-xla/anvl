@@ -1440,7 +1440,11 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' Pads an array with a given value at the edges and optionally between elements.
 #' @template param_x
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding.
+#'   Scalar value to use for padding. It is brought to `x`'s data type: an R
+#'   value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as well),
+#'   and a value that already has one is converted, unless `x`'s data type
+#'   cannot hold it -- an `f64` padding value for an `f32` array is an error
+#'   rather than a silent narrowing.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -1456,7 +1460,10 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_rdata_common())
+  # `promote_like("x")` rather than the primitive's own rule: crossing a
+  # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
+  # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_like("x"))
   x <- args$x
   padding_value <- args$padding_value
   rank <- naxes(x)
