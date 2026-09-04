@@ -1242,3 +1242,21 @@ describe("prim_reduce reductor", {
     expect_equal(as.numeric(f(x)), 10)
   })
 })
+
+describe("prim_reduce_any / prim_reduce_all input data type", {
+  it("reduces a boolean array", {
+    b <- nv_array(c(TRUE, FALSE, TRUE))
+    expect_true(as_array(prim_reduce_any(b, 1L)))
+    expect_false(as_array(prim_reduce_all(b, 1L)))
+  })
+
+  it("rejects a non-boolean input at trace time", {
+    # The declared output is `bool` whatever the input is, so nothing used to
+    # stop a non-boolean operand before the lowering.
+    i <- nv_array(c(1L, 0L, 3L))
+    expect_error(prim_reduce_any(i, 1L), "`x` must have a boolean data type")
+    expect_error(prim_reduce_all(i, 1L), "`x` must have a boolean data type")
+    expect_error(nv_reduce_any(i), "`x` must have a boolean data type")
+    expect_error(nv_reduce_any(nv_array(c(1, 0))), "Got \"f32\"")
+  })
+})

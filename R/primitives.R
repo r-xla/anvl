@@ -41,6 +41,20 @@ infer_reduce <- function(x, axes, drop) {
 }
 
 infer_reduce_boolean <- function(x, axes, drop) {
+  # The output is a `bool` whatever the input is, but the lowering reduces with
+  # `or` / `and` over an init value built at `bool`, so a non-boolean operand
+  # fails there with `Data types of inputs and init_values must match`. Say so
+  # here instead, where the argument still has a name.
+  if (!is_dtype_bool(dtype(x))) {
+    cli_abort(
+      c(
+        "{.arg x} must have a boolean data type.",
+        x = "Got {.val {as.character(dtype(x))}}.",
+        i = "Compare it first, e.g. {.code x != 0L}, or convert it with {.fn nv_convert}."
+      ),
+      call = NULL
+    )
+  }
   old_shape <- shape(x)
   if (drop) {
     new_shape <- old_shape[-axes]
