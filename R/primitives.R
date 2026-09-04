@@ -41,6 +41,20 @@ infer_reduce <- function(x, axes, drop) {
 }
 
 infer_reduce_boolean <- function(x, axes, drop) {
+  # The output is a `bool` whatever the input is, but the lowering reduces with
+  # `or` / `and` over an init value built at `bool`, so a non-boolean operand
+  # fails there with `Data types of inputs and init_values must match`. Say so
+  # here instead, where the argument still has a name.
+  if (!is_dtype_bool(dtype(x))) {
+    cli_abort(
+      c(
+        "{.arg x} must have a boolean data type.",
+        x = "Got {.val {as.character(dtype(x))}}.",
+        i = "Compare it first, e.g. {.code x != 0L}, or convert it with {.fn nv_convert}."
+      ),
+      call = NULL
+    )
+  }
   old_shape <- shape(x)
   if (drop) {
     new_shape <- old_shape[-axes]
@@ -988,9 +1002,13 @@ prim_reduce <- new_primitive(
     current_desc <- .current_descriptor(silent = TRUE)
     desc_red <- local_descriptor()
 
+    # Unnamed, so the two scalars are matched positionally and `reductor` may
+    # name its arguments whatever it likes -- `function(a, b)` as readily as
+    # `function(lhs, rhs)`. `prim_scatter()` traces `update_computation` the
+    # same way.
     dummy_args <- list(
-      lhs = nv_aval(op_dtype, integer()),
-      rhs = nv_aval(op_dtype, integer())
+      nv_aval(op_dtype, integer()),
+      nv_aval(op_dtype, integer())
     )
     reductor_graph <- trace_fn(reductor, dummy_args, desc = desc_red, mode = "subgraph")
 
