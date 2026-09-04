@@ -2991,6 +2991,23 @@ prim_scatter <- new_primitive(
 
     update_computation_graph <- trace_fn(update_computation, dummy_args, desc = desc_update, mode = "subgraph")
 
+    # As `prim_reduce()` does for its reductor: the scattered element is what
+    # `update_computation` returns, so a different data type there makes the
+    # inferred output type a lie and the call fails in the backend instead.
+    if (length(update_computation_graph$outputs) != 1L) {
+      cli_abort(c(
+        "{.arg update_computation} must return exactly one value.",
+        x = "Got {length(update_computation_graph$outputs)} outputs."
+      ))
+    }
+    update_out_dtype <- update_computation_graph$outputs[[1L]]$aval$dtype
+    if (update_out_dtype != x_dtype) {
+      cli_abort(c(
+        "{.arg update_computation} must return a value with the same data type as {.arg x}.",
+        x = "{.arg x} is {.val {as.character(x_dtype)}} and {.arg update_computation} returns {.val {as.character(update_out_dtype)}}." # nolint
+      ))
+    }
+
     # Register constants from the update computation graph
     register_consts(current_desc, update_computation_graph$constants)
 

@@ -10,6 +10,10 @@
 
 ## Bug fixes
 
+* `prim_scatter()` now checks that `update_computation` returns one value of
+  `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
+  combiner returning something else made type inference declare a data type
+  the call could not produce, and failed in the backend.
 * `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
   `rhs`. They were passed by name, so `function(a, b)` failed with
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
