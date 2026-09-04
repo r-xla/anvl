@@ -1249,7 +1249,7 @@ describe("prim_scatter update_computation", {
     )
   })
 })
-      
+
 describe("prim_reduce reductor", {
   x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
 
