@@ -27,6 +27,9 @@ When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 
 }
 \description{
 Multiplies array elements along the specified axes.
+
+A boolean input is reduced with a logical AND, so the result is a boolean.
+\code{\link[=nv_reduce_prod]{nv_reduce_prod()}} multiplies zeroes and ones instead.
 }
 \section{Implemented Rules}{
 

@@ -21,6 +21,9 @@ Has the same shape and data type as the input.
 \description{
 Cumulative sum of array elements along a single axis.
 Output position \code{j} along \code{axis} equals the sum of input positions \code{1:j}.
+
+A boolean input is accumulated with a logical OR, so the result is a running
+OR rather than a running count. \code{\link[=nv_cumsum]{nv_cumsum()}} counts instead.
 }
 \section{Implemented Rules}{
 

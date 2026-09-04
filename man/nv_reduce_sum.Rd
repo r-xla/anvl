@@ -24,12 +24,15 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input.
+Has the same data type as the input, except for a boolean input, which is
+accumulated at \code{i32}: \code{TRUE} counts as one, rather than being folded with
+a logical or/and.
 When \code{drop = TRUE}, the reduced axes are removed.
 When \code{drop = FALSE}, the reduced axes are set to 1.
 }
 \description{
 Sums array elements along the specified axes.
+A boolean array is counted, like \code{\link[base:sum]{base::sum()}} does.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -38,6 +41,7 @@ nv_reduce_sum(x)            # all axes -> scalar
 nv_reduce_sum(x, axes = 1L)
 nv_reduce_sum(nv_array(c(1, NaN, 3)))
 nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+nv_reduce_sum(nv_array(c(TRUE, FALSE, TRUE))) # counts: 2
 \dontshow{\}) # examplesIf}
 }
 \seealso{

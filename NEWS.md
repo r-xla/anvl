@@ -7,6 +7,13 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
+* `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
+  accumulate a boolean array at `i32` instead of returning a boolean.
+  StableHLO's `add` and `multiply` are a logical or/and on `bool`, so
+  `nv_reduce_sum(x)` used to be `nv_reduce_any(x)`; it now counts, as
+  `base::sum()` does. `nv_mean()`, `nv_var()` and `nv_sd()` of a boolean array
+  are correct as a result. The primitives (`prim_reduce_sum()` and friends)
+  keep the StableHLO semantics.
 
 ## Bug fixes
 
