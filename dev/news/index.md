@@ -14,6 +14,13 @@
 
 ### Bug fixes
 
+- [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)’s
+  `reductor` no longer has to name its arguments `lhs` and `rhs`. They
+  were passed by name, so `function(a, b)` failed with
+  `unused arguments (lhs = ..., rhs = ...)`; they are now matched
+  positionally, as
+  [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)
+  already matched its `update_computation`.
 - [`prim_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_any.md)
   /
   [`prim_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_all.md)
