@@ -77,7 +77,10 @@ effective_default_dtypes <- function(backend) {
 #' data type, whatever the default (`vignette("type-promotion")`). A float
 #' default is `"f32"` or `"f64"`, an integer default `"i32"` or `"i64"`. A
 #' compiled program is keyed on the defaults it was compiled under, so changing
-#' them never serves a stale program.
+#' them never serves a stale program. For the same reason a trace is *pinned* to
+#' the pair its program was keyed on: calling `with_default_dtypes()` or
+#' [`with_backend()`] inside a [`jit()`]ted body has no effect on what the R
+#' values in it commit to.
 #'
 #' @param dtypes (named `character()` | named `list()`)\cr
 #'   The defaults to set, by category: element `float` (`"f32"` or `"f64"`)
@@ -153,12 +156,18 @@ default_dtype_options <- function(dtypes) {
   categories <- names(dtypes)
   if (
     !(is.list(dtypes) || is.character(dtypes)) ||
-      (length(dtypes) && (is.null(categories) || !all(categories %in% names(default_dtype_choices)))) ||
-      anyDuplicated(categories)
+      (length(dtypes) && (is.null(categories) || !all(categories %in% names(default_dtype_choices))))
   ) {
     cli_abort(c(
       "{.arg dtypes} must be a named list or character vector with elements {.val float} and/or {.val int}.",
       x = "Got {.obj_type_friendly {dtypes}} with names {.val {categories}}."
+    ))
+  }
+  if (anyDuplicated(categories)) {
+    duplicated <- unique(categories[duplicated(categories)])
+    cli_abort(c(
+      "{.arg dtypes} names {cli::qty(duplicated)}{?a category/categories} more than once: {.val {duplicated}}.",
+      i = "Give each of {.val float} and {.val int} at most one data type."
     ))
   }
   opts <- lapply(categories, function(category) {

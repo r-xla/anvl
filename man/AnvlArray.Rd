@@ -45,9 +45,10 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the current backend's default dtype:
-\code{f32} for numeric data on \code{"pjrt"}, \code{f64} for numeric data on \code{"quickr"},
-\code{i32} for integer data, and \code{bool} for logical data.}
+The default (\code{NULL}) uses the data type the R value commits to (see
+\code{\link[=default_dtypes]{default_dtypes()}}): the default float for a \code{double} (\code{f32} on
+\code{"pjrt"}, \code{f64} on \code{"quickr"}), the default integer for an \code{integer}
+(\code{i32}), and \code{bool} for a \code{logical}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -67,8 +68,7 @@ named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} back
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.
-Must not be specified inside \code{\link[=jit]{jit()}}.}
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
 \item{byrow}{(\code{logical(1)})\cr
 When constructing from an R object and the result has at least two

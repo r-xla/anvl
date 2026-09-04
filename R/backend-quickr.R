@@ -58,6 +58,8 @@ jit_quickr_compile_cb <- function(f, static, unwrap, device) {
 
 jit_quickr_impl <- function(f, static, cache_size, unwrap, device) {
   if (!is.null(device) && !is_device_arg(device)) {
+    # quickr has one device, so there is nothing to place; this only rejects a
+    # device of another backend.
     backend_device(device, "quickr")
   }
   # use pjrt's "closure" engine for quickr.

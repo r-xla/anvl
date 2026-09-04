@@ -188,6 +188,11 @@ AnvlGraph <- function(
 #'   `NULL` when all args are array inputs.
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The data types every R value in this trace commits to when nothing else
+#'   decides one (see [`default_dtypes()`]) -- the pair the dispatcher keyed the
+#'   compiled program on, so the program cannot disagree with its cache key.
+#'   `NULL` lets [`local_descriptor()`] fill in the pair in force.
 #' @param devices (`character()`)\cr
 #'   Device platforms encountered during tracing (e.g. `"cpu"`, `"cuda"`).
 #'   Populated automatically as arrays are registered.

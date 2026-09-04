@@ -57,8 +57,8 @@ without async execution.}
 \item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr The data types an R
 double (\code{float}) and an R integer (\code{int}) commit to on this backend when
 nothing else decides one. \code{float} must be \code{"f32"} or \code{"f64"}, \code{int} must
-be \code{"i32"} or \code{"i64"}. A user overrides them per backend with the options
-\verb{anvl.default_float.<backend>} and \verb{anvl.default_int.<backend>}; see
+be \code{"i32"} or \code{"i64"}. The options \code{anvl.default_float} and
+\code{anvl.default_int} override them on every backend; see
 \code{\link[=default_dtypes]{default_dtypes()}}. \code{NULL} for a backend that never builds a value at a
 default of its own (the \code{"plain"} backend, which only holds constants
 captured while tracing for another backend). \code{new_data} is always handed

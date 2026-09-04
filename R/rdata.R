@@ -177,7 +177,11 @@ rdata_natural_dtype <- function(r_type) {
 # would be even worse.
 rdata_staging_dtype <- function(r_type, dtype) {
   staged <- rdata_natural_dtype(r_type)
-  if (staged != default_dtype_r(r_type)) {
+  # Only worth saying when staging *widens* past the data type the value would
+  # have taken anyway. An R integer stages through `i32`, so under an `i64`
+  # default it stages through something narrower than its default and the
+  # program acquires nothing it could have avoided.
+  if (!dtype_holds(default_dtype_r(r_type), staged)) {
     cli_warn(
       c(
         "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint

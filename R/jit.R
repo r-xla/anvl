@@ -32,10 +32,11 @@
 #'   The default (`NULL`) infers the device at call time from the array inputs,
 #'   falling back to [`default_device()`].
 #'
-#' @param ... Backend-specific options. Passing an option that is not supported
-#'   by the selected backend raises an error. See the **PJRT JIT arguments** and
-#'   **Quickr JIT arguments** sections below for the options accepted by each
-#'   backend.
+#' @param ... Backend-specific options. See the **PJRT JIT arguments** and
+#'   **Quickr JIT arguments** sections below for the options each backend
+#'   accepts. An option no backend takes is rejected here; one that only
+#'   another backend takes is rejected when the function is called on a backend
+#'   that does not, since the backend is not known until then.
 #' @inheritSection AnvlBackendPjrt PJRT JIT arguments
 #' @inheritSection AnvlBackendQuickr Quickr JIT arguments
 #'
@@ -110,6 +111,7 @@ jit <- function(
     cli_abort("{.arg device} must be a device, a device name, or {.fn device_arg}.")
   }
   assert_subset(static, formalArgs2(f))
+  check_jit_options(names(list(...)))
 
   # One implementation per backend, created on first use. The backend is read
   # off the option on every call, so a function created under one backend runs
@@ -165,11 +167,49 @@ jit <- function(
   wrapper
 }
 
+# The options a backend's `jit` method takes beyond the ones every backend
+# gets, i.e. what may reach it through `jit()`'s `...`.
+backend_jit_options <- function(backend) {
+  setdiff(formalArgs2(globals$backends[[backend]]$jit), c("f", "static", "cache_size", "device", "..."))
+}
+
+# Reject what no backend could ever accept, at construction: a typo, or the
+# `backend` argument this function used to have. An option only *another*
+# backend takes is left for jit_with_backend(), since the backend a jitted
+# function runs on is not known until it is called.
+check_jit_options <- function(names) {
+  if ("backend" %in% names) {
+    cli_abort(c(
+      "{.fn jit} has no {.arg backend} argument.",
+      i = "A jitted function runs on the backend in force when it is called.",
+      i = "Set it with {.fn with_backend} or {.fn local_backend}."
+    ))
+  }
+  known <- unlist(lapply(names(globals$backends), backend_jit_options))
+  unknown <- setdiff(names, unique(known))
+  if (length(unknown)) {
+    cli_abort(c(
+      "No backend takes the {.arg {unknown}} {cli::qty(unknown)}option{?s}.",
+      i = "The backend-specific options are {.arg {sort(unique(known))}}."
+    ))
+  }
+  invisible(NULL)
+}
+
 # The implementation of `f` for one backend: its `jit` method's result, with
 # `f`'s formals. `device` is NULL, a device or device name of that backend, or a
 # device_arg().
 jit_with_backend <- function(f, static, cache_size, backend, ...) {
   assert_backend(backend)
+  unsupported <- setdiff(names(list(...)), c("device", backend_jit_options(backend)))
+  if (length(unsupported)) {
+    cli_abort(c(
+      "The {.val {backend}} backend does not support the {.arg {unsupported}} {cli::qty(unsupported)}option{?s}.",
+      i = "A jitted function runs on the backend in force when it is called, so a backend-specific option is
+           only rejected once the function is called on a backend that does not take it.",
+      i = "{.val {backend}} takes {.arg {backend_jit_options(backend)}}."
+    ))
+  }
   f_jit <- globals$backends[[backend]]$jit(f, static, cache_size, ...)
   # setting formals() rebuilds the function, so pick up the fast entry first
   run <- attr(f_jit, "jit_run_args")

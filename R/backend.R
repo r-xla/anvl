@@ -27,8 +27,8 @@ NULL
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr The data types an R
 #'   double (`float`) and an R integer (`int`) commit to on this backend when
 #'   nothing else decides one. `float` must be `"f32"` or `"f64"`, `int` must
-#'   be `"i32"` or `"i64"`. A user overrides them per backend with the options
-#'   `anvl.default_float.<backend>` and `anvl.default_int.<backend>`; see
+#'   be `"i32"` or `"i64"`. The options `anvl.default_float` and
+#'   `anvl.default_int` override them on every backend; see
 #'   [`default_dtypes()`]. `NULL` for a backend that never builds a value at a
 #'   default of its own (the `"plain"` backend, which only holds constants
 #'   captured while tracing for another backend). `new_data` is always handed

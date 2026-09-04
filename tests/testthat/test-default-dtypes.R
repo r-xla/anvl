@@ -1,7 +1,8 @@
 # The data types an R double and an R integer commit to when nothing else
-# decides one are a property of the backend (`default_dtypes()`), overridable
-# per backend with options. They decide only what a value becomes when nothing
-# else does: the yielding rule of `vignette("type-promotion")` is untouched.
+# decides one are registered per backend (`default_dtypes()`) and overridden on
+# every backend by two global options. They decide only what a value becomes
+# when nothing else does: the yielding rule of `vignette("type-promotion")` is
+# untouched.
 
 describe("default_dtypes()", {
   it("reports the registered defaults of the backend in force", {
@@ -52,7 +53,7 @@ describe("local_default_dtypes()", {
     expect_error(local_default_dtypes(c(int = "ui32")), "must be one of")
     expect_error(local_default_dtypes("f64"), "named list or character")
     expect_error(local_default_dtypes(c(double = "f64")), "named list or character")
-    expect_error(local_default_dtypes(c(float = "f64", float = "f32")), "named list or character")
+    expect_error(local_default_dtypes(c(float = "f64", float = "f32")), "more than once")
   })
 })
 
@@ -82,6 +83,19 @@ describe("the default float", {
     expect_equal(dtype(nv_array(1.5, dtype = "f32")), as_dtype("f32"))
     expect_equal(dtype(nv_array(1L)), as_dtype("i32"))
     expect_equal(dtype(nv_array(TRUE)), as_dtype("bool"))
+  })
+
+  it("does not warn about staging through a narrower data type", {
+    # Staging is only worth a warning when it widens past the data type the
+    # value would have taken anyway. An R integer stages through `i32`, which
+    # under an `i64` default is narrower than its own default.
+    local_default_dtypes(c(int = "i64"))
+    expect_no_warning(nv_array(1L, dtype = "i8") * 2L)
+    expect_no_warning(jit(function(x) nv_convert(x, "f64"))(1L))
+    # An R double staged through `f64` under an `f32` default still warns.
+    expect_warning(nv_convert(1.5, "i32"), class = "anvl_staging_widens_warning")
+    local_default_dtypes(c(float = "f64"))
+    expect_no_warning(nv_convert(1.5, "i32"))
   })
 
   it("leaves data that is not an R value alone", {
@@ -186,6 +200,20 @@ describe("a compiled program", {
     g <- jit(function() 1L)
     expect_equal(dtype(g()), as_dtype("i64"))
     expect_equal(with_backend("quickr", dtype(nv_array(1L))), as_dtype("i64"))
+  })
+
+  it("pins a constant that names a device to the trace's pair", {
+    # This constant takes the eager path (it names a device), but it is still
+    # part of the trace, so it commits at the pair the program is keyed on.
+    local_default_dtypes(c(float = "f64"))
+    f <- jit(function() {
+      a <- nv_array(1.5)
+      b <- with_default_dtypes(c(float = "f32"), nv_array(1.5, device = nv_device("cpu")))
+      list(a, b)
+    })
+    out <- f()
+    expect_equal(dtype(out[[1L]]), as_dtype("f64"))
+    expect_equal(dtype(out[[2L]]), as_dtype("f64"))
   })
 
   it("keeps one cache per backend", {

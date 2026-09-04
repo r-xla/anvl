@@ -36,7 +36,8 @@ x
 ```
 
 We can also create higher-dimensional arrays, for example a `2x3` array with single-precision floating-point numbers.
-Without specifying the data type, it will default to `"f32"` for R doubles, `"i32"` for integers, and `"bool"` for logicals.
+Without specifying the data type, it will default to the data types of the backend in force: `"f32"` for R doubles and `"i32"` for integers on pjrt, and `"bool"` for logicals everywhere.
+See `default_dtypes()` to report or change them.
 
 ```{r}
 y <- nv_array(1:6, shape = c(2, 3))
@@ -157,7 +158,7 @@ This applies to both `nv_*` calls and your own `jit()`-compiled functions:
 nv_add(1, array(2:3))
 ```
 
-An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to a default (`f32` for doubles, `i32` for integers, `bool` for logicals) when it meets nothing else.
+An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to a default (on pjrt `f32` for doubles and `i32` for integers, and `bool` for logicals) when it meets nothing else.
 See `vignette("type-promotion")` for the full rules.
 
 Note that we only auto-convert `double`/`integer`/`logical`s that are

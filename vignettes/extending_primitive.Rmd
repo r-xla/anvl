@@ -114,7 +114,7 @@ When doing so, you need to:
 #### Handling of R inputs
 
 One question that the primitive needs to answer is how it materializes R inputs:
-The default rule is to materialize an R input at its default data type, which is `f32` for doubles, `i32` for integers, and `bool` for logicals.
+The default rule is to materialize an R input at its default data type, which on pjrt is `f32` for doubles and `i32` for integers, and `bool` for logicals everywhere (see `default_dtypes()`).
 
 For functions taking a single dynamic input, as does `prim_repeat_along` from above, this is almost always the right thing to do.
 The inputs section of the printed graph shows both halves of it: the input's data type is the default the value committed to, and the `<- double` records that the caller supplies an R double rather than an array that already had one.

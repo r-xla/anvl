@@ -74,11 +74,15 @@ A few rules of thumb:
 ## Data types
 
 The data type of an `AnvlArray` (`f32`, `f64`, `i32`, `i64`, ...) affects both how much memory it uses and how fast operations on it run.
-The default is to use `f32` for R `double`s and `i32` for R `integer`s.
+On the pjrt backend the default is `f32` for R `double`s and `i32` for R `integer`s.
 Currently, we don't support other floating-point data types such as `f16` or `bf16`.
 There is of course a trade-off between efficiency and precision here.
 Speedups from using `f32` over `f64` also depend on the specific hardware.
 Commonly, `f32` is the default data type for floating-point operations in GPU-accelerated frameworks, so unless you have a specific reason, we recommend sticking with the defaults.
+
+If you do want `f64` throughout, set it once rather than annotating every value: `options(anvl.default_float = "f64")`, or `with_default_dtypes(c(float = "f64"), ...)` for a single scope.
+`default_dtypes()` reports what is in force.
+Note that a program is compiled for the defaults it was compiled under, so changing them recompiles rather than reusing a program built at the other precision.
 
 ## BLAS / LAPACK
 

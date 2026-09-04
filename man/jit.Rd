@@ -34,10 +34,11 @@ without array inputs such as constructors.
 The default (\code{NULL}) infers the device at call time from the array inputs,
 falling back to \code{\link[=default_device]{default_device()}}.}
 
-\item{...}{Backend-specific options. Passing an option that is not supported
-by the selected backend raises an error. See the \strong{PJRT JIT arguments} and
-\strong{Quickr JIT arguments} sections below for the options accepted by each
-backend.}
+\item{...}{Backend-specific options. See the \strong{PJRT JIT arguments} and
+\strong{Quickr JIT arguments} sections below for the options each backend
+accepts. An option no backend takes is rejected here; one that only
+another backend takes is rejected when the function is called on a backend
+that does not, since the backend is not known until then.}
 }
 \value{
 A \code{JitFunction} (a \code{function} with the same formals as \code{f}).

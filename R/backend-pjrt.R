@@ -124,6 +124,10 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Devices of the concrete (non-static) input arguments, extracted before
 #'   converting to abstract values. Used together with traced devices for
 #'   device inference when `device` is `NULL`.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The data types the traced R values commit to when nothing else decides one
+#'   (see [`default_dtypes()`]), read off `info$context` so the program matches
+#'   the cache key it is filed under. `NULL` uses the pair in force.
 #' @param fallback_device (`NULL` | device)\cr
 #'   The device to compile for when `device` is `NULL` and nothing in the graph
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so

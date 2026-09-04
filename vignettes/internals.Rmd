@@ -388,7 +388,7 @@ trace_fn(\(x) {
 
 
 There is one special case, however: operations that explicitly request a data type, such as `prim_convert()` and the `nv_array()` constructor.
-If `prim_convert()` were to follow the usual rule of committing its R inputs to their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to an `f32` (the default data type for floats) and then to an `i32`, which would result in a loss of precision.
+If `prim_convert()` were to follow the usual rule of committing its R inputs to their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to an `f32` (the default float data type on pjrt) and then to an `i32`, which would result in a loss of precision.
 In order to prevent this, `prim_convert()` materializes its input at its natural representation.
 
 ```{r}

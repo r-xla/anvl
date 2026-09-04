@@ -52,7 +52,10 @@ value that meets a typed array of its own category still takes that array's
 data type, whatever the default (\code{vignette("type-promotion")}). A float
 default is \code{"f32"} or \code{"f64"}, an integer default \code{"i32"} or \code{"i64"}. A
 compiled program is keyed on the defaults it was compiled under, so changing
-them never serves a stale program.
+them never serves a stale program. For the same reason a trace is \emph{pinned} to
+the pair its program was keyed on: calling \code{with_default_dtypes()} or
+\code{\link[=with_backend]{with_backend()}} inside a \code{\link[=jit]{jit()}}ted body has no effect on what the R
+values in it commit to.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

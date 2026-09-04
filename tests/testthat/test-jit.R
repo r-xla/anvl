@@ -277,6 +277,28 @@ test_that("hash for cache depends on in_tree (#122)", {
   expect_equal(cache_size(f), 2L)
 })
 
+describe("jit: option validation", {
+  it("rejects the removed `backend` argument, pointing at with_backend()", {
+    expect_error(jit(identity, backend = "quickr"), "no .*backend.* argument")
+    expect_error(jit(identity, backend = "quickr"), "with_backend")
+  })
+
+  it("rejects an option no backend takes, when the function is created", {
+    expect_error(jit(identity, nonsense = 1), "No backend takes")
+  })
+
+  it("rejects an option another backend takes, when it is called", {
+    # The backend is not known until the call, so this cannot be caught earlier.
+    f <- jit(identity, unwrap = TRUE)
+    expect_error(f(nv_array(1)), "pjrt.*does not support.*unwrap")
+    skip_if_no_quickr()
+    # quickr does take it: `unwrap` hands back a plain R array.
+    expect_equal(with_backend("quickr", f(nv_array(1))), array(1))
+    g <- jit(identity, donate = "x")
+    expect_error(with_backend("quickr", g(nv_array(1))), "quickr.*does not support.*donate")
+  })
+})
+
 describe("jit: backend and device handling", {
   it("runs on the backend in force when it is called", {
     f <- jit(identity)

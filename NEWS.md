@@ -24,7 +24,7 @@
   options `anvl.default_float` / `anvl.default_int` (or
   `local_default_dtypes()` / `with_default_dtypes()`) override them on every
   backend. Compiled programs are keyed on the defaults they were compiled
-  under. `nv_eye()`, `nv_runif()`, `nv_rnorm()`, `nv_rbinom()` and
+  under. `nv_seq()`, `nv_eye()`, `nv_runif()`, `nv_rnorm()`, `nv_rbinom()` and
   `nv_sample_int()` take `dtype = NULL` for the default instead of a hardcoded
   `"f32"` / `"i32"`.
 

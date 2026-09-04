@@ -41,16 +41,16 @@
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
-#'   The default (`NULL`) uses the current backend's default dtype:
-#'   `f32` for numeric data on `"pjrt"`, `f64` for numeric data on `"quickr"`,
-#'   `i32` for integer data, and `bool` for logical data.
+#'   The default (`NULL`) uses the data type the R value commits to (see
+#'   [`default_dtypes()`]): the default float for a `double` (`f32` on
+#'   `"pjrt"`, `f64` on `"quickr"`), the default integer for an `integer`
+#'   (`i32`), and `bool` for a `logical`.
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
 #'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
-#'   Must not be specified inside [`jit()`].
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
 #'   axes, fill the array in row-major order rather than the
@@ -173,8 +173,10 @@ nv_array <- function(
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
-  # Resolved here, so no backend runtime ever chooses a dtype for anvl.
-  dtype <- resolve_default_dtype(data, dtype, default_dtypes())
+  # Resolved here, so no backend runtime ever chooses a dtype for anvl. Reached
+  # while tracing too, for a constant that names a device, so it has to be the
+  # pair the trace is pinned to rather than a fresh read of the options.
+  dtype <- resolve_default_dtype(data, dtype, current_default_dtypes())
   globals$backends[[backend]]$new_data(data, dtype, shape, device)
 }
 

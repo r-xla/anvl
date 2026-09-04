@@ -56,6 +56,12 @@ Flattened traced values for the static arguments indicated by \code{is_static_fl
 \item{devices}{(\code{character()})\cr
 Device platforms encountered during tracing (e.g. \code{"cpu"}, \code{"cuda"}).
 Populated automatically as arrays are registered.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
+The data types every R value in this trace commits to when nothing else
+decides one (see \code{\link[=default_dtypes]{default_dtypes()}}) -- the pair the dispatcher keyed the
+compiled program on, so the program cannot disagree with its cache key.
+\code{NULL} lets \code{\link[=local_descriptor]{local_descriptor()}} fill in the pair in force.}
 }
 \value{
 (\code{GraphDescriptor})
