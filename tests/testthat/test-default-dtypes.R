@@ -195,11 +195,13 @@ describe("a compiled program", {
     expect_equal(dtype(f()), as_dtype("f32"))
     expect_equal(with_backend("quickr", dtype(f())), as_dtype("f64"))
     expect_equal(dtype(f()), as_dtype("f32"))
-    # An override applies on every backend.
+    # An override applies on every backend that can represent it.
     local_default_dtypes(c(int = "i64"))
     g <- jit(function() 1L)
     expect_equal(dtype(g()), as_dtype("i64"))
-    expect_equal(with_backend("quickr", dtype(nv_array(1L))), as_dtype("i64"))
+    # quickr has no `i64`, so there it is an error rather than a silent
+    # fallback to something the backend does support.
+    expect_error(with_backend("quickr", nv_array(1L)), "quickr")
   })
 
   it("resolves a constant that names a device like any other", {

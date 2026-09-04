@@ -52,9 +52,11 @@ override them on every backend, e.g. \code{options(anvl.default_float = "f64")};
 The defaults decide only what a value becomes when \emph{nothing else does}: an R
 value that meets a typed array of its own category still takes that array's
 data type, whatever the default (\code{vignette("type-promotion")}). A float
-default is \code{"f32"} or \code{"f64"}, an integer default \code{"i32"} or \code{"i64"}. A
-compiled program is keyed on the defaults it was compiled under, so changing
-them never serves a stale program.
+default is \code{"f32"} or \code{"f64"}, an integer default \code{"i32"} or \code{"i64"}; a
+backend that cannot represent the one you set says so rather than quietly
+falling back, so both \code{"f32"} and \code{"i64"} are errors on \code{"quickr"}, which
+has neither. A compiled program is keyed on the defaults it was compiled
+under, so changing them never serves a stale program.
 
 Inside a \code{\link[=jit]{jit()}}ted body the keyed defaults are the \emph{baseline}, and a
 scoped override applies to its scope -- so one program can use different

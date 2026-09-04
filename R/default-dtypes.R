@@ -81,9 +81,11 @@ effective_default_dtypes <- function(backend) {
 #' The defaults decide only what a value becomes when *nothing else does*: an R
 #' value that meets a typed array of its own category still takes that array's
 #' data type, whatever the default (`vignette("type-promotion")`). A float
-#' default is `"f32"` or `"f64"`, an integer default `"i32"` or `"i64"`. A
-#' compiled program is keyed on the defaults it was compiled under, so changing
-#' them never serves a stale program.
+#' default is `"f32"` or `"f64"`, an integer default `"i32"` or `"i64"`; a
+#' backend that cannot represent the one you set says so rather than quietly
+#' falling back, so both `"f32"` and `"i64"` are errors on `"quickr"`, which
+#' has neither. A compiled program is keyed on the defaults it was compiled
+#' under, so changing them never serves a stale program.
 #'
 #' Inside a [`jit()`]ted body the keyed defaults are the *baseline*, and a
 #' scoped override applies to its scope -- so one program can use different
