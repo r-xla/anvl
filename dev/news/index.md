@@ -14,6 +14,24 @@
 
 ### Bug fixes
 
+- The gradient of a conversion into a non-float data type is now zero
+  instead of one.
+  [`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
+  /
+  [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
+  passed the cotangent through whatever the data types were, so
+  `nv_convert(nv_convert(x, "i32"), "f64")` reported a gradient of 1
+  where
+  [`nv_floor()`](https://r-xla.github.io/anvl/dev/reference/nv_floor.md)
+  – the same function on the reals – correctly reported 0. Conversions
+  between floats still pass the gradient through.
+- [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)
+  now checks that `update_computation` returns one value of `x`’s data
+  type, as
+  [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)
+  already did for its `reductor`. A combiner returning something else
+  made type inference declare a data type the call could not produce,
+  and failed in the backend.
 - [`prim_reduce()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce.md)’s
   `reductor` no longer has to name its arguments `lhs` and `rhs`. They
   were passed by name, so `function(a, b)` failed with

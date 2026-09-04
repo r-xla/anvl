@@ -84,7 +84,10 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
+<ul><li>The gradient of a conversion into a non-float data type is now zero instead of one. <code><a href="../reference/prim_convert.html">prim_convert()</a></code> / <code><a href="../reference/nv_convert.html">nv_convert()</a></code> passed the cotangent through whatever the data types were, so <code>nv_convert(nv_convert(x, "i32"), "f64")</code> reported a gradient of 1 where <code><a href="../reference/nv_floor.html">nv_floor()</a></code> – the same function on the reals – correctly reported 0. Conversions between floats still pass the gradient through.</li>
+<li>
+<code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> now checks that <code>update_computation</code> returns one value of <code>x</code>’s data type, as <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> already did for its <code>reductor</code>. A combiner returning something else made type inference declare a data type the call could not produce, and failed in the backend.</li>
+<li>
 <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>’s <code>reductor</code> no longer has to name its arguments <code>lhs</code> and <code>rhs</code>. They were passed by name, so <code>function(a, b)</code> failed with <code>unused arguments (lhs = ..., rhs = ...)</code>; they are now matched positionally, as <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> already matched its <code>update_computation</code>.</li>
 <li>
 <code><a href="../reference/prim_reduce_any.html">prim_reduce_any()</a></code> / <code><a href="../reference/prim_reduce_all.html">prim_reduce_all()</a></code> (and <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code> / <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code>) now reject a non-boolean input when the call is traced. Type inference declared a <code>bool</code> output whatever the input was, so an integer operand reached the lowering and failed with <code>Data types of inputs and init_values must match</code>.</li>
