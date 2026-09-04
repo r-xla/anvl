@@ -160,10 +160,20 @@ current_default_dtypes <- function() {
   operation runs on the ambient backend, this is the pair the next dispatch
   is keyed on. `as_anvl_arrays()` in a plain wrapper, `peek_dtype(1.5)`,
   `nv_fill(0, 3)`, the `dtype(1.5)` error message: all one answer.
-- **In a trace**, the pair is pinned on the `GraphDescriptor` by the compile
-  callback, from `info$context` -- the very vector the dispatcher built the
-  cache key from -- so the compiled program provably matches its key.
+- **In a trace**, the *baseline* is pinned on the `GraphDescriptor` by the
+  compile callback, from `info$context` -- the very vector the dispatcher built
+  the cache key from -- so the compiled program provably matches its key.
   Sub-descriptors inherit it; a bare `trace_fn()` takes the ambient pair.
+  Switching the backend inside a traced body therefore changes nothing.
+- **A scoped override inside a traced body is honoured**, over that baseline,
+  so one program can use different precisions in different parts of itself:
+  `with_default_dtypes(c(float = "f64"), <part of the body>)`. This is sound
+  because the override is written in the body and so belongs to the program --
+  it traces the same way every time the key does, and the key still carries
+  only the baseline. A scope covers the values *built* inside it; a bare R
+  value handed back out of one has not committed yet and takes the default
+  where it is eventually used, by the same per-operation rule that lets it take
+  the data type of an array it meets.
 
 There is no longer a code path that can read a default for a backend other
 than the one the operation runs on.

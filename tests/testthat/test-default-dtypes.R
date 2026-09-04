@@ -202,18 +202,25 @@ describe("a compiled program", {
     expect_equal(with_backend("quickr", dtype(nv_array(1L))), as_dtype("i64"))
   })
 
-  it("pins a constant that names a device to the trace's pair", {
-    # This constant takes the eager path (it names a device), but it is still
-    # part of the trace, so it commits at the pair the program is keyed on.
+  it("resolves a constant that names a device like any other", {
+    # A constant that names a device takes the eager path, but it is still part
+    # of the trace and must read the defaults the rest of the trace reads --
+    # the baseline, and an override over it.
     local_default_dtypes(c(float = "f64"))
     f <- jit(function() {
-      a <- nv_array(1.5)
-      b <- with_default_dtypes(c(float = "f32"), nv_array(1.5, device = nv_device("cpu")))
-      list(a, b)
+      dev <- nv_device("cpu")
+      list(
+        plain = nv_array(1.5),
+        with_device = nv_array(1.5, device = dev),
+        scoped_plain = with_default_dtypes(c(float = "f32"), nv_array(1.5)),
+        scoped_device = with_default_dtypes(c(float = "f32"), nv_array(1.5, device = dev))
+      )
     })
     out <- f()
-    expect_equal(dtype(out[[1L]]), as_dtype("f64"))
-    expect_equal(dtype(out[[2L]]), as_dtype("f64"))
+    expect_equal(dtype(out$plain), as_dtype("f64"))
+    expect_equal(dtype(out$with_device), as_dtype("f64"))
+    expect_equal(dtype(out$scoped_plain), as_dtype("f32"))
+    expect_equal(dtype(out$scoped_device), as_dtype("f32"))
   })
 
   it("keeps one cache per backend", {
@@ -252,6 +259,69 @@ describe("eager code", {
     x <- with_backend("quickr", nv_array(1L))
     expect_error(x + 1.5, "quickr")
     expect_error(nv_fill_like(x, 0), "backend in force")
+  })
+})
+
+describe("a scoped override inside a jitted body", {
+  it("applies to the values built in its scope, and only there", {
+    # A trace's outputs are arrays, so the data types are recorded as a side
+    # effect of tracing rather than returned.
+    seen <- character()
+    note <- function(x) {
+      seen <<- c(seen, as.character(dtype(x)))
+      x
+    }
+    f <- jit(function(x) {
+      with_default_dtypes(c(float = "f64"), {
+        note(nv_array(1.5))
+        note(nv_fill(0, 3))
+        note(x + 1.5)
+        note(nv_eye(2))
+        note(nv_seq(0, 1, steps = 3))
+      })
+      note(nv_array(1.5))
+      x
+    })
+    invisible(f(nv_array(1L, dtype = "i32")))
+    expect_equal(seen, c(rep("f64", 5L), "f32"))
+  })
+
+  it("reaches a helper that builds its own literals", {
+    helper <- function(x) x * 2 + 0.5
+    f <- jit(function(x) list(lo = helper(x), hi = with_default_dtypes(c(float = "f64"), helper(x))))
+    out <- f(nv_array(1L, dtype = "i32"))
+    expect_equal(dtype(out$lo), as_dtype("f32"))
+    expect_equal(dtype(out$hi), as_dtype("f64"))
+  })
+
+  it("does not reach a bare R value handed out of the scope", {
+    # The value has committed to nothing inside the scope, so it takes the
+    # default where it is used -- the per-operation rule, not a special case.
+    expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), as_dtype("f32"))
+  })
+
+  it("takes the trace's baseline, not the backend in force", {
+    skip_if_no_quickr()
+    # A program is compiled for one backend, so switching inside the body
+    # cannot change what its R values commit to.
+    expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), as_dtype("f32"))
+  })
+
+  it("does not change what the program is keyed on", {
+    n_traced <- 0L
+    f <- jit(function(x) {
+      n_traced <<- n_traced + 1L
+      with_default_dtypes(c(float = "f64"), x + 1.5)
+    })
+    x <- nv_array(1L, dtype = "i32")
+    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_equal(n_traced, 1L)
+    # The scoped region is `f64` either way, but the baseline still keys the
+    # cache, so a different ambient default is a different program.
+    with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
+    expect_equal(n_traced, 2L)
+    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_equal(n_traced, 2L)
   })
 })
 

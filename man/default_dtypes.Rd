@@ -25,7 +25,9 @@ The environment to scope the change to.}
 }
 \value{
 \code{default_dtypes()} returns a named \code{list} with elements \code{float} and
-\code{int}, each a \code{\link[tengen:DataType]{DataType}}: the defaults in force, for the backend in force.
+\code{int}, each a \code{\link[tengen:DataType]{DataType}}: the defaults in force where it is called, which
+inside a \code{\link[=jit]{jit()}}ted body is the trace's baseline and any override over
+it.
 \code{local_default_dtypes()} returns the previous values of the options it set,
 invisibly. \code{with_default_dtypes()} returns the result of evaluating \code{code}.
 }
@@ -52,10 +54,20 @@ value that meets a typed array of its own category still takes that array's
 data type, whatever the default (\code{vignette("type-promotion")}). A float
 default is \code{"f32"} or \code{"f64"}, an integer default \code{"i32"} or \code{"i64"}. A
 compiled program is keyed on the defaults it was compiled under, so changing
-them never serves a stale program. For the same reason a trace is \emph{pinned} to
-the pair its program was keyed on: calling \code{with_default_dtypes()} or
-\code{\link[=with_backend]{with_backend()}} inside a \code{\link[=jit]{jit()}}ted body has no effect on what the R
-values in it commit to.
+them never serves a stale program.
+
+Inside a \code{\link[=jit]{jit()}}ted body the keyed defaults are the \emph{baseline}, and a
+scoped override applies to its scope -- so one program can use different
+precisions in different parts of itself, including inside a helper the scope
+calls. That is sound because an override written in the body belongs to the
+program: it traces the same way every time, whatever the baseline. Switching
+the \emph{backend} inside a traced body changes nothing, since a program is
+compiled for one backend.
+
+A scope covers the values \emph{built} inside it. A bare R value handed back out
+of one has not committed to anything yet, and takes the default in force
+wherever it is eventually used -- the same rule that lets it take the data
+type of whatever array it meets (see \code{vignette("type-promotion")}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -64,6 +76,11 @@ dtype(nv_array(1.5))
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 # A value that meets a typed array still takes that array's data type
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
+# Different precisions in different parts of one compiled program
+f <- jit(function(x) {
+  list(single = x * 1.5, double = with_default_dtypes(c(float = "f64"), x * 1.5))
+})
+f(nv_array(1L, dtype = "i32"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

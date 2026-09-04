@@ -34,15 +34,21 @@ default_dtype_option <- function(category) {
   sprintf("anvl.default_%s", category)
 }
 
-# One category's effective default for `backend`: the global override option,
-# validated, over the backend's registered default.
-default_dtype_for <- function(backend, category) {
+# The override option for one category, validated. `NULL` where it is unset,
+# so a caller can fall back to whatever baseline applies to it.
+option_default_dtype <- function(category) {
   option <- default_dtype_option(category)
   value <- getOption(option)
   if (is.null(value)) {
-    return(registered_default_dtypes(backend)[[category]])
+    return(NULL)
   }
   check_default_dtype(value, category, sprintf("Option {.code %s}", option))
+}
+
+# One category's effective default for `backend`: the override option over the
+# backend's registered default.
+default_dtype_for <- function(backend, category) {
+  option_default_dtype(category) %||% registered_default_dtypes(backend)[[category]]
 }
 
 # The effective pair for `backend`. `default_dtypes()` is this for the backend
@@ -77,10 +83,20 @@ effective_default_dtypes <- function(backend) {
 #' data type, whatever the default (`vignette("type-promotion")`). A float
 #' default is `"f32"` or `"f64"`, an integer default `"i32"` or `"i64"`. A
 #' compiled program is keyed on the defaults it was compiled under, so changing
-#' them never serves a stale program. For the same reason a trace is *pinned* to
-#' the pair its program was keyed on: calling `with_default_dtypes()` or
-#' [`with_backend()`] inside a [`jit()`]ted body has no effect on what the R
-#' values in it commit to.
+#' them never serves a stale program.
+#'
+#' Inside a [`jit()`]ted body the keyed defaults are the *baseline*, and a
+#' scoped override applies to its scope -- so one program can use different
+#' precisions in different parts of itself, including inside a helper the scope
+#' calls. That is sound because an override written in the body belongs to the
+#' program: it traces the same way every time, whatever the baseline. Switching
+#' the *backend* inside a traced body changes nothing, since a program is
+#' compiled for one backend.
+#'
+#' A scope covers the values *built* inside it. A bare R value handed back out
+#' of one has not committed to anything yet, and takes the default in force
+#' wherever it is eventually used -- the same rule that lets it take the data
+#' type of whatever array it meets (see `vignette("type-promotion")`).
 #'
 #' @param dtypes (named `character()` | named `list()`)\cr
 #'   The defaults to set, by category: element `float` (`"f32"` or `"f64"`)
@@ -90,7 +106,9 @@ effective_default_dtypes <- function(backend) {
 #'   The environment to scope the change to.
 #' @param code An expression to evaluate with the given defaults.
 #' @return `default_dtypes()` returns a named `list` with elements `float` and
-#'   `int`, each a [`DataType`]: the defaults in force, for the backend in force.
+#'   `int`, each a [`DataType`]: the defaults in force where it is called, which
+#'   inside a [`jit()`]ted body is the trace's baseline and any override over
+#'   it.
 #'   `local_default_dtypes()` returns the previous values of the options it set,
 #'   invisibly. `with_default_dtypes()` returns the result of evaluating `code`.
 #' @seealso [`default_backend()`], [`peek_dtype()`]
@@ -100,9 +118,14 @@ effective_default_dtypes <- function(backend) {
 #' with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 #' # A value that meets a typed array still takes that array's data type
 #' with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
+#' # Different precisions in different parts of one compiled program
+#' f <- jit(function(x) {
+#'   list(single = x * 1.5, double = with_default_dtypes(c(float = "f64"), x * 1.5))
+#' })
+#' f(nv_array(1L, dtype = "i32"))
 #' @export
 default_dtypes <- function() {
-  effective_default_dtypes(default_backend())
+  current_default_dtypes()
 }
 
 registered_default_dtypes <- function(backend) {
@@ -189,13 +212,28 @@ with_default_dtypes <- function(dtypes, code) {
   withr::with_options(default_dtype_options(dtypes), code)
 }
 
-# The default dtypes (see `default_dtypes()`) in force here: the pair the trace
-# is pinned to while tracing, the effective pair of the backend in force
-# otherwise. The two agree, because every operation runs on the backend in
-# force and its dispatcher keyed the program on that backend's effective pair.
+# The default dtypes (see `default_dtypes()`) in force here.
+#
+# Eagerly that is the override option over the registered default of the
+# backend in force -- the pair the next dispatch keys its program on, since
+# every operation runs on that backend.
+#
+# Inside a trace the *baseline* is the pair the dispatcher did key the program
+# on, so switching the backend in a traced body changes nothing: the program is
+# compiled for one backend. An override is still honoured, and applies to its
+# scope: one written in the body is part of the program, so it traces the same
+# way every time that key does, and a program may use different precisions in
+# different parts of itself.
 current_default_dtypes <- function() {
   desc <- globals[["CURRENT_DESCRIPTOR"]]
-  if (!is.null(desc)) desc$default_dtypes else default_dtypes()
+  if (is.null(desc)) {
+    return(effective_default_dtypes(default_backend()))
+  }
+  pinned <- desc$default_dtypes
+  list(
+    float = option_default_dtype("float") %||% pinned$float,
+    int = option_default_dtype("int") %||% pinned$int
+  )
 }
 
 default_dtype <- function(x, defaults = current_default_dtypes()) {
