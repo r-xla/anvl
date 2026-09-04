@@ -131,3 +131,35 @@ do.call(as_anvl_arrays, c(args, list(.promote = promote_fn)))
 ```
 
 For more information about the available rules, see `?promotion_rule`.
+
+## Changing the Default Inside a Program
+
+The defaults a program is compiled under are part of its compilation cache key, so changing them recompiles rather than reusing a program built at the other precision.
+Inside a `jit()`ted body those keyed defaults are the *baseline*, and `with_default_dtypes()` overrides them for its scope.
+
+What that changes is what an **uncommitted** R value in the scope commits to: a literal, an R array, or a constructor called without a `dtype`.
+It does *not* change the data type of an operand that already has one, so it cannot raise the precision of arithmetic on typed arrays.
+
+```{r}
+jit(function(x) {
+  list(
+    # `x` is already `f32`, so the literal yields to it either way
+    typed = with_default_dtypes(c(float = "f64"), x * 1.5),
+    # an untyped constant, though, commits at the scope's default
+    untyped = with_default_dtypes(c(float = "f64"), nv_fill(0, 2))
+  )
+})(nv_array(1, dtype = "f32"))
+```
+
+To raise the precision of a computation, convert its operands: `nv_convert(x, "f64")`.
+
+Two consequences are worth knowing.
+Because only the baseline is keyed, an override inside a traced body has to be written out literally rather than read from a variable -- otherwise a program's data types could depend on state its cache key cannot see.
+And because a scope covers only the values *built* inside it, a bare R value handed back out of one has committed to nothing and takes the default where it is eventually used:
+
+```{r}
+jit(function(x) {
+  k <- with_default_dtypes(c(float = "f64"), 1 / 3) # commits below, not here
+  x * k
+})(nv_array(1L, dtype = "i32"))
+```

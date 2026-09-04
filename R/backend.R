@@ -213,7 +213,20 @@ register_backend(
 #' @seealso [local_backend()], [with_backend()], [default_dtypes()]
 #' @export
 default_backend <- function() {
-  getOption("anvl.backend", "pjrt")
+  backend <- getOption("anvl.backend", "pjrt")
+  # Read on every call, so the check is a list lookup rather than an assertion.
+  # It is worth the lookup: unvalidated, a typo surfaces much later as an error
+  # about something else entirely.
+  if (!is.character(backend) || length(backend) != 1L || is.na(backend)) {
+    cli_abort("Option {.code anvl.backend} must be a single backend name, not {.obj_type_friendly {backend}}.")
+  }
+  if (is.null(globals$backends[[backend]]) || backend == "plain") {
+    cli_abort(c(
+      "Option {.code anvl.backend} names no usable backend: {.val {backend}}.",
+      i = "The backends are {.val {setdiff(names(globals$backends), 'plain')}}."
+    ))
+  }
+  backend
 }
 
 assert_backend <- function(backend) {

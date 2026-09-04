@@ -59,12 +59,21 @@ has neither. A compiled program is keyed on the defaults it was compiled
 under, so changing them never serves a stale program.
 
 Inside a \code{\link[=jit]{jit()}}ted body the keyed defaults are the \emph{baseline}, and a
-scoped override applies to its scope -- so one program can use different
-precisions in different parts of itself, including inside a helper the scope
-calls. That is sound because an override written in the body belongs to the
-program: it traces the same way every time, whatever the baseline. Switching
-the \emph{backend} inside a traced body changes nothing, since a program is
-compiled for one backend.
+scoped override applies to its scope. What it changes is what an
+\strong{uncommitted} R value in that scope commits to: a literal, an R array, or
+a constructor called without a \code{dtype}. It does \strong{not} change the data type
+of an operand that already has one, so it cannot raise the precision of
+arithmetic on typed arrays -- \code{with_default_dtypes(c(float = "f64"), x * 2)}
+is \code{f32} for an \code{f32} \code{x}. Convert those explicitly with \code{\link[=nv_convert]{nv_convert()}}.
+Switching the \emph{backend} inside a traced body changes nothing either, since a
+program is compiled for one backend.
+
+Only the baseline is part of the compilation cache key, so inside a traced
+body the override has to be written out literally rather than read from a
+variable. And because an R \emph{argument} of a jitted function is uploaded at a
+single data type for the whole program, an override that reaches such an
+argument in one part of a body decides how the caller's value arrives for
+every part of it.
 
 A scope covers the values \emph{built} inside it. A bare R value handed back out
 of one has not committed to anything yet, and takes the default in force
@@ -85,11 +94,10 @@ dtype(nv_array(1.5))
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 # A value that meets a typed array still takes that array's data type
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
-# Different precisions in different parts of one compiled program
-f <- jit(function(x) {
-  list(single = x * 1.5, double = with_default_dtypes(c(float = "f64"), x * 1.5))
-})
-f(nv_array(1L, dtype = "i32"))
+# Untyped values in one program can commit at different precisions
+jit(function() {
+  list(single = nv_fill(0, 2), double = with_default_dtypes(c(float = "f64"), nv_fill(0, 2)))
+})()
 \dontshow{\}) # examplesIf}
 }
 \seealso{

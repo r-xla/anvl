@@ -167,15 +167,22 @@ current_default_dtypes <- function() {
   the cache key from -- so the compiled program provably matches its key.
   Sub-descriptors inherit it; a bare `trace_fn()` takes the ambient pair.
   Switching the backend inside a traced body therefore changes nothing.
-- **A scoped override inside a traced body is honoured**, over that baseline,
-  so one program can use different precisions in different parts of itself:
-  `with_default_dtypes(c(float = "f64"), <part of the body>)`. This is sound
-  because the override is written in the body and so belongs to the program --
-  it traces the same way every time the key does, and the key still carries
-  only the baseline. A scope covers the values *built* inside it; a bare R
-  value handed back out of one has not committed yet and takes the default
-  where it is eventually used, by the same per-operation rule that lets it take
-  the data type of an array it meets.
+- **A scoped override inside a traced body is honoured**, over that baseline.
+  What it changes is what an *uncommitted* R value in the scope commits to -- a
+  literal, an R array, a constructor called without a `dtype`. It does not
+  change the data type of an operand that already has one, so it cannot raise
+  the precision of arithmetic on typed arrays; that is `nv_convert()`'s job.
+  Since only the baseline is keyed, the override must be **written out
+  literally** inside a traced body (`is_literal_dtypes()`): read from a
+  variable it would let a program's data types depend on state the key cannot
+  see, and since the key does carry input shapes, on the shape a call happens
+  to use. A scope covers the values *built* inside it; a bare R value handed
+  back out of one has not committed yet and takes the default where it is
+  eventually used, by the same per-operation rule that lets it take the data
+  type of an array it meets. One further consequence: an R *argument* is
+  uploaded at a single data type for the whole program, so an override that
+  reaches one in some part of a body decides how the caller's value arrives for
+  every part.
 
 There is no longer a code path that can read a default for a backend other
 than the one the operation runs on.
@@ -237,13 +244,12 @@ old entry.
    on, and there is exactly one such backend at any time.
 5. An array of another backend is an error at the dispatcher, never a wrong
    dtype.
-6. A compiled program is never served under a *baseline* other than the one it
-   was compiled with: the baseline is part of the cache key. A scoped override
-   inside the body is part of the program rather than of the key, so it carries
-   the same constraint as any other value a jitted body reads from its
-   enclosing environment -- written as a literal it is constant, and written
-   from a variable that later changes it keeps serving the first program,
-   exactly as `nv_convert(x, dt)` with a changing `dt` does.
+6. A compiled program is never served under a baseline other than the one it
+   was compiled with: the baseline is part of the cache key. An override inside
+   a traced body is part of the program rather than of the key, and is
+   therefore required to be a literal, so it cannot make the program depend on
+   anything the key does not see. Eager and traced defaults agree
+   unconditionally (Guarantee 4).
 7. Every default is resolved on the anvl side; no backend runtime chooses a
    dtype for anvl.
 
@@ -263,6 +269,8 @@ old entry.
   promote_common())` on an `i32` quickr array realizes `1.5` at `f64`; the same
   function under pjrt realizes at `f32`.
 - **Yielding untouched**, **exactness** (`x / sqrt(2)` at an `f64` default),
+  **literal override** (a literal and the `list()` spelling accepted inside a
+  traced body, a variable rejected there and accepted eagerly),
   **validation** (`f16`, `i8`, `ui32`, unnamed or misnamed `dtypes`), as
   today.
 - **Cache:** a jitted function called under `f32`, `f64`, `f32` returns

@@ -8,7 +8,7 @@ describe("default_dtypes()", {
   it("reports the registered defaults of the backend in force", {
     expect_equal(default_dtypes(), list(float = as_dtype("f32"), int = as_dtype("i32")))
     expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i32")))
-    expect_error(with_backend("plain", default_dtypes()), "no default data types")
+    expect_error(with_backend("plain", default_dtypes()), "names no usable backend")
   })
 
   it("is overridden by the options, on every backend", {
