@@ -659,9 +659,8 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @description
 #' Sums array elements along the specified axes.
 #'
-#' The reducer is StableHLO's `add`, which is a logical OR on a boolean array,
-#' so a boolean input reduces to a boolean rather than to a count.
-#' [nv_reduce_sum()] counts instead.
+#' A boolean input is reduced with a logical OR, so the result is a boolean
+#' rather than a count. [nv_reduce_sum()] counts instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -686,8 +685,7 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @description
 #' Multiplies array elements along the specified axes.
 #'
-#' The reducer is StableHLO's `multiply`, which is a logical AND on a boolean
-#' array, so a boolean input reduces to a boolean.
+#' A boolean input is reduced with a logical AND, so the result is a boolean.
 #' [nv_reduce_prod()] multiplies zeroes and ones instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
@@ -852,9 +850,8 @@ cum_extreme_op <- function(x, axis) {
 #' Cumulative sum of array elements along a single axis.
 #' Output position `j` along `axis` equals the sum of input positions `1:j`.
 #'
-#' The reducer is StableHLO's `add`, which is a logical OR on a boolean array,
-#' so a boolean input accumulates as a running OR rather than as a count.
-#' [nv_cumsum()] counts instead.
+#' A boolean input is accumulated with a logical OR, so the result is a running
+#' OR rather than a running count. [nv_cumsum()] counts instead.
 #' @template param_prim_x_any
 #' @template param_prim_cum_axis
 #' @template return_prim_unary
@@ -874,9 +871,8 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' Cumulative product of array elements along a single axis.
 #' Output position `j` along `axis` equals the product of input positions `1:j`.
 #'
-#' The reducer is StableHLO's `multiply`, which is a logical AND on a boolean
-#' array, so a boolean input accumulates as a running AND.
-#' [nv_cumprod()] multiplies zeroes and ones instead.
+#' A boolean input is accumulated with a logical AND, so the result is a
+#' running AND. [nv_cumprod()] multiplies zeroes and ones instead.
 #' @template param_prim_x_any
 #' @template param_prim_cum_axis
 #' @template return_prim_unary

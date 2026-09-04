@@ -22,9 +22,8 @@ Has the same shape and data type as the input.
 Cumulative product of array elements along a single axis.
 Output position \code{j} along \code{axis} equals the product of input positions \code{1:j}.
 
-The reducer is StableHLO's \code{multiply}, which is a logical AND on a boolean
-array, so a boolean input accumulates as a running AND.
-\code{\link[=nv_cumprod]{nv_cumprod()}} multiplies zeroes and ones instead.
+A boolean input is accumulated with a logical AND, so the result is a
+running AND. \code{\link[=nv_cumprod]{nv_cumprod()}} multiplies zeroes and ones instead.
 }
 \section{Implemented Rules}{
 
