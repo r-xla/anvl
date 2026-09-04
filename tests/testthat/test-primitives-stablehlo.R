@@ -1215,6 +1215,34 @@ if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
 
+describe("prim_reduce reductor", {
+  x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
+
+  it("accepts a reductor whatever its arguments are named", {
+    # The two scalars are matched positionally, so `reductor` is not obliged
+    # to call them `lhs` and `rhs`.
+    expect_equal(
+      as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = function(a, b) prim_add(a, b))),
+      10
+    )
+    expect_equal(
+      as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = function(lhs, rhs) {
+        prim_add(lhs, rhs)
+      })),
+      10
+    )
+    expect_equal(as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = prim_add)), 10)
+    expect_equal(as.numeric(prim_reduce(x, init = nv_scalar(1, "f64"), axes = 1L, reductor = prim_mul)), 24)
+  })
+
+  it("works the same under jit", {
+    f <- jit(function(x) {
+      prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = function(a, b) prim_add(a, b))
+    })
+    expect_equal(as.numeric(f(x)), 10)
+  })
+})
+
 describe("prim_reduce_any / prim_reduce_all input data type", {
   it("reduces a boolean array", {
     b <- nv_array(c(TRUE, FALSE, TRUE))

@@ -1002,9 +1002,13 @@ prim_reduce <- new_primitive(
     current_desc <- .current_descriptor(silent = TRUE)
     desc_red <- local_descriptor()
 
+    # Unnamed, so the two scalars are matched positionally and `reductor` may
+    # name its arguments whatever it likes -- `function(a, b)` as readily as
+    # `function(lhs, rhs)`. `prim_scatter()` traces `update_computation` the
+    # same way.
     dummy_args <- list(
-      lhs = nv_aval(op_dtype, integer()),
-      rhs = nv_aval(op_dtype, integer())
+      nv_aval(op_dtype, integer()),
+      nv_aval(op_dtype, integer())
     )
     reductor_graph <- trace_fn(reductor, dummy_args, desc = desc_red, mode = "subgraph")
 

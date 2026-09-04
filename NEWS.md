@@ -10,6 +10,10 @@
 
 ## Bug fixes
 
+* `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
+  `rhs`. They were passed by name, so `function(a, b)` failed with
+  `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
+  as `prim_scatter()` already matched its `update_computation`.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
   `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
   Type inference declared a `bool` output whatever the input was, so an
