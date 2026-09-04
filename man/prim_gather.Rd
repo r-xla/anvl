@@ -23,9 +23,10 @@ prim_gather(
 Arrayish value of any data type.}
 
 \item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
-Array of starting indices. Contains index vectors that map to
-positions in \code{x} via \code{start_index_map}. The axis
-specified by \code{index_vector_axis} holds the index vectors.}
+Array of starting indices; must have an integer data type, and never takes
+\code{x}'s. Contains index vectors that map to positions in \code{x} via
+\code{start_index_map}. The axis specified by \code{index_vector_axis} holds the
+index vectors.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice to gather from \code{x} in each axis.

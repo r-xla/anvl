@@ -26,6 +26,44 @@ make_unary_op <- function(stablehlo_infer) {
 }
 
 
+# Index operands are consumed as integers by every backend. Without a check
+# here an R double among them commits to its `f32` default and the call fails
+# with a raw MLIR type error naming an operand number rather than an argument.
+assert_index_dtype <- function(x, arg) {
+  aval <- to_abstract(x)
+  dt <- peek_dtype(aval)
+  if (is_dtype_int(dt) || is_dtype_uint(dt)) {
+    return(invisible(NULL))
+  }
+  cli_abort(
+    c(
+      "{.arg {arg}} must be an index of integer data type.",
+      x = "Got {.val {as.character(dt)}}.",
+      i = if (is_rdata(aval)) {
+        "Write it as an R integer, e.g. {.code 1L} rather than {.code 1}."
+      } else {
+        "Convert it with {.fn nv_convert}."
+      }
+    ),
+    call = NULL
+  )
+}
+
+# The start indices of a dynamic slice must share one data type -- StableHLO
+# requires it -- so a bare `1L` yields to an `i64` sibling rather than
+# committing to its own default and failing in the lowering.
+promote_start_indices <- function(indices) {
+  # Named only for the messages -- both this check and `promote_rdata_common()`
+  # report against an argument, and the graph keeps them positional.
+  names(indices) <- sprintf("start index %d", seq_along(indices))
+  # Checked before promoting, while an R value still says it is one: afterwards
+  # it has been built at its default and there is no literal left to point at.
+  for (i in seq_along(indices)) {
+    assert_index_dtype(indices[[i]], names(indices)[[i]])
+  }
+  unname(apply_promotion(indices, promote_rdata_common()))
+}
+
 infer_reduce <- function(x, axes, drop) {
   old_shape <- shape(x)
   if (drop) {
@@ -535,8 +573,8 @@ prim_static_slice <- new_primitive(
 #' time and you need stride support.
 #' @template param_prim_x_any
 #' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per axis. Each must be a
-#'   scalar array. Pass one scalar per axis of `x`.
+#'   Scalar start indices, one per axis of `x`.
+#'   Must all have the same integer data type, which R values are materialized at.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= nv_shape(x)`
@@ -568,7 +606,7 @@ prim_static_slice <- new_primitive(
 prim_dynamic_slice <- new_primitive(
   "dynamic_slice",
   function(x, ..., slice_sizes) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     infer_fn <- function(x, ..., slice_sizes) {
       start_indices_avals <- list(...)
       for (i in seq_along(start_indices_avals)) {
@@ -587,8 +625,9 @@ prim_dynamic_slice <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` needs no promotion: it is the only operand of its kind. The start
+  # indices are promoted among themselves by `promote_start_indices()`, which
+  # is a group of their own -- they never take `x`'s data type.
   static = "slice_sizes"
 )
 
@@ -604,8 +643,8 @@ prim_dynamic_slice <- new_primitive(
 #'   data type and number of axes as `x`, with
 #'   `nv_shape(update) <= nv_shape(x)` per axis.
 #' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per axis of `x`.
-#'   Each must be a scalar array.
+#'   Scalar start indices, one per axis of `x`. All must reach one integer
+#'   data type; see [prim_dynamic_slice()].
 #' @inheritSection prim_dynamic_slice Out Of Bounds Behavior
 #' @return [`arrayish`]\cr
 #'   Has the same data type and shape as `x`.
@@ -631,7 +670,7 @@ prim_dynamic_slice <- new_primitive(
 prim_dynamic_update_slice <- new_primitive(
   "dynamic_update_slice",
   function(x, update, ...) {
-    start_indices <- list(...)
+    start_indices <- promote_start_indices(list(...))
     infer_fn <- function(x, update, ...) {
       start_indices_avals <- list(...)
       for (i in seq_along(start_indices_avals)) {
@@ -2874,7 +2913,8 @@ prim_rng_bit_generator <- new_primitive(
 #' @param x ([`arrayish`])\cr
 #'   Arrayish value of any data type. The base array to scatter into.
 #' @param scatter_indices ([`arrayish`] of integer type)\cr
-#'   Array of indices. Contains index vectors that map to positions in
+#'   Array of indices; must have an integer data type, and never takes `x`'s.
+#'   Contains index vectors that map to positions in
 #'   `x` via `scatter_axes_to_x_axes`. The axis specified
 #'   by `index_vector_axis` holds the index vectors.
 #' @param update ([`arrayish`])\cr
@@ -2962,6 +3002,7 @@ prim_scatter <- new_primitive(
     force(x)
     force(scatter_indices)
     force(update)
+    assert_index_dtype(scatter_indices, "scatter_indices")
     # Settled before `peek_dtype(x)` below builds the update computation's
     # parameter slots. `scatter_indices` keeps out of it: it is an index array,
     # not an operand `x` and `update` have to agree with.
@@ -3091,9 +3132,10 @@ prim_scatter <- new_primitive(
 #' given indices.
 #' @template param_prim_x_any
 #' @param start_indices ([`arrayish`] of integer type)\cr
-#'   Array of starting indices. Contains index vectors that map to
-#'   positions in `x` via `start_index_map`. The axis
-#'   specified by `index_vector_axis` holds the index vectors.
+#'   Array of starting indices; must have an integer data type, and never takes
+#'   `x`'s. Contains index vectors that map to positions in `x` via
+#'   `start_index_map`. The axis specified by `index_vector_axis` holds the
+#'   index vectors.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice to gather from `x` in each axis.
 #'   Must have length equal to `naxes(x)`.
@@ -3172,6 +3214,7 @@ prim_gather <- new_primitive(
     indices_are_sorted = FALSE,
     unique_indices = FALSE
   ) {
+    assert_index_dtype(start_indices, "start_indices")
     infer_fn <- function(
       x,
       start_indices,
@@ -3227,8 +3270,9 @@ prim_gather <- new_primitive(
       infer_fn = infer_fn
     )[[1L]]
   },
-  # No promotion: `x` is the only array, and the start indices are integers
-  # whatever `x` is.
+  # `x` and `start_indices` are operands of different kinds and never meet at
+  # one data type, so there is nothing for a promotion rule to do; the indices
+  # are only checked for being integers.
   static = 3:11
 )
 

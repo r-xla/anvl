@@ -24,7 +24,8 @@ prim_scatter(
 Arrayish value of any data type. The base array to scatter into.}
 
 \item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
-Array of indices. Contains index vectors that map to positions in
+Array of indices; must have an integer data type, and never takes \code{x}'s.
+Contains index vectors that map to positions in
 \code{x} via \code{scatter_axes_to_x_axes}. The axis specified
 by \code{index_vector_axis} holds the index vectors.}
 

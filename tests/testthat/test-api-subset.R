@@ -421,3 +421,9 @@ describe("subset_specs_start_indices", {
     expect_equal(x, nv_array(2:11))
   })
 })
+
+test_that("nv_subset still selects with an integer index vector", {
+  # Regression guard for the index data type checks the slicing primitives gained.
+  x <- nv_array(c(1, 2, 3, 4, 5), dtype = "f64")
+  expect_equal(as.numeric(nv_subset(x, 2:3)), c(2, 3))
+})

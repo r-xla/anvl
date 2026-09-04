@@ -10,6 +10,13 @@
 
 ## Bug fixes
 
+* The index operands of `prim_dynamic_slice()`, `prim_dynamic_update_slice()`,
+  `prim_gather()` and `prim_scatter()` are now checked when the call is traced
+  instead of failing in the lowering with a raw MLIR message. A non-integer
+  index (an R `1` rather than `1L`) is rejected by name, and the several start
+  indices of a dynamic slice are brought to one data type, as StableHLO
+  requires -- previously mixing an `i64` index with an `i32` one produced
+  `error: start indices must have same element type`.
 * The gradient of a conversion into a non-float data type is now zero instead
   of one. `prim_convert()` / `nv_convert()` passed the cotangent through
   whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
