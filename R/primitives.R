@@ -111,10 +111,9 @@ prim_fill <- new_primitive(
 #' @title Primitive Addition
 #' @description
 #' Adds two arrays element-wise.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id add
 #' @template section_rules
 #' @section StableHLO:
@@ -130,10 +129,9 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 #' @title Primitive Multiplication
 #' @description
 #' Multiplies two arrays element-wise.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id mul
 #' @template section_rules
 #' @section StableHLO:
@@ -149,10 +147,9 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #' @title Primitive Subtraction
 #' @description
 #' Subtracts two arrays element-wise.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id sub
 #' @template section_rules
 #' @section StableHLO:
@@ -185,10 +182,9 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' @title Primitive Division
 #' @description
 #' Divides two arrays element-wise.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id divide
 #' @template section_rules
 #' @section StableHLO:
@@ -204,10 +200,9 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' @title Primitive Power
 #' @description
 #' Raises lhs to the power of rhs element-wise.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id power
 #' @template section_rules
 #' @section StableHLO:
@@ -1208,10 +1203,9 @@ make_compare_op <- function(direction) {
 #' @title Primitive Equal
 #' @description
 #' Element-wise equality comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1227,10 +1221,9 @@ prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 #' @title Primitive Not Equal
 #' @description
 #' Element-wise inequality comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id not_equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1246,10 +1239,9 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 #' @title Primitive Greater Than
 #' @description
 #' Element-wise greater than comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id greater
 #' @template section_rules
 #' @section StableHLO:
@@ -1265,10 +1257,9 @@ prim_gt <- new_primitive("greater", make_compare_op("GT"))
 #' @title Primitive Greater Equal
 #' @description
 #' Element-wise greater than or equal comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id greater_equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1284,10 +1275,9 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 #' @title Primitive Less Than
 #' @description
 #' Element-wise less than comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id less
 #' @template section_rules
 #' @section StableHLO:
@@ -1303,10 +1293,9 @@ prim_lt <- new_primitive("less", make_compare_op("LT"))
 #' @title Primitive Less Equal
 #' @description
 #' Element-wise less than or equal comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id less_equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1324,10 +1313,9 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' @title Primitive Maximum
 #' @description
 #' Element-wise maximum of two arrays.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id maximum
 #' @template section_rules
 #' @section StableHLO:
@@ -1343,10 +1331,9 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #' @title Primitive Minimum
 #' @description
 #' Element-wise minimum of two arrays.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id minimum
 #' @template section_rules
 #' @section StableHLO:
@@ -1364,10 +1351,9 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' Element-wise remainder.
 #' Result has sign of the divident, which differs from base R's `%%`, which is available
 #' via [`nv_mod()`] and has sign of divisor.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id remainder
 #' @template section_rules
 #' @section StableHLO:
@@ -1385,10 +1371,9 @@ prim_remainder <- new_primitive(
 #' @title Primitive And
 #' @description
 #' Element-wise logical AND.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id and
 #' @template section_rules
 #' @section StableHLO:
@@ -1421,10 +1406,9 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @title Primitive Or
 #' @description
 #' Element-wise logical OR.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id or
 #' @template section_rules
 #' @section StableHLO:
@@ -1440,10 +1424,9 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #' @title Primitive Xor
 #' @description
 #' Element-wise logical XOR.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id xor
 #' @template section_rules
 #' @section StableHLO:
@@ -1465,10 +1448,9 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #' @title Primitive Shift Left
 #' @description
 #' Element-wise left bit shift.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id shift_left
 #' @template section_rules
 #' @section StableHLO:
@@ -1491,10 +1473,9 @@ prim_shift_left <- new_primitive(
 #' @title Primitive Logical Shift Right
 #' @description
 #' Element-wise logical right bit shift.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id shift_right_logical
 #' @template section_rules
 #' @section StableHLO:
@@ -1517,10 +1498,9 @@ prim_shift_right_logical <- new_primitive(
 #' @title Primitive Arithmetic Shift Right
 #' @description
 #' Element-wise arithmetic right bit shift.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id shift_right_arithmetic
 #' @template section_rules
 #' @section StableHLO:
@@ -1543,10 +1523,9 @@ prim_shift_right_arithmetic <- new_primitive(
 #' @title Primitive Atan2
 #' @description
 #' Element-wise atan2 operation.
-#' @template params_prim_lhs_rhs_float
+#' @templateVar dtypes data type floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
-#' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
 #' @templateVar primitive_id atan2
 #' @template section_rules
 #' @section StableHLO:

@@ -32,11 +32,13 @@
 
 ## Documentation
 
-* The help pages of the binary primitives now have a *Data Types* section
-  saying how their operands reach one data type: an operand that has a data
-  type keeps it, and an R value is built at the one the others have, within
-  its own category. The text comes from a shared roxygen2 template
-  (`man-roxygen/section_dtypes.R`), so it is written once for all of them.
+* The binary primitives now document how their operands reach one data type:
+  an operand that already has a data type keeps it, and an R value is built at
+  the other operand's, within its own category. `?prim_add` and its relatives
+  say this under `lhs`, `rhs`, and their `@return` says which data type comes
+  out. The four `params_prim_lhs_rhs_*` roxygen2 templates became one
+  `params_prim_lhs_rhs` taking a `dtypes` template variable, so the text is
+  written once for all of them.
 
 ## Tests
 

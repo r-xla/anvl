@@ -8,33 +8,29 @@ prim_ne(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of any data type.
-Must have the same shape.}
+Arrayish values of any data type, of the same shape.
+
+Both operands must have the same data type: one that already has a data
+type keeps it -- the primitive converts neither operand to meet the other,
+so two different data types are an error. An R value has no data type of
+its own and is built at the other operand's, as long as that data type is
+in its own category (a double becomes a float, an integer an integer or
+unsigned integer, a logical a \code{bool}); two R values must be of one R
+storage type and are built at its default data type (\code{f32}, \code{i32} or
+\code{bool}).
+
+To combine different data types, convert one with \code{\link[=nv_convert]{nv_convert()}} or use
+the \verb{nv_*} layer, which promotes to a common data type. See
+\code{vignette("type-promotion")}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape as the inputs and boolean data type.
+Has the same shape as the operands and boolean data type, whatever data
+type the operands were brought to.
 }
 \description{
 Element-wise inequality comparison.
 }
-\section{Data Types}{
-
-\code{lhs} and \code{rhs} must have the same data type, which the primitive does not
-negotiate: an operand that already has a data type keeps it, and operands
-with different data types are an error. Convert one explicitly with
-\code{\link[=nv_convert]{nv_convert()}}, or use the \verb{nv_*} layer, which promotes to a common data
-type.
-
-An R value has no data type of its own and is built at the one the other
-operands have, as long as that data type is in its own category: a double
-becomes a float, an integer an integer or unsigned integer, a logical a
-\code{bool}. If every operand is an R value, they must be of one R storage type
-and are built at its default data type (\code{f32}, \code{i32} or \code{bool}).
-
-See \code{vignette("type-promotion")}.
-}
-
 \section{Implemented Rules}{
 
 \itemize{

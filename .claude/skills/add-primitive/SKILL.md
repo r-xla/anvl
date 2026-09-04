@@ -39,7 +39,8 @@ stablehlo::GatherDimensionNumbers(
 Use templates from `man-roxygen/` where applicable:
 
 - **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
-- **Binary ops:** `@template params_prim_lhs_rhs_any` (or `_numeric`, `_float`)
+- **Binary ops:** `@templateVar dtypes <phrase>` + `@template params_prim_lhs_rhs`, where the
+  phrase completes "Arrayish values of ..." (e.g. `any data type`, `data type floating-point`)
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
 - **StableHLO link:** `@section StableHLO:\n Lowers to [stablehlo::hlo_<name>()].`
