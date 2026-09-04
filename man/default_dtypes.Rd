@@ -31,7 +31,7 @@ invisibly. \code{with_default_dtypes()} returns the result of evaluating \code{c
 }
 \description{
 An R value entering a program has no data type of its own (see
-\code{\link{RDataArray}}). Where nothing it meets decides one, it commits to a default
+\code{\link{RData}}). Where nothing it meets decides one, it commits to a default
 for its R type: a double to the default \emph{float}, an integer to the default
 \emph{integer}, a logical to \code{bool}. These are the data types \code{\link[=nv_array]{nv_array()}} and
 \code{\link[=nv_scalar]{nv_scalar()}} build at when \code{dtype} is not given, that a literal in a

@@ -44,5 +44,5 @@ A callable of class \code{c("JitPrimitive", "JitFunction")}.
 \description{
 Create a new primitive.
 For details on how to do this, see the article on \emph{Adding a Primitive}.
-The backend is always \code{"auto"} and cannot be configured.
+Like every jitted function it runs on the backend in force when called.
 }
