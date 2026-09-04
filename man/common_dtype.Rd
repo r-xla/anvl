@@ -17,13 +17,7 @@ The right-hand side type.}
 (\code{\link[tengen:DataType]{tengen::DataType}})
 }
 \description{
-Computes the common data type of two data types, following the rules
-described in \code{vignette("type-promotion")}.
-
-R values entering a program have no data type of their own (see
-\code{\link{RDataArray}}) and are not promoted with this: they \emph{take} the dtype of
-whatever they are combined with, and commit to a default only when nothing
-claims them.
+Compute the common data type.
 }
 \examples{
 common_dtype("i32", "f32")

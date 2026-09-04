@@ -256,14 +256,6 @@ test_that("good error message when passing AbstractArrays", {
   )
 })
 
-test_that("jit_eval does not modify calling environment", {
-  x <- nv_array(1:2)
-  jit_eval({
-    x <- nv_array(3:4)
-  })
-  expect_equal(x, nv_array(1:2))
-})
-
 test_that("nested jit: jitted function can be called inside jit (#220)", {
   inner <- jit(function(x, y) x + y)
   outer <- jit(function(a, b) inner(a, b) * nv_scalar(2L))

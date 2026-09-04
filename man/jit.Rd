@@ -126,6 +126,5 @@ with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=jit_eval]{jit_eval()}} for evaluating an expression once,
 \code{\link[=jit_roclet]{jit_roclet()}} for the \verb{@jit} tag used inside R packages.
 }

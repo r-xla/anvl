@@ -4,7 +4,7 @@ test_that("jit: autoconverts length-1 numeric scalar", {
   expect_equal(out, nv_scalar(1))
 })
 
-test_that("jit: an autoconverted scalar plus a literal takes the default dtype", {
+test_that("jit: autoconverted scalar + literal takes the default dtype", {
   f <- jit(\(x) x + 1)
   out <- f(1)
   expect_equal(dtype(out), as_dtype("f32"))
@@ -18,14 +18,14 @@ test_that("jit: autoconverts length-1 integer scalar", {
 })
 
 test_that("jit: autoconverts length-1 logical scalar", {
-  # A logical is the one R type that names its dtype: there is nothing for
-  # `TRUE` to become other than `bool`.
   f <- jit(identity)
   out <- f(TRUE)
+  # A logical is the one R type that names its dtype: there is nothing for
+  # `TRUE` to become other than `bool`.
   expect_equal(out, nv_scalar(TRUE))
 })
 
-test_that("jit: an R scalar takes the dtype of the typed array it meets", {
+test_that("jit: promotes scalar dtype against a typed scalar", {
   f <- jit(\(x, y) x + y)
   out <- f(1, nv_scalar(2, dtype = "f64"))
   expect_equal(dtype(out), as_dtype("f64"))
@@ -78,8 +78,35 @@ test_that("jit: inside trace, autoconvert does not fire on GraphValues", {
   expect_equal(as_array(out), 2)
 })
 
-test_that("jit_eval: scalar expression works unchanged", {
-  expect_equal(as_array(jit_eval(nv_scalar(1) + nv_scalar(2))), 3)
+test_that("jit: an autoconverted leaf is not baked into the program", {
+  f <- jit(function(x, y) x + y)
+  x <- nv_scalar(0, dtype = "f64")
+  expect_identical(as_array(f(x, sqrt(2))), sqrt(2))
+  # Same key, so this is a cache hit -- and it must still return its own value,
+  # not the one the program was compiled with.
+  expect_identical(as_array(f(x, pi)), pi)
+  expect_equal(cache_size(f), 1L)
+})
+
+test_that("jit: a leaf used at two dtypes is exact at the wider one", {
+  f <- jit(function(t) {
+    list(
+      wide = nv_scalar(0, dtype = "f64") + t,
+      narrow = nv_scalar(0, dtype = "f32") + t
+    )
+  })
+  out <- f(sqrt(2))
+  expect_equal(dtype(out$wide), as_dtype("f64"))
+  expect_equal(dtype(out$narrow), as_dtype("f32"))
+  # Uploaded once as f64 and converted down for the f32 site: one rounding,
+  # exactly as an f32 upload would have been.
+  expect_identical(as_array(out$wide), sqrt(2))
+  expect_identical(as_array(out$narrow), as_array(nv_scalar(sqrt(2), dtype = "f32")))
+})
+
+test_that("jit: an unused leaf is still an input the call supplies", {
+  f <- jit(function(x, y) x + 1)
+  expect_identical(as_array(f(nv_scalar(1, dtype = "f64"), 99)), 2)
 })
 
 test_that("quickr: autoconverts scalar input", {
@@ -106,6 +133,22 @@ test_that("quickr: nested input tree with mixed AnvlArray/scalar still works", {
   f <- jit(function(pair) pair[[1]] + pair[[2]])
   out <- f(list(nv_scalar(1L), 2L))
   expect_equal(out, nv_scalar(3L))
+})
+
+test_that("quickr: an autoconverted leaf reaches an f64 use site exactly", {
+  skip_if_no_quickr()
+  local_backend("quickr")
+  x <- nv_scalar(1, dtype = "f64")
+  expect_identical(as_array(jit(function(x) x / sqrt(2))(x)), 1 / sqrt(2))
+  expect_identical(as_array(jit(function(x, y) x / y)(x, sqrt(2))), 1 / sqrt(2))
+})
+
+test_that("quickr: an autoconverted leaf is coerced to the program's dtype", {
+  skip_if_no_quickr()
+  local_backend("quickr")
+  # The leaf arrives as an R integer but the program consumes it as f64.
+  f <- jit(function(x, y) x + y)
+  expect_identical(as_array(f(nv_scalar(1, dtype = "f64"), 2L)), 3)
 })
 
 test_that("quickr: bare vector errors", {

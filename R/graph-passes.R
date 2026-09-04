@@ -23,7 +23,10 @@ remove_unused_constants <- function(graph) {
     outputs = graph$outputs,
     constants = graph$constants,
     is_static_flat = graph$is_static_flat,
-    static_args_flat = graph$static_args_flat
+    static_args_flat = graph$static_args_flat,
+    # Positional, one entry per input: a pass may replace an input in place but
+    # must not reorder or drop one, so this carries over as it is.
+    rdata_types = graph$rdata_types
   )
 
   is_used <- hashtab()
@@ -65,7 +68,10 @@ inline_scalarish_constants <- function(graph, map = NULL) {
     outputs = graph$outputs,
     constants = graph$constants,
     is_static_flat = graph$is_static_flat,
-    static_args_flat = graph$static_args_flat
+    static_args_flat = graph$static_args_flat,
+    # Positional, one entry per input: a pass may replace an input in place but
+    # must not reorder or drop one, so this carries over as it is.
+    rdata_types = graph$rdata_types
   )
 
   is_top_level <- is.null(map)

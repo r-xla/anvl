@@ -38,11 +38,11 @@ API functions shipped with {anvl} must work with **both** the pjrt and quickr ba
 
 The exact convenience a wrapper should add varies by operation. **Propose a wrapper to the user but ask them to confirm** the semantic differences before implementing. Common patterns include:
 
-- **Type promotion:** auto-promote inputs to a common dtype via `nv_promote_to_common()`
+- **Type promotion:** bring the inputs to one dtype with a rule, `as_anvl_arrays(..., .promote = promote_common())`
 - **Broadcasting:** broadcast scalars to match array shapes via `nv_broadcast_scalars()`
 - **Default arguments:** infer `dtype` from the input when not provided
 - **Idempotency:** skip no-op cases (return the input unchanged if already correct dtype/shape)
-- **Input coercion:** convert auxiliary arguments to match the input's dtype
+- **Input coercion:** bring auxiliary arguments to the input's dtype with `promote_like("x")`
 
 ## Implementation
 
@@ -69,14 +69,16 @@ For ops needing custom logic, write a function that normalizes its array inputs 
 - `as_anvl_array(x)` for a single array input.
 - `as_anvl_arrays(...)` for multiple array inputs (infers a common device, errors on mismatched backends/devices).
 
-After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`.
+A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promote_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value commits to its default (`f32` for a double) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
+
+After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` what it *would* commit to.
 
 ### Constants and the `_like` pattern
 
 If the function creates a constant inside its body (via `nv_fill`, `nv_iota`, `nv_seq`, `nv_scalar`, `nv_eye`, ...), the constant must be placed on the same backend/device as the input.
 Under `jit()` this happens automatically, but in **eager mode** you are responsible:
 
-- Use the `nv_<op>_like(x, ...)` variants, which default `dtype`, `shape`, `ambiguous`, and `device` from `x`.
+- Use the `nv_<op>_like(x, ...)` variants, which default `dtype`, `shape`, and `device` from `x`.
 - Example: `nv_fill_like(x, 0)` gives a zeros array matching `x`'s backend/device/dtype.
 
 If you are adding a new array-creator function (`nv_foo` that allocates data rather than transforming an input), also add a `nv_foo_like(like, ...)` variant next to it.
@@ -87,14 +89,20 @@ Any dispatch-on-input constants inside other API functions should go through `_l
 For element-wise binary primitives, use the `make_do_binary()` factory -- it already composes `nv_promote_to_common()` + `nv_broadcast_scalars()` before calling the primitive:
 
 ```r
-nv_<name> <- make_do_binary(nvl_<name>)
+nv_<name> <- make_do_binary(prim_<name>)
 ```
 
 For full NumPy-style broadcasting (not just scalar-against-tensor), use `nv_broadcast_arrays()` after promotion (see `nv_outer()` for an example).
 
-### Converting auxiliary arguments
+### Bringing auxiliary arguments to the input's dtype
 
-If the underlying primitive requires all its inputs to share a dtype (e.g. `nvl_clamp`, `nvl_pad`), convert the helper arguments to the input dtype via `nv_convert(aux, dtype(x))`. `nv_convert()` is a no-op when the dtype already matches, so the extra calls are free.
+If the underlying primitive requires all its inputs to share a dtype (e.g. `prim_clamp`, `prim_pad`), say so with a rule at the top rather than converting afterwards:
+
+```r
+args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promote_like("x"))
+```
+
+`promote_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have committed the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
 
 ### Static arguments
 
@@ -117,7 +125,7 @@ If no proper template for a parameter or the return value exist, write the docum
 #' @param <custom_param> (<type>)\cr    # for params not covered by templates
 #'   <Description.>
 #' @template return_unary               # or return_binary, return_reduce, etc.
-#' @seealso [nvl_<name>()] for the underlying primitive.
+#' @seealso [prim_<name>()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' <example code>
 #' @export
@@ -130,12 +138,12 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@template`**: use templates for common parameter/return patterns:
   - `param_x` — single input array
   - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
-  - `param_dtype`, `param_shape`, `param_ambiguous` — common params
+  - `param_dtype`, `param_shape`, `param_device` — common params
   - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
   - `params_reduce` — axes + drop params for reductions
 - **`@param`**: write inline for parameters not covered by templates
-- **`@seealso`**: always link to the underlying `nvl_*` primitive. Optionally link to related `nv_*` functions.
-- **`@examplesIf pjrt::plugins_downloaded()`**: wrap examples in this guard. Since all `nvl_*` functions are auto-jitted and `nv_*` functions call into `nvl_*` functions, examples can call them directly.
+- **`@seealso`**: always link to the underlying `prim_*` primitive. Optionally link to related `nv_*` functions.
+- **`@examplesIf pjrt::plugins_downloaded()`**: wrap examples in this guard. Since all `prim_*` functions are auto-jitted and `nv_*` functions call into `prim_*` functions, examples can call them directly.
 - **`@family`**: use for groups of related functions (e.g. `@family rng` for all RNG functions)
 
 ### S3 methods for R generics

@@ -153,22 +153,6 @@ ones_like <- function(x) {
   ones(dtype(x), shape(x))
 }
 
-#' @title Abstract Properties
-#' @name abstract_properties
-#' @description
-#' Calls the extractor after converting the input to an [`AbstractArray`].
-#' @param x ([`arrayish`])\cr
-#' @export
-shape_abstract <- function(x) {
-  shape(to_abstract(x))
-}
-
-#' @rdname abstract_properties
-#' @export
-naxes_abstract <- function(x) {
-  length(shape_abstract(x))
-}
-
 is_valid_r_lit <- function(x) {
   length(x) == 1L &&
     is.null(dim(x)) &&

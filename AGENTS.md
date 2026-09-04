@@ -5,6 +5,22 @@
 `anvl` is a code transformation framework for R, similar to JAX.
 It provides JIT compilation (`jit()`) and automatic differentiation (`gradient()`, `value_and_gradient()`).
 
+## Commands
+
+The generic R workflow (`devtools::test()`, `make format`, `jarl check .`, ...) is in the shared
+config above. anvl-specific:
+
+- **Tests are gated behind `ANVL_TEST=1`** -- `tests/testthat.R` only calls `test_check()` when it
+  is set, so `R CMD check` in a shell without it runs *no* tests. `.Renviron` sets it (together with
+  `PJRT_INSTALL=1`) for work inside the package.
+- Single file: `testthat::test_active_file("tests/testthat/test-reverse.R")`, or
+  `devtools::test(filter = "reverse")`.
+- `ANVL_SKIP_QUICKR=1` skips the (slow) quickr tests; `PJRT_PLATFORM=cuda` runs the suite on the CUDA
+  plugin (`is_cpu()` / `is_cuda()` in `helper.R` branch on it). `setup.R` sets
+  `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to spread over.
+- anvl tracks the **dev** versions of its r-xla dependencies:
+  `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
+
 ## Two-Layer API
 
 - **`nv_*` functions** (e.g. `nv_fill()`, `nv_matmul()`) -- user-facing API in `R/api.R` and `R/api-*.R`. These handle broadcasting, type promotion, default arguments, and then delegate to `prim_*` primitives.
@@ -26,78 +42,28 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 - there is currently no support for complex numbers.
 
-## R Values Have No Data Type
+## Type Promotion
 
-An R value entering a program -- a length-1 vector or an `array()`, written in
-the body of a traced function or passed as an argument to a jitted one -- is
-*not* converted at the boundary. It is carried as [`RDataArray`] (an
-`AbstractArray` with no dtype, boxed in a `GraphRData` node) and built into the
-program at the dtype its use site needs, from the R data itself. That is what
-makes `x_f64 / sqrt(2)` exact.
+An R value entering a program is not converted at the boundary -- it is built into the program at the
+dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
+is the reference for how this works and for the `.promote` rules (`promote_common()`,
+`promote_like()`, `promote_dtype()`, `promote_rdata_common()`) that `nv_*` functions pass to
+`as_anvl_arrays()`. Two rules that bite while writing code:
 
-- Promotion decides the dtype: `common_dtype_of()` treats an `RDataArray` as
-  the yielding operand, and `nv_promote_to_common()` then *builds* it at the
-  common dtype (`realize_at()`), rather than converting it from a default.
-- A primitive brings its arrayish arguments to one dtype before it records a
-  call, following the `promote` rule it declared (see `new_primitive()`; the
-  default is `promote_yield()`). An R value takes the dtype the other operands
-  already have -- **within its own category**: a double becomes a float, an
-  integer an integer, a logical a `bool`, and nothing else. Crossing a category
-  is promotion, which is the `nv_*` layer's job, so `prim_add(x_f64, 1L)` is an
-  error where `nv_add(x_f64, 1L)` is `f64`. A trace output commits whatever is
-  left, at `default_dtype_r()` -- the default float / integer of the backend in
-  force, which `default_dtypes()` reports and the options `anvl.default_float`
-  / `anvl.default_int` override. A trace is pinned to the pair the dispatcher
-  keyed its program on (`GraphDescriptor$default_dtypes`); read it through
-  `current_default_dtypes()` / `default_dtype_r()`, never hardcode `"f32"` /
-  `"i32"` as a default.
-- **One backend at a time.** The backend is the option `anvl.backend`
-  (`default_backend()`, `local_backend()`, `with_backend()`). Every jitted
-  function runs on it, reading it at call time; nothing infers a backend from
-  an argument, no function takes a `backend` argument, and an array or device
-  of another backend is an error. This is what makes the default dtypes
-  unambiguous in eager code (see
-  `specs/2026-09-04-ambient-backend-default-dtypes-design.md`).
-- The value is built directly only at a dtype that holds it faithfully (a
-  double at any float, an R integer at any float or any >=32-bit integer, a
-  logical at `bool`); any other target is built at the natural dtype -- `f64` /
-  `i32` / `bool` -- and converted by the program. R's coercion and XLA's
-  `convert` disagree on overflow and `NaN`, so narrowing has to be the
-  program's.
-- `dtype()` on one errors -- there is nothing to report yet. **An `nv_*`
-  function that reads a dtype from its argument must not call `dtype()` on it**:
-  use `peek_dtype()` to ask what it *would* commit to (a category test, a
-  `nan_rm` branch), or commit it when that dtype becomes the operation's own --
-  what the other arguments get converted to, or what the result is built
-  `_like`. Forgetting this is silent until someone passes a bare R value.
-  `shape()` and `naxes()` answer as usual.
-- **`as_anvl_array()` / `as_anvl_arrays()` always convert**, and identically
-  while tracing and eagerly -- an `nv_*` function must not mean two things
-  depending on whether it is under `jit()`. Call `as_anvl_arrays()` once over
-  the whole argument set at the top of an `nv_*` function: it aligns devices and
-  backends, promotes, and leaves every argument something `dtype()` / `device()`
-  answer for. An argument may be a tree of arrayish values; the device and the
-  dtype are decided over every leaf, and each argument comes back with the
-  structure it had. The `.promote` argument takes a rule -- `promote_common()`,
-  `promote_like(arg)` or `promote_dtype(dtype)`, each optionally restricted with
-  `only =`, or a *list* of rules for independent groups -- and *realizes* every
-  input it covers at that dtype, which is what keeps the R values exact. **Without a rule an R value converts at its
-  default**, so a function whose result dtype depends on its arguments must say
-  so with a rule rather than canonicalize first and `nv_convert()` afterwards.
-- To hold an R value open until the dtype is known, do *not* canonicalize it:
-  `nv_convert()` and the primitives take it as it is, and `peek_dtype()` answers
-  what it would take. The internal `align_arrayish()` aligns devices without
-  deciding any dtype; `nv_subset_assign()` still needs it, because the dtype it
-  settles on is decided after a promotability check that has to see the
-  uncommitted value.
-- For a jitted function's argument, the value is unknown at trace time (the
-  cache keys it by R type and shape only, so the program must not depend on it).
-  It becomes a program input whose aval is an `RDataInput`, carrying the dtype
-  the trace decided it is uploaded at; `graph_input_dtypes()` reads those off
-  for pjrt's dispatcher and the quickr wrapper to apply.
-
-There is no "weak"/ambiguous flag on arrays: once a value has committed it is an
-ordinary array of an ordinary dtype. See `vignette("type-promotion")`.
+- Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
+  `peek_dtype()` to ask what it *would* commit to.
+- A primitive promotes nothing unless its body says so: one whose operands must agree calls
+  `apply_promotion()` on them before anything else reads them.
+- A trace output that met nothing commits at `default_dtype_r()`: the default float / integer of
+  the backend in force, which `default_dtypes()` reports and the options `anvl.default_float` /
+  `anvl.default_int` override. A trace is pinned to the pair the dispatcher keyed its program on
+  (`GraphDescriptor$default_dtypes`); read it through `current_default_dtypes()` /
+  `default_dtype_r()`, never hardcode `"f32"` / `"i32"` as a default.
+- **One backend at a time.** The backend is the option `anvl.backend` (`default_backend()`,
+  `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
+  nothing infers a backend from an argument, no function takes a `backend` argument, and an array
+  or device of another backend is an error. This is what makes the default dtypes unambiguous in
+  eager code (see `specs/2026-09-04-ambient-backend-default-dtypes-design.md`).
 
 ## Primitive System
 
@@ -106,6 +72,14 @@ Primitives are `JitPrimitive` callables constructed by `new_primitive()` (define
 - **`stablehlo`** -- JIT lowering rules in `R/rules-stablehlo.R`. These convert traced operations into StableHLO IR. Since stablehlo uses 0-based indexing, convert indices by subtracting 1.
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
+
+## `@jit` Roclet
+
+`R/jit-registry.R` is **generated** by `anvl::jit_roclet` (activated in the `Roxygen` field of
+`DESCRIPTION`): tagging a function with `#' @jit [static = ...]` makes `devtools::document()` add it
+to the registry, and `R/zzz.R` rebinds those functions to their jitted versions at build time. Never
+edit `R/jit-registry.R` by hand; because the roclet lives in anvl itself, documenting requires an
+installed anvl that already exports it.
 
 ## Broadcasting
 

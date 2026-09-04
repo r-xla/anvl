@@ -77,7 +77,7 @@ describe("inline_scalarish_constants", {
 
     check_inlining(
       graph_fun = f,
-      args = list(list(x = nv_scalar(1))),
+      args = list(list(x = nv_scalar(1)))
     )
   })
 

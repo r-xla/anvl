@@ -47,8 +47,9 @@ Shape.}
 RNG state (\code{ui64[2]}).}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled values. \code{NULL} (default) uses the backend's
-default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Data type of the sample, \code{"f32"} or \code{"f64"}. \code{NULL} (default) takes it from
+\code{mean} and \code{sd} where either is a real array, and falls back to the default
+float data type (\code{"f32"}) where both are bare R values, which have none.}
 }
 \value{
 \code{nv_dnorm()} and \code{nv_pnorm()} return an \code{\link{arrayish}} with the same shape and

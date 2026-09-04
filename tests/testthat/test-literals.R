@@ -10,6 +10,8 @@ test_that("literals are downcast if possible", {
 })
 
 test_that("can combine literals", {
+  # Nothing in either program has a data type of its own, so the literals
+  # commit to the default of their R storage type.
   f1 <- function() {
     nv_mul(2, 3)
   }

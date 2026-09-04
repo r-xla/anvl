@@ -202,11 +202,13 @@ nv_broadcast_to <- function(x, shape) {
 #' nv_convert(x, dtype = "f32")
 #' @export
 nv_convert <- function(x, dtype) {
-  # An R value is built at the target dtype rather than converted to it, so it
-  # keeps every digit it had. `as_anvl_array_lazy()` rather than
-  # `as_anvl_array()`: converting at the default first is exactly the rounding
-  # this avoids.
-  realize_at(as_anvl_array_lazy(x), as_dtype(dtype))
+  if (!is_arrayish(x)) {
+    cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
+  }
+  # `realize_at()` rather than canonicalizing first: an R value is *built* at
+  # the target dtype, keeping every digit it had, where converting it from its
+  # own default would round through `f32` on the way.
+  realize_at(x, as_dtype(dtype))
 }
 
 #' @rdname nv_transpose
@@ -428,7 +430,10 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @export
 #' @jit
 nv_rbind <- function(...) {
-  args <- as_anvl_arrays(...)
+  # Promoted here rather than in `nv_concatenate()` below: an R value has to be
+  # built at the common dtype directly, where committing it first would round
+  # it through its default on the way there.
+  args <- as_anvl_arrays(..., .promote = promote_common())
   target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
   args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 1L)
@@ -438,7 +443,7 @@ nv_rbind <- function(...) {
 #' @export
 #' @jit
 nv_cbind <- function(...) {
-  args <- as_anvl_arrays(...)
+  args <- as_anvl_arrays(..., .promote = promote_common())
   target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
   args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 2L)
@@ -510,7 +515,7 @@ nv_ifelse <- function(pred, true_value, false_value) {
     pred = pred,
     true_value = true_value,
     false_value = false_value,
-    .promote = promote_common(only = c("true_value", "false_value"))
+    .promote = promote_common(on = c("true_value", "false_value"))
   )
   args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
@@ -1437,7 +1442,11 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' Pads an array with a given value at the edges and optionally between elements.
 #' @template param_x
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. Must have the same dtype as `x`.
+#'   Scalar value to use for padding. It is brought to `x`'s data type: an R
+#'   value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as well),
+#'   and a value that already has one is converted, unless `x`'s data type
+#'   cannot hold it -- an `f64` padding value for an `f32` array is an error
+#'   rather than a silent narrowing.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -1453,8 +1462,9 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  # The padding value goes into `x`, so it is `x`'s dtype it has to arrive at --
-  # an R value is built there directly, and a typed one is converted.
+  # `promote_like("x")` rather than the primitive's own rule: crossing a
+  # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
+  # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
   args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_like("x"))
   x <- args$x
   padding_value <- args$padding_value
@@ -1578,9 +1588,12 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # `a` and `b` must agree, and neither is widened to meet the other: an R
+  # matrix yields to `a`'s data type, two typed arrays that disagree are
+  # rejected.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  a <- args$a
+  b <- args$b
   a_shape <- shape(a)
   if (length(a_shape) != 2L || a_shape[1L] != a_shape[2L]) {
     cli_abort("{.arg a} must be a square 2-D matrix")
@@ -1660,9 +1673,10 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # As in `nv_solve()`: the two must agree, and neither is widened.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  a <- args$a
+  b <- args$b
 
   a_shape <- shape(a)
   b_shape <- shape(b)
@@ -2334,8 +2348,7 @@ nv_if <- prim_if
 #' @title While Loop
 #' @description
 #' Executes a functional while loop.
-#' @param init (`list()`)\cr
-#'   Named list of initial state values.
+#' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function returning a scalar boolean.
 #'   Receives the state values as arguments.
@@ -2775,7 +2788,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -2801,7 +2814,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }

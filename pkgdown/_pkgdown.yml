@@ -131,7 +131,10 @@ reference:
       - promote_common
       - promote_like
       - promote_dtype
-      - promote_yield
+      - promote_rdata_common
+      - promote_grouped
+      - promotion_rule
+      - apply_promotion
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
@@ -370,7 +373,6 @@ reference:
       - GraphValue
       - GraphBox
       - GraphLiteral
-      - GraphRData
       - AnvlBox
       - graph_desc_add
       - local_descriptor
@@ -389,12 +391,9 @@ reference:
       - AbstractArray
       - ConcreteArray
       - LiteralArray
-      - RDataArray
-      - RDataInput
+      - RData
       - IotaArray
       - peek_dtype
-      - shape_abstract
-      - naxes_abstract
       - to_abstract
       - arrayish
 
@@ -406,7 +405,6 @@ reference:
       - transform_gradient
       - rule_reverse
       - graph_to_quickr_r_function
-      - jit_eval
       - compile_pjrt
       - stablehlo
       - current_platform

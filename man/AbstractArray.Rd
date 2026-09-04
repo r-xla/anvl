@@ -11,8 +11,8 @@ AbstractArray(dtype, shape)
 }
 \arguments{
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
-The data type of the array, or -- for \code{nv_aval()} -- one of \code{"r_dbl"},
-\code{"r_int"}, \code{"r_lgl"} for a value that has none yet.}
+The data type of the array.
+To create an \code{\link{RData}} object, specify \code{"double"}, \code{"integer"}, or \code{"logical"}.}
 
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
 The shape of the array. Can be provided as an integer vector.}
@@ -27,6 +27,7 @@ The base class represents an \emph{unknown} value, but child classes exist for:
 \item closed-over constants: \code{\link{ConcreteArray}}
 \item scalar arrays arising from R literals: \code{\link{LiteralArray}}
 \item sequence patterns: \code{\link{IotaArray}}
+\item R values \code{\link{RData}}. They are special because they do not have a data type.
 }
 
 To convert a \code{\link{arrayish}} value to an abstract array, use \code{\link[=to_abstract]{to_abstract()}}.
@@ -41,15 +42,6 @@ The following extractors are available on \code{AbstractArray} objects:
 }
 }
 
-\section{R data}{
-
-A value can also be one that has \emph{no} dtype yet -- a bare R value, which only
-takes one where it is used (see \code{\link{RDataArray}}). \code{nv_aval()} builds that aval
-from the R storage type instead of a dtype: \code{"r_dbl"}, \code{"r_int"} or
-\code{"r_lgl"}. This is the aval of a bare R argument of a jitted function,
-whose value is unknown while tracing.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # -- Creating abstract arrays --
@@ -62,7 +54,7 @@ shape(a)
 nv_aval("f32", c(2L, 3L))
 
 # An R value, which has no dtype until it is used
-nv_aval("r_dbl", c(2L, 3L))
+nv_aval("double", c(2L, 3L))
 
 # How AbstractArrays appear in an AnvlGraph
 graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
@@ -71,5 +63,5 @@ graph$inputs[[1]]$aval
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\link{LiteralArray}, \link{ConcreteArray}, \link{IotaArray}, \link{RDataArray}, \link{GraphValue}, \code{\link[=to_abstract]{to_abstract()}}, \link{GraphBox}
+\link{LiteralArray}, \link{ConcreteArray}, \link{IotaArray}, \link{RData}, \link{GraphValue}, \code{\link[=to_abstract]{to_abstract()}}, \link{GraphBox}
 }

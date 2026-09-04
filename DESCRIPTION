@@ -29,7 +29,7 @@ Imports:
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.5.0),
+    pjrt (>= 0.5.0.9000),
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.4.0),
@@ -44,6 +44,11 @@ Suggests:
     testthat (>= 3.0.0)
 Additional_repositories:
     https://r-xla.r-universe.dev
+Remotes:
+    r-xla/pjrt,
+    r-xla/tengen,
+    r-xla/stablehlo,
+    r-xla/xlamisc
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
@@ -75,6 +80,7 @@ Collate:
     'box.R'
     'graph-passes.R'
     'graph.R'
+    'rdata.R'
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'

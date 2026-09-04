@@ -84,3 +84,33 @@
         Outputs:
           %1: i32[] 
 
+# an input the caller supplies as bare R data names its R type
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: f64[]
+          %x2: f64[] <- double
+        Body:
+          %1: f64[] = add(%x1, %x2)
+        Outputs:
+          %1: f64[] 
+
+---
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: f32[]
+          %x2: i32[2] <- integer
+        Body:
+          %1: f32[2] = convert [dtype = f32] (%x2)
+          %2: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = <any>] (%x1)
+          %3: f32[2] = add(%2, %1)
+        Outputs:
+          %3: f32[2] 
+

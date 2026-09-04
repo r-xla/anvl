@@ -57,7 +57,7 @@ effective_default_dtypes <- function(backend) {
 #' Default data types
 #'
 #' An R value entering a program has no data type of its own (see
-#' [`RDataArray`]). Where nothing it meets decides one, it commits to a default
+#' [`RData`]). Where nothing it meets decides one, it commits to a default
 #' for its R type: a double to the default *float*, an integer to the default
 #' *integer*, a logical to `bool`. These are the data types [`nv_array()`] and
 #' [`nv_scalar()`] build at when `dtype` is not given, that a literal in a

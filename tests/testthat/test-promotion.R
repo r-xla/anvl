@@ -25,17 +25,6 @@ test_that("a value that has committed keeps its dtype", {
   )
 })
 
-test_that("prim_convert reverse", {
-  out <- jit(function(x) {
-    z <- prim_convert(x, "f32")
-    a <- gradient(\(y) {
-      y_int <- prim_convert(y, "i32")
-      prim_convert(y_int, "f32")
-    })(z)[[1L]]
-  })(nv_scalar(TRUE))
-  expect_equal(out, nv_scalar(1, dtype = "f32"))
-})
-
 test_that("prim_if outputs keep the dtype of their branches", {
   f <- function(pred, x) {
     x <- x * 2L
@@ -70,4 +59,19 @@ test_that("a logical R value is a bool, not an uncommitted value", {
   # an i32.
   mul <- Filter(function(call) call$primitive$name == "mul", graph$calls)[[1L]]
   expect_equal(dtype(mul$inputs[[2L]]$aval), as_dtype("i32"))
+})
+
+describe("eager/jit equivalence", {
+  it("agrees for promote_like() and promote_common()", {
+    expect_eager_jit_equal_grid(list(
+      "anchored promotion" = function(x, v) {
+        args <- as_anvl_arrays(x = x, v = v, .promote = promote_like("x"))
+        args$x * args$v
+      },
+      "promotion to the common dtype" = function(x, v) {
+        args <- as_anvl_arrays(x, v, .promote = promote_common())
+        args[[1L]] * args[[2L]]
+      }
+    ))
+  })
 })

@@ -2,6 +2,11 @@
 
 ## Breaking changes
 
+* The type system of {anvl} was changed to avoid the problems reported in issue #373.
+  Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
+  With it, also the promotion behavior of various primitives and API
+  functions was improved.
+* `jit_eval()` was removed as it is no longer needed.
 * There is now exactly one backend in force at a time, named by the option
   `anvl.backend` (renamed from `anvl.default_backend`) and set for a scope with
   `local_backend()` / `with_backend()`. Every array is built on it and every
@@ -22,98 +27,32 @@
   under. `nv_eye()`, `nv_runif()`, `nv_rnorm()`, `nv_rbinom()` and
   `nv_sample_int()` take `dtype = NULL` for the default instead of a hardcoded
   `"f32"` / `"i32"`.
-* R values entering a program no longer get a data type at the boundary. A
-  length-1 vector or an `array()` is carried as R data and built into the
-  program at the data type its use site needs, so a literal that meets an `f64`
-  arrives at full `f64` precision: `x_f64 / sqrt(2)` is now exact, where it used
-  to round through `f32` first (#373). This holds both for values written in the
-  body of a jitted function and for ones passed as its arguments.
-* Asking for the data type of such a value is an error, because there is none
-  yet: `dtype()` and the `nv_*_like()` family (which take their result's type
-  from their argument) now fail on a bare R value -- eagerly as much as under
-  `jit()`, so `dtype(1.5)` errors too. `shape()` and `naxes()` answer as before,
-  and now do so for a bare R value as well. Pass an explicit `dtype` (e.g. via
-  `nv_array()`) to give the value a type, or ask `peek_dtype()` for the one it
-  would commit to.
-* The `ambiguous` flag is gone, along with the `ambiguous()` generic, the
-  `ambiguous` argument of `nv_array()` / `nv_scalar()` / `nv_matrix()` /
-  `nv_empty()` / `nv_aval()` / `nv_fill()` / `nv_seq()` / the `nv_*_like()`
-  family / `AbstractArray()` / `LiteralArray()` / `IotaArray()` /
-  `prim_fill()` / `prim_iota()` / `prim_convert()`, the `ambiguity` argument of
-  `eq_type()` / `neq_type()`, `ambiguous_abstract()`, and the `?` suffix in
-  printed dtypes. Yielding now belongs to the R value that has not committed
-  yet, rather than to a bit carried by everything downstream -- the model
-  PyTorch uses for Python scalars. `common_dtype()` correspondingly takes two
-  dtypes and returns one.
-* An operation's result is therefore an ordinary array of an ordinary type. A
-  value that has committed no longer yields to a narrower type later on:
-  `(x_bool * 1L) + y_i16` is now `i32` rather than `i16`, and likewise against
-  `i8`, `ui8`, `ui16`, `ui32` and `ui64`.
-* `nv_serialize()` / `nv_save()` no longer write the array ambiguity into the
-  safetensors metadata, since there is none. Files written by earlier versions
-  still load; the metadata is ignored.
-
-* `as_anvl_array()` and `as_anvl_arrays()` mean the same thing eagerly and under
-  `jit()`. They used to give an R value its default data type in eager mode and
-  leave it open while tracing, which made an `nv_*` function built on them
-  produce two different answers for one call -- `nv_ifelse(pred, x_i8, 1L)` was
-  `i32` eagerly and `i8` under `jit()`, and `nv_dnorm(x_f64, mean = sqrt(2))` was
-  exact only under `jit()`. Both now convert in both modes, as their names say,
-  so `dtype()` answers for whatever they return. Use a `.promote` rule to say
-  which data type they convert *at*; without one an R value takes its default.
-* `dtype_abstract()` is now `peek_dtype()`. The old name said "the data type of
-  the abstract value", which is the one thing it is not -- it answers with the
-  type the value *would* commit to, without committing it.
-
-## Features
-
-* `as_anvl_arrays()` gains `.promote`. It already aligned backend and device;
-  `.promote` additionally realizes every input at one data type, named by a rule:
-  `promote_common()` for the common one of the set, `promote_like(arg)` for the
-  one a particular argument already has, or `promote_dtype(dtype)` for one the
-  caller names. Realizing *builds* an R value at the target rather than
-  converting it there, so it keeps every digit. Each rule takes `only =` to
-  restrict it to some of the inputs -- the rest are still aligned and converted,
-  just not to the target, which is what `nv_ifelse()` needs for its `pred` --
-  and `.promote` takes a *list* of rules, for a call whose arguments fall into
-  several groups that promote independently. `nv_promote_to_common()` is
-  `promote_common()`, so the two share one implementation.
-* `as_anvl_arrays()` accepts arguments that are trees of arrayish values, not
-  just single ones. The device and the `.promote` target are decided over every
-  leaf of every argument, and each argument comes back with the structure it
-  had.
-* `nv_aval()` also builds the abstract value of a bare R argument, from its R
-  storage type: `nv_aval("r_dbl", shape)`, and likewise `"r_int"` /
-  `"r_lgl"`.
-
-* Primitives resolve R values against their own operands instead of committing
-  them to a default. `prim_mul(x, 2)` used to work only when `x` happened to be
-  at the default data type for an R double, so `prim_mul(x_f32, 2)` worked and
-  `prim_mul(x_f64, 2)` did not; now the literal takes `x`'s data type, and it is
-  built there rather than converted, so it keeps every digit. This reaches the
-  slots where writing a literal is natural -- `prim_pad()`'s padding value,
-  `prim_clamp()`'s bounds, `prim_reduce()`'s `init`.
-
-  A literal is only ever built at a data type of its **own category**: a double
-  becomes a float, an integer an integer, a logical a `bool`. Crossing a
-  category is promotion and stays with the `nv_*` layer, so `prim_add(x_f64, 1L)`
-  is now an error naming the rule, where `nv_add(x_f64, 1L)` is `f64` as before.
-  A primitive whose operands are meant to differ -- `prim_sort()`'s payload,
-  `prim_while()`'s loop state -- opts out with `promote = NULL`.
-
-  `new_primitive()` gains `promote` for this, taking the same rules as
-  `as_anvl_arrays()`.
 
 ## Bug fixes
 
-* An R integer argument used at both an integer and a float data type in one
-  program was uploaded as `f32`, which carries 24 bits of mantissa, so the
-  integer use site silently lost bits above 2^24. R integers are now built only
-  at integer data types, and a float use site converts from one.
-* `nv_pad()` builds its padding value at the array's data type. It used to
-  commit the value to its own default first, so `nv_pad(x_f64, 0)` failed with a
-  data type mismatch and only an `f32` array with a double padding value
-  happened to line up.
+* The gradient of a conversion into a non-float data type is now zero instead
+  of one. `prim_convert()` / `nv_convert()` passed the cotangent through
+  whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
+  reported a gradient of 1 where `nv_floor()` -- the same function on the
+  reals -- correctly reported 0. Conversions between floats still pass the
+  gradient through.
+* `prim_scatter()` now checks that `update_computation` returns one value of
+  `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
+  combiner returning something else made type inference declare a data type
+  the call could not produce, and failed in the backend.
+* `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
+  `rhs`. They were passed by name, so `function(a, b)` failed with
+  `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
+  as `prim_scatter()` already matched its `update_computation`.
+* `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
+  `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
+  Type inference declared a `bool` output whatever the input was, so an
+  integer operand reached the lowering and failed with `Data types of inputs
+  and init_values must match`.
+
+## Tests
+
+* Moved some of pjrt's dispatcher tests into anvl.
 
 # anvl 0.4.0
 

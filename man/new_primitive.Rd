@@ -8,7 +8,6 @@ new_primitive(
   name,
   fn,
   subgraphs = character(),
-  promote = promote_yield(),
   static = character(),
   device = NULL,
   register = TRUE
@@ -27,21 +26,6 @@ the first argument to \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs (for higher-order primitives).}
 
-\item{promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}} | \code{list})\cr
-How the primitive brings its arrayish arguments to one data type before it
-records a call, applied to the \code{args} of \code{\link[=graph_desc_add]{graph_desc_add()}}.
-
-Defaults to \code{\link[=promote_yield]{promote_yield()}}: all of them must agree, an argument that
-has a data type keeps it, and an R value takes the one the others have --
-within its own category. Restrict it with \verb{only =} for a primitive whose
-operands are \emph{meant} to differ in part, such as \code{\link[=prim_ifelse]{prim_ifelse()}}'s \code{pred}
-or a gather's indices.
-
-\code{NULL} means no rule at all: every R value commits to its own default, and
-the arguments may hold any data types the primitive accepts. That is what
-\code{\link[=prim_sort]{prim_sort()}} and \code{\link[=prim_while]{prim_while()}} want, since a sort payload and a
-loop-carried state are deliberately heterogeneous.}
-
 \item{static}{(\code{character()} | \code{integer()})\cr
 Passed to \code{\link[=jit]{jit()}}.}
 
@@ -58,10 +42,7 @@ registry.}
 A callable of class \code{c("JitPrimitive", "JitFunction")}.
 }
 \description{
-Builds an \code{\link{AnvlPrimitive}} metadata object, wraps \code{fn} with \code{\link[=jit]{jit()}},
-attaches the metadata via \code{attr(., "primitive")}, prepends class
-\code{"JitPrimitive"}, and (by default) registers the result under \code{name} in
-the primitive registry.
-
-Like every jitted function it runs on the backend in force when called.
+Create a new primitive.
+For details on how to do this, see the article on \emph{Adding a Primitive}.
+The backend is always \code{"auto"} and cannot be configured.
 }

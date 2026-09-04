@@ -1,2 +1,7 @@
 [lint]
 exclude = ["inst/extra-tests"]
+
+# Empty subscripts (`check(shape, , 2:4)`) deliberately select the full axis,
+# mirroring `[` semantics, throughout this file.
+[lint.per-file-ignores]
+"tests/testthat/test-api-subset.R" = ["missing_argument"]

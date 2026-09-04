@@ -17,80 +17,27 @@ Input to standardize.}
 Target device. If \code{x} is an \code{AnvlArray} on a different device, an error
 is raised.}
 
-\item{...}{(\code{\link{arrayish}}, or a nested \code{list} of them)\cr
-Inputs to align. An argument may be a tree of arrayish values -- the device
-and the \code{.promote} target are decided over every leaf of every argument, and
-each argument comes back with the structure it had. Name the arguments to
-be able to point \code{.promote} at one of them.}
+\item{...}{(\code{\link{arrayish}})\cr
+Inputs to align. Name them to be able to point \code{.promote} at one of them.}
 
-\item{.promote}{(\code{NULL} | \code{\link[=promote_rule]{PromoteRule}} | \code{list})\cr
-Which dtype every input is brought to: \code{\link[=promote_common]{promote_common()}} for the common
-one, \code{\link[=promote_like]{promote_like()}} for the one a particular argument has, or
-\code{\link[=promote_dtype]{promote_dtype()}} for one the caller names. \code{NULL} (default) decides
-none, so each input keeps the dtype it has and an R value takes its
-default.
-
-A \emph{list} of rules promotes several groups of arguments independently; they
-must name disjoint sets with \code{only}.
-
-The name is dotted because the inputs go in \code{...}: an argument the caller
-happens to call \code{promote} is data, not the rule.
-
-Inputs are \emph{realized} at that dtype rather than converted to it: an R value
-has no dtype to convert from, so it is built at the target directly, which
-is what keeps \code{x_f64 / sqrt(2)} exact.}
+\item{.promote}{(\code{NULL} | \code{function})\cr
+Which dtype every input is brought to. See \code{\link{promotion_rule}} for more information.}
 }
 \value{
-(\code{\link{AnvlArray}}, or a \code{\link{GraphBox}} while tracing, for
-\code{as_anvl_array()}; a \code{list} of them for \code{as_anvl_arrays()}, keeping the
-names of \code{...}).
+(One or more \code{\link{arrayish}} values).
 }
 \description{
 Use this to canonicalize inputs at the start of a function so it works
 both with eager executing and in combination with \code{\link[=jit]{jit()}}.
 Use \code{\link[=as_anvl_array]{as_anvl_array()}} for a single input and \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} for multiple inputs.
 The latter will also ensure all arrays are from the same backend and live on the same device,
-and can additionally bring them all to one dtype (\code{.promote}).
-}
-\details{
-\link[=GraphBox]{Boxes} and \code{\link{AnvlArray}}s are returned as they are -- for an
-\code{AnvlArray} we check that it lives on \code{device}, if one is given.
-
-A bare R value is converted, always -- the same conversion while tracing and
-in eager mode. This is what the names say, and it matters that they mean one
-thing in both modes: an \verb{nv_*} function built on them must not do two
-different things depending on whether it is called under \code{\link[=jit]{jit()}}.
-
-Which dtype it is converted at is the question these functions answer. An R
-value has none of its own (see \code{\link{RDataArray}}); it can take the one the
-operation settles on, which is what makes \code{x_f64 / sqrt(2)} exact, or -- with
-nothing to take it from -- its default (\code{f32} for a double, \code{i32} for an
-integer, \code{bool} for a logical).
-
-\code{as_anvl_arrays(.promote = )} is the one that can be exact, because it decides
-the dtype and does the conversion in the same call. Without a \code{.promote} rule
-there is nothing to decide from, so an R value takes its default, and a
-caller that goes on to convert it (\code{nv_convert(args[[2]], dtype(args[[1]]))})
-has already lost the digits below that default. \strong{An \verb{nv_*} function whose
-result dtype depends on its arguments should say so with a
-\link[=promote_rule]{rule}} rather than canonicalize first and convert
-afterwards.
-
-To keep an R value open -- to hold it until the dtype is known -- do not
-canonicalize it at all: \code{\link[=nv_convert]{nv_convert()}} and the primitives take it as it is,
-and \code{\link[=peek_dtype]{peek_dtype()}} answers what it would commit to without committing it.
+and can additionally apply type promotion rules via the \code{.promote} argument.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_anvl_array(1L)
 as_anvl_arrays(nv_array(1:3), 1L)
-# each input keeps its own dtype by default, brought to a common one with
-# `.promote` -- and only then is an R value exact at it
 as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
-# ... or to one particular argument's
-as_anvl_arrays(x = nv_array(1L), y = nv_array(1.5), .promote = promote_like("x"))
-# an argument may be a tree, and comes back as one
-as_anvl_arrays(nv_array(1L), list(a = 1.5, b = list(2L)), .promote = promote_common())
 \dontshow{\}) # examplesIf}
 }
 \seealso{
