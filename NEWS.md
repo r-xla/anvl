@@ -10,6 +10,12 @@
 
 ## Bug fixes
 
+* The gradient of a conversion into a non-float data type is now zero instead
+  of one. `prim_convert()` / `nv_convert()` passed the cotangent through
+  whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
+  reported a gradient of 1 where `nv_floor()` -- the same function on the
+  reals -- correctly reported 0. Conversions between floats still pass the
+  gradient through.
 * `prim_scatter()` now checks that `update_computation` returns one value of
   `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
   combiner returning something else made type inference declare a data type
