@@ -296,31 +296,25 @@ Further note that:
 1. R literals are embedded directly into the program.
 2. Currently, constants with the same value (that refer to different `AnvlArray`s) are not deduplicated, which we might change in the future.
 
-## Device Inference in `jit()`
+## Backend and Device in `jit()`
 
-Device handling in `jit()` is quite complicated.
-Some things that are important to be aware of:
+There is exactly one backend in force at any time (`default_backend()`, the option `anvl.backend`).
+A `JitFunction` reads it on every call and keeps one implementation -- the backend's `jit` method's result, with its own compilation cache -- per backend it has been called on.
+Nothing infers a backend from the arguments: an array of another backend is rejected by the dispatcher.
+This is what makes the default data types (`default_dtypes()`) unambiguous in eager code, where a bare R value has nothing but the backend in force to take its default from.
+
+Device handling within a backend has two things to be aware of:
 
 1. We don't know the inferred device just from looking at the input, as we might have something like:
   `jit(\(x) x + nv_scalar(1, device = "cuda"))` where we might only learn about the device during tracing.
   This means the data is only converted at the end.
-2. There are different backends.
-   There might be a function like `jit(\(dev) nv_scalar(1, device = dev), backend = "auto")`.
-   But with the current implementation of `jit()`, the tracing is handled by the backend's `jit` method,
-   so we need to determine the backend from the input arguments. Therefore, the `device = device_arg("dev")`
-   needs to be specified:
+2. A function without array inputs (a constructor) has no device to infer from.
+   `device = device_arg("dev")` reads the compilation device from the named static argument at call time:
 
    ```r
-   f <- jit(\(dev) nv_scalar(1, device = dev), backend = "auto", device = device_arg("dev"))
-   f(nv_device("cpu", "pjrt"))
+   f <- jit(\(dev) nv_scalar(1, device = dev), device = device_arg("dev"))
+   f(nv_device("cpu"))
    ```
-
-   If we made the main `jit()` function trace eagerly, we could determine the backend during
-   tracing, but this is not really needed yet.
-
-3. `device = device_arg()` is only accepted together with `backend = NULL` or `backend = "auto"`.
-   A concrete backend combined with `device_arg()` is rejected, because with a concrete backend
-   the device can simply be passed via a static argument.
 
 ### Nested Inputs and Outputs
 

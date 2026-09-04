@@ -36,26 +36,34 @@ print.QuickrDevice <- function(x, ...) {
 # The native-dispatch compile callback: traces and quickr-compiles on a cache
 # miss and hands the dispatcher the compiled R closure. Reached only for inputs
 # the dispatcher has already validated (see jit_pjrt_compile_cb).
-jit_quickr_compile_cb <- function(f, static, unwrap) {
+jit_quickr_compile_cb <- function(f, static, unwrap, device) {
   function(info) {
     check_static_args(info$args, static)
+    if (is_device_arg(device)) {
+      # quickr has one device, but the one asked for still has to be its own.
+      device_from_arg(info$args[[device$argname]], "quickr")
+    }
     compiled <- compile_quickr(
       f,
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
       arg_devices = dispatch_arg_devices(info),
       unwrap = unwrap,
-      flat = TRUE
+      flat = TRUE,
+      default_dtypes = default_dtypes_from_key(info$context)
     )
     list(r_fun = compiled$fun)
   }
 }
 
-jit_quickr_impl <- function(f, static, cache_size, unwrap) {
+jit_quickr_impl <- function(f, static, cache_size, unwrap, device) {
+  if (!is.null(device) && !is_device_arg(device)) {
+    backend_device(device, "quickr")
+  }
   # use pjrt's "closure" engine for quickr.
   dispatcher <- pjrt::dispatcher(
     cache_size,
-    jit_quickr_compile_cb(f, static, unwrap),
+    jit_quickr_compile_cb(f, static, unwrap, device),
     static = static,
     backend = "quickr",
     # The dispatcher reads a non-pjrt leaf's metadata through this, via the
@@ -71,7 +79,9 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
     # Consulted only when a call has no array input to name a device. quickr has
     # one device today, but the dispatcher keys on whatever this returns, so a
     # second one would split the cache without further work here.
-    default_device = function() default_device("quickr")
+    default_device = function() default_device("quickr"),
+    # See jit_pjrt_impl().
+    context = default_dtypes_context("quickr")
   )
   dispatch <- pjrt::dispatch
 
@@ -97,8 +107,16 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap) {
   fn
 }
 
-compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap = FALSE, flat = FALSE) {
-  desc <- local_descriptor()
+compile_quickr <- function(
+  f,
+  args_flat,
+  in_tree,
+  arg_devices = list(),
+  unwrap = FALSE,
+  flat = FALSE,
+  default_dtypes = NULL
+) {
+  desc <- local_descriptor(default_dtypes = default_dtypes)
   graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, mode = "toplevel")
   check_single_backend(graph, arg_devices = arg_devices, expected = "quickr")
   list(fun = graph_to_quickr_function(graph, unwrap = unwrap, flat = flat))
@@ -133,7 +151,8 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #'   compilation cost is amortized.
 #' * Only a subset of the primitives that the PJRT backend supports are currently
 #'   lowered to quickr code. See `vignette("primitives")` for an overview.
-#' * Only the data types `f64`, `i32`, and `bool` are supported.
+#' * Only the data types `f64`, `i32`, and `bool` are supported. Accordingly,
+#'   an R double commits to `f64` on this backend (see [`default_dtypes()`]).
 #' * Only CPU execution is supported.
 #'
 #' @section Quickr JIT arguments:
@@ -155,9 +174,6 @@ AnvlBackendQuickr <- function() {
         } else if (!inherits(device, "QuickrDevice")) {
           cli_abort("Invalid device of class {.cls {class(device)}} for 'quickr' backend")
         }
-      }
-      if (is.null(dtype)) {
-        dtype <- if (is.double(data)) as_dtype("f64") else default_dtype(data)
       }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
@@ -244,9 +260,11 @@ AnvlBackendQuickr <- function() {
     },
     jit = function(f, static, cache_size, unwrap = FALSE, device = NULL) {
       assert_flag(unwrap)
-      jit_quickr_impl(f, static, cache_size, unwrap)
+      jit_quickr_impl(f, static, cache_size, unwrap, device)
     },
-    await_data = function(x) invisible(NULL)
+    await_data = function(x) invisible(NULL),
+    # quickr has no single precision: an R double is a double.
+    default_dtypes = list(float = "f64", int = "i32")
   )
   class(backend) <- c("AnvlBackendQuickr", class(backend))
   backend

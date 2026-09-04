@@ -17,9 +17,11 @@ Start and end values. When \code{steps} is \code{NULL}, must satisfy \code{start
 Number of evenly spaced values to generate. Must be at least 1.
 When \code{NULL} (default), generates consecutive integer values from \code{start} to \code{end}.}
 
-\item{dtype}{(\code{character(1)})\cr
-Data type. Default \code{"i32"} when \code{steps} is \code{NULL}, \code{"f32"} when \code{steps} is given.
-For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type. \code{NULL} (default) uses the backend's default integer data type
+when \code{steps} is \code{NULL} and its default float data type when \code{steps} is
+given (see \code{\link[=default_dtypes]{default_dtypes()}}). For \code{nv_seq_like()}, \code{NULL} uses
+\code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

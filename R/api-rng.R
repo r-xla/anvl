@@ -54,7 +54,9 @@ nv_unif_rand <- function(
 #' Samples from a uniform distribution in the open interval `(min, max)`.
 #' @template param_shape
 #' @template param_initial_state
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type of the sampled values. `NULL` (default) uses the backend's
+#'   default float data type (see [`default_dtypes()`]).
 #' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound.
 #' @return (`list()` of [`arrayish`])\cr
@@ -69,11 +71,11 @@ nv_unif_rand <- function(
 nv_runif <- function(
   shape,
   initial_state,
-  dtype = "f32",
+  dtype = NULL,
   min = 0,
   max = 1
 ) {
-  dtype <- assert_float_dtype(dtype)
+  dtype <- assert_float_dtype(dtype %||% default_dtype_r("double"))
   checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
   checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
   shape <- assert_shapevec(shape)
@@ -116,7 +118,9 @@ nv_runif <- function(
 #' @rdname nv_normal
 #' @template param_shape
 #' @template param_initial_state
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type of the sampled values. `NULL` (default) uses the backend's
+#'   default float data type (see [`default_dtypes()`]).
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -135,8 +139,8 @@ nv_runif <- function(
 #' nv_rnorm(c(2, 3), state, sd = sds)[[2]]
 #' @export
 #' @jit static c(1L, 3L)
-nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
-  dtype <- assert_float_dtype(dtype)
+nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
+  dtype <- assert_float_dtype(dtype %||% default_dtype_r("double"))
   shape <- assert_shapevec(shape)
   # `mean` and `sd` are arrayish: they may be traced values, so they cannot be
   # validated here and are only required to broadcast against `shape`. The
@@ -212,7 +216,9 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
 #'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type of the sampled values. `NULL` (default) uses the backend's
+#'   default integer data type (see [`default_dtypes()`]).
 #' @return (`list()` of [`arrayish`])\cr
 #'   List of two elements: the updated RNG state and the sampled values.
 #' @family rng
@@ -223,8 +229,8 @@ nv_rnorm <- function(shape, initial_state, dtype = "f32", mean = 0, sd = 1) {
 #' result[[2]]
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
-nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32") {
-  dtype <- as_dtype(dtype)
+nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
+  dtype <- as_dtype(dtype %||% default_dtype_r("integer"))
   checkmate::assert_int(size, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
   shape <- assert_shapevec(shape)
@@ -261,8 +267,9 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
 #' @template param_initial_state
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
-#' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the sampled integers.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type of the sampled integers. `NULL` (default) uses the backend's
+#'   default integer data type (see [`default_dtypes()`]).
 #' @return (`list()` of [`arrayish`])\cr
 #'   List of two elements: the updated RNG state and the sampled integers,
 #'   of shape `shape`.
@@ -275,8 +282,8 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
 #' result[[2]]
 #' @export
 #' @jit static c(1L, 3L, 4L)
-nv_sample_int <- function(shape, initial_state, n, dtype = "i32") {
-  dtype <- as_dtype(dtype)
+nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
+  dtype <- as_dtype(dtype %||% default_dtype_r("integer"))
   assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)
 

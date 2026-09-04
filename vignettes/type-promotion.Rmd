@@ -112,12 +112,25 @@ knitr::kable(tbl, format = "html", caption = "What an R value becomes: R type (r
 
 When an R value meets nothing but other R values, there is nothing to take a type from, and it **commits to the default** for its R type:
 
-* `double()` -> `f32`
-* `integer()` -> `i32`
+* `double()` -> the backend's default float, `f32` for pjrt
+* `integer()` -> the backend's default integer, `i32` for pjrt
 * `logical()` -> `bool`
 
 ```{r}
 jit(\() list(1L, 1.0, TRUE))()
+```
+
+The defaults are a property of the backend, and can be changed per backend: `default_dtypes()` reports them, and the options `anvl.default_float.<backend>` and `anvl.default_int.<backend>` (or `local_default_dtypes()` / `with_default_dtypes()`) override them.
+The quickr backend, which has no single precision, commits a double to `f64`.
+Changing a default does not change the yielding: a literal that meets an `f32` array is still an `f32`.
+
+```{r}
+with_default_dtypes(c(float = "f64"), {
+  list(
+    committed = jit(\() 1.0)(),
+    yielded = nv_array(1, dtype = "f32") + 1.5
+  )
+})
 ```
 
 ## Committing Happens Per Operation

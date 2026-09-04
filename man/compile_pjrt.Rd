@@ -11,7 +11,8 @@ compile_pjrt(
   donate = character(),
   device = NULL,
   arg_devices = list(),
-  fallback_device = NULL
+  fallback_device = NULL,
+  default_dtypes = NULL
 )
 }
 \arguments{

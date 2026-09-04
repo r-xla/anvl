@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend.R
 \name{default_backend}
 \alias{default_backend}
-\title{Get the default backend}
+\title{Get the backend in force}
 \usage{
 default_backend()
 }
@@ -10,8 +10,13 @@ default_backend()
 \code{character(1)} — the backend name (e.g. \code{"pjrt"}, \code{"quickr"}).
 }
 \description{
-Returns the current default backend from \code{getOption("anvl.default_backend", "pjrt")}.
+There is exactly one backend in force at any time, the one named by the
+option \code{anvl.backend} (default \code{"pjrt"}). Every array is built on it and
+every operation runs on it; an array of another backend is rejected. Set the
+option directly, or for a scope with \code{\link[=local_backend]{local_backend()}} / \code{\link[=with_backend]{with_backend()}}.
+Switching the backend also switches the data types an R value commits to by
+default, see \code{\link[=default_dtypes]{default_dtypes()}}.
 }
 \seealso{
-\code{\link[=local_backend]{local_backend()}}
+\code{\link[=local_backend]{local_backend()}}, \code{\link[=with_backend]{with_backend()}}, \code{\link[=default_dtypes]{default_dtypes()}}
 }

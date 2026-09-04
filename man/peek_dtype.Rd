@@ -19,8 +19,9 @@ where it has one, and the one it \emph{would} commit to where it has none.
 
 An R value entering a program has no data type until it is used (see
 \code{\link{RDataArray}}), so \code{\link[tengen:dtype]{dtype()}} has nothing to report for one
-and errors. \code{peek_dtype()} answers instead with the value's default (\code{f32}
-for a double, \code{i32} for an integer, \code{bool} for a logical) -- \emph{without}
+and errors. \code{peek_dtype()} answers instead with the value's default (the
+backend's default float for a double, its default integer for an integer,
+\code{bool} for a logical; see \code{\link[=default_dtypes]{default_dtypes()}}) -- \emph{without}
 committing it, which is the point: an \verb{nv_*} function that needs a dtype only
 to decide something with (a category test, a \code{nan_rm} branch) must not force
 the value to settle just by asking.

@@ -32,8 +32,9 @@ each use site, at the dtype that use site turns out to need. \code{x_f64 / sqrt(
 to \code{f32} on the way in and widened again.
 
 A value that is never combined with a typed array has nothing to take its
-dtype from and \emph{commits} to the default for its R type: \code{f32} for a double,
-\code{i32} for an integer, \code{bool} for a logical.
+dtype from and \emph{commits} to the default for its R type: the backend's default
+float for a double, its default integer for an integer (see
+\code{\link[=default_dtypes]{default_dtypes()}}), \code{bool} for a logical.
 }
 \section{Extractors}{
 

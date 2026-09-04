@@ -4,7 +4,7 @@
 \alias{nv_runif}
 \title{Sample from a Uniform Distribution}
 \usage{
-nv_runif(shape, initial_state, dtype = "f32", min = 0, max = 1)
+nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -13,8 +13,9 @@ Shape.}
 \item{initial_state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the sampled values. \code{NULL} (default) uses the backend's
+default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 
 \item{min, max}{(\code{numeric(1)})\cr
 Lower and upper bound.}

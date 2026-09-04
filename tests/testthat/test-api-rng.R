@@ -176,8 +176,8 @@ test_that("nv_sample and nv_sample_int compose inside jit", {
 })
 
 test_that("nv_rng_state works the same across devices (eager)", {
-  dev0 <- nv_device("cpu:0", "pjrt")
-  dev1 <- nv_device("cpu:1", "pjrt")
+  dev0 <- nv_device("cpu:0")
+  dev1 <- nv_device("cpu:1")
   s0 <- nv_rng_state(42L, device = dev0)
   s1 <- nv_rng_state(42L, device = dev1)
   expect_equal(as_array(s0), as_array(s1))

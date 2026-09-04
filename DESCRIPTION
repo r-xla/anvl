@@ -54,6 +54,7 @@ Collate:
     'api-distributions.R'
     'array.R'
     'device.R'
+    'default-dtypes.R'
     'backend.R'
     'jit.R'
     'promotion.R'
@@ -88,5 +89,4 @@ Collate:
     'serialize.R'
     'stablehlo.R'
     'zzz.R'
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0

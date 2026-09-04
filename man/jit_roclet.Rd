@@ -16,7 +16,7 @@ time.
 
 Mark a function with \verb{#' @jit} (optionally \verb{#' @jit static = c(...)}) to
 request that the function be replaced in the package namespace by
-\code{jit(f, backend = "auto", static = c(...))}.
+\code{jit(f, static = c(...))}.
 }
 \section{Setting up the roclet in a package}{
 

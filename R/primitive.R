@@ -85,7 +85,7 @@ print.AnvlPrimitive <- function(x, ...) {
 #' `"JitPrimitive"`, and (by default) registers the result under `name` in
 #' the primitive registry.
 #'
-#' The backend is always `"auto"` and cannot be configured.
+#' Like every jitted function it runs on the backend in force when called.
 #' @param name (`character(1)`)\cr
 #'   Primitive name.
 #' @param fn (`function`)\cr
@@ -111,9 +111,10 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   loop-carried state are deliberately heterogeneous.
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
-#' @param device (`NULL` | `character(1)` | `device_arg()`)\cr
+#' @param device (`NULL` | `character(1)` | [`device_arg()`])\cr
 #'   Passed to [`jit()`]. Useful for primitives with no array inputs
-#'   (e.g. `prim_fill`) where the device must come from an explicit argument.
+#'   (e.g. `prim_fill`) where the device the result is placed on must come
+#'   from an explicit argument.
 #' @param register (`logical(1)`)\cr
 #'   If `TRUE` (default), register the result under `name` in the primitive
 #'   registry.
@@ -144,7 +145,7 @@ new_primitive <- function(
   self_env$self <- primitive
   environment(fn) <- self_env
 
-  jit_fn <- jit(fn, static = static, backend = "auto", device = device)
+  jit_fn <- jit(fn, static = static, device = device)
   attr(jit_fn, "primitive") <- primitive
   class(jit_fn) <- c("JitPrimitive", class(jit_fn))
 

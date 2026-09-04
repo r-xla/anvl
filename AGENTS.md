@@ -45,7 +45,19 @@ makes `x_f64 / sqrt(2)` exact.
   integer an integer, a logical a `bool`, and nothing else. Crossing a category
   is promotion, which is the `nv_*` layer's job, so `prim_add(x_f64, 1L)` is an
   error where `nv_add(x_f64, 1L)` is `f64`. A trace output commits whatever is
-  left, at `default_dtype_r()`.
+  left, at `default_dtype_r()` -- the default float / integer of the backend in
+  force, which `default_dtypes()` reports and the options `anvl.default_float`
+  / `anvl.default_int` override. A trace is pinned to the pair the dispatcher
+  keyed its program on (`GraphDescriptor$default_dtypes`); read it through
+  `current_default_dtypes()` / `default_dtype_r()`, never hardcode `"f32"` /
+  `"i32"` as a default.
+- **One backend at a time.** The backend is the option `anvl.backend`
+  (`default_backend()`, `local_backend()`, `with_backend()`). Every jitted
+  function runs on it, reading it at call time; nothing infers a backend from
+  an argument, no function takes a `backend` argument, and an array or device
+  of another backend is an error. This is what makes the default dtypes
+  unambiguous in eager code (see
+  `specs/2026-09-04-ambient-backend-default-dtypes-design.md`).
 - The value is built directly only at a dtype that holds it faithfully (a
   double at any float, an R integer at any float or any >=32-bit integer, a
   logical at `bool`); any other target is built at the natural dtype -- `f64` /

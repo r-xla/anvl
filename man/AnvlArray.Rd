@@ -16,12 +16,11 @@ nv_array(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  backend = NULL,
   byrow = FALSE,
   check = FALSE
 )
 
-nv_scalar(data, dtype = NULL, device = NULL, backend = NULL, check = FALSE)
+nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
 
 nv_matrix(
   data,
@@ -29,22 +28,14 @@ nv_matrix(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  backend = NULL,
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, backend = NULL)
+nv_empty(dtype, shape, device = NULL)
 
-nv_array_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  backend = NULL
-)
+nv_array_like(like, data, dtype = NULL, device = NULL, shape = NULL)
 
-nv_scalar_like(like, data, dtype = NULL, device = NULL, backend = NULL)
+nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
 nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 }
@@ -76,13 +67,7 @@ named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} back
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
-
-\item{backend}{(\code{NULL} | \code{character(1)})\cr
-Backend the array belongs to (\code{"pjrt"} or \code{"quickr"}).
-The default (\code{NULL}) is inferred from \code{device} when \code{device} is a
-backend-specific device object, and otherwise falls back to
-\code{\link[=default_backend]{default_backend()}}.
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.
 Must not be specified inside \code{\link[=jit]{jit()}}.}
 
 \item{byrow}{(\code{logical(1)})\cr
@@ -108,8 +93,8 @@ Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
-An existing array. Any of \code{dtype}, \code{device}, \code{shape}, and \code{backend}
-that are \code{NULL} (the default) are taken from \code{like}.}
+An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are \code{NULL}
+(the default) are taken from \code{like}.}
 }
 \value{
 (\code{\link{AnvlArray}})

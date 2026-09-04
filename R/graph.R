@@ -103,7 +103,13 @@ rdata_natural_dtype <- function(r_type) {
 # out of the category R's coercion and XLA's `convert` disagree, so it has to be
 # the program's conversion rather than R's.
 rdata_in_category <- function(r_type, dtype) {
-  dtype_category(dtype) == dtype_category(default_dtype_r(r_type))
+  dtype_category(dtype) == rdata_category(r_type)
+}
+
+# The category (see `dtype_category()`) of an R storage type. Fixed, whatever
+# width the type's default dtype has.
+rdata_category <- function(r_type) {
+  switch(r_type, double = 3L, integer = 2L, logical = 1L)
 }
 
 # Whether an R value of this storage type can be built at `dtype` *directly*,
@@ -176,8 +182,9 @@ commit_rdata <- function(box) {
 #'
 #' An R value entering a program has no data type until it is used (see
 #' [`RDataArray`]), so [`dtype()`][tengen::dtype] has nothing to report for one
-#' and errors. `peek_dtype()` answers instead with the value's default (`f32`
-#' for a double, `i32` for an integer, `bool` for a logical) -- *without*
+#' and errors. `peek_dtype()` answers instead with the value's default (the
+#' backend's default float for a double, its default integer for an integer,
+#' `bool` for a logical; see [`default_dtypes()`]) -- *without*
 #' committing it, which is the point: an `nv_*` function that needs a dtype only
 #' to decide something with (a category test, a `nan_rm` branch) must not force
 #' the value to settle just by asking.
@@ -199,7 +206,7 @@ commit_rdata <- function(box) {
 #' @export
 peek_dtype <- function(x) {
   aval <- to_abstract(x)
-  if (is_rdata_array(aval)) aval$default_dtype else aval$dtype
+  if (is_rdata_array(aval)) default_dtype_r(aval$r_type) else aval$dtype
 }
 
 # A box, with any R value in it committed to its default dtype. Anything that
@@ -416,7 +423,8 @@ GraphDescriptor <- function(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character()
+  devices = character(),
+  default_dtypes = NULL
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -437,6 +445,10 @@ GraphDescriptor <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$devices <- devices
+  # The default dtypes (see `default_dtypes()`) every R value in this trace
+  # commits to when nothing else decides: the pair the dispatcher keyed the
+  # compiled program on. `local_descriptor()` fills it in when not given.
+  env$default_dtypes <- default_dtypes
   # Calls that have to run before everything else, because they only depend on
   # the graph's inputs: the converts finalize_rdata_inputs() adds for an R
   # argument that one program used at more than one dtype.
@@ -731,7 +743,7 @@ finalize_rdata_inputs <- function(desc) {
       function(dt) rdata_builds_directly(aval$r_type, as_dtype(dt)),
       names(node$mat)
     )
-    resolved <- resolve_upload_dtype(aval, requested)
+    resolved <- resolve_upload_dtype(aval, requested, desc$default_dtypes)
     main <- node$mat[[resolved]] %||%
       GraphBox(GraphValue(AbstractArray(resolved, aval$shape)), desc)
     main$gnode$aval <- RDataInput(resolved, aval$shape, aval$r_type)
@@ -782,9 +794,9 @@ dtype_holds <- function(dtype, other) {
 # other -- `f16` has three more mantissa bits, `bf16` a far wider exponent -- and
 # `i32` and `ui32` likewise. When no candidate holds them all, the value's
 # natural dtype does, by construction.
-resolve_upload_dtype <- function(aval, requested) {
+resolve_upload_dtype <- function(aval, requested, defaults) {
   if (!length(requested)) {
-    return(as.character(aval$default_dtype))
+    return(as.character(default_dtype_r(aval$r_type, defaults)))
   }
   dtypes <- lapply(requested, as_dtype)
   holds_all <- vapply(dtypes, function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d)), logical(1L))
@@ -1043,6 +1055,7 @@ currently_tracing <- function() {
   !is.null(globals[["CURRENT_DESCRIPTOR"]])
 }
 
+
 maybe_previous_descriptor <- function() {
   stash <- globals[["DESCRIPTOR_STASH"]]
   n <- length(stash)
@@ -1074,6 +1087,11 @@ local_descriptor <- function(..., envir = parent.frame()) {
   }
 
   desc <- GraphDescriptor(...)
+  if (is.null(desc$default_dtypes)) {
+    # A sub-descriptor inherits the trace's pair; a top-level one without a
+    # dispatcher in front of it takes the default backend's current defaults.
+    desc$default_dtypes <- current_default_dtypes()
+  }
   if (!is.null(globals[["CURRENT_DESCRIPTOR"]])) {
     globals[["DESCRIPTOR_STASH"]] <- c(
       globals[["DESCRIPTOR_STASH"]],

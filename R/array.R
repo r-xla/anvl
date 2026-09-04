@@ -50,11 +50,6 @@
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
 #'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
-#' @param backend (`NULL` | `character(1)`)\cr
-#'   Backend the array belongs to (`"pjrt"` or `"quickr"`).
-#'   The default (`NULL`) is inferred from `device` when `device` is a
-#'   backend-specific device object, and otherwise falls back to
-#'   [`default_backend()`].
 #'   Must not be specified inside [`jit()`].
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
@@ -113,7 +108,6 @@ nv_array <- function(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  backend = NULL,
   byrow = FALSE,
   check = FALSE
 ) {
@@ -130,7 +124,7 @@ nv_array <- function(
     if (byrow) {
       cli_abort("{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.")
     }
-    if (!is.null(device) && !eq_device(device(data), nv_device(device, backend))) {
+    if (!is.null(device) && !eq_device(device(data), nv_device(device))) {
       cli_abort("Cannot change device of existing AnvlArray from {.val {device(data)}} to {.val {device}}")
     }
     if (!is.null(shape) && !identical(shape(data), as.integer(shape))) {
@@ -176,16 +170,16 @@ nv_array <- function(
     }
   }
   if (currently_tracing() && is.null(device)) {
-    # The functions we jit should be backend-agnostic
-    if (!is.null(backend)) {
-      cli_abort("{.arg backend} must not be specified when calling {.fn nv_array} inside {.fn jit}.")
-    }
+    # A constant of the trace: it commits to the defaults the trace is pinned to.
+    dtype <- resolve_default_dtype(data, dtype)
     return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
   }
-  if (is.null(backend) && is_device(device)) {
-    backend <- backend(device)
+  backend <- default_backend()
+  if (is_device(device)) {
+    check_device_backend(device, backend)
   }
-  backend <- backend %||% default_backend()
+  # Resolved here, so no backend runtime ever chooses a dtype for anvl.
+  dtype <- resolve_default_dtype(data, dtype, default_dtypes())
   globals$backends[[backend]]$new_data(data, dtype, shape, device)
 }
 
@@ -278,10 +272,10 @@ as_anvl_array <- function(x, device = NULL) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
   if (is_anvl_array(x)) {
-    if (!is.null(device) && !eq_device(device(x), nv_device(device, backend(x)))) {
+    if (!is.null(device) && !eq_device(device(x), backend_device(device, backend(x)))) {
       cli_abort(c(
         "Input is on an unexpected device.",
-        i = "Expected {.val {as.character(nv_device(device, backend(x)))}}.",
+        i = "Expected {.val {as.character(backend_device(device, backend(x)))}}.",
         i = "Got {.val {as.character(device(x))}}."
       ))
     }
@@ -445,13 +439,12 @@ unwrap_if_array <- function(x) {
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar <- function(data, dtype = NULL, device = NULL, backend = NULL, check = FALSE) {
+nv_scalar <- function(data, dtype = NULL, device = NULL, check = FALSE) {
   nv_array(
     data,
     dtype = dtype,
     device = device,
     shape = integer(),
-    backend = backend,
     check = check
   )
 }
@@ -483,7 +476,6 @@ nv_matrix <- function(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  backend = NULL,
   byrow = FALSE
 ) {
   assert_int(nrow, lower = 0L, null.ok = TRUE)
@@ -502,8 +494,7 @@ nv_matrix <- function(
       data,
       dtype = dtype,
       device = device,
-      shape = c(nrow, ncol),
-      backend = backend
+      shape = c(nrow, ncol)
     ))
   }
   if (is.null(nrow) && is.null(ncol)) {
@@ -522,19 +513,18 @@ nv_matrix <- function(
     dtype = dtype,
     device = device,
     shape = c(nrow, ncol),
-    backend = backend,
     byrow = byrow
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-nv_empty <- function(dtype, shape, device = NULL, backend = NULL) {
+nv_empty <- function(dtype, shape, device = NULL) {
   shape <- as.integer(shape)
-  if (is.null(backend) && is_device(device)) {
-    backend <- backend(device)
+  backend <- default_backend()
+  if (is_device(device)) {
+    check_device_backend(device, backend)
   }
-  backend <- backend %||% default_backend()
   globals$backends[[backend]]$new_empty(
     dtype = dtype,
     shape = shape,
@@ -916,8 +906,9 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' to `f32` on the way in and widened again.
 #'
 #' A value that is never combined with a typed array has nothing to take its
-#' dtype from and *commits* to the default for its R type: `f32` for a double,
-#' `i32` for an integer, `bool` for a logical.
+#' dtype from and *commits* to the default for its R type: the backend's default
+#' float for a double, its default integer for an integer (see
+#' [`default_dtypes()`]), `bool` for a logical.
 #'
 #' @section Extractors:
 #' [`shape()`][tengen::shape] and [`naxes()`][tengen::naxes] answer as they
@@ -951,15 +942,10 @@ RDataArray <- function(data, shape, r_type = typeof(data)) {
   shape <- as_shape(shape)
   r_type <- match.arg(r_type, c("double", "integer", "logical"))
   structure(
-    list(
-      data = data,
-      r_type = r_type,
-      # The dtype this value commits to when nothing tells it otherwise. Not
-      # called `dtype`: it is what the value *would* become, and code that
-      # reaches for `$dtype` must not silently get it.
-      default_dtype = default_dtype_r(r_type),
-      shape = shape
-    ),
+    # Deliberately no `dtype`: the value has none until it commits, and the
+    # default it would commit to depends on the backend (`default_dtype_r()`),
+    # so code that reaches for `$dtype` must not silently get one.
+    list(data = data, r_type = r_type, shape = shape),
     class = c("RDataArray", "AbstractArray")
   )
 }
@@ -1025,7 +1011,7 @@ repr.RDataInput <- function(x, ...) {
 #' @method dtype RDataArray
 #' @export
 dtype.RDataArray <- function(x, ...) {
-  abort_no_dtype(x$default_dtype)
+  abort_no_dtype(default_dtype_r(x$r_type))
 }
 
 # An R value is the same value whether it is boxed for a trace or not, so the

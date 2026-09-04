@@ -7,7 +7,7 @@ dtype_from_buffer <- function(x) {
 #' @description
 #' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
 #' listed function in `envir` to
-#' `jit(f, backend = "auto", static = entry$static)`.
+#' `jit(f, static = entry$static)`.
 #'
 #' Call this from the top level of your package's `R/zzz.R`, right next to
 #' `.onLoad`, so the wrappers are byte-compiled during package install
@@ -34,11 +34,7 @@ apply_jit_registry <- function(registry, envir = parent.frame()) {
   for (entry in registry) {
     assign(
       entry$name,
-      jit(
-        get(entry$name, envir = envir, inherits = FALSE),
-        backend = "auto",
-        static = entry$static
-      ),
+      jit(get(entry$name, envir = envir, inherits = FALSE), static = entry$static),
       envir = envir
     )
   }
@@ -189,13 +185,20 @@ is_valid_r <- function(x) {
   (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
 }
 
+# The number of programs `f` has cached for the backend in force. A jitted
+# function creates its per-backend implementation on first call, so a backend
+# it never ran on has an empty cache.
 cache_size <- function(f) {
-  # All jit paths cache in pjrt's native dispatcher.
-  dispatcher <- environment(f)$dispatcher
-  if (is.null(dispatcher)) {
-    cli_abort("{.arg f} has no dispatcher; is it a jitted function?")
+  jit_fns <- environment(f)$.jit_fns
+  if (is.null(jit_fns)) {
+    cli_abort("{.arg f} is not a jitted function.")
   }
-  pjrt::dispatcher_size(dispatcher)
+  impl <- jit_fns[[default_backend()]]
+  if (is.null(impl)) {
+    return(0L)
+  }
+  # All backends cache in pjrt's native dispatcher.
+  pjrt::dispatcher_size(environment(impl)$dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
@@ -291,32 +294,4 @@ col_major_layouts <- function(...) {
 
 is_device_arg <- function(x) {
   inherits(x, "AnvlDeviceArg")
-}
-
-# returns list(device | NULL, backend)
-resolve_device <- function(device, backend) {
-  if (is.character(device)) {
-    backend <- backend %||% default_backend()
-    device <- if (backend == "auto") {
-      nv_device(device, default_backend())
-    } else {
-      nv_device(device, backend)
-    }
-    return(list(device, backend))
-  }
-  if (is.null(device)) {
-    return(list(NULL, backend %||% default_backend()))
-  }
-  # concrete device
-  if (is.null(backend) || (backend == "auto")) {
-    return(list(device, backend(device)))
-  }
-  if (backend(device) != backend) {
-    cli_abort(c(
-      "Backend of requested device does not match requested backend",
-      i = "backend(device) = {backend(device)}",
-      i = "backend = {backend}"
-    ))
-  }
-  list(device, backend)
 }

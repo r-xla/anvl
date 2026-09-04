@@ -15,7 +15,8 @@ GraphDescriptor(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character()
+  devices = character(),
+  default_dtypes = NULL
 )
 }
 \arguments{

@@ -4,7 +4,7 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32")
+nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -19,8 +19,9 @@ Number of trials.}
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the sampled values. \code{NULL} (default) uses the backend's
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr

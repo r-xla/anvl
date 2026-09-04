@@ -102,7 +102,7 @@ Key points:
 - The inference function receives abstract arrays (types, not values) for dynamic inputs, and actual values for static parameters. It must verify that the arguments to the function are valid, and should throw clear error messages — {anvl} programs are otherwise hard to debug.
 - `graph_desc_add()` returns a list of outputs; use `[[1L]]` for single-output primitives.
 
-Every argument that is *not* a dynamic array must be listed in `static`. `new_primitive` calls `jit()` with `backend = "auto"` internally, which defers the choice of backend to call time.
+Every argument that is *not* a dynamic array must be listed in `static`. `new_primitive` calls `jit()` internally, so the primitive runs on whichever backend is in force when it is called.
 
 If the primitive is a wrapper around a stablehlo operation, it is possible to use the corresponding inference function from the stablehlo package (such as `stablehlo::infer_types_concatenate`).
 When doing so, you need to:
@@ -116,7 +116,7 @@ When doing so, you need to:
 Array *constructors* (e.g. `prim_fill`, `prim_iota`) have no dynamic array inputs -- every argument is static. Two things change in this case:
 
 1. **All formals must be listed in `static`**. Otherwise {anvl} would try to interpret a scalar argument like `value` or `shape` as an `AnvlArray` input.
-2. **`backend = "auto"` cannot infer a device from inputs**, because there are no array inputs. Instead, add a `device` formal to the function and pass `device = device_arg("device")` to `new_primitive()`. At call time, the user-supplied device is read from that argument and used to determine both the backend (via [`backend()`] dispatch) and the compilation device.
+2. **The device cannot be inferred from inputs**, because there are no array inputs. Instead, add a `device` formal to the function and pass `device = device_arg("device")` to `new_primitive()`. At call time, the user-supplied device -- a device of the backend in force, or a device name -- is read from that argument and used as the compilation device.
 
 For example, the real definition of `prim_fill` looks like this:
 

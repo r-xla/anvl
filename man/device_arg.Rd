@@ -17,21 +17,21 @@ An object recognized by \code{\link[=jit]{jit()}}.
 \description{
 Pass the result to \code{\link[=jit]{jit()}}'s \code{device} argument to indicate that the
 device should be read from a formal argument of the function being
-compiled. At call time, the value of that argument is used to derive the
-backend via \code{\link[=backend]{backend()}} dispatch and is forwarded to the backend-specific
-JIT as the compilation device.
+compiled. At call time, the value of that argument -- a device of the
+backend in force, or a device name -- is the device the program is compiled
+for. The argument is static.
 
 This is intended for functions that have no dynamic array inputs from which
-the backend could otherwise be detected (e.g. array constructors like
+the device could otherwise be inferred (e.g. array constructors like
 \code{\link[=prim_fill]{prim_fill()}} or \code{\link[=prim_iota]{prim_iota()}}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
 f <- function(x) nv_scalar(1, device = x)
-g <- jit(f, backend = "auto", device = device_arg("x"))
-g(nv_device("cpu", "pjrt"))
+g <- jit(f, device = device_arg("x"))
+g(nv_device("cpu"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=jit]{jit()}}, \code{\link[=backend]{backend()}}
+\code{\link[=jit]{jit()}}, \code{\link[=nv_device]{nv_device()}}
 }
