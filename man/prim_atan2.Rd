@@ -18,6 +18,23 @@ Has the same shape and data type as the inputs.
 \description{
 Element-wise atan2 operation.
 }
+\section{Data Types}{
+
+\code{lhs} and \code{rhs} must have the same data type, which the primitive does not
+negotiate: an operand that already has a data type keeps it, and operands
+with different data types are an error. Convert one explicitly with
+\code{\link[=nv_convert]{nv_convert()}}, or use the \verb{nv_*} layer, which promotes to a common data
+type.
+
+An R value has no data type of its own and is built at the one the other
+operands have, as long as that data type is in its own category: a double
+becomes a float, an integer an integer or unsigned integer, a logical a
+\code{bool}. If every operand is an R value, they must be of one R storage type
+and are built at its default data type (\code{f32}, \code{i32} or \code{bool}).
+
+See \code{vignette("type-promotion")}.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
@@ -33,9 +50,17 @@ Lowers to \code{\link[stablehlo:hlo_atan2]{hlo_atan2()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-y <- nv_array(c(1, 0, -1))
-x <- nv_array(c(0, 1, 0))
-prim_atan2(y, x)
+# two R values: both built at f32, an R double's default data type
+prim_atan2(1, 1)
+
+# the R value is built at the array's data type instead
+prim_atan2(1, nv_scalar(1, "f64"))
+
+# an R integer cannot be built at a float data type
+try(prim_atan2(1L, nv_scalar(1, "f32")))
+
+# neither operand is converted to meet the other
+try(prim_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

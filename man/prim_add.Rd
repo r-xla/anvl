@@ -18,6 +18,23 @@ Has the same shape and data type as the inputs.
 \description{
 Adds two arrays element-wise.
 }
+\section{Data Types}{
+
+\code{lhs} and \code{rhs} must have the same data type, which the primitive does not
+negotiate: an operand that already has a data type keeps it, and operands
+with different data types are an error. Convert one explicitly with
+\code{\link[=nv_convert]{nv_convert()}}, or use the \verb{nv_*} layer, which promotes to a common data
+type.
+
+An R value has no data type of its own and is built at the one the other
+operands have, as long as that data type is in its own category: a double
+becomes a float, an integer an integer or unsigned integer, a logical a
+\code{bool}. If every operand is an R value, they must be of one R storage type
+and are built at its default data type (\code{f32}, \code{i32} or \code{bool}).
+
+See \code{vignette("type-promotion")}.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
@@ -34,9 +51,17 @@ Lowers to \code{\link[stablehlo:hlo_add]{hlo_add()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(4, 5, 6))
-prim_add(x, y)
+# two R values: both built at f32, an R double's default data type
+prim_add(1, 2)
+
+# the R value is built at the array's data type instead
+prim_add(1, nv_scalar(2, "f64"))
+
+# an R integer cannot be built at a float data type
+try(prim_add(1L, nv_scalar(2, "f32")))
+
+# neither operand is converted to meet the other
+try(prim_add(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

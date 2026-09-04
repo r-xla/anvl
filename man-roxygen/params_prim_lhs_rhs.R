@@ -1,3 +1,3 @@
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   Arrayish values of any data type.
+#'   Arrayish values of <%= dtypes %>.
 #'   Must have the same shape.

@@ -111,51 +111,84 @@ prim_fill <- new_primitive(
 #' @title Primitive Addition
 #' @description
 #' Adds two arrays element-wise.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id add
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_add()].
 #' @seealso [nv_add()], `+`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' prim_add(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_add(1, 2)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_add(1, nv_scalar(2, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_add(1L, nv_scalar(2, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_add(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 
 #' @title Primitive Multiplication
 #' @description
 #' Multiplies two arrays element-wise.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id mul
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_multiply()].
 #' @seealso [nv_mul()], `*`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' prim_mul(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_mul(2, 3)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_mul(2, nv_scalar(3, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_mul(1L, nv_scalar(3, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_mul(nv_scalar(2, "f32"), nv_scalar(3, "f64")))
 #' @export
 prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply))
 
 #' @title Primitive Subtraction
 #' @description
 #' Subtracts two arrays element-wise.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id sub
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_subtract()].
 #' @seealso [nv_sub()], `-`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' prim_sub(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_sub(5, 3)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_sub(5, nv_scalar(3, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_sub(1L, nv_scalar(3, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64")))
 #' @export
 prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract))
 
@@ -179,34 +212,56 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' @title Primitive Division
 #' @description
 #' Divides two arrays element-wise.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id divide
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_divide()].
 #' @seealso [nv_div()], `/`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(10, 20, 30))
-#' y <- nv_array(c(2, 5, 10))
-#' prim_div(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_div(10, 4)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_div(10, nv_scalar(4, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_div(1L, nv_scalar(4, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_div(nv_scalar(10, "f32"), nv_scalar(4, "f64")))
 #' @export
 prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide))
 
 #' @title Primitive Power
 #' @description
 #' Raises lhs to the power of rhs element-wise.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id power
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_power()].
 #' @seealso [nv_pow()], `^`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(2, 3, 4))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_pow(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_pow(2, 3)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_pow(2, nv_scalar(3, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_pow(1L, nv_scalar(3, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_pow(nv_scalar(2, "f32"), nv_scalar(3, "f64")))
 #' @export
 prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 
@@ -1198,102 +1253,168 @@ make_compare_op <- function(direction) {
 #' @title Primitive Equal
 #' @description
 #' Element-wise equality comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id equal
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "EQ"`.
 #' @seealso [nv_eq()], `==`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' prim_eq(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_eq(1, 1)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_eq(1, nv_scalar(1, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_eq(1L, nv_scalar(1, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_eq(nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 
 #' @title Primitive Not Equal
 #' @description
 #' Element-wise inequality comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id not_equal
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "NE"`.
 #' @seealso [nv_ne()], `!=`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' prim_ne(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_ne(1, 2)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_ne(1, nv_scalar(2, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_ne(1L, nv_scalar(2, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_ne(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 
 #' @title Primitive Greater Than
 #' @description
 #' Element-wise greater than comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id greater
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "GT"`.
 #' @seealso [nv_gt()], `>`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_gt(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_gt(2, 1)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_gt(2, nv_scalar(1, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_gt(1L, nv_scalar(1, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_gt(nv_scalar(2, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_gt <- new_primitive("greater", make_compare_op("GT"))
 
 #' @title Primitive Greater Equal
 #' @description
 #' Element-wise greater than or equal comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id greater_equal
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "GE"`.
 #' @seealso [nv_ge()], `>=`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_ge(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_ge(2, 1)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_ge(2, nv_scalar(1, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_ge(1L, nv_scalar(1, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_ge(nv_scalar(2, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 
 #' @title Primitive Less Than
 #' @description
 #' Element-wise less than comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id less
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "LT"`.
 #' @seealso [nv_lt()], `<`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_lt(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_lt(1, 2)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_lt(1, nv_scalar(2, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_lt(1L, nv_scalar(2, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_lt(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_lt <- new_primitive("less", make_compare_op("LT"))
 
 #' @title Primitive Less Equal
 #' @description
 #' Element-wise less than or equal comparison.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id less_equal
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "LE"`.
 #' @seealso [nv_le()], `<=`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_le(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_le(1, 2)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_le(1, nv_scalar(2, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_le(1L, nv_scalar(2, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_le(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 
@@ -1302,34 +1423,56 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' @title Primitive Maximum
 #' @description
 #' Element-wise maximum of two arrays.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id maximum
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_maximum()].
 #' @seealso [nv_max()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 5, 3))
-#' y <- nv_array(c(4, 2, 6))
-#' prim_max(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_max(1, 5)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_max(1, nv_scalar(5, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_max(1L, nv_scalar(5, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_max(nv_scalar(1, "f32"), nv_scalar(5, "f64")))
 #' @export
 prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
 
 #' @title Primitive Minimum
 #' @description
 #' Element-wise minimum of two arrays.
-#' @template params_prim_lhs_rhs_any
+#' @templateVar dtypes any data type
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id minimum
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_minimum()].
 #' @seealso [nv_min()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 5, 3))
-#' y <- nv_array(c(4, 2, 6))
-#' prim_min(x, y)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_min(1, 5)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_min(1, nv_scalar(5, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_min(1L, nv_scalar(5, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_min(nv_scalar(1, "f32"), nv_scalar(5, "f64")))
 #' @export
 prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
 
@@ -1338,15 +1481,30 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' Element-wise remainder.
 #' Result has sign of the divident, which differs from base R's `%%`, which is available
 #' via [`nv_mod()`] and has sign of divisor.
-#' @template params_prim_lhs_rhs_numeric
+#' @templateVar dtypes data type integer, unsigned integer, or floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id remainder
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_remainder()].
 #' @seealso [nv_remainder()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # two R values: both built at f32, an R double's default data type
 #' prim_remainder(1, -3)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_remainder(1, nv_scalar(-3, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_remainder(1L, nv_scalar(-3, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_remainder(nv_scalar(1, "f32"), nv_scalar(-3, "f64")))
+#'
+#' # the sign follows the dividend, where base R's %% follows the divisor
 #' 1 %% -3
 #' @export
 prim_remainder <- new_primitive(
@@ -1357,17 +1515,28 @@ prim_remainder <- new_primitive(
 #' @title Primitive And
 #' @description
 #' Element-wise logical AND.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id and
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_and()].
 #' @seealso [nv_and()], `&`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' prim_and(x, y)
+#' # two R values: both built at i32, an R integer's default data type
+#' prim_and(12L, 10L)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_and(12L, nv_scalar(10L, "i64"))
+#'
+#' # an R double cannot be built at an integer data type
+#' try(prim_and(1, nv_scalar(10L, "i32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_and(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 #' @export
 prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 
@@ -1391,34 +1560,56 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @title Primitive Or
 #' @description
 #' Element-wise logical OR.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id or
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_or()].
 #' @seealso [nv_or()], `|`
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' prim_or(x, y)
+#' # two R values: both built at i32, an R integer's default data type
+#' prim_or(12L, 10L)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_or(12L, nv_scalar(10L, "i64"))
+#'
+#' # an R double cannot be built at an integer data type
+#' try(prim_or(1, nv_scalar(10L, "i32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_or(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 #' @export
 prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 
 #' @title Primitive Xor
 #' @description
 #' Element-wise logical XOR.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id xor
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_xor()].
 #' @seealso [nv_xor()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' prim_xor(x, y)
+#' # two R values: both built at i32, an R integer's default data type
+#' prim_xor(12L, 10L)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_xor(12L, nv_scalar(10L, "i64"))
+#'
+#' # an R double cannot be built at an integer data type
+#' try(prim_xor(1, nv_scalar(10L, "i32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 #' @export
 prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
 
@@ -1431,17 +1622,28 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #' @title Primitive Shift Left
 #' @description
 #' Element-wise left bit shift.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id shift_left
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_shift_left()].
 #' @seealso [nv_shift_left()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1L, 2L, 4L))
-#' y <- nv_array(c(1L, 2L, 1L))
-#' prim_shift_left(x, y)
+#' # two R values: both built at i32, an R integer's default data type
+#' prim_shift_left(8L, 2L)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_shift_left(8L, nv_scalar(2L, "i64"))
+#'
+#' # an R double cannot be built at an integer data type
+#' try(prim_shift_left(1, nv_scalar(2L, "i32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_shift_left(nv_scalar(8L, "i32"), nv_scalar(2L, "i64")))
 #' @export
 prim_shift_left <- new_primitive(
   "shift_left",
@@ -1455,17 +1657,28 @@ prim_shift_left <- new_primitive(
 #' @title Primitive Logical Shift Right
 #' @description
 #' Element-wise logical right bit shift.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id shift_right_logical
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_shift_right_logical()].
 #' @seealso [nv_shift_right_logical()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(8L, 16L, 32L))
-#' y <- nv_array(c(1L, 2L, 3L))
-#' prim_shift_right_logical(x, y)
+#' # two R values: both built at i32, an R integer's default data type
+#' prim_shift_right_logical(32L, 2L)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_shift_right_logical(32L, nv_scalar(2L, "i64"))
+#'
+#' # an R double cannot be built at an integer data type
+#' try(prim_shift_right_logical(1, nv_scalar(2L, "i32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64")))
 #' @export
 prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
@@ -1479,17 +1692,28 @@ prim_shift_right_logical <- new_primitive(
 #' @title Primitive Arithmetic Shift Right
 #' @description
 #' Element-wise arithmetic right bit shift.
-#' @template params_prim_lhs_rhs_intlike
+#' @templateVar dtypes data type boolean, integer, or unsigned integer
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id shift_right_arithmetic
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_shift_right_arithmetic()].
 #' @seealso [nv_shift_right_arithmetic()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(8L, -16L, 32L))
-#' y <- nv_array(c(1L, 2L, 3L))
-#' prim_shift_right_arithmetic(x, y)
+#' # two R values: both built at i32, an R integer's default data type
+#' prim_shift_right_arithmetic(-32L, 2L)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_shift_right_arithmetic(-32L, nv_scalar(2L, "i64"))
+#'
+#' # an R double cannot be built at an integer data type
+#' try(prim_shift_right_arithmetic(1, nv_scalar(2L, "i32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_shift_right_arithmetic(nv_scalar(-32L, "i32"), nv_scalar(2L, "i64")))
 #' @export
 prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
@@ -1503,17 +1727,28 @@ prim_shift_right_arithmetic <- new_primitive(
 #' @title Primitive Atan2
 #' @description
 #' Element-wise atan2 operation.
-#' @template params_prim_lhs_rhs_float
+#' @templateVar dtypes data type floating-point
+#' @template params_prim_lhs_rhs
 #' @template return_prim_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_dtypes
 #' @templateVar primitive_id atan2
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_atan2()].
 #' @seealso [nv_atan2()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' y <- nv_array(c(1, 0, -1))
-#' x <- nv_array(c(0, 1, 0))
-#' prim_atan2(y, x)
+#' # two R values: both built at f32, an R double's default data type
+#' prim_atan2(1, 1)
+#'
+#' # the R value is built at the array's data type instead
+#' prim_atan2(1, nv_scalar(1, "f64"))
+#'
+#' # an R integer cannot be built at a float data type
+#' try(prim_atan2(1L, nv_scalar(1, "f32")))
+#'
+#' # neither operand is converted to meet the other
+#' try(prim_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2))
 

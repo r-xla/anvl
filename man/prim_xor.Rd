@@ -18,6 +18,23 @@ Has the same shape and data type as the inputs.
 \description{
 Element-wise logical XOR.
 }
+\section{Data Types}{
+
+\code{lhs} and \code{rhs} must have the same data type, which the primitive does not
+negotiate: an operand that already has a data type keeps it, and operands
+with different data types are an error. Convert one explicitly with
+\code{\link[=nv_convert]{nv_convert()}}, or use the \verb{nv_*} layer, which promotes to a common data
+type.
+
+An R value has no data type of its own and is built at the one the other
+operands have, as long as that data type is in its own category: a double
+becomes a float, an integer an integer or unsigned integer, a logical a
+\code{bool}. If every operand is an R value, they must be of one R storage type
+and are built at its default data type (\code{f32}, \code{i32} or \code{bool}).
+
+See \code{vignette("type-promotion")}.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
@@ -34,9 +51,17 @@ Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-prim_xor(x, y)
+# two R values: both built at i32, an R integer's default data type
+prim_xor(12L, 10L)
+
+# the R value is built at the array's data type instead
+prim_xor(12L, nv_scalar(10L, "i64"))
+
+# an R double cannot be built at an integer data type
+try(prim_xor(1, nv_scalar(10L, "i32")))
+
+# neither operand is converted to meet the other
+try(prim_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
