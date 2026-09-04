@@ -5,7 +5,11 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Shape object — Shape"><meta name="description" content="Constructs a Shape representing array dimensions."><meta property="og:description" content="Constructs a Shape representing array dimensions."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Shape object — Shape"><meta name="description" content="Constructs a Shape, the axis sizes of an array. A Shape is its integer
+vector, with a class attached, so length() is the number of axes and
+shape[i] is the size of axis i."><meta property="og:description" content="Constructs a Shape, the axis sizes of an array. A Shape is its integer
+vector, with a class attached, so length() is the number of axes and
+shape[i] is the size of axis i."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -76,7 +80,9 @@
     </div>
 
     <div class="ref-description section level2">
-    <p>Constructs a <code>Shape</code> representing array dimensions.</p>
+    <p>Constructs a <code>Shape</code>, the axis sizes of an array. A <code>Shape</code> <em>is</em> its integer
+vector, with a class attached, so <code><a href="https://rdrr.io/r/base/length.html" class="external-link">length()</a></code> is the number of axes and
+<code>shape[i]</code> is the size of axis <code>i</code>.</p>
     </div>
 
     <div class="section level2">
@@ -89,7 +95,8 @@
 
 
 <dl><dt id="arg-dims">dims<a class="anchor" aria-label="anchor" href="#arg-dims"></a></dt>
-<dd><p>An <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> vector of dimension sizes (&gt;= 0).</p></dd>
+<dd><p>An <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> vector of axis sizes (&gt;= 0). <code>NA</code> marks an axis
+whose size is only known at run time.</p></dd>
 
 </dl></div>
     <div class="section level2">

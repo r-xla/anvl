@@ -11,6 +11,16 @@
   the promotion behavior of various primitives and API functions was
   improved.
 - `jit_eval()` was removed as it is no longer needed.
+- A `Shape` (re-exported from {stablehlo}) *is* its integer vector now,
+  with a class attached, rather than a list wrapping one.
+  `length(shape)` is the number of axes, `shape[i]` is the size of axis
+  `i`, and `shape$dims` is gone – read the axis sizes with
+  [`unclass()`](https://rdrr.io/r/base/class.html).
+  [`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) keeps
+  working on an array; it is only the `Shape` object itself that no
+  longer has a
+  [`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md)
+  method, having nothing left to unwrap.
 
 ### Bug fixes
 
