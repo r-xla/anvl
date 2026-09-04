@@ -12,8 +12,9 @@ skip_if_no_jit <- function() {
 }
 
 # `jit_dispatcher()` is anvl's own accessor for the dispatcher of the backend in
-# force; a jitted function holds one implementation per backend.
-jit_size <- function(f) pjrt::dispatcher_size(jit_dispatcher(f))
+# force; a jitted function holds one implementation per backend. `cache_size()`
+# is the same thing but reports 0 for a backend the function never ran on.
+jit_size <- function(f) cache_size(f)
 
 arr_of <- function(res) as.numeric(tengen::as_array(res))
 

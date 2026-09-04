@@ -68,6 +68,13 @@ A scope covers the values \emph{built} inside it. A bare R value handed back out
 of one has not committed to anything yet, and takes the default in force
 wherever it is eventually used -- the same rule that lets it take the data
 type of whatever array it meets (see \code{vignette("type-promotion")}).
+
+Only the baseline is part of the compilation cache key, so an override
+inside a body carries the same constraint as any other value the body reads
+from its enclosing environment: it must not change between calls.
+\code{with_default_dtypes(c(float = prec), ...)} with a \code{prec} that later changes
+keeps serving the first program, exactly as a changing \code{dtype} argument
+would.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

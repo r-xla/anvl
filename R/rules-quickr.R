@@ -11,11 +11,14 @@ quickr_user_arg_names <- function(n) {
   paste0("x", seq_len(n))
 }
 
+# What quickr can represent, per data type: the R storage it uses, its zero, and
+# the cast to it. quickr has no single precision, so `f32` is *not* accepted --
+# carrying it as a double would label an array `f32` while holding `f64` values,
+# which is the mislabelling the data type system exists to prevent.
 quickr_dtype_info <- function(dt_chr) {
   dt_chr <- as.character(dt_chr)
 
-  # FIXME: hack
-  if (dt_chr %in% c("f64", "f32")) {
+  if (dt_chr == "f64") {
     return(list(ctor = "double", zero = 0.0, scalar_cast = as.double))
   }
   if (dt_chr == "i32") {
@@ -26,8 +29,8 @@ quickr_dtype_info <- function(dt_chr) {
   }
 
   cli_abort(paste0(
-    "Unsupported dtype for quickr lowering: {.val {dt_chr}}. ",
-    "Supported dtypes are: {.val f64}, {.val i32}, {.val pred}."
+    "Unsupported dtype for the {.val quickr} backend: {.val {dt_chr}}. ",
+    "It supports {.val f64}, {.val i32} and {.val bool}."
   ))
 }
 
@@ -182,9 +185,7 @@ quickr_emit_convert <- function(out_sym, operand_expr, shape_in, in_aval, out_av
   }
 
   cast_expr <- function(expr) {
-    # quickr has no single-precision type: it carries `f32` as a double, so
-    # both float dtypes cast the same way.
-    if (dt_out == "f64" || dt_out == "f32") {
+    if (dt_out == "f64") {
       return(rlang::call2("as.double", expr))
     }
 

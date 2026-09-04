@@ -326,20 +326,20 @@ describe("a scoped override inside a jitted body", {
 })
 
 describe("the quickr backend", {
-  it("keys a compiled program on the defaults as well", {
+  it("rejects a float default it cannot represent", {
     skip_if_no_quickr()
     local_backend("quickr")
-    n_traced <- 0L
-    f <- jit(function(x) {
-      n_traced <<- n_traced + 1L
-      x + 1.5
+    # quickr has no single precision, so `f32` cannot be honoured; it is an
+    # error rather than a double labelled `f32`, which is the mislabelling the
+    # data type system exists to prevent.
+    with_default_dtypes(c(float = "f32"), {
+      expect_error(nv_array(1.5), "quickr")
+      # A constant of a trace is captured backend-agnostically, so this one is
+      # only caught where the program is lowered.
+      expect_error(jit(function() nv_array(1.5))(), "quickr")
     })
-    x <- nv_array(1L)
-    expect_equal(dtype(f(x)), as_dtype("f64"))
-    with_default_dtypes(c(float = "f32"), expect_equal(dtype(f(x)), as_dtype("f32")))
-    expect_equal(n_traced, 2L)
-    expect_equal(dtype(f(x)), as_dtype("f64"))
-    expect_equal(n_traced, 2L)
+    expect_error(nv_array(1.5, dtype = "f32"), "quickr")
+    expect_error(jit(function(x) nv_convert(x, "f32"))(nv_array(1, dtype = "f64")), "quickr")
   })
 
   it("commits an R double to f64 everywhere", {

@@ -117,8 +117,10 @@ wraps neither `f16` nor `bf16`, and `gradient()` supports only these two);
 (a narrower one would make the upload of an R argument go through R's
 coercion, which wraps where the program's `convert` clamps; an unsigned one
 cannot hold a negative). A default that a backend cannot lower -- `i64` on
-quickr -- fails at lowering with the existing "Unsupported dtype for quickr
-lowering" error; the option does not second-guess the backend.
+quickr -- is the backend's to refuse, not the option's: quickr rejects `f32`
+where an array is built and any unsupported data type where a graph is lowered,
+so a default it cannot honour fails loudly instead of labelling a double
+`f32`.
 
 The defaults decide only what a value becomes when *nothing else does*. The
 yielding rule is untouched: `x_f32 + 1.5` is `f32` under an `f64` default,
@@ -235,8 +237,13 @@ old entry.
    on, and there is exactly one such backend at any time.
 5. An array of another backend is an error at the dispatcher, never a wrong
    dtype.
-6. A compiled program is never served under a default other than the one it
-   was compiled with.
+6. A compiled program is never served under a *baseline* other than the one it
+   was compiled with: the baseline is part of the cache key. A scoped override
+   inside the body is part of the program rather than of the key, so it carries
+   the same constraint as any other value a jitted body reads from its
+   enclosing environment -- written as a literal it is constant, and written
+   from a variable that later changes it keeps serving the first program,
+   exactly as `nv_convert(x, dt)` with a changing `dt` does.
 7. Every default is resolved on the anvl side; no backend runtime chooses a
    dtype for anvl.
 

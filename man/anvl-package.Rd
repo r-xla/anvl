@@ -10,6 +10,20 @@
 
 Accelerated array computing and code transformations for R. Numerical programs operating on multi-dimensional arrays can be just-in-time compiled to optimized executables via 'XLA' -- the same compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or NVIDIA GPU from the same source. Also provides reverse-mode automatic differentiation, returning the gradient of a function as another R function.
 }
+\section{Options}{
+
+\itemize{
+\item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): the backend in force.
+Every array is built on it and every jitted function runs on it. See
+\code{\link[=default_backend]{default_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
+\item \code{anvl.default_float} (\code{"f32"} | \code{"f64"}) and \code{anvl.default_int} (\code{"i32"} |
+\code{"i64"}): the data types an R double and an R integer commit to when
+nothing else decides one. Unset by default, in which case the backend in
+force decides. See \code{\link[=default_dtypes]{default_dtypes()}}, \code{\link[=local_default_dtypes]{local_default_dtypes()}} and
+\code{\link[=with_default_dtypes]{with_default_dtypes()}}.
+}
+}
+
 \section{Third-Party Licenses}{
 
 The \code{anvl} package itself is MIT-licensed. The CUDA backend dynamically

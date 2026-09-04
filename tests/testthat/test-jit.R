@@ -285,6 +285,11 @@ describe("jit: option validation", {
 
   it("rejects an option no backend takes, when the function is created", {
     expect_error(jit(identity, nonsense = 1), "No backend takes")
+    expect_error(jit(identity, foo = 1, bar = 2), "No backend takes")
+  })
+
+  it("rejects an unnamed option", {
+    expect_error(jit(identity, character(), 100L, NULL, TRUE), "must be a named backend option")
   })
 
   it("rejects an option another backend takes, when it is called", {

@@ -185,7 +185,7 @@ rdata_staging_dtype <- function(r_type, dtype) {
     cli_warn(
       c(
         "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
-        x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts -- and nothing else here asked for {.val {as.character(staged)}}.", # nolint
+        x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts.", # nolint
         i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(default_dtype_r(r_type))}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
       ),
       class = "anvl_staging_widens_warning"
@@ -527,7 +527,7 @@ rdata_build_candidates <- function(r_type) {
 # no dtype the trace asked for holds them all, the narrowest one of the value's
 # category that does is used (`f32` for those two), so a program with no `f64`
 # in it does not acquire one here.
-resolve_upload_dtype <- function(aval, requested, defaults = current_default_dtypes()) {
+resolve_upload_dtype <- function(aval, requested, defaults) {
   if (!length(requested)) {
     return(as.character(default_dtype_r(aval$r_type, defaults)))
   }

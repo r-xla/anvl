@@ -46,9 +46,9 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
 The default (\code{NULL}) uses the data type the R value commits to (see
-\code{\link[=default_dtypes]{default_dtypes()}}): the default float for a \code{double} (\code{f32} on
-\code{"pjrt"}, \code{f64} on \code{"quickr"}), the default integer for an \code{integer}
-(\code{i32}), and \code{bool} for a \code{logical}.}
+\code{\link[=default_dtypes]{default_dtypes()}}): the default float for a \code{double} and the default
+integer for an \code{integer} -- \code{f32} / \code{i32} on \code{"pjrt"}, \code{f64} / \code{i32} on
+\code{"quickr"}, unless overridden -- and \code{bool} for a \code{logical}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

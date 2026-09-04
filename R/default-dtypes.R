@@ -98,6 +98,13 @@ effective_default_dtypes <- function(backend) {
 #' wherever it is eventually used -- the same rule that lets it take the data
 #' type of whatever array it meets (see `vignette("type-promotion")`).
 #'
+#' Only the baseline is part of the compilation cache key, so an override
+#' inside a body carries the same constraint as any other value the body reads
+#' from its enclosing environment: it must not change between calls.
+#' `with_default_dtypes(c(float = prec), ...)` with a `prec` that later changes
+#' keeps serving the first program, exactly as a changing `dtype` argument
+#' would.
+#'
 #' @param dtypes (named `character()` | named `list()`)\cr
 #'   The defaults to set, by category: element `float` (`"f32"` or `"f64"`)
 #'   and/or element `int` (`"i32"` or `"i64"`), each a string or a

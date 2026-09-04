@@ -1,6 +1,16 @@
 #' @keywords internal
 NULL
 
+#' @section Options:
+#' * `anvl.backend` (`character(1)`, default `"pjrt"`): the backend in force.
+#'   Every array is built on it and every jitted function runs on it. See
+#'   [`default_backend()`], [`local_backend()`] and [`with_backend()`].
+#' * `anvl.default_float` (`"f32"` | `"f64"`) and `anvl.default_int` (`"i32"` |
+#'   `"i64"`): the data types an R double and an R integer commit to when
+#'   nothing else decides one. Unset by default, in which case the backend in
+#'   force decides. See [`default_dtypes()`], [`local_default_dtypes()`] and
+#'   [`with_default_dtypes()`].
+#'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
 #' loads NVIDIA software which is not bundled with `anvl`, but downloaded

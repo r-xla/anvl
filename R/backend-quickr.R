@@ -154,7 +154,9 @@ compile_quickr <- function(
 #' * Only a subset of the primitives that the PJRT backend supports are currently
 #'   lowered to quickr code. See `vignette("primitives")` for an overview.
 #' * Only the data types `f64`, `i32`, and `bool` are supported. Accordingly,
-#'   an R double commits to `f64` on this backend (see [`default_dtypes()`]).
+#'   an R double commits to `f64` on this backend (see [`default_dtypes()`]),
+#'   and any other float -- `f32` included, since quickr has no single
+#'   precision -- is an error rather than a double wearing the wrong label.
 #' * Only CPU execution is supported.
 #'
 #' @section Quickr JIT arguments:
@@ -189,15 +191,9 @@ AnvlBackendQuickr <- function() {
           as.integer(length(data))
         }
       }
-      dtype_chr <- as.character(dtype)
-      data <- switch(
-        substr(dtype_chr, 1, 1),
-        "f" = as.double(data),
-        "i" = ,
-        "u" = as.integer(data),
-        "b" = as.logical(data),
-        as.double(data)
-      )
+      # Errors for a data type quickr cannot represent, so an array is never
+      # labelled with one it does not actually hold.
+      data <- quickr_dtype_info(dtype)$scalar_cast(data)
       if (length(shape) >= 1L) {
         dim(data) <- shape
       }
@@ -227,11 +223,10 @@ AnvlBackendQuickr <- function() {
         dtype <- as_dtype(dtype)
       }
       storage_mode <- switch(
-        substr(as.character(dtype), 1L, 1L),
-        "f" = "double",
-        "i" = ,
-        "u" = "integer",
-        "b" = "logical",
+        quickr_dtype_to_r_ctor(dtype),
+        "double" = "double",
+        "integer" = "integer",
+        "logical" = "logical",
         "double"
       )
       data <- vector(storage_mode, prod(shape))

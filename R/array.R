@@ -42,9 +42,9 @@
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
 #'   The default (`NULL`) uses the data type the R value commits to (see
-#'   [`default_dtypes()`]): the default float for a `double` (`f32` on
-#'   `"pjrt"`, `f64` on `"quickr"`), the default integer for an `integer`
-#'   (`i32`), and `bool` for a `logical`.
+#'   [`default_dtypes()`]): the default float for a `double` and the default
+#'   integer for an `integer` -- `f32` / `i32` on `"pjrt"`, `f64` / `i32` on
+#'   `"quickr"`, unless overridden -- and `bool` for a `logical`.
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
@@ -756,8 +756,9 @@ ConcreteArray <- function(data) {
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array.
 #' @param dtype ([`tengen::DataType`])\cr
-#'   The data type. Defaults to the current backend's default floating dtype,
-#'   `i32` for integer, and `bool` for logical.
+#'   The data type. Defaults to the one the R value commits to (see
+#'   [`default_dtypes()`]): the default float for a `double`, the default
+#'   integer for an `integer`, and `bool` for a `logical`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- LiteralArray(1L, shape = integer())

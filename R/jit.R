@@ -111,7 +111,7 @@ jit <- function(
     cli_abort("{.arg device} must be a device, a device name, or {.fn device_arg}.")
   }
   assert_subset(static, formalArgs2(f))
-  check_jit_options(names(list(...)))
+  check_jit_options(list(...))
 
   # One implementation per backend, created on first use. The backend is read
   # off the option on every call, so a function created under one backend runs
@@ -173,11 +173,21 @@ backend_jit_options <- function(backend) {
   setdiff(formalArgs2(globals$backends[[backend]]$jit), c("f", "static", "cache_size", "device", "..."))
 }
 
-# Reject what no backend could ever accept, at construction: a typo, or the
-# `backend` argument this function used to have. An option only *another*
-# backend takes is left for jit_with_backend(), since the backend a jitted
-# function runs on is not known until it is called.
-check_jit_options <- function(names) {
+# Reject at construction what no backend could ever accept. An option only
+# *another* backend takes is left for jit_with_backend(), since the backend a
+# jitted function runs on is not known until it is called.
+check_jit_options <- function(options) {
+  if (!length(options)) {
+    return(invisible(NULL))
+  }
+  known <- sort(unique(unlist(lapply(names(globals$backends), backend_jit_options))))
+  names <- rlang::names2(options)
+  if (!all(nzchar(names))) {
+    cli_abort(c(
+      "Every argument of {.arg ...} must be a named backend option.",
+      i = "The backend-specific options are {.arg {known}}."
+    ))
+  }
   if ("backend" %in% names) {
     cli_abort(c(
       "{.fn jit} has no {.arg backend} argument.",
@@ -185,12 +195,11 @@ check_jit_options <- function(names) {
       i = "Set it with {.fn with_backend} or {.fn local_backend}."
     ))
   }
-  known <- unlist(lapply(names(globals$backends), backend_jit_options))
-  unknown <- setdiff(names, unique(known))
+  unknown <- setdiff(names, known)
   if (length(unknown)) {
     cli_abort(c(
       "No backend takes the {.arg {unknown}} {cli::qty(unknown)}option{?s}.",
-      i = "The backend-specific options are {.arg {sort(unique(known))}}."
+      i = "The backend-specific options are {.arg {known}}."
     ))
   }
   invisible(NULL)
