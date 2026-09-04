@@ -11,11 +11,8 @@ skip_if_no_jit <- function() {
   testthat::skip_if_not(pjrt::plugins_downloaded())
 }
 
-# The dispatcher a jitted function dispatches through (stored in the closure
-# environment of the function's fast entry).
-jit_dispatcher <- function(f) {
-  environment(attr(f, "jit_run_args"))$dispatcher
-}
+# `jit_dispatcher()` is anvl's own accessor for the dispatcher of the backend in
+# force; a jitted function holds one implementation per backend.
 jit_size <- function(f) pjrt::dispatcher_size(jit_dispatcher(f))
 
 arr_of <- function(res) as.numeric(tengen::as_array(res))

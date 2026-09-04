@@ -169,20 +169,28 @@ is_valid_r <- function(x) {
   (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
 }
 
-# The number of programs `f` has cached for the backend in force. A jitted
-# function creates its per-backend implementation on first call, so a backend
-# it never ran on has an empty cache.
-cache_size <- function(f) {
+# The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
+# implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
+# run on that backend yet, since the implementations are built on first call.
+jit_dispatcher <- function(f, backend = default_backend()) {
   jit_fns <- environment(f)$.jit_fns
   if (is.null(jit_fns)) {
     cli_abort("{.arg f} is not a jitted function.")
   }
-  impl <- jit_fns[[default_backend()]]
+  impl <- jit_fns[[backend]]
   if (is.null(impl)) {
+    return(NULL)
+  }
+  environment(impl)$dispatcher
+}
+
+# The number of programs `f` has cached for the backend in force.
+cache_size <- function(f) {
+  dispatcher <- jit_dispatcher(f)
+  if (is.null(dispatcher)) {
     return(0L)
   }
-  # All backends cache in pjrt's native dispatcher.
-  pjrt::dispatcher_size(environment(impl)$dispatcher)
+  pjrt::dispatcher_size(dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.

@@ -523,7 +523,7 @@ rdata_build_candidates <- function(r_type) {
 # no dtype the trace asked for holds them all, the narrowest one of the value's
 # category that does is used (`f32` for those two), so a program with no `f64`
 # in it does not acquire one here.
-resolve_upload_dtype <- function(aval, requested, defaults) {
+resolve_upload_dtype <- function(aval, requested, defaults = current_default_dtypes()) {
   if (!length(requested)) {
     return(as.character(default_dtype_r(aval$r_type, defaults)))
   }
