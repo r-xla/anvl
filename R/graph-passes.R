@@ -48,7 +48,7 @@ remove_unused_constants <- function(graph) {
 
 inline_scalarish_constants <- function(graph, map = NULL) {
   is_scalarish <- function(gval) {
-    is_graph_value(gval) && is_concrete_tensor(gval$aval) && (prod(gval$aval$shape$dims) == 1L)
+    is_graph_value(gval) && is_concrete_tensor(gval$aval) && (nelts(gval$aval) == 1L)
   }
 
   scalarish_to_lit <- function(gval) {
