@@ -704,7 +704,7 @@ dtype.AbstractArray <- function(x, ...) {
 #' @method shape AbstractArray
 #' @export
 shape.AbstractArray <- function(x, ...) {
-  shape(x$shape)
+  unclass(x$shape)
 }
 
 #' @title Concrete Array Class
