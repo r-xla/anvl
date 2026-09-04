@@ -11,10 +11,8 @@ prim_dynamic_slice(x, ..., slice_sizes)
 Arrayish value of any data type.}
 
 \item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per axis of \code{x}. All must reach one integer
-data type: an R value is written as an integer (\code{1L}) and takes the data
-type of the indices it meets, and indices that already have one must
-agree. They never take \code{x}'s data type.}
+Scalar start indices, one per axis of \code{x}.
+Must all have the same integer data type, which R values are materialized at.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice in each axis. Must have length equal to

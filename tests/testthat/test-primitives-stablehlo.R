@@ -1215,11 +1215,11 @@ if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-stablehlo-torch.R", package = "anvl"), local = TRUE)
 }
 
-describe("index operands of the slicing primitives", {
+describe("prim_dynamic_slice", {
   x <- nv_array(c(1, 2, 3, 4, 5), dtype = "f64")
   m <- nv_array(1:6, shape = c(2, 3))
 
-  it("brings a dynamic slice's start indices to one data type", {
+  it("brings its start indices to one data type", {
     # StableHLO requires all start indices to share an element type, so the
     # bare `1L` has to yield to its `i64` sibling rather than take its default.
     expect_equal(
@@ -1230,6 +1230,20 @@ describe("index operands of the slicing primitives", {
     expect_equal(as.numeric(prim_dynamic_slice(x, nv_scalar(2L, "i64"), slice_sizes = 2L)), c(2, 3))
   })
 
+  it("rejects a non-integer index instead of failing in the lowering", {
+    expect_error(prim_dynamic_slice(x, 1, slice_sizes = 2L), "`start index 1` must be an index of integer data type")
+    expect_error(prim_dynamic_slice(x, 1, slice_sizes = 2L), "Write it as an R integer")
+    expect_error(
+      jit(function(x) prim_dynamic_slice(x, 1, slice_sizes = 2L))(x),
+      "must be an index of integer data type"
+    )
+  })
+})
+
+describe("prim_dynamic_update_slice", {
+  x <- nv_array(c(1, 2, 3, 4, 5), dtype = "f64")
+  m <- nv_array(1:6, shape = c(2, 3))
+
   it("names the start index whose data type cannot be reached", {
     expect_error(
       prim_dynamic_update_slice(m, nv_array(1L, shape = c(1, 1)), nv_scalar(1L, "i64"), nv_scalar(1L, "i32")),
@@ -1238,64 +1252,61 @@ describe("index operands of the slicing primitives", {
   })
 
   it("rejects a non-integer index instead of failing in the lowering", {
-    expect_error(prim_dynamic_slice(x, 1, slice_sizes = 2L), "`start index 1` must be an index of integer data type")
-    expect_error(prim_dynamic_slice(x, 1, slice_sizes = 2L), "Write it as an R integer")
     expect_error(
       prim_dynamic_update_slice(x, nv_array(9, dtype = "f64"), 1),
       "`start index 1` must be an index of integer data type"
     )
-    expect_error(
-      jit(function(x) prim_dynamic_slice(x, 1, slice_sizes = 2L))(x),
-      "must be an index of integer data type"
-    )
   })
 
-  it("rejects non-integer gather and scatter indices", {
-    expect_error(
-      prim_gather(
-        nv_array(1:9, shape = c(3, 3)),
-        matrix(c(1, 3), ncol = 1),
-        slice_sizes = c(1L, 3L),
-        offset_axes = 2L,
-        collapsed_slice_axes = 1L,
-        x_batching_axes = integer(0),
-        start_indices_batching_axes = integer(0),
-        start_index_map = 1L,
-        index_vector_axis = 2L
-      ),
-      "`start_indices` must be an index of integer data type"
+  it("still writes at an integer index", {
+    expect_equal(as.numeric(prim_dynamic_update_slice(x, nv_array(9, dtype = "f64"), 2L)), c(1, 9, 3, 4, 5))
+  })
+})
+
+describe("prim_gather", {
+  gather_at <- function(indices) {
+    prim_gather(
+      nv_array(1:9, shape = c(3, 3)),
+      indices,
+      slice_sizes = c(1L, 3L),
+      offset_axes = 2L,
+      collapsed_slice_axes = 1L,
+      x_batching_axes = integer(0),
+      start_indices_batching_axes = integer(0),
+      start_index_map = 1L,
+      index_vector_axis = 2L
     )
-    expect_error(
-      prim_scatter(
-        nv_array(c(0, 0, 0)),
-        matrix(c(1, 3), ncol = 1),
-        nv_array(c(10, 30)),
-        update_window_axes = integer(0),
-        inserted_window_axes = 1L,
-        x_batching_axes = integer(0),
-        scatter_indices_batching_axes = integer(0),
-        scatter_axes_to_x_axes = 1L,
-        index_vector_axis = 2L
-      ),
-      "`scatter_indices` must be an index of integer data type"
-    )
+  }
+
+  it("rejects non-integer start indices", {
+    expect_error(gather_at(matrix(c(1, 3), ncol = 1)), "`start_indices` must be an index of integer data type")
   })
 
-  it("still accepts indices that are integers", {
-    expect_equal(
-      as.numeric(prim_scatter(
-        nv_array(c(0, 0, 0)),
-        nv_array(matrix(c(1L, 3L), ncol = 1)),
-        nv_array(c(10, 30)),
-        update_window_axes = integer(0),
-        inserted_window_axes = 1L,
-        x_batching_axes = integer(0),
-        scatter_indices_batching_axes = integer(0),
-        scatter_axes_to_x_axes = 1L,
-        index_vector_axis = 2L
-      )),
-      c(10, 0, 30)
+  it("still gathers at integer indices", {
+    expect_equal(as.numeric(gather_at(nv_array(matrix(c(1L, 3L), ncol = 1)))[1, ]), c(1, 4, 7))
+  })
+})
+
+describe("prim_scatter", {
+  scatter_at <- function(indices) {
+    prim_scatter(
+      nv_array(c(0, 0, 0)),
+      indices,
+      nv_array(c(10, 30)),
+      update_window_axes = integer(0),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(0),
+      scatter_indices_batching_axes = integer(0),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L
     )
-    expect_equal(as.numeric(nv_subset(x, 2:3)), c(2, 3))
+  }
+
+  it("rejects non-integer scatter indices", {
+    expect_error(scatter_at(matrix(c(1, 3), ncol = 1)), "`scatter_indices` must be an index of integer data type")
+  })
+
+  it("still scatters at integer indices", {
+    expect_equal(as.numeric(scatter_at(nv_array(matrix(c(1L, 3L), ncol = 1)))), c(10, 0, 30))
   })
 })

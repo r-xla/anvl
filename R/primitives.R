@@ -559,10 +559,8 @@ prim_static_slice <- new_primitive(
 #' time and you need stride support.
 #' @template param_prim_x_any
 #' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per axis of `x`. All must reach one integer
-#'   data type: an R value is written as an integer (`1L`) and takes the data
-#'   type of the indices it meets, and indices that already have one must
-#'   agree. They never take `x`'s data type.
+#'   Scalar start indices, one per axis of `x`.
+#'   Must all have the same integer data type, which R values are materialized at.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= nv_shape(x)`
