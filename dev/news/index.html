@@ -83,6 +83,11 @@
 <code>jit_eval()</code> was removed as it is no longer needed.</li>
 </ul></div>
 <div class="section level3">
+<h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
+<ul><li>
+<code><a href="../reference/prim_reduce_any.html">prim_reduce_any()</a></code> / <code><a href="../reference/prim_reduce_all.html">prim_reduce_all()</a></code> (and <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code> / <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code>) now reject a non-boolean input when the call is traced. Type inference declared a <code>bool</code> output whatever the input was, so an integer operand reached the lowering and failed with <code>Data types of inputs and init_values must match</code>.</li>
+</ul></div>
+<div class="section level3">
 <h3 id="tests-development-version">Tests<a class="anchor" aria-label="anchor" href="#tests-development-version"></a></h3>
 <ul><li>Moved some of pjrt’s dispatcher tests into anvl.</li>
 </ul></div>
