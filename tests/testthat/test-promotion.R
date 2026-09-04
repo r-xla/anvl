@@ -25,17 +25,6 @@ test_that("a value that has committed keeps its dtype", {
   )
 })
 
-test_that("prim_convert reverse", {
-  out <- jit(function(x) {
-    z <- prim_convert(x, "f32")
-    a <- gradient(\(y) {
-      y_int <- prim_convert(y, "i32")
-      prim_convert(y_int, "f32")
-    })(z)[[1L]]
-  })(nv_scalar(TRUE))
-  expect_equal(out, nv_scalar(1, dtype = "f32"))
-})
-
 test_that("prim_if outputs keep the dtype of their branches", {
   f <- function(pred, x) {
     x <- x * 2L

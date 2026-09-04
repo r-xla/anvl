@@ -18,16 +18,19 @@ Whether to accept \code{numeric(1)} and \code{logical(1)} and R arrays of type \
 \code{logical(1)}
 }
 \description{
-A \code{arrayish} value is any object that can be input to a primitive such as \code{\link{prim_add}}.
+A \code{arrayish} value is anything that represents an \code{\link{AnvlArray}}
+or can be converted to one.
 
-During runtime of a JIT-compiled function, these are \code{\link{AnvlArray}} objects.
-
-The following types are arrayish (during tracing):
+Specifically, these values are \code{arrayish}:
 \itemize{
 \item \code{\link{AnvlArray}}: a concrete array holding data on a device.
-\item \code{\link{GraphBox}}: a boxed abstract array representing a value in a graph.
-\item Length-1 vectors: \code{numeric(1)} and \code{logical(1)}
-\item R arrays of types: \code{numeric} and \code{logical}.
+\item R objects:
+\itemize{
+\item \code{numeric(1)} and \code{logical(1)} which represent scalars.
+\item \code{numeric} and \code{logical} R arrays.
+}
+\item \code{\link{GraphBox}}: this is how dynamic \code{\link{AnvlArray}}s are represented
+during \code{\link[=jit]{jit()}}.
 }
 
 Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayish.

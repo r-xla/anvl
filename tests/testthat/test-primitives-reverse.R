@@ -358,6 +358,38 @@ test_that("prim_convert reverse converts gradients to the input dtype", {
   expect_equal(dtype(grads[[1L]]), as_dtype("f32"))
 })
 
+test_that("prim_convert reverse is zero across a non-float data type", {
+  # `float(int(x))` is a staircase: its derivative is zero almost everywhere,
+  # the same answer `prim_floor()` gives for the same function on the reals.
+  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
+  through_int <- jit(gradient(function(x) {
+    nv_reduce_sum(prim_convert(prim_convert(x, "i32"), "f64"))
+  }))
+  through_bool <- jit(gradient(function(x) {
+    nv_reduce_sum(prim_convert(prim_convert(x, "bool"), "f64"))
+  }))
+  floor_ref <- jit(gradient(function(x) nv_reduce_sum(prim_floor(x))))
+
+  expect_equal(as.numeric(through_int(x)[[1L]]), c(0, 0, 0))
+  expect_equal(as.numeric(through_bool(x)[[1L]]), c(0, 0, 0))
+  expect_equal(as.numeric(through_int(x)[[1L]]), as.numeric(floor_ref(x)[[1L]]))
+})
+
+test_that("prim_convert reverse passes the gradient through between floats", {
+  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
+  f <- jit(gradient(function(x) nv_reduce_sum(prim_convert(prim_convert(x, "f32"), "f64"))))
+  expect_equal(as.numeric(f(x)[[1L]]), c(1, 1, 1))
+  expect_equal(dtype(f(x)[[1L]]), as_dtype("f64"))
+})
+
+test_that("prim_convert reverse leaves the rest of an expression differentiable", {
+  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
+  f <- jit(gradient(function(x) {
+    nv_reduce_sum(x * nv_scalar(2, "f64") + nv_convert(nv_convert(x, "i32"), "f64"))
+  }))
+  expect_equal(as.numeric(f(x)[[1L]]), c(2, 2, 2))
+})
+
 test_that("prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le", {
   a <- 1
   b <- 2

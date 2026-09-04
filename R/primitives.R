@@ -79,6 +79,20 @@ infer_reduce <- function(x, axes, drop) {
 }
 
 infer_reduce_boolean <- function(x, axes, drop) {
+  # The output is a `bool` whatever the input is, but the lowering reduces with
+  # `or` / `and` over an init value built at `bool`, so a non-boolean operand
+  # fails there with `Data types of inputs and init_values must match`. Say so
+  # here instead, where the argument still has a name.
+  if (!is_dtype_bool(dtype(x))) {
+    cli_abort(
+      c(
+        "{.arg x} must have a boolean data type.",
+        x = "Got {.val {as.character(dtype(x))}}.",
+        i = "Compare it first, e.g. {.code x != 0L}, or convert it with {.fn nv_convert}."
+      ),
+      call = NULL
+    )
+  }
   old_shape <- shape(x)
   if (drop) {
     new_shape <- old_shape[-axes]
@@ -1027,9 +1041,13 @@ prim_reduce <- new_primitive(
     current_desc <- .current_descriptor(silent = TRUE)
     desc_red <- local_descriptor()
 
+    # Unnamed, so the two scalars are matched positionally and `reductor` may
+    # name its arguments whatever it likes -- `function(a, b)` as readily as
+    # `function(lhs, rhs)`. `prim_scatter()` traces `update_computation` the
+    # same way.
     dummy_args <- list(
-      lhs = nv_aval(op_dtype, integer()),
-      rhs = nv_aval(op_dtype, integer())
+      nv_aval(op_dtype, integer()),
+      nv_aval(op_dtype, integer())
     )
     reductor_graph <- trace_fn(reductor, dummy_args, desc = desc_red, mode = "subgraph")
 
@@ -3013,6 +3031,23 @@ prim_scatter <- new_primitive(
     )
 
     update_computation_graph <- trace_fn(update_computation, dummy_args, desc = desc_update, mode = "subgraph")
+
+    # As `prim_reduce()` does for its reductor: the scattered element is what
+    # `update_computation` returns, so a different data type there makes the
+    # inferred output type a lie and the call fails in the backend instead.
+    if (length(update_computation_graph$outputs) != 1L) {
+      cli_abort(c(
+        "{.arg update_computation} must return exactly one value.",
+        x = "Got {length(update_computation_graph$outputs)} outputs."
+      ))
+    }
+    update_out_dtype <- update_computation_graph$outputs[[1L]]$aval$dtype
+    if (update_out_dtype != x_dtype) {
+      cli_abort(c(
+        "{.arg update_computation} must return a value with the same data type as {.arg x}.",
+        x = "{.arg x} is {.val {as.character(x_dtype)}} and {.arg update_computation} returns {.val {as.character(update_out_dtype)}}." # nolint
+      ))
+    }
 
     # Register constants from the update computation graph
     register_consts(current_desc, update_computation_graph$constants)

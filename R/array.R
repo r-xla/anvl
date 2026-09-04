@@ -1048,15 +1048,16 @@ is_shape <- function(x) {
 
 #' @title Array-like Objects
 #' @description
-#' A `arrayish` value is any object that can be input to a primitive such as [`prim_add`].
+#' A `arrayish` value is anything that represents an [`AnvlArray`]
+#' or can be converted to one.
 #'
-#' During runtime of a JIT-compiled function, these are [`AnvlArray`] objects.
-#'
-#' The following types are arrayish (during tracing):
+#' Specifically, these values are `arrayish`:
 #' * [`AnvlArray`]: a concrete array holding data on a device.
-#' * [`GraphBox`]: a boxed abstract array representing a value in a graph.
-#' * Length-1 vectors: `numeric(1)` and `logical(1)`
-#' * R arrays of types: `numeric` and `logical`.
+#' * R objects:
+#'   * `numeric(1)` and `logical(1)` which represent scalars.
+#'   * `numeric` and `logical` R arrays.
+#' * [`GraphBox`]: this is how dynamic [`AnvlArray`]s are represented
+#'   during [`jit()`].
 #'
 #' Use [`is_arrayish()`] to check whether a value is arrayish.
 #'
