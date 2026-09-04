@@ -1,23 +1,25 @@
 # Array-like Objects
 
-A `arrayish` value is any object that can be input to a primitive such
-as [`prim_add`](https://r-xla.github.io/anvl/dev/reference/prim_add.md).
-
-During runtime of a JIT-compiled function, these are
+A `arrayish` value is anything that represents an
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-objects.
+or can be converted to one.
 
-The following types are arrayish (during tracing):
+Specifically, these values are `arrayish`:
 
 - [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md):
   a concrete array holding data on a device.
 
+- R objects:
+
+  - `numeric(1)` and `logical(1)` which represent scalars.
+
+  - `numeric` and `logical` R arrays.
+
 - [`GraphBox`](https://r-xla.github.io/anvl/dev/reference/GraphBox.md):
-  a boxed abstract array representing a value in a graph.
-
-- Length-1 vectors: `numeric(1)` and `logical(1)`
-
-- R arrays of types: `numeric` and `logical`.
+  this is how dynamic
+  [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)s
+  are represented during
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
 
 Use `is_arrayish()` to check whether a value is arrayish.
 
