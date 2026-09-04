@@ -30,6 +30,14 @@
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.
 
+## Documentation
+
+* The help pages of the binary primitives now have a *Data Types* section
+  saying how their operands reach one data type: an operand that has a data
+  type keeps it, and an R value is built at the one the others have, within
+  its own category. The text comes from a shared roxygen2 template
+  (`man-roxygen/section_dtypes.R`), so it is written once for all of them.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

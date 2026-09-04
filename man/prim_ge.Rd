@@ -18,6 +18,23 @@ Has the same shape as the inputs and boolean data type.
 \description{
 Element-wise greater than or equal comparison.
 }
+\section{Data Types}{
+
+\code{lhs} and \code{rhs} must have the same data type, which the primitive does not
+negotiate: an operand that already has a data type keeps it, and operands
+with different data types are an error. Convert one explicitly with
+\code{\link[=nv_convert]{nv_convert()}}, or use the \verb{nv_*} layer, which promotes to a common data
+type.
+
+An R value has no data type of its own and is built at the one the other
+operands have, as long as that data type is in its own category: a double
+becomes a float, an integer an integer or unsigned integer, a logical a
+\code{bool}. If every operand is an R value, they must be of one R storage type
+and are built at its default data type (\code{f32}, \code{i32} or \code{bool}).
+
+See \code{vignette("type-promotion")}.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
