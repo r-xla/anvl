@@ -47,9 +47,17 @@ Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparis
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(3, 2, 1))
-prim_ge(x, y)
+# two R values: both built at f32, an R double's default data type
+prim_ge(2, 1)
+
+# the R value is built at the array's data type instead
+prim_ge(2, nv_scalar(1, "f64"))
+
+# an R integer cannot be built at a float data type
+try(prim_ge(1L, nv_scalar(1, "f32")))
+
+# neither operand is converted to meet the other
+try(prim_ge(nv_scalar(2, "f32"), nv_scalar(1, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

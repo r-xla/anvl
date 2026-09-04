@@ -49,8 +49,17 @@ Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# two R values: both built at f32, an R double's default data type
 prim_remainder(1, -3)
-1 \%\% -3
+
+# the R value is built at the array's data type instead
+prim_remainder(1, nv_scalar(-3, "f64"))
+
+# an R integer cannot be built at a float data type
+try(prim_remainder(1L, nv_scalar(-3, "f32")))
+
+# neither operand is converted to meet the other
+try(prim_remainder(nv_scalar(1, "f32"), nv_scalar(-3, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

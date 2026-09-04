@@ -43,6 +43,11 @@ Use templates from `man-roxygen/` where applicable:
   phrase completes "Arrayish values of ..." (e.g. `any data type`, `data type floating-point`)
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
+- **Binary examples:** `@templateVar ex_fn`/`ex_lhs`/`ex_rhs`/`ex_dtype`/`ex_dtype2` +
+  `@template examples_prim_binary`, which demonstrates type inference. Pick operand values that
+  also show what the primitive computes (`-32L` for an arithmetic shift, `1`/`-3` for a
+  remainder), and two data types the primitive accepts (`f32`/`f64`, `i32`/`i64`). The literal's
+  R storage type drives the commentary, so write it in the primitive's category.
 - **StableHLO link:** `@section StableHLO:\n Lowers to [stablehlo::hlo_<name>()].`
 - Do NOT mention "1-based indexing" — it's the R default.
 - Add `@export` to the roxygen block.

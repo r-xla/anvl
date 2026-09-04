@@ -39,6 +39,11 @@
   out. The four `params_prim_lhs_rhs_*` roxygen2 templates became one
   `params_prim_lhs_rhs` taking a `dtypes` template variable, so the text is
   written once for all of them.
+* Their examples now demonstrate that behavior: what two R values commit to,
+  what an R value meeting an array commits to, and the two ways a call is
+  rejected. They come from the `examples_prim_binary` template, which takes the
+  operand values and data types to use, so each primitive still shows what it
+  computes (`prim_shift_right_arithmetic(-32L, 2L)`, `prim_remainder(1, -3)`).
 
 ## Tests
 

@@ -48,9 +48,17 @@ Lowers to \code{\link[stablehlo:hlo_power]{hlo_power()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(2, 3, 4))
-y <- nv_array(c(3, 2, 1))
-prim_pow(x, y)
+# two R values: both built at f32, an R double's default data type
+prim_pow(2, 3)
+
+# the R value is built at the array's data type instead
+prim_pow(2, nv_scalar(3, "f64"))
+
+# an R integer cannot be built at a float data type
+try(prim_pow(1L, nv_scalar(3, "f32")))
+
+# neither operand is converted to meet the other
+try(prim_pow(nv_scalar(2, "f32"), nv_scalar(3, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

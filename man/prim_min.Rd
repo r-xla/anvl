@@ -48,9 +48,17 @@ Lowers to \code{\link[stablehlo:hlo_minimum]{hlo_minimum()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 5, 3))
-y <- nv_array(c(4, 2, 6))
-prim_min(x, y)
+# two R values: both built at f32, an R double's default data type
+prim_min(1, 5)
+
+# the R value is built at the array's data type instead
+prim_min(1, nv_scalar(5, "f64"))
+
+# an R integer cannot be built at a float data type
+try(prim_min(1L, nv_scalar(5, "f32")))
+
+# neither operand is converted to meet the other
+try(prim_min(nv_scalar(1, "f32"), nv_scalar(5, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

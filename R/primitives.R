@@ -119,10 +119,12 @@ prim_fill <- new_primitive(
 #' @section StableHLO:
 #' Lowers to [hlo_add()].
 #' @seealso [nv_add()], `+`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' prim_add(x, y)
+#' @templateVar ex_fn prim_add
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 2
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 
@@ -137,10 +139,12 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 #' @section StableHLO:
 #' Lowers to [hlo_multiply()].
 #' @seealso [nv_mul()], `*`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' prim_mul(x, y)
+#' @templateVar ex_fn prim_mul
+#' @templateVar ex_lhs 2
+#' @templateVar ex_rhs 3
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply))
 
@@ -155,10 +159,12 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #' @section StableHLO:
 #' Lowers to [hlo_subtract()].
 #' @seealso [nv_sub()], `-`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' prim_sub(x, y)
+#' @templateVar ex_fn prim_sub
+#' @templateVar ex_lhs 5
+#' @templateVar ex_rhs 3
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract))
 
@@ -190,10 +196,12 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' @section StableHLO:
 #' Lowers to [hlo_divide()].
 #' @seealso [nv_div()], `/`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(10, 20, 30))
-#' y <- nv_array(c(2, 5, 10))
-#' prim_div(x, y)
+#' @templateVar ex_fn prim_div
+#' @templateVar ex_lhs 10
+#' @templateVar ex_rhs 4
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide))
 
@@ -208,10 +216,12 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' @section StableHLO:
 #' Lowers to [hlo_power()].
 #' @seealso [nv_pow()], `^`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(2, 3, 4))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_pow(x, y)
+#' @templateVar ex_fn prim_pow
+#' @templateVar ex_lhs 2
+#' @templateVar ex_rhs 3
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 
@@ -1211,10 +1221,12 @@ make_compare_op <- function(direction) {
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "EQ"`.
 #' @seealso [nv_eq()], `==`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' prim_eq(x, y)
+#' @templateVar ex_fn prim_eq
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 1
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 
@@ -1229,10 +1241,12 @@ prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "NE"`.
 #' @seealso [nv_ne()], `!=`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' prim_ne(x, y)
+#' @templateVar ex_fn prim_ne
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 2
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 
@@ -1247,10 +1261,12 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "GT"`.
 #' @seealso [nv_gt()], `>`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_gt(x, y)
+#' @templateVar ex_fn prim_gt
+#' @templateVar ex_lhs 2
+#' @templateVar ex_rhs 1
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_gt <- new_primitive("greater", make_compare_op("GT"))
 
@@ -1265,10 +1281,12 @@ prim_gt <- new_primitive("greater", make_compare_op("GT"))
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "GE"`.
 #' @seealso [nv_ge()], `>=`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_ge(x, y)
+#' @templateVar ex_fn prim_ge
+#' @templateVar ex_lhs 2
+#' @templateVar ex_rhs 1
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 
@@ -1283,10 +1301,12 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "LT"`.
 #' @seealso [nv_lt()], `<`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_lt(x, y)
+#' @templateVar ex_fn prim_lt
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 2
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_lt <- new_primitive("less", make_compare_op("LT"))
 
@@ -1301,10 +1321,12 @@ prim_lt <- new_primitive("less", make_compare_op("LT"))
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "LE"`.
 #' @seealso [nv_le()], `<=`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(3, 2, 1))
-#' prim_le(x, y)
+#' @templateVar ex_fn prim_le
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 2
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 
@@ -1321,10 +1343,12 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' @section StableHLO:
 #' Lowers to [hlo_maximum()].
 #' @seealso [nv_max()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 5, 3))
-#' y <- nv_array(c(4, 2, 6))
-#' prim_max(x, y)
+#' @templateVar ex_fn prim_max
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 5
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
 
@@ -1339,10 +1363,12 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #' @section StableHLO:
 #' Lowers to [hlo_minimum()].
 #' @seealso [nv_min()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 5, 3))
-#' y <- nv_array(c(4, 2, 6))
-#' prim_min(x, y)
+#' @templateVar ex_fn prim_min
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 5
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
 
@@ -1359,9 +1385,12 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' @section StableHLO:
 #' Lowers to [hlo_remainder()].
 #' @seealso [nv_remainder()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' prim_remainder(1, -3)
-#' 1 %% -3
+#' @templateVar ex_fn prim_remainder
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs -3
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_remainder <- new_primitive(
   "remainder",
@@ -1379,10 +1408,12 @@ prim_remainder <- new_primitive(
 #' @section StableHLO:
 #' Lowers to [hlo_and()].
 #' @seealso [nv_and()], `&`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' prim_and(x, y)
+#' @templateVar ex_fn prim_and
+#' @templateVar ex_lhs 12L
+#' @templateVar ex_rhs 10L
+#' @templateVar ex_dtype i32
+#' @templateVar ex_dtype2 i64
+#' @template examples_prim_binary
 #' @export
 prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 
@@ -1414,10 +1445,12 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @section StableHLO:
 #' Lowers to [hlo_or()].
 #' @seealso [nv_or()], `|`
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' prim_or(x, y)
+#' @templateVar ex_fn prim_or
+#' @templateVar ex_lhs 12L
+#' @templateVar ex_rhs 10L
+#' @templateVar ex_dtype i32
+#' @templateVar ex_dtype2 i64
+#' @template examples_prim_binary
 #' @export
 prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 
@@ -1432,10 +1465,12 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #' @section StableHLO:
 #' Lowers to [hlo_xor()].
 #' @seealso [nv_xor()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' prim_xor(x, y)
+#' @templateVar ex_fn prim_xor
+#' @templateVar ex_lhs 12L
+#' @templateVar ex_rhs 10L
+#' @templateVar ex_dtype i32
+#' @templateVar ex_dtype2 i64
+#' @template examples_prim_binary
 #' @export
 prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
 
@@ -1456,10 +1491,12 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #' @section StableHLO:
 #' Lowers to [hlo_shift_left()].
 #' @seealso [nv_shift_left()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1L, 2L, 4L))
-#' y <- nv_array(c(1L, 2L, 1L))
-#' prim_shift_left(x, y)
+#' @templateVar ex_fn prim_shift_left
+#' @templateVar ex_lhs 8L
+#' @templateVar ex_rhs 2L
+#' @templateVar ex_dtype i32
+#' @templateVar ex_dtype2 i64
+#' @template examples_prim_binary
 #' @export
 prim_shift_left <- new_primitive(
   "shift_left",
@@ -1481,10 +1518,12 @@ prim_shift_left <- new_primitive(
 #' @section StableHLO:
 #' Lowers to [hlo_shift_right_logical()].
 #' @seealso [nv_shift_right_logical()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(8L, 16L, 32L))
-#' y <- nv_array(c(1L, 2L, 3L))
-#' prim_shift_right_logical(x, y)
+#' @templateVar ex_fn prim_shift_right_logical
+#' @templateVar ex_lhs 32L
+#' @templateVar ex_rhs 2L
+#' @templateVar ex_dtype i32
+#' @templateVar ex_dtype2 i64
+#' @template examples_prim_binary
 #' @export
 prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
@@ -1506,10 +1545,12 @@ prim_shift_right_logical <- new_primitive(
 #' @section StableHLO:
 #' Lowers to [hlo_shift_right_arithmetic()].
 #' @seealso [nv_shift_right_arithmetic()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(8L, -16L, 32L))
-#' y <- nv_array(c(1L, 2L, 3L))
-#' prim_shift_right_arithmetic(x, y)
+#' @templateVar ex_fn prim_shift_right_arithmetic
+#' @templateVar ex_lhs -32L
+#' @templateVar ex_rhs 2L
+#' @templateVar ex_dtype i32
+#' @templateVar ex_dtype2 i64
+#' @template examples_prim_binary
 #' @export
 prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
@@ -1531,10 +1572,12 @@ prim_shift_right_arithmetic <- new_primitive(
 #' @section StableHLO:
 #' Lowers to [hlo_atan2()].
 #' @seealso [nv_atan2()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' y <- nv_array(c(1, 0, -1))
-#' x <- nv_array(c(0, 1, 0))
-#' prim_atan2(y, x)
+#' @templateVar ex_fn prim_atan2
+#' @templateVar ex_lhs 1
+#' @templateVar ex_rhs 1
+#' @templateVar ex_dtype f32
+#' @templateVar ex_dtype2 f64
+#' @template examples_prim_binary
 #' @export
 prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2))
 

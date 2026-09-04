@@ -48,9 +48,17 @@ Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-prim_xor(x, y)
+# two R values: both built at i32, an R integer's default data type
+prim_xor(12L, 10L)
+
+# the R value is built at the array's data type instead
+prim_xor(12L, nv_scalar(10L, "i64"))
+
+# an R double cannot be built at an integer data type
+try(prim_xor(1, nv_scalar(10L, "i32")))
+
+# neither operand is converted to meet the other
+try(prim_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

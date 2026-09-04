@@ -48,9 +48,17 @@ Lowers to \code{\link[stablehlo:hlo_subtract]{hlo_subtract()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(4, 5, 6))
-prim_sub(x, y)
+# two R values: both built at f32, an R double's default data type
+prim_sub(5, 3)
+
+# the R value is built at the array's data type instead
+prim_sub(5, nv_scalar(3, "f64"))
+
+# an R integer cannot be built at a float data type
+try(prim_sub(1L, nv_scalar(3, "f32")))
+
+# neither operand is converted to meet the other
+try(prim_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

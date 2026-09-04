@@ -47,9 +47,17 @@ Lowers to \code{\link[stablehlo:hlo_shift_left]{hlo_shift_left()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1L, 2L, 4L))
-y <- nv_array(c(1L, 2L, 1L))
-prim_shift_left(x, y)
+# two R values: both built at i32, an R integer's default data type
+prim_shift_left(8L, 2L)
+
+# the R value is built at the array's data type instead
+prim_shift_left(8L, nv_scalar(2L, "i64"))
+
+# an R double cannot be built at an integer data type
+try(prim_shift_left(1, nv_scalar(2L, "i32")))
+
+# neither operand is converted to meet the other
+try(prim_shift_left(nv_scalar(8L, "i32"), nv_scalar(2L, "i64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
