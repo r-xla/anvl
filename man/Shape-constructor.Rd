@@ -7,13 +7,16 @@
 Shape(dims = integer())
 }
 \arguments{
-\item{dims}{An \code{integer()} vector of dimension sizes (>= 0).}
+\item{dims}{An \code{integer()} vector of axis sizes (>= 0). \code{NA} marks an axis
+whose size is only known at run time.}
 }
 \value{
 A \code{Shape} object.
 }
 \description{
-Constructs a \code{Shape} representing array dimensions.
+Constructs a \code{Shape}, the axis sizes of an array. A \code{Shape} \emph{is} its integer
+vector, with a class attached, so \code{length()} is the number of axes and
+\code{shape[i]} is the size of axis \code{i}.
 }
 \examples{
 Shape(c(2L, 3L))

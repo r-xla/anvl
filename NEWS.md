@@ -7,6 +7,10 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
+* A `Shape` (re-exported from {stablehlo}) *is* its integer vector now, with a
+  class attached, rather than a list wrapping one. `length(shape)` is the number
+  of axes, `shape[i]` is the size of axis `i`, and `shape$dims` is gone -- read
+  the axis sizes with `shape()`.
 
 ## Bug fixes
 
