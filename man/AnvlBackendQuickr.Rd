@@ -41,7 +41,10 @@ suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.
 \item Only a subset of the primitives that the PJRT backend supports are currently
 lowered to quickr code. See \code{vignette("primitives")} for an overview.
-\item Only the data types \code{f64}, \code{i32}, and \code{bool} are supported.
+\item Only the data types \code{f64}, \code{i32}, and \code{bool} are supported. Accordingly,
+an R double commits to \code{f64} on this backend (see \code{\link[=default_dtypes]{default_dtypes()}}),
+and any other float -- \code{f32} included, since quickr has no single
+precision -- is an error rather than a double wearing the wrong label.
 \item Only CPU execution is supported.
 }
 }

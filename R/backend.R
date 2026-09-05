@@ -1,3 +1,6 @@
+#' @include default-dtypes.R
+NULL
+
 #' Create a backend
 #'
 #' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
@@ -21,6 +24,15 @@
 #' @param await_data (`function`)\cr Blocks until the array's underlying data
 #'   is ready. Called by [`await()`] for `AnvlArray`s; a no-op for backends
 #'   without async execution.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr The data types an R
+#'   double (`float`) and an R integer (`int`) commit to on this backend when
+#'   nothing else decides one. `float` must be `"f32"` or `"f64"`, `int` must
+#'   be `"i32"` or `"i64"`. The options `anvl.default_float` and
+#'   `anvl.default_int` override them on every backend; see
+#'   [`default_dtypes()`]. `NULL` for a backend that never builds a value at a
+#'   default of its own (the `"plain"` backend, which only holds constants
+#'   captured while tracing for another backend). `new_data` is always handed
+#'   a dtype: [`nv_array()`] resolves the default before calling it.
 #' @return An `AnvlBackend` object.
 #' @keywords internal
 #' @export
@@ -36,8 +48,15 @@ AnvlBackend <- function(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 ) {
+  if (!is.null(default_dtypes)) {
+    default_dtypes <- list(
+      float = check_default_dtype(default_dtypes$float, "float", "The backend's {.field float} default"),
+      int = check_default_dtype(default_dtypes$int, "int", "The backend's {.field int} default")
+    )
+  }
   structure(
     list(
       new_data = new_data,
@@ -51,7 +70,8 @@ AnvlBackend <- function(
       new_device = new_device,
       print_data = print_data,
       jit = jit,
-      await_data = await_data
+      await_data = await_data,
+      default_dtypes = default_dtypes
     ),
     class = "AnvlBackend"
   )
@@ -113,9 +133,6 @@ register_backend(
   "plain",
   AnvlBackend(
     new_data = function(data, dtype, shape, device) {
-      if (is.null(dtype)) {
-        dtype <- default_dtype(data)
-      }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
@@ -176,29 +193,38 @@ register_backend(
     jit = function(f, static, cache_size, ...) {
       cli_abort("JIT compilation is not supported for the {.val plain} backend.")
     },
-    await_data = function(x) invisible(NULL)
+    await_data = function(x) invisible(NULL),
+    # A plain array only ever exists inside a trace, where the R value it is
+    # built from takes the default of the backend being traced for.
+    default_dtypes = NULL
   )
 )
 
-#' Get the default backend
+#' Get the backend in force
 #'
-#' Returns the current default backend from `getOption("anvl.default_backend", "pjrt")`.
+#' There is exactly one backend in force at any time, the one named by the
+#' option `anvl.backend` (default `"pjrt"`). Every array is built on it and
+#' every operation runs on it; an array of another backend is rejected. Set the
+#' option directly, or for a scope with [`local_backend()`] / [`with_backend()`].
+#' Switching the backend also switches the data types an R value commits to by
+#' default, see [`default_dtypes()`].
 #'
 #' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
-#' @seealso [local_backend()]
+#' @seealso [local_backend()], [with_backend()], [default_dtypes()]
 #' @export
 default_backend <- function() {
-  getOption("anvl.default_backend", "pjrt")
+  getOption("anvl.backend", "pjrt")
 }
 
 assert_backend <- function(backend) {
   assert_choice(backend, names(globals$backends))
 }
 
-#' Temporarily set the default backend
+#' Temporarily set the backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' calling scope. This affects `nv_array()`, `nv_scalar()`, and `jit()`.
+#' Sets the `anvl.backend` option for the duration of the calling scope. Every
+#' array built and every operation run in that scope uses the backend, and R
+#' values commit to its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
@@ -207,13 +233,14 @@ assert_backend <- function(backend) {
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
-  withr::local_options(anvl.default_backend = backend, .local_envir = envir)
+  withr::local_options(anvl.backend = backend, .local_envir = envir)
 }
 
 #' Run code with a specific backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' expression. This affects [`jit()`] and data construction (e.g. via [`nv_array`]).
+#' Sets the `anvl.backend` option for the duration of the expression. Every
+#' array built and every operation run in `code` uses the backend, and R values
+#' commit to its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
@@ -222,7 +249,7 @@ local_backend <- function(backend, envir = parent.frame()) {
 #' @export
 with_backend <- function(backend, code) {
   backend <- assert_backend(backend)
-  withr::with_options(list(anvl.default_backend = backend), code)
+  withr::with_options(list(anvl.backend = backend), code)
 }
 
 #' Install what a backend needs to run

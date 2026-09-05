@@ -4,16 +4,12 @@
 \alias{nv_device}
 \title{Create a Device}
 \usage{
-nv_device(x, backend = NULL)
+nv_device(x)
 }
 \arguments{
 \item{x}{(\code{character(1)} | device object)\cr
 Identifier for the device (e.g. \code{"cpu"}, \code{"cuda"}, \code{"cuda:<n>"}),
-or an existing device object (returned as-is).}
-
-\item{backend}{(\code{NULL} | \code{character(1)})\cr
-The backend for which to create the device.
-Defaults to \code{\link[=default_backend]{default_backend()}} when \code{NULL}.}
+or an existing device object of the backend in force (returned as-is).}
 }
 \value{
 A backend-specific device object (e.g. \code{PJRTDevice} for \code{"pjrt"},
@@ -24,18 +20,20 @@ Constructs a backend-specific device object.
 
 A device identifies a compute resources, such as CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via \code{\link[=nv_array]{nv_array()}}) but also compilation (\link{jit}).
+A device belongs to the backend in force (\code{\link[=default_backend]{default_backend()}}); a device
+object of another backend is an error.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Create CPU device for pjrt backend:
-nv_device("cpu", "pjrt")
-# Create CPU device for quickr backend:
-nv_device("cpu", "quickr")
+# Create CPU device for the pjrt backend:
+nv_device("cpu")
+# Create CPU device for the quickr backend:
+with_backend("quickr", nv_device("cpu"))
 # Pass through an existing device:
 dev <- nv_device("cpu")
 identical(nv_device(dev), dev)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=backend]{backend()}}, \code{\link[=AnvlBackend]{AnvlBackend()}}.
+\code{\link[=backend]{backend()}}, \code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=default_backend]{default_backend()}}.
 }

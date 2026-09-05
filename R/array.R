@@ -41,21 +41,16 @@
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
-#'   The default (`NULL`) uses the current backend's default dtype:
-#'   `f32` for numeric data on `"pjrt"`, `f64` for numeric data on `"quickr"`,
-#'   `i32` for integer data, and `bool` for logical data.
+#'   The default (`NULL`) uses the data type the R value commits to (see
+#'   [`default_dtypes()`]): the default float for a `double` and the default
+#'   integer for an `integer` -- `f32` / `i32` on `"pjrt"`, `f64` / `i32` on
+#'   `"quickr"`, unless overridden -- and `bool` for a `logical`.
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
 #'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
-#' @param backend (`NULL` | `character(1)`)\cr
-#'   Backend the array belongs to (`"pjrt"` or `"quickr"`).
-#'   The default (`NULL`) is inferred from `device` when `device` is a
-#'   backend-specific device object, and otherwise falls back to
-#'   [`default_backend()`].
-#'   Must not be specified inside [`jit()`].
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
 #'   axes, fill the array in row-major order rather than the
@@ -113,7 +108,6 @@ nv_array <- function(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  backend = NULL,
   byrow = FALSE,
   check = FALSE
 ) {
@@ -130,7 +124,7 @@ nv_array <- function(
     if (byrow) {
       cli_abort("{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.")
     }
-    if (!is.null(device) && !eq_device(device(data), nv_device(device, backend))) {
+    if (!is.null(device) && !eq_device(device(data), nv_device(device))) {
       cli_abort("Cannot change device of existing AnvlArray from {.val {device(data)}} to {.val {device}}")
     }
     if (!is.null(shape) && !identical(shape(data), as.integer(shape))) {
@@ -171,16 +165,18 @@ nv_array <- function(
     }
   }
   if (currently_tracing() && is.null(device)) {
-    # The functions we jit should be backend-agnostic
-    if (!is.null(backend)) {
-      cli_abort("{.arg backend} must not be specified when calling {.fn nv_array} inside {.fn jit}.")
-    }
+    # A constant of the trace: it commits to the defaults the trace is pinned to.
+    dtype <- resolve_default_dtype(data, dtype)
     return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
   }
-  if (is.null(backend) && is_device(device)) {
-    backend <- backend(device)
+  backend <- default_backend()
+  if (is_device(device)) {
+    check_device_backend(device, backend)
   }
-  backend <- backend %||% default_backend()
+  # Resolved here, so no backend runtime ever chooses a dtype for anvl. Reached
+  # while tracing too, for a constant that names a device, so it has to be the
+  # pair the trace is pinned to rather than a fresh read of the options.
+  dtype <- resolve_default_dtype(data, dtype, current_default_dtypes())
   globals$backends[[backend]]$new_data(data, dtype, shape, device)
 }
 
@@ -220,10 +216,10 @@ as_anvl_array <- function(x, device = NULL) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
   if (is_anvl_array(x)) {
-    if (!is.null(device) && !eq_device(device(x), nv_device(device, backend(x)))) {
+    if (!is.null(device) && !eq_device(device(x), backend_device(device, backend(x)))) {
       cli_abort(c(
         "Input is on an unexpected device.",
-        i = "Expected {.val {as.character(nv_device(device, backend(x)))}}.",
+        i = "Expected {.val {as.character(backend_device(device, backend(x)))}}.",
         i = "Got {.val {as.character(device(x))}}."
       ))
     }
@@ -354,13 +350,12 @@ unwrap_if_array <- function(x) {
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar <- function(data, dtype = NULL, device = NULL, backend = NULL, check = FALSE) {
+nv_scalar <- function(data, dtype = NULL, device = NULL, check = FALSE) {
   nv_array(
     data,
     dtype = dtype,
     device = device,
     shape = integer(),
-    backend = backend,
     check = check
   )
 }
@@ -392,7 +387,6 @@ nv_matrix <- function(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  backend = NULL,
   byrow = FALSE
 ) {
   assert_int(nrow, lower = 0L, null.ok = TRUE)
@@ -411,8 +405,7 @@ nv_matrix <- function(
       data,
       dtype = dtype,
       device = device,
-      shape = c(nrow, ncol),
-      backend = backend
+      shape = c(nrow, ncol)
     ))
   }
   if (is.null(nrow) && is.null(ncol)) {
@@ -431,19 +424,18 @@ nv_matrix <- function(
     dtype = dtype,
     device = device,
     shape = c(nrow, ncol),
-    backend = backend,
     byrow = byrow
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-nv_empty <- function(dtype, shape, device = NULL, backend = NULL) {
+nv_empty <- function(dtype, shape, device = NULL) {
   shape <- as.integer(shape)
-  if (is.null(backend) && is_device(device)) {
-    backend <- backend(device)
+  backend <- default_backend()
+  if (is_device(device)) {
+    check_device_backend(device, backend)
   }
-  backend <- backend %||% default_backend()
   globals$backends[[backend]]$new_empty(
     dtype = dtype,
     shape = shape,
@@ -764,8 +756,9 @@ ConcreteArray <- function(data) {
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array.
 #' @param dtype ([`tengen::DataType`])\cr
-#'   The data type. Defaults to the current backend's default floating dtype,
-#'   `i32` for integer, and `bool` for logical.
+#'   The data type. Defaults to the one the R value commits to (see
+#'   [`default_dtypes()`]): the default float for a `double`, the default
+#'   integer for an `integer`, and `bool` for a `logical`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- LiteralArray(1L, shape = integer())

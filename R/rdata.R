@@ -49,11 +49,11 @@ RData <- function(shape, r_type) {
   shape <- as_shape(shape)
   r_type <- match.arg(r_type, c("double", "integer", "logical"))
   structure(
-    list(
-      r_type = r_type,
-      default_dtype = default_dtype_r(r_type),
-      shape = shape
-    ),
+    # Deliberately no `dtype`: the value has none until it commits, and the
+    # default it would commit to depends on the backend in force
+    # (`default_dtype_r()`), so code that reaches for `$dtype` must not
+    # silently get one.
+    list(r_type = r_type, shape = shape),
     class = c("RData", "AbstractArray")
   )
 }
@@ -65,7 +65,7 @@ is_rdata <- function(x) {
 #' @method dtype RData
 #' @export
 dtype.RData <- function(x, ...) {
-  abort_no_dtype(x$default_dtype)
+  abort_no_dtype(default_dtype_r(x$r_type))
 }
 
 
@@ -177,11 +177,15 @@ rdata_natural_dtype <- function(r_type) {
 # would be even worse.
 rdata_staging_dtype <- function(r_type, dtype) {
   staged <- rdata_natural_dtype(r_type)
-  if (staged != default_dtype_r(r_type)) {
+  # Only worth saying when staging *widens* past the data type the value would
+  # have taken anyway. An R integer stages through `i32`, so under an `i64`
+  # default it stages through something narrower than its default and the
+  # program acquires nothing it could have avoided.
+  if (!dtype_holds(default_dtype_r(r_type), staged)) {
     cli_warn(
       c(
         "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
-        x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts -- and nothing else here asked for {.val {as.character(staged)}}.", # nolint
+        x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts.", # nolint
         i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(default_dtype_r(r_type))}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
       ),
       class = "anvl_staging_widens_warning"
@@ -191,7 +195,13 @@ rdata_staging_dtype <- function(r_type, dtype) {
 }
 
 rdata_in_category <- function(r_type, dtype) {
-  dtype_category(dtype) == dtype_category(default_dtype_r(r_type))
+  dtype_category(dtype) == rdata_category(r_type)
+}
+
+# The category (see `dtype_category()`) of an R storage type. Fixed, whatever
+# width the default dtype of that type happens to have.
+rdata_category <- function(r_type) {
+  switch(r_type, double = 3L, integer = 2L, logical = 1L)
 }
 
 # TODO: bit64 support
@@ -292,8 +302,10 @@ r_const_at <- function(x, dtype, desc) {
 
 #' @title Peek at a Data Type
 #' @description
-#' The data type `x` would use if was conveted to an `AnvlArray`.
-#' Relevant for R objects and their [`RData`] trace-time analogon.
+#' The data type `x` would use if it was converted to an `AnvlArray`.
+#' Relevant for R objects and their [`RData`] trace-time analogon: for those it
+#' is the default of the backend in force (see [`default_dtypes()`]), which the
+#' value has not committed to yet.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
@@ -306,7 +318,7 @@ r_const_at <- function(x, dtype, desc) {
 #' @export
 peek_dtype <- function(x) {
   aval <- to_abstract(x)
-  if (is_rdata(aval)) aval$default_dtype else aval$dtype
+  if (is_rdata(aval)) default_dtype_r(aval$r_type) else aval$dtype
 }
 
 # A traced box, with any R value in it committed to its default dtype. Anything
@@ -372,7 +384,7 @@ finalize_rdata_inputs <- function(desc) {
     aval <- gval$aval
     mat <- rdata_mat(desc, gval)
     requested <- rdata_requested_dtypes(aval, mat)
-    resolved <- resolve_upload_dtype(aval, requested)
+    resolved <- resolve_upload_dtype(aval, requested, desc$default_dtypes)
     main <- mat[[resolved]] %||%
       GraphBox(GraphValue(AbstractArray(resolved, aval$shape)), desc)
     inputs[[i]] <- main$gnode
@@ -429,7 +441,7 @@ finalize_inline_rdata_inputs <- function(desc) {
     aval <- gval$aval
     mat <- rdata_mat(desc, gval)
     requested <- rdata_requested_dtypes(aval, mat)
-    resolved <- resolve_upload_dtype(aval, requested)
+    resolved <- resolve_upload_dtype(aval, requested, desc$default_dtypes)
     outer <- desc$rdata_outer[[gval]]
     local_box <- mat[[resolved]]
     # In the examples below, `x` is `nv_scalar(1, "f64")` and `b` is the R
@@ -515,9 +527,9 @@ rdata_build_candidates <- function(r_type) {
 # no dtype the trace asked for holds them all, the narrowest one of the value's
 # category that does is used (`f32` for those two), so a program with no `f64`
 # in it does not acquire one here.
-resolve_upload_dtype <- function(aval, requested) {
+resolve_upload_dtype <- function(aval, requested, defaults) {
   if (!length(requested)) {
-    return(as.character(aval$default_dtype))
+    return(as.character(default_dtype_r(aval$r_type, defaults)))
   }
   dtypes <- lapply(requested, as_dtype)
   holds_all <- vapply(dtypes, function(d) all(vapply(dtypes, dtype_holds, logical(1L), dtype = d)), logical(1L))

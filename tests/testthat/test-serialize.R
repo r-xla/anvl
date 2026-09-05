@@ -20,11 +20,12 @@ test_that("nv_save and nv_read works for a single array", {
 
 test_that("nv_serialize and nv_unserialize work for quickr backend", {
   skip_if_no_quickr()
-  x <- nv_matrix(1:6, nrow = 2, dtype = "i32", backend = "quickr")
+  local_backend("quickr")
+  x <- nv_matrix(1:6, nrow = 2, dtype = "i32")
   lst <- list(x = x)
   raw_data <- nv_serialize(lst)
   expect_type(raw_data, "raw")
-  reloaded <- nv_unserialize(raw_data, backend = "quickr")
+  reloaded <- nv_unserialize(raw_data)
   expect_equal(backend(reloaded$x), "quickr")
   expect_equal(as_array(reloaded$x), as_array(x))
   expect_equal(dtype(reloaded$x), dtype(x))
@@ -33,11 +34,12 @@ test_that("nv_serialize and nv_unserialize work for quickr backend", {
 
 test_that("nv_save and nv_read work for quickr backend", {
   skip_if_no_quickr()
-  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64", backend = "quickr")
+  local_backend("quickr")
+  x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
   lst <- list(x = x)
   tmp <- tempfile(fileext = ".safetensors")
   nv_save(lst, tmp)
-  reloaded <- nv_read(tmp, backend = "quickr")
+  reloaded <- nv_read(tmp)
   expect_equal(backend(reloaded$x), "quickr")
   expect_equal(as_array(reloaded$x), as_array(x))
   expect_equal(dtype(reloaded$x), dtype(x))

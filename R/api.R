@@ -1397,9 +1397,11 @@ nv_iota <- prim_iota
 #' @param steps (`integer(1)` or `NULL`)\cr
 #'   Number of evenly spaced values to generate. Must be at least 1.
 #'   When `NULL` (default), generates consecutive integer values from `start` to `end`.
-#' @param dtype (`character(1)`)\cr
-#'   Data type. Default `"i32"` when `steps` is `NULL`, `"f32"` when `steps` is given.
-#'   For `nv_seq_like()`, `NULL` uses `dtype(like)`.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type. `NULL` (default) uses the backend's default integer data type
+#'   when `steps` is `NULL` and its default float data type when `steps` is
+#'   given (see [`default_dtypes()`]). For `nv_seq_like()`, `NULL` uses
+#'   `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
@@ -1414,7 +1416,7 @@ nv_iota <- prim_iota
 #' @jit static 1:5
 nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
   if (is.null(steps)) {
-    dtype <- dtype %||% "i32"
+    dtype <- dtype %||% default_dtype_r("integer")
     assert_int(start)
     assert_int(end)
     assert(start <= end)
@@ -1426,7 +1428,7 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
       device = device
     ))
   }
-  dtype <- dtype %||% "f32"
+  dtype <- dtype %||% default_dtype_r("double")
   assert_int(steps, lower = 1L)
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
@@ -1988,7 +1990,9 @@ nv_diag <- function(x) {
 #' @param like ([`arrayish`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_eye_like()`).
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type. `NULL` (default) uses the backend's default float data type
+#'   (see [`default_dtypes()`]).
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   An `n x n` identity matrix.
@@ -1999,7 +2003,8 @@ nv_diag <- function(x) {
 #' nv_eye_like(x, 3L)
 #' @export
 #' @jit static 1:3
-nv_eye <- function(n, dtype = "f32", device = NULL) {
+nv_eye <- function(n, dtype = NULL, device = NULL) {
+  dtype <- dtype %||% default_dtype_r("double")
   nv_diag(nv_fill(1, n, dtype = dtype, device = device))
 }
 

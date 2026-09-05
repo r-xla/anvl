@@ -459,7 +459,7 @@ assert_promotes_to <- function(x, dtype, args, i) {
   what <- arg_label(args, i)
   target <- as.character(dtype)
   if (is_rdata(aval)) {
-    if (promote_dt_rdata(aval$default_dtype, dtype) == dtype) {
+    if (promote_dt_rdata(peek_dtype(aval), dtype) == dtype) {
       return(invisible(NULL))
     }
     cli_abort(
@@ -668,25 +668,6 @@ promote_dt_known <- function(dt1, dt2) {
   }
   # both are unsigned
   as_dtype(paste0("ui", max(dtype_width(dt1), dtype_width(dt2))))
-}
-
-default_dtype <- function(x) {
-  if (!is.numeric(x) && !is.logical(x)) {
-    cli_abort("No default type for: {.class class(x)[1L]}")
-  }
-  default_dtype_r(typeof(x))
-}
-
-# The dtype an R value of this storage type commits to when nothing in the
-# program tells it what it is. The single place that decision is made.
-default_dtype_r <- function(r_type) {
-  switch(
-    r_type,
-    double = as_dtype("f32"),
-    integer = as_dtype("i32"),
-    logical = as_dtype("bool"),
-    cli_abort("No default type for R type {.val {r_type}}")
-  )
 }
 
 promotable_to <- function(from, to) {

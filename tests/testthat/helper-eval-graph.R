@@ -16,7 +16,7 @@ exec_compiled_pjrt_for_test <- function(compiled, args_nv) {
     !!!phantom_bufs,
     simplify = FALSE
   )
-  unflatten(compiled$out_tree, lapply(out_vals, nv_array, backend = "pjrt"))
+  unflatten(compiled$out_tree, lapply(out_vals, nv_array))
 }
 
 graph_runner_pjrt <- function(graph) {
@@ -67,9 +67,9 @@ graph_runner_pjrt <- function(graph) {
           if (length(x) != 1L) {
             cli::cli_abort("Expected scalar input")
           }
-          nv_scalar(x, dtype = expected_dtype, backend = "pjrt")
+          nv_scalar(x, dtype = expected_dtype)
         } else {
-          nv_array(x, dtype = expected_dtype, shape = expected_shape, backend = "pjrt")
+          nv_array(x, dtype = expected_dtype, shape = expected_shape)
         }
       },
       args,

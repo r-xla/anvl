@@ -14,7 +14,9 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
   function(info) {
     check_static_args(info$args, static)
     compile_device <- if (is_device_arg(device)) {
-      info$args[[device$argname]]
+      # A device read from an argument still has to be one of this backend;
+      # NULL leaves it to be inferred, as without a device policy.
+      device_from_arg(info$args[[device$argname]], "pjrt")
     } else {
       device
     }
@@ -25,7 +27,8 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       donate = donate,
       device = compile_device,
       arg_devices = dispatch_arg_devices(info),
-      fallback_device = info$default_device
+      fallback_device = info$default_device,
+      default_dtypes = default_dtypes_from_key(info$context)
     )
     phantom_specs <- lapply(compiled$phantom_specs, function(spec) {
       list(dtype = as.character(spec$dtype), shape = as.integer(spec$shape))
@@ -46,7 +49,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
 # device: NULL | PJRTDdevice | AnvlDeviceArg;
 jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   if (!is.null(device) && !is_device_arg(device)) {
-    device <- nv_device(device, "pjrt")
+    device <- backend_device(device, "pjrt")
   }
 
   # pjrt's native dispatcher is the single cache + dispatch path. With a
@@ -64,13 +67,16 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
     # Consulted only when a call has no array input to name a device. It reads
     # the default afresh, so a call of literals alone recompiles when the
     # default device changes rather than reusing the old entry.
-    default_device = if (is.null(device)) function() default_device("pjrt")
+    default_device = if (is.null(device)) function() default_device("pjrt"),
+    # The default dtypes the program is compiled under are part of the key, so
+    # a program compiled under one pair is never served under another.
+    context = default_dtypes_context("pjrt")
   )
   # Hoisted out of the per-call path: `::` resolves via getExportedValue on
   # every evaluation, which costs ~1us per lookup.
   dispatch <- pjrt::dispatch
 
-  # One call on already-evaluated args. This is the fast entry: jit_auto's
+  # One call on already-evaluated args. This is the fast entry: jit()'s
   # wrapper (which has already captured and evaluated the arguments) calls it
   # directly via the "jit_run_args" attribute, skipping the inner closure's
   # match.call() + eval() re-capture. The dispatcher validates the inputs
@@ -118,6 +124,10 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Devices of the concrete (non-static) input arguments, extracted before
 #'   converting to abstract values. Used together with traced devices for
 #'   device inference when `device` is `NULL`.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The data types the traced R values commit to when nothing else decides one
+#'   (see [`default_dtypes()`]), read off `info$context` so the program matches
+#'   the cache key it is filed under. `NULL` uses the pair in force.
 #' @param fallback_device (`NULL` | device)\cr
 #'   The device to compile for when `device` is `NULL` and nothing in the graph
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
@@ -143,9 +153,10 @@ compile_pjrt <- function(
   donate = character(),
   device = NULL,
   arg_devices = list(),
-  fallback_device = NULL
+  fallback_device = NULL,
+  default_dtypes = NULL
 ) {
-  desc <- local_descriptor()
+  desc <- local_descriptor(default_dtypes = default_dtypes)
   graph <- trace_fn(
     f,
     desc = desc,
@@ -334,7 +345,8 @@ AnvlBackendPjrt <- function() {
       }
       jit_pjrt_impl(f, static, cache_size, donate, device)
     },
-    await_data = function(x) pjrt::await(x$data)
+    await_data = function(x) pjrt::await(x$data),
+    default_dtypes = list(float = "f32", int = "i32")
   )
   class(backend) <- c("AnvlBackendPjrt", class(backend))
   backend

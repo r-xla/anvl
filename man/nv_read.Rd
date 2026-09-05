@@ -4,7 +4,7 @@
 \alias{nv_read}
 \title{Read arrays from a file}
 \usage{
-nv_read(path, device = NULL, backend = default_backend())
+nv_read(path, device = NULL)
 }
 \arguments{
 \item{path}{(\code{character(1)})\cr
@@ -13,10 +13,6 @@ Path to the safetensors file.}
 \item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
 The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...).
 Default is to use the CPU.}
-
-\item{backend}{(\code{character(1)})\cr
-Backend for the loaded arrays.
-Defaults to \code{default_backend()}.}
 }
 \value{
 Named \code{list} of \code{\link{AnvlArray}} objects.

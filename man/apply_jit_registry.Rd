@@ -22,7 +22,7 @@ Invisibly returns \code{envir}.
 \description{
 Iterates over a registry produced by \code{\link[=jit_roclet]{jit_roclet()}} and rebinds each
 listed function in \code{envir} to
-\code{jit(f, backend = "auto", static = entry$static)}.
+\code{jit(f, static = entry$static)}.
 
 Call this from the top level of your package's \code{R/zzz.R}, right next to
 \code{.onLoad}, so the wrappers are byte-compiled during package install

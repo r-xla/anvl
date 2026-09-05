@@ -2,7 +2,7 @@
 % Please edit documentation in R/backend.R
 \name{local_backend}
 \alias{local_backend}
-\title{Temporarily set the default backend}
+\title{Temporarily set the backend}
 \usage{
 local_backend(backend, envir = parent.frame())
 }
@@ -16,6 +16,7 @@ Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 The previous value of the option (invisibly).
 }
 \description{
-Sets the \code{anvl.default_backend} option for the duration of the
-calling scope. This affects \code{nv_array()}, \code{nv_scalar()}, and \code{jit()}.
+Sets the \code{anvl.backend} option for the duration of the calling scope. Every
+array built and every operation run in that scope uses the backend, and R
+values commit to its default data types (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }

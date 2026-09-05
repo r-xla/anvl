@@ -35,10 +35,14 @@ quickr_restore_leaf <- function(value, info) {
   }
 
   if (!is.null(info$backend)) {
-    value <- nv_array(
+    # The compiled function knows what it produced: an array of its own backend
+    # at the graph's output dtype, whatever backend is in force where it is
+    # called from.
+    value <- globals$backends[[info$backend]]$new_data(
       value,
+      dtype = as_dtype(info$dtype),
       shape = shape,
-      backend = info$backend
+      device = NULL
     )
   }
 
@@ -236,13 +240,13 @@ graph_to_quickr_make_wrapper <- function(
 #' compilation) suitable for `quickr::quick()`. The returned function expects
 #' plain R scalars/vectors/arrays and returns plain R values/arrays.
 #'
-#' Most users will prefer [`jit()`] with `backend = "quickr"`.
+#' Most users will prefer [`jit()`] under `with_backend("quickr", ...)`.
 #' This function is the lower-level graph API.
 #'
 #' @param graph ([`AnvlGraph`])\cr
 #'   Graph to convert.
 #' @return (`function`)
-#' @seealso [`jit()`] with `options(anvl.backend = "quickr")` for tracing and compiling a
+#' @seealso [`jit()`] under `with_backend("quickr", ...)` for tracing and compiling a
 #'   regular R function in one step.
 #' @export
 graph_to_quickr_r_function <- function(graph) {
@@ -290,7 +294,7 @@ graph_to_quickr_r_function <- function(graph) {
 #' The code generator currently supports arrays up to rank 5. Some primitives
 #' are more restricted (e.g. `transpose` currently only handles rank-2 arrays).
 #'
-#' Most users will prefer [`jit()`] with `backend = "quickr"`. This function is
+#' Most users will prefer [`jit()`] under `with_backend("quickr", ...)`. This function is
 #' the lower-level graph API.
 #'
 #' @param graph ([`AnvlGraph`])\cr
@@ -305,7 +309,7 @@ graph_to_quickr_r_function <- function(graph) {
 #'   takes a single flat list of all leaves (including static slots).
 #' @return (`function`) that returns [`AnvlArray`] outputs (or a tree of
 #'   them), or plain R values when `unwrap = TRUE`.
-#' @seealso [`jit()`] with `backend = "quickr"` for tracing and compiling a
+#' @seealso [`jit()`] under `with_backend("quickr", ...)` for tracing and compiling a
 #'   regular R function in one step.
 #' @keywords internal
 graph_to_quickr_function <- function(graph, unwrap = FALSE, flat = FALSE) {

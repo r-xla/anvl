@@ -4,7 +4,7 @@
 \alias{nv_unserialize}
 \title{Deserialize arrays from raw bytes}
 \usage{
-nv_unserialize(con, device = NULL, backend = default_backend())
+nv_unserialize(con, device = NULL)
 }
 \arguments{
 \item{con}{(connection | \code{\link{raw}})\cr
@@ -13,10 +13,6 @@ A connection or raw vector to read from.}
 \item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
 The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...).
 Default is to use the CPU.}
-
-\item{backend}{(\code{character(1)})\cr
-Backend for the loaded arrays.
-Defaults to \code{default_backend()}.}
 }
 \value{
 Named \code{list} of \code{\link{AnvlArray}} objects.

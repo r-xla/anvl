@@ -16,7 +16,8 @@ AnvlBackend(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 )
 }
 \arguments{
@@ -52,6 +53,16 @@ object from a device type string (e.g. \code{"cpu"}). Called by \code{\link[=nv_
 \item{await_data}{(\code{function})\cr Blocks until the array's underlying data
 is ready. Called by \code{\link[=await]{await()}} for \code{AnvlArray}s; a no-op for backends
 without async execution.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr The data types an R
+double (\code{float}) and an R integer (\code{int}) commit to on this backend when
+nothing else decides one. \code{float} must be \code{"f32"} or \code{"f64"}, \code{int} must
+be \code{"i32"} or \code{"i64"}. The options \code{anvl.default_float} and
+\code{anvl.default_int} override them on every backend; see
+\code{\link[=default_dtypes]{default_dtypes()}}. \code{NULL} for a backend that never builds a value at a
+default of its own (the \code{"plain"} backend, which only holds constants
+captured while tracing for another backend). \code{new_data} is always handed
+a dtype: \code{\link[=nv_array]{nv_array()}} resolves the default before calling it.}
 }
 \value{
 An \code{AnvlBackend} object.

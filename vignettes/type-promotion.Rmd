@@ -75,10 +75,10 @@ nv_add(1, 2)
 It is therefore important to understand to understand the rules that govern the materialization of R objects as `AnvlArray`s.
 Generally, there are two routes:
 
-1. An R values it commited at its default data type (`double -> f32`, `integer -> i32`, `logical -> bool`).
+1. An R value is committed at its default data type (`double` and `integer` take the defaults of the backend in force, `f32` and `i32` on pjrt; `logical` takes `bool`).
    This is e.g. the case in unary functions such as `nv_exp`.
 2. The R values data type is inferred from other arguments, as is the case of the `nv_add` call above.
-   When no concrete data type is present, `nv_add(1, 2)` falls back to the default, which is `f32` for `double`s.
+   When no concrete data type is present, `nv_add(1, 2)` falls back to the default, which is `f32` for `double`s on pjrt.
 
 Note that these rules are not universal and exceptions exist.
 Some functions, such as `nv_clamp`, prioritize the data type of a specific argument, in this case `x`, the value that is being clamped.
@@ -104,6 +104,18 @@ as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
 One common rule is `promote_common()`, which is used by functions such as `nv_add` above.
 It computes the common data type of the inputs.
 In this case, it returns `f32`, which is the default data type of R `double`s.
+That default is a property of the backend in force: `f32` on pjrt, `f64` on quickr, which has no single precision.
+`default_dtypes()` reports the defaults, and the options `anvl.default_float` and `anvl.default_int` (or `local_default_dtypes()` / `with_default_dtypes()`) override them on every backend.
+Changing a default does not change the yielding: a literal that meets an `f32` array is still an `f32`.
+
+```{r}
+with_default_dtypes(c(float = "f64"), {
+  list(
+    committed = jit(\() 1.0)(),
+    yielded = nv_array(1, dtype = "f32") + 1.5
+  )
+})
+```
 
 
 ```{r}

@@ -48,7 +48,7 @@ test_that("jit: quickr backend does not support donate", {
   skip_if_no_quickr()
   local_backend("quickr")
   expect_error(
-    jit(function(x) x, donate = "x"),
+    jit(function(x) x, donate = "x")(nv_array(1)),
     "donate",
     fixed = TRUE
   )
@@ -87,16 +87,6 @@ test_that("jit: quickr backend unwrap = TRUE preserves nested output structure",
   expect_false(inherits(out$payload$shifted, "AnvlArray"))
   expect_equal(as.logical(out$flags), c(FALSE, TRUE, TRUE))
   expect_equal(as.integer(out$payload$shifted), 2:4)
-})
-
-test_that("jit: quickr backend traces floating literals as f32", {
-  graph <- trace_fn(
-    function() 1.0,
-    list(),
-    desc = local_descriptor()
-  )
-
-  expect_equal(dtype(graph$outputs[[1L]]$aval), as_dtype("f32"))
 })
 
 test_that("graph_to_quickr_r_function lowers a graph to a plain R function", {

@@ -344,6 +344,7 @@ reference:
       - default_backend
       - local_backend
       - with_backend
+      - default_dtypes
       - install_anvl
       - device_arg
       - nv_device

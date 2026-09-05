@@ -54,6 +54,16 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
   `peek_dtype()` to ask what it *would* commit to.
 - A primitive promotes nothing unless its body says so: one whose operands must agree calls
   `apply_promotion()` on them before anything else reads them.
+- A trace output that met nothing commits at `default_dtype_r()`: the default float / integer of
+  the backend in force, which `default_dtypes()` reports and the options `anvl.default_float` /
+  `anvl.default_int` override. A trace is pinned to the pair the dispatcher keyed its program on
+  (`GraphDescriptor$default_dtypes`); read it through `current_default_dtypes()` /
+  `default_dtype_r()`, never hardcode `"f32"` / `"i32"` as a default.
+- **One backend at a time.** The backend is the option `anvl.backend` (`default_backend()`,
+  `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
+  nothing infers a backend from an argument, no function takes a `backend` argument, and an array
+  or device of another backend is an error. This is what makes the default dtypes unambiguous in
+  eager code (see `specs/2026-09-04-ambient-backend-default-dtypes-design.md`).
 
 ## Primitive System
 

@@ -16,12 +16,11 @@ nv_array(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  backend = NULL,
   byrow = FALSE,
   check = FALSE
 )
 
-nv_scalar(data, dtype = NULL, device = NULL, backend = NULL, check = FALSE)
+nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
 
 nv_matrix(
   data,
@@ -29,22 +28,14 @@ nv_matrix(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  backend = NULL,
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, backend = NULL)
+nv_empty(dtype, shape, device = NULL)
 
-nv_array_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  backend = NULL
-)
+nv_array_like(like, data, dtype = NULL, device = NULL, shape = NULL)
 
-nv_scalar_like(like, data, dtype = NULL, device = NULL, backend = NULL)
+nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
 nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 }
@@ -54,9 +45,10 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the current backend's default dtype:
-\code{f32} for numeric data on \code{"pjrt"}, \code{f64} for numeric data on \code{"quickr"},
-\code{i32} for integer data, and \code{bool} for logical data.}
+The default (\code{NULL}) uses the data type the R value commits to (see
+\code{\link[=default_dtypes]{default_dtypes()}}): the default float for a \code{double} and the default
+integer for an \code{integer} -- \code{f32} / \code{i32} on \code{"pjrt"}, \code{f64} / \code{i32} on
+\code{"quickr"}, unless overridden -- and \code{bool} for a \code{logical}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -77,13 +69,6 @@ The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
 To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
-
-\item{backend}{(\code{NULL} | \code{character(1)})\cr
-Backend the array belongs to (\code{"pjrt"} or \code{"quickr"}).
-The default (\code{NULL}) is inferred from \code{device} when \code{device} is a
-backend-specific device object, and otherwise falls back to
-\code{\link[=default_backend]{default_backend()}}.
-Must not be specified inside \code{\link[=jit]{jit()}}.}
 
 \item{byrow}{(\code{logical(1)})\cr
 When constructing from an R object and the result has at least two
@@ -108,8 +93,8 @@ Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
-An existing array. Any of \code{dtype}, \code{device}, \code{shape}, and \code{backend}
-that are \code{NULL} (the default) are taken from \code{like}.}
+An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are \code{NULL}
+(the default) are taken from \code{like}.}
 }
 \value{
 (\code{\link{AnvlArray}})

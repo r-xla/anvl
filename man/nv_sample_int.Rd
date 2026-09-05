@@ -4,7 +4,7 @@
 \alias{nv_sample_int}
 \title{Sample Integers}
 \usage{
-nv_sample_int(shape, initial_state, n, dtype = "i32")
+nv_sample_int(shape, initial_state, n, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
@@ -16,8 +16,9 @@ RNG state (\code{ui64[2]}).}
 \item{n}{(\code{integer(1)})\cr
 Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled integers.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the sampled integers. \code{NULL} (default) uses the backend's
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr

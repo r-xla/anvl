@@ -47,9 +47,6 @@ nv_save <- function(arrays, path) {
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
-#' @param backend (`character(1)`)\cr
-#'   Backend for the loaded arrays.
-#'   Defaults to `default_backend()`.
 #'
 #' @returns Named `list` of [`AnvlArray`] objects.
 #' @seealso [nv_save()], [nv_serialize()], [nv_unserialize()]
@@ -60,12 +57,12 @@ nv_save <- function(arrays, path) {
 #' path <- tempfile(fileext = ".safetensors")
 #' nv_save(list(x = x), path)
 #' nv_read(path)
-nv_read <- function(path, device = NULL, backend = default_backend()) {
+nv_read <- function(path, device = NULL) {
   checkmate::assert_string(path)
   checkmate::assert_file_exists(path)
   con <- file(path, "rb")
   on.exit(close(con), add = TRUE)
-  nv_unserialize(con, device = device, backend = backend)
+  nv_unserialize(con, device = device)
 }
 
 #' @title Serialize arrays to raw bytes
@@ -123,9 +120,6 @@ nv_serialize <- function(arrays, con = NULL) {
 #' @param device (`NULL` | `character(1)` | [`PJRTDevice`][pjrt::pjrt_device])\cr
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
-#' @param backend (`character(1)`)\cr
-#'   Backend for the loaded arrays.
-#'   Defaults to `default_backend()`.
 #'
 #' @returns Named `list` of [`AnvlArray`] objects.
 #' @seealso [nv_serialize()], [nv_save()], [nv_read()]
@@ -136,21 +130,21 @@ nv_serialize <- function(arrays, con = NULL) {
 #' raw_data <- nv_serialize(list(x = x))
 #' raw_data
 #' nv_unserialize(raw_data)
-nv_unserialize <- function(con, device = NULL, backend = default_backend()) {
+nv_unserialize <- function(con, device = NULL) {
   # TODO: don't convert to pjrt first
   result <- safetensors::safe_load_file(con, framework = "pjrt", device = device)
 
-  backend <- assert_backend(backend)
+  # The arrays are built on the backend in force.
+  backend <- default_backend()
   result_wrapped <- lapply(names(result), function(name) {
     buf <- result[[name]]
     if (backend == "pjrt") {
-      nv_array(buf, backend = "pjrt")
+      nv_array(buf)
     } else {
       nv_array(
         tengen::as_array(buf),
         dtype = as.character(pjrt::elt_type(buf)),
-        shape = tengen::shape(buf),
-        backend = backend
+        shape = tengen::shape(buf)
       )
     }
   })

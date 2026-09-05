@@ -1027,7 +1027,8 @@ describe("nv_triu", {
 describe("nv_tril with quickr backend", {
   it("works when the input is quickr", {
     skip_if_no_quickr()
-    x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
+    local_backend("quickr")
+    x <- nv_matrix(1, nrow = 3, ncol = 3)
     result <- nv_tril(x)
     expected <- matrix(c(1, 1, 1, 0, 1, 1, 0, 0, 1), nrow = 3, ncol = 3)
     expect_equal(as_array(result), expected, tolerance = 1e-6)
@@ -1037,7 +1038,8 @@ describe("nv_tril with quickr backend", {
 describe("nv_triu with quickr backend", {
   it("works when the input is quickr", {
     skip_if_no_quickr()
-    x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
+    local_backend("quickr")
+    x <- nv_matrix(1, nrow = 3, ncol = 3)
     result <- nv_triu(x)
     expected <- matrix(c(1, 0, 0, 1, 1, 0, 1, 1, 1), nrow = 3, ncol = 3)
     expect_equal(as_array(result), expected, tolerance = 1e-6)
@@ -1539,7 +1541,7 @@ describe("nv_argmax / nv_argmin", {
 # Regression for r-xla/anvl#343: R literals must adopt the device of their
 # AnvlArray siblings rather than being placed on the default device.
 describe("literals adopt device of array siblings", {
-  dev1 <- nv_device("cpu:1", "pjrt")
+  dev1 <- nv_device("cpu:1")
 
   it("nv_ifelse with literal branches", {
     pred <- nv_array(c(TRUE, FALSE), device = dev1)

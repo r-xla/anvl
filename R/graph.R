@@ -188,6 +188,11 @@ AnvlGraph <- function(
 #'   `NULL` when all args are array inputs.
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The data types every R value in this trace commits to when nothing else
+#'   decides one (see [`default_dtypes()`]) -- the pair the dispatcher keyed the
+#'   compiled program on, so the program cannot disagree with its cache key.
+#'   `NULL` lets [`local_descriptor()`] fill in the pair in force.
 #' @param devices (`character()`)\cr
 #'   Device platforms encountered during tracing (e.g. `"cpu"`, `"cuda"`).
 #'   Populated automatically as arrays are registered.
@@ -204,7 +209,8 @@ GraphDescriptor <- function(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character()
+  devices = character(),
+  default_dtypes = NULL
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -225,6 +231,10 @@ GraphDescriptor <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$devices <- devices
+  # The default dtypes (see `default_dtypes()`) every R value in this trace
+  # commits to when nothing else decides: the pair the dispatcher keyed the
+  # compiled program on. `local_descriptor()` fills it in when not given.
+  env$default_dtypes <- default_dtypes
   # Calls that have to run before everything else, because they only depend on
   # the graph's inputs: the converts finalize_rdata_inputs() adds for an R
   # argument that one program used at more than one dtype.
@@ -757,6 +767,7 @@ currently_tracing <- function() {
   !is.null(globals[["CURRENT_DESCRIPTOR"]])
 }
 
+
 maybe_previous_descriptor <- function() {
   stash <- globals[["DESCRIPTOR_STASH"]]
   n <- length(stash)
@@ -788,6 +799,11 @@ local_descriptor <- function(..., envir = parent.frame()) {
   }
 
   desc <- GraphDescriptor(...)
+  if (is.null(desc$default_dtypes)) {
+    # A sub-descriptor inherits the trace's pair; a top-level one without a
+    # dispatcher in front of it takes the default backend's current defaults.
+    desc$default_dtypes <- current_default_dtypes()
+  }
   if (!is.null(globals[["CURRENT_DESCRIPTOR"]])) {
     globals[["DESCRIPTOR_STASH"]] <- c(
       globals[["DESCRIPTOR_STASH"]],
