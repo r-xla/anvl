@@ -58,7 +58,7 @@ graph_runner_pjrt <- function(graph) {
         if (inherits(x, "AnvlArray")) {
           return(x)
         }
-        expected_shape <- gval$aval$shape$dims
+        expected_shape <- shape(gval$aval)
         expected_dtype <- as.character(gval$aval$dtype)
         if (expected_dtype == "i1") {
           expected_dtype <- "pred"
