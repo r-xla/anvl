@@ -1,16 +1,14 @@
 # The default data types: what an R double and an R integer commit to when
-# nothing else decides one. Registered per backend, overridden by two global
-# options, and pinned on a trace as the pair the dispatcher keyed the compiled
+# nothing else decides one. Registered per backend, overridden by one global
+# option, and pinned on a trace as the pair the dispatcher keyed the compiled
 # program on.
 
 # The dtypes a default may be set to, per category. `f16` / `bf16` are left out
 # because the boundary cannot carry them, not because an R double could not be
 # built at one: pjrt's dispatcher neither keys nor wraps them, and a program
 # that reaches one fails at a different layer depending on how it got there.
-# Lifting the restriction means fixing that boundary first.
-# A float default is limited
-# to what pjrt's dispatcher can key and wrap and what `gradient()` supports; an
-# integer default to the signed dtypes an R integer builds at directly (see
+# Lifting the restriction means fixing that boundary first. An integer default
+# is limited to the signed dtypes an R integer builds at directly (see
 # `rdata_builds_directly()`): a narrower one would make the upload of an R
 # argument go through R's coercion, which wraps where the program's `convert`
 # clamps, and an unsigned one cannot hold a negative R integer at all.
@@ -19,15 +17,23 @@ default_dtype_choices <- list(
   int = c("i32", "i64")
 )
 
-# Validate one default; `what` names it in the error, as cli markup.
-check_default_dtype <- function(x, category, what) {
+# The override lives in one option rather than one per category, so that it has
+# the same shape as `default_dtypes()` reports and as the setters take.
+default_dtypes_option <- "anvl.default_dtypes"
+
+# What the option's value is called in an error, as cli markup.
+option_what <- "The {.code anvl.default_dtypes} option"
+
+# Validate one category's default. `source` says where it came from.
+check_default_dtype <- function(x, category, source) {
   allowed <- default_dtype_choices[[category]]
   dtype <- tryCatch(as_dtype(x), error = function(e) NULL)
   if (is.null(dtype) || !(as.character(dtype) %in% allowed)) {
     cli_abort(
       c(
-        paste0(what, " must be one of {.val {allowed}}."),
-        x = "Got {.val {x}}."
+        "The {.field {category}} default must be one of {.val {allowed}}.",
+        x = "Got {.val {x}}.",
+        i = paste0("Set in ", source, ".")
       ),
       call = NULL
     )
@@ -35,34 +41,62 @@ check_default_dtype <- function(x, category, what) {
   dtype
 }
 
-default_dtype_option <- function(category) {
-  sprintf("anvl.default_%s", category)
-}
-
-# The override option for one category, validated. `NULL` where it is unset,
-# so a caller can fall back to whatever baseline applies to it.
-option_default_dtype <- function(category) {
-  option <- default_dtype_option(category)
-  value <- getOption(option)
-  if (is.null(value)) {
-    return(NULL)
+# Validate a set of defaults -- the option's value, or a setter's argument --
+# as a named character vector of canonical dtype names over a subset of the
+# categories. `what` leads the error, `source` says where the value came from.
+check_default_dtypes <- function(dtypes, what, source) {
+  categories <- names(dtypes)
+  if (
+    !(is.list(dtypes) || is.character(dtypes)) ||
+      (length(dtypes) && (is.null(categories) || !all(categories %in% names(default_dtype_choices))))
+  ) {
+    cli_abort(
+      c(
+        paste0(what, " must be a named list or character vector with elements {.val float} and/or {.val int}."),
+        x = "Got {.obj_type_friendly {dtypes}} with names {.val {categories}}."
+      ),
+      call = NULL
+    )
   }
-  check_default_dtype(value, category, sprintf("Option {.code %s}", option))
-}
-
-# One category's effective default for `backend`: the override option over the
-# backend's registered default.
-default_dtype_for <- function(backend, category) {
-  option_default_dtype(category) %||% registered_default_dtypes(backend)[[category]]
-}
-
-# The effective pair for `backend`. `default_dtypes()` is this for the backend
-# in force; a dispatcher's context resolver asks it for its own backend.
-effective_default_dtypes <- function(backend) {
-  list(
-    float = default_dtype_for(backend, "float"),
-    int = default_dtype_for(backend, "int")
+  if (anyDuplicated(categories)) {
+    duplicated <- unique(categories[duplicated(categories)])
+    cli_abort(
+      c(
+        paste0(what, " names {cli::qty(duplicated)}{?a category/categories} more than once: {.val {duplicated}}."),
+        i = "Give each of {.val float} and {.val int} at most one data type."
+      ),
+      call = NULL
+    )
+  }
+  vapply(
+    categories,
+    function(category) as.character(check_default_dtype(dtypes[[category]], category, source)),
+    character(1L)
   )
+}
+
+# The override in force, validated. Empty when the option is unset.
+option_default_dtypes <- function() {
+  value <- getOption(default_dtypes_option)
+  if (is.null(value)) {
+    return(character())
+  }
+  check_default_dtypes(value, option_what, paste0("option ", "{.code anvl.default_dtypes}"))
+}
+
+# `baseline` -- a list of DataTypes -- with the override applied over it. A
+# category the override does not name keeps the baseline's data type, which is
+# what lets a scope raise the float default without disturbing the integer one.
+apply_default_dtypes <- function(baseline, override = option_default_dtypes()) {
+  for (category in names(override)) {
+    baseline[[category]] <- as_dtype(override[[category]])
+  }
+  baseline
+}
+
+# The effective pair for `backend`: the override over its registered defaults.
+effective_default_dtypes <- function(backend) {
+  apply_default_dtypes(registered_default_dtypes(backend))
 }
 
 #' Default data types
@@ -78,10 +112,11 @@ effective_default_dtypes <- function(backend) {
 #' Each backend registers its own defaults -- `f32` / `i32` for `"pjrt"`, `f64`
 #' / `i32` for `"quickr"`, which has no single precision -- and they follow the
 #' backend in force ([`default_backend()`]): `with_backend("quickr", ...)` commits
-#' a double to `f64`. The options `anvl.default_float` and `anvl.default_int`
-#' override them on every backend, e.g. `options(anvl.default_float = "f64")`;
-#' `local_default_dtypes()` and `with_default_dtypes()` set them for a scope:
-#' `local_default_dtypes(c(float = "f64"))`.
+#' a double to `f64`. The option `anvl.default_dtypes` overrides them on every
+#' backend, e.g. `options(anvl.default_dtypes = c(float = "f64"))`;
+#' `local_default_dtypes()` and `with_default_dtypes()` set it for a scope, and
+#' name only the categories they change: `local_default_dtypes(c(float =
+#' "f64"))` leaves the integer default alone.
 #'
 #' The defaults decide only what a value becomes when *nothing else does*: an R
 #' value that meets a typed array of its own category still takes that array's
@@ -164,26 +199,18 @@ registered_default_dtypes <- function(backend) {
 # does not change per call is resolved once, here.
 default_dtypes_context <- function(backend) {
   registered <- registered_default_dtypes(backend)
-  resolver <- function(category) {
-    option <- default_dtype_option(category)
-    fallback <- as.character(registered[[category]])
-    allowed <- default_dtype_choices[[category]]
-    what <- sprintf("Option {.code %s}", option)
-    function() {
-      value <- getOption(option)
-      if (is.null(value)) {
-        fallback
-      } else if (is.character(value) && length(value) == 1L && value %in% allowed) {
-        # The common shape of a set option; the full check is for anything else.
-        as.character(value)
-      } else {
-        as.character(check_default_dtype(value, category, what))
-      }
+  fallback <- c(float = as.character(registered$float), int = as.character(registered$int))
+  function() {
+    value <- getOption(default_dtypes_option)
+    if (is.null(value)) {
+      # The overwhelmingly common case: nothing set, so the backend decides.
+      return(fallback)
     }
+    override <- check_default_dtypes(value, option_what, paste0("option ", "{.code anvl.default_dtypes}"))
+    pair <- fallback
+    pair[names(override)] <- override
+    pair
   }
-  float <- resolver("float")
-  int <- resolver("int")
-  function() c(float = float(), int = int())
 }
 
 # The inverse, for the compile callback: the defaults a trace is pinned to,
@@ -195,45 +222,27 @@ default_dtypes_from_key <- function(key) {
   list(float = as_dtype(key[["float"]]), int = as_dtype(key[["int"]]))
 }
 
-# The options `dtypes` -- a named list or character vector with elements
-# `float` and/or `int` -- asks to set, validated.
-default_dtype_options <- function(dtypes) {
-  categories <- names(dtypes)
-  if (
-    !(is.list(dtypes) || is.character(dtypes)) ||
-      (length(dtypes) && (is.null(categories) || !all(categories %in% names(default_dtype_choices))))
-  ) {
-    cli_abort(c(
-      "{.arg dtypes} must be a named list or character vector with elements {.val float} and/or {.val int}.",
-      x = "Got {.obj_type_friendly {dtypes}} with names {.val {categories}}."
-    ))
-  }
-  if (anyDuplicated(categories)) {
-    duplicated <- unique(categories[duplicated(categories)])
-    cli_abort(c(
-      "{.arg dtypes} names {cli::qty(duplicated)}{?a category/categories} more than once: {.val {duplicated}}.",
-      i = "Give each of {.val float} and {.val int} at most one data type."
-    ))
-  }
-  opts <- lapply(categories, function(category) {
-    as.character(check_default_dtype(dtypes[[category]], category, sprintf("{.code dtypes$%s}", category)))
-  })
-  names(opts) <- vapply(categories, default_dtype_option, character(1L))
-  opts
+# The option value `dtypes` asks for, merged over whatever is already set so
+# that a scope naming one category leaves the other where it was.
+merged_default_dtypes <- function(dtypes) {
+  current <- option_default_dtypes()
+  new <- check_default_dtypes(dtypes, "{.arg dtypes}", "{.arg dtypes}")
+  current[names(new)] <- new
+  setNames(list(current), default_dtypes_option)
 }
 
 #' @rdname default_dtypes
 #' @export
 local_default_dtypes <- function(dtypes, envir = parent.frame()) {
   check_literal_override(substitute(dtypes))
-  withr::local_options(default_dtype_options(dtypes), .local_envir = envir)
+  withr::local_options(merged_default_dtypes(dtypes), .local_envir = envir)
 }
 
 #' @rdname default_dtypes
 #' @export
 with_default_dtypes <- function(dtypes, code) {
   check_literal_override(substitute(dtypes))
-  withr::with_options(default_dtype_options(dtypes), code)
+  withr::with_options(merged_default_dtypes(dtypes), code)
 }
 
 # Inside a trace an override belongs to the program but not to its compilation
@@ -284,11 +293,7 @@ current_default_dtypes <- function() {
   if (is.null(desc)) {
     return(effective_default_dtypes(default_backend()))
   }
-  pinned <- desc$default_dtypes
-  list(
-    float = option_default_dtype("float") %||% pinned$float,
-    int = option_default_dtype("int") %||% pinned$int
-  )
+  apply_default_dtypes(desc$default_dtypes)
 }
 
 default_dtype <- function(x, defaults = current_default_dtypes()) {

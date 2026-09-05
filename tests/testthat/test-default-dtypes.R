@@ -12,17 +12,19 @@ describe("default_dtypes()", {
   })
 
   it("is overridden by the options, on every backend", {
-    withr::local_options(anvl.default_float = "f64", anvl.default_int = "i64")
+    withr::local_options(anvl.default_dtypes = c(float = "f64", int = "i64"))
     expect_equal(default_dtypes(), list(float = as_dtype("f64"), int = as_dtype("i64")))
     expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i64")))
   })
 
   it("validates an option when it is read", {
-    withr::local_options(anvl.default_float = "nope")
-    expect_error(default_dtypes(), "anvl.default_float")
-    expect_error(nv_array(1.5), "anvl.default_float")
-    withr::local_options(anvl.default_float = "f16")
+    withr::local_options(anvl.default_dtypes = c(float = "nope"))
+    expect_error(default_dtypes(), "anvl.default_dtypes")
+    expect_error(nv_array(1.5), "anvl.default_dtypes")
+    withr::local_options(anvl.default_dtypes = c(float = "f16"))
     expect_error(default_dtypes(), "must be one of")
+    withr::local_options(anvl.default_dtypes = "f64")
+    expect_error(default_dtypes(), "named list or character vector")
   })
 })
 
@@ -30,18 +32,23 @@ describe("local_default_dtypes()", {
   it("sets the options for the scope", {
     local({
       local_default_dtypes(c(float = "f64", int = "i64"))
-      expect_identical(getOption("anvl.default_float"), "f64")
-      expect_identical(getOption("anvl.default_int"), "i64")
+      expect_identical(getOption("anvl.default_dtypes"), c(float = "f64", int = "i64"))
       expect_equal(default_dtypes(), list(float = as_dtype("f64"), int = as_dtype("i64")))
     })
-    expect_null(getOption("anvl.default_float"))
+    expect_null(getOption("anvl.default_dtypes"))
     expect_equal(default_dtypes()$float, as_dtype("f32"))
   })
 
   it("accepts a DataType and leaves an unnamed category alone", {
+    # The setters merge, so naming one category does not disturb the other --
+    # both in sequence and nested.
     local_default_dtypes(c(int = "i64"))
     local_default_dtypes(list(float = as_dtype("f64")))
     expect_equal(default_dtypes(), list(float = as_dtype("f64"), int = as_dtype("i64")))
+    expect_equal(
+      with_default_dtypes(c(float = "f32"), default_dtypes()),
+      list(float = as_dtype("f32"), int = as_dtype("i64"))
+    )
   })
 
   it("validates the value", {

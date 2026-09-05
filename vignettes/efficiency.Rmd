@@ -80,7 +80,7 @@ There is of course a trade-off between efficiency and precision here.
 Speedups from using `f32` over `f64` also depend on the specific hardware.
 Commonly, `f32` is the default data type for floating-point operations in GPU-accelerated frameworks, so unless you have a specific reason, we recommend sticking with the defaults.
 
-If you do want `f64` throughout, set it once rather than annotating every value: `options(anvl.default_float = "f64")`, or `with_default_dtypes(c(float = "f64"), ...)` for a single scope.
+If you do want `f64` throughout, set it once rather than annotating every value: `options(anvl.default_dtypes = c(float = "f64"))`, or `with_default_dtypes(c(float = "f64"), ...)` for a single scope.
 `default_dtypes()` reports what is in force.
 Note that a program is compiled for the defaults it was compiled under, so changing them recompiles rather than reusing a program built at the other precision.
 

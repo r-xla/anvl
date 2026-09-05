@@ -90,25 +90,28 @@ Each backend registers the defaults an R double and an R integer commit to on
 it, in `AnvlBackend(default_dtypes = list(float = , int = ))`: pjrt `f32` /
 `i32`, quickr `f64` / `i32`, none for the plain backend (it only holds
 constants captured while tracing for another backend). On top of that there is
-**one global override pair**, the options `anvl.default_float` and
-`anvl.default_int`, unset by default. The effective default is
+**one global override**, the option `anvl.default_dtypes`: a named vector over
+the categories it changes, unset by default. The effective default is
 
 ```r
-getOption("anvl.default_float") %||% globals$backends[[default_backend()]]$default_dtypes$float
+option_default_dtypes()[["float"]] %||% globals$backends[[default_backend()]]$default_dtypes$float
 ```
 
-and likewise for `int`. So `with_backend("quickr", ...)` gives quickr's `f64`
-without writing anything, setting `anvl.backend` directly in an `.Rprofile`
-behaves the same as the context manager, and a user who sets
-`anvl.default_float = "f64"` gets it on every backend, which is what a global
-option should mean.
+and likewise for `int`. One option rather than one per category, so that it has
+the same shape as `default_dtypes()` reports and as the setters take; a category
+it does not name is left to the backend, and the setters merge over whatever is
+already set, so a scope raising the float default leaves the integer one alone.
+So `with_backend("quickr", ...)` gives quickr's `f64` without writing anything,
+setting `anvl.default_dtypes` directly in an `.Rprofile` behaves the same as the
+context manager, and a user who sets `c(float = "f64")` gets it on every
+backend, which is what a global option should mean.
 
 | Situation | Effective float |
 |---|---|
 | pjrt, nothing set | `f32` |
 | `with_backend("quickr", ...)`, nothing set | `f64` |
 | `options(anvl.backend = "quickr")`, nothing else | `f64` |
-| `options(anvl.default_float = "f64")`, any backend | `f64` |
+| `options(anvl.default_dtypes = c(float = "f64"))`, any backend | `f64` |
 | `with_backend("quickr", with_default_dtypes(c(float = "f32"), ...))` | `f32` |
 
 Allowed values: `float` is `"f32"` or `"f64"` (pjrt's dispatcher keys and
@@ -215,7 +218,7 @@ old entry.
 - The option `anvl.default_backend` becomes `anvl.backend`. `default_backend()`,
   `local_backend()` and `with_backend()` keep their names.
 - Options `anvl.default_float.<backend>` / `anvl.default_int.<backend>` become
-  `anvl.default_float` / `anvl.default_int`. `default_dtypes()`,
+  the single `anvl.default_dtypes`. `default_dtypes()`,
   `local_default_dtypes()`, `with_default_dtypes()` lose `backend`.
 - `jit()` loses `backend`; `jit_auto()` is folded into `jit()` and loses
   `jit_auto_detect_backend()`; `resolve_device()` and `backend.JitFunction()`
@@ -255,8 +258,10 @@ old entry.
 
 ## Testing plan
 
+- **Merging:** a setter naming one category leaves the other where it was,
+  in sequence and nested.
 - **Effective pair:** `default_dtypes()` is `f32`/`i32` under pjrt, `f64`/`i32`
-  under `local_backend("quickr")`; with `anvl.default_float = "f64"` it is
+  under `local_backend("quickr")`; with `anvl.default_dtypes = c(float = "f64")` it is
   `f64` under both; `with_backend("quickr", with_default_dtypes(c(float =
   "f32"), default_dtypes()))` is `f32`.
 - **Eager construction and traces** follow the effective pair (the existing

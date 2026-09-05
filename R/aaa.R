@@ -5,11 +5,12 @@ NULL
 #' * `anvl.backend` (`character(1)`, default `"pjrt"`): the backend in force.
 #'   Every array is built on it and every jitted function runs on it. See
 #'   [`default_backend()`], [`local_backend()`] and [`with_backend()`].
-#' * `anvl.default_float` (`"f32"` | `"f64"`) and `anvl.default_int` (`"i32"` |
-#'   `"i64"`): the data types an R double and an R integer commit to when
-#'   nothing else decides one. Unset by default, in which case the backend in
-#'   force decides. See [`default_dtypes()`], [`local_default_dtypes()`] and
-#'   [`with_default_dtypes()`].
+#' * `anvl.default_dtypes` (named `character()`): the data types an R double
+#'   (element `float`, `"f32"` or `"f64"`) and an R integer (element `int`,
+#'   `"i32"` or `"i64"`) commit to when nothing else decides one, e.g.
+#'   `c(float = "f64")`. A category it does not name is left to the backend in
+#'   force, as is the whole option when unset. See [`default_dtypes()`],
+#'   [`local_default_dtypes()`] and [`with_default_dtypes()`].
 #'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
@@ -40,7 +41,7 @@ NULL
 #' @importFrom rlang %||%
 #' @importFrom methods formalArgs is
 #' @importFrom utils capture.output
-#' @importFrom stats median
+#' @importFrom stats median setNames
 ## usethis namespace: end
 NULL
 

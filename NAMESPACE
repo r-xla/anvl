@@ -597,7 +597,10 @@ importFrom(stablehlo,hlo_transpose)
 importFrom(stablehlo,hlo_triangular_solve)
 importFrom(stablehlo,hlo_while)
 importFrom(stablehlo,hlo_xor)
-importFrom(stats,median)
+importFrom(stats,
+  median,
+  setNames
+)
 importFrom(tengen,
   as_array,
   as_dtype,

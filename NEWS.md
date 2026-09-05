@@ -21,9 +21,9 @@
   decides one follow the backend in force: `f32` / `i32` on pjrt, `f64` / `i32`
   on quickr, which has no single precision -- a literal in a jitted function
   used to be labelled `f32` there. `default_dtypes()` reports them and the
-  options `anvl.default_float` / `anvl.default_int` (or
-  `local_default_dtypes()` / `with_default_dtypes()`) override them on every
-  backend. Compiled programs are keyed on the defaults they were compiled
+  option `anvl.default_dtypes` -- a named vector such as `c(float = "f64")`,
+  naming only the categories it changes -- overrides them on every backend, as
+  do `local_default_dtypes()` and `with_default_dtypes()` for a scope. Compiled programs are keyed on the defaults they were compiled
   under, and inside a jitted body those keyed defaults are the baseline that a
   scoped `with_default_dtypes()` overrides, so one program can use different
   precisions in different parts of itself. `nv_seq()`, `nv_eye()`,

@@ -105,7 +105,7 @@ One common rule is `promote_common()`, which is used by functions such as `nv_ad
 It computes the common data type of the inputs.
 In this case, it returns `f32`, which is the default data type of R `double`s.
 That default is a property of the backend in force: `f32` on pjrt, `f64` on quickr, which has no single precision.
-`default_dtypes()` reports the defaults, and the options `anvl.default_float` and `anvl.default_int` (or `local_default_dtypes()` / `with_default_dtypes()`) override them on every backend.
+`default_dtypes()` reports the defaults, and the option `anvl.default_dtypes` (or `local_default_dtypes()` / `with_default_dtypes()`) overrides them on every backend.
 Changing a default does not change the yielding: a literal that meets an `f32` array is still an `f32`.
 
 ```{r}

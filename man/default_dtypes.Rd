@@ -44,10 +44,10 @@ random samplers use when their \code{dtype} is \code{NULL}.
 Each backend registers its own defaults -- \code{f32} / \code{i32} for \code{"pjrt"}, \code{f64}
 / \code{i32} for \code{"quickr"}, which has no single precision -- and they follow the
 backend in force (\code{\link[=default_backend]{default_backend()}}): \code{with_backend("quickr", ...)} commits
-a double to \code{f64}. The options \code{anvl.default_float} and \code{anvl.default_int}
-override them on every backend, e.g. \code{options(anvl.default_float = "f64")};
-\code{local_default_dtypes()} and \code{with_default_dtypes()} set them for a scope:
-\code{local_default_dtypes(c(float = "f64"))}.
+a double to \code{f64}. The option \code{anvl.default_dtypes} overrides them on every
+backend, e.g. \code{options(anvl.default_dtypes = c(float = "f64"))};
+\code{local_default_dtypes()} and \code{with_default_dtypes()} set it for a scope, and
+name only the categories they change: \code{local_default_dtypes(c(float = "f64"))} leaves the integer default alone.
 
 The defaults decide only what a value becomes when \emph{nothing else does}: an R
 value that meets a typed array of its own category still takes that array's

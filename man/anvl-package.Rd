@@ -16,11 +16,12 @@ Accelerated array computing and code transformations for R. Numerical programs o
 \item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): the backend in force.
 Every array is built on it and every jitted function runs on it. See
 \code{\link[=default_backend]{default_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
-\item \code{anvl.default_float} (\code{"f32"} | \code{"f64"}) and \code{anvl.default_int} (\code{"i32"} |
-\code{"i64"}): the data types an R double and an R integer commit to when
-nothing else decides one. Unset by default, in which case the backend in
-force decides. See \code{\link[=default_dtypes]{default_dtypes()}}, \code{\link[=local_default_dtypes]{local_default_dtypes()}} and
-\code{\link[=with_default_dtypes]{with_default_dtypes()}}.
+\item \code{anvl.default_dtypes} (named \code{character()}): the data types an R double
+(element \code{float}, \code{"f32"} or \code{"f64"}) and an R integer (element \code{int},
+\code{"i32"} or \code{"i64"}) commit to when nothing else decides one, e.g.
+\code{c(float = "f64")}. A category it does not name is left to the backend in
+force, as is the whole option when unset. See \code{\link[=default_dtypes]{default_dtypes()}},
+\code{\link[=local_default_dtypes]{local_default_dtypes()}} and \code{\link[=with_default_dtypes]{with_default_dtypes()}}.
 }
 }
 
