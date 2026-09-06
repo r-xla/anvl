@@ -2426,8 +2426,14 @@ prim_ifelse <- new_primitive(
 #'   Scalar boolean predicate that determines which branch to execute.
 #' @param true,false (`function()`)\cr
 #'   Zero-argument functions for the true and false branches. Both must return outputs
-#'   with the same structure, dtypes, and shapes.
+#'   with the same structure, dtypes, and shapes. They take no arguments and
+#'   reach the values they use by closing over them; those values are recorded
+#'   as operands of the call, so a gradient flows back through them.
 #' @return Result of the executed branch.\cr
+#' @section Gradients:
+#' The backward pass is itself a [prim_if()] on the same predicate, so only the
+#' taken branch's gradient is computed. A value that only the other branch uses
+#' gets a zero.
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2462,15 +2468,24 @@ prim_if <- new_primitive(
       cli_abort("true and false branches must have the same output structure")
     }
 
-    # TODO: Apply promotion rules to the outputs of the branches
+    # The branches take no arguments and reach the values they use by closing
+    # over them, which is also how the regions of a StableHLO `if` read them.
+    # Dataflow, though, has to be visible in the graph: a transform that walks
+    # operands -- reverse-mode autodiff above all -- would otherwise see a call
+    # that depends on nothing but `pred` and conclude the captured values do not
+    # reach the output. So they are listed as operands here. The lowering
+    # ignores them and keeps capturing implicitly; they exist to say what the
+    # call reads.
+    captures <- subgraph_captures(list(true_graph, false_graph))
+    capture_boxes <- lapply(captures, function(gval) get_box_or_register_const(current_desc, gval))
 
-    infer_fn <- function(pred, true_graph, false_graph) {
+    infer_fn <- function(pred, ..., true_graph, false_graph) {
       lapply(true_graph$outputs, function(out) out$aval)
     }
 
     out <- graph_desc_add(
       self,
-      list(pred = pred),
+      c(list(pred = pred), capture_boxes),
       params = list(true_graph = true_graph, false_graph = false_graph),
       infer_fn = infer_fn,
       desc = current_desc

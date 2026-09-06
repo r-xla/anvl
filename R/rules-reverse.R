@@ -550,8 +550,29 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
+# The branches are differentiated where they run: the backward pass is itself a
+# `prim_if()` on the same predicate, whose branches compute the cotangents of
+# the captured values through the corresponding forward branch. Only the taken
+# branch's backward runs, as only the taken branch's forward did, and a value
+# used by one branch alone gets a zero from the other.
+#
+# `pred` is a bool and carries no gradient.
 prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  cli_abort("Not yet implemented")
+  captures <- inputs[-1L]
+  if (!length(captures)) {
+    return(vector("list", length(inputs)))
+  }
+  pred <- inputs[[1L]]
+  targets <- lapply(captures, function(box) box$gnode)
+  branch_vjp <- function(graph) {
+    function() graph_vjp(graph, targets, grads)
+  }
+  cotangents <- prim_if(
+    pred,
+    branch_vjp(params$true_graph),
+    branch_vjp(params$false_graph)
+  )
+  c(list(NULL), cotangents)
 })
 
 # convert reverse -----------------

@@ -12,7 +12,9 @@ Scalar boolean predicate that determines which branch to execute.}
 
 \item{true, false}{(\verb{function()})\cr
 Zero-argument functions for the true and false branches. Both must return outputs
-with the same structure, dtypes, and shapes.}
+with the same structure, dtypes, and shapes. They take no arguments and
+reach the values they use by closing over them; those values are recorded
+as operands of the call, so a gradient flows back through them.}
 }
 \value{
 Result of the executed branch.\cr
@@ -22,6 +24,13 @@ Conditional execution of one of two branches based on a scalar boolean
 predicate. Unlike \code{\link[=prim_ifelse]{prim_ifelse()}} which operates element-wise, this
 evaluates only the selected branch.
 }
+\section{Gradients}{
+
+The backward pass is itself a \code{\link[=prim_if]{prim_if()}} on the same predicate, so only the
+taken branch's gradient is computed. A value that only the other branch uses
+gets a zero.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
