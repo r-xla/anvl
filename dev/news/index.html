@@ -81,6 +81,13 @@
 <ul><li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
 <li>
 <code>jit_eval()</code> was removed as it is no longer needed.</li>
+<li>
+<code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> on an <code>AnvlArray</code> now only accepts <code>mode = "any"</code> (the default) and errors for any other <code>mode</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
+<ul><li>
+<code>as.vector</code> now and returns <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> for integer types that don’t fit into R’s 32 bit integers.</li>
 <li>There is now exactly one backend used at a time and it is configured via the <code>anvl.backend</code> option. With this chane the <code>device_arg</code> parameter was removed from <code><a href="../reference/jit.html">jit()</a></code> as it is no longer needed.</li>
 <li>
 <code>default_backend()</code> is now called <code><a href="../reference/active_backend.html">active_backend()</a></code>.</li>
@@ -88,7 +95,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>The gradient of a conversion into a non-float data type is now zero instead of one. <code><a href="../reference/prim_convert.html">prim_convert()</a></code> / <code><a href="../reference/nv_convert.html">nv_convert()</a></code> passed the cotangent through whatever the data types were, so <code>nv_convert(nv_convert(x, "i32"), "f64")</code> reported a gradient of 1 where <code><a href="../reference/nv_floor.html">nv_floor()</a></code> – the same function on the reals – correctly reported 0. Conversions between floats still pass the gradient through.</li>
+<ul><li>
+<code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> now works correctly for <code>AnvlArray</code>s that are converted to <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. It used to drop that class along with the shape, exposing the raw 64-bit pattern as a double.</li>
+<li>The gradient of a conversion into a non-float data type is now zero instead of one. <code><a href="../reference/prim_convert.html">prim_convert()</a></code> / <code><a href="../reference/nv_convert.html">nv_convert()</a></code> passed the cotangent through whatever the data types were, so <code>nv_convert(nv_convert(x, "i32"), "f64")</code> reported a gradient of 1 where <code><a href="../reference/nv_floor.html">nv_floor()</a></code> – the same function on the reals – correctly reported 0. Conversions between floats still pass the gradient through.</li>
 <li>
 <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> now checks that <code>update_computation</code> returns one value of <code>x</code>’s data type, as <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> already did for its <code>reductor</code>. A combiner returning something else made type inference declare a data type the call could not produce, and failed in the backend.</li>
 <li>

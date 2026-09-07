@@ -5,29 +5,49 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Coerce AnvlArray to an R Vector — as-AnvlArray"><meta name="description" content="Convert an AnvlArray to a bare R vector.
-The array's shape is discarded; the result is always a flat vector.
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Coerce AnvlArray to an R Vector — as-AnvlArray"><meta name="description" content="Convert an AnvlArray to a flat R vector, discarding the array's shape.
 Each method requires a compatible dtype:
 as.double() / as.numeric(): float or (signed/unsigned) integer dtypes.
 as.integer(): signed or unsigned integer dtypes.
+bit64::as.integer64(): signed or unsigned integer dtypes. This is how
+to read i64, ui64 and ui32 values that an R integer cannot hold.
+It is lossless for i64 and ui32, but bit64::integer64 is itself
+signed, so a ui64 value &amp;gt;= 2^63 wraps to a negative one (exactly
+2^63 becomes NA); pass check = TRUE to be told when that happens.
 as.logical(): bool.
-as.vector(): any dtype; the R type is chosen by the dtype, or
-forced via mode (e.g. &quot;integer&quot;, &quot;double&quot;, &quot;logical&quot;, &quot;list&quot;).
+as.vector(): any dtype; the R type is chosen by the dtype. For the
+dtypes R has no native type for (i64, ui64, ui32) that is the
+bit64::integer64 as_array() returns, since a bare double could
+not hold the values – and it keeps its class, so is.vector() is
+FALSE for it.
 
 
 Use as_array() to obtain an R array that preserves the shape, or
-nv_convert() to change the dtype of an AnvlArray before coercing."><meta property="og:description" content="Convert an AnvlArray to a bare R vector.
-The array's shape is discarded; the result is always a flat vector.
+nv_convert() to change the dtype of an AnvlArray before coercing.
+as.vector()'s signature is fixed by the generic, so it takes no check
+argument; call as_array() with check = TRUE to have the values
+validated."><meta property="og:description" content="Convert an AnvlArray to a flat R vector, discarding the array's shape.
 Each method requires a compatible dtype:
 as.double() / as.numeric(): float or (signed/unsigned) integer dtypes.
 as.integer(): signed or unsigned integer dtypes.
+bit64::as.integer64(): signed or unsigned integer dtypes. This is how
+to read i64, ui64 and ui32 values that an R integer cannot hold.
+It is lossless for i64 and ui32, but bit64::integer64 is itself
+signed, so a ui64 value &amp;gt;= 2^63 wraps to a negative one (exactly
+2^63 becomes NA); pass check = TRUE to be told when that happens.
 as.logical(): bool.
-as.vector(): any dtype; the R type is chosen by the dtype, or
-forced via mode (e.g. &quot;integer&quot;, &quot;double&quot;, &quot;logical&quot;, &quot;list&quot;).
+as.vector(): any dtype; the R type is chosen by the dtype. For the
+dtypes R has no native type for (i64, ui64, ui32) that is the
+bit64::integer64 as_array() returns, since a bare double could
+not hold the values – and it keeps its class, so is.vector() is
+FALSE for it.
 
 
 Use as_array() to obtain an R array that preserves the shape, or
-nv_convert() to change the dtype of an AnvlArray before coercing."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+nv_convert() to change the dtype of an AnvlArray before coercing.
+as.vector()'s signature is fixed by the generic, so it takes no check
+argument; call as_array() with check = TRUE to have the values
+validated."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -98,15 +118,25 @@ nv_convert() to change the dtype of an AnvlArray before coercing."><meta propert
     </div>
 
     <div class="ref-description section level2">
-    <p>Convert an <code><a href="AnvlArray.html">AnvlArray</a></code> to a bare R vector.
-The array's shape is discarded; the result is always a flat vector.
+    <p>Convert an <code><a href="AnvlArray.html">AnvlArray</a></code> to a flat R vector, discarding the array's shape.
 Each method requires a compatible dtype:</p><ul><li><p><code><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double()</a></code> / <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code>: float or (signed/unsigned) integer dtypes.</p></li>
 <li><p><code><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer()</a></code>: signed or unsigned integer dtypes.</p></li>
+<li><p><code><a href="https://bit64.r-lib.org/reference/as.integer64.character.html" class="external-link">bit64::as.integer64()</a></code>: signed or unsigned integer dtypes. This is how
+to read <code>i64</code>, <code>ui64</code> and <code>ui32</code> values that an R <code>integer</code> cannot hold.
+It is lossless for <code>i64</code> and <code>ui32</code>, but <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> is itself
+signed, so a <code>ui64</code> value <code>&gt;= 2^63</code> wraps to a negative one (exactly
+<code>2^63</code> becomes <code>NA</code>); pass <code>check = TRUE</code> to be told when that happens.</p></li>
 <li><p><code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code>: <code>bool</code>.</p></li>
-<li><p><code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>: any dtype; the R type is chosen by the dtype, or
-forced via <code>mode</code> (e.g. <code>"integer"</code>, <code>"double"</code>, <code>"logical"</code>, <code>"list"</code>).</p></li>
+<li><p><code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>: any dtype; the R type is chosen by the dtype. For the
+dtypes R has no native type for (<code>i64</code>, <code>ui64</code>, <code>ui32</code>) that is the
+<code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> <code><a href="as_array.html">as_array()</a></code> returns, since a bare double could
+not hold the values – and it keeps its class, so <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">is.vector()</a></code> is
+<code>FALSE</code> for it.</p></li>
 </ul><p>Use <code><a href="as_array.html">as_array()</a></code> to obtain an R array that preserves the shape, or
-<code><a href="nv_convert.html">nv_convert()</a></code> to change the dtype of an <code><a href="AnvlArray.html">AnvlArray</a></code> before coercing.</p>
+<code><a href="nv_convert.html">nv_convert()</a></code> to change the dtype of an <code><a href="AnvlArray.html">AnvlArray</a></code> before coercing.
+<code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>'s signature is fixed by the generic, so it takes no <code>check</code>
+argument; call <code><a href="as_array.html">as_array()</a></code> with <code>check = TRUE</code> to have the values
+validated.</p>
     </div>
 
     <div class="section level2">
@@ -116,6 +146,9 @@ forced via <code>mode</code> (e.g. <code>"integer"</code>, <code>"double"</code>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'AnvlArray'</span></span>
+<span><span class="fu">as.integer64</span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
@@ -144,13 +177,15 @@ Forwarded to <code><a href="as_array.html">as_array()</a></code>; see there for 
 
 <dt id="arg-mode">mode<a class="anchor" aria-label="anchor" href="#arg-mode"></a></dt>
 <dd><p>(<code>character(1)</code>)<br>
-For <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> only. See <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">base::as.vector()</a></code>. Defaults to <code>"any"</code>,
-meaning the natural R type for the array's dtype.</p></dd>
+Must be <code>"any"</code> (the default), meaning the natural R type for the array's
+dtype. Only present because <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">base::as.vector()</a></code>'s signature requires it;
+pick an R type with one of the other methods instead.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An R vector of the corresponding type (<code>double</code>, <code>integer</code>, or <code>logical</code>).</p>
+    <p>An R vector holding the array's values, of the type the method
+names: <code>double</code>, <code>integer</code>, <code>logical</code>, or <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>.</p>
     </div>
 
     <div class="section level2">
@@ -159,6 +194,9 @@ meaning the natural R type for the array's dtype.</p></dd>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.5 2.5 3.5 4.5</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1 2 3 4 5 6</span>
+<span class="r-in"><span><span class="fu">bit64</span><span class="fu">::</span><span class="fu"><a href="https://bit64.r-lib.org/reference/as.integer64.character.html" class="external-link">as.integer64</a></span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> integer64</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1 2 3 4 5 6</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical</a></span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">TRUE</span>, <span class="cn">FALSE</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"bool"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1]  TRUE FALSE</span>

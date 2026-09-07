@@ -11,6 +11,15 @@
   the promotion behavior of various primitives and API functions was
   improved.
 - `jit_eval()` was removed as it is no longer needed.
+- [`as.vector()`](https://rdrr.io/r/base/vector.html) on an `AnvlArray`
+  now only accepts `mode = "any"` (the default) and errors for any other
+  `mode`.
+
+### Features
+
+- `as.vector` now and returns
+  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
+  for integer types that don’t fit into R’s 32 bit integers.
 - There is now exactly one backend used at a time and it is configured
   via the `anvl.backend` option. With this chane the `device_arg`
   parameter was removed from
@@ -31,6 +40,11 @@
 
 ### Bug fixes
 
+- [`as.vector()`](https://rdrr.io/r/base/vector.html) now works
+  correctly for `AnvlArray`s that are converted to
+  [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
+  It used to drop that class along with the shape, exposing the raw
+  64-bit pattern as a double.
 - The gradient of a conversion into a non-float data type is now zero
   instead of one.
   [`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
