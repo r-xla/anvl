@@ -20,8 +20,8 @@ set to 1 if \code{FALSE}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has boolean data type, and the input's shape with the reduced axes removed
-(\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
+Has boolean data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Performs logical OR along the specified axes.

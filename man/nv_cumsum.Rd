@@ -25,10 +25,12 @@ contributes nothing to the running value.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the input's shape and data type.
+Has the same shape as the input, and the same data type, except for a
+boolean input, which is accumulated at \code{i32}.
 }
 \description{
 Cumulative sum, optionally along a single axis.
+A boolean array is counted, like \code{\link[base:cumsum]{base::cumsum()}} does.
 }
 \section{Relation to base R}{
 

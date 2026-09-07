@@ -55,6 +55,13 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
 - A primitive promotes nothing unless its body says so: one whose operands must agree calls
   `apply_promotion()` on them before anything else reads them.
 
+## One Backend at a Time
+
+The backend is the option `anvl.backend` (`active_backend()`, `local_backend()`, `with_backend()`).
+Every jitted function runs on it, reading it at call time; nothing infers a backend from an
+argument, no function takes a `backend` argument, and an array or device of another backend is an
+error.
+
 ## Primitive System
 
 Primitives are `JitPrimitive` callables constructed by `new_primitive()` (defined in `R/primitive.R`). The returned object is both callable (it wraps `fn` with `jit()`) and carries an `AnvlPrimitive` metadata object via `attr(., "primitive")`. Primitives are stored as `prim_<name>` variables. `new_primitive()` lexically binds `self` (the `AnvlPrimitive`) into the body's enclosing environment, so inside a primitive body you write `graph_desc_add(self, ...)` — never the primitive name as a string. Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:

@@ -251,7 +251,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
   result <- if (size == 1L) {
     nv_reshape(successes, shape = shape)
   } else {
-    successes <- nv_reshape(successes, shape = c(size, shape))
+    successes <- nv_reshape(nv_convert(successes, dtype), shape = c(size, shape))
     nv_reduce_sum(successes, axes = 1L, drop = TRUE)
   }
 

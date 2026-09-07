@@ -21,11 +21,14 @@ set to 1 if \code{FALSE}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the input's data type, and the input's shape with the reduced axes removed
-(\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
+Has the input's data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Sums array elements along the specified axes.
+
+A boolean input is reduced with a logical OR, so the result is a boolean
+rather than a count. \code{\link[=nv_reduce_sum]{nv_reduce_sum()}} counts instead.
 }
 \section{Implemented Rules}{
 

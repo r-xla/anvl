@@ -25,8 +25,8 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the input's data type, and the input's shape with the reduced axes removed
-(\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
+Has the input's data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Finds the maximum of array elements along the specified axes.

@@ -494,6 +494,68 @@ describe("nv_reduce_sum / nv_reduce_prod / nv_mean nan_rm", {
   })
 })
 
+describe("boolean accumulation in nv_reduce_sum / nv_reduce_prod / nv_cumsum / nv_cumprod", {
+  v <- c(TRUE, FALSE, TRUE)
+  x <- nv_array(v)
+
+  it("counts a boolean array instead of folding it, like base R", {
+    expect_equal(as_array(nv_reduce_sum(x)), sum(v))
+    expect_equal(as_array(nv_reduce_prod(x)), prod(v))
+    expect_equal(as.numeric(nv_cumsum(x)), as.numeric(cumsum(v)))
+    expect_equal(as.numeric(nv_cumprod(x)), as.numeric(cumprod(v)))
+  })
+
+  it("accumulates a boolean array at i32", {
+    expect_equal(dtype(nv_reduce_sum(x)), as_dtype("i32"))
+    expect_equal(dtype(nv_reduce_prod(x)), as_dtype("i32"))
+    expect_equal(dtype(nv_cumsum(x)), as_dtype("i32"))
+    expect_equal(dtype(nv_cumprod(x)), as_dtype("i32"))
+  })
+
+  it("counts along a single axis", {
+    m <- matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
+    expect_equal(as.numeric(nv_reduce_sum(nv_array(m), axes = 1L)), as.numeric(colSums(m)))
+    expect_equal(as.numeric(nv_reduce_sum(nv_array(m), axes = 2L)), as.numeric(rowSums(m)))
+  })
+
+  it("counts under jit as it does eagerly", {
+    expect_equal(as_array(jit(function(x) nv_reduce_sum(x))(x)), sum(v))
+    expect_equal(as.numeric(jit(function(x) nv_cumsum(x))(x)), as.numeric(cumsum(v)))
+  })
+
+  it("counts through the base R generics", {
+    expect_equal(as_array(sum(x)), sum(v))
+    expect_equal(as_array(prod(x)), prod(v))
+    expect_equal(as.numeric(cumsum(x)), as.numeric(cumsum(v)))
+    expect_equal(as.numeric(cumprod(x)), as.numeric(cumprod(v)))
+  })
+
+  it("averages a boolean array as a proportion", {
+    expect_equal(as.numeric(nv_mean(x)), mean(v), tolerance = 1e-6)
+    expect_equal(as.numeric(nv_var(x)), var(v), tolerance = 1e-6)
+  })
+
+  it("leaves the data type of a non-boolean input alone", {
+    for (dt in c("i32", "i64", "f32", "f64")) {
+      y <- nv_array(c(1, 2, 3), dtype = dt)
+      expect_equal(dtype(nv_reduce_sum(y)), as_dtype(dt))
+      expect_equal(dtype(nv_cumsum(y)), as_dtype(dt))
+    }
+  })
+
+  it("leaves the folding reductions boolean", {
+    expect_equal(dtype(nv_reduce_any(x)), as_dtype("bool"))
+    expect_equal(dtype(nv_reduce_all(x)), as_dtype("bool"))
+    expect_equal(dtype(nv_reduce_max(x)), as_dtype("bool"))
+    expect_equal(dtype(nv_cummax(x)), as_dtype("bool"))
+  })
+
+  it("is the nv_* layer's doing -- the primitives keep the StableHLO semantics", {
+    expect_equal(dtype(prim_reduce_sum(x, axes = 1L)), as_dtype("bool"))
+    expect_equal(dtype(prim_cumsum(x, axis = 1L)), as_dtype("bool"))
+  })
+})
+
 describe("nv_var / nv_sd nan_rm", {
   it("propagate NaN by default", {
     x <- nv_array(c(1, NaN, 3, 5))
@@ -1027,7 +1089,8 @@ describe("nv_triu", {
 describe("nv_tril with quickr backend", {
   it("works when the input is quickr", {
     skip_if_no_quickr()
-    x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
+    local_backend("quickr")
+    x <- nv_matrix(1, nrow = 3, ncol = 3)
     result <- nv_tril(x)
     expected <- matrix(c(1, 1, 1, 0, 1, 1, 0, 0, 1), nrow = 3, ncol = 3)
     expect_equal(as_array(result), expected, tolerance = 1e-6)
@@ -1037,7 +1100,8 @@ describe("nv_tril with quickr backend", {
 describe("nv_triu with quickr backend", {
   it("works when the input is quickr", {
     skip_if_no_quickr()
-    x <- nv_matrix(1, nrow = 3, ncol = 3, backend = "quickr")
+    local_backend("quickr")
+    x <- nv_matrix(1, nrow = 3, ncol = 3)
     result <- nv_triu(x)
     expected <- matrix(c(1, 0, 0, 1, 1, 0, 1, 1, 1), nrow = 3, ncol = 3)
     expect_equal(as_array(result), expected, tolerance = 1e-6)
@@ -1539,7 +1603,7 @@ describe("nv_argmax / nv_argmin", {
 # Regression for r-xla/anvl#343: R literals must adopt the device of their
 # AnvlArray siblings rather than being placed on the default device.
 describe("literals adopt device of array siblings", {
-  dev1 <- nv_device("cpu:1", "pjrt")
+  dev1 <- nv_device("cpu:1")
 
   it("nv_ifelse with literal branches", {
     pred <- nv_array(c(TRUE, FALSE), device = dev1)

@@ -25,10 +25,12 @@ contributes nothing to the running value.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the input's shape and data type.
+Has the same shape as the input, and the same data type, except for a
+boolean input, which is accumulated at \code{i32}.
 }
 \description{
 Cumulative product, optionally along a single axis.
+A boolean array is multiplied as zeroes and ones, like \code{\link[base:cumprod]{base::cumprod()}} does.
 }
 \section{Relation to base R}{
 

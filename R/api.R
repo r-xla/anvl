@@ -89,6 +89,7 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' # scalar 1 is broadcast to shape [3]
 #' nv_broadcast_scalars(x, nv_scalar(1))
 #' @export
+#' @jit
 nv_broadcast_scalars <- function(...) {
   args <- as_anvl_arrays(...)
   shapes <- lapply(args, shape)
@@ -127,6 +128,7 @@ nv_broadcast_scalars <- function(...) {
 #' # integer is promoted to float
 #' nv_promote_to_common(x, y)
 #' @export
+#' @jit
 nv_promote_to_common <- function(...) {
   # An R value has no dtype to convert *from*: it is built at the common one
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
@@ -351,7 +353,7 @@ nv_concatenate <- function(..., axis = NULL) {
 #'
 #' # Differences from base R
 #'
-#' [base::rbind()] and [base::cbind()] applied to an [array()] of rank > 2
+#' [base::rbind()] and [base::cbind()] applied to an [`array()`][base::array] of rank > 2
 #' flatten the trailing axes into the column axis (so a `c(2, 3, 4)`
 #' array becomes a `2 x 12` matrix). `nv_rbind` and `nv_cbind` instead
 #' preserve all non-stacked axes: combining two `c(2, 3, 4)` arrays
@@ -2219,14 +2221,19 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
   resolve_axes(axes, naxes(x), arg = "axes", unique = TRUE)
 }
 
+.count_bool <- function(x) {
+  if (is_dtype_bool(peek_dtype(x))) nv_convert(x, "i32") else x
+}
+
 #' @title Sum Reduction
 #' @description
 #' Sums array elements along the specified axes.
+#' A boolean array is counted, like [base::sum()] does.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @templateVar dtype_out the input's data type
+#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at `i32`
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
@@ -2245,9 +2252,11 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 #' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)))
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#' nv_reduce_sum(nv_array(c(TRUE, FALSE, TRUE))) # counts: 2
 #' @export
+#' @jit static 2:4
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
@@ -2297,11 +2306,12 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @title Product Reduction
 #' @description
 #' Multiplies array elements along the specified axes.
+#' A boolean array is multiplied as zeroes and ones, like [base::prod()] does.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @templateVar dtype_out the input's data type
+#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at `i32`
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
@@ -2321,8 +2331,9 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)))
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
@@ -2357,6 +2368,7 @@ nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_reduce_max(nv_array(c(1, NaN, 3)))
 #' nv_reduce_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
@@ -2390,6 +2402,7 @@ nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_reduce_min(nv_array(c(1, NaN, 3)))
 #' nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
@@ -2468,12 +2481,13 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' @title Cumulative Sum
 #' @description
 #' Cumulative sum, optionally along a single axis.
+#' A boolean array is counted, like [base::cumsum()] does.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @templateVar cum_base_fn cumsum
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
-#' @template return_unary
+#' @template return_cum_accumulate
 #' @templateVar cum_nv_name nv_cumsum
 #' @template section_nv_cum_relation
 #' @seealso [prim_cumsum()] for the underlying primitive.
@@ -2486,7 +2500,7 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' @export
 #' @jit static 2:3
 nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
@@ -2500,12 +2514,13 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @title Cumulative Product
 #' @description
 #' Cumulative product, optionally along a single axis.
+#' A boolean array is multiplied as zeroes and ones, like [base::cumprod()] does.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @templateVar cum_base_fn cumprod
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
-#' @template return_unary
+#' @template return_cum_accumulate
 #' @templateVar cum_nv_name nv_cumprod
 #' @template section_nv_cum_relation
 #' @seealso [prim_cumprod()] for the underlying primitive.
@@ -2518,7 +2533,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:3
 nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
@@ -2710,6 +2725,7 @@ nv_is_nan <- function(x) {
 #' x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 #' nv_is_infinite(x)
 #' @export
+#' @jit
 nv_is_infinite <- function(x) {
   x <- as_anvl_array(x)
   !nv_is_finite(x) & (x == x)
@@ -3525,6 +3541,7 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 #' nv_argmax(nv_array(c(1, NaN, 3)))
 #' nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
@@ -3556,6 +3573,7 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)))
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {

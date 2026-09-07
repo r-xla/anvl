@@ -28,8 +28,8 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has a float data type, and the input's shape with the reduced axes removed
-(\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
+Has a float data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Computes the standard deviation along the specified axes.

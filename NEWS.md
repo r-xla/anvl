@@ -7,14 +7,32 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
+* `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
+  accumulate a boolean array at `i32` instead of returning a boolean.
+* `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
+  default) and errors for any other `mode`.
+* `default_backend()` is now called `active_backend()`.
+* There is now exactly one backend used at a time and it is configured via the
+  `anvl.backend` option.
+* A `Shape` is now represented as an integer vector.
+
+## Features
+
+* `as.vector` now and returns `bit64::integer64`
+  for integer types that don't fit into R's 32 bit integers.
+  With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
 
 ## Bug fixes
 
-* Fixed the reverse rule of `prim_convert`. 
+* `as.vector()` now works correctly for `AnvlArray`s that are converted to
+  `bit64::integer64`. It used to drop that class along with the shape,
+  exposing the raw 64-bit pattern as a double.
+* Fixed the reverse rule of `prim_convert`.
+* `prim_scatter()` now checks that `update_computation` returns one value of
+  `x`'s data type, as `prim_reduce()` already did for its `reductor`.
 * `prim_reduce()` now passes the arguments to the reductor by position.
   Previously, the arguments of the reductor had to be `(lhs, rhs)` and using
   using a function such as `(a, b) a + b` failed.
-  as `prim_scatter()` already matched its `update_computation`.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
   `nv_reduce_all()`) now reject a non-boolean input.
 

@@ -52,9 +52,9 @@ Boolean mask indicating which flat positions in \code{in_tree} are static (non-a
 \item{static_args_flat}{(\code{NULL | list()})\cr
 Flattened traced values for the static arguments indicated by \code{is_static_flat}.}
 
-\item{devices}{(\code{character()})\cr
-Device platforms encountered during tracing (e.g. \code{"cpu"}, \code{"cuda"}).
-Populated automatically as arrays are registered.}
+\item{devices}{(\code{list()})\cr
+Devices encountered during tracing: the device of every concrete array
+registered in the graph, plus the ones declared by \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 }
 \value{
 (\code{GraphDescriptor})

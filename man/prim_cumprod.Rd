@@ -22,6 +22,9 @@ Has the input's shape and data type.
 \description{
 Cumulative product of array elements along a single axis.
 Output position \code{j} along \code{axis} equals the product of input positions \code{1:j}.
+
+A boolean input is accumulated with a logical AND, so the result is a
+running AND. \code{\link[=nv_cumprod]{nv_cumprod()}} multiplies zeroes and ones instead.
 }
 \section{Implemented Rules}{
 

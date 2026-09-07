@@ -535,7 +535,6 @@ subset_scatter_core <- jit(
       unique_indices = unique_indices
     )
   },
-  backend = "auto",
   static = c(
     "update_window_axes",
     "inserted_window_axes",

@@ -101,11 +101,11 @@ prim_fill <- new_primitive(
       self,
       list(),
       params = list(value = value, dtype = dtype, shape = shape),
-      infer_fn = infer_fill
+      infer_fn = infer_fill,
+      device = device
     )[[1L]]
   },
-  static = 1:4,
-  device = device_arg("device")
+  static = 1:4
 )
 
 #' @title Primitive Addition
@@ -690,6 +690,9 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @title Primitive Sum Reduction
 #' @description
 #' Sums array elements along the specified axes.
+#'
+#' A boolean input is reduced with a logical OR, so the result is a boolean
+#' rather than a count. [nv_reduce_sum()] counts instead.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @template params_reduce
@@ -716,6 +719,9 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @title Primitive Product Reduction
 #' @description
 #' Multiplies array elements along the specified axes.
+#'
+#' A boolean input is reduced with a logical AND, so the result is a boolean.
+#' [nv_reduce_prod()] multiplies zeroes and ones instead.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @template params_reduce
@@ -887,6 +893,9 @@ cum_extreme_op <- function(x, axis) {
 #' @description
 #' Cumulative sum of array elements along a single axis.
 #' Output position `j` along `axis` equals the sum of input positions `1:j`.
+#'
+#' A boolean input is accumulated with a logical OR, so the result is a running
+#' OR rather than a running count. [nv_cumsum()] counts instead.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @template param_prim_cum_axis
@@ -906,6 +915,9 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' @description
 #' Cumulative product of array elements along a single axis.
 #' Output position `j` along `axis` equals the product of input positions `1:j`.
+#'
+#' A boolean input is accumulated with a logical AND, so the result is a
+#' running AND. [nv_cumprod()] multiplies zeroes and ones instead.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @template param_prim_cum_axis
@@ -2343,13 +2355,13 @@ prim_iota <- new_primitive(
       self,
       list(),
       list(axis = axis, dtype = dtype, shape = shape, start = start),
-      infer_fn = infer_fn
+      infer_fn = infer_fn,
+      device = device
     )[[1L]]
 
     result
   },
-  static = 1:5,
-  device = device_arg("device")
+  static = 1:5
 )
 
 #' @title Primitive Pad

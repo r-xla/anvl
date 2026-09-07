@@ -25,10 +25,10 @@ the full list. Defaults to \code{FALSE}. See the "Gotchas" vignette.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-An R \code{\link{array}} or \code{vector} of length 1.
+An R \code{\link[base:array]{array}} or \code{vector} of length 1.
 }
 \description{
-Transfers array data to R and returns it as an R \code{\link{array}}.
+Transfers array data to R and returns it as an R \code{\link[base:array]{array}}.
 Only in the case of scalars is the result a vector of length 1, as R \code{arrays} cannot have 0 axes.
 }
 \details{
