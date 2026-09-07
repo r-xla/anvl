@@ -137,6 +137,10 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@template`**: use templates for common parameter/return patterns:
   - `param_x` — single input array
   - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
+  - `section_nv_dtypes` — a *Data Types* section spelling out the promotion, for a function whose
+    operands go through `nv_promote_to_common()`. Takes `@templateVar dtype_args <args>`, naming
+    the arguments promoted together. Its `prim_*` counterpart is `section_prim_dtypes`, which
+    describes the stricter behavior of the primitives.
   - `param_dtype`, `param_shape`, `param_device` — common params
   - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
   - `params_reduce` — axes + drop params for reductions

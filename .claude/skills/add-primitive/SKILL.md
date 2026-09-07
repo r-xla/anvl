@@ -42,7 +42,7 @@ Use templates from `man-roxygen/` where applicable:
 - **Binary ops:** `@templateVar dtypes <phrase>` + `@template params_prim_lhs_rhs`, where the
   phrase completes "Arrayish values of ..." (e.g. `any data type`, `data type floating-point`)
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
-- **Data types section:** `@templateVar dtype_args <args>` + `@template section_dtypes`, for a
+- **Data types section:** `@templateVar dtype_args <args>` + `@template section_prim_dtypes`, for a
   primitive whose operands must agree on a data type (`apply_promotion()` in its body). Name the
   arguments the rule covers, comma-separated, exactly as the `apply_promotion()` call does.
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`

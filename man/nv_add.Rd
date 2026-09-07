@@ -19,6 +19,30 @@ Has the same shape and the promoted common data type of the inputs.
 \description{
 Adds two arrays element-wise. You can also use the \code{+} operator.
 }
+\section{Data Types}{
+
+\code{lhs} and \code{rhs} are promoted to their common data type, and either of them is
+converted to reach it: an \code{f32} alongside an \code{f64} gives \code{f64}, an \code{i32}
+alongside an \code{f32} gives \code{f32}, a \code{bool} alongside an \code{i32} gives \code{i32}, and
+an \code{i32} alongside a \code{ui32} gives \code{i64}. See \code{\link[=common_dtype]{common_dtype()}} for the whole
+table. This is where the \verb{nv_*} layer differs from the primitives, which
+reject operands of different data types instead of converting one.
+
+An R value has no data type of its own. It contributes only its category to
+the common data type -- an R double alongside an \code{i8} array gives \code{f32},
+where an R integer alongside that same array gives \code{i8} -- and it is then
+built at the result directly rather than converted to it, so it arrives with
+every digit it had, which is what makes \code{x_f64 / sqrt(2)} exact. Two R values
+commit to the default data type of their common category (\code{f32}, \code{i32} or
+\code{bool}).
+
+The common data type must still be one the function accepts: an R double
+alongside an integer array promotes to a float, which the bitwise and shift
+functions do not take.
+
+See \code{vignette("type-promotion")}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))

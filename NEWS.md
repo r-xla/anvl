@@ -35,14 +35,20 @@
 * The help pages of the binary primitives now have a *Data Types* section
   saying how their operands reach one data type: an operand that already has a
   data type keeps it, and an R value is built at the one the others have,
-  within its own category. The text comes from the `section_dtypes` roxygen2
-  template, which takes the arguments the rule covers, so it is written once
-  for all of them. The four `params_prim_lhs_rhs_*` templates became one
-  `params_prim_lhs_rhs` taking a `dtypes` template variable.
+  within its own category. The text comes from the `section_prim_dtypes`
+  roxygen2 template, which takes the arguments the rule covers, so it is
+  written once for all of them. The four `params_prim_lhs_rhs_*` templates
+  became one `params_prim_lhs_rhs` taking a `dtypes` template variable.
 * Their examples now demonstrate that behavior: what two R values commit to,
   what an R value meeting an array commits to, and the two ways a call is
   rejected. The operand values also show what the primitive computes, as in
   `prim_shift_right_arithmetic(-32L, 2L)` and `prim_remainder(1, -3)`.
+* The binary `nv_*` functions (`?nv_add` and its relatives) have a *Data Types*
+  section of their own, from the `section_nv_dtypes` template. It states the
+  promotion the primitives refuse: either operand is converted to reach the
+  common data type, an R value contributes only its category and is then built
+  at the result directly, and two R values commit to the default of their
+  common category.
 
 ## Tests
 

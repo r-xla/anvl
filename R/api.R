@@ -536,6 +536,8 @@ make_do_binary <- function(f) {
 #' Adds two arrays element-wise. You can also use the `+` operator.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_add()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -550,6 +552,8 @@ nv_add <- make_do_binary(prim_add)
 #' Multiplies two arrays element-wise. You can also use the `*` operator.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_mul()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -564,6 +568,8 @@ nv_mul <- make_do_binary(prim_mul)
 #' Subtracts two arrays element-wise. You can also use the `-` operator.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_sub()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(4, 5, 6))
@@ -578,6 +584,8 @@ nv_sub <- make_do_binary(prim_sub)
 #' Divides two arrays element-wise. You can also use the `/` operator.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_div()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(10, 20, 30))
@@ -592,6 +600,8 @@ nv_div <- make_do_binary(prim_div)
 #' Raises `lhs` to the power of `rhs` element-wise. You can also use the `^` operator.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_pow()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(2, 3, 4))
@@ -606,6 +616,8 @@ nv_pow <- make_do_binary(prim_pow)
 #' Element-wise equality comparison. You can also use the `==` operator.
 #' @template params_lhs_rhs
 #' @template return_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_eq()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -620,6 +632,8 @@ nv_eq <- make_do_binary(prim_eq)
 #' Element-wise inequality comparison. You can also use the `!=` operator.
 #' @template params_lhs_rhs
 #' @template return_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_ne()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -634,6 +648,8 @@ nv_ne <- make_do_binary(prim_ne)
 #' Element-wise greater than comparison. You can also use the `>` operator.
 #' @template params_lhs_rhs
 #' @template return_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_gt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -648,6 +664,8 @@ nv_gt <- make_do_binary(prim_gt)
 #' Element-wise greater than or equal comparison. You can also use the `>=` operator.
 #' @template params_lhs_rhs
 #' @template return_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_ge()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -662,6 +680,8 @@ nv_ge <- make_do_binary(prim_ge)
 #' Element-wise less than comparison. You can also use the `<` operator.
 #' @template params_lhs_rhs
 #' @template return_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_lt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -676,6 +696,8 @@ nv_lt <- make_do_binary(prim_lt)
 #' Element-wise less than or equal comparison. You can also use the `<=` operator.
 #' @template params_lhs_rhs
 #' @template return_compare
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_le()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -690,6 +712,8 @@ nv_le <- make_do_binary(prim_le)
 #' Element-wise maximum of two arrays.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_max()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 5, 3))
@@ -704,6 +728,8 @@ nv_max <- make_do_binary(prim_max)
 #' Element-wise minimum of two arrays.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_min()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 5, 3))
@@ -719,6 +745,8 @@ nv_min <- make_do_binary(prim_min)
 #' This differs from base R's `%%`, use [`nv_mod()`]/`%%` instead.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [nv_mod()] for the flooring remainder, [prim_remainder()] for the
 #'   underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -736,6 +764,8 @@ nv_remainder <- make_do_binary(prim_remainder)
 #'
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [nv_remainder()] for truncating remainder, [prim_remainder()] for
 #'   the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -758,6 +788,8 @@ nv_mod <- function(lhs, rhs) {
 #' Element-wise logical AND. You can also use the `&` operator.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_and()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
@@ -772,6 +804,8 @@ nv_and <- make_do_binary(prim_and)
 #' Element-wise logical OR. You can also use the `|` operator.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_or()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
@@ -786,6 +820,8 @@ nv_or <- make_do_binary(prim_or)
 #' Element-wise logical XOR.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_xor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
@@ -800,6 +836,8 @@ nv_xor <- make_do_binary(prim_xor)
 #' Element-wise left bit shift.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_shift_left()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1L, 2L, 4L))
@@ -814,6 +852,8 @@ nv_shift_left <- make_do_binary(prim_shift_left)
 #' Element-wise logical right bit shift.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_shift_right_logical()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(8L, 16L, 32L))
@@ -828,6 +868,8 @@ nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 #' Element-wise arithmetic right bit shift.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_shift_right_arithmetic()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(8L, -16L, 32L))
@@ -843,6 +885,8 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' x-axis and the point `(rhs, lhs)`.
 #' @template params_lhs_rhs
 #' @template return_binary
+#' @templateVar dtype_args lhs, rhs
+#' @template section_nv_dtypes
 #' @seealso [prim_atan2()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' y <- nv_array(c(1, 0, -1))

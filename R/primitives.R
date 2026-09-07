@@ -115,7 +115,7 @@ prim_fill <- new_primitive(
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id add
 #' @template section_rules
 #' @section StableHLO:
@@ -143,7 +143,7 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id mul
 #' @template section_rules
 #' @section StableHLO:
@@ -171,7 +171,7 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id sub
 #' @template section_rules
 #' @section StableHLO:
@@ -216,7 +216,7 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id divide
 #' @template section_rules
 #' @section StableHLO:
@@ -244,7 +244,7 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id power
 #' @template section_rules
 #' @section StableHLO:
@@ -1257,7 +1257,7 @@ make_compare_op <- function(direction) {
 #' @template params_prim_lhs_rhs
 #' @template return_prim_compare
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1285,7 +1285,7 @@ prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_compare
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id not_equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1313,7 +1313,7 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_compare
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id greater
 #' @template section_rules
 #' @section StableHLO:
@@ -1341,7 +1341,7 @@ prim_gt <- new_primitive("greater", make_compare_op("GT"))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_compare
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id greater_equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1369,7 +1369,7 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_compare
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id less
 #' @template section_rules
 #' @section StableHLO:
@@ -1397,7 +1397,7 @@ prim_lt <- new_primitive("less", make_compare_op("LT"))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_compare
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id less_equal
 #' @template section_rules
 #' @section StableHLO:
@@ -1427,7 +1427,7 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id maximum
 #' @template section_rules
 #' @section StableHLO:
@@ -1455,7 +1455,7 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id minimum
 #' @template section_rules
 #' @section StableHLO:
@@ -1485,7 +1485,7 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id remainder
 #' @template section_rules
 #' @section StableHLO:
@@ -1519,7 +1519,7 @@ prim_remainder <- new_primitive(
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id and
 #' @template section_rules
 #' @section StableHLO:
@@ -1564,7 +1564,7 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id or
 #' @template section_rules
 #' @section StableHLO:
@@ -1592,7 +1592,7 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id xor
 #' @template section_rules
 #' @section StableHLO:
@@ -1626,7 +1626,7 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id shift_left
 #' @template section_rules
 #' @section StableHLO:
@@ -1661,7 +1661,7 @@ prim_shift_left <- new_primitive(
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id shift_right_logical
 #' @template section_rules
 #' @section StableHLO:
@@ -1696,7 +1696,7 @@ prim_shift_right_logical <- new_primitive(
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id shift_right_arithmetic
 #' @template section_rules
 #' @section StableHLO:
@@ -1731,7 +1731,7 @@ prim_shift_right_arithmetic <- new_primitive(
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
 #' @templateVar dtype_args lhs, rhs
-#' @template section_dtypes
+#' @template section_prim_dtypes
 #' @templateVar primitive_id atan2
 #' @template section_rules
 #' @section StableHLO:
