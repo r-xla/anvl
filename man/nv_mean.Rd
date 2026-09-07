@@ -16,7 +16,7 @@ One input. Can be any data type. An R value commits to its
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
 Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
-to the last axis. If \code{NULL} (default), reduces over all axes, returning a scalar.}
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
@@ -44,8 +44,14 @@ use \code{mean()}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_mean(x)            # all axes -> scalar
+# The result is a float, even though the input is an integer
+nv_mean(x)
+
+# Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_mean(x, axes = 1L)
+nv_mean(x, axes = 1L, drop = FALSE)
+
+# NaN propagates unless nan_rm = TRUE
 nv_mean(nv_array(c(1, NaN, 3)))
 nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}

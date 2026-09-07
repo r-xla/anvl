@@ -44,7 +44,14 @@ Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stab
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
+# reducing axis 1 removes it from the shape, and the data type is kept
 prim_reduce_min(x, axes = 1L)
+
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_reduce_min(x, axes = 1L, drop = FALSE)
+
+# reducing every axis gives a scalar
+prim_reduce_min(x, axes = c(1L, 2L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

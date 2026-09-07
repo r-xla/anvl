@@ -8,7 +8,7 @@ prim_reduce_any(x, axes, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any boolean data type. An R value commits to its
+One input. Must be boolean. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()})\cr
@@ -44,7 +44,11 @@ Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stab
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
+# TRUE where any element is TRUE along axis 1
 prim_reduce_any(x, axes = 1L)
+
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_reduce_any(x, axes = 1L, drop = FALSE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

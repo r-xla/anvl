@@ -13,7 +13,7 @@ One input. Can be any data type. An R value commits to its
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
 Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
-to the last axis. If \code{NULL} (default), reduces over all axes, returning a scalar.}
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
@@ -40,9 +40,12 @@ Set \code{correction = 0} for population standard deviation.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3, 4, 5))
-nv_sd(x)              # all axes -> scalar
-nv_sd(x, axes = 1L)
+x <- nv_array(1:5)
+# The result is a float, even though the input is an integer
+nv_sd(x)
+
+# Bessel's correction by default, correction = 0 for the population value
+nv_sd(x, correction = 0L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

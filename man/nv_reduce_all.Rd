@@ -8,12 +8,12 @@ nv_reduce_all(x, axes = NULL, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any boolean data type. An R value commits to its
+One input. Must be boolean. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
 Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
-to the last axis. If \code{NULL} (default), reduces over all axes, returning a scalar.}
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
 Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
@@ -31,8 +31,12 @@ Returns \code{TRUE} only if all elements are \code{TRUE}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-nv_reduce_all(x)            # all axes -> scalar
+# No axes given: reduce over all of them
+nv_reduce_all(x)
+
+# Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_reduce_all(x, axes = 1L)
+nv_reduce_all(x, axes = 1L, drop = FALSE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
