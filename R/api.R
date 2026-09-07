@@ -2019,10 +2019,11 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 # input is counted rather than folded: StableHLO's `add` and `multiply` are a
 # logical or/and on `bool`, which would make `nv_reduce_sum(x_bool)` an
 # `nv_reduce_any()`. Crossing into the integer category is the `nv_*` layer's
-# job, so the primitives keep the StableHLO semantics and those four functions
-# bring a boolean input to `i32` -- the data type an R integer commits to --
-# with `promote_if(has_dtype_bool, promote_dtype("i32"))`. `r_ok` is on because
-# an R `logical` is counted like a `bool` array is.
+# job, so the primitives keep the StableHLO semantics and the count happens
+# here, at `i32` -- the data type an R integer commits to.
+.count_bool <- function(x) {
+  if (is_dtype_bool(peek_dtype(x))) nv_convert(x, "i32") else x
+}
 
 #' @title Sum Reduction
 #' @description
@@ -2043,7 +2044,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 #' @export
 #' @jit static 2:4
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x, .promote = promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32")))
+  x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
@@ -2099,7 +2100,7 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x, .promote = promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32")))
+  x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
@@ -2227,7 +2228,7 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' @export
 #' @jit static 2:3
 nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
-  x <- as_anvl_array(x, .promote = promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32")))
+  x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
@@ -2259,7 +2260,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:3
 nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
-  x <- as_anvl_array(x, .promote = promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32")))
+  x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L

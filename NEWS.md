@@ -21,9 +21,6 @@
 * `as.vector` now and returns `bit64::integer64`
   for integer types that don't fit into R's 32 bit integers.
   With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
-* New promotion rule `promote_if()`.
-* New utility functions `has_dtype_<dtype>`.
-* `as_anvl_array` and `as_anvl_arrays` now have a `.promote` parameter.
 
 ## Bug fixes
 

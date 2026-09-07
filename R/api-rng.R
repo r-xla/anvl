@@ -251,10 +251,8 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
   result <- if (size == 1L) {
     nv_reshape(successes, shape = shape)
   } else {
-    successes <- nv_reshape(successes, shape = c(size, shape))
-    # `nv_reduce_sum()` counts a boolean input at `i32`, so bring the tally
-    # back to the data type the caller asked for.
-    nv_convert(nv_reduce_sum(successes, axes = 1L, drop = TRUE), dtype)
+    successes <- nv_reshape(nv_convert(successes, dtype), shape = c(size, shape))
+    nv_reduce_sum(successes, axes = 1L, drop = TRUE)
   }
 
   list(res[[1]], result)

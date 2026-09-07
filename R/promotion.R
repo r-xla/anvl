@@ -136,72 +136,6 @@ promote_rdata_common <- function(on = NULL) {
 }
 
 #' @description
-#' `promote_if()` applies another rule to the inputs a predicate holds for, and
-#' leaves the rest where they are. This is how a function brings *one category*
-#' of input somewhere -- `nv_reduce_sum()` counts a boolean array at `i32` and
-#' touches nothing else -- without having to know what the other inputs are.
-#' @param predicate (`function`)\cr
-#'   Called with each input -- an [`arrayish`] value, which may still be a bare
-#'   R value -- and returning `TRUE` or `FALSE`. [`has_dtype_bool()`] and its
-#'   siblings are these predicates, and take `r_ok = TRUE` here so that an R
-#'   value answers with the data type it would commit to rather than being
-#'   refused.
-#' @param rule ([`PromotionRule`][promotion_rule])\cr
-#'   The rule to apply to the matching inputs. It is asked about *those inputs
-#'   only*, so an `arg` or `on` reference inside it refers to them.
-#' @rdname promotion_rule
-#' @export
-#' @examplesIf pjrt::plugins_downloaded()
-#' # Count the booleans, and leave every other input where it is.
-#' count_bool <- promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"))
-#' count_bool
-#' lapply(as_anvl_arrays(nv_array(c(TRUE, FALSE)), nv_array(1.5), .promote = count_bool), dtype)
-promote_if <- function(predicate, rule, on = NULL) {
-  checkmate::assert_function(predicate)
-  if (!is_promotion_rule(rule)) {
-    cli_abort(c(
-      "{.arg rule} must be a promotion rule, not {.cls {class(rule)}}.",
-      i = "Build one with {.fn promote_common}, {.fn promote_like}, {.fn promote_dtype} or {.fn promote_rdata_common}." # nolint
-    ))
-  }
-  assert_on(on)
-  promotion_rule(
-    function(args) {
-      positions <- rule_positions(on, args, "on")
-      matching <- positions[vapply(args[positions], ask_predicate, logical(1L), predicate = predicate)]
-      if (!length(matching)) {
-        return(dtypes_none(args))
-      }
-      # The nested rule sees the matching arguments alone, so what it names a
-      # target from -- a common data type, an `arg` -- is among them. That also
-      # keeps a rule that *names* a target (`promote_dtype()`) from checking an
-      # argument this one never places.
-      answered <- resolve_promote(rule, args[matching])
-      placed <- !vapply(answered, is.null, logical(1L))
-      out <- dtypes_none(args)
-      out[matching[placed]] <- answered[placed]
-      out
-    },
-    "if",
-    on = on,
-    predicate = predicate,
-    rule = rule
-  )
-}
-
-ask_predicate <- function(x, predicate) {
-  hit <- predicate(x)
-  if (!isTRUE(hit) && !isFALSE(hit)) {
-    cli_abort(c(
-      "The predicate of a {.fn promote_if} must answer {.code TRUE} or {.code FALSE} for every input.",
-      x = "It answered {.obj_type_friendly {hit}}.",
-      i = "It is called with the input itself, so ask about the data type that input has -- {.fn has_dtype_bool} and its siblings are such predicates." # nolint
-    ))
-  }
-  hit
-}
-
-#' @description
 #' `promote_grouped()` applies several rules to disjoint subsets.
 #' @param ... ([`PromotionRule`][promotion_rule])\cr
 #'   The rules to apply to disjoint argument subsets.
@@ -340,7 +274,6 @@ format.PromotionRule <- function(x, ...) {
     rdata_common = "",
     like = sprintf("(%s%s)", format_arg_ref(spec$arg), if (isTRUE(spec$coerce)) ", coerce" else ""),
     dtype = sprintf("(%s%s)", repr(spec$dtype), if (isTRUE(spec$coerce)) ", coerce" else ""),
-    `if` = sprintf("(%s)", format_rule(spec$rule)),
     grouped = sprintf("(%s)", paste(vapply(spec$rules, format_rule, character(1L)), collapse = ", ")),
     ""
   )

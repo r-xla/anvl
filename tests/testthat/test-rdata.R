@@ -137,54 +137,6 @@ describe("peek_dtype", {
   })
 })
 
-describe("has_dtype_*", {
-  it("answers for the data type an array has", {
-    expect_true(has_dtype_bool(nv_array(c(TRUE, FALSE))))
-    expect_false(has_dtype_bool(nv_array(1.5)))
-    expect_true(has_dtype_float(nv_array(1.5)))
-    expect_false(has_dtype_float(nv_array(1L)))
-    expect_true(has_dtype_int(nv_array(1L)))
-    expect_false(has_dtype_int(nv_array(1.5)))
-    expect_false(has_dtype_int(nv_array(c(TRUE, FALSE))))
-  })
-
-  it("counts an unsigned integer as an integer unless told not to", {
-    u <- nv_array(1L, dtype = "ui8")
-    expect_true(has_dtype_int(u))
-    expect_false(has_dtype_int(u, unsigned = FALSE))
-    expect_true(has_dtype_uint(u))
-    # ... and a signed one is not unsigned.
-    expect_true(has_dtype_int(nv_array(1L, dtype = "i8"), unsigned = FALSE))
-    expect_false(has_dtype_uint(nv_array(1L, dtype = "i8")))
-  })
-
-  it("refuses a value that has no data type yet, unless `r_ok`", {
-    # The answer for an R value is the data type it *would* commit to, so it is
-    # given only when the caller asked for it.
-    expect_error(has_dtype_float(1.5), "has no data type yet")
-    expect_error(has_dtype_bool(TRUE), "has no data type yet")
-    expect_error(has_dtype_int(1L), "R integer")
-    expect_true(has_dtype_float(1.5, r_ok = TRUE))
-    expect_true(has_dtype_bool(TRUE, r_ok = TRUE))
-    expect_true(has_dtype_int(1L, r_ok = TRUE))
-    expect_false(has_dtype_bool(1L, r_ok = TRUE))
-  })
-
-  it("means the same for a traced R argument as for the R value itself", {
-    # This is what lets `nv_reduce_sum()` count an R logical argument: inside a
-    # trace the argument is an `RData` box, and `dtype()` would error on it.
-    seen <- list()
-    out <- jit(function(x) {
-      seen$bool <<- has_dtype_bool(x, r_ok = TRUE)
-      seen$refused <<- tryCatch(has_dtype_bool(x), error = function(e) conditionMessage(e))
-      nv_reduce_sum(x)
-    })(array(c(TRUE, FALSE, TRUE)))
-    expect_true(seen$bool)
-    expect_match(seen$refused, "has no data type yet")
-    expect_equal(as_array(out), 2L)
-  })
-})
-
 describe("resolve_upload_dtype", {
   it("uploads an R argument used at two data types at one that holds both", {
     # The whole-program counterpart of the unit test below, and the only branch of
