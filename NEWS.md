@@ -11,6 +11,12 @@
   `anvl.backend` option.
   With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
 * `default_backend()` is now called `active_backend()`.
+* A `Shape` (re-exported from {stablehlo}) *is* its integer vector now, with a
+  class attached, rather than a list wrapping one. `length(shape)` is the number
+  of axes, `shape[i]` is the size of axis `i`, and `shape$dims` is gone -- read
+  the axis sizes with `unclass()`. `shape()` keeps working on an array; it is
+  only the `Shape` object itself that no longer has a `shape()` method, having
+  nothing left to unwrap.
 
 ## Bug fixes
 
