@@ -35,7 +35,7 @@ Lowers to \code{\link[stablehlo:hlo_shift_right_arithmetic]{hlo_shift_right_arit
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# two R values: both built at i32, an R integer's default data type
+# two R values: both take an R integer's default data type
 prim_shift_right_arithmetic(-32L, 2L)
 
 # the R value is built at the array's data type instead

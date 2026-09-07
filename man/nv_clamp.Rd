@@ -15,7 +15,7 @@ Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the input's shape and data type.
 }
 \description{
 Element-wise clamp: \code{max(min_val, min(x, max_val))}.

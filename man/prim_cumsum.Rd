@@ -8,7 +8,8 @@ prim_cumsum(x, axis)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to accumulate.
@@ -16,7 +17,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the input's shape and data type.
 }
 \description{
 Cumulative sum of array elements along a single axis.

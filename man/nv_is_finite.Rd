@@ -11,11 +11,12 @@ nv_is_finite(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any float data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape as the input and boolean data type.
+Has the input's shape and boolean data type.
 }
 \description{
 Element-wise check if values are finite (not \code{Inf}, \code{-Inf}, or \code{NaN}).

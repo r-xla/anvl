@@ -8,11 +8,12 @@ nv_exp(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any float data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the input's shape and data type.
 }
 \description{
 Element-wise exponential. You can also use \code{exp()}.

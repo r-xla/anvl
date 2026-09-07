@@ -8,7 +8,8 @@ nv_cumprod(x, axis = NULL, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to accumulate. Negative values count from the end,
@@ -24,7 +25,7 @@ contributes nothing to the running value.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the input's shape and data type.
 }
 \description{
 Cumulative product, optionally along a single axis.

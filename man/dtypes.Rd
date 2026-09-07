@@ -15,8 +15,9 @@ boolean < integer < float:
 }
 
 Documentation names a group of them with a single word: \emph{any} data type is
-all of them, \emph{numeric} is integer and float, \emph{integerish} is boolean and
-integer, \emph{signed numeric} is signed integer and float.
+all of them, \emph{numeric} is integer and float, \emph{integer} is signed and
+unsigned integer, \emph{integerish} is boolean and integer, \emph{signed numeric} is
+signed integer and float.
 
 These are the categories promotion works in, where signed and unsigned
 integers count as one. \code{\link[tengen:dtype_category]{tengen::dtype_category()}} reports a finer split

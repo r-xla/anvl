@@ -8,11 +8,12 @@ nv_erf(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any float data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the input's shape and data type.
 }
 \description{
 Element-wise error function \verb{erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^2) dt}.

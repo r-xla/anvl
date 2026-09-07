@@ -36,7 +36,7 @@ Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparis
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# two R values: both built at f32, an R double's default data type
+# two R values: both take an R double's default data type
 prim_eq(1, 1)
 
 # the R value is built at the array's data type instead

@@ -37,7 +37,7 @@ Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# two R values: both built at f32, an R double's default data type
+# two R values: both take an R double's default data type
 prim_remainder(1, -3)
 
 # the R value is built at the array's data type instead
