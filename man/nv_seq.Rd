@@ -5,20 +5,16 @@
 \alias{nv_seq_like}
 \title{Sequence}
 \usage{
-nv_seq(start, end, steps = NULL, dtype = NULL, device = NULL)
+nv_seq(start, end, dtype = NULL, device = NULL)
 
-nv_seq_like(like, start, end, steps = NULL, dtype = NULL, device = NULL)
+nv_seq_like(like, start, end, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{start, end}{(\code{numeric(1)})\cr
-Start and end values. When \code{steps} is \code{NULL}, must satisfy \code{start <= end}.}
-
-\item{steps}{(\code{integer(1)} or \code{NULL})\cr
-Number of evenly spaced values to generate. Must be at least 1.
-When \code{NULL} (default), generates consecutive integer values from \code{start} to \code{end}.}
+\item{start, end}{(\code{integer(1)})\cr
+Start and end values, which must satisfy \code{start <= end}.}
 
 \item{dtype}{(\code{character(1)})\cr
-Data type. Default \code{"i32"} when \code{steps} is \code{NULL}, \code{"f32"} when \code{steps} is given.
+Data type. Default \code{"i32"}.
 For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
@@ -44,10 +40,8 @@ Existing array whose attributes are used as defaults
 1-D array of length \code{end - start + 1}.
 }
 \description{
-Creates a 1-D array with values from \code{start} to \code{end} (inclusive).
-
-Without \code{steps}, behaves like R's \code{seq(start, end)} producing integer values.
-With \code{steps}, produces \code{steps} evenly spaced values (like \code{seq(start, end, length.out = steps)}).
+Creates a 1-D array with the consecutive integer values from \code{start} to
+\code{end} (inclusive), like R's \code{seq(start, end)}.
 
 \code{nv_seq_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.
@@ -58,4 +52,8 @@ nv_seq(3, 7)
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 \dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=nv_linspace]{nv_linspace()}} for a given number of evenly spaced values,
+\code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }

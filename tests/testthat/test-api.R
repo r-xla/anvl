@@ -895,27 +895,70 @@ describe("nv_unsqueeze", {
   })
 })
 
-describe("nv_seq with steps", {
+describe("nv_linspace", {
   it("creates evenly spaced values", {
     expect_equal(
-      nv_seq(0, 1, steps = 5L),
+      nv_linspace(0, 1, steps = 5L),
       nv_array(c(0, 0.25, 0.5, 0.75, 1)),
       tolerance = 1e-6
     )
   })
   it("handles single step", {
     expect_equal(
-      nv_seq(3, 7, steps = 1L),
+      nv_linspace(3, 7, steps = 1L),
       nv_array(3, shape = 1L),
       tolerance = 1e-6
     )
   })
   it("works with integer-like endpoints", {
     expect_equal(
-      nv_seq(0, 10, steps = 6L),
+      nv_linspace(0, 10, steps = 6L),
       nv_array(c(0, 2, 4, 6, 8, 10)),
       tolerance = 1e-6
     )
+  })
+  it("counts down when end is below start", {
+    expect_equal(
+      nv_linspace(1, 0, steps = 5L),
+      nv_array(c(1, 0.75, 0.5, 0.25, 0)),
+      tolerance = 1e-6
+    )
+  })
+  it("defaults to the default float dtype", {
+    expect_equal(dtype(nv_linspace(0, 1, steps = 3L)), as_dtype("f32"))
+    expect_equal(dtype(nv_linspace(0, 1, steps = 1L)), as_dtype("f32"))
+  })
+  it("honours a float dtype", {
+    expect_equal(dtype(nv_linspace(0, 1, steps = 3L, dtype = "f64")), as_dtype("f64"))
+    expect_equal(dtype(nv_linspace(0, 1, steps = 1L, dtype = "f64")), as_dtype("f64"))
+  })
+  it("rejects an integer dtype", {
+    expect_error(nv_linspace(0, 1, steps = 5L, dtype = "i32"), "floating-point dtype")
+    expect_error(nv_linspace(0, 10, steps = 6L, dtype = "i32"), "floating-point dtype")
+    expect_error(nv_linspace(0, 1, steps = 1L, dtype = "i32"), "floating-point dtype")
+  })
+  it("requires steps to be a positive whole number", {
+    expect_error(nv_linspace(0, 1, steps = 0L), "steps")
+    expect_error(nv_linspace(0, 1, steps = 2.5), "steps")
+  })
+  it("works under jit", {
+    expect_equal(
+      jit(function() nv_linspace(0, 1, steps = 5L))(),
+      nv_array(c(0, 0.25, 0.5, 0.75, 1)),
+      tolerance = 1e-6
+    )
+  })
+})
+
+describe("nv_seq", {
+  it("creates consecutive integer values", {
+    expect_equal(nv_seq(3, 7), nv_array(3:7))
+  })
+  it("defaults to the default integer dtype", {
+    expect_equal(dtype(nv_seq(3, 7)), as_dtype("i32"))
+  })
+  it("no longer takes steps", {
+    expect_error(nv_seq(0, 1, steps = 5L), "unused argument")
   })
 })
 
@@ -1230,6 +1273,27 @@ describe("nv_seq_like", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
     out <- nv_seq_like(like, 1, 5, dtype = "f32")
     expect_equal(dtype(out), as_dtype("f32"))
+  })
+})
+
+describe("nv_linspace_like", {
+  it("inherits dtype, device from like (length determined by steps)", {
+    like <- nv_array(c(0, 0, 0), dtype = "f64")
+    out <- nv_linspace_like(like, 0, 1, steps = 5L)
+    expect_equal(dtype(out), dtype(like))
+    expect_equal(as.character(device(out)), as.character(device(like)))
+    expect_equal(shape(out), 5L)
+    expect_equal(as.numeric(out), c(0, 0.25, 0.5, 0.75, 1))
+  })
+
+  it("allows overriding the inherited attributes", {
+    like <- nv_array(c(0, 0, 0), dtype = "f64")
+    expect_equal(dtype(nv_linspace_like(like, 0, 1, steps = 3L, dtype = "f32")), as_dtype("f32"))
+  })
+
+  it("rejects an integer like", {
+    like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
+    expect_error(nv_linspace_like(like, 0, 1, steps = 5L), "floating-point dtype")
   })
 })
 

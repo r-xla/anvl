@@ -11,6 +11,7 @@
   accumulate a boolean array at `i32` instead of returning a boolean.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
+* The `steps` argument of `nv_seq()` / `nv_seq_like()` was removed.
 * `default_backend()` is now called `active_backend()`.
 * There is now exactly one backend used at a time and it is configured via the
   `anvl.backend` option.
@@ -18,6 +19,8 @@
 
 ## Features
 
+* New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with 
+  a provided `steps` argument.
 * `as.vector` now and returns `bit64::integer64`
   for integer types that don't fit into R's 32 bit integers.
   With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
