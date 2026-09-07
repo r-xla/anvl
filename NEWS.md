@@ -7,19 +7,20 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
+
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
-  default) and errors for any other `mode`. Picking an R type is what
-  `as.double()`, `as.integer()`, `bit64::as.integer64()` and `as.logical()`
-  are for, or apply the coercion to `as_array(x)` directly.
+  default) and errors for any other `mode`.
 
 ## Features
 
-* `bit64::as.integer64()` now has a method for `AnvlArray`s, which coerces
-  any (signed or unsigned) integer data type to a flat `bit64::integer64`
-  vector. This is how to read `i64`, `ui64` and `ui32` values that an R
-  `integer` cannot hold; it is lossless for `i64` and `ui32`, while a `ui64`
-  value `>= 2^63` wraps through `bit64::integer64`'s own sign, as
-  `pjrt::as_array()` documents.
+* `as.vector` now and returns `bit64::integer64`
+  for integer types that don't fit into R's 32 bit integers.
+* A `Shape` (re-exported from {stablehlo}) *is* its integer vector now, with a
+  class attached, rather than a list wrapping one. `length(shape)` is the number
+  of axes, `shape[i]` is the size of axis `i`, and `shape$dims` is gone -- read
+  the axis sizes with `unclass()`. `shape()` keeps working on an array; it is
+  only the `Shape` object itself that no longer has a `shape()` method, having
+  nothing left to unwrap.
 
 ## Bug fixes
 
