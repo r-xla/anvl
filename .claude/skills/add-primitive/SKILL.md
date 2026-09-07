@@ -39,12 +39,12 @@ stablehlo::GatherDimensionNumbers(
 Use templates from `man-roxygen/` where applicable:
 
 - **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
-- **Binary ops:** `@templateVar dtypes <phrase>` + `@template params_prim_lhs_rhs`, where the
-  phrase completes "Arrayish values of ..." (e.g. `any data type`, `data type floating-point`)
+- **Binary ops:** `@templateVar dtypes <phrase>` + `@template params_prim_lhs_rhs`. The phrase
+  completes "Can be ..." and comes from the vocabulary defined in `?dtypes`: `any data type`,
+  `any numeric data type`, `any integerish data type`, `any float data type`. The template also
+  states how R values take a data type, so a primitive that calls `apply_promotion()` on `lhs`
+  and `rhs` needs nothing further.
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
-- **Data types section:** `@templateVar dtype_args <args>` + `@template section_prim_dtypes`, for a
-  primitive whose operands must agree on a data type (`apply_promotion()` in its body). Name the
-  arguments the rule covers, comma-separated, exactly as the `apply_promotion()` call does.
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
 - **Examples:** written out per primitive, not templated. For one whose operands must agree on a
   data type, follow `?prim_add`: two R values, an R value meeting an array, a literal of another

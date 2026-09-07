@@ -8,42 +8,21 @@ nv_remainder(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any numeric data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+Has the operands' common data type, and the shape of the non-scalar
+operand.
 }
 \description{
-Element-wise remainder.
-This differs from base R's \code{\%\%}, use \code{\link[=nv_mod]{nv_mod()}}/\code{\%\%} instead.
+Element-wise remainder, after promoting to a common data type and broadcasting scalars. This
+differs from base R's \code{\%\%}, use \code{\link[=nv_mod]{nv_mod()}}/\code{\%\%} instead.
 }
-\section{Data Types}{
-
-\code{lhs} and \code{rhs} are promoted to their common data type, and either of them is
-converted to reach it: an \code{f32} alongside an \code{f64} gives \code{f64}, an \code{i32}
-alongside an \code{f32} gives \code{f32}, a \code{bool} alongside an \code{i32} gives \code{i32}, and
-an \code{i32} alongside a \code{ui32} gives \code{i64}. See \code{\link[=common_dtype]{common_dtype()}} for the whole
-table. This is where the \verb{nv_*} layer differs from the primitives, which
-reject operands of different data types instead of converting one.
-
-An R value has no data type of its own. It contributes only its category to
-the common data type -- an R double alongside an \code{i8} array gives \code{f32},
-where an R integer alongside that same array gives \code{i8} -- and it is then
-built at the result directly rather than converted to it, so it arrives with
-every digit it had, which is what makes \code{x_f64 / sqrt(2)} exact. Two R values
-commit to the default data type of their common category (\code{f32}, \code{i32} or
-\code{bool}).
-
-The common data type must still be one the function accepts: an R double
-alongside an integer array promotes to a float, which the bitwise and shift
-functions do not take.
-
-See \code{vignette("type-promotion")}.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(7, 8, 9))

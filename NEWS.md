@@ -32,23 +32,26 @@
 
 ## Documentation
 
-* The help pages of the binary primitives now have a *Data Types* section
-  saying how their operands reach one data type: an operand that already has a
-  data type keeps it, and an R value is built at the one the others have,
-  within its own category. The text comes from the `section_prim_dtypes`
-  roxygen2 template, which takes the arguments the rule covers, so it is
-  written once for all of them. The four `params_prim_lhs_rhs_*` templates
-  became one `params_prim_lhs_rhs` taking a `dtypes` template variable.
-* Their examples now demonstrate that behavior: what two R values commit to,
-  what an R value meeting an array commits to, and the two ways a call is
-  rejected. The operand values also show what the primitive computes, as in
-  `prim_shift_right_arithmetic(-32L, 2L)` and `prim_remainder(1, -3)`.
-* The binary `nv_*` functions (`?nv_add` and its relatives) have a *Data Types*
-  section of their own, from the `section_nv_dtypes` template. It states the
-  promotion the primitives refuse: either operand is converted to reach the
-  common data type, an R value contributes only its category and is then built
-  at the result directly, and two R values commit to the default of their
-  common category.
+* `?dtypes` is a new page defining the data type categories promotion works in
+  (boolean < integer < float, signed and unsigned integers counting as one),
+  the words the documentation uses for a group of them (*any*, *numeric*,
+  *integerish*, *signed numeric*), and the default data type an R value commits
+  to when nothing claims it. It notes that `tengen::dtype_category()` reports
+  a finer split.
+* The binary primitives and the binary `nv_*` functions now state their data
+  type and shape behavior in `lhs`, `rhs` and in the return value, each linking
+  to `?dtypes`. `?prim_add` says the two inputs must have the same data type
+  and shape and that R values assume the other operand's data type within their
+  category; `?nv_add` says the inputs are promoted to a common data type, that
+  scalars are broadcast, and that an R value falling outside the other's
+  category takes its default and is converted. The text comes from the
+  `params_prim_lhs_rhs` and `params_lhs_rhs` templates, each taking a `dtypes`
+  template variable for the accepted data types.
+* The binary primitives' examples now demonstrate that behavior: what two R
+  values commit to, what an R value meeting an array commits to, and the two
+  ways a call is rejected. The operand values also show what the primitive
+  computes, as in `prim_shift_right_arithmetic(-32L, 2L)` and
+  `prim_remainder(1, -3)`.
 
 ## Tests
 

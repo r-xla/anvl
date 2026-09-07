@@ -1,2 +1,2 @@
 #' @return [`arrayish`]\cr
-#'   Has the same shape and data type as the inputs.
+#'   Has the inputs' shape and data type.

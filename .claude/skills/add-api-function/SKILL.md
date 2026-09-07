@@ -136,11 +136,10 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@description`**: one sentence describing what the function does. If an R operator or generic dispatches to this function, mention it: "You can also use `abs()`.", "You can also use the `+` operator."
 - **`@template`**: use templates for common parameter/return patterns:
   - `param_x` — single input array
-  - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
-  - `section_nv_dtypes` — a *Data Types* section spelling out the promotion, for a function whose
-    operands go through `nv_promote_to_common()`. Takes `@templateVar dtype_args <args>`, naming
-    the arguments promoted together. Its `prim_*` counterpart is `section_prim_dtypes`, which
-    describes the stricter behavior of the primitives.
+  - `params_lhs_rhs` — binary operands: states the promotion, the scalar broadcasting and how R
+    values take a data type. Needs `@templateVar dtypes <phrase>` above it, from the vocabulary
+    defined in `?dtypes` (`any data type`, `any numeric data type`, `any integerish data type`,
+    `any float data type`). Its stricter `prim_*` counterpart is `params_prim_lhs_rhs`.
   - `param_dtype`, `param_shape`, `param_device` — common params
   - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
   - `params_reduce` — axes + drop params for reductions
