@@ -9,9 +9,12 @@
 * `jit_eval()` was removed as it is no longer needed.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
+* The `steps` argument of `nv_seq()` / `nv_seq_like()` was removed.
 
 ## Features
 
+* New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with 
+  a provided `steps` argument.
 * `as.vector` now and returns `bit64::integer64`
   for integer types that don't fit into R's 32 bit integers.
 * There is now exactly one backend used at a time and it is configured via the

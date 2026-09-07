@@ -1375,7 +1375,8 @@ nv_reverse <- prim_reverse
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and `shape`.
-#' @seealso [nv_seq()] for a simpler 1-D sequence, [prim_iota()] for the underlying primitive.
+#' @seealso [nv_seq()] for a simpler 1-D sequence, [nv_linspace()] for evenly
+#'   spaced values, [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 #' x <- nv_fill(0L, shape = c(2, 3))
@@ -1385,20 +1386,15 @@ nv_iota <- prim_iota
 
 #' @title Sequence
 #' @description
-#' Creates a 1-D array with values from `start` to `end` (inclusive).
-#'
-#' Without `steps`, behaves like R's `seq(start, end)` producing integer values.
-#' With `steps`, produces `steps` evenly spaced values (like `seq(start, end, length.out = steps)`).
+#' Creates a 1-D array with the consecutive integer values from `start` to
+#' `end` (inclusive), like R's `seq(start, end)`.
 #'
 #' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
-#' @param start,end (`numeric(1)`)\cr
-#'   Start and end values. When `steps` is `NULL`, must satisfy `start <= end`.
-#' @param steps (`integer(1)` or `NULL`)\cr
-#'   Number of evenly spaced values to generate. Must be at least 1.
-#'   When `NULL` (default), generates consecutive integer values from `start` to `end`.
+#' @param start,end (`integer(1)`)\cr
+#'   Start and end values, which must satisfy `start <= end`.
 #' @param dtype (`character(1)`)\cr
-#'   Data type. Default `"i32"` when `steps` is `NULL`, `"f32"` when `steps` is given.
+#'   Data type. Default `"i32"`.
 #'   For `nv_seq_like()`, `NULL` uses `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
@@ -1406,28 +1402,72 @@ nv_iota <- prim_iota
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   1-D array of length `end - start + 1`.
+#' @seealso [nv_linspace()] for a given number of evenly spaced values,
+#'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
+#' @jit static 1:4
+nv_seq <- function(start, end, dtype = NULL, device = NULL) {
+  dtype <- dtype %||% "i32"
+  assert_int(start)
+  assert_int(end)
+  assert(start <= end)
+  nv_iota(
+    shape = end - start + 1,
+    dtype = dtype,
+    axis = 1L,
+    start = start,
+    device = device
+  )
+}
+
+#' @title Evenly Spaced Sequence
+#' @description
+#' Creates a 1-D array with `steps` evenly spaced values from `start` to `end`
+#' (both inclusive), like R's `seq(start, end, length.out = steps)`.
+#'
+#' The spacing `(end - start) / (steps - 1)` is generally not a whole number, so
+#' the result is floating-point and `dtype` must name a float data type. Convert
+#' the result with [`nv_convert()`] to obtain integers, which leaves the
+#' rounding yours to choose.
+#'
+#' `nv_linspace_like()` is a variant where `dtype` and `device`
+#' default to those of `like`.
+#' @param start,end (`numeric(1)`)\cr
+#'   First and last value of the sequence. `end` may lie below `start`, in
+#'   which case the values decrease.
+#' @param steps (`integer(1)`)\cr
+#'   Number of values to generate. Must be at least 1; for `steps = 1` the
+#'   result is `start`.
+#' @param dtype (`character(1)`)\cr
+#'   Floating-point data type. Default `"f32"`.
+#'   For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must then be a
+#'   floating-point data type.
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_linspace_like()`).
+#' @template param_device
+#' @return [`arrayish`]\cr
+#'   1-D array of length `steps`.
+#' @seealso [nv_seq()] for consecutive integers.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_linspace(0, 1, steps = 5L)
+#' x <- nv_array(c(1, 2, 3), dtype = "f64")
+#' nv_linspace_like(x, 0, 1, steps = 3L)
+#' @export
 #' @jit static 1:5
-nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
-  if (is.null(steps)) {
-    dtype <- dtype %||% "i32"
-    assert_int(start)
-    assert_int(end)
-    assert(start <= end)
-    return(nv_iota(
-      shape = end - start + 1,
-      dtype = dtype,
-      axis = 1L,
-      start = start,
-      device = device
-    ))
-  }
-  dtype <- dtype %||% "f32"
+nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
+  assert_number(start)
+  assert_number(end)
   assert_int(steps, lower = 1L)
+  dtype <- assert_float_dtype(
+    dtype %||% "f32",
+    arg = "dtype",
+    hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
+  )
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
   }

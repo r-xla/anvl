@@ -105,7 +105,7 @@ args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = p
 
 ### Static arguments
 
-Any argument the function body *inspects* -- branches on, validates with `assert_*`, uses to compute shape/axes -- must be declared `static =` on the outer `jit()` call (and forwarded via `static =` to `check_eager()` in tests).
+Any argument the function body *inspects* -- branches on, validates with `assert_*`, uses to compute shape/axes -- must be declared `static =` on the outer `jit()` call.
 Typical candidates: `axes`, `shape`, `axis`, flags, mode strings, dtype specifiers.
 Arrayish inputs (the actual data) should never be static.
 
@@ -167,14 +167,6 @@ The `nv_*` function must be added to the appropriate semantic section in `_pkgdo
 
 Add a **forward-pass-only** test for the `nv_*` wrapper. **Only test functionality not already covered by the primitive tests** — the convenience the wrapper adds on top of the primitive (e.g. type promotion, scalar broadcasting, default-arg behavior, R-operator dispatch). Do not re-test core correctness of the operation, edge cases like empty axes, dtype handling, or gradients — those belong with the primitive. If the wrapper is a thin alias (`nv_foo <- prim_foo`), a single sanity test is enough; often a default-argument check is the only thing worth asserting.
 
-Every API function also needs a `check_eager()` entry in the "cross-device eager (check_eager)" `describe` block at the bottom of `test-api.R`. `check_eager()` (defined in `tests/testthat/helper.R`) runs the function both in eager mode on `cpu:1` and jit-compiled on `cpu:0`, and asserts:
-
-1. The eager output lives on `cpu:1`.
-2. The jitted output lives on `cpu:0`.
-3. The two outputs agree value-wise (tolerance defaults to `1e-6`).
-
-This is what catches bugs where constants end up on the wrong device, or where eager vs jit diverge.
-
 ```r
 describe("nv_foo", {
   it("promotes dtypes automatically", {
@@ -191,16 +183,6 @@ describe("nv_foo", {
     out <- nv_array(c(1, 2)) + nv_array(c(3, 4))
     expect_equal(as_array(out), array(c(4, 6), dim = 2L))
   })
-})
-
-# In the "cross-device eager (check_eager)" describe block:
-it("nv_foo", {
-  check_eager(nv_foo, vec_f, vec_f2)
-})
-
-# For a function with a static argument, forward it via `static =`:
-it("nv_reduce_foo", {
-  check_eager(nv_reduce_foo, vec_f, axes = 1L, static = "axes")
 })
 ```
 
@@ -223,9 +205,8 @@ devtools::test()
 - [ ] No-op shortcuts return the input unchanged (e.g. identity reshape / convert / broadcast)
 - [ ] Constants created inside the function use `nv_<op>_like()` so they live on the right backend/device
 - [ ] If the function is an array creator, a matching `nv_<name>_like()` variant is provided
-- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are declared `static =` on every `jit()` / `check_eager()` call
+- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are declared `static =` on every `jit()` call
 - [ ] `_pkgdown.yml`: added to appropriate semantic section
 - [ ] Forward-pass test in `tests/testthat/test-api.R` covers the wrapper's convenience behavior
-- [ ] `check_eager()` entry in the "cross-device eager (check_eager)" `describe` block, with any `static =` arguments forwarded
 - [ ] `devtools::document()` run
 - [ ] `devtools::test()` passes
