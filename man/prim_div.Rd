@@ -41,12 +41,6 @@ prim_div(10, 4)
 
 # the R value is built at the array's data type instead
 prim_div(10, nv_scalar(4, "f64"))
-
-# an R integer cannot be built at a float data type
-try(prim_div(1L, nv_scalar(4, "f32")))
-
-# neither operand is converted to meet the other
-try(prim_div(nv_scalar(10, "f32"), nv_scalar(4, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

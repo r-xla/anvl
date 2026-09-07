@@ -43,12 +43,6 @@ prim_remainder(1, -3)
 # the R value is built at the array's data type instead
 prim_remainder(1, nv_scalar(-3, "f64"))
 
-# an R integer cannot be built at a float data type
-try(prim_remainder(1L, nv_scalar(-3, "f32")))
-
-# neither operand is converted to meet the other
-try(prim_remainder(nv_scalar(1, "f32"), nv_scalar(-3, "f64")))
-
 # the sign follows the dividend, where base R's \%\% follows the divisor
 1 \%\% -3
 \dontshow{\}) # examplesIf}

@@ -14,8 +14,7 @@ non-negative integer values.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the operands' common data type, and the shape of the non-scalar
-operand.
+Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise polygamma function: the \code{(n+1)}-th derivative of the

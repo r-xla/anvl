@@ -48,10 +48,9 @@
   `params_prim_lhs_rhs` and `params_lhs_rhs` templates, each taking a `dtypes`
   template variable for the accepted data types.
 * The binary primitives' examples now demonstrate that behavior: what two R
-  values commit to, what an R value meeting an array commits to, and the two
-  ways a call is rejected. The operand values also show what the primitive
-  computes, as in `prim_shift_right_arithmetic(-32L, 2L)` and
-  `prim_remainder(1, -3)`.
+  values commit to, and what an R value meeting an array commits to. The
+  operand values also show what the primitive computes, as in
+  `prim_shift_right_arithmetic(-32L, 2L)` and `prim_remainder(1, -3)`.
 
 ## Tests
 

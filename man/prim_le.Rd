@@ -41,12 +41,6 @@ prim_le(1, 2)
 
 # the R value is built at the array's data type instead
 prim_le(1, nv_scalar(2, "f64"))
-
-# an R integer cannot be built at a float data type
-try(prim_le(1L, nv_scalar(2, "f32")))
-
-# neither operand is converted to meet the other
-try(prim_le(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

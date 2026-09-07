@@ -16,8 +16,7 @@ being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the operands' common data type, and the shape of the non-scalar
-operand.
+Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise logical OR, after promoting to a common data type and broadcasting scalars. You

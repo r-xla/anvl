@@ -1,2 +1,2 @@
 #' @return [`arrayish`]\cr
-#'   Has boolean data type, and the shape of the non-scalar operand.
+#'   Has the inputs' broadcast shape and boolean data type.

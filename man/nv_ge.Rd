@@ -16,7 +16,7 @@ being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has boolean data type, and the shape of the non-scalar operand.
+Has the inputs' broadcast shape and boolean data type.
 }
 \description{
 Element-wise greater than or equal comparison, after promoting to a common data type and

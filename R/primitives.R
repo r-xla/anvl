@@ -125,12 +125,6 @@ prim_fill <- new_primitive(
 #'
 #' # the R value is built at the array's data type instead
 #' prim_add(1, nv_scalar(2, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_add(1L, nv_scalar(2, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_add(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 
@@ -151,12 +145,6 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_mul(2, nv_scalar(3, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_mul(1L, nv_scalar(3, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_mul(nv_scalar(2, "f32"), nv_scalar(3, "f64")))
 #' @export
 prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply))
 
@@ -177,12 +165,6 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #'
 #' # the R value is built at the array's data type instead
 #' prim_sub(5, nv_scalar(3, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_sub(1L, nv_scalar(3, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64")))
 #' @export
 prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract))
 
@@ -220,12 +202,6 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #'
 #' # the R value is built at the array's data type instead
 #' prim_div(10, nv_scalar(4, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_div(1L, nv_scalar(4, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_div(nv_scalar(10, "f32"), nv_scalar(4, "f64")))
 #' @export
 prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide))
 
@@ -246,12 +222,6 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #'
 #' # the R value is built at the array's data type instead
 #' prim_pow(2, nv_scalar(3, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_pow(1L, nv_scalar(3, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_pow(nv_scalar(2, "f32"), nv_scalar(3, "f64")))
 #' @export
 prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 
@@ -1259,12 +1229,6 @@ make_compare_op <- function(direction) {
 #'
 #' # the R value is built at the array's data type instead
 #' prim_eq(1, nv_scalar(1, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_eq(1L, nv_scalar(1, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_eq(nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 
@@ -1285,12 +1249,6 @@ prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_ne(1, nv_scalar(2, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_ne(1L, nv_scalar(2, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_ne(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 
@@ -1311,12 +1269,6 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_gt(2, nv_scalar(1, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_gt(1L, nv_scalar(1, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_gt(nv_scalar(2, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_gt <- new_primitive("greater", make_compare_op("GT"))
 
@@ -1337,12 +1289,6 @@ prim_gt <- new_primitive("greater", make_compare_op("GT"))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_ge(2, nv_scalar(1, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_ge(1L, nv_scalar(1, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_ge(nv_scalar(2, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 
@@ -1363,12 +1309,6 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_lt(1, nv_scalar(2, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_lt(1L, nv_scalar(2, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_lt(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_lt <- new_primitive("less", make_compare_op("LT"))
 
@@ -1389,12 +1329,6 @@ prim_lt <- new_primitive("less", make_compare_op("LT"))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_le(1, nv_scalar(2, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_le(1L, nv_scalar(2, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_le(nv_scalar(1, "f32"), nv_scalar(2, "f64")))
 #' @export
 prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 
@@ -1417,12 +1351,6 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_max(1, nv_scalar(5, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_max(1L, nv_scalar(5, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_max(nv_scalar(1, "f32"), nv_scalar(5, "f64")))
 #' @export
 prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
 
@@ -1443,12 +1371,6 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #'
 #' # the R value is built at the array's data type instead
 #' prim_min(1, nv_scalar(5, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_min(1L, nv_scalar(5, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_min(nv_scalar(1, "f32"), nv_scalar(5, "f64")))
 #' @export
 prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
 
@@ -1471,12 +1393,6 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #'
 #' # the R value is built at the array's data type instead
 #' prim_remainder(1, nv_scalar(-3, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_remainder(1L, nv_scalar(-3, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_remainder(nv_scalar(1, "f32"), nv_scalar(-3, "f64")))
 #'
 #' # the sign follows the dividend, where base R's %% follows the divisor
 #' 1 %% -3
@@ -1503,12 +1419,6 @@ prim_remainder <- new_primitive(
 #'
 #' # the R value is built at the array's data type instead
 #' prim_and(12L, nv_scalar(10L, "i64"))
-#'
-#' # an R double cannot be built at an integer data type
-#' try(prim_and(1, nv_scalar(10L, "i32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_and(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 #' @export
 prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 
@@ -1546,12 +1456,6 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_or(12L, nv_scalar(10L, "i64"))
-#'
-#' # an R double cannot be built at an integer data type
-#' try(prim_or(1, nv_scalar(10L, "i32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_or(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 #' @export
 prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 
@@ -1572,12 +1476,6 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #'
 #' # the R value is built at the array's data type instead
 #' prim_xor(12L, nv_scalar(10L, "i64"))
-#'
-#' # an R double cannot be built at an integer data type
-#' try(prim_xor(1, nv_scalar(10L, "i32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 #' @export
 prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
 
@@ -1604,12 +1502,6 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #'
 #' # the R value is built at the array's data type instead
 #' prim_shift_left(8L, nv_scalar(2L, "i64"))
-#'
-#' # an R double cannot be built at an integer data type
-#' try(prim_shift_left(1, nv_scalar(2L, "i32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_shift_left(nv_scalar(8L, "i32"), nv_scalar(2L, "i64")))
 #' @export
 prim_shift_left <- new_primitive(
   "shift_left",
@@ -1637,12 +1529,6 @@ prim_shift_left <- new_primitive(
 #'
 #' # the R value is built at the array's data type instead
 #' prim_shift_right_logical(32L, nv_scalar(2L, "i64"))
-#'
-#' # an R double cannot be built at an integer data type
-#' try(prim_shift_right_logical(1, nv_scalar(2L, "i32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64")))
 #' @export
 prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
@@ -1670,12 +1556,6 @@ prim_shift_right_logical <- new_primitive(
 #'
 #' # the R value is built at the array's data type instead
 #' prim_shift_right_arithmetic(-32L, nv_scalar(2L, "i64"))
-#'
-#' # an R double cannot be built at an integer data type
-#' try(prim_shift_right_arithmetic(1, nv_scalar(2L, "i32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_shift_right_arithmetic(nv_scalar(-32L, "i32"), nv_scalar(2L, "i64")))
 #' @export
 prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
@@ -1703,12 +1583,6 @@ prim_shift_right_arithmetic <- new_primitive(
 #'
 #' # the R value is built at the array's data type instead
 #' prim_atan2(1, nv_scalar(1, "f64"))
-#'
-#' # an R integer cannot be built at a float data type
-#' try(prim_atan2(1L, nv_scalar(1, "f32")))
-#'
-#' # neither operand is converted to meet the other
-#' try(prim_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 #' @export
 prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2))
 

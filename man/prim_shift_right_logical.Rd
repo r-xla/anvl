@@ -40,12 +40,6 @@ prim_shift_right_logical(32L, 2L)
 
 # the R value is built at the array's data type instead
 prim_shift_right_logical(32L, nv_scalar(2L, "i64"))
-
-# an R double cannot be built at an integer data type
-try(prim_shift_right_logical(1, nv_scalar(2L, "i32")))
-
-# neither operand is converted to meet the other
-try(prim_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

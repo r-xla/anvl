@@ -41,12 +41,6 @@ prim_and(12L, 10L)
 
 # the R value is built at the array's data type instead
 prim_and(12L, nv_scalar(10L, "i64"))
-
-# an R double cannot be built at an integer data type
-try(prim_and(1, nv_scalar(10L, "i32")))
-
-# neither operand is converted to meet the other
-try(prim_and(nv_scalar(12L, "i32"), nv_scalar(10L, "i64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

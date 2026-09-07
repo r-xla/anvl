@@ -41,12 +41,6 @@ prim_sub(5, 3)
 
 # the R value is built at the array's data type instead
 prim_sub(5, nv_scalar(3, "f64"))
-
-# an R integer cannot be built at a float data type
-try(prim_sub(1L, nv_scalar(3, "f32")))
-
-# neither operand is converted to meet the other
-try(prim_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64")))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

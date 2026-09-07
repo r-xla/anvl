@@ -47,10 +47,10 @@ Use templates from `man-roxygen/` where applicable:
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
 - **Examples:** written out per primitive, not templated. For one whose operands must agree on a
-  data type, follow `?prim_add`: two R values, an R value meeting an array, a literal of another
-  category, and two arrays of different data types (the last two under `try()`), each with a
-  one-line comment. Pick operand values that also show what the primitive computes (`-32L` for an
-  arithmetic shift), and write literals in the primitive's own category.
+  data type, follow `?prim_add`: two R values, then an R value meeting an array, each with a
+  one-line comment naming the data type that comes out. Show working calls only -- no `try()`
+  around a rejected one. Pick operand values that also show what the primitive computes (`-32L`
+  for an arithmetic shift), and write literals in the primitive's own category.
 - **StableHLO link:** `@section StableHLO:\n Lowers to [stablehlo::hlo_<name>()].`
 - Do NOT mention "1-based indexing" — it's the R default.
 - Add `@export` to the roxygen block.
