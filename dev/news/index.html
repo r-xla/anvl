@@ -82,16 +82,18 @@
 <li>
 <code>jit_eval()</code> was removed as it is no longer needed.</li>
 <li>
+<code><a href="../reference/nv_reduce_sum.html">nv_reduce_sum()</a></code>, <code><a href="../reference/nv_reduce_prod.html">nv_reduce_prod()</a></code>, <code><a href="../reference/nv_cumsum.html">nv_cumsum()</a></code> and <code><a href="../reference/nv_cumprod.html">nv_cumprod()</a></code> now accumulate a boolean array at <code>i32</code> instead of returning a boolean.</li>
+<li>
 <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> on an <code>AnvlArray</code> now only accepts <code>mode = "any"</code> (the default) and errors for any other <code>mode</code>.</li>
+<li>
+<code>default_backend()</code> is now called <code><a href="../reference/active_backend.html">active_backend()</a></code>.</li>
+<li>There is now exactly one backend used at a time and it is configured via the <code>anvl.backend</code> option.</li>
+<li>A <code>Shape</code> is now represented as an integer vector.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
 <ul><li>
-<code>as.vector</code> now and returns <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> for integer types that don’t fit into R’s 32 bit integers.</li>
-<li>There is now exactly one backend used at a time and it is configured via the <code>anvl.backend</code> option. With this chane the <code>device_arg</code> parameter was removed from <code><a href="../reference/jit.html">jit()</a></code> as it is no longer needed.</li>
-<li>
-<code>default_backend()</code> is now called <code><a href="../reference/active_backend.html">active_backend()</a></code>.</li>
-<li>A <code>Shape</code> (re-exported from {stablehlo}) <em>is</em> its integer vector now, with a class attached, rather than a list wrapping one. <code>length(shape)</code> is the number of axes, <code>shape[i]</code> is the size of axis <code>i</code>, and <code>shape$dims</code> is gone – read the axis sizes with <code><a href="https://rdrr.io/r/base/class.html" class="external-link">unclass()</a></code>. <code><a href="../reference/shape.html">shape()</a></code> keeps working on an array; it is only the <code>Shape</code> object itself that no longer has a <code><a href="../reference/shape.html">shape()</a></code> method, having nothing left to unwrap.</li>
+<code>as.vector</code> now and returns <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> for integer types that don’t fit into R’s 32 bit integers. With this chane the <code>device_arg</code> parameter was removed from <code><a href="../reference/jit.html">jit()</a></code> as it is no longer needed.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>

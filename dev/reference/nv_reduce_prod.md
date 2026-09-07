@@ -1,6 +1,8 @@
 # Product Reduction
 
-Multiplies array elements along the specified axes.
+Multiplies array elements along the specified axes. A boolean array is
+multiplied as zeroes and ones, like
+[`base::prod()`](https://rdrr.io/r/base/prod.html) does.
 
 ## Usage
 
@@ -36,8 +38,10 @@ nv_reduce_prod(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input. When `drop = TRUE`, the reduced
-axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
+Has the same data type as the input, except for a boolean input, which
+is accumulated at `i32`: `TRUE` counts as one, rather than being folded
+with a logical or/and. When `drop = TRUE`, the reduced axes are removed.
+When `drop = FALSE`, the reduced axes are set to 1.
 
 ## See also
 

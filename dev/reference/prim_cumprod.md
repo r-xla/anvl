@@ -3,6 +3,11 @@
 Cumulative product of array elements along a single axis. Output
 position `j` along `axis` equals the product of input positions `1:j`.
 
+A boolean input is accumulated with a logical AND, so the result is a
+running AND.
+[`nv_cumprod()`](https://r-xla.github.io/anvl/dev/reference/nv_cumprod.md)
+multiplies zeroes and ones instead.
+
 ## Usage
 
 ``` r

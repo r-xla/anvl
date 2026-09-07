@@ -102,7 +102,7 @@ mean_positive <- jit(function(x) {
 
 mean_positive(x)
 #> AnvlArray
-#>  11
+#>  2.7500
 #> [ CPUf32{} ]
 ```
 

@@ -1,6 +1,7 @@
 # Sum Reduction
 
-Sums array elements along the specified axes.
+Sums array elements along the specified axes. A boolean array is
+counted, like [`base::sum()`](https://rdrr.io/r/base/sum.html) does.
 
 ## Usage
 
@@ -36,8 +37,10 @@ nv_reduce_sum(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input. When `drop = TRUE`, the reduced
-axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
+Has the same data type as the input, except for a boolean input, which
+is accumulated at `i32`: `TRUE` counts as one, rather than being folded
+with a logical or/and. When `drop = TRUE`, the reduced axes are removed.
+When `drop = FALSE`, the reduced axes are set to 1.
 
 ## See also
 
@@ -66,4 +69,8 @@ nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #> AnvlArray
 #>  4
 #> [ CPUf32{} ] 
+nv_reduce_sum(nv_array(c(TRUE, FALSE, TRUE))) # counts: 2
+#> AnvlArray
+#>  2
+#> [ CPUi32{} ] 
 ```

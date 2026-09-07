@@ -11,32 +11,30 @@
   the promotion behavior of various primitives and API functions was
   improved.
 - `jit_eval()` was removed as it is no longer needed.
+- [`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md),
+  [`nv_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_prod.md),
+  [`nv_cumsum()`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md)
+  and
+  [`nv_cumprod()`](https://r-xla.github.io/anvl/dev/reference/nv_cumprod.md)
+  now accumulate a boolean array at `i32` instead of returning a
+  boolean.
 - [`as.vector()`](https://rdrr.io/r/base/vector.html) on an `AnvlArray`
   now only accepts `mode = "any"` (the default) and errors for any other
   `mode`.
+- `default_backend()` is now called
+  [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
+- There is now exactly one backend used at a time and it is configured
+  via the `anvl.backend` option.
+- A `Shape` is now represented as an integer vector.
 
 ### Features
 
 - `as.vector` now and returns
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
-  for integer types that don’t fit into R’s 32 bit integers.
-- There is now exactly one backend used at a time and it is configured
-  via the `anvl.backend` option. With this chane the `device_arg`
-  parameter was removed from
+  for integer types that don’t fit into R’s 32 bit integers. With this
+  chane the `device_arg` parameter was removed from
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) as it is
   no longer needed.
-- `default_backend()` is now called
-  [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
-- A `Shape` (re-exported from {stablehlo}) *is* its integer vector now,
-  with a class attached, rather than a list wrapping one.
-  `length(shape)` is the number of axes, `shape[i]` is the size of axis
-  `i`, and `shape$dims` is gone – read the axis sizes with
-  [`unclass()`](https://rdrr.io/r/base/class.html).
-  [`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md) keeps
-  working on an array; it is only the `Shape` object itself that no
-  longer has a
-  [`shape()`](https://r-xla.github.io/anvl/dev/reference/shape.md)
-  method, having nothing left to unwrap.
 
 ### Bug fixes
 

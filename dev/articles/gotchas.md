@@ -99,7 +99,7 @@ when one shape is a “tile” of the other:
 nv_array(1:4) + nv_array(1:2)
 ```
 
-    ## Error in `nv_broadcast_scalars()`:
+    ## Error:
     ## ! All non-scalar arrays must have the same shape, but got (4), (2). Use
     ##   `nv_broadcast_arrays()` for general broadcasting.
 

@@ -3,6 +3,11 @@
 Cumulative sum of array elements along a single axis. Output position
 `j` along `axis` equals the sum of input positions `1:j`.
 
+A boolean input is accumulated with a logical OR, so the result is a
+running OR rather than a running count.
+[`nv_cumsum()`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md)
+counts instead.
+
 ## Usage
 
 ``` r

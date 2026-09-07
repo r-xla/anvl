@@ -2,6 +2,11 @@
 
 Multiplies array elements along the specified axes.
 
+A boolean input is reduced with a logical AND, so the result is a
+boolean.
+[`nv_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_prod.md)
+multiplies zeroes and ones instead.
+
 ## Usage
 
 ``` r

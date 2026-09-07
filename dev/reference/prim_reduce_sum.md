@@ -2,6 +2,11 @@
 
 Sums array elements along the specified axes.
 
+A boolean input is reduced with a logical OR, so the result is a boolean
+rather than a count.
+[`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md)
+counts instead.
+
 ## Usage
 
 ``` r

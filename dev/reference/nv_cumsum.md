@@ -1,6 +1,8 @@
 # Cumulative Sum
 
-Cumulative sum, optionally along a single axis.
+Cumulative sum, optionally along a single axis. A boolean array is
+counted, like [`base::cumsum()`](https://rdrr.io/r/base/cumsum.html)
+does.
 
 ## Usage
 
@@ -35,7 +37,9 @@ nv_cumsum(x, axis = NULL, nan_rm = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same shape and data type as the input.
+Has the same shape as the input, and the same data type, except for a
+boolean input, which is accumulated at `i32`: `TRUE` counts as one,
+rather than being folded with a logical or/and.
 
 ## Relation to base R
 
