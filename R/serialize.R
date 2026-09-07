@@ -134,8 +134,8 @@ nv_unserialize <- function(con, device = NULL) {
   # TODO: don't convert to pjrt first
   result <- safetensors::safe_load_file(con, framework = "pjrt", device = device)
 
-  # The arrays are built on the backend in force.
-  backend <- default_backend()
+  # The arrays are built on the active backend.
+  backend <- active_backend()
   result_wrapped <- lapply(names(result), function(name) {
     buf <- result[[name]]
     if (backend == "pjrt") {

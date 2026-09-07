@@ -1,3 +1,24 @@
+describe("graph_desc_add's device", {
+  it("declares the device into the descriptor being traced", {
+    desc <- local_descriptor()
+    prim_fill(1, shape = 2L, dtype = "f32", device = "cpu:1")
+    expect_equal(desc$devices, list(nv_device("cpu:1")))
+  })
+
+  it("declares nothing when there is no device", {
+    desc <- local_descriptor()
+    prim_fill(1, shape = 2L, dtype = "f32")
+    expect_length(desc$devices, 0L)
+  })
+
+  it("rejects a device of another backend", {
+    skip_if_no_quickr()
+    dev_q <- with_backend("quickr", nv_device("cpu"))
+    local_descriptor()
+    expect_error(prim_fill(1, shape = 2L, dtype = "f32", device = dev_q), "active backend")
+  })
+})
+
 test_that("trace_fn: simple test", {
   f <- function(x, y) {
     prim_add(x, y)

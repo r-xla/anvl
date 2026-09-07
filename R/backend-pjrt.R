@@ -8,24 +8,16 @@ NULL
 # miss is where a static value is first used, and pjrt cannot know which values
 # anvl considers sound to key on. `info` carries the tree, the flat leaves, the
 # static mask, and the avals the cache key was built from.
-# `device` is the jit's device policy: NULL (infer), a concrete device, or a
-# device_arg() whose value is read from the static args.
+# `device` is the jit's device policy: NULL (infer) or a concrete device.
 jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
   function(info) {
     check_static_args(info$args, static)
-    compile_device <- if (is_device_arg(device)) {
-      # A device read from an argument still has to be one of this backend;
-      # NULL leaves it to be inferred, as without a device policy.
-      device_from_arg(info$args[[device$argname]], "pjrt")
-    } else {
-      device
-    }
     compiled <- compile_pjrt(
       f,
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
       donate = donate,
-      device = compile_device,
+      device = device,
       arg_devices = dispatch_arg_devices(info),
       fallback_device = info$default_device,
       default_dtypes = default_dtypes_from_key(info$context)
@@ -46,16 +38,16 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
   }
 }
 
-# device: NULL | PJRTDdevice | AnvlDeviceArg;
+# device: NULL | PJRTDevice
 jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
-  if (!is.null(device) && !is_device_arg(device)) {
+  if (!is.null(device)) {
     device <- backend_device(device, "pjrt")
   }
 
   # pjrt's native dispatcher is the single cache + dispatch path. With a
-  # target device (jit(device = ) or device_arg()) it copies buffer inputs to
-  # the entry's device per call (move_inputs); otherwise the first input's
-  # device is the call's device.
+  # target device (jit(device = )) it copies buffer inputs to the entry's
+  # device per call (move_inputs); otherwise the first input's device is the
+  # call's device.
   dispatcher <- pjrt::dispatcher(
     cache_size,
     jit_pjrt_compile_cb(f, static, donate, device),

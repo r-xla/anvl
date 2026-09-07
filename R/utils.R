@@ -169,7 +169,7 @@ is_valid_r <- function(x) {
 # The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
 # implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
 # run on that backend yet, since the implementations are built on first call.
-jit_dispatcher <- function(f, backend = default_backend()) {
+jit_dispatcher <- function(f, backend = active_backend()) {
   jit_fns <- environment(f)$.jit_fns
   if (is.null(jit_fns)) {
     cli_abort("{.arg f} is not a jitted function.")
@@ -181,7 +181,7 @@ jit_dispatcher <- function(f, backend = default_backend()) {
   environment(impl)$dispatcher
 }
 
-# The number of programs `f` has cached for the backend in force.
+# The number of programs `f` has cached for the active backend.
 cache_size <- function(f) {
   dispatcher <- jit_dispatcher(f)
   if (is.null(dispatcher)) {
@@ -284,6 +284,3 @@ col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
 }
 
-is_device_arg <- function(x) {
-  inherits(x, "AnvlDeviceArg")
-}

@@ -351,7 +351,7 @@ nv_concatenate <- function(..., axis = NULL) {
 #'
 #' # Differences from base R
 #'
-#' [base::rbind()] and [base::cbind()] applied to an [array()] of rank > 2
+#' [base::rbind()] and [base::cbind()] applied to an [`array()`][base::array] of rank > 2
 #' flatten the trailing axes into the column axis (so a `c(2, 3, 4)`
 #' array becomes a `2 x 12` matrix). `nv_rbind` and `nv_cbind` instead
 #' preserve all non-stacked axes: combining two `c(2, 3, 4)` arrays

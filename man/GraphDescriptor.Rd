@@ -15,8 +15,7 @@ GraphDescriptor(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character(),
-  default_dtypes = NULL
+  devices = character()
 )
 }
 \arguments{
@@ -53,15 +52,9 @@ Boolean mask indicating which flat positions in \code{in_tree} are static (non-a
 \item{static_args_flat}{(\code{NULL | list()})\cr
 Flattened traced values for the static arguments indicated by \code{is_static_flat}.}
 
-\item{devices}{(\code{character()})\cr
-Device platforms encountered during tracing (e.g. \code{"cpu"}, \code{"cuda"}).
-Populated automatically as arrays are registered.}
-
-\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
-The data types every R value in this trace commits to when nothing else
-decides one (see \code{\link[=default_dtypes]{default_dtypes()}}) -- the pair the dispatcher keyed the
-compiled program on, so the program cannot disagree with its cache key.
-\code{NULL} lets \code{\link[=local_descriptor]{local_descriptor()}} fill in the pair in force.}
+\item{devices}{(\code{list()})\cr
+Devices encountered during tracing: the device of every concrete array
+registered in the graph, plus the ones declared by \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 }
 \value{
 (\code{GraphDescriptor})

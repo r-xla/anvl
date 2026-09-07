@@ -36,8 +36,9 @@ quickr_restore_leaf <- function(value, info) {
 
   if (!is.null(info$backend)) {
     # The compiled function knows what it produced: an array of its own backend
-    # at the graph's output dtype, whatever backend is in force where it is
-    # called from.
+    # at the graph's output data type, whatever backend is active where it is
+    # called from. Built through the backend directly rather than `nv_array()`,
+    # which builds on the active backend and would read the default data types.
     value <- globals$backends[[info$backend]]$new_data(
       value,
       dtype = as_dtype(info$dtype),

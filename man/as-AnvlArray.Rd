@@ -4,6 +4,7 @@
 \alias{as-AnvlArray}
 \alias{as.double.AnvlArray}
 \alias{as.integer.AnvlArray}
+\alias{as.integer64.AnvlArray}
 \alias{as.logical.AnvlArray}
 \alias{as.vector.AnvlArray}
 \title{Coerce AnvlArray to an R Vector}
@@ -11,6 +12,8 @@
 \method{as.double}{AnvlArray}(x, check = FALSE, ...)
 
 \method{as.integer}{AnvlArray}(x, check = FALSE, ...)
+
+\method{as.integer64}{AnvlArray}(x, check = FALSE, ...)
 
 \method{as.logical}{AnvlArray}(x, check = FALSE, ...)
 
@@ -26,32 +29,45 @@ Forwarded to \code{\link[=as_array]{as_array()}}; see there for details.}
 \item{...}{Unused.}
 
 \item{mode}{(\code{character(1)})\cr
-For \code{as.vector()} only. See \code{\link[base:as.vector]{base::as.vector()}}. Defaults to \code{"any"},
-meaning the natural R type for the array's dtype.}
+Must be \code{"any"} (the default), meaning the natural R type for the array's
+dtype. Only present because \code{\link[base:as.vector]{base::as.vector()}}'s signature requires it;
+pick an R type with one of the other methods instead.}
 }
 \value{
-An R vector of the corresponding type (\code{double}, \code{integer}, or \code{logical}).
+An R vector holding the array's values, of the type the method
+names: \code{double}, \code{integer}, \code{logical}, or \code{\link[bit64:integer64]{bit64::integer64}}.
 }
 \description{
-Convert an \code{\link{AnvlArray}} to a bare R vector.
-The array's shape is discarded; the result is always a flat vector.
+Convert an \code{\link{AnvlArray}} to a flat R vector, discarding the array's shape.
 Each method requires a compatible dtype:
 \itemize{
 \item \code{as.double()} / \code{as.numeric()}: float or (signed/unsigned) integer dtypes.
 \item \code{as.integer()}: signed or unsigned integer dtypes.
+\item \code{\link[bit64:as.integer64]{bit64::as.integer64()}}: signed or unsigned integer dtypes. This is how
+to read \code{i64}, \code{ui64} and \code{ui32} values that an R \code{integer} cannot hold.
+It is lossless for \code{i64} and \code{ui32}, but \code{\link[bit64:integer64]{bit64::integer64}} is itself
+signed, so a \code{ui64} value \verb{>= 2^63} wraps to a negative one (exactly
+\code{2^63} becomes \code{NA}); pass \code{check = TRUE} to be told when that happens.
 \item \code{as.logical()}: \code{bool}.
-\item \code{as.vector()}: any dtype; the R type is chosen by the dtype, or
-forced via \code{mode} (e.g. \code{"integer"}, \code{"double"}, \code{"logical"}, \code{"list"}).
+\item \code{as.vector()}: any dtype; the R type is chosen by the dtype. For the
+dtypes R has no native type for (\code{i64}, \code{ui64}, \code{ui32}) that is the
+\code{\link[bit64:integer64]{bit64::integer64}} \code{\link[=as_array]{as_array()}} returns, since a bare double could
+not hold the values -- and it keeps its class, so \code{is.vector()} is
+\code{FALSE} for it.
 }
 
 Use \code{\link[=as_array]{as_array()}} to obtain an R array that preserves the shape, or
 \code{\link[=nv_convert]{nv_convert()}} to change the dtype of an \code{\link{AnvlArray}} before coercing.
+\code{as.vector()}'s signature is fixed by the generic, so it takes no \code{check}
+argument; call \code{\link[=as_array]{as_array()}} with \code{check = TRUE} to have the values
+validated.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
 as.numeric(x)
 as.integer(nv_array(1:6, shape = c(2L, 3L)))
+bit64::as.integer64(nv_array(1:6, shape = c(2L, 3L), dtype = "i64"))
 as.logical(nv_array(c(TRUE, FALSE), dtype = "bool"))
 as.vector(x)
 \dontshow{\}) # examplesIf}

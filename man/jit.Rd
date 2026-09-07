@@ -25,11 +25,9 @@ enclosing environment does not change in a way that modifies their behavior.}
 \item{cache_size}{(\code{integer(1)})\cr
 Maximum number of compiled executables to keep in the LRU cache.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}} | \code{\link[=device_arg]{device_arg()}})\cr
-Target device, of the backend in force. When a concrete device is
-specified, all arrays are moved to it. \code{device_arg("<arg>")} reads the
-device from the named (static) argument at call time, for functions
-without array inputs such as constructors.
+\item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}})\cr
+Target device, of the active backend. When a device is specified, all
+arrays are moved to it.
 
 The default (\code{NULL}) infers the device at call time from the array inputs,
 falling back to \code{\link[=default_device]{default_device()}}.}
@@ -52,8 +50,8 @@ skip recompilation.
 }
 \section{Backend and device}{
 
-A jitted function runs on the backend in force \emph{when it is called}
-(\code{\link[=default_backend]{default_backend()}}, set with \code{\link[=with_backend]{with_backend()}} / \code{\link[=local_backend]{local_backend()}}),
+A jitted function runs on the active backend \emph{when it is called}
+(\code{\link[=active_backend]{active_backend()}}, set with \code{\link[=with_backend]{with_backend()}} / \code{\link[=local_backend]{local_backend()}}),
 so one \code{JitFunction} serves every backend, and a function created under one
 backend and called under another runs on the latter. Array inputs must
 belong to that backend; an array of another backend is rejected. Each
@@ -64,8 +62,8 @@ enforces that the function always uses it, e.g. \code{"cuda:0"}, and copies ever
 array input to it. With \code{device = NULL} (default) the device is inferred from
 the input arrays and the constants within the program; conflicting devices
 are an error, and with no array to read a device from the default device is
-used. A function without array inputs can read its device from a static
-argument with \code{device = device_arg("<argname>")}.
+used. A constructor that has no array to name a device declares the one it
+was asked for itself, see \code{\link[=graph_desc_add]{graph_desc_add()}}'s \code{device} argument.
 }
 
 \section{Jitting in a Package}{
@@ -122,7 +120,7 @@ g(nv_array(3), TRUE)
 g(nv_array(3), FALSE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-# The same function runs on whichever backend is in force when it is called
+# The same function runs on whichever backend is active when it is called
 with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }

@@ -341,65 +341,6 @@ describe("axis", {
   })
 })
 
-describe("as.double", {
-  it("returns a bare double vector and discards shape", {
-    x <- nv_array(c(1, 2, 3, 4, 5, 6), dtype = "f32", shape = c(2L, 3L))
-    result <- as.double(x)
-    expect_type(result, "double")
-    expect_null(dim(result))
-    expect_equal(result, c(1, 2, 3, 4, 5, 6))
-  })
-
-  it("is equivalent to as.numeric", {
-    x <- nv_array(c(1.5, 2.5), dtype = "f64")
-    expect_identical(as.numeric(x), as.double(x))
-  })
-
-  it("works on a scalar", {
-    expect_identical(as.double(nv_scalar(3.5, dtype = "f64")), 3.5)
-  })
-
-  it("works on signed integer dtypes", {
-    x <- nv_array(1:4, dtype = "i32", shape = c(2L, 2L))
-    result <- as.double(x)
-    expect_type(result, "double")
-    expect_null(dim(result))
-    expect_equal(result, c(1, 2, 3, 4))
-  })
-
-  it("works on unsigned integer dtypes", {
-    expect_identical(as.double(nv_array(c(1L, 2L, 3L), dtype = "ui32")), c(1, 2, 3))
-  })
-
-  it("errors on bool dtype", {
-    expect_error(as.double(nv_array(TRUE, dtype = "bool")), "requires a float or integer dtype")
-  })
-})
-
-describe("as.integer", {
-  it("returns a bare integer vector and discards shape", {
-    x <- nv_array(1:4, dtype = "i32", shape = c(2L, 2L))
-    result <- as.integer(x)
-    expect_type(result, "integer")
-    expect_null(dim(result))
-    expect_equal(result, 1:4)
-  })
-
-  it("works on unsigned integer dtypes", {
-    x <- nv_array(c(1L, 2L, 3L), dtype = "ui32")
-    expect_identical(as.integer(x), c(1L, 2L, 3L))
-  })
-
-  it("works on a scalar", {
-    expect_identical(as.integer(nv_scalar(7L, dtype = "i32")), 7L)
-  })
-
-  it("errors on non-integer dtype", {
-    expect_error(as.integer(nv_array(1.5, dtype = "f32")), "requires a .* integer dtype")
-    expect_error(as.integer(nv_array(TRUE, dtype = "bool")), "requires a .* integer dtype")
-  })
-})
-
 # Linear-algebra S3 generics (added when the linalg primitives landed).
 # These just check that base R's S3 dispatch reaches the corresponding
 # nv_* implementations on AnvlArray inputs.
@@ -452,20 +393,5 @@ describe("determinant", {
     out <- determinant(a, logarithm = FALSE)
     expected <- nv_determinant(a, logarithm = FALSE)
     expect_equal(out, expected)
-  })
-})
-
-describe("as.logical", {
-  it("returns a bare logical vector and discards shape", {
-    x <- nv_array(c(TRUE, FALSE, TRUE, FALSE), dtype = "bool", shape = c(2L, 2L))
-    result <- as.logical(x)
-    expect_type(result, "logical")
-    expect_null(dim(result))
-    expect_equal(result, c(TRUE, FALSE, TRUE, FALSE))
-  })
-
-  it("errors on non-bool dtype", {
-    expect_error(as.logical(nv_array(1L, dtype = "i32")), "requires a .*bool.* dtype")
-    expect_error(as.logical(nv_array(1.5, dtype = "f32")), "requires a .*bool.* dtype")
   })
 })

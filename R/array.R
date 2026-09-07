@@ -165,11 +165,12 @@ nv_array <- function(
     }
   }
   if (currently_tracing() && is.null(device)) {
-    # A constant of the trace: it commits to the defaults the trace is pinned to.
+    # A constant of the trace: it belongs to the backend being traced for, and
+    # commits to the defaults the trace is pinned to.
     dtype <- resolve_default_dtype(data, dtype)
     return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
   }
-  backend <- default_backend()
+  backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
@@ -432,7 +433,7 @@ nv_matrix <- function(
 #' @export
 nv_empty <- function(dtype, shape, device = NULL) {
   shape <- as.integer(shape)
-  backend <- default_backend()
+  backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
@@ -520,30 +521,43 @@ await.AnvlArray <- function(x, ...) {
 
 #' @title Coerce AnvlArray to an R Vector
 #' @description
-#' Convert an [`AnvlArray`] to a bare R vector.
-#' The array's shape is discarded; the result is always a flat vector.
+#' Convert an [`AnvlArray`] to a flat R vector, discarding the array's shape.
 #' Each method requires a compatible dtype:
 #' * `as.double()` / `as.numeric()`: float or (signed/unsigned) integer dtypes.
 #' * `as.integer()`: signed or unsigned integer dtypes.
+#' * [`bit64::as.integer64()`]: signed or unsigned integer dtypes. This is how
+#'   to read `i64`, `ui64` and `ui32` values that an R `integer` cannot hold.
+#'   It is lossless for `i64` and `ui32`, but [`bit64::integer64`] is itself
+#'   signed, so a `ui64` value `>= 2^63` wraps to a negative one (exactly
+#'   `2^63` becomes `NA`); pass `check = TRUE` to be told when that happens.
 #' * `as.logical()`: `bool`.
-#' * `as.vector()`: any dtype; the R type is chosen by the dtype, or
-#'   forced via `mode` (e.g. `"integer"`, `"double"`, `"logical"`, `"list"`).
+#' * `as.vector()`: any dtype; the R type is chosen by the dtype. For the
+#'   dtypes R has no native type for (`i64`, `ui64`, `ui32`) that is the
+#'   [`bit64::integer64`] [`as_array()`] returns, since a bare double could
+#'   not hold the values -- and it keeps its class, so `is.vector()` is
+#'   `FALSE` for it.
 #'
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
+#' `as.vector()`'s signature is fixed by the generic, so it takes no `check`
+#' argument; call [`as_array()`] with `check = TRUE` to have the values
+#' validated.
 #' @param x ([`AnvlArray`])\cr
 #'   Array to coerce.
 #' @param mode (`character(1)`)\cr
-#'   For `as.vector()` only. See [base::as.vector()]. Defaults to `"any"`,
-#'   meaning the natural R type for the array's dtype.
+#'   Must be `"any"` (the default), meaning the natural R type for the array's
+#'   dtype. Only present because [base::as.vector()]'s signature requires it;
+#'   pick an R type with one of the other methods instead.
 #' @param check (`logical(1)`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
-#' @return An R vector of the corresponding type (`double`, `integer`, or `logical`).
+#' @return An R vector holding the array's values, of the type the method
+#'   names: `double`, `integer`, `logical`, or [`bit64::integer64`].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
 #' as.numeric(x)
 #' as.integer(nv_array(1:6, shape = c(2L, 3L)))
+#' bit64::as.integer64(nv_array(1:6, shape = c(2L, 3L), dtype = "i64"))
 #' as.logical(nv_array(c(TRUE, FALSE), dtype = "bool"))
 #' as.vector(x)
 #' @name as-AnvlArray
@@ -572,6 +586,21 @@ as.integer.AnvlArray <- function(x, check = FALSE, ...) {
 }
 
 #' @rdname as-AnvlArray
+#' @method as.integer64 AnvlArray
+#' @exportS3Method bit64::as.integer64
+as.integer64.AnvlArray <- function(x, check = FALSE, ...) {
+  dt <- dtype(x)
+  if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
+    cli_abort(
+      "{.fn bit64::as.integer64} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}."
+    )
+  }
+  # bit64's own methods drop every attribute, the shape included, for each type
+  # `as_array()` can hand back (`integer`, `integer64`).
+  bit64::as.integer64(as_array(x, check = check))
+}
+
+#' @rdname as-AnvlArray
 #' @method as.logical AnvlArray
 #' @export
 as.logical.AnvlArray <- function(x, check = FALSE, ...) {
@@ -585,7 +614,19 @@ as.logical.AnvlArray <- function(x, check = FALSE, ...) {
 #' @method as.vector AnvlArray
 #' @export
 as.vector.AnvlArray <- function(x, mode = "any") {
-  as.vector(as_array(x), mode = mode)
+  if (!identical(mode, "any")) {
+    cli_abort(c(
+      "{.fn as.vector} on an {.cls AnvlArray} only supports {.code mode = \"any\"}, but got {.val {mode}}.",
+      i = "Use {.fn as.double}, {.fn as.integer}, {.fn bit64::as.integer64} or {.fn as.logical} to pick an R type, or apply the matching coercion to {.code as_array(x)} yourself (e.g. {.code as.character(as_array(x))})." # nolint
+    ))
+  }
+  out <- as_array(x)
+  # Drop only the shape. The wholesale attribute strip `as.vector()` normally
+  # does would also take the `bit64::integer64` class that the dtypes R has no
+  # native type for (`i64`, `ui64`, `ui32`) arrive with, revealing the raw
+  # 64-bit pattern as a double.
+  dim(out) <- NULL
+  out
 }
 
 #' @rdname platform

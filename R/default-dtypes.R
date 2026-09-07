@@ -115,7 +115,7 @@ effective_default_dtypes <- function(backend) {
 #'
 #' Each backend registers its own defaults -- `f32` / `i32` for `"pjrt"`, `f64`
 #' / `i32` for `"quickr"`, which has no single precision -- and they follow the
-#' backend in force ([`default_backend()`]): `with_backend("quickr", ...)` commits
+#' active backend ([`active_backend()`]): `with_backend("quickr", ...)` commits
 #' a double to `f64`. The option `anvl.default_dtypes` overrides them on every
 #' backend, e.g. `options(anvl.default_dtypes = c(float = "f64"))`;
 #' `local_default_dtypes()` and `with_default_dtypes()` set it for a scope, and
@@ -174,7 +174,7 @@ effective_default_dtypes <- function(backend) {
 #'   their category.
 #'   `local_default_dtypes()` returns the previous values of the options it set,
 #'   invisibly. `with_default_dtypes()` returns the result of evaluating `code`.
-#' @seealso [`default_backend()`], [`peek_dtype()`]
+#' @seealso [`active_backend()`], [`peek_dtype()`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' default_dtypes()
 #' default_float()
@@ -310,7 +310,7 @@ is_literal_dtypes <- function(expr) {
 current_default_dtypes <- function() {
   desc <- globals[["CURRENT_DESCRIPTOR"]]
   if (is.null(desc)) {
-    return(effective_default_dtypes(default_backend()))
+    return(effective_default_dtypes(active_backend()))
   }
   apply_default_dtypes(desc$default_dtypes)
 }

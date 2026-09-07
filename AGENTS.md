@@ -66,11 +66,18 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
   `default_int()`, never hardcode `"f32"` / `"i32"` as a default. `default_dtype_r()` is for the
   few places that map an R storage type chosen at run time, and `current_default_dtypes()` for
   the whole pair.
-- **One backend at a time.** The backend is the option `anvl.backend` (`default_backend()`,
+- **One backend at a time.** The backend is the option `anvl.backend` (`active_backend()`,
   `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
   nothing infers a backend from an argument, no function takes a `backend` argument, and an array
   or device of another backend is an error. This is what makes the default dtypes unambiguous in
   eager code (see `specs/2026-09-04-ambient-backend-default-dtypes-design.md`).
+
+## One Backend at a Time
+
+The backend is the option `anvl.backend` (`active_backend()`, `local_backend()`, `with_backend()`).
+Every jitted function runs on it, reading it at call time; nothing infers a backend from an
+argument, no function takes a `backend` argument, and an array or device of another backend is an
+error.
 
 ## Primitive System
 

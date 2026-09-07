@@ -2,14 +2,13 @@
 NULL
 
 #' @section Options:
-#' * `anvl.backend` (`character(1)`, default `"pjrt"`): the backend in force.
-#'   Every array is built on it and every jitted function runs on it. See
-#'   [`default_backend()`], [`local_backend()`] and [`with_backend()`].
+#' * `anvl.backend` (`character(1)`, default `"pjrt"`): active backend that is used
+#'   for compilation and data allocation.
 #' * `anvl.default_dtypes` (named `character()`): the data types an R double
 #'   (element `float`, `"f32"` or `"f64"`) and an R integer (element `int`,
 #'   `"i32"` or `"i64"`) commit to when nothing else decides one, e.g.
-#'   `c(float = "f64")`. A category it does not name is left to the backend in
-#'   force, as is the whole option when unset. See [`default_dtypes()`],
+#'   `c(float = "f64")`. A category it does not name is left to the active
+#'   backend, as is the whole option when unset. See [`default_dtypes()`],
 #'   [`local_default_dtypes()`] and [`with_default_dtypes()`].
 #'
 #' @section Third-Party Licenses:

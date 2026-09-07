@@ -37,6 +37,7 @@ Imports:
     withr,
     xlamisc (>= 0.4.1)
 Suggests:
+    bit64,
     knitr,
     quarto,
     rmarkdown,
