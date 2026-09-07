@@ -421,7 +421,7 @@ describe("jit: backend and device handling", {
     expect_equal(device(g("cpu:1")), nv_device("cpu:1"))
   })
 
-  # a constructor declares the device it was asked for (declare_device())
+  # a constructor declares the device it was asked for (graph_desc_add(device = ))
   it("reads a constructor's device from a static argument", {
     f <- jit(function(val, dev) nv_fill(val, 2L, dtype = "f32", device = dev), static = c("val", "dev"))
     expect_equal(device(f(1, "cpu:0")), nv_device("cpu:0"))

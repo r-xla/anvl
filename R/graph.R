@@ -843,7 +843,9 @@ is_graph_box <- function(x) {
 #' @export
 graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL, device = NULL) {
   desc <- desc %||% .current_descriptor(silent = TRUE)
-  declare_device(device, desc)
+  if (!is.null(device)) {
+    desc$devices <- c(desc$devices, nv_device(device))
+  }
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
@@ -868,26 +870,6 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
   desc$calls$add(call)
   lapply(gvals_out, register_gval, desc = desc)
-}
-
-# Record that the traced program is being built for `device` -- the graph_desc_add()
-# `device` argument, which is how a constructor primitive gets the device it was
-# asked for into device inference.
-#
-# The declaration lands in the descriptor being traced. One made inside a
-# subgraph (a prim_while() body, a prim_if() branch) or an inlined trace goes to
-# that sub-descriptor, which the enclosing program's inference does not read --
-# exactly as the device of a concrete array used there does not reach it either.
-declare_device <- function(device, desc = NULL) {
-  if (is.null(device)) {
-    return(invisible(NULL))
-  }
-  desc <- desc %||% .current_descriptor()
-  # nv_device() both looks up a device name and rejects a device of another
-  # backend, so an unusable device is an error here rather than a confusing
-  # one about mixed devices further down.
-  desc$devices <- c(desc$devices, nv_device(device))
-  invisible(NULL)
 }
 
 print_call_repr <- function(prim) {

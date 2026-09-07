@@ -415,7 +415,7 @@ Device handling within a backend has two things to be aware of:
   `jit(\(x) x + nv_scalar(1, device = "cuda"))` where we might only learn about the device during tracing.
   This means the data is only converted at the end.
 2. A function without array inputs (a constructor) has no device to infer from.
-   The constructor primitives (`prim_fill()`, `prim_iota()`) therefore `declare_device()` the device they were asked for into the trace, where it counts like the device of an array input.
+   The constructor primitives (`prim_fill()`, `prim_iota()`) therefore pass the device they were asked for to `graph_desc_add()`, which declares it into the trace, where it counts like the device of an array input.
    A caller steers such a program by passing the device on to the constructor, in a static argument:
 
    ```r
