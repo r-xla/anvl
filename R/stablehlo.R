@@ -210,7 +210,7 @@ stablehlo <- function(
       out_aval <- graph$outputs[[j]]$aval
       phantom_specs[[length(phantom_specs) + 1L]] <- list(
         dtype = out_aval$dtype,
-        shape = out_aval$shape$dims
+        shape = shape(out_aval)
       )
     }
   }
@@ -232,7 +232,7 @@ stablehlo <- function(
         fval <- hlo_tensor(
           value = unwrap_if_array(x$aval$data),
           dtype = x$aval$dtype,
-          shape = x$aval$shape$dims,
+          shape = shape(x$aval),
           func = func
         )
         env_add(env, x, fval)
@@ -270,7 +270,7 @@ stablehlo <- function(
   outputs <- lapply(graph$outputs, \(x) {
     if (is_graph_literal(x)) {
       # this only happens when a literal is directly returned
-      hlo_tensor(value = x$aval$data, dtype = x$aval$dtype, shape = x$aval$shape$dims, func = func)
+      hlo_tensor(value = x$aval$data, dtype = x$aval$dtype, shape = shape(x$aval), func = func)
     } else {
       gnode_to_fval(x)
     }

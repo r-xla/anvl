@@ -704,7 +704,7 @@ dtype.AbstractArray <- function(x, ...) {
 #' @method shape AbstractArray
 #' @export
 shape.AbstractArray <- function(x, ...) {
-  x$shape$dims
+  unclass(x$shape)
 }
 
 #' @title Concrete Array Class
@@ -840,8 +840,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 IotaArray <- function(shape, dtype, axis, start = 1L) {
   shape <- as_shape(shape)
   dtype <- as_dtype(dtype)
-  # stablehlo::Shape is a wrapper object; its rank is length(shape$dims), not length(shape)
-  assert_int(axis, lower = 1L, upper = length(shape$dims))
+  assert_int(axis, lower = 1L, upper = length(shape))
   assert_int(start)
   structure(
     list(shape = shape, dtype = dtype, axis = axis, start = start),
@@ -1030,10 +1029,10 @@ to_abstract <- function(x, pure = FALSE) {
 }
 
 as_shape <- function(x) {
-  if (test_integerish(x, any.missing = FALSE, lower = 0)) {
-    Shape(as.integer(x))
-  } else if (is_shape(x)) {
+  if (is_shape(x)) {
     x
+  } else if (test_integerish(x, any.missing = FALSE, lower = 0)) {
+    Shape(as.integer(x))
   } else if (is.null(x)) {
     Shape(integer())
   } else {
@@ -1048,15 +1047,16 @@ is_shape <- function(x) {
 
 #' @title Array-like Objects
 #' @description
-#' A `arrayish` value is any object that can be input to a primitive such as [`prim_add`].
+#' A `arrayish` value is anything that represents an [`AnvlArray`]
+#' or can be converted to one.
 #'
-#' During runtime of a JIT-compiled function, these are [`AnvlArray`] objects.
-#'
-#' The following types are arrayish (during tracing):
+#' Specifically, these values are `arrayish`:
 #' * [`AnvlArray`]: a concrete array holding data on a device.
-#' * [`GraphBox`]: a boxed abstract array representing a value in a graph.
-#' * Length-1 vectors: `numeric(1)` and `logical(1)`
-#' * R arrays of types: `numeric` and `logical`.
+#' * R objects:
+#'   * `numeric(1)` and `logical(1)` which represent scalars.
+#'   * `numeric` and `logical` R arrays.
+#' * [`GraphBox`]: this is how dynamic [`AnvlArray`]s are represented
+#'   during [`jit()`].
 #'
 #' Use [`is_arrayish()`] to check whether a value is arrayish.
 #'

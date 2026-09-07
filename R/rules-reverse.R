@@ -556,11 +556,19 @@ prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, re
 
 # convert reverse -----------------
 
+# A conversion is the identity, and so passes the cotangent through, only
+# between floats. Landing on an integer or a bool is a step function whose
+# derivative is zero almost everywhere, and a value that started as one has no
+# gradient to give back either. Passing the cotangent through regardless would
+# report a gradient of 1 across `nv_convert(nv_convert(x, "i32"), "f64")`,
+# where `prim_floor()` -- the same function on the reals -- correctly reports 0.
 prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
-  grad <- grads[[1L]]
+  differentiable <- is_dtype_float(dtype(x)) && is_dtype_float(dtype(outputs[[1L]]))
   list(
-    if (required[[1L]]) prim_convert(grad, dtype(x))
+    if (required[[1L]]) {
+      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else prim_fill(0L, dtype = dtype(x), shape = shape(x))
+    }
   )
 })
 
