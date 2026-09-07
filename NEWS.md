@@ -10,6 +10,12 @@
 
 ## Bug fixes
 
+* `as.vector()` on an array of a data type R has no native type for (`i64`,
+  `ui64`, `ui32`) no longer corrupts the values. `as_array()` returns those as
+  a `bit64::integer64`, whose storage is a double holding the raw 64-bit
+  pattern; `as.vector()` dropped the class along with the shape, so
+  `as.vector(nv_array(1L, dtype = "i64"))` gave `4.9e-324` instead of `1`.
+
 * The gradient of a conversion into a non-float data type is now zero instead
   of one. `prim_convert()` / `nv_convert()` passed the cotangent through
   whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`

@@ -536,6 +536,9 @@ await.AnvlArray <- function(x, ...) {
 #' * `as.logical()`: `bool`.
 #' * `as.vector()`: any dtype; the R type is chosen by the dtype, or
 #'   forced via `mode` (e.g. `"integer"`, `"double"`, `"logical"`, `"list"`).
+#'   For the dtypes R has no native type for (`i64`, `ui64`, `ui32`) the
+#'   default `mode = "any"` keeps the [`bit64::integer64`] that [`as_array()`]
+#'   returns, since a bare double could not hold the values.
 #'
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
@@ -593,7 +596,27 @@ as.logical.AnvlArray <- function(x, check = FALSE, ...) {
 #' @method as.vector AnvlArray
 #' @export
 as.vector.AnvlArray <- function(x, mode = "any") {
-  as.vector(as_array(x), mode = mode)
+  out <- as_array(x)
+  if (!inherits(out, "integer64")) {
+    return(as.vector(out, mode = mode))
+  }
+  # `as_array()` hands back a `bit64::integer64` for the dtypes R has no native
+  # type for (`i64`, `ui64`, `ui32`). Dropping attributes wholesale -- what
+  # `as.vector()` does -- would strip that class and reveal the raw 64-bit
+  # pattern as a double, so drop only the shape and let bit64's own coercions
+  # answer an explicit `mode`.
+  switch(
+    mode,
+    any = {
+      dim(out) <- NULL
+      out
+    },
+    double = as.double(out),
+    numeric = as.double(out),
+    integer = as.integer(out),
+    character = as.character(out),
+    as.vector(as.double(out), mode = mode)
+  )
 }
 
 #' @rdname platform
