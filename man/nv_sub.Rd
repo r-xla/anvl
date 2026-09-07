@@ -27,6 +27,12 @@ scalars. You can also use the \code{-} operator.
 x <- nv_array(c(4, 5, 6))
 y <- nv_array(c(1, 2, 3))
 x - y
+
+# different data types are promoted to their common one
+nv_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64"))
+
+# a scalar is broadcast, and an R integer joins a float data type
+x - 1L
 \dontshow{\}) # examplesIf}
 }
 \seealso{

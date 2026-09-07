@@ -51,6 +51,10 @@
   values commit to, and what an R value meeting an array commits to. The
   operand values also show what the primitive computes, as in
   `prim_shift_right_arithmetic(-32L, 2L)` and `prim_remainder(1, -3)`.
+* The binary `nv_*` functions' examples demonstrate the promotion and the
+  broadcasting on top of their operator: two operands of different data types
+  reaching their common one, and a scalar being broadcast against an array
+  (`x + 1L`, where the R integer joins `x`'s float data type).
 
 ## Tests
 

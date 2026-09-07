@@ -27,6 +27,12 @@ differs from base R's \code{\%\%}, use \code{\link[=nv_mod]{nv_mod()}}/\code{\%\
 x <- nv_array(c(7, 8, 9))
 y <- nv_array(c(3, 3, 4))
 nv_remainder(x, y)
+
+# different data types are promoted to their common one
+nv_remainder(nv_scalar(7, "f32"), nv_scalar(3, "f64"))
+
+# a scalar is broadcast, and an R integer joins a float data type
+nv_remainder(x, 3L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

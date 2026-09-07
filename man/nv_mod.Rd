@@ -29,6 +29,12 @@ x <- nv_array(c(1L, -1L))
 y <- nv_array(c(-3L, 3L))
 nv_mod(x, y)
 as.vector(x) \%\% as.vector(y)
+
+# different data types are promoted to their common one
+nv_mod(nv_scalar(1L, "i32"), nv_scalar(-3L, "i64"))
+
+# a scalar is broadcast
+x \%\% 2L
 \dontshow{\}) # examplesIf}
 }
 \seealso{

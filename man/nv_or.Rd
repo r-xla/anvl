@@ -27,6 +27,12 @@ can also use the \code{|} operator.
 x <- nv_array(c(TRUE, FALSE, TRUE))
 y <- nv_array(c(TRUE, TRUE, FALSE))
 x | y
+
+# different data types are promoted to their common one
+nv_or(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
+
+# a scalar is broadcast
+x | TRUE
 \dontshow{\}) # examplesIf}
 }
 \seealso{

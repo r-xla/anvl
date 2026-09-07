@@ -27,6 +27,12 @@ scalars. You can also use the \code{/} operator.
 x <- nv_array(c(10, 20, 30))
 y <- nv_array(c(2, 5, 10))
 x / y
+
+# different data types are promoted to their common one
+nv_div(nv_scalar(10, "f32"), nv_scalar(4, "f64"))
+
+# a scalar is broadcast, and an R integer joins a float data type
+x / 2L
 \dontshow{\}) # examplesIf}
 }
 \seealso{

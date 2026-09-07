@@ -27,6 +27,12 @@ scalars.
 x <- nv_array(c(1, 5, 3))
 y <- nv_array(c(4, 2, 6))
 nv_min(x, y)
+
+# different data types are promoted to their common one
+nv_min(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
+
+# a scalar is broadcast, and an R integer joins a float data type
+nv_min(x, 2L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

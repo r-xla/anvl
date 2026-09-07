@@ -27,6 +27,12 @@ broadcasting scalars. You can also use the \code{<=} operator.
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(3, 2, 1))
 x <= y
+
+# different data types are promoted to their common one
+nv_le(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
+
+# a scalar is broadcast, and an R integer joins a float data type
+x <= 2L
 \dontshow{\}) # examplesIf}
 }
 \seealso{
