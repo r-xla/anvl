@@ -8,13 +8,14 @@ prim_clamp(min_val, x, max_val)
 }
 \arguments{
 \item{min_val}{(\code{\link{arrayish}})\cr
-Minimum value. Must be scalar or the same shape as \code{x}.}
+Lower bound. Must be scalar or the same shape as \code{x}.}
 
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+The array to clamp. Can be any data type.
+\code{min_val}, \code{x} and \code{max_val} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{max_val}{(\code{\link{arrayish}})\cr
-Maximum value. Must be scalar or the same shape as \code{x}.}
+Upper bound. Must be scalar or the same shape as \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr

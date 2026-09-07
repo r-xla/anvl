@@ -14,11 +14,11 @@ prim_pad(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+The array to pad. Can be any data type.
+\code{x} and \code{padding_value} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
-Scalar value to use for padding. An R value is built at \code{x}'s data type,
-within its own category; anything that already has one must have \code{x}'s.}
+Scalar value to use for padding.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
 Amount of padding to add at the start of each axis.}

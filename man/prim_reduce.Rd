@@ -8,11 +8,12 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+The array to reduce. Can be any data type.
+\code{x} and \code{init} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{init}{(\code{\link{arrayish}})\cr
-Scalar (0-dimensional) initial value. Must have the same data type as
-\code{x} and be the neutral element w.r.t. \code{reductor}.}
+Scalar (0-dimensional) initial value. Must be the neutral element
+w.r.t. \code{reductor}.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reduce over.

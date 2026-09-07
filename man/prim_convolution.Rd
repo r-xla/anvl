@@ -26,7 +26,8 @@ prim_convolution(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.}
+\item{x}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.
+Can be any data type. \code{x} and \code{kernel} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
 

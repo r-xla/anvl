@@ -8,8 +8,7 @@ prim_reduce_all(x, axes, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Must be boolean. An R value commits to its
-\link[=default_dtypes]{default data type}.}
+One input. Must be a boolean or an R logical.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
