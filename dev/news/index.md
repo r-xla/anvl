@@ -21,6 +21,10 @@
 - [`as.vector()`](https://rdrr.io/r/base/vector.html) on an `AnvlArray`
   now only accepts `mode = "any"` (the default) and errors for any other
   `mode`.
+- The `steps` argument of
+  [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md) /
+  [`nv_seq_like()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
+  was removed.
 - `default_backend()` is now called
   [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
 - There is now exactly one backend used at a time and it is configured
@@ -29,6 +33,13 @@
 
 ### Features
 
+- New
+  [`nv_linspace()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
+  and
+  [`nv_linspace_like()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md),
+  replacing
+  [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
+  with a provided `steps` argument.
 - `as.vector` now and returns
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
   for integer types that don’t fit into R’s 32 bit integers. With this

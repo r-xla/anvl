@@ -25,6 +25,9 @@ Functions for creating and initializing arrays
 - [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
   [`nv_seq_like()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
   : Sequence
+- [`nv_linspace()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
+  [`nv_linspace_like()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
+  : Evenly Spaced Sequence
 - [`nv_diag()`](https://r-xla.github.io/anvl/dev/reference/nv_diag.md) :
   Diagonal Matrix
 - [`nv_eye()`](https://r-xla.github.io/anvl/dev/reference/nv_eye.md)

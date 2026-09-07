@@ -1,10 +1,7 @@
 # Sequence
 
-Creates a 1-D array with values from `start` to `end` (inclusive).
-
-Without `steps`, behaves like R's `seq(start, end)` producing integer
-values. With `steps`, produces `steps` evenly spaced values (like
-`seq(start, end, length.out = steps)`).
+Creates a 1-D array with the consecutive integer values from `start` to
+`end` (inclusive), like R's `seq(start, end)`.
 
 `nv_seq_like()` is a variant where `dtype` and `device` default to those
 of `like`.
@@ -12,31 +9,23 @@ of `like`.
 ## Usage
 
 ``` r
-nv_seq(start, end, steps = NULL, dtype = NULL, device = NULL)
+nv_seq(start, end, dtype = NULL, device = NULL)
 
-nv_seq_like(like, start, end, steps = NULL, dtype = NULL, device = NULL)
+nv_seq_like(like, start, end, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
 
 - start, end:
 
-  (`numeric(1)`)  
-  Start and end values. When `steps` is `NULL`, must satisfy
-  `start <= end`.
-
-- steps:
-
-  (`integer(1)` or `NULL`)  
-  Number of evenly spaced values to generate. Must be at least 1. When
-  `NULL` (default), generates consecutive integer values from `start` to
-  `end`.
+  (`integer(1)`)  
+  Start and end values, which must satisfy `start <= end`.
 
 - dtype:
 
   (`character(1)`)  
-  Data type. Default `"i32"` when `steps` is `NULL`, `"f32"` when
-  `steps` is given. For `nv_seq_like()`, `NULL` uses `dtype(like)`.
+  Data type. Default `"i32"`. For `nv_seq_like()`, `NULL` uses
+  `dtype(like)`.
 
 - device:
 
@@ -71,6 +60,13 @@ nv_seq_like(like, start, end, steps = NULL, dtype = NULL, device = NULL)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 1-D array of length `end - start + 1`.
+
+## See also
+
+[`nv_linspace()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
+for a given number of evenly spaced values,
+[`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md)
+for the underlying primitive.
 
 ## Examples
 

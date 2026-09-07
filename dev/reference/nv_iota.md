@@ -76,6 +76,8 @@ Has the given `dtype` and `shape`.
 
 [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md) for a
 simpler 1-D sequence,
+[`nv_linspace()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
+for evenly spaced values,
 [`prim_iota()`](https://r-xla.github.io/anvl/dev/reference/prim_iota.md)
 for the underlying primitive.
 
