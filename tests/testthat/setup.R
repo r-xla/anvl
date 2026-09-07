@@ -2,7 +2,7 @@ old_opts <- options(
   warnPartialMatchArgs = TRUE,
   warnPartialMatchAttr = TRUE,
   warnPartialMatchDollar = TRUE,
-  anvl.default_backend = "pjrt"
+  anvl.backend = "pjrt"
 )
 
 # so we can test multiple devices.

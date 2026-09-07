@@ -1,6 +1,11 @@
 #' @keywords internal
 NULL
 
+#' @section Options:
+#' * `anvl.backend` (`character(1)`, default `"pjrt"`): the backend in force.
+#'   Every array is built on it and every jitted function runs on it. See
+#'   [`default_backend()`], [`local_backend()`] and [`with_backend()`].
+#'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
 #' loads NVIDIA software which is not bundled with `anvl`, but downloaded

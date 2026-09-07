@@ -180,25 +180,41 @@ register_backend(
   )
 )
 
-#' Get the default backend
+#' Get the backend in force
 #'
-#' Returns the current default backend from `getOption("anvl.default_backend", "pjrt")`.
+#' There is exactly one backend in force at any time, the one named by the
+#' option `anvl.backend` (default `"pjrt"`). Every array is built on it and
+#' every operation runs on it; an array of another backend is rejected. Set the
+#' option directly, or for a scope with [`local_backend()`] / [`with_backend()`].
 #'
 #' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
-#' @seealso [local_backend()]
+#' @seealso [local_backend()], [with_backend()]
 #' @export
 default_backend <- function() {
-  getOption("anvl.default_backend", "pjrt")
+  backend <- getOption("anvl.backend", "pjrt")
+  # Read on every call, so the check is a list lookup rather than an assertion.
+  # It is worth the lookup: unvalidated, a typo surfaces much later as an error
+  # about something else entirely.
+  if (!is.character(backend) || length(backend) != 1L || is.na(backend)) {
+    cli_abort("Option {.code anvl.backend} must be a single backend name, not {.obj_type_friendly {backend}}.")
+  }
+  if (is.null(globals$backends[[backend]]) || backend == "plain") {
+    cli_abort(c(
+      "Option {.code anvl.backend} names no usable backend: {.val {backend}}.",
+      i = "The backends are {.val {setdiff(names(globals$backends), 'plain')}}."
+    ))
+  }
+  backend
 }
 
 assert_backend <- function(backend) {
   assert_choice(backend, names(globals$backends))
 }
 
-#' Temporarily set the default backend
+#' Temporarily set the backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' calling scope. This affects `nv_array()`, `nv_scalar()`, and `jit()`.
+#' Sets the `anvl.backend` option for the duration of the calling scope. Every
+#' array built and every operation run in that scope uses the backend.
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
@@ -207,13 +223,13 @@ assert_backend <- function(backend) {
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
-  withr::local_options(anvl.default_backend = backend, .local_envir = envir)
+  withr::local_options(anvl.backend = backend, .local_envir = envir)
 }
 
 #' Run code with a specific backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' expression. This affects [`jit()`] and data construction (e.g. via [`nv_array`]).
+#' Sets the `anvl.backend` option for the duration of the expression. Every
+#' array built and every operation run in `code` uses the backend.
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
@@ -222,7 +238,7 @@ local_backend <- function(backend, envir = parent.frame()) {
 #' @export
 with_backend <- function(backend, code) {
   backend <- assert_backend(backend)
-  withr::with_options(list(anvl.default_backend = backend), code)
+  withr::with_options(list(anvl.backend = backend), code)
 }
 
 #' Install what a backend needs to run

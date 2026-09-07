@@ -14,10 +14,10 @@ Backend. Defaults to \code{\link[=default_backend]{default_backend()}} when \cod
 A backend-specific device object.
 }
 \description{
-Returns a device object for the default backend and platform.
+Returns the default device of the backend in force and the default platform.
 For the \code{"pjrt"} backend, the platform is determined by the \code{PJRT_PLATFORM}
 environment variable (defaulting to \code{"cpu"}). Other backends (e.g. \code{"quickr"})
-only support CPU. The backend defaults to \code{\link[=default_backend]{default_backend()}}.
+only support CPU.
 }
 \seealso{
 \code{\link[=nv_device]{nv_device()}}, \code{\link[=default_backend]{default_backend()}}

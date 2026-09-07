@@ -277,144 +277,102 @@ test_that("hash for cache depends on in_tree (#122)", {
   expect_equal(cache_size(f), 2L)
 })
 
-describe("jit: device and backend handling", {
-  it("backend = NULL, device = NULL uses default_backend()", {
-    local_backend("pjrt")
+describe("jit: option validation", {
+  it("rejects the removed `backend` argument, pointing at with_backend()", {
+    expect_error(jit(identity, backend = "quickr"), "no .*backend.* argument")
+    expect_error(jit(identity, backend = "quickr"), "with_backend")
+  })
+
+  it("rejects an option no backend takes, when the function is created", {
+    expect_error(jit(identity, nonsense = 1), "No backend takes")
+    expect_error(jit(identity, foo = 1, bar = 2), "No backend takes")
+  })
+
+  it("rejects an unnamed option", {
+    expect_error(jit(identity, character(), 100L, NULL, TRUE), "must be a named backend option")
+  })
+
+  it("rejects an option another backend takes, when it is called", {
+    # The backend is not known until the call, so this cannot be caught earlier.
+    f <- jit(identity, unwrap = TRUE)
+    expect_error(f(nv_array(1)), "pjrt.*does not support.*unwrap")
+    skip_if_no_quickr()
+    # quickr does take it: `unwrap` hands back a plain R array.
+    expect_equal(with_backend("quickr", f(nv_array(1))), array(1))
+    g <- jit(identity, donate = "x")
+    expect_error(with_backend("quickr", g(nv_array(1))), "quickr.*does not support.*donate")
+  })
+})
+
+describe("jit: backend and device handling", {
+  it("runs on the backend in force when it is called", {
     f <- jit(identity)
-    expect_equal(backend(f), "pjrt")
+    expect_equal(backend(f(1)), "pjrt")
+    skip_if_no_quickr()
+    expect_equal(with_backend("quickr", backend(f(1))), "quickr")
     expect_equal(backend(f(1)), "pjrt")
   })
 
-  it("backend = NULL, device = NULL follows default_backend() = 'quickr'", {
+  it("rejects an array of another backend", {
     skip_if_no_quickr()
-    local_backend("quickr")
     f <- jit(identity)
-    expect_equal(backend(f), "quickr")
-    expect_equal(backend(f(1)), "quickr")
-  })
-
-  it("backend = 'pjrt', device = NULL uses pjrt", {
-    local_backend("quickr")
-    f <- jit(identity, backend = "pjrt")
-    expect_equal(backend(f), "pjrt")
-    expect_equal(backend(f(1)), "pjrt")
-  })
-
-  it("concrete device string", {
-    f <- jit(identity, device = "cpu")
-    expect_equal(backend(f), "pjrt")
-    expect_equal(backend(f(1)), "pjrt")
-  })
-
-  it("concrete device object", {
-    f <- jit(identity, device = pjrt::pjrt_device("cpu"))
-    expect_equal(backend(f), "pjrt")
-    expect_equal(backend(f(1)), "pjrt")
-  })
-
-  it("concrete device infers backend from device", {
-    skip_if_no_quickr()
-    local_backend("quickr")
-    f <- jit(identity, device = pjrt::pjrt_device("cpu"))
-    expect_equal(backend(f), "pjrt")
-    expect_equal(backend(f(1)), "pjrt")
-  })
-
-  it("concrete device conflicts with mismatched backend", {
-    skip_if_no_quickr()
-    expect_error(
-      jit(identity, backend = "quickr", device = pjrt::pjrt_device("cpu")),
-      "Backend of requested device"
-    )
-  })
-
-  it("constant's device can be defined via static argument", {
-    f <- jit(function(x) nv_scalar(1, device = x), static = "x")
-    expect_equal(device(f("cpu:0")), nv_device("cpu:0", "pjrt"))
-    expect_equal(device(f("cpu:1")), nv_device("cpu:1", "pjrt"))
-  })
-
-  it("backend 'auto' works with pjrt and quickr input", {
-    f <- jit(identity, backend = "auto")
-    expect_equal(backend(f), "auto")
-    # At call time, backend is picked from the input.
-    expect_equal(backend(f(nv_scalar(1, backend = "pjrt"))), "pjrt")
-    skip_if_no_quickr()
-    expect_equal(backend(f(nv_scalar(1, backend = "quickr"))), "quickr")
-  })
-
-  it("backend 'auto' routes to quickr when all inputs are quickr", {
-    skip_if_no_quickr()
-    f <- jit(nv_add, backend = "auto")
-    out <- f(nv_scalar(1, backend = "quickr"), nv_scalar(2, backend = "quickr"))
-    expect_equal(backend(out), "quickr")
-    expect_equal(as_array(out), 3)
-  })
-
-  it("backend 'auto' errs when call-time inputs use multiple backends", {
-    skip_if_no_quickr()
-    f <- jit(nv_add, backend = "auto")
-    expect_error(
-      f(nv_scalar(1, backend = "pjrt"), nv_scalar(2, backend = "quickr")),
-      "multiple backends"
-    )
+    x <- with_backend("quickr", nv_scalar(1))
+    expect_error(f(x), "quickr")
+    y <- nv_scalar(1)
+    expect_error(with_backend("quickr", f(y)), "pjrt")
   })
 
   it("cannot mix backends via closed-over constant", {
     # A closed-over constant from a different backend than the call-time input
     # must not silently compile on either backend.
     skip_if_no_quickr()
-    const_q <- nv_scalar(1, backend = "quickr")
-    f <- jit(function(x) x + const_q, backend = "pjrt")
-    expect_error(
-      f(nv_scalar(1, backend = "pjrt")),
-      "Cannot compile a \"pjrt\" program"
-    )
-    const_x <- nv_scalar(1, backend = "pjrt")
-    g <- jit(function(x) x + const_x, backend = "quickr")
-    expect_error(
-      g(nv_scalar(1, backend = "quickr")),
-      "Cannot compile a \"quickr\" program"
-    )
+    const_q <- with_backend("quickr", nv_scalar(1))
+    f <- jit(function(x) x + const_q)
+    expect_error(f(nv_scalar(1)), "Cannot compile a \"pjrt\" program")
+    const_x <- nv_scalar(1)
+    g <- jit(function(x) x + const_x)
+    expect_error(with_backend("quickr", g(nv_scalar(1))), "Cannot compile a \"quickr\" program")
   })
 
-  it("character device with backend = 'auto' is honored per chosen backend", {
-    skip_if_no_quickr()
-    f <- jit(identity, device = "cpu", backend = "auto")
-    expect_equal(device(f(nv_scalar(1, backend = "pjrt"))), nv_device("cpu", "pjrt"))
-    expect_equal(device(f(nv_scalar(1, backend = "quickr"))), nv_device("cpu", "quickr"))
+  it("concrete device string", {
+    f <- jit(identity, device = "cpu")
+    expect_equal(device(f(1)), nv_device("cpu"))
   })
 
-  it("concrete device with backend = 'auto' collapses to the device's backend", {
-    skip_if_no_quickr()
-    expect_error(
-      jit(identity, device = nv_device("cpu", "quickr"), backend = "auto"),
-      "Don't provide"
-    )
+  it("concrete device object", {
+    f <- jit(identity, device = pjrt::pjrt_device("cpu"))
+    expect_equal(backend(f(1)), "pjrt")
   })
 
-  it("device_arg caches separately per device value", {
+  it("rejects a device of another backend, and a non-device", {
     skip_if_no_quickr()
-    f <- jit(
-      function(dev) nv_scalar(1, device = dev),
-      backend = "auto",
-      device = device_arg("dev")
-    )
-    out_q <- f(nv_device("cpu", "quickr"))
-    out_x <- f(nv_device("cpu", "pjrt"))
-    expect_equal(backend(out_q), "quickr")
-    expect_equal(backend(out_x), "pjrt")
+    f <- jit(identity, device = pjrt::pjrt_device("cpu"))
+    expect_error(with_backend("quickr", f(1)), "backend in force")
+    expect_error(jit(identity, device = 1L), "must be a device")
+  })
+
+  it("resolves a character device on the backend in force", {
+    skip_if_no_quickr()
+    f <- jit(identity, device = "cpu")
+    expect_equal(device(f(nv_scalar(1))), nv_device("cpu"))
+    with_backend("quickr", expect_equal(device(f(nv_scalar(1))), nv_device("cpu")))
+  })
+
+  it("constant's device can be defined via static argument", {
+    f <- jit(function(x) nv_scalar(1, device = x), static = "x")
+    expect_equal(device(f("cpu:0")), nv_device("cpu:0"))
+    expect_equal(device(f("cpu:1")), nv_device("cpu:1"))
   })
 
   it("converts constants with device specification to specified device", {
     f <- jit(function() nv_scalar(1), device = "cpu:1")
-    expect_equal(device(f()), nv_device("cpu:1", "pjrt"))
+    expect_equal(device(f()), nv_device("cpu:1"))
   })
 
   it("device overrides found constant's device", {
     expect_equal(
       device(jit(\() nv_scalar(1, device = "cpu:1"), device = "cpu:0")()),
-      nv_device("cpu:0", "pjrt")
+      nv_device("cpu:0")
     )
   })
 
@@ -427,12 +385,12 @@ describe("jit: device and backend handling", {
     )
   })
   it("allocates scalar on default device when there is no AnvlArray to infer from", {
-    g <- jit(function() 1, backend = "pjrt")
-    expect_equal(device(g()), default_device("pjrt"))
+    g <- jit(function() 1)
+    expect_equal(device(g()), default_device())
   })
   it("uses specified device when input is R object", {
     g <- jit(function() 1, device = "cpu:1")
-    expect_equal(device(g()), nv_device("cpu:1", "pjrt"))
+    expect_equal(device(g()), nv_device("cpu:1"))
   })
   it("errs when finding conflicting constants", {
     skip_if(!is_cuda())
@@ -445,86 +403,56 @@ describe("jit: device and backend handling", {
       "more than one"
     )
   })
-  it("works with different device IDs for 'pjrt' backend", {
+  it("works with different device IDs for the pjrt backend", {
     f <- jit(identity)
     expect_equal(
       device(f(nv_scalar(1, device = "cpu:0"))),
-      nv_device("cpu:0", "pjrt")
+      nv_device("cpu:0")
     )
     skip_if(!is_cuda())
     expect_equal(
       device(f(nv_scalar(1, device = "cuda"))),
-      nv_device("cuda", "pjrt")
-    )
-  })
-  it("works with different devices with 'auto' backend", {
-    f <- jit(nv_log, backend = "auto")
-    expect_equal(
-      device(f(nv_scalar(1, device = "cpu"))),
-      nv_device("cpu", "pjrt")
-    )
-    skip_if(!is_cuda())
-    expect_equal(
-      device(f(nv_scalar(1, device = "cuda"))),
-      nv_device("cuda", "pjrt")
+      nv_device("cuda")
     )
   })
 
-  it("works when passing device as static arg for concrete backend", {
+  it("works when passing device as static arg", {
     f <- function(x) nv_scalar(1, device = x)
-    g <- jit(f, backend = "pjrt", static = "x")
-    expect_equal(device(g("cpu:0")), nv_device("cpu:0", "pjrt"))
-    expect_equal(device(g("cpu:1")), nv_device("cpu:1", "pjrt"))
+    g <- jit(f, static = "x")
+    expect_equal(device(g("cpu:0")), nv_device("cpu:0"))
+    expect_equal(device(g("cpu:1")), nv_device("cpu:1"))
   })
 
   # device_arg
-  it("device-arg works with concrete 'pjrt' backend", {
-    local_backend("pjrt")
-    f <- function(dev) nv_scalar(1, device = dev)
-    expect_error(
-      g <- jit(f, device = device_arg("dev"), backend = "pjrt"),
-      "is only allowed"
-    )
-  })
-
-  it("uses default backend when device_arg is character(1)", {
-    local_backend("pjrt")
-    f <- function(x) nv_scalar(1, device = x)
-    g <- jit(f, device = device_arg("x"), backend = "auto")
-    expect_equal(device(g("cpu:0")), nv_device("cpu:0", "pjrt"))
-    expect_equal(device(g("cpu:1")), nv_device("cpu:1", "pjrt"))
+  it("device_arg reads the device from a static argument", {
+    f <- jit(function(dev) nv_scalar(1, device = dev), device = device_arg("dev"))
+    expect_equal(device(f("cpu:0")), nv_device("cpu:0"))
+    expect_equal(device(f(nv_device("cpu:1"))), nv_device("cpu:1"))
     skip_if_no_quickr()
-    expect_equal(device(g(nv_device("cpu", "quickr"))), nv_device("cpu", "quickr"))
+    with_backend("quickr", expect_equal(device(f(nv_device("cpu"))), nv_device("cpu")))
   })
 
-  it("device_arg works with backend = NULL (uses default backend)", {
-    local_backend("pjrt")
-    f <- jit(function(dev) 1L, device = device_arg("dev"), backend = NULL)
-    expect_equal(device(f(nv_device("cpu:1", "pjrt"))), nv_device("cpu:1", "pjrt"))
+  it("device_arg rejects a device of another backend", {
+    skip_if_no_quickr()
+    f <- jit(function(dev) 1L, device = device_arg("dev"))
+    dev_q <- with_backend("quickr", nv_device("cpu"))
+    expect_error(f(dev_q), "backend in force")
   })
 
-  it("device_arg works with 'auto' backend", {
-    # device_arg is for JitFunctions that should work with any backend and infer device
-    # as runtime arg.
+  it("device_arg works next to further static arguments", {
     f <- jit(
-      function(val, dev) {
-        nv_array(val, device = dev)
-      },
+      function(val, dev) nv_array(val, device = dev),
       device = device_arg("dev"),
-      backend = "auto",
       static = c("val", "dev")
     )
-    dev0 <- nv_device("cpu", "pjrt")
+    dev0 <- nv_device("cpu")
     expect_true(device(f(1, dev0)) == dev0)
-    skip_if_no_quickr()
-    dev1 <- nv_device("cpu", "quickr")
-    expect_true(device(f(1, dev1)) == dev1)
   })
 
   it("literal's device can be defined via device_arg", {
     f <- jit(function(dev) 1L, device = device_arg("dev"))
-    expect_equal(device(f("cpu:0")), nv_device("cpu:0", "pjrt"))
-    expect_equal(device(f("cpu:1")), nv_device("cpu:1", "pjrt"))
+    expect_equal(device(f("cpu:0")), nv_device("cpu:0"))
+    expect_equal(device(f("cpu:1")), nv_device("cpu:1"))
   })
 })
 
@@ -532,11 +460,9 @@ test_that("cache hit when using PJRTDevice", {
   # this used to be a bug before pjrt 0.2.0, because every PJRTDevice was a new external pointer
   # and hashtab hashes address of xptr
 
-  # we don't need device_arg() as it is only for making jit backend-agnostic
-
   f <- jit(function(dev) nv_scalar(1, device = dev), static = "dev")
-  dev0 <- nv_device("cpu", "pjrt")
-  dev1 <- nv_device("cpu", "pjrt")
+  dev0 <- nv_device("cpu")
+  dev1 <- nv_device("cpu")
   f(dev = dev0)
   f(dev = dev1)
   expect_equal(cache_size(f), 1L)
@@ -586,7 +512,7 @@ test_that("static arguments without reference semantics are accepted", {
 
   # A device is an external pointer, but an immutable interned one.
   g <- jit(function(dev) nv_scalar(1, device = dev), static = "dev")
-  expect_equal(device(g(nv_device("cpu", "pjrt"))), nv_device("cpu", "pjrt"))
+  expect_equal(device(g(nv_device("cpu"))), nv_device("cpu"))
 
   # A plain list of values, and a formula (whose `.Environment` attribute is
   # metadata, not a value the trace reads).

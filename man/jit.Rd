@@ -4,14 +4,7 @@
 \alias{jit}
 \title{JIT compile a function}
 \usage{
-jit(
-  f,
-  static = character(),
-  cache_size = 100L,
-  backend = NULL,
-  device = NULL,
-  ...
-)
+jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 }
 \arguments{
 \item{f}{(\code{function})\cr
@@ -32,25 +25,20 @@ enclosing environment does not change in a way that modifies their behavior.}
 \item{cache_size}{(\code{integer(1)})\cr
 Maximum number of compiled executables to keep in the LRU cache.}
 
-\item{backend}{(\code{NULL} |  \code{character(1)})\cr
-Compilation backend (e.g. \code{"pjrt"}, \code{"quickr"}).
-The special value \code{"auto"} defers backend selection to call-time.
-\code{NULL} (default) respects \code{device} and otherwise falls back to \code{\link[=default_backend]{default_backend()}}.}
+\item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}} | \code{\link[=device_arg]{device_arg()}})\cr
+Target device, of the backend in force. When a concrete device is
+specified, all arrays are moved to it. \code{device_arg("<arg>")} reads the
+device from the named (static) argument at call time, for functions
+without array inputs such as constructors.
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link{nv_device}} | \code{device_arg()})\cr
-Target device. When a concrete device is specified, all arrays
-are moved to it.
+The default (\code{NULL}) infers the device at call time from the array inputs,
+falling back to \code{\link[=default_device]{default_device()}}.}
 
-The default (\code{NULL}) infers the device at call time,
-falling back to \code{\link[=default_device]{default_device()}}.
-
-In order to use dynamic device selection with the \code{"auto"} backend (e.g. for functions without
-dynamic inputs such as constant creation), set \code{device = device_arg("<arg>")}.}
-
-\item{...}{Backend-specific options. Passing an option that is not supported
-by the selected backend raises an error. See the \strong{PJRT JIT arguments} and
-\strong{Quickr JIT arguments} sections below for the options accepted by each
-backend.}
+\item{...}{Backend-specific options. See the \strong{PJRT JIT arguments} and
+\strong{Quickr JIT arguments} sections below for the options each backend
+accepts. An option no backend takes is rejected here; one that only
+another backend takes is rejected when the function is called on a backend
+that does not, since the backend is not known until then.}
 }
 \value{
 A \code{JitFunction} (a \code{function} with the same formals as \code{f}).
@@ -62,28 +50,22 @@ Wraps a function so that it is traced and compiled on first call. Subsequent
 calls with the same input structure, shapes, and dtypes hit an LRU cache and
 skip recompilation.
 }
-\section{Device and Backend selection}{
+\section{Backend and device}{
 
-There are various ways to specify which device and which backend to use.
+A jitted function runs on the backend in force \emph{when it is called}
+(\code{\link[=default_backend]{default_backend()}}, set with \code{\link[=with_backend]{with_backend()}} / \code{\link[=local_backend]{local_backend()}}),
+so one \code{JitFunction} serves every backend, and a function created under one
+backend and called under another runs on the latter. Array inputs must
+belong to that backend; an array of another backend is rejected. Each
+backend keeps its own compilation cache.
 
-\strong{Concrete backend}:
-In the case where we fix a concrete backend (backend is not \code{"auto"}), the device can be
-inferred or set explicitly.
-Setting the device explicitly allows you to enforce that the function always uses the specified
-device, e.g. \code{"cuda:0"}.
-If the \code{device} argument is set, all encountered arrays are copied to it.
-
-If the device is not specified (\code{NULL}; default) the device will be inferred from the input
-arrays and the constants within the program. If conflicting devices are found, an error
-is thrown. If no array with a device is found, we fall back to the default device.
-
-\strong{Auto backend}:
-When setting \code{backend = "auto"}, the backend will be inferred from the array inputs and
-otherwise fall back to the default backend.
-If you want to \code{jit()} a function without array inputs but make it work with different devices,
-set \code{device = device_arg("<argname>")} where \verb{<argname>} is the name of the argument specifying
-the device. Note that this is only necessary with the \code{"auto"} backend.
-When using a concrete backend, you can just specify the device via a static argument.
+The device is a choice within that backend. Setting \code{device} explicitly
+enforces that the function always uses it, e.g. \code{"cuda:0"}, and copies every
+array input to it. With \code{device = NULL} (default) the device is inferred from
+the input arrays and the constants within the program; conflicting devices
+are an error, and with no array to read a device from the default device is
+used. A function without array inputs can read its device from a static
+argument with \code{device = device_arg("<argname>")}.
 }
 
 \section{Jitting in a Package}{
@@ -140,10 +122,8 @@ g(nv_array(3), TRUE)
 g(nv_array(3), FALSE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-with_backend("quickr", {
-  h <- jit(function(x, y) x + y)
-  h(nv_array(1), nv_array(2))
-})
+# The same function runs on whichever backend is in force when it is called
+with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

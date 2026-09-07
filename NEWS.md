@@ -7,6 +7,16 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
+* There is now exactly one backend in force at a time, named by the option
+  `anvl.backend` (renamed from `anvl.default_backend`) and set for a scope with
+  `local_backend()` / `with_backend()`. Every array is built on it and every
+  jitted function runs on it, reading the backend when it is *called*; an array
+  of another backend is an error. Nothing infers a backend from arguments any
+  more: `jit()` lost its `backend` argument (`"auto"` included), and
+  `nv_array()`, `nv_scalar()`, `nv_matrix()`, `nv_empty()`, `nv_array_like()`,
+  `nv_scalar_like()`, `nv_device()`, `nv_read()` and `nv_unserialize()` lost
+  theirs. `device_arg()` still reads a jitted function's device from an
+  argument, but the device has to belong to the backend in force.
 
 ## Bug fixes
 

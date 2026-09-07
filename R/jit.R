@@ -23,48 +23,38 @@
 #'
 #' @param cache_size (`integer(1)`)\cr
 #'   Maximum number of compiled executables to keep in the LRU cache.
-#' @param backend (`NULL` |  `character(1)`)\cr
-#'   Compilation backend (e.g. `"pjrt"`, `"quickr"`).
-#'   The special value `"auto"` defers backend selection to call-time.
-#'   `NULL` (default) respects `device` and otherwise falls back to [`default_backend()`].
-#' @param device (`NULL` | `character(1)` | [`nv_device`] | `device_arg()`)\cr
-#'   Target device. When a concrete device is specified, all arrays
-#'   are moved to it.
+#' @param device (`NULL` | `character(1)` | [`nv_device`] | [`device_arg()`])\cr
+#'   Target device, of the backend in force. When a concrete device is
+#'   specified, all arrays are moved to it. `device_arg("<arg>")` reads the
+#'   device from the named (static) argument at call time, for functions
+#'   without array inputs such as constructors.
 #'
-#'   The default (`NULL`) infers the device at call time,
+#'   The default (`NULL`) infers the device at call time from the array inputs,
 #'   falling back to [`default_device()`].
 #'
-#'   In order to use dynamic device selection with the `"auto"` backend (e.g. for functions without
-#'   dynamic inputs such as constant creation), set `device = device_arg("<arg>")`.
-#'
-#' @param ... Backend-specific options. Passing an option that is not supported
-#'   by the selected backend raises an error. See the **PJRT JIT arguments** and
-#'   **Quickr JIT arguments** sections below for the options accepted by each
-#'   backend.
+#' @param ... Backend-specific options. See the **PJRT JIT arguments** and
+#'   **Quickr JIT arguments** sections below for the options each backend
+#'   accepts. An option no backend takes is rejected here; one that only
+#'   another backend takes is rejected when the function is called on a backend
+#'   that does not, since the backend is not known until then.
 #' @inheritSection AnvlBackendPjrt PJRT JIT arguments
 #' @inheritSection AnvlBackendQuickr Quickr JIT arguments
 #'
-#' @section Device and Backend selection:
-#' There are various ways to specify which device and which backend to use.
+#' @section Backend and device:
+#' A jitted function runs on the backend in force *when it is called*
+#' ([`default_backend()`], set with [`with_backend()`] / [`local_backend()`]),
+#' so one `JitFunction` serves every backend, and a function created under one
+#' backend and called under another runs on the latter. Array inputs must
+#' belong to that backend; an array of another backend is rejected. Each
+#' backend keeps its own compilation cache.
 #'
-#' **Concrete backend**:
-#' In the case where we fix a concrete backend (backend is not `"auto"`), the device can be
-#' inferred or set explicitly.
-#' Setting the device explicitly allows you to enforce that the function always uses the specified
-#' device, e.g. `"cuda:0"`.
-#' If the `device` argument is set, all encountered arrays are copied to it.
-#'
-#' If the device is not specified (`NULL`; default) the device will be inferred from the input
-#' arrays and the constants within the program. If conflicting devices are found, an error
-#' is thrown. If no array with a device is found, we fall back to the default device.
-#'
-#' **Auto backend**:
-#' When setting `backend = "auto"`, the backend will be inferred from the array inputs and
-#' otherwise fall back to the default backend.
-#' If you want to `jit()` a function without array inputs but make it work with different devices,
-#' set `device = device_arg("<argname>")` where `<argname>` is the name of the argument specifying
-#' the device. Note that this is only necessary with the `"auto"` backend.
-#' When using a concrete backend, you can just specify the device via a static argument.
+#' The device is a choice within that backend. Setting `device` explicitly
+#' enforces that the function always uses it, e.g. `"cuda:0"`, and copies every
+#' array input to it. With `device = NULL` (default) the device is inferred from
+#' the input arrays and the constants within the program; conflicting devices
+#' are an error, and with no array to read a device from the default device is
+#' used. A function without array inputs can read its device from a static
+#' argument with `device = device_arg("<argname>")`.
 #'
 #' @section Jitting in a Package:
 #' To `jit()` a function defined in an R package, prefer the `@jit` roxygen
@@ -103,58 +93,137 @@
 #' g(nv_array(3), FALSE)
 #'
 #' @examplesIf requireNamespace("quickr", quietly = TRUE)
-#' with_backend("quickr", {
-#'   h <- jit(function(x, y) x + y)
-#'   h(nv_array(1), nv_array(2))
-#' })
+#' # The same function runs on whichever backend is in force when it is called
+#' with_backend("quickr", f(nv_array(1), nv_array(2)))
 jit <- function(
   f,
   static = character(),
   cache_size = 100L,
-  backend = NULL,
   device = NULL,
   ...
 ) {
   static <- resolve_arg_names(f, static, "static")
   if (is_device_arg(device)) {
-    if (!(device$argname %in% static)) {
-      static <- c(static, device$argname)
-    }
-    if (is.null(backend) || identical(backend, "auto")) {
-      return(jit_auto(f, static, cache_size, device_argname = device$argname, ...))
-    }
-    # There is really no need to support this. device_arg() is really about being able to detect
-    # backend at the start so we know which backend's jit method to call.
-    cli_abort(c(
-      "device = device_arg() is only allowed with backend `NULL` or \"auto\".",
-      i = "Just use a static argument for the device selection"
-    ))
+    assert_subset(device$argname, formalArgs2(f))
+    # the device argument is always static
+    static <- unique(c(static, device$argname))
+  } else if (!is.null(device) && !is.character(device) && !is_device(device)) {
+    cli_abort("{.arg device} must be a device, a device name, or {.fn device_arg}.")
   }
-  if (identical(backend, "auto")) {
-    if (is_device(device)) {
-      cli_abort("Don't provide a concrete device when using the \"auto\" backend.")
-    } else {
-      return(jit_auto(f, static, cache_size, device = device, ...))
-    }
-  }
-  # device might still be NULL, which means infer from encountered arrays
-  resolved <- resolve_device(device, backend)
-  device <- resolved[[1L]]
-  backend <- resolved[[2L]]
+  assert_subset(static, formalArgs2(f))
+  check_jit_options(list(...))
 
-  jit_with_backend(f, static, cache_size, backend, device = device, ...)
+  # One implementation per backend, created on first use. The backend is read
+  # off the option on every call, so a function created under one backend runs
+  # on another when that is the one in force -- and each implementation's
+  # dispatcher validates that the array inputs belong to it.
+  #
+  # The wrapper takes `f`'s formals, so everything it closes over is named with
+  # a `.jit_` prefix: a formal of `f` called `device` or `static` must not
+  # shadow the configuration (prim_fill() has a `device` formal).
+  .jit_cfg <- list(f = f, static = static, cache_size = cache_size, device = device, dots = list(...))
+  .jit_fns <- list()
+  .jit_runs <- list()
+
+  wrapper <- function() {
+    # Inside tracing: pass through to unwrapped function
+    if (currently_tracing()) {
+      .jit_cl <- match.call()
+      .jit_cl[[1L]] <- .jit_cfg$f
+      return(eval.parent(.jit_cl))
+    }
+    .jit_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+    .jit_be <- default_backend()
+    .jit_run <- .jit_runs[[.jit_be]]
+    if (is.null(.jit_run)) {
+      if (is.null(.jit_fns[[.jit_be]])) {
+        .jit_fns[[.jit_be]] <<- do.call(
+          jit_with_backend,
+          c(
+            list(
+              f = .jit_cfg$f,
+              static = .jit_cfg$static,
+              cache_size = .jit_cfg$cache_size,
+              backend = .jit_be,
+              device = .jit_cfg$device
+            ),
+            .jit_cfg$dots
+          )
+        )
+      }
+      .jit_run <- attr(.jit_fns[[.jit_be]], "jit_run_args")
+      if (is.null(.jit_run)) {
+        # backend without a fast entry: call the JitFunction the generic way
+        .jit_run <- function(args) do.call(.jit_fns[[.jit_be]], args)
+      }
+      .jit_runs[[.jit_be]] <<- .jit_run
+    }
+    # The args are already evaluated; the fast entry skips the inner
+    # closure's match.call() + eval() re-capture (and do.call()).
+    .jit_run(.jit_args)
+  }
+  formals(wrapper) <- formals2(f)
+  class(wrapper) <- "JitFunction"
+  wrapper
 }
 
+# The options a backend's `jit` method takes beyond the ones every backend
+# gets, i.e. what may reach it through `jit()`'s `...`.
+backend_jit_options <- function(backend) {
+  setdiff(formalArgs2(globals$backends[[backend]]$jit), c("f", "static", "cache_size", "device", "..."))
+}
+
+# Reject at construction what no backend could ever accept. An option only
+# *another* backend takes is left for jit_with_backend(), since the backend a
+# jitted function runs on is not known until it is called.
+check_jit_options <- function(options) {
+  if (!length(options)) {
+    return(invisible(NULL))
+  }
+  known <- sort(unique(unlist(lapply(names(globals$backends), backend_jit_options))))
+  names <- rlang::names2(options)
+  if (!all(nzchar(names))) {
+    cli_abort(c(
+      "Every argument of {.arg ...} must be a named backend option.",
+      i = "The backend-specific options are {.arg {known}}."
+    ))
+  }
+  if ("backend" %in% names) {
+    cli_abort(c(
+      "{.fn jit} has no {.arg backend} argument.",
+      i = "A jitted function runs on the backend in force when it is called.",
+      i = "Set it with {.fn with_backend} or {.fn local_backend}."
+    ))
+  }
+  unknown <- setdiff(names, known)
+  if (length(unknown)) {
+    cli_abort(c(
+      "No backend takes the {.arg {unknown}} {cli::qty(unknown)}option{?s}.",
+      i = "The backend-specific options are {.arg {known}}."
+    ))
+  }
+  invisible(NULL)
+}
+
+# The implementation of `f` for one backend: its `jit` method's result, with
+# `f`'s formals. `device` is NULL, a device or device name of that backend, or a
+# device_arg().
 jit_with_backend <- function(f, static, cache_size, backend, ...) {
   assert_backend(backend)
-  assert_subset(static, formalArgs2(f))
-
+  unsupported <- setdiff(names(list(...)), c("device", backend_jit_options(backend)))
+  if (length(unsupported)) {
+    cli_abort(c(
+      "The {.val {backend}} backend does not support the {.arg {unsupported}} {cli::qty(unsupported)}option{?s}.",
+      i = "A jitted function runs on the backend in force when it is called, so a backend-specific option is
+           only rejected once the function is called on a backend that does not take it.",
+      i = "{.val {backend}} takes {.arg {backend_jit_options(backend)}}."
+    ))
+  }
   f_jit <- globals$backends[[backend]]$jit(f, static, cache_size, ...)
   # setting formals() rebuilds the function, so pick up the fast entry first
   run <- attr(f_jit, "jit_run_args")
   formals(f_jit) <- formals2(f)
   class(f_jit) <- "JitFunction"
-  attr(f_jit, "backend") <- backend
   attr(f_jit, "jit_run_args") <- run
   f_jit
 }
@@ -163,24 +232,24 @@ jit_with_backend <- function(f, static, cache_size, backend, ...) {
 #' @description
 #' Pass the result to [`jit()`]'s `device` argument to indicate that the
 #' device should be read from a formal argument of the function being
-#' compiled. At call time, the value of that argument is used to derive the
-#' backend via [`backend()`] dispatch and is forwarded to the backend-specific
-#' JIT as the compilation device.
+#' compiled. At call time, the value of that argument -- a device of the
+#' backend in force, or a device name -- is the device the program is compiled
+#' for. The argument is static.
 #'
 #' This is intended for functions that have no dynamic array inputs from which
-#' the backend could otherwise be detected (e.g. array constructors like
+#' the device could otherwise be inferred (e.g. array constructors like
 #' [prim_fill()] or [prim_iota()]).
 #'
 #' @param argname (`character(1)`)\cr
 #'   Name of a formal argument of the function passed to [`jit()`].
 #' @return (`AnvlDeviceArg`)\cr
 #'   An object recognized by [`jit()`].
-#' @seealso [`jit()`], [`backend()`]
+#' @seealso [`jit()`], [`nv_device()`]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
 #' f <- function(x) nv_scalar(1, device = x)
-#' g <- jit(f, backend = "auto", device = device_arg("x"))
-#' g(nv_device("cpu", "pjrt"))
+#' g <- jit(f, device = device_arg("x"))
+#' g(nv_device("cpu"))
 device_arg <- function(argname) {
   assert_string(argname)
   structure(list(argname = argname), class = "AnvlDeviceArg")
@@ -206,114 +275,6 @@ resolve_arg_names <- function(f, x, arg) {
   }
   x
 }
-
-#' @export
-backend.JitFunction <- function(x, ...) {
-  attr(x, "backend")
-}
-
-jit_auto <- function(f, static, cache_size, device = NULL, device_argname = NULL, ...) {
-  # A concrete device would pin the backend and defeat the purpose of `auto`;
-  # `jit()` collapses that case to `jit_with_backend` before we get here.
-  if (is_device(device)) {
-    cli_abort("Internal error: jit_auto called with a concrete device; backend should have been pinned.")
-  }
-  # Lazily create per-backend jit functions (+ their evaluated-args fast entry)
-  jit_fns <- list()
-  jit_runs <- list()
-  dots <- list(...)
-  if (!is.null(device_argname)) {
-    assert_subset(device_argname, formalArgs2(f))
-    # the device argument is always static
-    static <- unique(c(static, device_argname))
-  }
-
-  wrapper <- function() {
-    # Inside tracing: pass through to unwrapped function
-    if (currently_tracing()) {
-      cl <- match.call()
-      cl[[1L]] <- f
-      return(eval.parent(cl))
-    }
-    args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-    be <- if (!is.null(device_argname) && !is.null(args[[device_argname]])) {
-      dev_val <- args[[device_argname]]
-      if (is.character(dev_val)) default_backend() else backend(dev_val)
-    } else {
-      jit_auto_detect_backend(args, static)
-    }
-    run <- jit_runs[[be]]
-    if (is.null(run)) {
-      if (is.null(jit_fns[[be]])) {
-        jit_fns[[be]] <<- do.call(
-          jit_with_backend,
-          c(
-            list(f = f, static = static, cache_size = cache_size, backend = be),
-            if (!is.null(device_argname)) {
-              list(device = device_arg(device_argname))
-            } else if (!is.null(device)) {
-              list(device = device)
-            },
-            dots
-          )
-        )
-      }
-      run <- attr(jit_fns[[be]], "jit_run_args")
-      if (is.null(run)) {
-        # backend without a fast entry: call the JitFunction the generic way
-        run <- function(args) do.call(jit_fns[[be]], args)
-      }
-      jit_runs[[be]] <<- run
-    }
-    # The args are already evaluated; the fast entry skips the inner
-    # closure's match.call() + eval() re-capture (and do.call()).
-    run(args)
-  }
-  formals(wrapper) <- formals2(f)
-  class(wrapper) <- "JitFunction"
-  attr(wrapper, "backend") <- "auto"
-  wrapper
-}
-
-# Determine the backend from a call's (already evaluated) arguments: the single
-# non-"plain" backend among the AnvlArray leaves, or default_backend() if none.
-# A direct short-circuiting scan that reads `$backend` as a field -- this is on
-# the hot eager-dispatch path, so it avoids flatten()/vapply()/unique()/`%in%`.
-jit_auto_detect_backend <- function(args, static = character()) {
-  found <- NA_character_
-  scan <- function(x) {
-    if (is_anvl_array(x)) {
-      b <- x$backend
-      if (!identical(b, "plain")) {
-        if (is.na(found)) {
-          found <<- b
-        } else if (!identical(found, b)) {
-          cli_abort(c(
-            "Cannot auto-detect backend: inputs use multiple backends.",
-            i = "Found backends: {.val {c(found, b)}}",
-            i = "Pass {.code backend =} to {.fn jit} or convert inputs to a common backend."
-          ))
-        }
-      }
-    } else if (is.list(x) && !is.object(x)) {
-      for (el in x) {
-        scan(el)
-      }
-    }
-  }
-  if (length(static) == 0L) {
-    for (a in args) {
-      scan(a)
-    }
-  } else {
-    nm <- rlang::names2(args)
-    for (i in seq_along(args)) {
-      if (!(nm[[i]] %in% static)) scan(args[[i]])
-    }
-  }
-  if (is.na(found)) default_backend() else found
-}
-
 
 # The flat argument list a compile callback traces with, built from the `info`
 # pjrt's dispatcher hands it: a static leaf traces as its value, a dynamic one

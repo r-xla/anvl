@@ -1,36 +1,31 @@
-test_that("nv_device dispatches to the backend-specific constructor", {
+test_that("nv_device builds a device of the backend in force", {
   skip_if_no_quickr()
-  dev <- nv_device("cpu", backend = "quickr")
+  dev <- with_backend("quickr", nv_device("cpu"))
   expect_s3_class(dev, "QuickrDevice")
   expect_equal(backend(dev), "quickr")
-})
-
-test_that("nv_device returns PJRTDevice for pjrt backend", {
   skip_if(!pjrt::plugins_downloaded())
-  dev <- nv_device("cpu", backend = "pjrt")
+  dev <- nv_device("cpu")
   expect_s3_class(dev, "PJRTDevice")
   expect_equal(backend(dev), "pjrt")
 })
 
 test_that("nv_device errors on the plain backend", {
-  expect_error(nv_device("cpu", backend = "plain"), "plain")
+  expect_error(with_backend("plain", nv_device("cpu")), "plain")
 })
 
-test_that("nv_device errors when pass-through device has mismatched backend", {
+test_that("nv_device rejects a device of another backend", {
   skip_if_no_quickr()
   skip_if(!pjrt::plugins_downloaded())
-  dev <- nv_device("cpu", backend = "quickr")
-  expect_error(
-    nv_device(dev, backend = "pjrt"),
-    "has backend"
-  )
+  dev <- with_backend("quickr", nv_device("cpu"))
+  expect_error(nv_device(dev), "backend in force")
 })
 
 test_that("nv_device returns an existing device unchanged", {
   skip_if_no_quickr()
-  dev <- nv_device("cpu", backend = "quickr")
-  expect_identical(nv_device(dev), dev)
-  expect_identical(nv_device(dev, backend = "quickr"), dev)
+  with_backend("quickr", {
+    dev <- nv_device("cpu")
+    expect_identical(nv_device(dev), dev)
+  })
 })
 
 test_that("default_device(backend = ...) uses the specified backend", {
@@ -45,7 +40,7 @@ test_that("is_device recognizes backend device objects", {
   expect_false(is_device(NULL))
   expect_false(is_device(1L))
   skip_if_no_quickr()
-  expect_true(is_device(nv_device("cpu", backend = "quickr")))
+  expect_true(is_device(with_backend("quickr", nv_device("cpu"))))
   skip_if(!pjrt::plugins_downloaded())
-  expect_true(is_device(nv_device("cpu", backend = "pjrt")))
+  expect_true(is_device(nv_device("cpu")))
 })

@@ -14,7 +14,9 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
   function(info) {
     check_static_args(info$args, static)
     compile_device <- if (is_device_arg(device)) {
-      info$args[[device$argname]]
+      # A device read from an argument still has to be one of this backend;
+      # NULL leaves it to be inferred, as without a device policy.
+      device_from_arg(info$args[[device$argname]], "pjrt")
     } else {
       device
     }
@@ -46,7 +48,7 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
 # device: NULL | PJRTDdevice | AnvlDeviceArg;
 jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   if (!is.null(device) && !is_device_arg(device)) {
-    device <- nv_device(device, "pjrt")
+    device <- backend_device(device, "pjrt")
   }
 
   # pjrt's native dispatcher is the single cache + dispatch path. With a
@@ -70,7 +72,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   # every evaluation, which costs ~1us per lookup.
   dispatch <- pjrt::dispatch
 
-  # One call on already-evaluated args. This is the fast entry: jit_auto's
+  # One call on already-evaluated args. This is the fast entry: jit()'s
   # wrapper (which has already captured and evaluated the arguments) calls it
   # directly via the "jit_run_args" attribute, skipping the inner closure's
   # match.call() + eval() re-capture. The dispatcher validates the inputs
