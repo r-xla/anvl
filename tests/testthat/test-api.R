@@ -495,8 +495,6 @@ describe("nv_reduce_sum / nv_reduce_prod / nv_mean nan_rm", {
 })
 
 describe("boolean accumulation in nv_reduce_sum / nv_reduce_prod / nv_cumsum / nv_cumprod", {
-  # StableHLO's `add` / `multiply` are a logical or/and on `bool`, so without a
-  # promotion these accumulate to a boolean instead of a tally.
   v <- c(TRUE, FALSE, TRUE)
   x <- nv_array(v)
 

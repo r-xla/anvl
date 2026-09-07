@@ -2015,12 +2015,6 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
   resolve_axes(axes, naxes(x), arg = "axes", unique = TRUE)
 }
 
-# `sum`, `prod` and their cumulative forms accumulate a total, so a boolean
-# input is counted rather than folded: StableHLO's `add` and `multiply` are a
-# logical or/and on `bool`, which would make `nv_reduce_sum(x_bool)` an
-# `nv_reduce_any()`. Crossing into the integer category is the `nv_*` layer's
-# job, so the primitives keep the StableHLO semantics and the count happens
-# here, at `i32` -- the data type an R integer commits to.
 .count_bool <- function(x) {
   if (is_dtype_bool(peek_dtype(x))) nv_convert(x, "i32") else x
 }
