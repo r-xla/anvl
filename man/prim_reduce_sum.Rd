@@ -27,6 +27,9 @@ When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 
 }
 \description{
 Sums array elements along the specified axes.
+
+A boolean input is reduced with a logical OR, so the result is a boolean
+rather than a count. \code{\link[=nv_reduce_sum]{nv_reduce_sum()}} counts instead.
 }
 \section{Implemented Rules}{
 

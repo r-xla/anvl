@@ -672,6 +672,9 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @title Primitive Sum Reduction
 #' @description
 #' Sums array elements along the specified axes.
+#'
+#' A boolean input is reduced with a logical OR, so the result is a boolean
+#' rather than a count. [nv_reduce_sum()] counts instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -695,6 +698,9 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @title Primitive Product Reduction
 #' @description
 #' Multiplies array elements along the specified axes.
+#'
+#' A boolean input is reduced with a logical AND, so the result is a boolean.
+#' [nv_reduce_prod()] multiplies zeroes and ones instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -857,6 +863,9 @@ cum_extreme_op <- function(x, axis) {
 #' @description
 #' Cumulative sum of array elements along a single axis.
 #' Output position `j` along `axis` equals the sum of input positions `1:j`.
+#'
+#' A boolean input is accumulated with a logical OR, so the result is a running
+#' OR rather than a running count. [nv_cumsum()] counts instead.
 #' @template param_prim_x_any
 #' @template param_prim_cum_axis
 #' @template return_prim_unary
@@ -875,6 +884,9 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' @description
 #' Cumulative product of array elements along a single axis.
 #' Output position `j` along `axis` equals the product of input positions `1:j`.
+#'
+#' A boolean input is accumulated with a logical AND, so the result is a
+#' running AND. [nv_cumprod()] multiplies zeroes and ones instead.
 #' @template param_prim_x_any
 #' @template param_prim_cum_axis
 #' @template return_prim_unary

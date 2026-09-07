@@ -24,12 +24,15 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input.
+Has the same data type as the input, except for a boolean input, which is
+accumulated at \code{i32}: \code{TRUE} counts as one, rather than being folded with
+a logical or/and.
 When \code{drop = TRUE}, the reduced axes are removed.
 When \code{drop = FALSE}, the reduced axes are set to 1.
 }
 \description{
 Multiplies array elements along the specified axes.
+A boolean array is multiplied as zeroes and ones, like \code{\link[base:prod]{base::prod()}} does.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
