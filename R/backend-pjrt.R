@@ -8,22 +8,16 @@ NULL
 # miss is where a static value is first used, and pjrt cannot know which values
 # anvl considers sound to key on. `info` carries the tree, the flat leaves, the
 # static mask, and the avals the cache key was built from.
-# `device` is the jit's device policy: NULL (infer), a concrete device, or a
-# device_arg() whose value is read from the static args.
+# `device` is the jit's device policy: NULL (infer) or a concrete device.
 jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
   function(info) {
     check_static_args(info$args, static)
-    compile_device <- if (is_device_arg(device)) {
-      info$args[[device$argname]]
-    } else {
-      device
-    }
     compiled <- compile_pjrt(
       f,
       args_flat = avals_from_dispatch(info),
       in_tree = info$in_tree,
       donate = donate,
-      device = compile_device,
+      device = device,
       arg_devices = dispatch_arg_devices(info),
       fallback_device = info$default_device
     )
@@ -43,16 +37,16 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
   }
 }
 
-# device: NULL | PJRTDdevice | AnvlDeviceArg;
+# device: NULL | PJRTDevice
 jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
-  if (!is.null(device) && !is_device_arg(device)) {
-    device <- nv_device(device, "pjrt")
+  if (!is.null(device)) {
+    device <- backend_device(device, "pjrt")
   }
 
   # pjrt's native dispatcher is the single cache + dispatch path. With a
-  # target device (jit(device = ) or device_arg()) it copies buffer inputs to
-  # the entry's device per call (move_inputs); otherwise the first input's
-  # device is the call's device.
+  # target device (jit(device = )) it copies buffer inputs to the entry's
+  # device per call (move_inputs); otherwise the first input's device is the
+  # call's device.
   dispatcher <- pjrt::dispatcher(
     cache_size,
     jit_pjrt_compile_cb(f, static, donate, device),
@@ -70,7 +64,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
   # every evaluation, which costs ~1us per lookup.
   dispatch <- pjrt::dispatch
 
-  # One call on already-evaluated args. This is the fast entry: jit_auto's
+  # One call on already-evaluated args. This is the fast entry: jit()'s
   # wrapper (which has already captured and evaluated the arguments) calls it
   # directly via the "jit_run_args" attribute, skipping the inner closure's
   # match.call() + eval() re-capture. The dispatcher validates the inputs

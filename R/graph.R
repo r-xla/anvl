@@ -188,9 +188,9 @@ AnvlGraph <- function(
 #'   `NULL` when all args are array inputs.
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
-#' @param devices (`character()`)\cr
-#'   Device platforms encountered during tracing (e.g. `"cpu"`, `"cuda"`).
-#'   Populated automatically as arrays are registered.
+#' @param devices (`list()`)\cr
+#'   Devices encountered during tracing: the device of every concrete array
+#'   registered in the graph, plus the ones declared by [`graph_desc_add()`].
 #' @return (`GraphDescriptor`)
 #' @export
 GraphDescriptor <- function(
@@ -831,10 +831,21 @@ is_graph_box <- function(x) {
 #' @param desc ([`GraphDescriptor`] | `NULL`)\cr
 #'   The graph descriptor to add the primitive call to.
 #'   Uses the [current descriptor][.current_descriptor] if `NULL`.
+#' @param device (`NULL` | `character(1)` | device object)\cr
+#'   The device the call places its result on, for a primitive that constructs
+#'   an array out of nothing (e.g. [`prim_fill()`], [`prim_iota()`]) and so has
+#'   no operand to carry one. It is declared to `desc`, where it counts like
+#'   the device of an array input to the same trace: it decides what that
+#'   program is compiled for, and disagreeing with another device in it is an
+#'   error. Every other primitive takes its device from its operands and leaves
+#'   this `NULL`.
 #' @return (`list` of [`GraphBox`])
 #' @export
-graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL) {
+graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL, device = NULL) {
   desc <- desc %||% .current_descriptor(silent = TRUE)
+  if (!is.null(device)) {
+    desc$devices <- c(desc$devices, nv_device(device))
+  }
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }

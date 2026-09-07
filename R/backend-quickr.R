@@ -51,7 +51,12 @@ jit_quickr_compile_cb <- function(f, static, unwrap) {
   }
 }
 
-jit_quickr_impl <- function(f, static, cache_size, unwrap) {
+jit_quickr_impl <- function(f, static, cache_size, unwrap, device) {
+  if (!is.null(device)) {
+    # quickr has one device, so there is nothing to place; this only rejects a
+    # device of another backend.
+    backend_device(device, "quickr")
+  }
   # use pjrt's "closure" engine for quickr.
   dispatcher <- pjrt::dispatcher(
     cache_size,
@@ -244,7 +249,7 @@ AnvlBackendQuickr <- function() {
     },
     jit = function(f, static, cache_size, unwrap = FALSE, device = NULL) {
       assert_flag(unwrap)
-      jit_quickr_impl(f, static, cache_size, unwrap)
+      jit_quickr_impl(f, static, cache_size, unwrap, device)
     },
     await_data = function(x) invisible(NULL)
   )

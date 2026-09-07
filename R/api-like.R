@@ -3,11 +3,10 @@ like_defaults <- function(like, ...) {
   getters <- list(
     dtype = dtype,
     shape = shape,
-    # `device` and `backend` only come from concrete AnvlArrays. For a
-    # GraphBox (during tracing) they stay NULL so downstream constructors
-    # pick them up from the tracing context.
-    device = function(x) if (is_anvl_array(x)) device(x),
-    backend = function(x) if (is_anvl_array(x)) backend(x)
+    # `device` only comes from a concrete AnvlArray. For a GraphBox (during
+    # tracing) it stays NULL so downstream constructors pick it up from the
+    # tracing context.
+    device = function(x) if (is_anvl_array(x)) device(x)
   )
   for (name in names(args)) {
     if (is.null(args[[name]])) {
@@ -19,27 +18,27 @@ like_defaults <- function(like, ...) {
 
 #' @rdname AnvlArray
 #' @param like ([`AnvlArray`])\cr
-#'   An existing array. Any of `dtype`, `device`, `shape`, and `backend`
-#'   that are `NULL` (the default) are taken from `like`.
+#'   An existing array. Any of `dtype`, `device` and `shape` that are `NULL`
+#'   (the default) are taken from `like`.
 #' @export
-nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = NULL, backend = NULL) {
+nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = NULL) {
   do.call(
     nv_array,
     c(
       list(data = data),
-      like_defaults(like, dtype = dtype, device = device, shape = shape, backend = backend)
+      like_defaults(like, dtype = dtype, device = device, shape = shape)
     )
   )
 }
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar_like <- function(like, data, dtype = NULL, device = NULL, backend = NULL) {
+nv_scalar_like <- function(like, data, dtype = NULL, device = NULL) {
   do.call(
     nv_scalar,
     c(
       list(data = data),
-      like_defaults(like, dtype = dtype, device = device, backend = backend)
+      like_defaults(like, dtype = dtype, device = device)
     )
   )
 }

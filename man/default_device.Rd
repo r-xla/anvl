@@ -8,17 +8,17 @@ default_device(backend = NULL)
 }
 \arguments{
 \item{backend}{(\code{NULL} | \code{character(1)})\cr
-Backend. Defaults to \code{\link[=default_backend]{default_backend()}} when \code{NULL}.}
+Backend. Defaults to \code{\link[=active_backend]{active_backend()}} when \code{NULL}.}
 }
 \value{
 A backend-specific device object.
 }
 \description{
-Returns a device object for the default backend and platform.
-For the \code{"pjrt"} backend, the platform is determined by the \code{PJRT_PLATFORM}
+Returns the default device of the active backend.
+For the \code{"pjrt"} backend, the default device is configured by the \code{PJRT_PLATFORM}
 environment variable (defaulting to \code{"cpu"}). Other backends (e.g. \code{"quickr"})
-only support CPU. The backend defaults to \code{\link[=default_backend]{default_backend()}}.
+only support CPU.
 }
 \seealso{
-\code{\link[=nv_device]{nv_device()}}, \code{\link[=default_backend]{default_backend()}}
+\code{\link[=nv_device]{nv_device()}}, \code{\link[=active_backend]{active_backend()}}
 }

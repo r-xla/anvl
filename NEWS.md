@@ -9,20 +9,27 @@
 * `jit_eval()` was removed as it is no longer needed.
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
   accumulate a boolean array at `i32` instead of returning a boolean.
-  StableHLO's `add` and `multiply` are a logical or/and on `bool`, so
-  `nv_reduce_sum(x)` used to be `nv_reduce_any(x)`; it now counts, as
-  `base::sum()` does. `nv_mean()`, `nv_var()` and `nv_sd()` of a boolean array
-  are correct as a result. The primitives (`prim_reduce_sum()` and friends)
-  keep the StableHLO semantics.
-* A `Shape` (re-exported from {stablehlo}) *is* its integer vector now, with a
-  class attached, rather than a list wrapping one. `length(shape)` is the number
-  of axes, `shape[i]` is the size of axis `i`, and `shape$dims` is gone -- read
-  the axis sizes with `unclass()`. `shape()` keeps working on an array; it is
-  only the `Shape` object itself that no longer has a `shape()` method, having
-  nothing left to unwrap.
+* `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
+  default) and errors for any other `mode`.
+* `default_backend()` is now called `active_backend()`.
+* There is now exactly one backend used at a time and it is configured via the
+  `anvl.backend` option.
+* A `Shape` is now represented as an integer vector.
+
+## Features
+
+* `as.vector` now and returns `bit64::integer64`
+  for integer types that don't fit into R's 32 bit integers.
+  With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* New promotion rule `promote_if()`.
+* New utility functions `has_dtype_<dtype>`.
+* `as_anvl_array` and `as_anvl_arrays` now have a `.promote` parameter.
 
 ## Bug fixes
 
+* `as.vector()` now works correctly for `AnvlArray`s that are converted
+  to `bit64::integer64`. It used to drop that class along with the shape,
+  exposing the raw 64-bit pattern as a double.
 * The gradient of a conversion into a non-float data type is now zero instead
   of one. `prim_convert()` / `nv_convert()` passed the cotangent through
   whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
@@ -42,20 +49,6 @@
   Type inference declared a `bool` output whatever the input was, so an
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.
-
-## Features
-
-* New promotion rule `promote_if()`, which applies another rule to the inputs a
-  predicate holds for and leaves the rest where they are, together with the
-  predicates to ask them about: `has_dtype_bool()`, `has_dtype_int()`,
-  `has_dtype_uint()` and `has_dtype_float()`. These refuse a value that has no
-  data type yet -- a bare R value, or a traced R argument -- unless `r_ok = TRUE`
-  says to answer with the data type it would commit to.
-* `as_anvl_array()` gained the `.promote` argument `as_anvl_arrays()` already
-  had, so a single input can be realized at the data type a rule names rather
-  than at its default and converted afterwards. `nv_reduce_sum()`,
-  `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` count a boolean input
-  that way.
 
 ## Tests
 

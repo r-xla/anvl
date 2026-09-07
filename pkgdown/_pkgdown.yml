@@ -341,11 +341,10 @@ reference:
     desc: Backend-related functionality and implementations
     contents:
       - backend
-      - default_backend
+      - active_backend
       - local_backend
       - with_backend
       - install_anvl
-      - device_arg
       - nv_device
       - default_device
       - is_device

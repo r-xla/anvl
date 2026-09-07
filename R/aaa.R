@@ -1,6 +1,10 @@
 #' @keywords internal
 NULL
 
+#' @section Options:
+#' * `anvl.backend` (`character(1)`, default `"pjrt"`): active backend that is used
+#'   for compilation and data allocation.
+#'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
 #' loads NVIDIA software which is not bundled with `anvl`, but downloaded
