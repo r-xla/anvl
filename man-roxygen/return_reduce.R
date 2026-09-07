@@ -1,4 +1,3 @@
 #' @return [`arrayish`]\cr
-#'   Has the same data type as the input.
-#'   When `drop = TRUE`, the reduced axes are removed.
-#'   When `drop = FALSE`, the reduced axes are set to 1.
+#'   Has <%= dtype_out %>, and the input's shape with the reduced axes removed
+#'   (`drop = TRUE`) or set to 1 (`drop = FALSE`).

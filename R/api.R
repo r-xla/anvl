@@ -1048,7 +1048,8 @@ nv_bitcast_convert <- prim_bitcast_convert
 #' @title Negation
 #' @description
 #' Negates an array element-wise. You can also use the unary `-` operator.
-#' @template param_x
+#' @templateVar dtypes any numeric data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_negate()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1060,7 +1061,8 @@ nv_negate <- prim_negate
 #' @title Logical Not
 #' @description
 #' Element-wise logical NOT. You can also use the `!` operator.
-#' @template param_x
+#' @templateVar dtypes any integerish data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_not()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1072,7 +1074,8 @@ nv_not <- prim_not
 #' @title Absolute Value
 #' @description
 #' Element-wise absolute value. You can also use `abs()`.
-#' @template param_x
+#' @templateVar dtypes any signed numeric data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_abs()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1084,7 +1087,8 @@ nv_abs <- prim_abs
 #' @title Square Root
 #' @description
 #' Element-wise square root. You can also use `sqrt()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_sqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1096,7 +1100,8 @@ nv_sqrt <- prim_sqrt
 #' @title Reciprocal Square Root
 #' @description
 #' Element-wise reciprocal square root, i.e. `1 / sqrt(x)`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_rsqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1108,7 +1113,8 @@ nv_rsqrt <- prim_rsqrt
 #' @title Natural Logarithm
 #' @description
 #' Element-wise natural logarithm. You can also use `log()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_log()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1120,7 +1126,8 @@ nv_log <- prim_log
 #' @title Hyperbolic Tangent
 #' @description
 #' Element-wise hyperbolic tangent. You can also use `tanh()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_tanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1132,7 +1139,8 @@ nv_tanh <- prim_tanh
 #' @title Tangent
 #' @description
 #' Element-wise tangent. You can also use `tan()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_tan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1144,7 +1152,8 @@ nv_tan <- prim_tan
 #' @title Sine
 #' @description
 #' Element-wise sine. You can also use `sin()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_sin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1156,7 +1165,8 @@ nv_sin <- prim_sin
 #' @title Cosine
 #' @description
 #' Element-wise cosine. You can also use `cos()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_cos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1168,7 +1178,8 @@ nv_cos <- prim_cos
 #' @title Floor
 #' @description
 #' Element-wise floor (round toward negative infinity). You can also use `floor()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_floor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1180,7 +1191,8 @@ nv_floor <- prim_floor
 #' @title Ceiling
 #' @description
 #' Element-wise ceiling (round toward positive infinity). You can also use `ceiling()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_ceil()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1192,7 +1204,8 @@ nv_ceiling <- prim_ceil
 #' @title Truncate
 #' @description
 #' Element-wise truncation (round toward zero). You can also use `trunc()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [nv_floor()], [nv_ceiling()], [nv_round()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1208,7 +1221,8 @@ nv_trunc <- function(x) {
 #' @title Sign
 #' @description
 #' Element-wise sign function. You can also use `sign()`.
-#' @template param_x
+#' @templateVar dtypes any signed numeric data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_sign()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1220,7 +1234,8 @@ nv_sign <- prim_sign
 #' @title Exponential
 #' @description
 #' Element-wise exponential. You can also use `exp()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_exp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1232,7 +1247,8 @@ nv_exp <- prim_exp
 #' @title Exponential Minus One
 #' @description
 #' Element-wise `exp(x) - 1`, more accurate for small `x`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_expm1()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1244,7 +1260,8 @@ nv_expm1 <- prim_expm1
 #' @title Log Plus One
 #' @description
 #' Element-wise `log(1 + x)`, more accurate for small `x`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_log1p()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1256,7 +1273,8 @@ nv_log1p <- prim_log1p
 #' @title Cube Root
 #' @description
 #' Element-wise cube root.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_cbrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1268,7 +1286,8 @@ nv_cbrt <- prim_cbrt
 #' @title Logistic (Sigmoid)
 #' @description
 #' Element-wise logistic sigmoid: `1 / (1 + exp(-x))`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_logistic()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1280,7 +1299,8 @@ nv_logistic <- prim_logistic
 #' @title Arc Cosine
 #' @description
 #' Element-wise inverse cosine. You can also use `acos()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_acos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1292,7 +1312,8 @@ nv_acos <- prim_acos
 #' @title Inverse Hyperbolic Cosine
 #' @description
 #' Element-wise inverse hyperbolic cosine. You can also use `acosh()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_acosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1304,7 +1325,8 @@ nv_acosh <- prim_acosh
 #' @title Arc Sine
 #' @description
 #' Element-wise inverse sine. You can also use `asin()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_asin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1316,7 +1338,8 @@ nv_asin <- prim_asin
 #' @title Inverse Hyperbolic Sine
 #' @description
 #' Element-wise inverse hyperbolic sine. You can also use `asinh()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_asinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1328,7 +1351,8 @@ nv_asinh <- prim_asinh
 #' @title Arc Tangent
 #' @description
 #' Element-wise inverse tangent. You can also use `atan()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_atan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1340,7 +1364,8 @@ nv_atan <- prim_atan
 #' @title Inverse Hyperbolic Tangent
 #' @description
 #' Element-wise inverse hyperbolic tangent. You can also use `atanh()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_atanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1352,7 +1377,8 @@ nv_atanh <- prim_atanh
 #' @title Hyperbolic Cosine
 #' @description
 #' Element-wise hyperbolic cosine. You can also use `cosh()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_cosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1364,7 +1390,8 @@ nv_cosh <- prim_cosh
 #' @title Hyperbolic Sine
 #' @description
 #' Element-wise hyperbolic sine. You can also use `sinh()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_sinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1377,7 +1404,8 @@ nv_sinh <- prim_sinh
 #' @description
 #' Element-wise digamma function (logarithmic derivative of the gamma
 #' function). You can also use `digamma()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_digamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1390,7 +1418,8 @@ nv_digamma <- prim_digamma
 #' @description
 #' Element-wise natural logarithm of the absolute value of the gamma
 #' function. You can also use `lgamma()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_lgamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1431,7 +1460,8 @@ nv_polygamma <- function(n, x) {
 #' @title Error Function
 #' @description
 #' Element-wise error function `erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^2) dt`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_erf()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1443,7 +1473,8 @@ nv_erf <- prim_erf
 #' @title Inverse Error Function
 #' @description
 #' Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_erf_inv()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1455,7 +1486,8 @@ nv_erf_inv <- prim_erf_inv
 #' @title Complementary Error Function
 #' @description
 #' Element-wise complementary error function `erfc(x) = 1 - erf(x)`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_erfc()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1467,7 +1499,8 @@ nv_erfc <- prim_erfc
 #' @title Is Finite
 #' @description
 #' Element-wise check if values are finite (not `Inf`, `-Inf`, or `NaN`).
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary_boolean
 #' @seealso [prim_is_finite()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1479,7 +1512,8 @@ nv_is_finite <- prim_is_finite
 #' @title Population Count
 #' @description
 #' Element-wise population count (number of set bits).
-#' @template param_x
+#' @templateVar dtypes any integer data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_popcnt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1647,7 +1681,8 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @title Round
 #' @description
 #' Element-wise rounding. You can also use the `round()` generic.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @param method (`character(1)`)\cr
 #'   Rounding method.
 #'   Either `"nearest_even"` (default) or `"afz"` (away from zero).
@@ -2187,15 +2222,27 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 #' @title Sum Reduction
 #' @description
 #' Sums array elements along the specified axes.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
+#' @templateVar dtype_out the input's data type
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_sum(x)            # all axes -> scalar
+#' # No axes given: reduce over all of them
+#' nv_reduce_sum(x)
+#'
+#' # Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_sum(x, axes = 1L)
+#' nv_reduce_sum(x, axes = 1L, drop = FALSE)
+#'
+#' # Negative axes count from the end
+#' nv_reduce_sum(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)))
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2212,15 +2259,24 @@ nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @description
 #' Computes the arithmetic mean along the specified axes. You can also
 #' use `mean()`.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
+#' @templateVar dtype_out a float data type
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_mean(x)            # all axes -> scalar
+#' # The result is a float, even though the input is an integer
+#' nv_mean(x)
+#'
+#' # Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_mean(x, axes = 1L)
+#' nv_mean(x, axes = 1L, drop = FALSE)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_mean(nv_array(c(1, NaN, 3)))
 #' nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2241,15 +2297,27 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @title Product Reduction
 #' @description
 #' Multiplies array elements along the specified axes.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
+#' @templateVar dtype_out the input's data type
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_prod(x)            # all axes -> scalar
+#' # No axes given: reduce over all of them
+#' nv_reduce_prod(x)
+#'
+#' # Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_prod(x, axes = 1L)
+#' nv_reduce_prod(x, axes = 1L, drop = FALSE)
+#'
+#' # Negative axes count from the end
+#' nv_reduce_prod(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)))
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2265,15 +2333,27 @@ nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @title Max Reduction
 #' @description
 #' Finds the maximum of array elements along the specified axes.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @template param_nan_rm
+#' @templateVar dtype_out the input's data type
 #' @template return_reduce
 #' @seealso [prim_reduce_max()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_max(x)            # all axes -> scalar
+#' # No axes given: reduce over all of them
+#' nv_reduce_max(x)
+#'
+#' # Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_max(x, axes = 1L)
+#' nv_reduce_max(x, axes = 1L, drop = FALSE)
+#'
+#' # Negative axes count from the end
+#' nv_reduce_max(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_max(nv_array(c(1, NaN, 3)))
 #' nv_reduce_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2286,15 +2366,27 @@ nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @title Min Reduction
 #' @description
 #' Finds the minimum of array elements along the specified axes.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @template param_nan_rm
+#' @templateVar dtype_out the input's data type
 #' @template return_reduce
 #' @seealso [prim_reduce_min()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_min(x)            # all axes -> scalar
+#' # No axes given: reduce over all of them
+#' nv_reduce_min(x)
+#'
+#' # Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_min(x, axes = 1L)
+#' nv_reduce_min(x, axes = 1L, drop = FALSE)
+#'
+#' # Negative axes count from the end
+#' nv_reduce_min(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_min(nv_array(c(1, NaN, 3)))
 #' nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2327,14 +2419,21 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @description
 #' Performs logical OR along the specified axes.
 #' Returns `TRUE` if any element is `TRUE`.
-#' @template param_x
+#' @templateVar dtypes a boolean or an R logical
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @template return_reduce_boolean
+#' @templateVar dtype_out boolean data type
+#' @template return_reduce
 #' @seealso [prim_reduce_any()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' nv_reduce_any(x)            # all axes -> scalar
+#' # No axes given: reduce over all of them
+#' nv_reduce_any(x)
+#'
+#' # Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_any(x, axes = 1L)
+#' nv_reduce_any(x, axes = 1L, drop = FALSE)
 #' @export
 nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
   x <- as_anvl_array(x)
@@ -2345,14 +2444,21 @@ nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
 #' @description
 #' Performs logical AND along the specified axes.
 #' Returns `TRUE` only if all elements are `TRUE`.
-#' @template param_x
+#' @templateVar dtypes a boolean or an R logical
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @template return_reduce_boolean
+#' @templateVar dtype_out boolean data type
+#' @template return_reduce
 #' @seealso [prim_reduce_all()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' nv_reduce_all(x)            # all axes -> scalar
+#' # No axes given: reduce over all of them
+#' nv_reduce_all(x)
+#'
+#' # Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_all(x, axes = 1L)
+#' nv_reduce_all(x, axes = 1L, drop = FALSE)
 #' @export
 nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
   x <- as_anvl_array(x)
@@ -2362,7 +2468,8 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' @title Cumulative Sum
 #' @description
 #' Cumulative sum, optionally along a single axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cumsum
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
@@ -2393,7 +2500,8 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @title Cumulative Product
 #' @description
 #' Cumulative product, optionally along a single axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cumprod
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
@@ -2424,7 +2532,8 @@ nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @title Cumulative Maximum
 #' @description
 #' Running maximum, optionally along a single axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cummax
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name maximum
@@ -2450,7 +2559,8 @@ nv_cummax <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
 #' @title Cumulative Minimum
 #' @description
 #' Running minimum, optionally along a single axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cummin
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name minimum
@@ -2540,7 +2650,8 @@ nv_while <- prim_while
 #' @title Base-2 Logarithm
 #' @description
 #' Element-wise base-2 logarithm. You can also use `log2()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [nv_log()], [nv_log10()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2556,7 +2667,8 @@ nv_log2 <- function(x) {
 #' @title Base-10 Logarithm
 #' @description
 #' Element-wise base-10 logarithm. You can also use `log10()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [nv_log()], [nv_log2()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2572,7 +2684,8 @@ nv_log10 <- function(x) {
 #' @title Is NaN
 #' @description
 #' Element-wise check if values are NaN. You can also use `is.nan()`.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @template return_unary_boolean
 #' @seealso [nv_is_finite()], [nv_is_infinite()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2589,7 +2702,8 @@ nv_is_nan <- function(x) {
 #' @description
 #' Element-wise check if values are infinite (`Inf` or `-Inf`).
 #' You can also use `is.infinite()`.
-#' @template param_x
+#' @templateVar dtypes any float data type
+#' @template param_unary_x
 #' @template return_unary_boolean
 #' @seealso [nv_is_finite()], [nv_is_nan()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2609,18 +2723,27 @@ nv_is_infinite <- function(x) {
 #' @details
 #' Uses Bessel's correction by default (`correction = 1`), matching R's [var()].
 #' Set `correction = 0` for population variance.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
+#' @templateVar dtype_out a float data type
 #' @template return_reduce
 #' @seealso [nv_sd()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_var(x)             # all axes -> scalar
-#' nv_var(x, axes = 1L)
-#' nv_var(nv_array(c(1, NaN, 3, 5)), axes = 1L, nan_rm = TRUE)
+#' x <- nv_array(1:5)
+#' # The result is a float, even though the input is an integer
+#' nv_var(x)
+#'
+#' # Bessel's correction by default, correction = 0 for the population variance
+#' nv_var(x, correction = 0L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
+#' nv_var(nv_array(c(1, NaN, 3, 5)))
+#' nv_var(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
 #' @jit static 2:5
 nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
@@ -2650,17 +2773,23 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 #' @details
 #' Uses Bessel's correction by default (`correction = 1`), matching R's [sd()].
 #' Set `correction = 0` for population standard deviation.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
+#' @templateVar dtype_out a float data type
 #' @template return_reduce
 #' @seealso [nv_var()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_sd(x)              # all axes -> scalar
-#' nv_sd(x, axes = 1L)
+#' x <- nv_array(1:5)
+#' # The result is a float, even though the input is an integer
+#' nv_sd(x)
+#'
+#' # Bessel's correction by default, correction = 0 for the population value
+#' nv_sd(x, correction = 0L)
 #' @export
 #' @jit static 2:5
 nv_sd <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {

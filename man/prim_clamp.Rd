@@ -7,19 +7,16 @@
 prim_clamp(min_val, x, max_val)
 }
 \arguments{
-\item{min_val}{(\code{\link{arrayish}})\cr
-Lower bound. Must be scalar or the same shape as \code{x}.}
+\item{min_val, max_val}{(\code{\link{arrayish}})\cr
+Lower and upper bound. Each must be scalar or the same shape as \code{x}.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 The array to clamp. Can be any data type.
 \code{min_val}, \code{x} and \code{max_val} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
-
-\item{max_val}{(\code{\link{arrayish}})\cr
-Upper bound. Must be scalar or the same shape as \code{x}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type and shape as \code{x}.
+Has \code{x}'s shape and the data type the operands agreed on.
 }
 \description{
 Clamps every element of \code{x} to the range \verb{[min_val, max_val]},
@@ -41,7 +38,14 @@ Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(-1, 0.5, 2))
-prim_clamp(nv_scalar(0), x, nv_scalar(1))
+# the R bounds take x's data type
+prim_clamp(0, x, 1)
+
+# an integer array takes integer bounds
+prim_clamp(0L, nv_array(1:5), 3L)
+
+# the f64 bound settles it: x and max_val are built at f64 too
+prim_clamp(nv_scalar(0, "f64"), 1, 2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

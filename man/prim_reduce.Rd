@@ -23,8 +23,9 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE}
 they are kept with size 1.}
 
-\item{reductor}{(\verb{function(lhs, rhs)})\cr
-Binary reducer producing a scalar of the same dtype as \code{x}.
+\item{reductor}{(\code{function})\cr
+Binary reducer producing a scalar of the same data type as \code{x}. Its two
+arguments are passed by position, so they may carry any names.
 Must be associative (see "Associativity Requirement").}
 }
 \value{
@@ -34,7 +35,8 @@ Same data type as \code{x}. Shape is \code{x} with \code{axes} removed
 }
 \description{
 Reduces an array along the specified axes using a user-supplied
-associative reducer.
+associative reducer. \code{reductor} and \code{init} must satisfy the constraints in
+the "Associativity Requirement" section below.
 }
 \section{Associativity Requirement}{
 

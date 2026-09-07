@@ -31,8 +31,9 @@ Amount of padding to add between elements in each axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{x}.
-For the output shape see the underlying stablehlo documentation (\code{\link[stablehlo:hlo_pad]{hlo_pad()}}).
+Has the data type the operands agreed on. Each axis grows by
+\code{edge_padding_low + edge_padding_high}, plus \code{interior_padding} between
+every pair of elements; negative edge padding trims (see \code{\link[stablehlo:hlo_pad]{hlo_pad()}}).
 }
 \description{
 Pads an array with a given padding value.
@@ -53,9 +54,20 @@ Lowers to \code{\link[stablehlo:hlo_pad]{hlo_pad()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-prim_pad(x, nv_scalar(0),
-  edge_padding_low = 2L, edge_padding_high = 1L, interior_padding = 0L
-)
+x <- nv_array(1:3)
+# one element before, two after
+prim_pad(x, 0L, edge_padding_low = 1L, edge_padding_high = 2L, interior_padding = 0L)
+
+# interior padding goes between the elements
+prim_pad(x, 0L, 0L, 0L, 1L)
+
+# negative edge padding trims instead
+prim_pad(x, 0L, -1L, 0L, 0L)
+
+# one padding amount per axis
+prim_pad(nv_matrix(1:4, nrow = 2), 0L, c(1L, 0L), c(0L, 1L), c(0L, 0L))
+
+# the R padding value is built at x's data type
+prim_pad(nv_array(c(1.5, 2.5), dtype = "f64"), 0, 1L, 1L, 0L)
 \dontshow{\}) # examplesIf}
 }

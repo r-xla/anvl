@@ -623,8 +623,9 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' * **float** -- `f32`, `f64`
 #'
 #' Documentation names a group of them with a single word: *any* data type is
-#' all of them, *numeric* is integer and float, *integerish* is boolean and
-#' integer, *signed numeric* is signed integer and float.
+#' all of them, *numeric* is integer and float, *integer* is signed and
+#' unsigned integer, *integerish* is boolean and integer, *signed numeric* is
+#' signed integer and float.
 #'
 #' These are the categories promotion works in, where signed and unsigned
 #' integers count as one. [`tengen::dtype_category()`] reports a finer split

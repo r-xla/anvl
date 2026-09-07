@@ -38,13 +38,21 @@ stablehlo::GatherDimensionNumbers(
 
 Use templates from `man-roxygen/` where applicable:
 
-- **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
+- **Unary ops:** `@templateVar dtypes <phrase>` + `@template param_unary_x`, for a primitive whose
+  only arrayish operand is `x`. The phrase completes "Can be ..." and comes from `?dtypes`
+  (`any data type`, `any numeric data type`, `any integer data type`, `any integerish data type`,
+  `any signed numeric data type`, `any float data type`). The same template serves the `nv_*`
+  wrapper, which behaves identically -- a unary function promotes nothing.
+  A primitive whose `x` is promoted with a sibling (`prim_clamp()`, `prim_pad()`) keeps
+  `@template param_prim_x_any` instead, since its R values do not fall back to a default.
 - **Binary ops:** `@templateVar dtypes <phrase>` + `@template params_prim_lhs_rhs`. The phrase
   completes "Can be ..." and comes from the vocabulary defined in `?dtypes`: `any data type`,
   `any numeric data type`, `any integerish data type`, `any float data type`. The template also
   states how R values take a data type, so a primitive that calls `apply_promotion()` on `lhs`
   and `rhs` needs nothing further.
-- **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
+- **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`; for a reduction,
+  `@templateVar dtype_out <phrase>` + `@template return_reduce` (shared with the `nv_*` layer),
+  alongside `@template params_reduce` for `axes` / `drop`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
 - **Examples:** written out per primitive, not templated. For one whose operands must agree on a
   data type, follow `?prim_add`: two R values, then an R value meeting an array, each with a
