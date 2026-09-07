@@ -109,6 +109,10 @@ effective_default_dtypes <- function(backend) {
 #' [`jit()`]ted function commits to, and that [`nv_seq()`], [`nv_eye()`] and the
 #' random samplers use when their `dtype` is `NULL`.
 #'
+#' `default_dtypes()` reports both categories at once; `default_float()` and
+#' `default_int()` report one each, for where naming a single category reads
+#' better than subsetting the pair.
+#'
 #' Each backend registers its own defaults -- `f32` / `i32` for `"pjrt"`, `f64`
 #' / `i32` for `"quickr"`, which has no single precision -- and they follow the
 #' backend in force ([`default_backend()`]): `with_backend("quickr", ...)` commits
@@ -166,12 +170,15 @@ effective_default_dtypes <- function(backend) {
 #' @return `default_dtypes()` returns a named `list` with elements `float` and
 #'   `int`, each a [`DataType`]: the defaults in force where it is called, which
 #'   inside a [`jit()`]ted body is the trace's baseline and any override over
-#'   it.
+#'   it. `default_float()` and `default_int()` return that one [`DataType`] of
+#'   their category.
 #'   `local_default_dtypes()` returns the previous values of the options it set,
 #'   invisibly. `with_default_dtypes()` returns the result of evaluating `code`.
 #' @seealso [`default_backend()`], [`peek_dtype()`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' default_dtypes()
+#' default_float()
+#' default_int()
 #' dtype(nv_array(1.5))
 #' with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 #' # A value that meets a typed array still takes that array's data type
@@ -183,6 +190,18 @@ effective_default_dtypes <- function(backend) {
 #' @export
 default_dtypes <- function() {
   current_default_dtypes()
+}
+
+#' @rdname default_dtypes
+#' @export
+default_float <- function() {
+  current_default_dtypes()$float
+}
+
+#' @rdname default_dtypes
+#' @export
+default_int <- function() {
+  current_default_dtypes()$int
 }
 
 registered_default_dtypes <- function(backend) {

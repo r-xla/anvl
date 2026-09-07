@@ -39,6 +39,11 @@
 #' `r xlamisc::cite_bib("moshier1989methods")` (this is `ndtri` in the Cephes
 #' library as used by JAX) for `f64`, and uses a new lower degree Remez minimax
 #' rational approximation on the same intervals for `f32`.
+#'
+#' The thresholds and coefficients of `nv_pnorm()` and `nv_qnorm()` are written
+#' for `f32` and `f64`, so those two are the only data types they accept; a
+#' half-precision operand is an error rather than a silent use of the `f64`
+#' constants. `nv_dnorm()` has no such table and works at any float.
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
@@ -96,7 +101,8 @@ nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   q <- args$q
   mean <- args$mean
   sd <- args$sd
-  op_dtype <- dtype(q)
+  # The thresholds below are written for 32- and 64-bit floats only.
+  op_dtype <- assert_float_dtype(dtype(q), arg = "q")
 
   # Standardise, flipping sign if computing upper tail
   d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
@@ -290,7 +296,8 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   p <- args$p
   mean <- args$mean
   sd <- args$sd
-  op_dtype <- dtype(p)
+  # The coefficients below are written for 32- and 64-bit floats only.
+  op_dtype <- assert_float_dtype(dtype(p), arg = "p")
 
   is_f32 <- op_dtype == "f32"
 

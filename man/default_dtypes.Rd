@@ -2,11 +2,17 @@
 % Please edit documentation in R/default-dtypes.R
 \name{default_dtypes}
 \alias{default_dtypes}
+\alias{default_float}
+\alias{default_int}
 \alias{local_default_dtypes}
 \alias{with_default_dtypes}
 \title{Default data types}
 \usage{
 default_dtypes()
+
+default_float()
+
+default_int()
 
 local_default_dtypes(dtypes, envir = parent.frame())
 
@@ -27,7 +33,8 @@ The environment to scope the change to.}
 \code{default_dtypes()} returns a named \code{list} with elements \code{float} and
 \code{int}, each a \code{\link[tengen:DataType]{DataType}}: the defaults in force where it is called, which
 inside a \code{\link[=jit]{jit()}}ted body is the trace's baseline and any override over
-it.
+it. \code{default_float()} and \code{default_int()} return that one \code{\link[tengen:DataType]{DataType}} of
+their category.
 \code{local_default_dtypes()} returns the previous values of the options it set,
 invisibly. \code{with_default_dtypes()} returns the result of evaluating \code{code}.
 }
@@ -41,6 +48,10 @@ for its R type: a double to the default \emph{float}, an integer to the default
 random samplers use when their \code{dtype} is \code{NULL}.
 }
 \details{
+\code{default_dtypes()} reports both categories at once; \code{default_float()} and
+\code{default_int()} report one each, for where naming a single category reads
+better than subsetting the pair.
+
 Each backend registers its own defaults -- \code{f32} / \code{i32} for \code{"pjrt"}, \code{f64}
 / \code{i32} for \code{"quickr"}, which has no single precision -- and they follow the
 backend in force (\code{\link[=default_backend]{default_backend()}}): \code{with_backend("quickr", ...)} commits
@@ -90,6 +101,8 @@ would.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 default_dtypes()
+default_float()
+default_int()
 dtype(nv_array(1.5))
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 # A value that meets a typed array still takes that array's data type

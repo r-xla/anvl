@@ -19,7 +19,8 @@ is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}
 If \code{FALSE} (default), returns the running-maximum array.
 If \code{TRUE}, returns \code{list(values = ..., indices = ...)} where \code{indices}
 is the 1-based index of the last occurrence of the running
-maximum at each position (dtype \code{i32}, matching torch).
+maximum at each position, of the default integer data
+type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 When \code{axis = NULL}, indices refer to the flattened input.}
 
 \item{nan_rm}{(\code{logical(1)})\cr

@@ -19,7 +19,8 @@ If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
 kept with size 1.}
 }
 \value{
-\code{\link{arrayish}} of dtype \code{i32}\cr
+\code{\link{arrayish}} of the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}})\cr
 Same shape as \code{x} with \code{axis} removed (or set to 1 if
 \code{drop = FALSE}).
 }

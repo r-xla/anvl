@@ -22,7 +22,8 @@ uses the last axis.}
 \item{with_indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns just the top-\code{k} values. If \code{TRUE},
 returns \code{list(values = ..., indices = ...)} where \code{indices} is the
-1-based position of each top-\code{k} value along \code{axis} (dtype \code{i32}).}
+1-based position of each top-\code{k} value along \code{axis}, of the default
+integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 \code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two

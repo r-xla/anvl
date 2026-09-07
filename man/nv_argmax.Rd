@@ -24,7 +24,8 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}} of dtype \code{i32}\cr
+\code{\link{arrayish}} of the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}})\cr
 Same shape as \code{x} with \code{axis} removed (or set to 1 if \code{drop = FALSE}).
 }
 \description{

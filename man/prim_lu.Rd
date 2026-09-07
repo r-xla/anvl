@@ -12,11 +12,12 @@ Matrix of data type floating-point with exactly 2 axes.}
 }
 \value{
 \code{list} of three \code{\link{arrayish}} values: \code{LU} \verb{(m, n)} with the same
-dtype as the input; \code{pivots} \verb{(k,)} of dtype \code{i32} with
-\code{k = min(m, n)} (1-based row swaps such that row \code{i} was exchanged
-with row \code{pivots[i]} during elimination step \code{i}); and \code{permutation}
-\verb{(m,)} of dtype \code{i32}, a 1-based permutation vector for \eqn{P} such
-that \code{(P \%*\% A)[i, ]} equals \code{A[permutation[i], ]}.
+dtype as the input; \code{pivots} \verb{(k,)} of the default integer data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}) with \code{k = min(m, n)} (1-based row swaps such
+that row \code{i} was exchanged with row \code{pivots[i]} during elimination step
+\code{i}); and \code{permutation} \verb{(m,)} of the same data type, a 1-based
+permutation vector for \eqn{P} such that \code{(P \%*\% A)[i, ]} equals
+\code{A[permutation[i], ]}.
 }
 \description{
 Computes the partial-pivoted LU decomposition of a matrix \code{x}:

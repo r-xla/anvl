@@ -1,7 +1,7 @@
 nv_unif_rand <- function(
   shape,
   initial_state,
-  dtype = "f64"
+  dtype
 ) {
   dtype <- assert_float_dtype(dtype)
   shape <- assert_shapevec(shape)
@@ -75,7 +75,7 @@ nv_runif <- function(
   min = 0,
   max = 1
 ) {
-  dtype <- assert_float_dtype(dtype %||% default_dtype_r("double"))
+  dtype <- assert_float_dtype(dtype %||% default_float())
   checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
   checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
   shape <- assert_shapevec(shape)
@@ -145,7 +145,7 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   shape <- assert_shapevec(shape)
 
   rule <- if (is.null(dtype)) {
-    promote_common(fallback = default_dtype_r("double"))
+    promote_common(fallback = default_float())
   } else {
     promote_dtype(assert_float_dtype(dtype))
   }
@@ -236,7 +236,7 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
 nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
-  dtype <- as_dtype(dtype %||% default_dtype_r("integer"))
+  dtype <- as_dtype(dtype %||% default_int())
   checkmate::assert_int(size, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
   shape <- assert_shapevec(shape)
@@ -289,7 +289,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 #' @export
 #' @jit static c(1L, 3L, 4L)
 nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
-  dtype <- as_dtype(dtype %||% default_dtype_r("integer"))
+  dtype <- as_dtype(dtype %||% default_int())
   assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)
 

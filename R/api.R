@@ -1416,7 +1416,7 @@ nv_iota <- prim_iota
 #' @jit static 1:5
 nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
   if (is.null(steps)) {
-    dtype <- dtype %||% default_dtype_r("integer")
+    dtype <- dtype %||% default_int()
     assert_int(start)
     assert_int(end)
     assert(start <= end)
@@ -1428,7 +1428,7 @@ nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
       device = device
     ))
   }
-  dtype <- dtype %||% default_dtype_r("double")
+  dtype <- dtype %||% default_float()
   assert_int(steps, lower = 1L)
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
@@ -1880,10 +1880,11 @@ nv_qr <- prim_qr
 #'   * `L` -- unit lower-triangular factor of shape `(m, k)`, where
 #'     `(m, n) = shape(x)` and `k = min(m, n)`.
 #'   * `U` -- upper-triangular factor of shape `(k, n)`.
-#'   * `pivots` -- length `k`, dtype `i32`. LAPACK-style sequential
-#'     1-based row swaps as returned by `getrf`.
-#'   * `permutation` -- length `m`, dtype `i32`. A 1-based permutation
-#'     vector representing \eqn{P}.
+#'   * `pivots` -- length `k`, of the default integer data type (see
+#'     [`default_dtypes()`]). LAPACK-style sequential 1-based row swaps as
+#'     returned by `getrf`.
+#'   * `permutation` -- length `m`, of the default integer data type. A
+#'     1-based permutation vector representing \eqn{P}.
 #' @seealso [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
@@ -2004,7 +2005,7 @@ nv_diag <- function(x) {
 #' @export
 #' @jit static 1:3
 nv_eye <- function(n, dtype = NULL, device = NULL) {
-  dtype <- dtype %||% default_dtype_r("double")
+  dtype <- dtype %||% default_float()
   nv_diag(nv_fill(1, n, dtype = dtype, device = device))
 }
 
@@ -2459,7 +2460,7 @@ nv_is_infinite <- function(x) {
 #' @jit static 2:5
 nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
   x <- as_anvl_array(x)
-  assert_int(correction)
+  correction <- assert_int(correction, coerce = TRUE)
   axes <- .resolve_reduce_axes(x, axes)
   mean_bc <- nv_broadcast_to(
     nv_mean(x, axes, drop = FALSE, nan_rm = nan_rm),
@@ -2949,8 +2950,9 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @param stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: indices for equal values keep their
 #'   original relative order. Default `FALSE`.
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `x`. For a size-0 axis, the output is an empty `i32`
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
+#'   Same shape as `x`. For a size-0 axis, the output is an empty
 #'   array of the same shape (a valid empty permutation).
 #'   `as_array(x)[as_array(nv_argsort(x))]` reproduces the sorted
 #'   array (for 1-D inputs).
@@ -2967,7 +2969,7 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
     cli_abort("Cannot argsort a 0-dimensional array")
   }
   axis <- axis %||% naxes(x)
-  idx <- nv_iota_like(x, axis = axis, dtype = "i32")
+  idx <- nv_iota_like(x, axis = axis, dtype = default_int())
   prim_sort(list(x, idx), axis = axis, descending = decreasing, is_stable = stable)[[2L]]
 }
 
@@ -2985,7 +2987,8 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @param with_indices (`logical(1)`)\cr
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
 #'   returns `list(values = ..., indices = ...)` where `indices` is the
-#'   1-based position of each top-`k` value along `axis` (dtype `i32`).
+#'   1-based position of each top-`k` value along `axis`, of the default
+#'   integer data type (see [`default_dtypes()`]).
 #' @return [`arrayish`] (when `with_indices = FALSE`) or named list of two
 #'   arrays (when `with_indices = TRUE`). Output shape matches `x` with
 #'   `axis` resized to `k`; values are sorted decreasing along `axis`.
@@ -3215,7 +3218,8 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
 #'   is kept with size 1.
 #' @template param_nan_rm
-#' @return [`arrayish`] of dtype `i32`\cr
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
 #'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 #' @section NaN handling:
 #' With `nan_rm = FALSE` (default), if any entry along the reduced axis is
@@ -3252,7 +3256,8 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
 #'   is kept with size 1.
 #' @template param_nan_rm
-#' @return [`arrayish`] of dtype `i32`\cr
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
 #'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].

@@ -234,7 +234,10 @@ gather_clamp_indices <- function(
 
     # The max bound is the same for a given slice along the index_vector_axis
     max_tensor_vals <- prim_reshape(
-      nv_convert(nv_array(max_bounds, dtype = "i64"), dtype = dtype(start_indices)),
+      nv_convert(
+        nv_array(max_bounds, dtype = default_int()),
+        dtype = dtype(start_indices)
+      ),
       bounds_shape
     )
     max_tensor <- nv_broadcast_to(max_tensor_vals, indices_shape)

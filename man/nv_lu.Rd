@@ -16,10 +16,11 @@ Named \code{list}:
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.
 \item \code{U} -- upper-triangular factor of shape \verb{(k, n)}.
-\item \code{pivots} -- length \code{k}, dtype \code{i32}. LAPACK-style sequential
-1-based row swaps as returned by \code{getrf}.
-\item \code{permutation} -- length \code{m}, dtype \code{i32}. A 1-based permutation
-vector representing \eqn{P}.
+\item \code{pivots} -- length \code{k}, of the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). LAPACK-style sequential 1-based row swaps as
+returned by \code{getrf}.
+\item \code{permutation} -- length \code{m}, of the default integer data type. A
+1-based permutation vector representing \eqn{P}.
 }
 }
 \description{

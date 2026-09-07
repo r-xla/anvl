@@ -17,9 +17,9 @@ Number of top elements. Must satisfy
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
 The top-\code{k} values (same dtype as \code{x}) and their indices along
-the last axis (dtype \code{i32}, matching JAX). Both have the same
-shape as \code{x} with the last axis replaced by \code{k}. Ties are
-broken by lower index first.
+the last axis, of the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). Both have the same shape as \code{x} with the
+last axis replaced by \code{k}. Ties are broken by lower index first.
 }
 \description{
 Returns the \code{k} largest values along the last axis, sorted in
