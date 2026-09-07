@@ -7,7 +7,6 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
-
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
 
@@ -15,6 +14,10 @@
 
 * `as.vector` now and returns `bit64::integer64`
   for integer types that don't fit into R's 32 bit integers.
+* There is now exactly one backend used at a time and it is configured via the
+  `anvl.backend` option.
+  With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* `default_backend()` is now called `active_backend()`.
 * A `Shape` (re-exported from {stablehlo}) *is* its integer vector now, with a
   class attached, rather than a list wrapping one. `length(shape)` is the number
   of axes, `shape[i]` is the size of axis `i`, and `shape$dims` is gone -- read

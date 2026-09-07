@@ -4,11 +4,11 @@
 \alias{install_anvl}
 \title{Install what a backend needs to run}
 \usage{
-install_anvl(backend = default_backend(), ...)
+install_anvl(backend = active_backend(), ...)
 }
 \arguments{
 \item{backend}{(\code{character(1)})\cr
-Backend to install for. Defaults to \code{\link[=default_backend]{default_backend()}}. The \code{"plain"}
+Backend to install for. Defaults to \code{\link[=active_backend]{active_backend()}}. The \code{"plain"}
 backend has nothing to install and is not accepted.}
 
 \item{...}{Passed to the underlying installer: \code{\link[pjrt:install_pjrt]{pjrt::install_pjrt()}} for

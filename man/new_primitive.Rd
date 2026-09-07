@@ -9,7 +9,6 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
-  device = NULL,
   register = TRUE
 )
 }
@@ -29,10 +28,6 @@ Names of parameters that are subgraphs (for higher-order primitives).}
 \item{static}{(\code{character()} | \code{integer()})\cr
 Passed to \code{\link[=jit]{jit()}}.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{device_arg()})\cr
-Passed to \code{\link[=jit]{jit()}}. Useful for primitives with no array inputs
-(e.g. \code{prim_fill}) where the device must come from an explicit argument.}
-
 \item{register}{(\code{logical(1)})\cr
 If \code{TRUE} (default), register the result under \code{name} in the primitive
 registry.}
@@ -43,5 +38,4 @@ A callable of class \code{c("JitPrimitive", "JitFunction")}.
 \description{
 Create a new primitive.
 For details on how to do this, see the article on \emph{Adding a Primitive}.
-The backend is always \code{"auto"} and cannot be configured.
 }

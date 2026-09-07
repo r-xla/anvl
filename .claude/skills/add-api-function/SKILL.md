@@ -15,10 +15,10 @@ See `vignettes/extending_api.Rmd` for the in-depth explanation of the patterns b
 
 ### Work with any backend
 
-API functions shipped with {anvl} must work with **both** the pjrt and quickr backends. In practice this means:
+API functions shipped with {anvl} must work with **both** the pjrt and quickr backends. There is one active backend at a time (`active_backend()`), every jitted function runs on it, and an array of another backend is an error. In practice this means:
 
-- If the function internally `jit()`s a helper, set `backend = "auto"` on that `jit()` call so it adapts to the caller's backend.
-- If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's backend/device. Do **not** call `device()` on a traced input -- it fails under `jit()`.
+- Never name a backend in an API function: no `backend =` arguments, no `with_backend()` calls. The caller chooses the backend.
+- If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's device. Do **not** call `device()` on a traced input -- it fails under `jit()`.
 
 ### Follow R semantics
 
@@ -75,7 +75,7 @@ After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work 
 ### Constants and the `_like` pattern
 
 If the function creates a constant inside its body (via `nv_fill`, `nv_iota`, `nv_seq`, `nv_scalar`, `nv_eye`, ...), the constant must be placed on the same backend/device as the input.
-Under `jit()` this happens automatically (if `backend = "auto"` is set on the outer `jit()` call), but in **eager mode** you are responsible:
+Under `jit()` this happens automatically, but in **eager mode** you are responsible:
 
 - Use the `nv_<op>_like(x, ...)` variants, which default `dtype`, `shape`, and `device` from `x`.
 - Example: `nv_fill_like(x, 0)` gives a zeros array matching `x`'s backend/device/dtype.

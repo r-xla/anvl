@@ -101,11 +101,11 @@ prim_fill <- new_primitive(
       self,
       list(),
       params = list(value = value, dtype = dtype, shape = shape),
-      infer_fn = infer_fill
+      infer_fn = infer_fill,
+      device = device
     )[[1L]]
   },
-  static = 1:4,
-  device = device_arg("device")
+  static = 1:4
 )
 
 #' @title Primitive Addition
@@ -2218,13 +2218,13 @@ prim_iota <- new_primitive(
       self,
       list(),
       list(axis = axis, dtype = dtype, shape = shape, start = start),
-      infer_fn = infer_fn
+      infer_fn = infer_fn,
+      device = device
     )[[1L]]
 
     result
   },
-  static = 1:5,
-  device = device_arg("device")
+  static = 1:5
 )
 
 #' @title Primitive Pad
