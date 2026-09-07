@@ -6,6 +6,7 @@
 \alias{promote_like}
 \alias{promote_dtype}
 \alias{promote_rdata_common}
+\alias{promote_if}
 \alias{promote_grouped}
 \title{Promotion Rules}
 \usage{
@@ -16,6 +17,8 @@ promote_like(arg, on = NULL, coerce = FALSE)
 promote_dtype(dtype, on = NULL, coerce = FALSE)
 
 promote_rdata_common(on = NULL)
+
+promote_if(predicate, rule, on = NULL)
 
 promote_grouped(...)
 
@@ -44,6 +47,17 @@ hold (an \code{f64} array at \code{f32}). The default is \code{FALSE}.}
 
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
 The data type to bring the inputs to.}
+
+\item{predicate}{(\code{function})\cr
+Called with each input -- an \code{\link{arrayish}} value, which may still be a bare
+R value -- and returning \code{TRUE} or \code{FALSE}. \code{\link[=has_dtype_bool]{has_dtype_bool()}} and its
+siblings are these predicates, and take \code{r_ok = TRUE} here so that an R
+value answers with the data type it would commit to rather than being
+refused.}
+
+\item{rule}{(\code{\link[=promotion_rule]{PromotionRule}})\cr
+The rule to apply to the matching inputs. It is asked about \emph{those inputs
+only}, so an \code{arg} or \code{on} reference inside it refers to them.}
 
 \item{...}{(\code{\link[=promotion_rule]{PromotionRule}})\cr
 The rules to apply to disjoint argument subsets.}
@@ -80,6 +94,11 @@ if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
 for one or more argument subsets.
 
+\code{promote_if()} applies another rule to the inputs a predicate holds for, and
+leaves the rest where they are. This is how a function brings \emph{one category}
+of input somewhere -- \code{nv_reduce_sum()} counts a boolean array at \code{i32} and
+touches nothing else -- without having to know what the other inputs are.
+
 \code{promote_grouped()} applies several rules to disjoint subsets.
 
 \code{promotion_rule()} creates a new promotion rule.
@@ -96,6 +115,12 @@ promote_common(c(1, 2))(list(-3, 4, 1))
 promote_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 # Without `coerce`, a target the input cannot hold is refused.
 try(promote_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# Count the booleans, and leave every other input where it is.
+count_bool <- promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"))
+count_bool
+lapply(as_anvl_arrays(nv_array(c(TRUE, FALSE)), nv_array(1.5), .promote = count_bool), dtype)
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Every input at the widest float in the call, and never below f32.

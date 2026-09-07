@@ -309,6 +309,89 @@ peek_dtype <- function(x) {
   if (is_rdata(aval)) aval$default_dtype else aval$dtype
 }
 
+#' @title Ask What Data Type a Value Has
+#' @name has_dtype
+#' @description
+#' Whether the data type of `x` is a `bool`, an integer, an unsigned integer or
+#' a float. These are the predicates a [`promote_if()`][promotion_rule] rule
+#' asks its inputs about: `nv_reduce_sum()` counts a boolean input at `i32`
+#' with `promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"))`.
+#'
+#' @details
+#' A value that has no data type *yet* -- a bare R value, or the [`RData`] box
+#' standing in for a traced R argument -- is refused rather than answered for,
+#' because the answer would be the data type it *would* commit to and not one it
+#' has. `r_ok = TRUE` asks for that answer deliberately, and is what a promotion
+#' rule wants: it is how a boolean input is counted whether it arrives as a
+#' `bool` array or as an R `logical`.
+#'
+#' @param x ([`arrayish`] | [`AbstractArray`])\cr
+#'   The value to ask about.
+#' @param r_ok (`logical(1)`)\cr
+#'   Whether to answer for a value that has no data type yet, with the one it
+#'   would commit to ([`peek_dtype()`]). `FALSE` (default) refuses it instead.
+#' @param unsigned (`logical(1)`)\cr
+#'   Whether an unsigned integer data type counts as an integer one. `TRUE` by
+#'   default; `has_dtype_uint()` asks for unsigned alone.
+#' @return (`logical(1)`)
+#' @seealso [peek_dtype()], [promotion_rule], [`tengen::is_dtype_bool()`]
+#' @examplesIf pjrt::plugins_downloaded()
+#' has_dtype_bool(nv_array(c(TRUE, FALSE)))
+#' has_dtype_float(nv_array(1.5))
+#' has_dtype_int(nv_array(1L))
+#' # An R value has no data type yet, so it is only answered for on request.
+#' try(has_dtype_float(1.5))
+#' has_dtype_float(1.5, r_ok = TRUE)
+NULL
+
+#' @rdname has_dtype
+#' @export
+has_dtype_bool <- function(x, r_ok = FALSE) {
+  is_dtype_bool(asked_dtype(x, r_ok, "has_dtype_bool"))
+}
+
+#' @rdname has_dtype
+#' @export
+has_dtype_int <- function(x, r_ok = FALSE, unsigned = TRUE) {
+  assert_flag(unsigned)
+  dtype <- asked_dtype(x, r_ok, "has_dtype_int")
+  is_dtype_int(dtype) || (unsigned && is_dtype_uint(dtype))
+}
+
+#' @rdname has_dtype
+#' @export
+has_dtype_uint <- function(x, r_ok = FALSE) {
+  is_dtype_uint(asked_dtype(x, r_ok, "has_dtype_uint"))
+}
+
+#' @rdname has_dtype
+#' @export
+has_dtype_float <- function(x, r_ok = FALSE) {
+  is_dtype_float(asked_dtype(x, r_ok, "has_dtype_float"))
+}
+
+# The data type a `has_dtype_*()` answers about: the one `x` has, or -- where
+# the caller says R values are fine -- the one it would commit to. Refusing the
+# latter by default keeps a question about arrays from being answered with a
+# default nothing has been built at yet.
+asked_dtype <- function(x, r_ok, what) {
+  assert_flag(r_ok)
+  aval <- to_abstract(x)
+  if (!is_rdata(aval)) {
+    return(aval$dtype)
+  }
+  if (!r_ok) {
+    cli_abort(
+      c(
+        "{.fn {what}} was asked about an R {aval$r_type}, which has no data type yet.",
+        i = "Pass {.code r_ok = TRUE} to answer with the data type it would commit to, as a promotion rule does." # nolint
+      ),
+      call = NULL
+    )
+  }
+  aval$default_dtype
+}
+
 # A traced box, with any R value in it committed to its default dtype. Anything
 # that already has a dtype is returned unchanged.
 commit_rdata_box <- function(x) {

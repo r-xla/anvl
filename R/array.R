@@ -189,8 +189,8 @@ nv_array <- function(
 #' Use this to canonicalize inputs at the start of a function so it works
 #' both with eager executing and in combination with [`jit()`].
 #' Use [`as_anvl_array()`] for a single input and [`as_anvl_arrays()`] for multiple inputs.
-#' The latter will also ensure all arrays are from the same backend and live on the same device,
-#' and can additionally apply type promotion rules via the `.promote` argument.
+#' The latter will also ensure all arrays are from the same backend and live on the same device.
+#' Both apply type promotion rules via the `.promote` argument.
 #'
 #' @param x ([`arrayish`])\cr
 #'   Input to standardize.
@@ -205,6 +205,7 @@ nv_array <- function(
 #' @seealso [peek_dtype()], [nv_promote_to_common()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_array(1L)
+#' as_anvl_array(sqrt(2), .promote = promote_dtype("f64"))
 #' as_anvl_arrays(nv_array(1:3), 1L)
 #' as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
 #' @name as_anvl_array
@@ -212,7 +213,19 @@ NULL
 
 #' @rdname as_anvl_array
 #' @export
-as_anvl_array <- function(x, device = NULL) {
+as_anvl_array <- function(x, device = NULL, .promote = NULL) {
+  if (!is.null(.promote)) {
+    if (!is_arrayish(x)) {
+      cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
+    }
+    # Realize at the target instead of materializing at the default dtype and
+    # converting, for the reason `as_anvl_arrays()` does: it keeps every digit
+    # an R value had. A rule that places nothing leaves `x` to the path below.
+    dtype <- resolve_promote(.promote, list(x))[[1L]]
+    if (!is.null(dtype)) {
+      x <- realize_at(x, dtype = dtype, device = device)
+    }
+  }
   if (is_box(x)) {
     return(commit_rdata_box(x))
   }

@@ -43,6 +43,20 @@
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.
 
+## Features
+
+* New promotion rule `promote_if()`, which applies another rule to the inputs a
+  predicate holds for and leaves the rest where they are, together with the
+  predicates to ask them about: `has_dtype_bool()`, `has_dtype_int()`,
+  `has_dtype_uint()` and `has_dtype_float()`. These refuse a value that has no
+  data type yet -- a bare R value, or a traced R argument -- unless `r_ok = TRUE`
+  says to answer with the data type it would commit to.
+* `as_anvl_array()` gained the `.promote` argument `as_anvl_arrays()` already
+  had, so a single input can be realized at the data type a rule names rather
+  than at its default and converted afterwards. `nv_reduce_sum()`,
+  `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` count a boolean input
+  that way.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

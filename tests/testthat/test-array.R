@@ -429,6 +429,40 @@ describe("as_anvl_array", {
     expect_equal(dtype(jit(function(x) as_anvl_array(x))(1L)), as_dtype("i32"))
   })
 
+  it("realizes the input at the data type a promotion rule names", {
+    # The rule decides, so the R value is built at the target rather than at its
+    # default and converted -- which is what keeps every digit it had.
+    out <- as_anvl_array(sqrt(2), .promote = promote_dtype("f64"))
+    expect_equal(dtype(out), as_dtype("f64"))
+    expect_identical(as_array(out), sqrt(2))
+
+    # A rule places only what it says it does; an input it leaves alone takes
+    # the default path.
+    count_bool <- promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"))
+    expect_equal(dtype(as_anvl_array(nv_array(c(TRUE, FALSE)), .promote = count_bool)), as_dtype("i32"))
+    expect_equal(dtype(as_anvl_array(nv_array(1.5), .promote = count_bool)), as_dtype("f32"))
+
+    # ... and it means the same thing inside a trace, for an array and for the
+    # box standing in for an R argument alike.
+    expect_equal(
+      dtype(jit(function(x) as_anvl_array(x, .promote = count_bool))(nv_array(c(TRUE, FALSE)))),
+      as_dtype("i32")
+    )
+    expect_equal(dtype(jit(function(x) as_anvl_array(x, .promote = count_bool))(TRUE)), as_dtype("i32"))
+  })
+
+  it("keeps checking the input and the device when a rule is given", {
+    dev0 <- nv_device("cpu:0", "pjrt")
+    dev1 <- nv_device("cpu:1", "pjrt")
+    count_bool <- promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"))
+    expect_error(as_anvl_array("foo", .promote = count_bool), "Expected arrayish")
+    expect_equal(device(as_anvl_array(1L, device = dev1, .promote = promote_dtype("i64"))), dev1)
+    expect_error(
+      as_anvl_array(nv_array(1:3, device = dev0), device = dev1, .promote = count_bool),
+      "unexpected device"
+    )
+  })
+
   it("errors if an AnvlArray is on a different device than requested", {
     dev0 <- nv_device("cpu:0", "pjrt")
     dev1 <- nv_device("cpu:1", "pjrt")

@@ -332,6 +332,86 @@ test_that("a rule that does not answer per argument is reported against the rule
   )
 })
 
+test_that("promote_if() places the inputs its predicate holds for, and no others", {
+  count_bool <- promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"))
+
+  # The matching input is placed, and the others are left where they are --
+  # without being checked against the target either, which an `f32` reaching
+  # `i32` would never pass.
+  args <- as_anvl_arrays(
+    b = nv_array(c(TRUE, FALSE)),
+    x = nv_array(1.5),
+    n = 2L,
+    .promote = count_bool
+  )
+  expect_equal(dtype(args$b), as_dtype("i32"))
+  expect_equal(dtype(args$x), as_dtype("f32"))
+  expect_equal(dtype(args$n), as_dtype("i32"))
+
+  # With `r_ok`, a predicate answers for the data type an input *would* commit
+  # to, so an R logical is counted the way a boolean array is.
+  expect_equal(dtype(as_anvl_arrays(TRUE, .promote = count_bool)[[1L]]), as_dtype("i32"))
+
+  # Nothing matching is nothing placed.
+  args <- as_anvl_arrays(x = nv_array(1, dtype = "f64"), .promote = count_bool)
+  expect_equal(dtype(args$x), as_dtype("f64"))
+
+  # `on` restricts which inputs are asked at all.
+  args <- as_anvl_arrays(
+    a = nv_array(TRUE),
+    b = nv_array(TRUE),
+    .promote = promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"), on = "a")
+  )
+  expect_equal(dtype(args$a), as_dtype("i32"))
+  expect_equal(dtype(args$b), as_dtype("bool"))
+
+  expect_equal(format(count_bool), "<promote_if(<promote_dtype(i32)>)>")
+})
+
+test_that("promote_if() asks the nested rule about the matching inputs alone", {
+  # A rule that reads its target off the arguments sees the ones the predicate
+  # held for, not the whole call: the `f64` is out of the group here, so the
+  # boolean meets its own common data type rather than that one.
+  args <- as_anvl_arrays(
+    b = nv_array(TRUE),
+    x = nv_array(1, dtype = "f64"),
+    .promote = promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_common())
+  )
+  expect_equal(dtype(args$b), as_dtype("bool"))
+  expect_equal(dtype(args$x), as_dtype("f64"))
+
+  # A nested rule that covers only some of the matching inputs leaves the rest
+  # where they are, rather than dropping them from the answer.
+  args <- as_anvl_arrays(
+    a = nv_array(TRUE),
+    b = nv_array(TRUE),
+    c = nv_array(1.5),
+    .promote = promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32", on = 1))
+  )
+  expect_equal(dtype(args$a), as_dtype("i32"))
+  expect_equal(dtype(args$b), as_dtype("bool"))
+  expect_equal(dtype(args$c), as_dtype("f32"))
+
+  # It declares what it covers, so it groups like any other rule.
+  expect_s3_class(
+    promote_grouped(
+      promote_if(\(x) has_dtype_bool(x, r_ok = TRUE), promote_dtype("i32"), on = "b"),
+      promote_common(on = c("x", "y"))
+    ),
+    "PromotionRule"
+  )
+})
+
+test_that("promote_if() is checked where it is built and where it answers", {
+  # `promote_dtype` is the rule's *constructor*; only a rule can be nested.
+  expect_error(promote_if(has_dtype_bool, promote_dtype), "must be a promotion rule")
+  expect_error(promote_if("bool", promote_dtype("i32")), "[Mm]ust be a function")
+  expect_error(
+    as_anvl_arrays(1L, .promote = promote_if(function(x) "yes", promote_dtype("i32"))),
+    "must answer `TRUE` or `FALSE`"
+  )
+})
+
 test_that("promote_grouped() refuses groups that could overlap", {
   # Checked where the group is built, against what the rules say they cover,
   # rather than on the first call that reaches it.
