@@ -562,6 +562,30 @@ get_box_or_register_const <- function(desc, x) {
   return(new_box)
 }
 
+# The values of an enclosing graph that `graphs` use. A sub-graph records such
+# a value among its own constants, where it is told apart from a materialized
+# constant by its abstract type: a `ConcreteArray` is an array the sub-graph
+# closed over and needs no more than its bytes, while an `AbstractArray` is the
+# output of a computation further out, which the enclosing graph has to be able
+# to trace dataflow through.
+#
+# Returned in a stable order, de-duplicated across the graphs, so a call can
+# list them as operands.
+subgraph_captures <- function(graphs) {
+  seen <- hashtab()
+  captures <- list()
+  for (graph in graphs) {
+    for (gval in graph$constants) {
+      if (is_concrete_tensor(gval$aval) || !is.null(seen[[gval]])) {
+        next
+      }
+      seen[[gval]] <- TRUE
+      captures[[length(captures) + 1L]] <- gval
+    }
+  }
+  captures
+}
+
 register_inputs <- function(desc, inputs) {
   for (input in inputs) {
     register_input(desc, input)
