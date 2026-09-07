@@ -122,9 +122,6 @@ without <- function(x, indices) {
 }
 
 shape2string <- function(x, parenthesize = TRUE) {
-  if (is_shape(x)) {
-    x <- x$dims
-  }
   if (parenthesize) {
     sprintf("(%s)", paste0(x, collapse = ","))
   } else {

@@ -696,7 +696,7 @@ dtype.AbstractArray <- function(x, ...) {
 #' @method shape AbstractArray
 #' @export
 shape.AbstractArray <- function(x, ...) {
-  x$shape$dims
+  unclass(x$shape)
 }
 
 #' @title Concrete Array Class
@@ -833,8 +833,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 IotaArray <- function(shape, dtype, axis, start = 1L) {
   shape <- as_shape(shape)
   dtype <- as_dtype(dtype)
-  # stablehlo::Shape is a wrapper object; its rank is length(shape$dims), not length(shape)
-  assert_int(axis, lower = 1L, upper = length(shape$dims))
+  assert_int(axis, lower = 1L, upper = length(shape))
   assert_int(start)
   structure(
     list(shape = shape, dtype = dtype, axis = axis, start = start),
@@ -1023,10 +1022,10 @@ to_abstract <- function(x, pure = FALSE) {
 }
 
 as_shape <- function(x) {
-  if (test_integerish(x, any.missing = FALSE, lower = 0)) {
-    Shape(as.integer(x))
-  } else if (is_shape(x)) {
+  if (is_shape(x)) {
     x
+  } else if (test_integerish(x, any.missing = FALSE, lower = 0)) {
+    Shape(as.integer(x))
   } else if (is.null(x)) {
     Shape(integer())
   } else {
