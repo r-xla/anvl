@@ -80,9 +80,10 @@ GraphDescriptor(
 
 - devices:
 
-  ([`character()`](https://rdrr.io/r/base/character.html))  
-  Device platforms encountered during tracing (e.g. `"cpu"`, `"cuda"`).
-  Populated automatically as arrays are registered.
+  ([`list()`](https://rdrr.io/r/base/list.html))  
+  Devices encountered during tracing: the device of every concrete array
+  registered in the graph, plus the ones declared by
+  [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md).
 
 ## Value
 

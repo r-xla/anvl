@@ -1,10 +1,7 @@
 # Run code with a specific backend
 
-Sets the `anvl.default_backend` option for the duration of the
-expression. This affects
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) and data
-construction (e.g. via
-[`nv_array`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)).
+Sets the `anvl.backend` option for the duration of the expression. Every
+array built and every operation run in `code` uses the backend.
 
 ## Usage
 

@@ -793,10 +793,16 @@ the inputs right at the beginning, so this problem rarely happens.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="device-inference-in-jit">Device Inference in <code>jit()</code><a class="anchor" aria-label="anchor" href="#device-inference-in-jit"></a>
+<h2 id="backend-and-device-in-jit">Backend and Device in <code>jit()</code><a class="anchor" aria-label="anchor" href="#backend-and-device-in-jit"></a>
 </h2>
-<p>Device handling in <code><a href="../reference/jit.html">jit()</a></code> is quite complicated. Some
-things that are important to be aware of:</p>
+<p>There is exactly one active backend at any time
+(<code><a href="../reference/active_backend.html">active_backend()</a></code>, the option <code>anvl.backend</code>). A
+<code>JitFunction</code> reads it on every call and keeps one
+implementation – the backend’s <code>jit</code> method’s result, with
+its own compilation cache – per backend it has been called on. Nothing
+infers a backend from the arguments: an array of another backend is
+rejected by the dispatcher.</p>
+<p>Device handling within a backend has two things to be aware of:</p>
 <ol style="list-style-type: decimal">
 <li><p>We don’t know the inferred device just from looking at the input,
 as we might have something like:
@@ -804,24 +810,17 @@ as we might have something like:
 only learn about the device during tracing. This means the data is only
 converted at the end.</p></li>
 <li>
-<p>There are different backends. There might be a function like
-<code>jit(\(dev) nv_scalar(1, device = dev), backend = "auto")</code>.
-But with the current implementation of <code><a href="../reference/jit.html">jit()</a></code>, the tracing
-is handled by the backend’s <code>jit</code> method, so we need to
-determine the backend from the input arguments. Therefore, the
-<code>device = device_arg("dev")</code> needs to be specified:</p>
+<p>A function without array inputs (a constructor) has no device to
+infer from. The constructor primitives (<code><a href="../reference/prim_fill.html">prim_fill()</a></code>,
+<code><a href="../reference/prim_iota.html">prim_iota()</a></code>) therefore pass the device they were asked for
+to <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>, which declares it into the trace,
+where it counts like the device of an array input. A caller steers such
+a program by passing the device on to the constructor, in a static
+argument:</p>
 <div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">dev</span><span class="op">)</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, device <span class="op">=</span> <span class="va">dev</span><span class="op">)</span>, backend <span class="op">=</span> <span class="st">"auto"</span>, device <span class="op">=</span> <span class="fu"><a href="../reference/device_arg.html">device_arg</a></span><span class="op">(</span><span class="st">"dev"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="../reference/nv_device.html">nv_device</a></span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"pjrt"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>If we made the main <code><a href="../reference/jit.html">jit()</a></code> function trace eagerly, we
-could determine the backend during tracing, but this is not really
-needed yet.</p>
+<code class="sourceCode R"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">dev</span><span class="op">)</span> <span class="fu"><a href="../reference/nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2L</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, device <span class="op">=</span> <span class="va">dev</span><span class="op">)</span>, static <span class="op">=</span> <span class="st">"dev"</span><span class="op">)</span></span>
+<span><span class="fu">f</span><span class="op">(</span><span class="fu"><a href="../reference/nv_device.html">nv_device</a></span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </li>
-<li><p><code>device = device_arg()</code> is only accepted together with
-<code>backend = NULL</code> or <code>backend = "auto"</code>. A concrete
-backend combined with <code><a href="../reference/device_arg.html">device_arg()</a></code> is rejected, because
-with a concrete backend the device can simply be passed via a static
-argument.</p></li>
 </ol>
 <div class="section level3">
 <h3 id="nested-inputs-and-outputs">Nested Inputs and Outputs<a class="anchor" aria-label="anchor" href="#nested-inputs-and-outputs"></a>

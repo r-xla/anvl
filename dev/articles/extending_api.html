@@ -260,9 +260,9 @@ input.</p>
 <h2 id="jit-wrapping-api-functions">Jit-wrapping API Functions<a class="anchor" aria-label="anchor" href="#jit-wrapping-api-functions"></a>
 </h2>
 <p>Most user-facing API functions in anvl are wrapped in
-<code>jit(f, backend = "auto", ...)</code> so that calling them traces
-and compiles a single program instead of executing each operation
-eagerly. The wrapping is driven by the <code>@jit</code> roclet (see
+<code>jit(f, ...)</code> so that calling them traces and compiles a
+single program instead of executing each operation eagerly. The wrapping
+is driven by the <code>@jit</code> roclet (see
 <code><a href="../reference/jit_roclet.html">?jit_roclet</a></code>).</p>
 <p>In <code>R/api*.R</code>, tag any function that performs more than
 one primitive operation with <code>#' @jit</code>:</p>

@@ -11,12 +11,11 @@ nv_array(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  backend = NULL,
   byrow = FALSE,
   check = FALSE
 )
 
-nv_scalar(data, dtype = NULL, device = NULL, backend = NULL, check = FALSE)
+nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
 
 nv_matrix(
   data,
@@ -24,22 +23,14 @@ nv_matrix(
   ncol = NULL,
   dtype = NULL,
   device = NULL,
-  backend = NULL,
   byrow = FALSE
 )
 
-nv_empty(dtype, shape, device = NULL, backend = NULL)
+nv_empty(dtype, shape, device = NULL)
 
-nv_array_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  backend = NULL
-)
+nv_array_like(like, data, dtype = NULL, device = NULL, shape = NULL)
 
-nv_scalar_like(like, data, dtype = NULL, device = NULL, backend = NULL)
+nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
 nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 ```
@@ -95,16 +86,6 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
   vectors as having shape `(1)`. To create a "scalar" with no axes
   (shape `()`), use `nv_scalar` or explicitly specify `shape = c()`.
 
-- backend:
-
-  (`NULL` \| `character(1)`)  
-  Backend the array belongs to (`"pjrt"` or `"quickr"`). The default
-  (`NULL`) is inferred from `device` when `device` is a backend-specific
-  device object, and otherwise falls back to
-  [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).
-  Must not be specified inside
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
-
 - byrow:
 
   (`logical(1)`)  
@@ -139,8 +120,8 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 - like:
 
   (`AnvlArray`)  
-  An existing array. Any of `dtype`, `device`, `shape`, and `backend`
-  that are `NULL` (the default) are taken from `like`.
+  An existing array. Any of `dtype`, `device` and `shape` that are
+  `NULL` (the default) are taken from `like`.
 
 ## Value
 
@@ -252,8 +233,8 @@ nv_scalar(3.14)
 # An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  6.1250e+24 3.0676e-41 1.3299e+25
-#>  3.0676e-41 1.3301e+25 3.0676e-41
+#>  -1.5793e+01  3.0844e-41 -1.5792e+01
+#>   3.0844e-41 -1.5792e+01  3.0844e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

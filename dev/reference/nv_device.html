@@ -5,9 +5,11 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Device — nv_device"><meta name="description" content="Constructs a backend-specific device object.
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Create a Device — nv_device"><meta name="description" content="Constructs a backend-specific device object for the active backend
+(active_backend()).
 A device identifies a compute resources, such as CPU, or a specific GPU.
-It is relevant for data allocation (e.g. via nv_array()) but also compilation (jit)."><meta property="og:description" content="Constructs a backend-specific device object.
+It is relevant for data allocation (e.g. via nv_array()) but also compilation (jit)."><meta property="og:description" content="Constructs a backend-specific device object for the active backend
+(active_backend()).
 A device identifies a compute resources, such as CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via nv_array()) but also compilation (jit)."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -80,14 +82,15 @@ It is relevant for data allocation (e.g. via nv_array()) but also compilation (j
     </div>
 
     <div class="ref-description section level2">
-    <p>Constructs a backend-specific device object.</p>
+    <p>Constructs a backend-specific device object for the active backend
+(<code><a href="active_backend.html">active_backend()</a></code>).</p>
 <p>A device identifies a compute resources, such as CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via <code><a href="AnvlArray.html">nv_array()</a></code>) but also compilation (<a href="jit.html">jit</a>).</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_device</span><span class="op">(</span><span class="va">x</span>, backend <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_device</span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -97,13 +100,7 @@ It is relevant for data allocation (e.g. via <code><a href="AnvlArray.html">nv_a
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
 <dd><p>(<code>character(1)</code> | device object)<br>
 Identifier for the device (e.g. <code>"cpu"</code>, <code>"cuda"</code>, <code>"cuda:&lt;n&gt;"</code>),
-or an existing device object (returned as-is).</p></dd>
-
-
-<dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
-<dd><p>(<code>NULL</code> | <code>character(1)</code>)<br>
-The backend for which to create the device.
-Defaults to <code><a href="default_backend.html">default_backend()</a></code> when <code>NULL</code>.</p></dd>
+or an existing device object of the active backend (returned as-is).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -113,16 +110,16 @@ Defaults to <code><a href="default_backend.html">default_backend()</a></code> wh
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="backend.html">backend()</a></code>, <code><a href="AnvlBackend.html">AnvlBackend()</a></code>.</p></div>
+    <div class="dont-index"><p><code><a href="backend.html">backend()</a></code>, <code><a href="AnvlBackend.html">AnvlBackend()</a></code>, <code><a href="active_backend.html">active_backend()</a></code>.</p></div>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create CPU device for pjrt backend:</span></span></span>
-<span class="r-in"><span><span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"pjrt"</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># Create CPU device for the active backend</span></span></span>
+<span class="r-in"><span><span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;CpuDevice(id=0)&gt;</span>
-<span class="r-in"><span><span class="co"># Create CPU device for quickr backend:</span></span></span>
-<span class="r-in"><span><span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span>, <span class="st">"quickr"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co"># Create CPU device for the quickr backend:</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="with_backend.html">with_backend</a></span><span class="op">(</span><span class="st">"quickr"</span>, <span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> QuickrDevice(cpu) </span>
 <span class="r-in"><span><span class="co"># Pass through an existing device:</span></span></span>
 <span class="r-in"><span><span class="va">dev</span> <span class="op">&lt;-</span> <span class="fu">nv_device</span><span class="op">(</span><span class="st">"cpu"</span><span class="op">)</span></span></span>

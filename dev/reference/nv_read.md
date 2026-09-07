@@ -6,7 +6,7 @@ Loads arrays from a file in the
 ## Usage
 
 ``` r
-nv_read(path, device = NULL, backend = default_backend())
+nv_read(path, device = NULL)
 ```
 
 ## Arguments
@@ -22,12 +22,6 @@ nv_read(path, device = NULL, backend = default_backend())
   [`PJRTDevice`](https://r-xla.github.io/pjrt/reference/pjrt_device.html))  
   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`,
   ...). Default is to use the CPU.
-
-- backend:
-
-  (`character(1)`)  
-  Backend for the loaded arrays. Defaults to
-  [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).
 
 ## Value
 

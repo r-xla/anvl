@@ -57,11 +57,12 @@ currently supports arrays up to rank 5. Some primitives are more
 restricted (e.g. `transpose` currently only handles rank-2 arrays).
 
 Most users will prefer
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) with
-`backend = "quickr"`. This function is the lower-level graph API.
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) under
+`with_backend("quickr", ...)`. This function is the lower-level graph
+API.
 
 ## See also
 
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) with
-`backend = "quickr"` for tracing and compiling a regular R function in
-one step.
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) under
+`with_backend("quickr", ...)` for tracing and compiling a regular R
+function in one step.

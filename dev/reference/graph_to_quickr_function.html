@@ -126,12 +126,12 @@ function returns the same structure by rebuilding the output tree in R.</p>
 <p>Supported dtypes are <code>f64</code>, <code>i32</code>, and <code>pred</code>.
 The code generator currently supports arrays up to rank 5. Some primitives
 are more restricted (e.g. <code>transpose</code> currently only handles rank-2 arrays).</p>
-<p>Most users will prefer <code><a href="jit.html">jit()</a></code> with <code>backend = "quickr"</code>. This function is
+<p>Most users will prefer <code><a href="jit.html">jit()</a></code> under <code>with_backend("quickr", ...)</code>. This function is
 the lower-level graph API.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="jit.html">jit()</a></code> with <code>backend = "quickr"</code> for tracing and compiling a
+    <div class="dont-index"><p><code><a href="jit.html">jit()</a></code> under <code>with_backend("quickr", ...)</code> for tracing and compiling a
 regular R function in one step.</p></div>
     </div>
 

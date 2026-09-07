@@ -134,9 +134,8 @@ Key points:
 
 Every argument that is *not* a dynamic array must be listed in `static`.
 `new_primitive` calls
-[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) with
-`backend = "auto"` internally, which defers the choice of backend to
-call time.
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) internally,
+so the primitive runs on whichever backend is active when it is called.
 
 If the primitive is a wrapper around a stablehlo operation, it is
 possible to use the corresponding inference function from the stablehlo
@@ -201,14 +200,13 @@ array inputs – every argument is static. Two things change in this case:
 1.  **All formals must be listed in `static`**. Otherwise {anvl} would
     try to interpret a scalar argument like `value` or `shape` as an
     `AnvlArray` input.
-2.  **`backend = "auto"` cannot infer a device from inputs**, because
-    there are no array inputs. Instead, add a `device` formal to the
-    function and pass `device = device_arg("device")` to
-    [`new_primitive()`](https://r-xla.github.io/anvl/dev/reference/new_primitive.md).
-    At call time, the user-supplied device is read from that argument
-    and used to determine both the backend (via
-    \[[`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md)\]
-    dispatch) and the compilation device.
+2.  **The device cannot be inferred from inputs**, because there are no
+    array inputs. Instead, add a `device` formal to the function (it
+    goes in `static` like every other one) and pass it on to
+    [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md),
+    which declares it into the trace. The device the caller asked for –
+    a device of the active backend, or a device name – then counts for
+    device inference exactly like the device of an array input.
 
 For example, the real definition of `prim_fill` looks like this:
 
@@ -217,15 +215,14 @@ For example, the real definition of `prim_fill` looks like this:
 prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
-    # ... graph_desc_add(self, ...) ...
+    # ... graph_desc_add(self, ..., device = device) ...
   },
-  static = 1:4,
-  device = device_arg("device")
+  static = 1:4
 )
 ```
 
 See
-\[[`device_arg()`](https://r-xla.github.io/anvl/dev/reference/device_arg.md)\]
+[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)
 for the detailed semantics.
 
 #### Shortcut helpers for common shapes
@@ -399,44 +396,32 @@ prim_repeat_along
 #> function (x, times, axis) 
 #> {
 #>     if (currently_tracing()) {
-#>         cl <- match.call()
-#>         cl[[1L]] <- f
-#>         return(eval.parent(cl))
+#>         .jit_cl <- match.call()
+#>         .jit_cl[[1L]] <- .jit_cfg$f
+#>         return(eval.parent(.jit_cl))
 #>     }
-#>     args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
-#>     be <- if (!is.null(device_argname) && !is.null(args[[device_argname]])) {
-#>         dev_val <- args[[device_argname]]
-#>         if (is.character(dev_val)) 
-#>             default_backend()
-#>         else backend(dev_val)
-#>     }
-#>     else {
-#>         jit_auto_detect_backend(args, static)
-#>     }
-#>     run <- jit_runs[[be]]
-#>     if (is.null(run)) {
-#>         if (is.null(jit_fns[[be]])) {
-#>             jit_fns[[be]] <<- do.call(jit_with_backend, c(list(f = f, 
-#>                 static = static, cache_size = cache_size, backend = be), 
-#>                 if (!is.null(device_argname)) {
-#>                   list(device = device_arg(device_argname))
-#>                 } else if (!is.null(device)) {
-#>                   list(device = device)
-#>                 }, dots))
+#>     .jit_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+#>     .jit_be <- active_backend()
+#>     .jit_run <- .jit_runs[[.jit_be]]
+#>     if (is.null(.jit_run)) {
+#>         if (is.null(.jit_fns[[.jit_be]])) {
+#>             .jit_fns[[.jit_be]] <<- do.call(jit_with_backend, 
+#>                 c(list(f = .jit_cfg$f, static = .jit_cfg$static, 
+#>                   cache_size = .jit_cfg$cache_size, backend = .jit_be, 
+#>                   device = .jit_cfg$device), .jit_cfg$dots))
 #>         }
-#>         run <- attr(jit_fns[[be]], "jit_run_args")
-#>         if (is.null(run)) {
-#>             run <- function(args) do.call(jit_fns[[be]], args)
+#>         .jit_run <- attr(.jit_fns[[.jit_be]], "jit_run_args")
+#>         if (is.null(.jit_run)) {
+#>             .jit_run <- function(args) do.call(.jit_fns[[.jit_be]], 
+#>                 args)
 #>         }
-#>         jit_runs[[be]] <<- run
+#>         .jit_runs[[.jit_be]] <<- .jit_run
 #>     }
-#>     run(args)
+#>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x56434753fa30>
+#> <environment: 0x5617c33d4768>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
-#> attr(,"backend")
-#> [1] "auto"
 #> attr(,"primitive")
 #> <AnvlPrimitive:repeat_along>
 ```

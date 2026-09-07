@@ -11,6 +11,13 @@
   the promotion behavior of various primitives and API functions was
   improved.
 - `jit_eval()` was removed as it is no longer needed.
+- There is now exactly one backend used at a time and it is configured
+  via the `anvl.backend` option. With this chane the `device_arg`
+  parameter was removed from
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) as it is
+  no longer needed.
+- `default_backend()` is now called
+  [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
 - A `Shape` (re-exported from {stablehlo}) *is* its integer vector now,
   with a class attached, rather than a list wrapping one.
   `length(shape)` is the number of axes, `shape[i]` is the size of axis

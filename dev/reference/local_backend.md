@@ -1,10 +1,8 @@
-# Temporarily set the default backend
+# Temporarily set the backend
 
-Sets the `anvl.default_backend` option for the duration of the calling
-scope. This affects
-[`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
-[`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md),
-and [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
+Sets the `anvl.backend` option for the duration of the calling scope.
+Every array built and every operation run in that scope uses the
+backend.
 
 ## Usage
 

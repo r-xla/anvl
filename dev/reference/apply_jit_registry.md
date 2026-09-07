@@ -3,7 +3,7 @@
 Iterates over a registry produced by
 [`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
 and rebinds each listed function in `envir` to
-`jit(f, backend = "auto", static = entry$static)`.
+`jit(f, static = entry$static)`.
 
 Call this from the top level of your package's `R/zzz.R`, right next to
 `.onLoad`, so the wrappers are byte-compiled during package install

@@ -87,7 +87,14 @@ argument.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">graph_desc_add</span><span class="op">(</span><span class="va">primitive</span>, <span class="va">args</span>, params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>, <span class="va">infer_fn</span>, desc <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">graph_desc_add</span><span class="op">(</span></span>
+<span>  <span class="va">primitive</span>,</span>
+<span>  <span class="va">args</span>,</span>
+<span>  params <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  <span class="va">infer_fn</span>,</span>
+<span>  desc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  device <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -120,6 +127,17 @@ Must output a list of <code><a href="AbstractArray.html">AbstractArray</a></code
 <dd><p>(<code><a href="GraphDescriptor.html">GraphDescriptor</a></code> | <code>NULL</code>)<br>
 The graph descriptor to add the primitive call to.
 Uses the <a href="dot-current_descriptor.html">current descriptor</a> if <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | device object)<br>
+The device the call places its result on, for a primitive that constructs
+an array out of nothing (e.g. <code><a href="prim_fill.html">prim_fill()</a></code>, <code><a href="prim_iota.html">prim_iota()</a></code>) and so has
+no operand to carry one. It is declared to <code>desc</code>, where it counts like
+the device of an array input to the same trace: it decides what that
+program is compiled for, and disagreeing with another device in it is an
+error. Every other primitive takes its device from its operands and leaves
+this <code>NULL</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

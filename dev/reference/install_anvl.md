@@ -10,7 +10,7 @@ missing.
 ## Usage
 
 ``` r
-install_anvl(backend = default_backend(), ...)
+install_anvl(backend = active_backend(), ...)
 ```
 
 ## Arguments
@@ -19,7 +19,7 @@ install_anvl(backend = default_backend(), ...)
 
   (`character(1)`)  
   Backend to install for. Defaults to
-  [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).
+  [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
   The `"plain"` backend has nothing to install and is not accepted.
 
 - ...:

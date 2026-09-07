@@ -44,6 +44,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/PrimitiveCall.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/RData.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/Shape-constructor.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/active_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/anvl-package.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/apply_jit_registry.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/apply_promotion.html</loc></url>
@@ -61,10 +62,8 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/common_dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/compile_pjrt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/current_platform.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/default_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/default_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/device.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/device_arg.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/dot-current_descriptor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/eq_type.html</loc></url>

@@ -81,6 +81,9 @@
 <ul><li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
 <li>
 <code>jit_eval()</code> was removed as it is no longer needed.</li>
+<li>There is now exactly one backend used at a time and it is configured via the <code>anvl.backend</code> option. With this chane the <code>device_arg</code> parameter was removed from <code><a href="../reference/jit.html">jit()</a></code> as it is no longer needed.</li>
+<li>
+<code>default_backend()</code> is now called <code><a href="../reference/active_backend.html">active_backend()</a></code>.</li>
 <li>A <code>Shape</code> (re-exported from {stablehlo}) <em>is</em> its integer vector now, with a class attached, rather than a list wrapping one. <code>length(shape)</code> is the number of axes, <code>shape[i]</code> is the size of axis <code>i</code>, and <code>shape$dims</code> is gone – read the axis sizes with <code><a href="https://rdrr.io/r/base/class.html" class="external-link">unclass()</a></code>. <code><a href="../reference/shape.html">shape()</a></code> keeps working on an array; it is only the <code>Shape</code> object itself that no longer has a <code><a href="../reference/shape.html">shape()</a></code> method, having nothing left to unwrap.</li>
 </ul></div>
 <div class="section level3">

@@ -1,8 +1,7 @@
 # Create a Primitive
 
 Create a new primitive. For details on how to do this, see the article
-on *Adding a Primitive*. The backend is always `"auto"` and cannot be
-configured.
+on *Adding a Primitive*.
 
 ## Usage
 
@@ -12,7 +11,6 @@ new_primitive(
   fn,
   subgraphs = character(),
   static = character(),
-  device = NULL,
   register = TRUE
 )
 ```
@@ -45,15 +43,6 @@ new_primitive(
   [`integer()`](https://rdrr.io/r/base/integer.html))  
   Passed to
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
-
-- device:
-
-  (`NULL` \| `character(1)` \|
-  [`device_arg()`](https://r-xla.github.io/anvl/dev/reference/device_arg.md))  
-  Passed to
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md). Useful
-  for primitives with no array inputs (e.g. `prim_fill`) where the
-  device must come from an explicit argument.
 
 - register:
 

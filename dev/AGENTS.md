@@ -120,6 +120,16 @@ Two rules that bite while writing code:
   [`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)
   on them before anything else reads them.
 
+## One Backend at a Time
+
+The backend is the option `anvl.backend`
+([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
+[`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)).
+Every jitted function runs on it, reading it at call time; nothing
+infers a backend from an argument, no function takes a `backend`
+argument, and an array or device of another backend is an error.
+
 ## Primitive System
 
 Primitives are `JitPrimitive` callables constructed by

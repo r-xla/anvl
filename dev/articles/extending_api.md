@@ -159,10 +159,10 @@ nv_rbernoulli(nv_rng_state(1), 0.2)[[2L]]
 
 ## Jit-wrapping API Functions
 
-Most user-facing API functions in anvl are wrapped in
-`jit(f, backend = "auto", ...)` so that calling them traces and compiles
-a single program instead of executing each operation eagerly. The
-wrapping is driven by the `@jit` roclet (see
+Most user-facing API functions in anvl are wrapped in `jit(f, ...)` so
+that calling them traces and compiles a single program instead of
+executing each operation eagerly. The wrapping is driven by the `@jit`
+roclet (see
 [`?jit_roclet`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)).
 
 In `R/api*.R`, tag any function that performs more than one primitive

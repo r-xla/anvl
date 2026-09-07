@@ -7,6 +7,11 @@ powers 'JAX' and 'TensorFlow' – and run on CPU or NVIDIA GPU from the
 same source. Also provides reverse-mode automatic differentiation,
 returning the gradient of a function as another R function.
 
+## Options
+
+- `anvl.backend` (`character(1)`, default `"pjrt"`): active backend that
+  is used for compilation and data allocation.
+
 ## Third-Party Licenses
 
 The `anvl` package itself is MIT-licensed. The CUDA backend dynamically

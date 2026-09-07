@@ -84,7 +84,7 @@ safetensors format."><meta property="og:image" content="https://r-xla.github.io/
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_unserialize</span><span class="op">(</span><span class="va">con</span>, device <span class="op">=</span> <span class="cn">NULL</span>, backend <span class="op">=</span> <span class="fu"><a href="default_backend.html">default_backend</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_unserialize</span><span class="op">(</span><span class="va">con</span>, device <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -100,12 +100,6 @@ A connection or raw vector to read from.</p></dd>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_device.html" class="external-link">PJRTDevice</a></code>)<br>
 The device on which to place the loaded arrays (<code>"cpu"</code>, <code>"cuda"</code>, ...).
 Default is to use the CPU.</p></dd>
-
-
-<dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
-<dd><p>(<code>character(1)</code>)<br>
-Backend for the loaded arrays.
-Defaults to <code><a href="default_backend.html">default_backend()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

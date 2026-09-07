@@ -7,14 +7,7 @@ an LRU cache and skip recompilation.
 ## Usage
 
 ``` r
-jit(
-  f,
-  static = character(),
-  cache_size = 100L,
-  backend = NULL,
-  device = NULL,
-  ...
-)
+jit(f, static = character(), cache_size = 100L, device = NULL, ...)
 ```
 
 ## Arguments
@@ -47,36 +40,24 @@ jit(
   (`integer(1)`)  
   Maximum number of compiled executables to keep in the LRU cache.
 
-- backend:
-
-  (`NULL` \| `character(1)`)  
-  Compilation backend (e.g. `"pjrt"`, `"quickr"`). The special value
-  `"auto"` defers backend selection to call-time. `NULL` (default)
-  respects `device` and otherwise falls back to
-  [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md).
-
 - device:
 
   (`NULL` \| `character(1)` \|
-  [`nv_device`](https://r-xla.github.io/anvl/dev/reference/nv_device.md)
-  \|
-  [`device_arg()`](https://r-xla.github.io/anvl/dev/reference/device_arg.md))  
-  Target device. When a concrete device is specified, all arrays are
-  moved to it.
+  [`nv_device`](https://r-xla.github.io/anvl/dev/reference/nv_device.md))  
+  Target device, of the active backend. When a device is specified, all
+  arrays are moved to it.
 
-  The default (`NULL`) infers the device at call time, falling back to
+  The default (`NULL`) infers the device at call time from the array
+  inputs, falling back to
   [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
-
-  In order to use dynamic device selection with the `"auto"` backend
-  (e.g. for functions without dynamic inputs such as constant creation),
-  set `device = device_arg("<arg>")`.
 
 - ...:
 
-  Backend-specific options. Passing an option that is not supported by
-  the selected backend raises an error. See the **PJRT JIT arguments**
-  and **Quickr JIT arguments** sections below for the options accepted
-  by each backend.
+  Backend-specific options. See the **PJRT JIT arguments** and **Quickr
+  JIT arguments** sections below for the options each backend accepts.
+  An option no backend takes is rejected here; one that only another
+  backend takes is rejected when the function is called on a backend
+  that does not, since the backend is not known until then.
 
 ## Value
 
@@ -87,28 +68,28 @@ inputs and returns
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 values.
 
-## Device and Backend selection
+## Backend and device
 
-There are various ways to specify which device and which backend to use.
+A jitted function runs on the active backend *when it is called*
+([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
+set with
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+/
+[`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)),
+so one `JitFunction` serves every backend, and a function created under
+one backend and called under another runs on the latter. Array inputs
+must belong to that backend; an array of another backend is rejected.
+Each backend keeps its own compilation cache.
 
-**Concrete backend**: In the case where we fix a concrete backend
-(backend is not `"auto"`), the device can be inferred or set explicitly.
-Setting the device explicitly allows you to enforce that the function
-always uses the specified device, e.g. `"cuda:0"`. If the `device`
-argument is set, all encountered arrays are copied to it.
-
-If the device is not specified (`NULL`; default) the device will be
-inferred from the input arrays and the constants within the program. If
-conflicting devices are found, an error is thrown. If no array with a
-device is found, we fall back to the default device.
-
-**Auto backend**: When setting `backend = "auto"`, the backend will be
-inferred from the array inputs and otherwise fall back to the default
-backend. If you want to `jit()` a function without array inputs but make
-it work with different devices, set `device = device_arg("<argname>")`
-where `<argname>` is the name of the argument specifying the device.
-Note that this is only necessary with the `"auto"` backend. When using a
-concrete backend, you can just specify the device via a static argument.
+The device is a choice within that backend. Setting `device` explicitly
+enforces that the function always uses it, e.g. `"cuda:0"`, and copies
+every array input to it. With `device = NULL` (default) the device is
+inferred from the input arrays and the constants within the program;
+conflicting devices are an error, and with no array to read a device
+from the default device is used. A constructor that has no array to name
+a device declares the one it was asked for itself, see
+[`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)'s
+`device` argument.
 
 ## Jitting in a Package
 
@@ -174,10 +155,8 @@ g(nv_array(3), FALSE)
 #> AnvlArray
 #>  6
 #> [ CPUf32{1} ] 
-with_backend("quickr", {
-  h <- jit(function(x, y) x + y)
-  h(nv_array(1), nv_array(2))
-})
+# The same function runs on whichever backend is active when it is called
+with_backend("quickr", f(nv_array(1), nv_array(2)))
 #> AnvlArray
 #> [1] 3
 #> [ CPUf64{1} ] 

@@ -7,7 +7,7 @@ build time.
 
 Mark a function with `#' @jit` (optionally `#' @jit static = c(...)`) to
 request that the function be replaced in the package namespace by
-`jit(f, backend = "auto", static = c(...))`.
+`jit(f, static = c(...))`.
 
 ## Usage
 

@@ -154,9 +154,9 @@ Flattened traced values for the static arguments indicated by <code>is_static_fl
 
 
 <dt id="arg-devices">devices<a class="anchor" aria-label="anchor" href="#arg-devices"></a></dt>
-<dd><p>(<code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code>)<br>
-Device platforms encountered during tracing (e.g. <code>"cpu"</code>, <code>"cuda"</code>).
-Populated automatically as arrays are registered.</p></dd>
+<dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
+Devices encountered during tracing: the device of every concrete array
+registered in the graph, plus the ones declared by <code><a href="graph_desc_add.html">graph_desc_add()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

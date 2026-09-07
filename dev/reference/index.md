@@ -495,16 +495,14 @@ Backend-related functionality and implementations
 
 - [`backend()`](https://r-xla.github.io/anvl/dev/reference/backend.md) :
   Get Backend of an Array
-- [`default_backend()`](https://r-xla.github.io/anvl/dev/reference/default_backend.md)
-  : Get the default backend
+- [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md)
+  : Get Active Backend
 - [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md)
-  : Temporarily set the default backend
+  : Temporarily set the backend
 - [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
   : Run code with a specific backend
 - [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md)
   : Install what a backend needs to run
-- [`device_arg()`](https://r-xla.github.io/anvl/dev/reference/device_arg.md)
-  : Select JIT device from a function argument
 - [`nv_device()`](https://r-xla.github.io/anvl/dev/reference/nv_device.md)
   : Create a Device
 - [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md)
