@@ -278,11 +278,6 @@ test_that("hash for cache depends on in_tree (#122)", {
 })
 
 describe("jit: option validation", {
-  it("rejects the removed `backend` argument, pointing at with_backend()", {
-    expect_error(jit(identity, backend = "quickr"), "no .*backend.* argument")
-    expect_error(jit(identity, backend = "quickr"), "with_backend")
-  })
-
   it("rejects an option no backend takes, when the function is created", {
     expect_error(jit(identity, nonsense = 1), "No backend takes")
     expect_error(jit(identity, foo = 1, bar = 2), "No backend takes")
@@ -305,7 +300,7 @@ describe("jit: option validation", {
 })
 
 describe("jit: backend and device handling", {
-  it("runs on the backend in force when it is called", {
+  it("runs on the active backend when it is called", {
     f <- jit(identity)
     expect_equal(backend(f(1)), "pjrt")
     skip_if_no_quickr()
@@ -347,15 +342,18 @@ describe("jit: backend and device handling", {
   it("rejects a device of another backend, and a non-device", {
     skip_if_no_quickr()
     f <- jit(identity, device = pjrt::pjrt_device("cpu"))
-    expect_error(with_backend("quickr", f(1)), "backend in force")
+    expect_error(with_backend("quickr", f(1)), "active backend")
     expect_error(jit(identity, device = 1L), "must be a device")
   })
 
-  it("resolves a character device on the backend in force", {
+  it("resolves a character device on the active backend", {
+    # "cpu:1" is not the default device, so the input is really moved to it
+    f <- jit(identity, device = "cpu:1")
+    expect_equal(device(f(nv_scalar(1))), nv_device("cpu:1"))
     skip_if_no_quickr()
-    f <- jit(identity, device = "cpu")
-    expect_equal(device(f(nv_scalar(1))), nv_device("cpu"))
-    with_backend("quickr", expect_equal(device(f(nv_scalar(1))), nv_device("cpu")))
+    # the string is resolved per call, against the backend then active
+    g <- jit(identity, device = "cpu")
+    with_backend("quickr", expect_equal(device(g(nv_scalar(1))), nv_device("cpu")))
   })
 
   it("constant's device can be defined via static argument", {
@@ -423,36 +421,30 @@ describe("jit: backend and device handling", {
     expect_equal(device(g("cpu:1")), nv_device("cpu:1"))
   })
 
-  # device_arg
-  it("device_arg reads the device from a static argument", {
-    f <- jit(function(dev) nv_scalar(1, device = dev), device = device_arg("dev"))
-    expect_equal(device(f("cpu:0")), nv_device("cpu:0"))
-    expect_equal(device(f(nv_device("cpu:1"))), nv_device("cpu:1"))
+  # a constructor declares the device it was asked for (declare_device())
+  it("reads a constructor's device from a static argument", {
+    f <- jit(function(val, dev) nv_fill(val, 2L, dtype = "f32", device = dev), static = c("val", "dev"))
+    expect_equal(device(f(1, "cpu:0")), nv_device("cpu:0"))
+    expect_equal(device(f(1, nv_device("cpu:1"))), nv_device("cpu:1"))
     skip_if_no_quickr()
-    with_backend("quickr", expect_equal(device(f(nv_device("cpu"))), nv_device("cpu")))
+    with_backend("quickr", expect_equal(device(f(1, nv_device("cpu"))), nv_device("cpu")))
   })
 
-  it("device_arg rejects a device of another backend", {
+  it("honors a constructor's device below the traced function", {
+    f <- jit(function() nv_fill(1, 2L, dtype = "f32", device = "cpu:1") + 1)
+    expect_equal(device(f()), nv_device("cpu:1"))
+  })
+
+  it("errs when a constructor's device conflicts with an input's device", {
+    f <- jit(function(x) x + nv_fill(1, 2L, dtype = "f32", device = "cpu:1"))
+    expect_error(f(nv_array(c(1, 2), device = "cpu:0")), "more than one device")
+  })
+
+  it("rejects a constructor's device of another backend", {
     skip_if_no_quickr()
-    f <- jit(function(dev) 1L, device = device_arg("dev"))
     dev_q <- with_backend("quickr", nv_device("cpu"))
-    expect_error(f(dev_q), "backend in force")
-  })
-
-  it("device_arg works next to further static arguments", {
-    f <- jit(
-      function(val, dev) nv_array(val, device = dev),
-      device = device_arg("dev"),
-      static = c("val", "dev")
-    )
-    dev0 <- nv_device("cpu")
-    expect_true(device(f(1, dev0)) == dev0)
-  })
-
-  it("literal's device can be defined via device_arg", {
-    f <- jit(function(dev) 1L, device = device_arg("dev"))
-    expect_equal(device(f("cpu:0")), nv_device("cpu:0"))
-    expect_equal(device(f("cpu:1")), nv_device("cpu:1"))
+    f <- jit(function(dev) nv_fill(1, 2L, dtype = "f32", device = dev), static = "dev")
+    expect_error(f(dev_q), "active backend")
   })
 })
 

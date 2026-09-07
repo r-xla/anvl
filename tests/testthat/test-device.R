@@ -1,4 +1,4 @@
-test_that("nv_device builds a device of the backend in force", {
+test_that("nv_device builds a device of the active backend", {
   skip_if_no_quickr()
   dev <- with_backend("quickr", nv_device("cpu"))
   expect_s3_class(dev, "QuickrDevice")
@@ -17,7 +17,7 @@ test_that("nv_device rejects a device of another backend", {
   skip_if_no_quickr()
   skip_if(!pjrt::plugins_downloaded())
   dev <- with_backend("quickr", nv_device("cpu"))
-  expect_error(nv_device(dev), "backend in force")
+  expect_error(nv_device(dev), "active backend")
 })
 
 test_that("nv_device returns an existing device unchanged", {

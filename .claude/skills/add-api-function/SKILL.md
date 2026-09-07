@@ -15,7 +15,7 @@ See `vignettes/extending_api.Rmd` for the in-depth explanation of the patterns b
 
 ### Work with any backend
 
-API functions shipped with {anvl} must work with **both** the pjrt and quickr backends. There is one backend in force at a time (`default_backend()`), every jitted function runs on it, and an array of another backend is an error. In practice this means:
+API functions shipped with {anvl} must work with **both** the pjrt and quickr backends. There is one active backend at a time (`active_backend()`), every jitted function runs on it, and an array of another backend is an error. In practice this means:
 
 - Never name a backend in an API function: no `backend =` arguments, no `with_backend()` calls. The caller chooses the backend.
 - If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's device. Do **not** call `device()` on a traced input -- it fails under `jit()`.

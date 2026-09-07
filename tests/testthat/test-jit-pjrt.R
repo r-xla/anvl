@@ -8,7 +8,7 @@ test_that("error message when using different platforms", {
 })
 
 # A backend-specific argument is checked when the implementation for the
-# backend in force is built, on the first call.
+# active backend is built, on the first call.
 test_that("donate: must be formal args of f", {
   expect_error(jit(function(x) x, donate = "y")(nv_array(1)), "subset of")
 })

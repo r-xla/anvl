@@ -167,7 +167,7 @@ nv_array <- function(
     # A constant of the trace: it belongs to the backend being traced for.
     return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
   }
-  backend <- default_backend()
+  backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
@@ -426,7 +426,7 @@ nv_matrix <- function(
 #' @export
 nv_empty <- function(dtype, shape, device = NULL) {
   shape <- as.integer(shape)
-  backend <- default_backend()
+  backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }

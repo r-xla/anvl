@@ -188,9 +188,9 @@ AnvlGraph <- function(
 #'   `NULL` when all args are array inputs.
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
-#' @param devices (`character()`)\cr
-#'   Device platforms encountered during tracing (e.g. `"cpu"`, `"cuda"`).
-#'   Populated automatically as arrays are registered.
+#' @param devices (`list()`)\cr
+#'   Devices encountered during tracing: the device of every concrete array
+#'   registered in the graph, plus the ones declared by [`graph_desc_add()`].
 #' @return (`GraphDescriptor`)
 #' @export
 GraphDescriptor <- function(
@@ -831,10 +831,19 @@ is_graph_box <- function(x) {
 #' @param desc ([`GraphDescriptor`] | `NULL`)\cr
 #'   The graph descriptor to add the primitive call to.
 #'   Uses the [current descriptor][.current_descriptor] if `NULL`.
+#' @param device (`NULL` | `character(1)` | device object)\cr
+#'   The device the call places its result on, for a primitive that constructs
+#'   an array out of nothing (e.g. [`prim_fill()`], [`prim_iota()`]) and so has
+#'   no operand to carry one. It is declared to `desc`, where it counts like
+#'   the device of an array input to the same trace: it decides what that
+#'   program is compiled for, and disagreeing with another device in it is an
+#'   error. Every other primitive takes its device from its operands and leaves
+#'   this `NULL`.
 #' @return (`list` of [`GraphBox`])
 #' @export
-graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL) {
+graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NULL, device = NULL) {
   desc <- desc %||% .current_descriptor(silent = TRUE)
+  declare_device(device, desc)
   if (inherits(primitive, "JitPrimitive")) {
     primitive <- attr(primitive, "primitive")
   }
@@ -859,6 +868,26 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
   desc$calls$add(call)
   lapply(gvals_out, register_gval, desc = desc)
+}
+
+# Record that the traced program is being built for `device` -- the graph_desc_add()
+# `device` argument, which is how a constructor primitive gets the device it was
+# asked for into device inference.
+#
+# The declaration lands in the descriptor being traced. One made inside a
+# subgraph (a prim_while() body, a prim_if() branch) or an inlined trace goes to
+# that sub-descriptor, which the enclosing program's inference does not read --
+# exactly as the device of a concrete array used there does not reach it either.
+declare_device <- function(device, desc = NULL) {
+  if (is.null(device)) {
+    return(invisible(NULL))
+  }
+  desc <- desc %||% .current_descriptor()
+  # nv_device() both looks up a device name and rejects a device of another
+  # backend, so an unusable device is an error here rather than a confusing
+  # one about mixed devices further down.
+  desc$devices <- c(desc$devices, nv_device(device))
+  invisible(NULL)
 }
 
 print_call_repr <- function(prim) {

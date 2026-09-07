@@ -13,9 +13,8 @@ Accelerated array computing and code transformations for R. Numerical programs o
 \section{Options}{
 
 \itemize{
-\item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): the backend in force.
-Every array is built on it and every jitted function runs on it. See
-\code{\link[=default_backend]{default_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
+\item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): active backend that is used
+for compilation and data allocation.
 }
 }
 

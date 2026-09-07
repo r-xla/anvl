@@ -1,31 +1,32 @@
-test_that("default_backend returns 'pjrt' by default", {
-  expect_equal(default_backend(), "pjrt")
+test_that("active_backend returns 'pjrt' by default", {
+  be <- withr::with_options(list(anvl.backend = NULL), active_backend())
+  expect_equal(be, "pjrt")
 })
 
-test_that("local_backend sets and restores the default backend", {
+test_that("local_backend sets and restores the active backend", {
   skip_if_no_quickr()
-  old <- default_backend()
+  old <- active_backend()
   local_backend("quickr")
-  expect_equal(default_backend(), "quickr")
+  expect_equal(active_backend(), "quickr")
   expect_equal(backend(nv_array(1)), "quickr")
 })
 
 test_that("with_backend temporarily changes the backend", {
   skip_if_no_quickr()
-  expect_equal(default_backend(), "pjrt")
+  expect_equal(active_backend(), "pjrt")
   result <- with_backend("quickr", {
-    expect_equal(default_backend(), "quickr")
+    expect_equal(active_backend(), "quickr")
     backend(nv_array(1))
   })
   expect_equal(result, "quickr")
-  expect_equal(default_backend(), "pjrt")
+  expect_equal(active_backend(), "pjrt")
 })
 
 test_that("with_backend restores backend on error", {
   skip_if_no_quickr()
-  expect_equal(default_backend(), "pjrt")
+  expect_equal(active_backend(), "pjrt")
   try(with_backend("quickr", stop("test error")), silent = TRUE)
-  expect_equal(default_backend(), "pjrt")
+  expect_equal(active_backend(), "pjrt")
 })
 
 test_that("backend() returns the backend name", {

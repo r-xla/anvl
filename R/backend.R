@@ -180,31 +180,16 @@ register_backend(
   )
 )
 
-#' Get the backend in force
+#' Get Active Backend
 #'
-#' There is exactly one backend in force at any time, the one named by the
-#' option `anvl.backend` (default `"pjrt"`). Every array is built on it and
-#' every operation runs on it; an array of another backend is rejected. Set the
-#' option directly, or for a scope with [`local_backend()`] / [`with_backend()`].
+#' Retrieves the active backend (option `anvl.backend`), falling back to the default `"pjrt"`
+#' backend.
 #'
 #' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
 #' @seealso [local_backend()], [with_backend()]
 #' @export
-default_backend <- function() {
-  backend <- getOption("anvl.backend", "pjrt")
-  # Read on every call, so the check is a list lookup rather than an assertion.
-  # It is worth the lookup: unvalidated, a typo surfaces much later as an error
-  # about something else entirely.
-  if (!is.character(backend) || length(backend) != 1L || is.na(backend)) {
-    cli_abort("Option {.code anvl.backend} must be a single backend name, not {.obj_type_friendly {backend}}.")
-  }
-  if (is.null(globals$backends[[backend]]) || backend == "plain") {
-    cli_abort(c(
-      "Option {.code anvl.backend} names no usable backend: {.val {backend}}.",
-      i = "The backends are {.val {setdiff(names(globals$backends), 'plain')}}."
-    ))
-  }
-  backend
+active_backend <- function() {
+  getOption("anvl.backend", "pjrt")
 }
 
 assert_backend <- function(backend) {
@@ -261,13 +246,13 @@ with_backend <- function(backend, code) {
 #' installation vignette: `vignette("installation", package = "anvl")`.
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to install for. Defaults to [default_backend()]. The `"plain"`
+#'   Backend to install for. Defaults to [active_backend()]. The `"plain"`
 #'   backend has nothing to install and is not accepted.
 #' @param ... Passed to the underlying installer: [pjrt::install_pjrt()] for
 #'   `"pjrt"`, [utils::install.packages()] for `"quickr"`.
 #' @return `NULL`, invisibly. Called for its side effect.
 #' @export
-install_anvl <- function(backend = default_backend(), ...) {
+install_anvl <- function(backend = active_backend(), ...) {
   backend <- assert_choice(backend, c("pjrt", "quickr"))
   switch(
     backend,

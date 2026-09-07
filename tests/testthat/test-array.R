@@ -326,7 +326,7 @@ test_that("platform returns 'cpu' for plain backend", {
   expect_equal(platform(x), "cpu")
 })
 
-test_that("nv_array builds on the backend in force", {
+test_that("nv_array builds on the active backend", {
   skip_if_no_quickr()
   expect_equal(backend(nv_array(1)), "pjrt")
   expect_equal(with_backend("quickr", backend(nv_array(1))), "quickr")
@@ -335,8 +335,8 @@ test_that("nv_array builds on the backend in force", {
 test_that("nv_array rejects a device of another backend", {
   skip_if_no_quickr()
   local_backend("quickr")
-  expect_error(nv_array(1, device = pjrt::pjrt_device("cpu")), "backend in force")
-  expect_error(nv_empty("f64", 2L, device = pjrt::pjrt_device("cpu")), "backend in force")
+  expect_error(nv_array(1, device = pjrt::pjrt_device("cpu")), "active backend")
+  expect_error(nv_empty("f64", 2L, device = pjrt::pjrt_device("cpu")), "active backend")
 })
 
 test_that("default floating dtype is f32 for pjrt", {
