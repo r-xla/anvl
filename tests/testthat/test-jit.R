@@ -237,7 +237,7 @@ test_that("Only constants in group generics", {
 test_that("... works (#19)", {
   expect_equal(
     jit(sum)(nv_array(1:10)),
-    nv_scalar(55L, dtype = "i32")
+    nv_scalar(55L, dtype = default_int())
   )
 
   f <- function(..., a) {
@@ -245,7 +245,7 @@ test_that("... works (#19)", {
   }
   expect_equal(
     jit(f)(a = nv_scalar(1L), nv_array(1:10)),
-    nv_scalar(56L, dtype = "i32")
+    nv_scalar(56L, dtype = default_int())
   )
 })
 

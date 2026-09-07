@@ -317,7 +317,7 @@ test_that("prim_reshape", {
   x <- array(1:6, c(3, 2))
   expect_equal(
     f(nv_array(x), shape = 6),
-    nv_array(as.integer(c(1, 4, 2, 5, 3, 6)), "i32")
+    nv_array(as.integer(c(1, 4, 2, 5, 3, 6)), default_int())
   )
 })
 
@@ -966,7 +966,7 @@ describe("prim_top_k", {
     expect_length(out, 2L)
     expect_equal(as.vector(out[[1L]]), c(9, 6, 5))
     expect_equal(as.vector(out[[2L]]), c(6L, 8L, 5L))
-    expect_equal(as.character(dtype(out[[2L]])), "i32")
+    expect_equal(dtype(out[[2L]]), default_int())
   })
 
   it("operates per-row on a matrix", {
@@ -1016,7 +1016,7 @@ describe("prim_argmax", {
 
   it("returns dtype i32", {
     out <- prim_argmax(nv_array(c(1, 2, 3)), axis = 1L)
-    expect_equal(as.character(dtype(out)), "i32")
+    expect_equal(dtype(out), default_int())
   })
 
   it("works with integer input", {
@@ -1046,7 +1046,7 @@ describe("prim_argmax", {
     m <- nv_matrix(numeric(0), nrow = 0, ncol = 3)
     out <- prim_argmax(m, axis = 2L)
     expect_equal(shape(out), 0L)
-    expect_equal(as.character(dtype(out)), "i32")
+    expect_equal(dtype(out), default_int())
   })
 
   it("accepts a negative dim", {
@@ -1292,6 +1292,9 @@ describe("prim_reduce_any / prim_reduce_all input data type", {
     expect_error(prim_reduce_any(i, 1L), "`x` must have a boolean data type")
     expect_error(prim_reduce_all(i, 1L), "`x` must have a boolean data type")
     expect_error(nv_reduce_any(i), "`x` must have a boolean data type")
-    expect_error(nv_reduce_any(nv_array(c(1, 0))), "Got \"f32\"")
+    expect_error(
+      nv_reduce_any(nv_array(c(1, 0))),
+      paste0("Got \"", as.character(default_float()), "\"")
+    )
   })
 })

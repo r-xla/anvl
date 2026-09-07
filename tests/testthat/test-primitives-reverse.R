@@ -720,7 +720,7 @@ describe("prim_scatter", {
   it("non-unique indices: only winning update gets gradient", {
     update <- nv_array(1:10, dtype = "f32")
     f <- function(update) {
-      x <- nv_array(0)
+      x <- nv_array(0, dtype = "f32")
       x[array(rep(1L, 10))] <- update
       mean(x^2)
     }
@@ -780,7 +780,7 @@ describe("gather/scatter reverse via subset operators", {
       out <- gradient(\(x, value) {
         mean(x_subset * value)
       })(x_subset, value)
-      g1 <- nv_fill(0, shape = shape)
+      g1 <- nv_fill(0, shape = shape, dtype = dtype(x))
       out[[1L]] <- rlang::inject(nv_subset_assign(g1, !!!quos, value = out[[1]]))
       out
     }

@@ -251,6 +251,7 @@ test_that("wrt for non-array input: value_and_gradient", {
 })
 
 test_that("wrt for nested non-array input: gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -261,6 +262,7 @@ test_that("wrt for nested non-array input: gradient", {
 })
 
 test_that("wrt for nested non-array input: value_and_gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -271,6 +273,7 @@ test_that("wrt for nested non-array input: value_and_gradient", {
 })
 
 test_that("can only compute gradient w.r.t. float arrays", {
+  local_registered_default_dtypes()
   expect_snapshot(error = TRUE, {
     gradient(nv_floor, wrt = "x")(nv_scalar(1L))
   })

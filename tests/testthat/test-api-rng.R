@@ -111,7 +111,7 @@ test_that("nv_sample_int", {
 
   expect_equal(shape(out1[[1]]), 2L)
   expect_equal(shape(out1[[2]]), 10L)
-  expect_equal(dtype(out1[[2]]), as_dtype("i32"))
+  expect_equal(dtype(out1[[2]]), default_int())
 
   # All values should be in 1:6
   values1 <- as.vector(out1[[2]])
@@ -189,8 +189,8 @@ test_that("nv_rnorm takes the sample's dtype from mean and sd", {
 
   # Neither brings a data type, so the sample falls back to the default float
   # rather than to whatever R stores its numbers as.
-  expect_equal(draw(), as_dtype("f32"))
-  expect_equal(draw(mean = 0L, sd = 1L), as_dtype("f32"))
+  expect_equal(draw(), default_float())
+  expect_equal(draw(mean = 0L, sd = 1L), default_float())
 
   # Either one that has a data type gives the sample its own.
   expect_equal(draw(mean = nv_scalar(1, dtype = "f64")), as_dtype("f64"))
@@ -200,7 +200,7 @@ test_that("nv_rnorm takes the sample's dtype from mean and sd", {
     as_dtype("f64")
   )
   # An R value keeps the sample a float even where the other is an integer.
-  expect_equal(draw(mean = nv_scalar(1L)), as_dtype("f32"))
+  expect_equal(draw(mean = nv_scalar(1L)), default_float())
 
   # `dtype` is the caller's word over the arguments', and is refused where the
   # sample could not hold them.

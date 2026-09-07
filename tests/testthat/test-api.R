@@ -141,7 +141,7 @@ describe("nv_concatenate", {
     )
     expect_equal(
       nv_concatenate(nv_array(1:2, shape = c(2, 1)), nv_array(3:4, shape = c(2, 1)), axis = 2L),
-      nv_array(1:4, shape = c(2, 2), dtype = "i32")
+      nv_array(1:4, shape = c(2, 2), dtype = default_int())
     )
   })
   it("fails with incompatible shapes", {
@@ -1257,18 +1257,18 @@ describe("nv_sort", {
 describe("nv_argsort", {
   it("returns indices that sort the array", {
     x <- nv_array(c(3, 1, 4, 1, 5))
-    perm <- as.vector(nv_argsort(x))
+    perm <- as.integer(nv_argsort(x))
     expect_equal(as.vector(x)[perm], c(1, 1, 3, 4, 5))
   })
 
   it("supports decreasing", {
     x <- nv_array(c(3, 1, 4, 1, 5))
-    perm <- as.vector(nv_argsort(x, decreasing = TRUE))
+    perm <- as.integer(nv_argsort(x, decreasing = TRUE))
     expect_equal(as.vector(x)[perm], c(5, 4, 3, 1, 1))
   })
 
   it("returns i32 dtype", {
-    expect_equal(as.character(dtype(nv_argsort(nv_array(c(1, 2))))), "i32")
+    expect_equal(dtype(nv_argsort(nv_array(c(1, 2)))), default_int())
   })
 
   it("accepts a negative dim", {

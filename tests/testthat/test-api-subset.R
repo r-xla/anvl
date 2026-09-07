@@ -218,8 +218,8 @@ describe("nv_subset and nv_subset_assign", {
   it("scatter with all-colliding destination indices yields a valid write", {
     x <- nv_array(1:100)
     result <- as_array(nv_subset_assign(x, array(rep(1L, 100)), value = nv_array(101:200)))
-    expect_true(as.vector(result)[1L] %in% 101:200)
-    expect_equal(as.vector(result)[-1L], 2:100)
+    expect_true(as.integer(result)[1L] %in% 101:200)
+    expect_equal(as.integer(result)[-1L], 2:100)
   })
 
   it("subset errors on R vector of length > 1", {

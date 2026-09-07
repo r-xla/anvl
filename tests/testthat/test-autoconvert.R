@@ -7,7 +7,7 @@ test_that("jit: autoconverts length-1 numeric scalar", {
 test_that("jit: autoconverted scalar + literal takes the default dtype", {
   f <- jit(\(x) x + 1)
   out <- f(1)
-  expect_equal(dtype(out), as_dtype("f32"))
+  expect_equal(dtype(out), default_float())
   expect_equal(shape(out), integer())
 })
 
@@ -41,7 +41,7 @@ test_that("jit: autoconverts higher-axis array via nv_array", {
   f <- jit(identity)
   a <- array(1:24, dim = c(2, 3, 4))
   out <- f(a)
-  expect_equal(dtype(out), as_dtype("i32"))
+  expect_equal(dtype(out), default_int())
   expect_equal(shape(out), c(2L, 3L, 4L))
 })
 
@@ -58,7 +58,7 @@ test_that("jit: non-array/non-scalar leaves (e.g. character) error", {
 test_that("jit: nested list is flattened; leaves are autoconverted", {
   f <- jit(function(pair) pair[[1]] + pair[[2]])
   out <- f(list(1, 2))
-  expect_equal(dtype(out), as_dtype("f32"))
+  expect_equal(dtype(out), default_float())
   expect_equal(shape(out), integer())
   expect_equal(as_array(out), 3)
 })

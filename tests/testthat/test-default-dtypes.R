@@ -6,6 +6,7 @@
 
 describe("default_dtypes()", {
   it("reports the registered defaults of the backend in force", {
+    local_registered_default_dtypes()
     expect_equal(default_dtypes(), list(float = as_dtype("f32"), int = as_dtype("i32")))
     expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i32")))
     expect_error(with_backend("plain", default_dtypes()), "names no usable backend")
@@ -30,6 +31,7 @@ describe("default_dtypes()", {
 
 describe("local_default_dtypes()", {
   it("sets the options for the scope", {
+    local_registered_default_dtypes()
     local({
       local_default_dtypes(c(float = "f64", int = "i64"))
       expect_identical(getOption("anvl.default_dtypes"), c(float = "f64", int = "i64"))
@@ -66,8 +68,9 @@ describe("local_default_dtypes()", {
 
 describe("with_default_dtypes()", {
   it("scopes the change to the expression", {
-    expect_equal(with_default_dtypes(c(float = "f64"), default_dtypes()$float), as_dtype("f64"))
-    expect_equal(default_dtypes()$float, as_dtype("f32"))
+    before <- default_float()
+    expect_equal(with_default_dtypes(c(float = "f64"), default_float()), as_dtype("f64"))
+    expect_equal(default_float(), before)
     expect_equal(with_default_dtypes(c(int = "i64"), dtype(nv_array(1L))), as_dtype("i64"))
   })
 })
@@ -88,7 +91,7 @@ describe("the default float", {
     expect_error(dtype(1.5), "f64")
     # An explicit dtype still wins, and the other categories are untouched.
     expect_equal(dtype(nv_array(1.5, dtype = "f32")), as_dtype("f32"))
-    expect_equal(dtype(nv_array(1L)), as_dtype("i32"))
+    expect_equal(dtype(nv_array(1L)), default_int())
     expect_equal(dtype(nv_array(TRUE)), as_dtype("bool"))
   })
 
@@ -100,7 +103,10 @@ describe("the default float", {
     expect_no_warning(nv_array(1L, dtype = "i8") * 2L)
     expect_no_warning(jit(function(x) nv_convert(x, "f64"))(1L))
     # An R double staged through `f64` under an `f32` default still warns.
-    expect_warning(nv_convert(1.5, "i32"), class = "anvl_staging_widens_warning")
+    with_default_dtypes(
+      c(float = "f32"),
+      expect_warning(nv_convert(1.5, "i32"), class = "anvl_staging_widens_warning")
+    )
     local_default_dtypes(c(float = "f64"))
     expect_no_warning(nv_convert(1.5, "i32"))
   })
@@ -151,7 +157,7 @@ describe("the default integer", {
     expect_equal(dtype(nv_rbinom(3, state)[[2L]]), as_dtype("i64"))
     expect_equal(dtype(nv_sample_int(3, state, 6L)[[2L]]), as_dtype("i64"))
     expect_equal(peek_dtype(1L), as_dtype("i64"))
-    expect_equal(dtype(nv_array(1.5)), as_dtype("f32"))
+    expect_equal(dtype(nv_array(1.5)), default_float())
   })
 
   it("decides what an R integer commits to in a trace", {
@@ -167,10 +173,75 @@ describe("the default integer", {
     expect_equal(dtype(nv_array(1L, dtype = "i8") * 2L), as_dtype("i8"))
     expect_equal(dtype(nv_array(TRUE) + 1L), as_dtype("i64"))
   })
+
+  it("decides the data type of the indices an operation returns", {
+    x <- nv_array(c(3, 1, 4, 1, 5))
+    local_default_dtypes(c(int = "i64"))
+    i64 <- as_dtype("i64")
+    expect_equal(dtype(nv_argmax(x)), i64)
+    expect_equal(dtype(nv_argmin(x)), i64)
+    expect_equal(dtype(nv_argsort(x)), i64)
+    expect_equal(dtype(nv_cummax(x, with_indices = TRUE)$indices), i64)
+    expect_equal(dtype(nv_cummin(x, with_indices = TRUE)$indices), i64)
+    # `hlo_top_k` fixes its indices at i32, so these are converted.
+    expect_equal(dtype(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), i64)
+    # And in a trace, where the program is keyed on the defaults.
+    expect_equal(dtype(jit(function(x) nv_argmax(x))(x)), i64)
+    expect_equal(dtype(jit(function(x) nv_argsort(x))(x)), i64)
+    expect_equal(dtype(jit(function(x) nv_cummin(x, with_indices = TRUE)$indices)(x)), i64)
+    expect_equal(dtype(jit(function(x) nv_top_k(x, k = 2L, with_indices = TRUE)$indices)(x)), i64)
+  })
+
+  it("does not change the indices themselves", {
+    x <- nv_array(c(3, 1, 4, 1, 5))
+    at_i32 <- list(
+      argmax = as_array(nv_argmax(x)),
+      argsort = as_array(nv_argsort(x)),
+      cummax = as_array(nv_cummax(x, with_indices = TRUE)$indices),
+      top_k = as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices)
+    )
+    local_default_dtypes(c(int = "i64"))
+    expect_equal(as_array(nv_argmax(x)), at_i32$argmax)
+    expect_equal(as_array(nv_argsort(x)), at_i32$argsort)
+    expect_equal(as_array(nv_cummax(x, with_indices = TRUE)$indices), at_i32$cummax)
+    expect_equal(as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), at_i32$top_k)
+  })
+
+  it("does not disturb a gradient that scatters through those indices", {
+    # `prim_top_k` and `prim_cummax` route their reverse rule through
+    # `prim_scatter` with the forward indices, so a wider index data type has
+    # to survive the scatter.
+    x <- nv_array(c(3, 1, 4, 1, 5, 9))
+    f <- function(x) nv_reduce_sum(nv_top_k(x, k = 3L))
+    g <- function(x) nv_reduce_sum(nv_cummax(x))
+    at_i32 <- list(
+      top_k = as_array(jit(gradient(f))(x)[[1L]]),
+      cummax = as_array(jit(gradient(g))(x)[[1L]])
+    )
+    local_default_dtypes(c(int = "i64"))
+    expect_equal(as_array(jit(gradient(f))(x)[[1L]]), at_i32$top_k)
+    expect_equal(as_array(jit(gradient(g))(x)[[1L]]), at_i32$cummax)
+  })
+
+  it("decides the data type of an LU decomposition's pivots", {
+    # LAPACK's getrf writes 32-bit pivots, so `pivots` and `permutation` are
+    # converted after the custom call rather than produced at the default.
+    a <- nv_matrix(c(4, 3, 6, 3, 2, 8, 1, 5, 7), nrow = 3, dtype = "f64")
+    at_i32 <- lapply(nv_lu(a)[c("pivots", "permutation")], as_array)
+    local_default_dtypes(c(int = "i64"))
+    factored <- nv_lu(a)
+    expect_equal(dtype(factored$pivots), as_dtype("i64"))
+    expect_equal(dtype(factored$permutation), as_dtype("i64"))
+    expect_equal(as_array(factored$pivots), at_i32$pivots)
+    expect_equal(as_array(factored$permutation), at_i32$permutation)
+  })
 })
 
 describe("a compiled program", {
   it("is keyed on the defaults it was compiled under", {
+    # The baseline has to differ from the override applied below, or there is
+    # only ever one program and nothing to key.
+    local_registered_default_dtypes()
     n_traced <- 0L
     f <- jit(function(x) {
       n_traced <<- n_traced + 1L
@@ -198,6 +269,7 @@ describe("a compiled program", {
 
   it("runs on, and is pinned to, the backend in force when it is called", {
     skip_if_no_quickr()
+    local_registered_default_dtypes()
     f <- jit(function() 1.5)
     expect_equal(dtype(f()), as_dtype("f32"))
     expect_equal(with_backend("quickr", dtype(f())), as_dtype("f64"))
@@ -234,6 +306,7 @@ describe("a compiled program", {
 
   it("keeps one cache per backend", {
     skip_if_no_quickr()
+    local_registered_default_dtypes()
     n_traced <- 0L
     f <- jit(function(x) {
       n_traced <<- n_traced + 1L
@@ -255,7 +328,7 @@ describe("eager code", {
     # default it reads is the one of the backend in force, which is also the
     # backend the operation then runs on.
     promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promote_common())[[2L]]
-    expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), as_dtype("f32"))
+    expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), default_float())
     with_backend("quickr", {
       expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), as_dtype("f64"))
       expect_equal(peek_dtype(1.5), as_dtype("f64"))
@@ -292,31 +365,32 @@ describe("a scoped override inside a jitted body", {
       x
     })
     invisible(f(nv_array(1L, dtype = "i32")))
-    expect_equal(seen, c(rep("f64", 5L), "f32"))
+    expect_equal(seen, c(rep("f64", 5L), as.character(default_float())))
   })
 
   it("reaches a helper that builds its own literals", {
     helper <- function(x) x * 2 + 0.5
     f <- jit(function(x) list(lo = helper(x), hi = with_default_dtypes(c(float = "f64"), helper(x))))
     out <- f(nv_array(1L, dtype = "i32"))
-    expect_equal(dtype(out$lo), as_dtype("f32"))
+    expect_equal(dtype(out$lo), default_float())
     expect_equal(dtype(out$hi), as_dtype("f64"))
   })
 
   it("does not reach a bare R value handed out of the scope", {
     # The value has committed to nothing inside the scope, so it takes the
     # default where it is used -- the per-operation rule, not a special case.
-    expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), as_dtype("f32"))
+    expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), default_float())
   })
 
   it("takes the trace's baseline, not the backend in force", {
     skip_if_no_quickr()
     # A program is compiled for one backend, so switching inside the body
     # cannot change what its R values commit to.
-    expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), as_dtype("f32"))
+    expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), default_float())
   })
 
   it("does not change what the program is keyed on", {
+    local_registered_default_dtypes()
     n_traced <- 0L
     f <- jit(function(x) {
       n_traced <<- n_traced + 1L

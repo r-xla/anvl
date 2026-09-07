@@ -2,6 +2,14 @@ is_cuda <- function() {
   Sys.getenv("PJRT_PLATFORM") == "cuda"
 }
 
+# Clear the `anvl.default_dtypes` override for the calling scope, so that the
+# defaults are whatever the backend in force registers. For the few tests that
+# assert the *registered* pair and would otherwise see the suite-wide override
+# `ANVL_DEFAULT_DTYPES` sets (see `setup.R`).
+local_registered_default_dtypes <- function(envir = parent.frame()) {
+  withr::local_options(list(anvl.default_dtypes = NULL), .local_envir = envir)
+}
+
 is_cpu <- function() {
   Sys.getenv("PJRT_PLATFORM", "cpu") == "cpu"
 }
