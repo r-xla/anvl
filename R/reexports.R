@@ -43,7 +43,7 @@ tengen::device
 #' @title Convert to an R array
 #'
 #' @description
-#' Transfers array data to R and returns it as an R [`array`].
+#' Transfers array data to R and returns it as an R [`array`][base::array].
 #' Only in the case of scalars is the result a vector of length 1, as R `arrays` cannot have 0 axes.
 #'
 #' @details
@@ -52,7 +52,7 @@ tengen::device
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns An R [`array`] or `vector` of length 1.
+#' @returns An R [`array`][base::array] or `vector` of length 1.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' as_array(x)

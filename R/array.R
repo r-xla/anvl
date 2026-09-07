@@ -528,20 +528,29 @@ await.AnvlArray <- function(x, ...) {
 
 #' @title Coerce AnvlArray to an R Vector
 #' @description
-#' Convert an [`AnvlArray`] to a bare R vector.
-#' The array's shape is discarded; the result is always a flat vector.
+#' Convert an [`AnvlArray`] to a flat R vector, discarding the array's shape.
 #' Each method requires a compatible dtype:
 #' * `as.double()` / `as.numeric()`: float or (signed/unsigned) integer dtypes.
 #' * `as.integer()`: signed or unsigned integer dtypes.
+#' * [`bit64::as.integer64()`]: signed or unsigned integer dtypes. This is how
+#'   to read `i64`, `ui64` and `ui32` values that an R `integer` cannot hold.
+#'   It is lossless for `i64` and `ui32`, but [`bit64::integer64`] is itself
+#'   signed, so a `ui64` value `>= 2^63` wraps to a negative one (exactly
+#'   `2^63` becomes `NA`); pass `check = TRUE` to be told when that happens.
 #' * `as.logical()`: `bool`.
 #' * `as.vector()`: any dtype; the R type is chosen by the dtype, or
 #'   forced via `mode` (e.g. `"integer"`, `"double"`, `"logical"`, `"list"`).
 #'   For the dtypes R has no native type for (`i64`, `ui64`, `ui32`) the
 #'   default `mode = "any"` keeps the [`bit64::integer64`] that [`as_array()`]
-#'   returns, since a bare double could not hold the values.
+#'   returns, since a bare double could not hold the values. That result still
+#'   carries its class, so `is.vector()` is `FALSE` for it -- name a `mode` if
+#'   you need a value stripped of attributes.
 #'
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
+#' `as.vector()`'s signature is fixed by the generic and so has no `check`
+#' argument; call [`as_array()`] with `check = TRUE` to have the values
+#' validated.
 #' @param x ([`AnvlArray`])\cr
 #'   Array to coerce.
 #' @param mode (`character(1)`)\cr
@@ -550,11 +559,14 @@ await.AnvlArray <- function(x, ...) {
 #' @param check (`logical(1)`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
-#' @return An R vector of the corresponding type (`double`, `integer`, or `logical`).
+#' @return An R vector holding the array's values, of the type the method
+#'   names (`double`, `integer`, `logical`, [`bit64::integer64`]) or, for
+#'   `as.vector()`, of the type `mode` asks for.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
 #' as.numeric(x)
 #' as.integer(nv_array(1:6, shape = c(2L, 3L)))
+#' bit64::as.integer64(nv_array(1:6, shape = c(2L, 3L), dtype = "i64"))
 #' as.logical(nv_array(c(TRUE, FALSE), dtype = "bool"))
 #' as.vector(x)
 #' @name as-AnvlArray
@@ -580,6 +592,21 @@ as.integer.AnvlArray <- function(x, check = FALSE, ...) {
     cli_abort("{.fn as.integer} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
   }
   as.integer(as_array(x, check = check))
+}
+
+#' @rdname as-AnvlArray
+#' @method as.integer64 AnvlArray
+#' @exportS3Method bit64::as.integer64
+as.integer64.AnvlArray <- function(x, check = FALSE, ...) {
+  dt <- dtype(x)
+  if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
+    cli_abort(
+      "{.fn bit64::as.integer64} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}."
+    )
+  }
+  # bit64's own methods drop every attribute, the shape included, for each type
+  # `as_array()` can hand back (`integer`, `integer64`).
+  bit64::as.integer64(as_array(x, check = check))
 }
 
 #' @rdname as-AnvlArray
@@ -611,10 +638,17 @@ as.vector.AnvlArray <- function(x, mode = "any") {
       dim(out) <- NULL
       out
     },
-    double = as.double(out),
-    numeric = as.double(out),
+    logical = as.logical(out),
     integer = as.integer(out),
+    double = ,
+    numeric = as.double(out),
     character = as.character(out),
+    list = as.list(out),
+    # An `integer64` element survives inside an expression, even though
+    # deparsing it for printing shows the raw double again.
+    expression = as.expression(as.list(out)),
+    # `complex`, `raw` and the rest are only reachable from a double, so they
+    # go the lossy way -- and bit64 warns when the value did not fit.
     as.vector(as.double(out), mode = mode)
   )
 }

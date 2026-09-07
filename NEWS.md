@@ -8,14 +8,19 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 
+## Features
+
+* `bit64::as.integer64()` now has a method for `AnvlArray`s, which coerces
+  any (signed or unsigned) integer data type to a flat `bit64::integer64`
+  vector. This is how to read `i64`, `ui64` and `ui32` values that an R
+  `integer` cannot hold; it is lossless for `i64` and `ui32`, while a `ui64`
+  value `>= 2^63` wraps through `bit64::integer64`'s own sign, as
+  `pjrt::as_array()` documents.
+
 ## Bug fixes
 
-* `as.vector()` on an array of a data type R has no native type for (`i64`,
-  `ui64`, `ui32`) no longer corrupts the values. `as_array()` returns those as
-  a `bit64::integer64`, whose storage is a double holding the raw 64-bit
-  pattern; `as.vector()` dropped the class along with the shape, so
-  `as.vector(nv_array(1L, dtype = "i64"))` gave `4.9e-324` instead of `1`.
-
+* `as.vector()` now works correctly for `AnvlArray`s that are converted
+  to `bit64::integer64`.
 * The gradient of a conversion into a non-float data type is now zero instead
   of one. `prim_convert()` / `nv_convert()` passed the cotangent through
   whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
