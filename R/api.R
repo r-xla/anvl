@@ -544,10 +544,10 @@ make_do_binary <- function(f) {
 #' y <- nv_array(c(4, 5, 6))
 #' x + y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_add(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x + 1L
 #' @export
 #' @jit
@@ -566,10 +566,10 @@ nv_add <- make_do_binary(prim_add)
 #' y <- nv_array(c(4, 5, 6))
 #' x * y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_mul(nv_scalar(2, "f32"), nv_scalar(3, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x * 2L
 #' @export
 #' @jit
@@ -588,10 +588,10 @@ nv_mul <- make_do_binary(prim_mul)
 #' y <- nv_array(c(1, 2, 3))
 #' x - y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x - 1L
 #' @export
 #' @jit
@@ -610,10 +610,10 @@ nv_sub <- make_do_binary(prim_sub)
 #' y <- nv_array(c(2, 5, 10))
 #' x / y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_div(nv_scalar(10, "f32"), nv_scalar(4, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x / 2L
 #' @export
 #' @jit
@@ -632,10 +632,10 @@ nv_div <- make_do_binary(prim_div)
 #' y <- nv_array(c(3, 2, 1))
 #' x ^ y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_pow(nv_scalar(2, "f32"), nv_scalar(3, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x^2L
 #' @export
 #' @jit
@@ -654,10 +654,10 @@ nv_pow <- make_do_binary(prim_pow)
 #' y <- nv_array(c(1, 3, 2))
 #' x == y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_eq(nv_scalar(1, "f32"), nv_scalar(1, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x == 2L
 #' @export
 #' @jit
@@ -676,10 +676,10 @@ nv_eq <- make_do_binary(prim_eq)
 #' y <- nv_array(c(1, 3, 2))
 #' x != y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_ne(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x != 2L
 #' @export
 #' @jit
@@ -698,10 +698,10 @@ nv_ne <- make_do_binary(prim_ne)
 #' y <- nv_array(c(3, 2, 1))
 #' x > y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_gt(nv_scalar(2, "f32"), nv_scalar(1, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x > 2L
 #' @export
 #' @jit
@@ -720,10 +720,10 @@ nv_gt <- make_do_binary(prim_gt)
 #' y <- nv_array(c(3, 2, 1))
 #' x >= y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_ge(nv_scalar(2, "f32"), nv_scalar(1, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x >= 2L
 #' @export
 #' @jit
@@ -742,10 +742,10 @@ nv_ge <- make_do_binary(prim_ge)
 #' y <- nv_array(c(3, 2, 1))
 #' x < y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_lt(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x < 2L
 #' @export
 #' @jit
@@ -764,10 +764,10 @@ nv_lt <- make_do_binary(prim_lt)
 #' y <- nv_array(c(3, 2, 1))
 #' x <= y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_le(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' x <= 2L
 #' @export
 #' @jit
@@ -786,10 +786,10 @@ nv_le <- make_do_binary(prim_le)
 #' y <- nv_array(c(4, 2, 6))
 #' nv_max(x, y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_max(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' nv_max(x, 2L)
 #' @export
 #' @jit
@@ -808,10 +808,10 @@ nv_max <- make_do_binary(prim_max)
 #' y <- nv_array(c(4, 2, 6))
 #' nv_min(x, y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_min(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' nv_min(x, 2L)
 #' @export
 #' @jit
@@ -831,10 +831,10 @@ nv_min <- make_do_binary(prim_min)
 #' y <- nv_array(c(3, 3, 4))
 #' nv_remainder(x, y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_remainder(nv_scalar(7, "f32"), nv_scalar(3, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' nv_remainder(x, 3L)
 #' @export
 #' @jit
@@ -856,10 +856,10 @@ nv_remainder <- make_do_binary(prim_remainder)
 #' nv_mod(x, y)
 #' as.vector(x) %% as.vector(y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_mod(nv_scalar(1L, "i32"), nv_scalar(-3L, "i64"))
 #'
-#' # a scalar is broadcast
+#' # A scalar is broadcast
 #' x %% 2L
 #' @export
 #' @jit
@@ -884,10 +884,10 @@ nv_mod <- function(lhs, rhs) {
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' x & y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_and(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
 #'
-#' # a scalar is broadcast
+#' # A scalar is broadcast
 #' x & TRUE
 #' @export
 #' @jit
@@ -906,10 +906,10 @@ nv_and <- make_do_binary(prim_and)
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' x | y
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_or(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
 #'
-#' # a scalar is broadcast
+#' # A scalar is broadcast
 #' x | TRUE
 #' @export
 #' @jit
@@ -927,10 +927,10 @@ nv_or <- make_do_binary(prim_or)
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
 #' nv_xor(x, y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
 #'
-#' # a scalar is broadcast
+#' # A scalar is broadcast
 #' nv_xor(x, TRUE)
 #' @export
 #' @jit
@@ -948,10 +948,10 @@ nv_xor <- make_do_binary(prim_xor)
 #' y <- nv_array(c(1L, 2L, 1L))
 #' nv_shift_left(x, y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_shift_left(nv_scalar(8L, "i32"), nv_scalar(2L, "i64"))
 #'
-#' # a scalar is broadcast
+#' # A scalar is broadcast
 #' nv_shift_left(x, 1L)
 #' @export
 #' @jit
@@ -970,10 +970,10 @@ nv_shift_left <- make_do_binary(prim_shift_left)
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_logical(x, y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64"))
 #'
-#' # a scalar is broadcast
+#' # A scalar is broadcast
 #' nv_shift_right_logical(x, 1L)
 #' @export
 #' @jit
@@ -992,10 +992,10 @@ nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_arithmetic(x, y)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_shift_right_arithmetic(nv_scalar(-32L, "i32"), nv_scalar(2L, "i64"))
 #'
-#' # a scalar is broadcast
+#' # A scalar is broadcast
 #' nv_shift_right_arithmetic(x, 1L)
 #' @export
 #' @jit
@@ -1014,10 +1014,10 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' x <- nv_array(c(0, 1, 0))
 #' nv_atan2(y, x)
 #'
-#' # different data types are promoted to their common one
+#' # Different data types are promoted to their common one
 #' nv_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64"))
 #'
-#' # a scalar is broadcast, and an R integer joins a float data type
+#' # A scalar is broadcast and an R integer is converted to a float
 #' nv_atan2(y, 1L)
 #' @export
 #' @jit

@@ -28,10 +28,10 @@ y <- nv_array(c(1, 0, -1))
 x <- nv_array(c(0, 1, 0))
 nv_atan2(y, x)
 
-# different data types are promoted to their common one
+# Different data types are promoted to their common one
 nv_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64"))
 
-# a scalar is broadcast, and an R integer joins a float data type
+# A scalar is broadcast and an R integer is converted to a float
 nv_atan2(y, 1L)
 \dontshow{\}) # examplesIf}
 }

@@ -28,10 +28,10 @@ x <- nv_array(c(8L, 16L, 32L))
 y <- nv_array(c(1L, 2L, 3L))
 nv_shift_right_logical(x, y)
 
-# different data types are promoted to their common one
+# Different data types are promoted to their common one
 nv_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64"))
 
-# a scalar is broadcast
+# A scalar is broadcast
 nv_shift_right_logical(x, 1L)
 \dontshow{\}) # examplesIf}
 }

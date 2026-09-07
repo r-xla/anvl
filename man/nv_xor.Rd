@@ -27,10 +27,10 @@ x <- nv_array(c(TRUE, FALSE, TRUE))
 y <- nv_array(c(TRUE, TRUE, FALSE))
 nv_xor(x, y)
 
-# different data types are promoted to their common one
+# Different data types are promoted to their common one
 nv_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
 
-# a scalar is broadcast
+# A scalar is broadcast
 nv_xor(x, TRUE)
 \dontshow{\}) # examplesIf}
 }

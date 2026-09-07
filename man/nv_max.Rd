@@ -28,10 +28,10 @@ x <- nv_array(c(1, 5, 3))
 y <- nv_array(c(4, 2, 6))
 nv_max(x, y)
 
-# different data types are promoted to their common one
+# Different data types are promoted to their common one
 nv_max(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
 
-# a scalar is broadcast, and an R integer joins a float data type
+# A scalar is broadcast and an R integer is converted to a float
 nv_max(x, 2L)
 \dontshow{\}) # examplesIf}
 }

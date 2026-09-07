@@ -10,51 +10,17 @@
 
 ## Bug fixes
 
-* The gradient of a conversion into a non-float data type is now zero instead
-  of one. `prim_convert()` / `nv_convert()` passed the cotangent through
-  whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
-  reported a gradient of 1 where `nv_floor()` -- the same function on the
-  reals -- correctly reported 0. Conversions between floats still pass the
-  gradient through.
-* `prim_scatter()` now checks that `update_computation` returns one value of
-  `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
-  combiner returning something else made type inference declare a data type
-  the call could not produce, and failed in the backend.
-* `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
-  `rhs`. They were passed by name, so `function(a, b)` failed with
-  `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
+* Fixed the reverse rule of `prim_convert`. 
+* `prim_reduce()` now passes the arguments to the reductor by position.
+  Previously, the arguments of the reductor had to be `(lhs, rhs)` and using
+  using a function such as `(a, b) a + b` failed.
   as `prim_scatter()` already matched its `update_computation`.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
-  `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
-  Type inference declared a `bool` output whatever the input was, so an
-  integer operand reached the lowering and failed with `Data types of inputs
-  and init_values must match`.
+  `nv_reduce_all()`) now reject a non-boolean input.
 
 ## Documentation
 
-* `?dtypes` is a new page defining the data type categories promotion works in
-  (boolean < integer < float, signed and unsigned integers counting as one),
-  the words the documentation uses for a group of them (*any*, *numeric*,
-  *integerish*, *signed numeric*), and the default data type an R value commits
-  to when nothing claims it. It notes that `tengen::dtype_category()` reports
-  a finer split.
-* The binary primitives and the binary `nv_*` functions now state their data
-  type and shape behavior in `lhs`, `rhs` and in the return value, each linking
-  to `?dtypes`. `?prim_add` says the two inputs must have the same data type
-  and shape and that R values assume the other operand's data type within their
-  category; `?nv_add` says the inputs are promoted to a common data type, that
-  scalars are broadcast, and that an R value falling outside the other's
-  category takes its default and is converted. The text comes from the
-  `params_prim_lhs_rhs` and `params_lhs_rhs` templates, each taking a `dtypes`
-  template variable for the accepted data types.
-* The binary primitives' examples now demonstrate that behavior: what two R
-  values commit to, and what an R value meeting an array commits to. The
-  operand values also show what the primitive computes, as in
-  `prim_shift_right_arithmetic(-32L, 2L)` and `prim_remainder(1, -3)`.
-* The binary `nv_*` functions' examples demonstrate the promotion and the
-  broadcasting on top of their operator: two operands of different data types
-  reaching their common one, and a scalar being broadcast against an array
-  (`x + 1L`, where the R integer joins `x`'s float data type).
+* Improved the documentation for primitives and API functions.
 
 ## Tests
 
