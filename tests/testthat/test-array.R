@@ -875,3 +875,27 @@ describe("arr", {
     expect_error(arr(1, 2, shape = "foo"))
   })
 })
+
+describe("as.vector()", {
+  it("keeps the values of a dtype R has no native type for", {
+    # `as_array()` hands those back as a `bit64::integer64`, whose class
+    # `as.vector()` must not strip: the storage is a double holding the raw
+    # 64-bit pattern, so dropping it turns 1 into 4.9e-324.
+    for (dt in c("i64", "ui64", "ui32")) {
+      x <- nv_array(1:3, dtype = dt)
+      expect_equal(as.numeric(as.vector(x)), c(1, 2, 3), info = dt)
+      expect_equal(as.vector(x, mode = "double"), c(1, 2, 3), info = dt)
+      expect_equal(as.vector(x, mode = "integer"), 1:3, info = dt)
+    }
+  })
+
+  it("is unchanged for the dtypes that map onto an R type", {
+    expect_identical(as.vector(nv_array(1:3, dtype = "i32")), 1:3)
+    expect_identical(as.vector(nv_array(c(1.5, 2.5), dtype = "f64")), c(1.5, 2.5))
+    expect_identical(as.vector(nv_array(c(TRUE, FALSE), dtype = "bool")), c(TRUE, FALSE))
+  })
+
+  it("discards the shape", {
+    expect_null(dim(as.vector(nv_array(1:4, shape = c(2, 2), dtype = "i64"))))
+  })
+})

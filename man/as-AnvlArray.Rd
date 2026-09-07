@@ -42,6 +42,9 @@ Each method requires a compatible dtype:
 \item \code{as.logical()}: \code{bool}.
 \item \code{as.vector()}: any dtype; the R type is chosen by the dtype, or
 forced via \code{mode} (e.g. \code{"integer"}, \code{"double"}, \code{"logical"}, \code{"list"}).
+For the dtypes R has no native type for (\code{i64}, \code{ui64}, \code{ui32}) the
+default \code{mode = "any"} keeps the \code{\link[bit64:integer64]{bit64::integer64}} that \code{\link[=as_array]{as_array()}}
+returns, since a bare double could not hold the values.
 }
 
 Use \code{\link[=as_array]{as_array()}} to obtain an R array that preserves the shape, or
