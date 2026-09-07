@@ -7,6 +7,10 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
+* `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
+  default) and errors for any other `mode`. Picking an R type is what
+  `as.double()`, `as.integer()`, `bit64::as.integer64()` and `as.logical()`
+  are for, or apply the coercion to `as_array(x)` directly.
 
 ## Features
 
@@ -20,7 +24,8 @@
 ## Bug fixes
 
 * `as.vector()` now works correctly for `AnvlArray`s that are converted
-  to `bit64::integer64`.
+  to `bit64::integer64`. It used to drop that class along with the shape,
+  exposing the raw 64-bit pattern as a double.
 * The gradient of a conversion into a non-float data type is now zero instead
   of one. `prim_convert()` / `nv_convert()` passed the cotangent through
   whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`

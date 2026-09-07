@@ -1013,9 +1013,17 @@ describe("as.vector()", {
       x <- nv_array(1:3, dtype = dt)
       expect_s3_class(as.vector(x), "integer64")
       expect_equal(as.vector(x), bit64::as.integer64(1:3), info = dt)
-      expect_equal(as.vector(x, mode = "double"), c(1, 2, 3), info = dt)
-      expect_equal(as.vector(x, mode = "integer"), 1:3, info = dt)
     }
+  })
+
+  it("keeps a value that neither an R integer nor a double can hold", {
+    # 3e9 does not fit an R integer and 2^60 is past where a double still
+    # counts in ones.
+    big <- nv_convert(nv_array(c(3e9, 2^60), dtype = "f64"), "i64")
+    expect_equal(
+      as.vector(big),
+      bit64::as.integer64(c("3000000000", "1152921504606846976"))
+    )
   })
 
   it("is unchanged for the dtypes that map onto an R type", {
@@ -1026,31 +1034,20 @@ describe("as.vector()", {
 
   it("discards the shape", {
     expect_null(dim(as.vector(nv_array(1:4, shape = c(2, 2), dtype = "i64"))))
+    expect_null(dim(as.vector(nv_array(1:4, shape = c(2, 2), dtype = "i32"))))
   })
 
   it("works on a scalar", {
     expect_identical(as.vector(nv_scalar(7L, dtype = "i64")), bit64::as.integer64(7L))
+    expect_identical(as.vector(nv_scalar(7L, dtype = "i32")), 7L)
   })
 
-  it("answers every mode bit64 can serve without losing the value", {
-    # 3e9 does not fit an R integer and 2^60 is past where a double still
-    # counts in ones, so only these modes can carry both exactly.
-    big <- nv_convert(nv_array(c(3e9, 2^60), dtype = "f64"), "i64")
-    exact <- bit64::as.integer64(c("3000000000", "1152921504606846976"))
-
-    expect_equal(as.vector(big), exact)
-    expect_identical(as.vector(big, "character"), as.character(exact))
-    expect_identical(as.vector(big, "list"), as.list(exact))
-    expect_identical(as.vector(big, "expression")[[2]], exact[[2]])
-    expect_identical(as.vector(big, "logical"), c(TRUE, TRUE))
-  })
-
-  it("narrows a value R cannot hold loudly, rather than silently", {
-    big <- nv_convert(nv_array(c(3e9, 2^60), dtype = "f64"), "i64")
-    expect_warning(as.vector(big, "double"), "precision lost")
-    expect_warning(
-      expect_equal(as.vector(big, "integer"), c(NA_integer_, NA_integer_)),
-      "overflow"
-    )
+  it("errors for any mode other than the default", {
+    x <- nv_array(1:3, dtype = "i64")
+    expect_error(as.vector(x, mode = "double"), "only supports")
+    expect_error(as.vector(x, mode = "list"), "only supports")
+    # Rejected for the ordinary dtypes too, so the rule does not depend on
+    # which dtype happens to be in hand.
+    expect_error(as.vector(nv_array(1:3, dtype = "i32"), mode = "double"), "only supports")
   })
 })

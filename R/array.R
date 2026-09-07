@@ -538,30 +538,28 @@ await.AnvlArray <- function(x, ...) {
 #'   signed, so a `ui64` value `>= 2^63` wraps to a negative one (exactly
 #'   `2^63` becomes `NA`); pass `check = TRUE` to be told when that happens.
 #' * `as.logical()`: `bool`.
-#' * `as.vector()`: any dtype; the R type is chosen by the dtype, or
-#'   forced via `mode` (e.g. `"integer"`, `"double"`, `"logical"`, `"list"`).
-#'   For the dtypes R has no native type for (`i64`, `ui64`, `ui32`) the
-#'   default `mode = "any"` keeps the [`bit64::integer64`] that [`as_array()`]
-#'   returns, since a bare double could not hold the values. That result still
-#'   carries its class, so `is.vector()` is `FALSE` for it -- name a `mode` if
-#'   you need a value stripped of attributes.
+#' * `as.vector()`: any dtype; the R type is chosen by the dtype. For the
+#'   dtypes R has no native type for (`i64`, `ui64`, `ui32`) that is the
+#'   [`bit64::integer64`] [`as_array()`] returns, since a bare double could
+#'   not hold the values -- and it keeps its class, so `is.vector()` is
+#'   `FALSE` for it.
 #'
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
-#' `as.vector()`'s signature is fixed by the generic and so has no `check`
+#' `as.vector()`'s signature is fixed by the generic, so it takes no `check`
 #' argument; call [`as_array()`] with `check = TRUE` to have the values
 #' validated.
 #' @param x ([`AnvlArray`])\cr
 #'   Array to coerce.
 #' @param mode (`character(1)`)\cr
-#'   For `as.vector()` only. See [base::as.vector()]. Defaults to `"any"`,
-#'   meaning the natural R type for the array's dtype.
+#'   Must be `"any"` (the default), meaning the natural R type for the array's
+#'   dtype. Only present because [base::as.vector()]'s signature requires it;
+#'   pick an R type with one of the other methods instead.
 #' @param check (`logical(1)`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
 #' @return An R vector holding the array's values, of the type the method
-#'   names (`double`, `integer`, `logical`, [`bit64::integer64`]) or, for
-#'   `as.vector()`, of the type `mode` asks for.
+#'   names: `double`, `integer`, `logical`, or [`bit64::integer64`].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
 #' as.numeric(x)
@@ -623,34 +621,19 @@ as.logical.AnvlArray <- function(x, check = FALSE, ...) {
 #' @method as.vector AnvlArray
 #' @export
 as.vector.AnvlArray <- function(x, mode = "any") {
-  out <- as_array(x)
-  if (!inherits(out, "integer64")) {
-    return(as.vector(out, mode = mode))
+  if (!identical(mode, "any")) {
+    cli_abort(c(
+      "{.fn as.vector} on an {.cls AnvlArray} only supports {.code mode = \"any\"}, but got {.val {mode}}.",
+      i = "Use {.fn as.double}, {.fn as.integer}, {.fn bit64::as.integer64} or {.fn as.logical} to pick an R type, or apply the matching coercion to {.code as_array(x)} yourself (e.g. {.code as.character(as_array(x))})." # nolint
+    ))
   }
-  # `as_array()` hands back a `bit64::integer64` for the dtypes R has no native
-  # type for (`i64`, `ui64`, `ui32`). Dropping attributes wholesale -- what
-  # `as.vector()` does -- would strip that class and reveal the raw 64-bit
-  # pattern as a double, so drop only the shape and let bit64's own coercions
-  # answer an explicit `mode`.
-  switch(
-    mode,
-    any = {
-      dim(out) <- NULL
-      out
-    },
-    logical = as.logical(out),
-    integer = as.integer(out),
-    double = ,
-    numeric = as.double(out),
-    character = as.character(out),
-    list = as.list(out),
-    # An `integer64` element survives inside an expression, even though
-    # deparsing it for printing shows the raw double again.
-    expression = as.expression(as.list(out)),
-    # `complex`, `raw` and the rest are only reachable from a double, so they
-    # go the lossy way -- and bit64 warns when the value did not fit.
-    as.vector(as.double(out), mode = mode)
-  )
+  out <- as_array(x)
+  # Drop only the shape. The wholesale attribute strip `as.vector()` normally
+  # does would also take the `bit64::integer64` class that the dtypes R has no
+  # native type for (`i64`, `ui64`, `ui32`) arrive with, revealing the raw
+  # 64-bit pattern as a double.
+  dim(out) <- NULL
+  out
 }
 
 #' @rdname platform
