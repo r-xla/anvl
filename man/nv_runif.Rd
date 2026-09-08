@@ -18,7 +18,7 @@ default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-from random bits. \code{NULL} (default) uses the backend's default float data
+from random bits. \code{NULL} (default) uses the default float data
 type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 
 \item{min, max}{(\code{numeric(1)})\cr

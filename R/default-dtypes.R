@@ -34,7 +34,12 @@ effective_default_dtypes <- function(backend) {
 #' @description
 #' The default data types for the [active backend][active_backend()].
 #' They decide the data type an R value is materialized at when it cannot be
-#' inferred from another operand.
+#' inferred from another operand, and the data type of a result anvl chooses on
+#' its own: an index (`nv_argmax()`, `nv_argsort()`, `nv_top_k()`, the
+#' cumulative extrema, `nv_lu()`'s pivots), the accumulator a boolean input is
+#' counted at (`nv_reduce_sum()`, `nv_cumsum()`, `nv_trace()`), and the float a
+#' non-float input is averaged or interpolated at (`nv_mean()`, `nv_var()`,
+#' `nv_sd()`, `nv_median()`, `nv_quantile()`).
 #'
 #' This includes array creation via (`nv_array(1)`) or passing R values to unary functions
 #' (`prim_exp(1)`).

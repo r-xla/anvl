@@ -33,9 +33,6 @@ and the floats.
 a backend supports.
 \item \emph{boolean} -- \code{bool}, the only member of its category.
 }
-
-See \code{\link{dtypes}} for the categories these groups are built from and for the
-default data type an R value commits to.
 }
 
 \section{Where a Data Type Comes From}{
@@ -45,6 +42,14 @@ which one it should take, it commits to the default of its category, which
 \code{\link[=default_dtypes]{default_dtypes()}} reports and the \code{anvl.default_dtypes} option
 configures. \code{\link[=peek_dtype]{peek_dtype()}} reports the default a given R value would
 commit to.
+
+The same defaults settle the data type of a result anvl chooses on its own,
+where no R value is involved at all: an index (\code{nv_argmax()},
+\code{nv_argsort()}, \code{nv_top_k()}, the cumulative extrema, \code{nv_lu()}'s pivots),
+the accumulator a boolean input is counted at (\code{nv_reduce_sum()},
+\code{nv_cumsum()}, \code{nv_trace()}), and the float a non-float input is averaged or
+interpolated at (\code{nv_mean()}, \code{nv_var()}, \code{nv_sd()}, \code{nv_median()},
+\code{nv_quantile()}).
 
 Within its own category an R value assumes the data type it meets instead,
 and is built at it directly rather than converted to it, which is what keeps

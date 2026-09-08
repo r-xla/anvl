@@ -16,7 +16,7 @@ values built into the program, not arrays.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the result. Can be any numeric data type; boolean is not one,
-and is rejected. \code{NULL} (default) uses the backend's default integer data
+and is rejected. \code{NULL} (default) uses the default integer data
 type (see \code{\link[=default_dtypes]{default_dtypes()}}), since the values are whole. For
 \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
 

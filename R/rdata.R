@@ -300,7 +300,7 @@ r_const_at <- function(x, dtype, desc) {
 #' @description
 #' The data type `x` would use if it was converted to an `AnvlArray`.
 #' Relevant for R objects and their [`RData`] trace-time analogon: for those it
-#' is the default of the backend in force (see [`default_dtypes()`]), which the
+#' is the default in force (see [`default_dtypes()`]), which the
 #' value has not committed to yet.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr

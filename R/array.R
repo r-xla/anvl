@@ -1097,6 +1097,10 @@ is_shape <- function(x) {
 #'
 #' Use [`is_arrayish()`] to check whether a value is arrayish.
 #'
+#' The group words the parameter descriptions use are listed below;
+#' [`dtypes`] gives the categories they are built from, and
+#' [`default_dtypes()`] the default an R value commits to.
+#'
 #' @template section_dtype_words
 #' @param x (`any`)\cr
 #'   Object to check.

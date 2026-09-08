@@ -6,10 +6,12 @@
 #' @param rhs_dtype ([`tengen::DataType`])\cr
 #'   The right-hand side type.
 #' @return ([`tengen::DataType`])\cr
-#'   The narrowest data type that holds both inputs: the wider of the two among
-#'   the signed integers or among the floats, the higher category where the
-#'   categories differ, and a wider *signed* integer where a signed and an
-#'   unsigned integer meet (`ui8` and `i8` give `i16`).
+#'   The narrowest common data type: the wider of the two among the signed
+#'   integers or among the floats, the higher category where the categories
+#'   differ, and a wider *signed* integer where a signed and an unsigned
+#'   integer meet (`ui8` and `i8` give `i16`). That last rule saturates at
+#'   `i64`, which cannot hold the upper half of `ui64` -- `common_dtype("ui64",
+#'   "i8")` is `i64`, so convert explicitly where those values matter.
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
@@ -638,6 +640,14 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' [`default_dtypes()`] reports and the `anvl.default_dtypes` option
 #' configures. [`peek_dtype()`] reports the default a given R value would
 #' commit to.
+#'
+#' The same defaults settle the data type of a result anvl chooses on its own,
+#' where no R value is involved at all: an index (`nv_argmax()`,
+#' `nv_argsort()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
+#' the accumulator a boolean input is counted at (`nv_reduce_sum()`,
+#' `nv_cumsum()`, `nv_trace()`), and the float a non-float input is averaged or
+#' interpolated at (`nv_mean()`, `nv_var()`, `nv_sd()`, `nv_median()`,
+#' `nv_quantile()`).
 #'
 #' Within its own category an R value assumes the data type it meets instead,
 #' and is built at it directly rather than converted to it, which is what keeps

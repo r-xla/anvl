@@ -56,7 +56,7 @@ nv_unif_rand <- function(
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-#'   from random bits. `NULL` (default) uses the backend's default float data
+#'   from random bits. `NULL` (default) uses the default float data
 #'   type (see [`default_dtypes()`]).
 #' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound. Plain R numbers rather than [`arrayish`], so they
@@ -79,7 +79,7 @@ nv_runif <- function(
   min = 0,
   max = 1
 ) {
-  dtype <- assert_rng_float_dtype(dtype %||% default_float())
+  dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
   checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
   checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
   shape <- assert_shapevec(shape)

@@ -31,7 +31,7 @@ axis is added; if wider, the last axis is consumed.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the bits of one i32 reread as four i8, in a new trailing axis
-x <- nv_array(1L)
+x <- nv_array(1L, dtype = "i32")
 nv_bitcast_convert(x, dtype = "i8")
 \dontshow{\}) # examplesIf}
 }

@@ -15,10 +15,11 @@ The right-hand side type.}
 }
 \value{
 (\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The narrowest data type that holds both inputs: the wider of the two among
-the signed integers or among the floats, the higher category where the
-categories differ, and a wider \emph{signed} integer where a signed and an
-unsigned integer meet (\code{ui8} and \code{i8} give \code{i16}).
+The narrowest common data type: the wider of the two among the signed
+integers or among the floats, the higher category where the categories
+differ, and a wider \emph{signed} integer where a signed and an unsigned
+integer meet (\code{ui8} and \code{i8} give \code{i16}). That last rule saturates at
+\code{i64}, which cannot hold the upper half of \code{ui64} -- \code{common_dtype("ui64", "i8")} is \code{i64}, so convert explicitly where those values matter.
 }
 \description{
 Compute the common data type.

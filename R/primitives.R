@@ -1724,10 +1724,10 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #' @seealso [nv_bitcast_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # same width: the bits are reread, the shape stays
-#' prim_bitcast_convert(nv_array(1L), dtype = "f32")
+#' prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "f32")
 #'
 #' # narrower: a trailing axis holds the four bytes of each i32
-#' prim_bitcast_convert(nv_array(1L), dtype = "i8")
+#' prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "i8")
 #'
 #' # wider: the last axis is consumed, and its size must be the width ratio
 #' prim_bitcast_convert(nv_array(rep(1L, 4), dtype = "i8"), dtype = "i32")

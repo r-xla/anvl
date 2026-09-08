@@ -19,7 +19,12 @@ default_int()
 \description{
 The default data types for the \link[=active_backend]{active backend}.
 They decide the data type an R value is materialized at when it cannot be
-inferred from another operand.
+inferred from another operand, and the data type of a result anvl chooses on
+its own: an index (\code{nv_argmax()}, \code{nv_argsort()}, \code{nv_top_k()}, the
+cumulative extrema, \code{nv_lu()}'s pivots), the accumulator a boolean input is
+counted at (\code{nv_reduce_sum()}, \code{nv_cumsum()}, \code{nv_trace()}), and the float a
+non-float input is averaged or interpolated at (\code{nv_mean()}, \code{nv_var()},
+\code{nv_sd()}, \code{nv_median()}, \code{nv_quantile()}).
 
 This includes array creation via (\code{nv_array(1)}) or passing R values to unary functions
 (\code{prim_exp(1)}).

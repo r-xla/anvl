@@ -976,7 +976,7 @@ nv_xor <- make_do_binary(prim_xor)
 #' @title Shift Left
 #' @description
 #' Element-wise left bit shift.
-#' @templateVar dtypes any integerish data type
+#' @templateVar dtypes any integer data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_shift_left()] for the underlying primitive.
@@ -997,7 +997,7 @@ nv_shift_left <- make_do_binary(prim_shift_left)
 #' @title Logical Shift Right
 #' @description
 #' Element-wise logical right bit shift.
-#' @templateVar dtypes any integerish data type
+#' @templateVar dtypes any integer data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_shift_right_logical()] for the underlying primitive.
@@ -1018,7 +1018,7 @@ nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 #' @title Arithmetic Shift Right
 #' @description
 #' Element-wise arithmetic right bit shift.
-#' @templateVar dtypes any integerish data type
+#' @templateVar dtypes any integer data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_shift_right_arithmetic()] for the underlying primitive.
@@ -1073,7 +1073,7 @@ nv_atan2 <- make_do_binary(prim_atan2)
 #'   [nv_convert()] for value-preserving type conversion.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the bits of one i32 reread as four i8, in a new trailing axis
-#' x <- nv_array(1L)
+#' x <- nv_array(1L, dtype = "i32")
 #' nv_bitcast_convert(x, dtype = "i8")
 #' @export
 nv_bitcast_convert <- prim_bitcast_convert
@@ -1788,7 +1788,7 @@ nv_iota <- prim_iota
 #'   values built into the program, not arrays.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Can be any numeric data type; boolean is not one,
-#'   and is rejected. `NULL` (default) uses the backend's default integer data
+#'   and is rejected. `NULL` (default) uses the default integer data
 #'   type (see [`default_dtypes()`]), since the values are whole. For
 #'   `nv_seq_like()`, `NULL` uses `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
@@ -1848,7 +1848,7 @@ nv_seq <- function(start, end, dtype = NULL, device = NULL) {
 #'   result is `start`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Must be a float data type; `NULL` (default) uses
-#'   the backend's default float data type (see [`default_dtypes()`]), since
+#'   the default float data type (see [`default_dtypes()`]), since
 #'   the spacing is fractional. For `nv_linspace_like()`, `NULL` uses
 #'   `dtype(like)`, which must then be a float too. To obtain integers, convert
 #'   the result with [`nv_convert()`], which leaves the rounding yours to
@@ -2507,7 +2507,7 @@ nv_diag <- function(x) {
 #'   (only for `nv_eye_like()`).
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Can be any data type; `NULL` (default) uses the
-#'   backend's default float data type (see [`default_dtypes()`]). For
+#'   default float data type (see [`default_dtypes()`]). For
 #'   `nv_eye_like()`, `NULL` uses `dtype(like)`.
 #' @template param_device
 #' @return ([`arrayish`])\cr

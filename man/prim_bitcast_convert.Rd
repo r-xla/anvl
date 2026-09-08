@@ -43,10 +43,10 @@ Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}, sp
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # same width: the bits are reread, the shape stays
-prim_bitcast_convert(nv_array(1L), dtype = "f32")
+prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "f32")
 
 # narrower: a trailing axis holds the four bytes of each i32
-prim_bitcast_convert(nv_array(1L), dtype = "i8")
+prim_bitcast_convert(nv_array(1L, dtype = "i32"), dtype = "i8")
 
 # wider: the last axis is consumed, and its size must be the width ratio
 prim_bitcast_convert(nv_array(rep(1L, 4), dtype = "i8"), dtype = "i32")

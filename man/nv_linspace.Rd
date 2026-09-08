@@ -20,7 +20,7 @@ result is \code{start}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the result. Must be a float data type; \code{NULL} (default) uses
-the backend's default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}), since
+the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}), since
 the spacing is fractional. For \code{nv_linspace_like()}, \code{NULL} uses
 \code{dtype(like)}, which must then be a float too. To obtain integers, convert
 the result with \code{\link[=nv_convert]{nv_convert()}}, which leaves the rounding yours to

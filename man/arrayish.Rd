@@ -35,6 +35,10 @@ during \code{\link[=jit]{jit()}}.
 }
 
 Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayish.
+
+The group words the parameter descriptions use are listed below;
+\code{\link{dtypes}} gives the categories they are built from, and
+\code{\link[=default_dtypes]{default_dtypes()}} the default an R value commits to.
 }
 \section{Data Type Vocabulary}{
 
@@ -51,9 +55,6 @@ and the floats.
 a backend supports.
 \item \emph{boolean} -- \code{bool}, the only member of its category.
 }
-
-See \code{\link{dtypes}} for the categories these groups are built from and for the
-default data type an R value commits to.
 }
 
 \examples{

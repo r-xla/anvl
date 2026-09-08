@@ -9,7 +9,7 @@ nv_shift_left(lhs, rhs)
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
 Two inputs with a \link[=common_dtype]{common data type}. Can be
-any integerish data type. Scalars are broadcast, and R values assume the other
+any integer data type. Scalars are broadcast, and R values assume the other
 operand's data type within their \link[=dtypes]{data type category},
 otherwise falling back to their \link[=default_dtypes]{default data type} and
 being converted to the common data type.}

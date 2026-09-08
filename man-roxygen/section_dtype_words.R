@@ -11,6 +11,3 @@
 #' * *float* -- the whole float category: `f32`, `f64` and any narrower float
 #'   a backend supports.
 #' * *boolean* -- `bool`, the only member of its category.
-#'
-#' See [`dtypes`] for the categories these groups are built from and for the
-#' default data type an R value commits to.
