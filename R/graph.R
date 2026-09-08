@@ -194,10 +194,9 @@ AnvlGraph <- function(
 #' @param backend (`character(1)`)\cr
 #'   The backend this trace is compiled for. Required: it decides which entry
 #'   of the `anvl.default_dtypes` option applies to the trace, so switching the
-#'   ambient backend inside a traced body changes nothing.
-#'   [`local_descriptor()`] fills it in -- from the descriptor a sub-trace
-#'   nests in, else from [`active_backend()`] -- so only a direct call has to
-#'   name it.
+#'   active backend inside a traced body changes nothing.
+#'   [`local_descriptor()`] fills it in from [`active_backend()`], so only a
+#'   direct call has to name it.
 #' @param devices (`list()`)\cr
 #'   Devices encountered during tracing: the device of every concrete array
 #'   registered in the graph, plus the ones declared by [`graph_desc_add()`].
@@ -802,25 +801,11 @@ local_descriptor <- function(..., envir = parent.frame()) {
     cli_abort("Don't run local_descriptor in the global environment")
   }
 
-  # Both are settled here rather than on the constructed descriptor, because
-  # both read the descriptor this one nests in.
   args <- list(...)
-  parent <- globals[["CURRENT_DESCRIPTOR"]]
-  if (is.null(args$backend)) {
-    # A sub-descriptor inherits the trace's backend: the body may have switched
-    # the ambient one, but a program is compiled for one backend.
-    args$backend <- if (is.null(parent)) active_backend() else parent$backend
-  }
-  if (is.null(args$default_dtypes)) {
-    # A sub-descriptor inherits the trace's pair; a top-level one without a
-    # dispatcher in front of it takes the current defaults of the backend it
-    # just settled on, so the two cannot disagree.
-    args$default_dtypes <- if (is.null(parent)) {
-      effective_default_dtypes(args$backend)
-    } else {
-      current_default_dtypes()
-    }
-  }
+  # assumes that backend does not change during a trace.
+  # If this happens, we get undefined behavior.
+  args$backend <- args$backend %||% active_backend()
+  args$default_dtypes <- args$default_dtypes %||% current_default_dtypes()
   desc <- do.call(GraphDescriptor, args)
   if (!is.null(globals[["CURRENT_DESCRIPTOR"]])) {
     globals[["DESCRIPTOR_STASH"]] <- c(

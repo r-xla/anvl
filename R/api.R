@@ -2524,7 +2524,13 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
   diff <- x - mean_bc
   ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), "i32"), axes, drop)
+    # Counted at `ssum`'s data type, not at an integer one: the divisor then
+    # stays there, because `0` and `correction` are R values meeting a float
+    # array of their own or a narrower category and so yield to it. Counting
+    # into an integer instead would make the R double `0` cross categories and
+    # pull the result to the default float, so `nan_rm` alone would change the
+    # data type -- which is why the `nan_rm = FALSE` branch below is right.
+    count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), dtype(ssum)), axes, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
     # nothing), so 0/0 = NaN propagates naturally — no explicit mask needed.
@@ -3168,7 +3174,10 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
     nan_mask <- nv_is_nan(x)
     to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
     n_valid_kd <- if (nan_rm) {
-      prim_reduce_sum(nv_convert(!nan_mask, "i32"), axes = axis, drop = FALSE)
+      # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
+      # rather than crossing categories out of an integer count and committing
+      # `h` -- and with it `lo_f`, `frac` and `out` -- at the default float.
+      prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
     } else {
       nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
     }

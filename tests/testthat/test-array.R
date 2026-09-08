@@ -553,9 +553,6 @@ describe("as_anvl_arrays", {
     expect_equal(dtype(out[[2L]]), default_float())
   })
 
-  # REVIEW: THe promotion tests should be in test-promotion.R
-  # One block for each promotion rule (promote_common, promote_rdata_common, etc.)
-
   it("realizes every input at the common dtype with promote_common()", {
     out <- as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
     expect_equal(dtype(out[[1L]]), default_float())

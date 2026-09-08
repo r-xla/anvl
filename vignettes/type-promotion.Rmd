@@ -20,7 +20,7 @@ For example, below we are adding an `f32` to an `f64`, where the former is promo
 
 ```{r}
 library(anvl)
-jit(nv_add)(
+nv_add(
   nv_scalar(1.0, dtype = "f32"),
   nv_scalar(1.0, dtype = "f64")
 )

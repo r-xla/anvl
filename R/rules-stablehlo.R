@@ -7,7 +7,6 @@
 # ops, linalg decompositions, ...) omit the parameter and keep normal inference.
 
 index_dtype_of <- function(output_types, i) {
-  # REVIEW: Do we need as.character()? stablehlo should also work with tengen::DataType
   as.character(output_types[[i]]$type$dtype)
 }
 

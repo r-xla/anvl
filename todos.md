@@ -3,7 +3,7 @@
 What is left from the hardcoded-dtype sweep (`"f32"` / `"i32"` literals that
 should consult the configured default dtypes).
 
-## Open: two `nan_rm` branches commit at the ambient default float
+## Open: two `nan_rm` branches commit at the active default float
 
 Both are the same shape — an `i32` count meets a bare R **double**, which
 crosses categories and so realizes at `default_dtype_r("double")` instead of

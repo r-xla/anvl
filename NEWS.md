@@ -34,9 +34,6 @@
 * `as.vector()` now works correctly for `AnvlArray`s that are converted
   to `bit64::integer64`. It used to drop that class along with the shape,
   exposing the raw 64-bit pattern as a double.
-* `nv_pnorm()` and `nv_qnorm()` reject an operand that is not `f32` or `f64`.
-  Their thresholds and polynomial coefficients are written for those two
-  widths, so a half-precision operand silently took the `f64` constants.
 * The gradient of a conversion into a non-float data type is now zero instead
   of one. `prim_convert()` / `nv_convert()` passed the cotangent through
   whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`

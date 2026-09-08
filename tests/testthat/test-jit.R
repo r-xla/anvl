@@ -576,7 +576,7 @@ describe("a scoped override inside a jitted body", {
     expect_equal(dtype(f(x)), as_dtype("f64"))
     expect_equal(n_traced, 1L)
     # The scoped region is `f64` either way, but the baseline still keys the
-    # cache, so a different ambient default is a different program.
+    # cache, so a different default outside the body is a different program.
     with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
     expect_equal(n_traced, 2L)
     expect_equal(dtype(f(x)), as_dtype("f64"))
