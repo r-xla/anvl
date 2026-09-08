@@ -1,6 +1,7 @@
 # The data types an R double and an R integer commit to when nothing else
-# decides one are registered per backend (`default_dtypes()`) and overridden on
-# every backend by two global options. They decide only what a value becomes
+# decides one are registered per backend (`default_dtypes()`) and overridden by
+# the `anvl.default_dtypes` option, for every backend or per backend. They
+# decide only what a value becomes
 # when nothing else does: the yielding rule of `vignette("type-promotion")` is
 # untouched.
 
@@ -9,7 +10,9 @@ describe("default_dtypes()", {
     local_registered_default_dtypes()
     expect_equal(default_dtypes(), list(float = as_dtype("f32"), int = as_dtype("i32")))
     expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i32")))
-    expect_error(with_backend("plain", default_dtypes()), "names no usable backend")
+    # `active_backend()` takes the option as given, so a backend that is not
+    # registered is reported where its defaults are read.
+    expect_error(with_backend("plain", default_dtypes()), "no default data types")
   })
 
   it("is overridden by an option value that names no backend, on every backend", {
@@ -80,6 +83,9 @@ describe("with_default_dtypes()", {
   })
 
   it("nests, each setter merging into the one around it", {
+    # Cleared so the assertions below rest on the setters alone: a suite-wide
+    # override would supply the category a non-merging setter drops.
+    local_registered_default_dtypes()
     # A setter reads the option already in force, so an inner one naming the
     # other category adds to the outer override instead of replacing it --
     # whichever order they come in.
@@ -157,6 +163,21 @@ describe("an override of one backend", {
     expect_equal(with_backend("quickr", default_int()), as_dtype("i64"))
     withr::local_options(anvl.default_dtypes = c(int = "i64"))
     expect_equal(with_backend("quickr", default_int()), as_dtype("i64"))
+  })
+
+  it("cannot be set for another backend from inside a trace", {
+    # A program is compiled for one backend, so an override filed under another
+    # could not reach it: an error rather than a silent no-op.
+    local({
+      desc <- local_descriptor()
+      expect_error(
+        local_default_dtypes(c(int = "i64"), backend = "quickr"),
+        "compiled for the .*pjrt.* backend"
+      )
+      # The trace's own backend is fine, named or not.
+      expect_error(local_default_dtypes(c(int = "i64"), backend = "pjrt"), NA)
+      expect_error(local_default_dtypes(c(int = "i64")), NA)
+    })
   })
 
   it("is passed over when it names a backend that does not exist", {

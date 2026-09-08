@@ -849,6 +849,9 @@ test_that("prim_print", {
 })
 
 test_that("prim_print shows the R type where a value has no data type yet", {
+  # The snapshot records the data type the footer names, so it is pinned to the
+  # registered pair rather than whatever the run configured.
+  local_registered_default_dtypes()
   # A print is not a use site that settles an R value: reporting the data type
   # this call commits it to would name one nothing else in the program has --
   # here `x` is uploaded at f64 for the addition. Rendering the value does need

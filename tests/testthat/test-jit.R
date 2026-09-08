@@ -535,7 +535,7 @@ describe("a scoped override inside a jitted body", {
         note(nv_fill(0, 3))
         note(x + 1.5)
         note(nv_eye(2))
-        note(nv_seq(0, 1, steps = 3))
+        note(nv_linspace(0, 1, steps = 3L))
       })
       note(nv_array(1.5))
       x

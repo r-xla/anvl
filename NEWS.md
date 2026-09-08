@@ -8,7 +8,7 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
-  accumulate a boolean array at `i32` instead of returning a boolean.
+  accumulate a boolean array at the default integer data type instead of returning a boolean.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
 * The `steps` argument of `nv_seq()` / `nv_seq_like()` was removed.

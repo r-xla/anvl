@@ -70,7 +70,7 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
   `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
   nothing infers a backend from an argument, no function takes a `backend` argument, and an array
   or device of another backend is an error. This is what makes the default dtypes unambiguous in
-  eager code (see `specs/2026-09-04-ambient-backend-default-dtypes-design.md`).
+  eager code.
 
 ## One Backend at a Time
 

@@ -147,7 +147,18 @@ default_dtypes_from_key <- function(key) {
 
 # Used for context managers: insert dtypes into default default_dtypes
 merged_default_dtypes <- function(dtypes, backend) {
-  backend <- backend %??% active_backend()
+  # A program is compiled for one backend, and a trace reads the entry of that
+  # backend, so an override filed under another could not reach it. Naming one
+  # explicitly is a mistake worth reporting rather than a silent no-op.
+  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  if (!is.null(backend) && !is.null(desc) && !identical(backend, desc$backend)) {
+    cli_abort(c(
+      "Cannot set the default data types of the {.val {backend}} backend here.",
+      i = "This trace is compiled for the {.val {desc$backend}} backend, which is
+           the only one an override in it can reach."
+    ))
+  }
+  backend <- backend %||% active_backend()
   new <- as_default_dtypes(dtypes)
   current <- getOption("anvl.default_dtypes")
   if (is.null(current)) {
@@ -176,32 +187,13 @@ merged_default_dtypes <- function(dtypes, backend) {
 #' `anvl.default_dtypes` option for one backend, and change only the
 #' categories they name.
 #'
-#' @details
-#' What an override changes is what an **uncommitted** R value in its scope
-#' commits to: a literal, an R array, or a constructor called without a
-#' `dtype`. It does **not** change the data type of an operand that already
-#' has one, so it cannot raise the precision of arithmetic on typed arrays --
-#' `with_default_dtypes(c(float = "f64"), x * 2)` is `f32` for an `f32` `x`.
-#' Convert those explicitly with [`nv_convert()`].
-#'
-#' Inside a [`jit()`]ted body the defaults the program was keyed on are the
-#' *baseline* and an override applies to its scope, so one program can use
-#' different precisions in different parts of itself. Only that baseline is
-#' part of the compilation cache key, so an override in a body must not change
-#' between calls: write it out literally rather than reading it from a
-#' variable. `with_default_dtypes(c(float = prec), ...)` with a `prec` that
-#' later changes keeps serving the first program, exactly as a changing `dtype`
-#' argument would.
-#'
 #' @param dtypes (named `character()` | named `list()`)\cr
 #'   A mapping of the data type categories (`float` and `int`) to data types,
 #'   e.g. `c(float = "f64", int = "i32")`. Each may be a string or a
 #'   [`DataType`]. Can also be a partial override, such as `c(float = "f64")`,
 #'   in which case the category it does not name is left as it is.
 #' @param backend (`NULL` | `character(1)`)\cr
-#'   The backend whose defaults to set -- the registered defaults are a
-#'   property of the backend, and so is an override of them. `NULL` (default)
-#'   is the backend in force ([`active_backend()`]).
+#'   The backend whose defaults to set. Uses [`active_backend()`] by default.
 #' @param envir (`environment`)\cr
 #'   The environment to scope the change to.
 #' @param code An expression to evaluate with the given defaults.

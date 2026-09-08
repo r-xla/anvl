@@ -1053,7 +1053,7 @@ describe("the default float", {
     expect_equal(dtype(nv_scalar(1.5)), as_dtype("f64"))
     expect_equal(dtype(nv_array(matrix(c(1.5, 2.5, 3.5, 4.5), 2))), as_dtype("f64"))
     expect_equal(dtype(nv_fill(0, 3)), as_dtype("f64"))
-    expect_equal(dtype(nv_seq(0, 1, steps = 3)), as_dtype("f64"))
+    expect_equal(dtype(nv_linspace(0, 1, steps = 3L)), as_dtype("f64"))
     expect_equal(dtype(nv_eye(2)), as_dtype("f64"))
     state <- nv_rng_state(1L)
     expect_equal(dtype(nv_rnorm(3, state)[[2L]]), as_dtype("f64"))

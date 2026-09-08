@@ -19,6 +19,12 @@ default_dtypes_env <- Sys.getenv("ANVL_DEFAULT_DTYPES")
 if (nzchar(default_dtypes_env)) {
   pairs <- strsplit(strsplit(default_dtypes_env, ",", fixed = TRUE)[[1L]], "=", fixed = TRUE)
   stopifnot(all(lengths(pairs) == 2L))
+  # The override names no backend, so it reaches quickr too -- which supports
+  # only `f64`, `i32` and `bool`, so a pair such as `int=i64` is an error there
+  # rather than something quickr can honour. Skip those tests for the run
+  # instead: what this configuration exists to catch is anvl hardcoding the
+  # registered pair, not quickr's data type support.
+  Sys.setenv(ANVL_SKIP_QUICKR = "1")
   old_opts <- c(
     old_opts,
     options(

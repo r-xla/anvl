@@ -17,9 +17,7 @@ e.g. \code{c(float = "f64", int = "i32")}. Each may be a string or a
 in which case the category it does not name is left as it is.}
 
 \item{backend}{(\code{NULL} | \code{character(1)})\cr
-The backend whose defaults to set -- the registered defaults are a
-property of the backend, and so is an override of them. \code{NULL} (default)
-is the backend in force (\code{\link[=active_backend]{active_backend()}}).}
+The backend whose defaults to set. Uses \code{\link[=active_backend]{active_backend()}} by default.}
 
 \item{envir}{(\code{environment})\cr
 The environment to scope the change to.}
@@ -37,23 +35,6 @@ Set the default data types (see \code{\link[=default_dtypes]{default_dtypes()}})
 \code{with_default_dtypes()} for the duration of \code{code}. Both write the
 \code{anvl.default_dtypes} option for one backend, and change only the
 categories they name.
-}
-\details{
-What an override changes is what an \strong{uncommitted} R value in its scope
-commits to: a literal, an R array, or a constructor called without a
-\code{dtype}. It does \strong{not} change the data type of an operand that already
-has one, so it cannot raise the precision of arithmetic on typed arrays --
-\code{with_default_dtypes(c(float = "f64"), x * 2)} is \code{f32} for an \code{f32} \code{x}.
-Convert those explicitly with \code{\link[=nv_convert]{nv_convert()}}.
-
-Inside a \code{\link[=jit]{jit()}}ted body the defaults the program was keyed on are the
-\emph{baseline} and an override applies to its scope, so one program can use
-different precisions in different parts of itself. Only that baseline is
-part of the compilation cache key, so an override in a body must not change
-between calls: write it out literally rather than reading it from a
-variable. \code{with_default_dtypes(c(float = prec), ...)} with a \code{prec} that
-later changes keeps serving the first program, exactly as a changing \code{dtype}
-argument would.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
