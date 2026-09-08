@@ -26,9 +26,9 @@ original relative order. Default \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the \link[=default_dtypes]{default integer data type} whatever the input's is, and the
-input's shape. For a size-0 axis, the output is an empty array of the
-same shape (a valid empty permutation).
+Has \code{i32} data type whatever the input's is, and the input's shape. For a
+size-0 axis, the output is an empty \code{i32} array of the same shape (a valid
+empty permutation).
 \code{as_array(x)[as_array(nv_argsort(x))]} reproduces the sorted
 array (for 1-D inputs).
 }

@@ -13,11 +13,10 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 }
 \value{
 (\code{list} of three \code{\link{arrayish}})\cr
-\code{LU} \verb{(m, n)} with the input's data type; \code{pivots} \verb{(k,)} at
-the \link[=default_dtypes]{default integer data type} with \code{k = min(m, n)} (1-based row
-swaps such that row \code{i} was exchanged with row \code{pivots[i]} during
-elimination step \code{i}); and \code{permutation} \verb{(m,)} at the same, a 1-based
-permutation vector for \eqn{P} such
+\code{LU} \verb{(m, n)} with the input's data type; \code{pivots} \verb{(k,)} at \code{i32} with
+\code{k = min(m, n)} (1-based row swaps such that row \code{i} was exchanged
+with row \code{pivots[i]} during elimination step \code{i}); and \code{permutation}
+\verb{(m,)} at \code{i32}, a 1-based permutation vector for \eqn{P} such
 that \code{(P \%*\% A)[i, ]} equals \code{A[permutation[i], ]}.
 }
 \description{

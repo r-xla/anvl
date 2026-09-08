@@ -26,7 +26,7 @@ contributes nothing to the running value.}
 \value{
 (\code{\link{arrayish}})\cr
 Has the same shape as the input, and the same data type, except for a
-boolean input, which is accumulated at the \link[=default_dtypes]{default integer data type}.
+boolean input, which is accumulated at \code{i32}.
 }
 \description{
 Cumulative sum, optionally along a single axis.

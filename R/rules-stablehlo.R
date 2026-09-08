@@ -284,17 +284,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   indices_0 <- out[[2L]]
   one <- hlo_scalar(1L, dtype = "i32", func = indices_0$func)
   one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices_0$value_type))
-  list(values, .hlo_as_index(hlo_add(indices_0, one_bc)))
-}
-
-# Bring an index the lowering computed to the data type anvl declares for
-# indices (see `default_int_dtype()`); a no-op while the two agree.
-.hlo_as_index <- function(v) {
-  want <- default_int_dtype()
-  if (as_dtype(v$value_type$type$dtype) == want) {
-    return(v)
-  }
-  hlo_convert(v, want)
+  list(values, hlo_add(indices_0, one_bc))
 }
 
 prim_cummax[["stablehlo"]] <- function(x, axis) {
@@ -363,7 +353,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env
   result <- out[[2L]]
   one <- hlo_scalar(1L, dtype = "i32", func = result$func)
   one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(result$value_type))
-  result <- .hlo_as_index(hlo_add(result, one_bc))
+  result <- hlo_add(result, one_bc)
   if (drop) {
     return(list(result))
   }
@@ -765,7 +755,7 @@ prim_top_k[["stablehlo"]] <- function(x, k) {
   one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices$value_type))
   indices <- hlo_add(indices, one_bc)
 
-  list(values, .hlo_as_index(indices))
+  list(values, indices)
 }
 
 prim_scatter[["stablehlo"]] <- function(
@@ -1028,7 +1018,7 @@ prim_lu[["stablehlo"]] <- function(x) {
   LU <- out[[1L]]
   pivots <- out[[2L]]
   permutation <- pivots_to_permutation(pivots, m)
-  list(LU, .hlo_as_index(pivots), .hlo_as_index(permutation))
+  list(LU, pivots, permutation)
 }
 
 prim_svd[["stablehlo"]] <- function(x) {

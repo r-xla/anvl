@@ -20,9 +20,8 @@ kept with size 1.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the \link[=default_dtypes]{default integer data type} whatever the input's is, and the
-input's shape with \code{axis} removed (\code{drop = TRUE}) or set to 1
-(\code{drop = FALSE}).
+Has \code{i32} data type whatever the input's is, and the input's shape with
+\code{axis} removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Returns the index of the minimum value along a single axis. Ties

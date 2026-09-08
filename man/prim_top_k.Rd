@@ -18,9 +18,8 @@ Number of top elements. Must satisfy
 \value{
 (\code{list} of two \code{\link{arrayish}})\cr
 Unnamed. The top-\code{k} values, at the input's data type, and their indices
-along the last axis, at the \link[=default_dtypes]{default integer data type}. Both have
-the input's shape with the last axis replaced by \code{k}. Ties are broken by
-lower index first.
+along the last axis, at \code{i32}. Both have the input's shape with the last
+axis replaced by \code{k}. Ties are broken by lower index first.
 }
 \description{
 Returns the \code{k} largest values along the last axis, sorted in

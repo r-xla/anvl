@@ -886,7 +886,7 @@ infer_cum_extreme <- function(x, axis) {
       shape = Shape(shape(x))
     ),
     AbstractArray(
-      dtype = default_int_dtype(),
+      dtype = "i32",
       shape = Shape(shape(x))
     )
   )
@@ -1152,7 +1152,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
     new_shape[axis] <- 1L
   }
   list(AbstractArray(
-    dtype = default_int_dtype(),
+    dtype = "i32",
     shape = Shape(new_shape)
   ))
 }
@@ -1170,9 +1170,8 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it is
 #'   kept with size 1.
 #' @return ([`arrayish`])\cr
-#'   Has the [default integer data type][default_dtypes] whatever the input's is, and the
-#'   input's shape with `axis` removed (`drop = TRUE`) or set to 1
-#'   (`drop = FALSE`).
+#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmax
 #' @template section_rules
 #' @section StableHLO:
@@ -1204,9 +1203,8 @@ prim_argmax <- new_primitive(
 #' @template param_prim_x_any
 #' @inheritParams prim_argmax
 #' @return ([`arrayish`])\cr
-#'   Has the [default integer data type][default_dtypes] whatever the input's is, and the
-#'   input's shape with `axis` removed (`drop = TRUE`) or set to 1
-#'   (`drop = FALSE`).
+#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmin
 #' @template section_rules
 #' @section StableHLO:
@@ -2911,9 +2909,8 @@ prim_sort <- new_primitive(
 #'   `1 <= k <= shape(x)[naxes(x)]`.
 #' @return (`list` of two [`arrayish`])\cr
 #'   Unnamed. The top-`k` values, at the input's data type, and their indices
-#'   along the last axis, at the [default integer data type][default_dtypes]. Both have
-#'   the input's shape with the last axis replaced by `k`. Ties are broken by
-#'   lower index first.
+#'   along the last axis, at `i32`. Both have the input's shape with the last
+#'   axis replaced by `k`. Ties are broken by lower index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
@@ -2936,11 +2933,7 @@ prim_top_k <- new_primitive(
         shape = integer()
       )
       vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
-      indices <- vt2at(vts[[2L]])
-      list(
-        vt2at(vts[[1L]]),
-        AbstractArray(dtype = default_int_dtype(), shape = Shape(shape(indices)))
-      )
+      list(vt2at(vts[[1L]]), vt2at(vts[[2L]]))
     }
 
     graph_desc_add(
@@ -3614,11 +3607,10 @@ prim_qr <- new_primitive(
 #' @templateVar shapes with exactly 2 axes
 #' @template param_unary_x
 #' @return (`list` of three [`arrayish`])\cr
-#'   `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at
-#'   the [default integer data type][default_dtypes] with `k = min(m, n)` (1-based row
-#'   swaps such that row `i` was exchanged with row `pivots[i]` during
-#'   elimination step `i`); and `permutation` `(m,)` at the same, a 1-based
-#'   permutation vector for \eqn{P} such
+#'   `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at `i32` with
+#'   `k = min(m, n)` (1-based row swaps such that row `i` was exchanged
+#'   with row `pivots[i]` during elimination step `i`); and `permutation`
+#'   `(m,)` at `i32`, a 1-based permutation vector for \eqn{P} such
 #'   that `(P %*% A)[i, ]` equals `A[permutation[i], ]`.
 #' @templateVar primitive_id lu
 #' @template section_rules
@@ -3644,8 +3636,8 @@ prim_lu <- new_primitive(
       k <- min(m, n)
       list(
         LU = AbstractArray(dtype = dt, shape = Shape(c(m, n))),
-        pivots = AbstractArray(dtype = default_int_dtype(), shape = Shape(k)),
-        permutation = AbstractArray(dtype = default_int_dtype(), shape = Shape(m))
+        pivots = AbstractArray(dtype = "i32", shape = Shape(k)),
+        permutation = AbstractArray(dtype = "i32", shape = Shape(m))
       )
     }
     graph_desc_add(
