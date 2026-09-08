@@ -29,7 +29,7 @@ Element-wise log(1 + x), more accurate for small x.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_log_plus_one]{hlo_log_plus_one()}}.
+Lowers to \code{\link[stablehlo:hlo_log_plus_one]{hlo_log_plus_one()}}, specified under \href{https://openxla.org/stablehlo/spec#log_plus_one}{log_plus_one}.
 }
 
 \examples{

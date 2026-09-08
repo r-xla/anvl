@@ -52,7 +52,7 @@ Creates an array with values increasing along the specified axis.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}.
+Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}, specified under \href{https://openxla.org/stablehlo/spec#iota}{iota}.
 }
 
 \examples{

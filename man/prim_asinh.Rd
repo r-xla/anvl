@@ -28,7 +28,7 @@ Element-wise inverse hyperbolic sine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_asinh]{hlo_asinh()}}.
+Lowers to \code{\link[stablehlo:hlo_asinh]{hlo_asinh()}}, specified under \href{https://openxla.org/stablehlo/spec#asinh}{asinh}.
 }
 
 \examples{

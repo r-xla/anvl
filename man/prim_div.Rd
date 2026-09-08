@@ -31,7 +31,7 @@ Divides two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_divide]{hlo_divide()}}.
+Lowers to \code{\link[stablehlo:hlo_divide]{hlo_divide()}}, specified under \href{https://openxla.org/stablehlo/spec#divide}{divide}.
 }
 
 \examples{

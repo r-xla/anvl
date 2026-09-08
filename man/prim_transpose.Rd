@@ -34,7 +34,7 @@ Permutes the axes of an array.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}}.
+Lowers to \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}}, specified under \href{https://openxla.org/stablehlo/spec#transpose}{transpose}.
 }
 
 \examples{

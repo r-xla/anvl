@@ -28,7 +28,7 @@ Element-wise hyperbolic sine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sinh]{hlo_sinh()}}.
+Lowers to \code{\link[stablehlo:hlo_sinh]{hlo_sinh()}}, specified under \href{https://openxla.org/stablehlo/spec#sinh}{sinh}.
 }
 
 \examples{

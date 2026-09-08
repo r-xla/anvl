@@ -31,7 +31,8 @@ Element-wise inequality comparison.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparison_direction = "NE"}.
+Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}}, specified under \href{https://openxla.org/stablehlo/spec#compare}{compare}.
+The comparison direction is \code{NE}.
 }
 
 \examples{

@@ -28,7 +28,7 @@ Element-wise population count (number of set bits).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_popcnt]{hlo_popcnt()}}.
+Lowers to \code{\link[stablehlo:hlo_popcnt]{hlo_popcnt()}}, specified under \href{https://openxla.org/stablehlo/spec#popcnt}{popcnt}.
 }
 
 \examples{

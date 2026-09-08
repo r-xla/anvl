@@ -30,7 +30,7 @@ Element-wise atan2 operation.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_atan2]{hlo_atan2()}}.
+Lowers to \code{\link[stablehlo:hlo_atan2]{hlo_atan2()}}, specified under \href{https://openxla.org/stablehlo/spec#atan2}{atan2}.
 }
 
 \examples{

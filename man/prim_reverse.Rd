@@ -33,7 +33,7 @@ Reverses the order of elements along specified axes.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reverse]{hlo_reverse()}}.
+Lowers to \code{\link[stablehlo:hlo_reverse]{hlo_reverse()}}, specified under \href{https://openxla.org/stablehlo/spec#reverse}{reverse}.
 }
 
 \examples{

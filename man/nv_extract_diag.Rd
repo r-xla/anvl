@@ -8,11 +8,12 @@ nv_extract_diag(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-A 1-D array of length \code{min(nrow, ncol)} containing the diagonal elements.
+Has the input's data type. A 1-D array of length \code{min(nrow, ncol)} containing the diagonal elements.
 }
 \description{
 Extracts the diagonal elements from a 2-D array.

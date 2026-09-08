@@ -53,7 +53,7 @@ efficiently represented in the compiled program, while the latter uses
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
+Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}, specified under \href{https://openxla.org/stablehlo/spec#tensor}{tensor}.
 }
 
 \examples{

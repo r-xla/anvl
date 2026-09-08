@@ -52,7 +52,7 @@ Here \code{op} is \code{A} or \code{A^T} depending on \code{transpose_a}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}.
+Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}, specified under \href{https://openxla.org/stablehlo/spec#triangular_solve}{triangular_solve}.
 }
 
 \examples{

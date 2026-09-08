@@ -52,7 +52,7 @@ axes and batching.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}.
+Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}, specified under \href{https://openxla.org/stablehlo/spec#dot_general}{dot_general}.
 }
 
 \examples{

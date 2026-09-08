@@ -31,7 +31,7 @@ Raises lhs to the power of rhs element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_power]{hlo_power()}}.
+Lowers to \code{\link[stablehlo:hlo_power]{hlo_power()}}, specified under \href{https://openxla.org/stablehlo/spec#power}{power}.
 }
 
 \examples{

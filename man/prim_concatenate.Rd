@@ -36,7 +36,7 @@ Concatenates arrays along an axis.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}.
+Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}, specified under \href{https://openxla.org/stablehlo/spec#concatenate}{concatenate}.
 }
 
 \examples{

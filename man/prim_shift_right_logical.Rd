@@ -30,7 +30,7 @@ Element-wise logical right bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_right_logical]{hlo_shift_right_logical()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_right_logical]{hlo_shift_right_logical()}}, specified under \href{https://openxla.org/stablehlo/spec#shift_right_logical}{shift_right_logical}.
 }
 
 \examples{

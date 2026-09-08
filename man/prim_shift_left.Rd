@@ -30,7 +30,7 @@ Element-wise left bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_left]{hlo_shift_left()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_left]{hlo_shift_left()}}, specified under \href{https://openxla.org/stablehlo/spec#shift_left}{shift_left}.
 }
 
 \examples{

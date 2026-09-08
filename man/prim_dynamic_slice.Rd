@@ -51,7 +51,7 @@ the effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dynamic_slice]{hlo_dynamic_slice()}}.
+Lowers to \code{\link[stablehlo:hlo_dynamic_slice]{hlo_dynamic_slice()}}, specified under \href{https://openxla.org/stablehlo/spec#dynamic_slice}{dynamic_slice}.
 }
 
 \examples{

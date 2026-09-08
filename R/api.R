@@ -362,9 +362,12 @@ nv_concatenate <- function(..., axis = NULL) {
 #'
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to combine. Can be of any data type; they are
-#'   [promoted to a common data type][nv_promote_to_common()].
+#'   [promoted to a common data type][nv_promote_to_common()], and a scalar is
+#'   [broadcast][nv_broadcast_scalars()] to match the non-stacked axes.
 #' @return ([`arrayish`])\cr
-#'   Has the common data type of the inputs.
+#'   Has the inputs' common data type. The stacked axis is the sum of their
+#'   sizes along it -- rows for `nv_rbind()`, columns for `nv_cbind()` -- and
+#'   every other axis is theirs unchanged.
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Vectors as rows / columns
@@ -1835,12 +1838,13 @@ nv_chol <- prim_chol
 #' - output: same shape as `b`
 #'
 #' @param a ([`arrayish`])\cr
-#'   Square non-singular matrix.
+#'   Square non-singular matrix with exactly 2 axes. Can be any float data
+#'   type. `r roxy_agree("a", "b")`
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side, vector of length `n` or matrix with `n` rows. Must
-#'   have the same data type as `a`.
+#'   Right-hand side, vector of length `n` or matrix with `n` rows.
 #' @return ([`arrayish`])\cr
-#'   The solution `x` such that `a %*% x = b`.
+#'   The solution `x` such that `a %*% x = b`, with `b`'s shape and the data
+#'   type `a` and `b` agreed on.
 #' @seealso [nv_chol()], [nv_triangular_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
@@ -2094,10 +2098,11 @@ nv_determinant <- function(x, logarithm = TRUE) {
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
 #' a right-hand side.
-#' @param x ([`arrayish`])\cr
-#'   Square non-singular matrix.
+#' @templateVar dtypes any float data type
+#' @templateVar shapes a square non-singular matrix with exactly 2 axes
+#' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   The inverse, same shape and dtype as `x`.
+#'   The inverse, with the input's shape and data type.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
@@ -2140,6 +2145,9 @@ nv_qr <- prim_qr
 #' Use [`prim_lu()`] to get them in packed `LU` form.
 #' @inheritParams prim_lu
 #' @return (named `list` of [`arrayish`])\cr
+#'   `L` and `U` have the input's data type; `pivots` and `permutation` are
+#'   indices at `i32`.
+#'
 #'   * `L` -- unit lower-triangular factor of shape `(m, k)`, where
 #'     `(m, n) = shape(x)` and `k = min(m, n)`.
 #'   * `U` -- upper-triangular factor of shape `(k, n)`.
@@ -2942,9 +2950,11 @@ nv_unsqueeze <- function(x, axis) {
 #' @description
 #' Computes the outer product of two 1-D arrays.
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   1-D arrays.
+#'   Two 1-D arrays. Can be of any data type; the two are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @return ([`arrayish`])\cr
-#'   A 2-D array of shape `(length(lhs), length(rhs))`.
+#'   Has the operands' common data type and shape
+#'   `(length(lhs), length(rhs))`.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5))
@@ -2970,9 +2980,10 @@ nv_outer <- function(lhs, rhs) {
 #' @title Extract Diagonal
 #' @description
 #' Extracts the diagonal elements from a 2-D array.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   A 1-D array of length `min(nrow, ncol)` containing the diagonal elements.
+#'   Has the input's data type. A 1-D array of length `min(nrow, ncol)` containing the diagonal elements.
 #' @seealso [nv_diag()] for creating a diagonal matrix, [nv_trace()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:9, shape = c(3, 3))
@@ -3147,10 +3158,12 @@ nv_triu <- function(x, diagonal = 0L) {
 #' @description
 #' Computes `t(lhs) %*% rhs`. If `rhs` is missing, computes `t(lhs) %*% lhs`.
 #' @param lhs ([`arrayish`])\cr
-#'   An array with at least 2 axes.
+#'   An array with at least 2 axes. Can be of any data type; `lhs` and `rhs`
+#'   are [promoted to a common data type][nv_promote_to_common()].
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
-#' @return ([`arrayish`])
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type, and the shape of `t(lhs) %*% rhs`.
 #' @seealso [nv_tcrossprod()], [nv_matmul()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 3, dtype = "f32")
@@ -3173,10 +3186,12 @@ nv_crossprod <- function(lhs, rhs = NULL) {
 #' @description
 #' Computes `lhs %*% t(rhs)`. If `rhs` is missing, computes `lhs %*% t(lhs)`.
 #' @param lhs ([`arrayish`])\cr
-#'   An array with at least 2 axes.
+#'   An array with at least 2 axes. Can be of any data type; `lhs` and `rhs`
+#'   are [promoted to a common data type][nv_promote_to_common()].
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
-#' @return ([`arrayish`])
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type, and the shape of `lhs %*% t(rhs)`.
 #' @seealso [nv_crossprod()], [nv_matmul()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2, dtype = "f32")

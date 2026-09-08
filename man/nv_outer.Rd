@@ -8,11 +8,13 @@ nv_outer(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-1-D arrays.}
+Two 1-D arrays. Can be of any data type; the two are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-A 2-D array of shape \verb{(length(lhs), length(rhs))}.
+Has the operands' common data type and shape
+\verb{(length(lhs), length(rhs))}.
 }
 \description{
 Computes the outer product of two 1-D arrays.

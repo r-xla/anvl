@@ -28,7 +28,7 @@ Element-wise inverse hyperbolic tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_atanh]{hlo_atanh()}}.
+Lowers to \code{\link[stablehlo:hlo_atanh]{hlo_atanh()}}, specified under \href{https://openxla.org/stablehlo/spec#atanh}{atanh}.
 }
 
 \examples{

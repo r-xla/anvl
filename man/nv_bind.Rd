@@ -19,14 +19,17 @@ nv_cbind(...)
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
 Arrays to combine. Can be of any data type; they are
-\link[=nv_promote_to_common]{promoted to a common data type}.}
+\link[=nv_promote_to_common]{promoted to a common data type}, and a scalar is
+\link[=nv_broadcast_scalars]{broadcast} to match the non-stacked axes.}
 
 \item{deparse.level}{Ignored. Kept for compatibility with \code{\link[base:rbind]{base::rbind()}}
 and \code{\link[base:cbind]{base::cbind()}}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the common data type of the inputs.
+Has the inputs' common data type. The stacked axis is the sum of their
+sizes along it -- rows for \code{nv_rbind()}, columns for \code{nv_cbind()} -- and
+every other axis is theirs unchanged.
 }
 \description{
 Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) axis.

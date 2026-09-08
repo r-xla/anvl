@@ -37,7 +37,8 @@ Performs logical AND along the specified axes.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_and]{hlo_and()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+The reducer is \code{\link[stablehlo:hlo_and]{hlo_and()}}.
 }
 
 \examples{

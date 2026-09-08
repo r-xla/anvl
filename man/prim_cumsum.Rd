@@ -36,7 +36,8 @@ OR rather than a running count. \code{\link[=nv_cumsum]{nv_cumsum()}} counts ins
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} with \code{\link[stablehlo:hlo_add]{hlo_add()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce_window}{reduce_window}.
+The reducer is \code{\link[stablehlo:hlo_add]{hlo_add()}}.
 }
 
 \examples{

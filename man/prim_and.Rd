@@ -31,7 +31,7 @@ Element-wise logical AND.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_and]{hlo_and()}}.
+Lowers to \code{\link[stablehlo:hlo_and]{hlo_and()}}, specified under \href{https://openxla.org/stablehlo/spec#and}{and}.
 }
 
 \examples{

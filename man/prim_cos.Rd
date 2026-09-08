@@ -29,7 +29,7 @@ Element-wise cosine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cosine]{hlo_cosine()}}.
+Lowers to \code{\link[stablehlo:hlo_cosine]{hlo_cosine()}}, specified under \href{https://openxla.org/stablehlo/spec#cosine}{cosine}.
 }
 
 \examples{

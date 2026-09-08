@@ -30,7 +30,7 @@ Element-wise arithmetic right bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_right_arithmetic]{hlo_shift_right_arithmetic()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_right_arithmetic]{hlo_shift_right_arithmetic()}}, specified under \href{https://openxla.org/stablehlo/spec#shift_right_arithmetic}{shift_right_arithmetic}.
 }
 
 \examples{

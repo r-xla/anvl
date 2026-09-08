@@ -28,7 +28,7 @@ Element-wise inverse sine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_asin]{hlo_asin()}}.
+Lowers to \code{\link[stablehlo:hlo_asin]{hlo_asin()}}, specified under \href{https://openxla.org/stablehlo/spec#asin}{asin}.
 }
 
 \examples{

@@ -28,7 +28,7 @@ Element-wise natural logarithm of the absolute value of the gamma function.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_lgamma]{hlo_lgamma()}}.
+Lowers to \code{\link[stablehlo:hlo_lgamma]{hlo_lgamma()}}, specified under \href{https://openxla.org/stablehlo/spec#lgamma}{lgamma}.
 }
 
 \examples{

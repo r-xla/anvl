@@ -46,7 +46,7 @@ the updated RNG state together with the generated values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_rng_bit_generator]{hlo_rng_bit_generator()}}.
+Lowers to \code{\link[stablehlo:hlo_rng_bit_generator]{hlo_rng_bit_generator()}}, specified under \href{https://openxla.org/stablehlo/spec#rng_bit_generator}{rng_bit_generator}.
 }
 
 \examples{

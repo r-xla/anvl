@@ -108,7 +108,9 @@ the effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}.
+Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}, specified under \href{https://openxla.org/stablehlo/spec#gather}{gather}.
+The dimension numbers are intricate; anvl states them 1-based and converts
+on the way down.
 }
 
 \examples{

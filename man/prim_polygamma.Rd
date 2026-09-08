@@ -30,7 +30,7 @@ typically holds non-negative integer values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}.
+Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, specified under \href{https://openxla.org/stablehlo/spec#polygamma}{polygamma}.
 }
 
 \examples{

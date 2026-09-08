@@ -49,7 +49,7 @@ Pads an array with a given padding value.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_pad]{hlo_pad()}}.
+Lowers to \code{\link[stablehlo:hlo_pad]{hlo_pad()}}, specified under \href{https://openxla.org/stablehlo/spec#pad}{pad}.
 }
 
 \examples{

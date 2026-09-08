@@ -35,7 +35,7 @@ modifying the underlying data.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}.
+Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}, specified under \href{https://openxla.org/stablehlo/spec#bitcast_convert}{bitcast_convert}.
 }
 
 \examples{

@@ -45,3 +45,13 @@ roxy_agree <- function(...) {
     " [default data type][default_dtypes] when none of them has one."
   )
 }
+
+# The StableHLO op a primitive lowers to, with a link to its entry in the
+# specification, for inline use in roxygen blocks as `r roxy_spec("gather")`.
+# The op name is both the `hlo_*` function's suffix and the spec's anchor.
+roxy_spec <- function(op) {
+  paste0(
+    "Lowers to [hlo_", op, "()], specified under ",
+    "[", op, "](https://openxla.org/stablehlo/spec#", op, ")."
+  )
+}

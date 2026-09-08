@@ -33,7 +33,7 @@ i.e. \code{max(min_val, min(x, max_val))}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}.
+Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}, specified under \href{https://openxla.org/stablehlo/spec#clamp}{clamp}.
 }
 
 \examples{

@@ -13,6 +13,8 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 }
 \value{
 (named \code{list} of \code{\link{arrayish}})\cr
+\code{L} and \code{U} have the input's data type; \code{pivots} and \code{permutation} are
+indices at \code{i32}.
 \itemize{
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.

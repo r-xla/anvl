@@ -41,7 +41,8 @@ A boolean input is reduced with a logical AND, so the result is a boolean.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+The reducer is \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}}.
 }
 
 \examples{

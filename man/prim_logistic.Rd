@@ -29,7 +29,7 @@ Element-wise logistic sigmoid: 1 / (1 + exp(-x)).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_logistic]{hlo_logistic()}}.
+Lowers to \code{\link[stablehlo:hlo_logistic]{hlo_logistic()}}, specified under \href{https://openxla.org/stablehlo/spec#logistic}{logistic}.
 }
 
 \examples{

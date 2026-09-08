@@ -28,7 +28,7 @@ Element-wise cube root.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cbrt]{hlo_cbrt()}}.
+Lowers to \code{\link[stablehlo:hlo_cbrt]{hlo_cbrt()}}, specified under \href{https://openxla.org/stablehlo/spec#cbrt}{cbrt}.
 }
 
 \examples{

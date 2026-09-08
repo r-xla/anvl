@@ -32,7 +32,7 @@ via \code{\link[=nv_mod]{nv_mod()}} and has sign of divisor.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}.
+Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}, specified under \href{https://openxla.org/stablehlo/spec#remainder}{remainder}.
 }
 
 \examples{

@@ -10,15 +10,19 @@ nv_solve(a, b)
 \method{solve}{AnvlArray}(a, b, ...)
 }
 \arguments{
-\item{a}{(\code{\link{arrayish}})\cr Coefficient matrix.}
+\item{a}{(\code{\link{arrayish}})\cr
+Square non-singular matrix with exactly 2 axes. Can be any float data
+type. \code{a} and \code{b} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
-\item{b}{(\code{\link{arrayish}})\cr Right-hand side. If missing, returns \code{\link[=nv_inv]{nv_inv()}} of \code{a}.}
+\item{b}{(\code{\link{arrayish}})\cr
+Right-hand side, vector of length \code{n} or matrix with \code{n} rows.}
 
 \item{...}{No additional arguments.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-The solution \code{x} such that \code{a \%*\% x = b}.
+The solution \code{x} such that \code{a \%*\% x = b}, with \code{b}'s shape and the data
+type \code{a} and \code{b} agreed on.
 }
 \description{
 Solves the linear system \code{a \%*\% x = b} for \code{x}. Uses LU decomposition

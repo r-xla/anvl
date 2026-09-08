@@ -36,7 +36,7 @@ For each element, returns the corresponding element from \code{true_value} where
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}.
+Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}, specified under \href{https://openxla.org/stablehlo/spec#select}{select}.
 }
 
 \examples{

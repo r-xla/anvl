@@ -31,7 +31,7 @@ Subtracts two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_subtract]{hlo_subtract()}}.
+Lowers to \code{\link[stablehlo:hlo_subtract]{hlo_subtract()}}, specified under \href{https://openxla.org/stablehlo/spec#subtract}{subtract}.
 }
 
 \examples{

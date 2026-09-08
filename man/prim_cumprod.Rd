@@ -35,7 +35,8 @@ running AND. \code{\link[=nv_cumprod]{nv_cumprod()}} multiplies zeroes and ones 
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} with \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce_window}{reduce_window}.
+The reducer is \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}}.
 }
 
 \examples{

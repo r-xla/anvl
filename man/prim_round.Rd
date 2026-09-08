@@ -32,8 +32,10 @@ Rounds the elements of an array to the nearest integer.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_round_nearest_even]{hlo_round_nearest_even()}} or
-\code{\link[stablehlo:hlo_round_nearest_afz]{hlo_round_nearest_afz()}} depending on the \code{method} parameter.
+Lowers to \code{\link[stablehlo:hlo_round_nearest_even]{hlo_round_nearest_even()}}, specified under \href{https://openxla.org/stablehlo/spec#round_nearest_even}{round_nearest_even}.
+With \code{method = "afz"} it lowers to \code{\link[stablehlo:hlo_round_nearest_afz]{hlo_round_nearest_afz()}} instead,
+specified under
+\href{https://openxla.org/stablehlo/spec#round_nearest_afz}{round_nearest_afz}.
 }
 
 \examples{

@@ -31,7 +31,7 @@ Element-wise logical XOR.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}.
+Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}, specified under \href{https://openxla.org/stablehlo/spec#xor}{xor}.
 }
 
 \examples{

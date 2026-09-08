@@ -38,7 +38,7 @@ For other axes, transpose so the target axis is last, call
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}.
+Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}, specified under \href{https://openxla.org/stablehlo/spec#top_k}{top_k}.
 }
 
 \examples{

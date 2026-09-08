@@ -31,7 +31,8 @@ Element-wise greater than or equal comparison.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparison_direction = "GE"}.
+Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}}, specified under \href{https://openxla.org/stablehlo/spec#compare}{compare}.
+The comparison direction is \code{GE}.
 }
 
 \examples{

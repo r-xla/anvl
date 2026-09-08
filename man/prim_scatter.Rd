@@ -114,7 +114,9 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}.
+Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}, specified under \href{https://openxla.org/stablehlo/spec#scatter}{scatter}.
+The dimension numbers are intricate; anvl states them 1-based and converts
+on the way down.
 }
 
 \examples{

@@ -35,7 +35,7 @@ Note that row-major order is used, which differs from R's column-major order.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}.
+Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}, specified under \href{https://openxla.org/stablehlo/spec#reshape}{reshape}.
 }
 
 \examples{

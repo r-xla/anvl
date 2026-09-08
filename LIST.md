@@ -28,6 +28,13 @@ file in the same change that documents a function.
   `?dtypes`.
 - Examples show working calls only, each with a one-line comment, and never
   state what a default data type is.
+- A primitive modelled on a StableHLO op says so through
+  `r roxy_spec("<op>")`, which names the `hlo_*` function and links the op's
+  entry in the specification. Anything a block adds beyond that -- a reducer,
+  a comparison direction, a comparator -- follows as its own sentence. The
+  primitives backed by a custom call (`prim_qr()`, `prim_lu()`, `prim_svd()`,
+  `prim_eigh()`) keep their hand-written section, since no spec op describes
+  them.
 - The `@description` says what the function computes, not how its inputs are
   converted: promotion, broadcasting and data type constraints belong in the
   parameters and the return value. The exceptions are functions whose *purpose*

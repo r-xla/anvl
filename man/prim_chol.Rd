@@ -36,7 +36,7 @@ Axes before the last two are batch axes.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}.
+Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}, specified under \href{https://openxla.org/stablehlo/spec#cholesky}{cholesky}.
 }
 
 \examples{

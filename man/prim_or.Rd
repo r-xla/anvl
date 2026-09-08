@@ -31,7 +31,7 @@ Element-wise logical OR.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_or]{hlo_or()}}.
+Lowers to \code{\link[stablehlo:hlo_or]{hlo_or()}}, specified under \href{https://openxla.org/stablehlo/spec#or}{or}.
 }
 
 \examples{

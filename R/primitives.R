@@ -89,7 +89,7 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' @templateVar primitive_id fill
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_tensor()].
+#' `r roxy_spec("tensor")`
 #' @seealso [nv_fill()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' prim_fill(3.14, shape = c(2, 3), dtype = "f32")
@@ -120,7 +120,7 @@ prim_fill <- new_primitive(
 #' @templateVar primitive_id add
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_add()].
+#' `r roxy_spec("add")`
 #' @seealso [nv_add()], `+`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -140,7 +140,7 @@ prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
 #' @templateVar primitive_id mul
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_multiply()].
+#' `r roxy_spec("multiply")`
 #' @seealso [nv_mul()], `*`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -160,7 +160,7 @@ prim_mul <- new_primitive("mul", make_binary_op(stablehlo::infer_types_multiply)
 #' @templateVar primitive_id sub
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_subtract()].
+#' `r roxy_spec("subtract")`
 #' @seealso [nv_sub()], `-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -180,7 +180,7 @@ prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract)
 #' @templateVar primitive_id negate
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_negate()].
+#' `r roxy_spec("negate")`
 #' @seealso [nv_negate()], unary `-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, -2, 3))
@@ -197,7 +197,7 @@ prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_nega
 #' @templateVar primitive_id divide
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_divide()].
+#' `r roxy_spec("divide")`
 #' @seealso [nv_div()], `/`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -217,7 +217,7 @@ prim_div <- new_primitive("divide", make_binary_op(stablehlo::infer_types_divide
 #' @templateVar primitive_id power
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_power()].
+#' `r roxy_spec("power")`
 #' @seealso [nv_pow()], `^`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -245,7 +245,7 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 #' @templateVar primitive_id broadcast_in_axes
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_broadcast_in_dim()].
+#' `r roxy_spec("broadcast_in_dim")`
 #' @seealso [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -304,7 +304,7 @@ prim_broadcast_in_axes <- new_primitive(
 #' @templateVar primitive_id dot_general
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_dot_general()].
+#' `r roxy_spec("dot_general")`
 #' @seealso [nv_matmul()], `%*%`
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -355,7 +355,7 @@ prim_dot_general <- new_primitive(
 #' @templateVar primitive_id transpose
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_transpose()].
+#' `r roxy_spec("transpose")`
 #' @seealso [nv_transpose()], [t()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -400,7 +400,7 @@ prim_transpose <- new_primitive(
 #' @templateVar primitive_id reshape
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reshape()].
+#' `r roxy_spec("reshape")`
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:6)
@@ -442,7 +442,7 @@ prim_reshape <- new_primitive(
 #' @templateVar primitive_id concatenate
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_concatenate()].
+#' `r roxy_spec("concatenate")`
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -504,7 +504,7 @@ prim_concatenate <- new_primitive(
 #' @templateVar primitive_id static_slice
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_slice()].
+#' `r roxy_spec("slice")`
 #' @seealso [prim_dynamic_slice()], [prim_scatter()], [prim_gather()], [nv_subset()], `[`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # 1-D: extract elements 2 through 4 (limit is exclusive)
@@ -577,7 +577,7 @@ prim_static_slice <- new_primitive(
 #' @templateVar primitive_id dynamic_slice
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_dynamic_slice()].
+#' `r roxy_spec("dynamic_slice")`
 #' @seealso [prim_static_slice()], [prim_dynamic_update_slice()], [prim_scatter()], [prim_gather()], [nv_subset()], `[`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # 1-D: extract 3 elements starting at position 3
@@ -639,7 +639,7 @@ prim_dynamic_slice <- new_primitive(
 #' @templateVar primitive_id dynamic_update_slice
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_dynamic_update_slice()].
+#' `r roxy_spec("dynamic_update_slice")`
 #' @seealso [prim_dynamic_slice()], [prim_scatter()], [prim_gather()], [nv_subset_assign()], `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # 1-D: overwrite two elements starting at position 2
@@ -710,7 +710,8 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @templateVar primitive_id reduce_sum
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce()] with [hlo_add()] as the reducer.
+#' `r roxy_spec("reduce")`
+#' The reducer is [hlo_add()].
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -739,7 +740,8 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @templateVar primitive_id reduce_prod
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce()] with [hlo_multiply()] as the reducer.
+#' `r roxy_spec("reduce")`
+#' The reducer is [hlo_multiply()].
 #' @seealso [nv_reduce_prod()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -765,7 +767,8 @@ prim_reduce_prod <- new_primitive("reduce_prod", make_reduce_op(), static = 2:3)
 #' @templateVar primitive_id reduce_max
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce()] with [hlo_maximum()] as the reducer.
+#' `r roxy_spec("reduce")`
+#' The reducer is [hlo_maximum()].
 #' @seealso [nv_reduce_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -791,7 +794,8 @@ prim_reduce_max <- new_primitive("reduce_max", make_reduce_op(), static = 2:3)
 #' @templateVar primitive_id reduce_min
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce()] with [hlo_minimum()] as the reducer.
+#' `r roxy_spec("reduce")`
+#' The reducer is [hlo_minimum()].
 #' @seealso [nv_reduce_min()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -817,7 +821,8 @@ prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 #' @templateVar primitive_id reduce_any
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce()] with [hlo_or()] as the reducer.
+#' `r roxy_spec("reduce")`
+#' The reducer is [hlo_or()].
 #' @seealso [nv_reduce_any()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
@@ -840,7 +845,8 @@ prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boole
 #' @templateVar primitive_id reduce_all
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce()] with [hlo_and()] as the reducer.
+#' `r roxy_spec("reduce")`
+#' The reducer is [hlo_and()].
 #' @seealso [nv_reduce_all()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
@@ -912,7 +918,8 @@ cum_extreme_op <- function(x, axis) {
 #' @templateVar primitive_id cumsum
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce_window()] with [hlo_add()] as the reducer.
+#' `r roxy_spec("reduce_window")`
+#' The reducer is [hlo_add()].
 #' @seealso [nv_cumsum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -934,7 +941,8 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' @templateVar primitive_id cumprod
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce_window()] with [hlo_multiply()] as the reducer.
+#' `r roxy_spec("reduce_window")`
+#' The reducer is [hlo_multiply()].
 #' @seealso [nv_cumprod()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -1026,7 +1034,8 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #' @templateVar primitive_id reduce
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reduce()] with `reductor` as the body.
+#' `r roxy_spec("reduce")`
+#' The body is `reductor`.
 #' @seealso [prim_reduce_sum()], [prim_reduce_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4))
@@ -1265,7 +1274,8 @@ make_compare_op <- function(direction) {
 #' @templateVar primitive_id equal
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_compare()] with `comparison_direction = "EQ"`.
+#' `r roxy_spec("compare")`
+#' The comparison direction is `EQ`.
 #' @seealso [nv_eq()], `==`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1285,7 +1295,8 @@ prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 #' @templateVar primitive_id not_equal
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_compare()] with `comparison_direction = "NE"`.
+#' `r roxy_spec("compare")`
+#' The comparison direction is `NE`.
 #' @seealso [nv_ne()], `!=`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1305,7 +1316,8 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 #' @templateVar primitive_id greater
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_compare()] with `comparison_direction = "GT"`.
+#' `r roxy_spec("compare")`
+#' The comparison direction is `GT`.
 #' @seealso [nv_gt()], `>`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1325,7 +1337,8 @@ prim_gt <- new_primitive("greater", make_compare_op("GT"))
 #' @templateVar primitive_id greater_equal
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_compare()] with `comparison_direction = "GE"`.
+#' `r roxy_spec("compare")`
+#' The comparison direction is `GE`.
 #' @seealso [nv_ge()], `>=`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1345,7 +1358,8 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 #' @templateVar primitive_id less
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_compare()] with `comparison_direction = "LT"`.
+#' `r roxy_spec("compare")`
+#' The comparison direction is `LT`.
 #' @seealso [nv_lt()], `<`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1365,7 +1379,8 @@ prim_lt <- new_primitive("less", make_compare_op("LT"))
 #' @templateVar primitive_id less_equal
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_compare()] with `comparison_direction = "LE"`.
+#' `r roxy_spec("compare")`
+#' The comparison direction is `LE`.
 #' @seealso [nv_le()], `<=`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1387,7 +1402,7 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' @templateVar primitive_id maximum
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_maximum()].
+#' `r roxy_spec("maximum")`
 #' @seealso [nv_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1407,7 +1422,7 @@ prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maxim
 #' @templateVar primitive_id minimum
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_minimum()].
+#' `r roxy_spec("minimum")`
 #' @seealso [nv_min()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1429,7 +1444,7 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' @templateVar primitive_id remainder
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_remainder()].
+#' `r roxy_spec("remainder")`
 #' @seealso [nv_remainder()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1455,7 +1470,7 @@ prim_remainder <- new_primitive(
 #' @templateVar primitive_id and
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_and()].
+#' `r roxy_spec("and")`
 #' @seealso [nv_and()], `&`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R integer's default data type
@@ -1475,7 +1490,7 @@ prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 #' @templateVar primitive_id not
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_not()].
+#' `r roxy_spec("not")`
 #' @seealso [nv_not()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
@@ -1492,7 +1507,7 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @templateVar primitive_id or
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_or()].
+#' `r roxy_spec("or")`
 #' @seealso [nv_or()], `|`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R integer's default data type
@@ -1512,7 +1527,7 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #' @templateVar primitive_id xor
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_xor()].
+#' `r roxy_spec("xor")`
 #' @seealso [nv_xor()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R integer's default data type
@@ -1538,7 +1553,7 @@ infer_shift <- function(lhs, rhs, shift_fn) {
 #' @templateVar primitive_id shift_left
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_shift_left()].
+#' `r roxy_spec("shift_left")`
 #' @seealso [nv_shift_left()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R integer's default data type
@@ -1565,7 +1580,7 @@ prim_shift_left <- new_primitive(
 #' @templateVar primitive_id shift_right_logical
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_shift_right_logical()].
+#' `r roxy_spec("shift_right_logical")`
 #' @seealso [nv_shift_right_logical()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R integer's default data type
@@ -1592,7 +1607,7 @@ prim_shift_right_logical <- new_primitive(
 #' @templateVar primitive_id shift_right_arithmetic
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_shift_right_arithmetic()].
+#' `r roxy_spec("shift_right_arithmetic")`
 #' @seealso [nv_shift_right_arithmetic()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R integer's default data type
@@ -1619,7 +1634,7 @@ prim_shift_right_arithmetic <- new_primitive(
 #' @templateVar primitive_id atan2
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_atan2()].
+#' `r roxy_spec("atan2")`
 #' @seealso [nv_atan2()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # two R values: both take an R double's default data type
@@ -1646,7 +1661,7 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #' @templateVar primitive_id bitcast_convert
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_bitcast_convert()].
+#' `r roxy_spec("bitcast_convert")`
 #' @seealso [nv_bitcast_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # same width: the bits are reread, the shape stays
@@ -1680,7 +1695,7 @@ prim_bitcast_convert <- new_primitive(
 #' @templateVar primitive_id abs
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_abs()].
+#' `r roxy_spec("abs")`
 #' @seealso [nv_abs()], [abs()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 2, -3))
@@ -1697,7 +1712,7 @@ prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
 #' @templateVar primitive_id sqrt
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_sqrt()].
+#' `r roxy_spec("sqrt")`
 #' @seealso [nv_sqrt()], [sqrt()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 4, 9))
@@ -1714,7 +1729,7 @@ prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
 #' @templateVar primitive_id rsqrt
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_rsqrt()].
+#' `r roxy_spec("rsqrt")`
 #' @seealso [nv_rsqrt()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 4, 9))
@@ -1731,7 +1746,7 @@ prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt)
 #' @templateVar primitive_id log
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_log()].
+#' `r roxy_spec("log")`
 #' @seealso [nv_log()], [log()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2.718, 7.389))
@@ -1748,7 +1763,7 @@ prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
 #' @templateVar primitive_id tanh
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_tanh()].
+#' `r roxy_spec("tanh")`
 #' @seealso [nv_tanh()], [tanh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -1765,7 +1780,7 @@ prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
 #' @templateVar primitive_id tan
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_tan()].
+#' `r roxy_spec("tan")`
 #' @seealso [nv_tan()], [tan()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.5, 1))
@@ -1782,7 +1797,7 @@ prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
 #' @templateVar primitive_id sine
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_sine()].
+#' `r roxy_spec("sine")`
 #' @seealso [nv_sin()], [sin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, pi / 2, pi))
@@ -1799,7 +1814,7 @@ prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
 #' @templateVar primitive_id cosine
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_cosine()].
+#' `r roxy_spec("cosine")`
 #' @seealso [nv_cos()], [cos()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, pi / 2, pi))
@@ -1816,7 +1831,7 @@ prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine)
 #' @templateVar primitive_id floor
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_floor()].
+#' `r roxy_spec("floor")`
 #' @seealso [nv_floor()], [floor()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
@@ -1833,7 +1848,7 @@ prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor)
 #' @templateVar primitive_id ceil
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_ceil()].
+#' `r roxy_spec("ceil")`
 #' @seealso [nv_ceiling()], [ceiling()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
@@ -1850,7 +1865,7 @@ prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
 #' @templateVar primitive_id sign
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_sign()].
+#' `r roxy_spec("sign")`
 #' @seealso [nv_sign()], [sign()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-3, 0, 5))
@@ -1867,7 +1882,7 @@ prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
 #' @templateVar primitive_id exp
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_exponential()].
+#' `r roxy_spec("exponential")`
 #' @seealso [nv_exp()], [exp()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 1, 2))
@@ -1884,7 +1899,7 @@ prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponentia
 #' @templateVar primitive_id expm1
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_exponential_minus_one()].
+#' `r roxy_spec("exponential_minus_one")`
 #' @seealso [nv_expm1()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.001, 1))
@@ -1901,7 +1916,7 @@ prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_expone
 #' @templateVar primitive_id log1p
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_log_plus_one()].
+#' `r roxy_spec("log_plus_one")`
 #' @seealso [nv_log1p()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.001, 1))
@@ -1918,7 +1933,7 @@ prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_pl
 #' @templateVar primitive_id cbrt
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_cbrt()].
+#' `r roxy_spec("cbrt")`
 #' @seealso [nv_cbrt()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 8, 27))
@@ -1935,7 +1950,7 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
 #' @templateVar primitive_id logistic
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_logistic()].
+#' `r roxy_spec("logistic")`
 #' @seealso [nv_logistic()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-2, 0, 2))
@@ -1952,7 +1967,7 @@ prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_
 #' @templateVar primitive_id acos
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_acos()].
+#' `r roxy_spec("acos")`
 #' @seealso [nv_acos()], [acos()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -1969,7 +1984,7 @@ prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
 #' @templateVar primitive_id acosh
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_acosh()].
+#' `r roxy_spec("acosh")`
 #' @seealso [nv_acosh()], [acosh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 10))
@@ -1986,7 +2001,7 @@ prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh)
 #' @templateVar primitive_id asin
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_asin()].
+#' `r roxy_spec("asin")`
 #' @seealso [nv_asin()], [asin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2003,7 +2018,7 @@ prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
 #' @templateVar primitive_id asinh
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_asinh()].
+#' `r roxy_spec("asinh")`
 #' @seealso [nv_asinh()], [asinh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2020,7 +2035,7 @@ prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh)
 #' @templateVar primitive_id atan
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_atan()].
+#' `r roxy_spec("atan")`
 #' @seealso [nv_atan()], [atan()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2037,7 +2052,7 @@ prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
 #' @templateVar primitive_id atanh
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_atanh()].
+#' `r roxy_spec("atanh")`
 #' @seealso [nv_atanh()], [atanh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
@@ -2054,7 +2069,7 @@ prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh)
 #' @templateVar primitive_id cosh
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_cosh()].
+#' `r roxy_spec("cosh")`
 #' @seealso [nv_cosh()], [cosh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2071,7 +2086,7 @@ prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
 #' @templateVar primitive_id sinh
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_sinh()].
+#' `r roxy_spec("sinh")`
 #' @seealso [nv_sinh()], [sinh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2088,7 +2103,7 @@ prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
 #' @templateVar primitive_id digamma
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_digamma()].
+#' `r roxy_spec("digamma")`
 #' @seealso [nv_digamma()], [digamma()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
@@ -2105,7 +2120,7 @@ prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_di
 #' @templateVar primitive_id lgamma
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_lgamma()].
+#' `r roxy_spec("lgamma")`
 #' @seealso [nv_lgamma()], [lgamma()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
@@ -2125,7 +2140,7 @@ prim_lgamma <- new_primitive("lgamma", make_unary_op(stablehlo::infer_types_lgam
 #' @templateVar primitive_id polygamma
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_polygamma()].
+#' `r roxy_spec("polygamma")`
 #' @seealso [nv_polygamma()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' n <- nv_array(c(1, 1, 2))
@@ -2154,7 +2169,7 @@ prim_polygamma <- new_primitive(
 #' @templateVar primitive_id erf
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_erf()].
+#' `r roxy_spec("erf")`
 #' @seealso [nv_erf()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2171,7 +2186,7 @@ prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
 #' @templateVar primitive_id erf_inv
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_erf_inv()].
+#' `r roxy_spec("erf_inv")`
 #' @seealso [nv_erf_inv()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
@@ -2188,7 +2203,7 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_er
 #' @templateVar primitive_id erfc
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_erfc()].
+#' `r roxy_spec("erfc")`
 #' @seealso [nv_erfc()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2206,7 +2221,7 @@ prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
 #' @templateVar primitive_id is_finite
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_is_finite()].
+#' `r roxy_spec("is_finite")`
 #' @seealso [nv_is_finite()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, Inf, NaN, -Inf, 0))
@@ -2232,7 +2247,7 @@ prim_is_finite <- new_primitive(
 #' @templateVar primitive_id popcnt
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_popcnt()].
+#' `r roxy_spec("popcnt")`
 #' @seealso [nv_popcnt()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(7L, 3L, 15L))
@@ -2265,7 +2280,7 @@ prim_popcnt <- new_primitive(
 #' @templateVar primitive_id clamp
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_clamp()].
+#' `r roxy_spec("clamp")`
 #' @seealso [nv_clamp()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0.5, 2))
@@ -2311,7 +2326,7 @@ prim_clamp <- new_primitive(
 #' @templateVar primitive_id reverse
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reverse()].
+#' `r roxy_spec("reverse")`
 #' @seealso [nv_reverse()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
@@ -2352,7 +2367,7 @@ prim_reverse <- new_primitive(
 #' @templateVar primitive_id iota
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_iota()].
+#' `r roxy_spec("iota")`
 #' @seealso [nv_iota()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' prim_iota(axis = 1L, dtype = "i32", shape = 5L)
@@ -2408,7 +2423,7 @@ prim_iota <- new_primitive(
 #' @templateVar primitive_id pad
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_pad()].
+#' `r roxy_spec("pad")`
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:3)
 #' # one element before, two after
@@ -2473,8 +2488,10 @@ prim_pad <- new_primitive(
 #' @templateVar primitive_id round
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_round_nearest_even()] or
-#' [hlo_round_nearest_afz()] depending on the `method` parameter.
+#' `r roxy_spec("round_nearest_even")`
+#' With `method = "afz"` it lowers to [hlo_round_nearest_afz()] instead,
+#' specified under
+#' [round_nearest_afz](https://openxla.org/stablehlo/spec#round_nearest_afz).
 #' @seealso [nv_round()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.4, 2.5, 3.6))
@@ -2513,7 +2530,7 @@ prim_round <- new_primitive(
 #' @templateVar primitive_id convert
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_convert()].
+#' `r roxy_spec("convert")`
 #' @seealso [nv_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1L, 2L, 3L))
@@ -2563,7 +2580,7 @@ prim_convert <- new_primitive(
 #' @templateVar primitive_id select
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_select()].
+#' `r roxy_spec("select")`
 #' @seealso [nv_ifelse()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' pred <- nv_array(c(TRUE, FALSE, TRUE))
@@ -2615,7 +2632,7 @@ prim_ifelse <- new_primitive(
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_if()].
+#' `r roxy_spec("if")`
 #' @seealso [nv_if()], [prim_ifelse()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' prim_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
@@ -2687,7 +2704,7 @@ prim_if <- new_primitive(
 #' @templateVar primitive_id while
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_while()].
+#' `r roxy_spec("while")`
 #' @seealso [nv_while()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' prim_while(
@@ -2837,13 +2854,13 @@ prim_while <- new_primitive(
 #' @templateVar primitive_id sort
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_sort()] with a comparator that uses
-#' [hlo_compare()] (`LT` for ascending, `GT` for descending) on
-#' the first array. For float keys the comparator uses
-#' `compare_type = "TOTALORDER"` and canonicalizes `-0`/`+0` and
-#' `-NaN`/`+NaN` to their positive form before comparing, so all `NaN`
-#' values land at one end of the result regardless of sign. Integer keys
-#' use `SIGNED` / `UNSIGNED` as appropriate.
+#' `r roxy_spec("sort")`
+#' The comparator uses [hlo_compare()] (`LT` for ascending, `GT` for
+#' descending) on the first array. For float keys it uses `compare_type =
+#' "TOTALORDER"` and canonicalizes `-0`/`+0` and `-NaN`/`+NaN` to their
+#' positive form before comparing, so all `NaN` values land at one end of the
+#' result regardless of sign. Integer keys use `SIGNED` / `UNSIGNED` as
+#' appropriate.
 #' @seealso [nv_sort()], [nv_argsort()], [nv_top_k()], [nv_median()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5))
@@ -2916,7 +2933,7 @@ prim_sort <- new_primitive(
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_top_k()].
+#' `r roxy_spec("top_k")`
 #' @seealso [nv_top_k()], [prim_sort()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -3032,7 +3049,7 @@ prim_print <- new_primitive(
 #' @templateVar primitive_id rng_bit_generator
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_rng_bit_generator()].
+#' `r roxy_spec("rng_bit_generator")`
 #' @seealso [nv_runif()], [nv_rnorm()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # THREE_FRY, the default, takes a two-element state
@@ -3131,7 +3148,9 @@ prim_rng_bit_generator <- new_primitive(
 #' @templateVar primitive_id scatter
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_scatter()].
+#' `r roxy_spec("scatter")`
+#' The dimension numbers are intricate; anvl states them 1-based and converts
+#' on the way down.
 #' @seealso [prim_gather()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Scatter values 10 and 30 into positions 1 and 3 of a zero vector
@@ -3348,7 +3367,9 @@ prim_scatter <- new_primitive(
 #' @templateVar primitive_id gather
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_gather()].
+#' `r roxy_spec("gather")`
+#' The dimension numbers are intricate; anvl states them 1-based and converts
+#' on the way down.
 #' @seealso [prim_scatter()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Gather rows 1 and 3 from a 3x3 matrix
@@ -3458,7 +3479,7 @@ prim_gather <- new_primitive(
 #' @templateVar primitive_id cholesky
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_cholesky()].
+#' `r roxy_spec("cholesky")`
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Create a positive-definite matrix
@@ -3515,7 +3536,7 @@ prim_chol <- new_primitive(
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_triangular_solve()].
+#' `r roxy_spec("triangular_solve")`
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Solve L %*% x = b where L is lower triangular

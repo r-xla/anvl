@@ -28,7 +28,7 @@ Element-wise check if values are finite (not Inf, -Inf, or NaN).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_is_finite]{hlo_is_finite()}}.
+Lowers to \code{\link[stablehlo:hlo_is_finite]{hlo_is_finite()}}, specified under \href{https://openxla.org/stablehlo/spec#is_finite}{is_finite}.
 }
 
 \examples{

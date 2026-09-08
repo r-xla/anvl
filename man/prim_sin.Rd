@@ -29,7 +29,7 @@ Element-wise sine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sine]{hlo_sine()}}.
+Lowers to \code{\link[stablehlo:hlo_sine]{hlo_sine()}}, specified under \href{https://openxla.org/stablehlo/spec#sine}{sine}.
 }
 
 \examples{
