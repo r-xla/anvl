@@ -19,8 +19,7 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Raises \code{lhs} to the power of \code{rhs} element-wise, after promoting to a common data type and
-broadcasting scalars. You can also use the \code{^} operator.
+Raises \code{lhs} to the power of \code{rhs} element-wise. You can also use the \code{^} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

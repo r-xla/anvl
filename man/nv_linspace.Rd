@@ -21,7 +21,8 @@ result is \code{start}.}
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the result. Must be \code{f32} or \code{f64}; the default (\code{NULL}) is
 \code{f32}. For \code{nv_linspace_like()}, \code{NULL} uses \code{dtype(like)}, which must
-then be one of those two.}
+then be one of those two. To obtain integers, convert the result with
+\code{\link[=nv_convert]{nv_convert()}}, which leaves the rounding yours to choose.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -49,10 +50,8 @@ Has \code{dtype} and shape \code{steps}.
 Creates a 1-D array with \code{steps} evenly spaced values from \code{start} to \code{end}
 (both inclusive), like R's \code{seq(start, end, length.out = steps)}.
 
-The spacing \code{(end - start) / (steps - 1)} is generally not a whole number, so
-the result is floating-point and \code{dtype} must name a float data type. Convert
-the result with \code{\link[=nv_convert]{nv_convert()}} to obtain integers, which leaves the
-rounding yours to choose.
+The spacing \code{(end - start) / (steps - 1)} is generally not a whole number,
+so the result is floating-point.
 
 \code{nv_linspace_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.

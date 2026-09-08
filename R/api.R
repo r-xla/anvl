@@ -275,10 +275,12 @@ nv_flatten <- function(x) {
 
 #' @title Concatenate
 #' @description
-#' Concatenates arrays along an axis. Operands are promoted to a common
-#' data type and scalars are broadcast before concatenation.
+#' Concatenates arrays along an axis.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to concatenate. Must have the same shape except along `axis`.
+#'   Arrays to concatenate. Can be of any data type; they are
+#'   [promoted to a common data type][nv_promote_to_common()] and scalars are
+#'   [broadcast][nv_broadcast_scalars()]. Must have the same shape except
+#'   along `axis`.
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to concatenate.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
@@ -342,10 +344,8 @@ nv_concatenate <- function(..., axis = NULL) {
 #' @name nv_bind
 #' @description
 #' Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
-#' Arguments are first promoted to a common data type
-#' (see [nv_promote_to_common()]).
 #'
-#' Each input is then handled according to its rank:
+#' Each input is handled according to its rank:
 #'
 #' * 0-D: broadcast to match the non-stacked axes of the other inputs.
 #' * 1-D: treated as a single row/column.
@@ -361,8 +361,10 @@ nv_concatenate <- function(..., axis = NULL) {
 #' `c(2, 6, 4)` array.
 #'
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to combine. Inputs are promoted to a common data type.
+#'   Arrays to combine. Can be of any data type; they are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @return ([`arrayish`])\cr
+#'   Has the common data type of the inputs.
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Vectors as rows / columns
@@ -537,7 +539,7 @@ make_do_binary <- function(f) {
 
 #' @title Addition
 #' @description
-#' Adds two arrays element-wise, after promoting to a common data type and broadcasting scalars.
+#' Adds two arrays element-wise.
 #' You can also use the `+` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
@@ -559,8 +561,7 @@ nv_add <- make_do_binary(prim_add)
 
 #' @title Multiplication
 #' @description
-#' Multiplies two arrays element-wise, after promoting to a common data type and broadcasting
-#' scalars. You can also use the `*` operator.
+#' Multiplies two arrays element-wise. You can also use the `*` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -581,8 +582,7 @@ nv_mul <- make_do_binary(prim_mul)
 
 #' @title Subtraction
 #' @description
-#' Subtracts two arrays element-wise, after promoting to a common data type and broadcasting
-#' scalars. You can also use the `-` operator.
+#' Subtracts two arrays element-wise. You can also use the `-` operator.
 #' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -603,8 +603,7 @@ nv_sub <- make_do_binary(prim_sub)
 
 #' @title Division
 #' @description
-#' Divides two arrays element-wise, after promoting to a common data type and broadcasting
-#' scalars. You can also use the `/` operator.
+#' Divides two arrays element-wise. You can also use the `/` operator.
 #' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -625,8 +624,7 @@ nv_div <- make_do_binary(prim_div)
 
 #' @title Power
 #' @description
-#' Raises `lhs` to the power of `rhs` element-wise, after promoting to a common data type and
-#' broadcasting scalars. You can also use the `^` operator.
+#' Raises `lhs` to the power of `rhs` element-wise. You can also use the `^` operator.
 #' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -647,8 +645,7 @@ nv_pow <- make_do_binary(prim_pow)
 
 #' @title Equal
 #' @description
-#' Element-wise equality comparison, after promoting to a common data type and broadcasting
-#' scalars. You can also use the `==` operator.
+#' Element-wise equality comparison. You can also use the `==` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
@@ -669,8 +666,7 @@ nv_eq <- make_do_binary(prim_eq)
 
 #' @title Not Equal
 #' @description
-#' Element-wise inequality comparison, after promoting to a common data type and broadcasting
-#' scalars. You can also use the `!=` operator.
+#' Element-wise inequality comparison. You can also use the `!=` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
@@ -691,8 +687,7 @@ nv_ne <- make_do_binary(prim_ne)
 
 #' @title Greater Than
 #' @description
-#' Element-wise greater than comparison, after promoting to a common data type and broadcasting
-#' scalars. You can also use the `>` operator.
+#' Element-wise greater than comparison. You can also use the `>` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
@@ -713,8 +708,7 @@ nv_gt <- make_do_binary(prim_gt)
 
 #' @title Greater Than or Equal
 #' @description
-#' Element-wise greater than or equal comparison, after promoting to a common data type and
-#' broadcasting scalars. You can also use the `>=` operator.
+#' Element-wise greater than or equal comparison. You can also use the `>=` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
@@ -735,8 +729,7 @@ nv_ge <- make_do_binary(prim_ge)
 
 #' @title Less Than
 #' @description
-#' Element-wise less than comparison, after promoting to a common data type and broadcasting
-#' scalars. You can also use the `<` operator.
+#' Element-wise less than comparison. You can also use the `<` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
@@ -757,8 +750,7 @@ nv_lt <- make_do_binary(prim_lt)
 
 #' @title Less Than or Equal
 #' @description
-#' Element-wise less than or equal comparison, after promoting to a common data type and
-#' broadcasting scalars. You can also use the `<=` operator.
+#' Element-wise less than or equal comparison. You can also use the `<=` operator.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
@@ -779,8 +771,7 @@ nv_le <- make_do_binary(prim_le)
 
 #' @title Maximum
 #' @description
-#' Element-wise maximum of two arrays, after promoting to a common data type and broadcasting
-#' scalars.
+#' Element-wise maximum of two arrays.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -801,8 +792,7 @@ nv_max <- make_do_binary(prim_max)
 
 #' @title Minimum
 #' @description
-#' Element-wise minimum of two arrays, after promoting to a common data type and broadcasting
-#' scalars.
+#' Element-wise minimum of two arrays.
 #' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -823,7 +813,7 @@ nv_min <- make_do_binary(prim_min)
 
 #' @title Remainder (Truncating)
 #' @description
-#' Element-wise remainder, after promoting to a common data type and broadcasting scalars. This
+#' Element-wise remainder. This
 #' differs from base R's `%%`, use [`nv_mod()`]/`%%` instead.
 #' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
@@ -846,8 +836,7 @@ nv_remainder <- make_do_binary(prim_remainder)
 
 #' @title Modulo (Flooring Remainder)
 #' @description
-#' Element-wise flooring remainder of division, after promoting to a common data type and
-#' broadcasting scalars. The sign of the result equals the sign of `rhs`, matching base R's `%%`
+#' Element-wise flooring remainder of division. The sign of the result equals the sign of `rhs`, matching base R's `%%`
 #' operator.
 #' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
@@ -877,7 +866,7 @@ nv_mod <- function(lhs, rhs) {
 
 #' @title Logical And
 #' @description
-#' Element-wise logical AND, after promoting to a common data type and broadcasting scalars. You
+#' Element-wise logical AND. You
 #' can also use the `&` operator.
 #' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
@@ -899,7 +888,7 @@ nv_and <- make_do_binary(prim_and)
 
 #' @title Logical Or
 #' @description
-#' Element-wise logical OR, after promoting to a common data type and broadcasting scalars. You
+#' Element-wise logical OR. You
 #' can also use the `|` operator.
 #' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
@@ -921,7 +910,7 @@ nv_or <- make_do_binary(prim_or)
 
 #' @title Logical Xor
 #' @description
-#' Element-wise logical XOR, after promoting to a common data type and broadcasting scalars.
+#' Element-wise logical XOR.
 #' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -942,7 +931,7 @@ nv_xor <- make_do_binary(prim_xor)
 
 #' @title Shift Left
 #' @description
-#' Element-wise left bit shift, after promoting to a common data type and broadcasting scalars.
+#' Element-wise left bit shift.
 #' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -963,8 +952,7 @@ nv_shift_left <- make_do_binary(prim_shift_left)
 
 #' @title Logical Shift Right
 #' @description
-#' Element-wise logical right bit shift, after promoting to a common data type and broadcasting
-#' scalars.
+#' Element-wise logical right bit shift.
 #' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -985,8 +973,7 @@ nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 
 #' @title Arithmetic Shift Right
 #' @description
-#' Element-wise arithmetic right bit shift, after promoting to a common data type and
-#' broadcasting scalars.
+#' Element-wise arithmetic right bit shift.
 #' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -1008,7 +995,7 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' @title Arctangent 2
 #' @description
 #' Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive x-axis
-#' and the point `(rhs, lhs)`, after promoting to a common data type and broadcasting scalars.
+#' and the point `(rhs, lhs)`.
 #' @templateVar dtypes any float data type
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -1435,15 +1422,8 @@ nv_lgamma <- prim_lgamma
 #' @title Polygamma
 #' @description
 #' Element-wise polygamma function: the `(n+1)`-th derivative of the
-#' log-gamma function. The order `n` is broadcast against `x` (so
-#' `nv_polygamma(1, x)` works for any `x`). For `n = 0` this is the
-#' digamma function; for `n = 1`, `trigamma()` dispatches here.
-#'
-#' Inputs are
-#' [promoted to a common floating data type][nv_promote_to_common()] and
-#' scalar arguments are
-#' [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar
-#' arguments.
+#' log-gamma function. For `n = 0` this is the digamma function; for `n = 1`,
+#' `trigamma()` dispatches here.
 #' @param n,x ([`arrayish`])\cr
 #'   Order of the polygamma function and the value to evaluate it at. `n`
 #'   typically holds non-negative whole numbers. Can be of any data type: the
@@ -1534,7 +1514,6 @@ nv_popcnt <- prim_popcnt
 #' @title Clamp
 #' @description
 #' Element-wise clamp: `max(min_val, min(x, max_val))`.
-#' Converts `min_val` and `max_val` to the data type of `x`.
 #' @details
 #' The underlying stableHLO function already broadcasts scalars, so no need to broadcast manually.
 #' @param min_val,max_val ([`arrayish`])\cr
@@ -1658,10 +1637,8 @@ nv_seq <- function(start, end, dtype = NULL, device = NULL) {
 #' Creates a 1-D array with `steps` evenly spaced values from `start` to `end`
 #' (both inclusive), like R's `seq(start, end, length.out = steps)`.
 #'
-#' The spacing `(end - start) / (steps - 1)` is generally not a whole number, so
-#' the result is floating-point and `dtype` must name a float data type. Convert
-#' the result with [`nv_convert()`] to obtain integers, which leaves the
-#' rounding yours to choose.
+#' The spacing `(end - start) / (steps - 1)` is generally not a whole number,
+#' so the result is floating-point.
 #'
 #' `nv_linspace_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
@@ -1674,7 +1651,8 @@ nv_seq <- function(start, end, dtype = NULL, device = NULL) {
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Must be `f32` or `f64`; the default (`NULL`) is
 #'   `f32`. For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must
-#'   then be one of those two.
+#'   then be one of those two. To obtain integers, convert the result with
+#'   [`nv_convert()`], which leaves the rounding yours to choose.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_linspace_like()`).

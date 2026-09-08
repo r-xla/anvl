@@ -19,8 +19,7 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise flooring remainder of division, after promoting to a common data type and
-broadcasting scalars. The sign of the result equals the sign of \code{rhs}, matching base R's \code{\%\%}
+Element-wise flooring remainder of division. The sign of the result equals the sign of \code{rhs}, matching base R's \code{\%\%}
 operator.
 }
 \examples{

@@ -19,7 +19,7 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise logical AND, after promoting to a common data type and broadcasting scalars. You
+Element-wise logical AND. You
 can also use the \code{&} operator.
 }
 \examples{

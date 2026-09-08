@@ -41,7 +41,6 @@ that sorts the first. This enables idioms like \emph{argsort} (sort \code{x}
 paired with an \code{iota} and read off the second output) and key-value
 sorts (sort \code{keys} paired with \code{values}).
 
-All arrays must have the same shape; their dtypes may differ.
 1-dimensional slices along \code{axis} are sorted independently; other
 axes are preserved.
 }

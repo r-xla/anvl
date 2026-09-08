@@ -8,7 +8,10 @@ nv_concatenate(..., axis = NULL)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to concatenate. Must have the same shape except along \code{axis}.}
+Arrays to concatenate. Can be of any data type; they are
+\link[=nv_promote_to_common]{promoted to a common data type} and scalars are
+\link[=nv_broadcast_scalars]{broadcast}. Must have the same shape except
+along \code{axis}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to concatenate.
@@ -21,8 +24,7 @@ Has the common data type and a shape matching the inputs in all
 axes except \code{axis}, which is the sum of input sizes.
 }
 \description{
-Concatenates arrays along an axis. Operands are promoted to a common
-data type and scalars are broadcast before concatenation.
+Concatenates arrays along an axis.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

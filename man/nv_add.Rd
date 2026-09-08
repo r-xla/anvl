@@ -19,7 +19,7 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Adds two arrays element-wise, after promoting to a common data type and broadcasting scalars.
+Adds two arrays element-wise.
 You can also use the \code{+} operator.
 }
 \examples{

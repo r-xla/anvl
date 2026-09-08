@@ -23,15 +23,8 @@ Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise polygamma function: the \code{(n+1)}-th derivative of the
-log-gamma function. The order \code{n} is broadcast against \code{x} (so
-\code{nv_polygamma(1, x)} works for any \code{x}). For \code{n = 0} this is the
-digamma function; for \code{n = 1}, \code{trigamma()} dispatches here.
-
-Inputs are
-\link[=nv_promote_to_common]{promoted to a common floating data type} and
-scalar arguments are
-\link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar
-arguments.
+log-gamma function. For \code{n = 0} this is the digamma function; for \code{n = 1},
+\code{trigamma()} dispatches here.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

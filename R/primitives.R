@@ -2804,7 +2804,6 @@ prim_while <- new_primitive(
 #' paired with an `iota` and read off the second output) and key-value
 #' sorts (sort `keys` paired with `values`).
 #'
-#' All arrays must have the same shape; their dtypes may differ.
 #' 1-dimensional slices along `axis` are sorted independently; other
 #' axes are preserved.
 #' @param xs (`list` of [`arrayish`])\cr

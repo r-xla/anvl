@@ -25,6 +25,11 @@ file in the same change that documents a function.
   `?dtypes`.
 - Examples show working calls only, each with a one-line comment, and never
   state what a default data type is.
+- The `@description` says what the function computes, not how its inputs are
+  converted: promotion, broadcasting and data type constraints belong in the
+  parameters and the return value. The exceptions are functions whose *purpose*
+  is a conversion (`nv_convert()`, `nv_bitcast_convert()`,
+  `nv_promote_to_common()`, the `nv_broadcast_*()` family).
 
 Every claim is checked against the running package before it is written.
 

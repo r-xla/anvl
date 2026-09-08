@@ -18,20 +18,20 @@ nv_cbind(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to combine. Inputs are promoted to a common data type.}
+Arrays to combine. Can be of any data type; they are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 
 \item{deparse.level}{Ignored. Kept for compatibility with \code{\link[base:rbind]{base::rbind()}}
 and \code{\link[base:cbind]{base::cbind()}}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
+Has the common data type of the inputs.
 }
 \description{
 Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) axis.
-Arguments are first promoted to a common data type
-(see \code{\link[=nv_promote_to_common]{nv_promote_to_common()}}).
 
-Each input is then handled according to its rank:
+Each input is handled according to its rank:
 \itemize{
 \item 0-D: broadcast to match the non-stacked axes of the other inputs.
 \item 1-D: treated as a single row/column.

@@ -19,8 +19,7 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and boolean data type.
 }
 \description{
-Element-wise inequality comparison, after promoting to a common data type and broadcasting
-scalars. You can also use the \code{!=} operator.
+Element-wise inequality comparison. You can also use the \code{!=} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

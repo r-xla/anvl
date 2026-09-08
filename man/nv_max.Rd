@@ -19,8 +19,7 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise maximum of two arrays, after promoting to a common data type and broadcasting
-scalars.
+Element-wise maximum of two arrays.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

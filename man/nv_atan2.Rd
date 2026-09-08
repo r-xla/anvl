@@ -20,7 +20,7 @@ Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive x-axis
-and the point \verb{(rhs, lhs)}, after promoting to a common data type and broadcasting scalars.
+and the point \verb{(rhs, lhs)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
