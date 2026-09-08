@@ -8,11 +8,12 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+The array to reduce. Can be any data type.
+\code{x} and \code{init} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{init}{(\code{\link{arrayish}})\cr
-Scalar (0-dimensional) initial value. Must have the same data type as
-\code{x} and be the neutral element w.r.t. \code{reductor}.}
+Scalar (0-dimensional) initial value. Must be the neutral element
+w.r.t. \code{reductor}.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reduce over.
@@ -22,8 +23,9 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE}
 they are kept with size 1.}
 
-\item{reductor}{(\verb{function(lhs, rhs)})\cr
-Binary reducer producing a scalar of the same dtype as \code{x}.
+\item{reductor}{(\code{function})\cr
+Binary reducer producing a scalar of the same data type as \code{x}. Its two
+arguments are passed by position, so they may carry any names.
 Must be associative (see "Associativity Requirement").}
 }
 \value{
@@ -33,7 +35,8 @@ Same data type as \code{x}. Shape is \code{x} with \code{axes} removed
 }
 \description{
 Reduces an array along the specified axes using a user-supplied
-associative reducer.
+associative reducer. \code{reductor} and \code{init} must satisfy the constraints in
+the "Associativity Requirement" section below.
 }
 \section{Associativity Requirement}{
 

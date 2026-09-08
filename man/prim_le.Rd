@@ -8,12 +8,14 @@ prim_le(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of any data type.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape as the inputs and boolean data type.
+Has the inputs' shape and boolean data type.
 }
 \description{
 Element-wise less than or equal comparison.
@@ -34,9 +36,11 @@ Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparis
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(3, 2, 1))
-prim_le(x, y)
+# two R values: both take an R double's default data type
+prim_le(1, 2)
+
+# the R value is built at the array's data type instead
+prim_le(1, nv_scalar(2, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

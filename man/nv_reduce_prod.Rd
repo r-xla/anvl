@@ -8,15 +8,16 @@ nv_reduce_prod(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. Negative values count from the end, i.e. \code{-1}
-refers to the last axis. If \code{NULL} (default), reduces over all
-axes, returning a scalar.}
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced axes.}
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
@@ -24,11 +25,8 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input, except for a boolean input, which is
-accumulated at \code{i32}: \code{TRUE} counts as one, rather than being folded with
-a logical or/and.
-When \code{drop = TRUE}, the reduced axes are removed.
-When \code{drop = FALSE}, the reduced axes are set to 1.
+Has the input's data type, except a boolean input, which is accumulated at \code{i32}. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Multiplies array elements along the specified axes.
@@ -37,8 +35,17 @@ A boolean array is multiplied as zeroes and ones, like \code{\link[base:prod]{ba
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_reduce_prod(x)            # all axes -> scalar
+# No axes given: reduce over all of them
+nv_reduce_prod(x)
+
+# Reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_reduce_prod(x, axes = 1L)
+nv_reduce_prod(x, axes = 1L, drop = FALSE)
+
+# Negative axes count from the end
+nv_reduce_prod(x, axes = -1L)
+
+# NaN propagates unless nan_rm = TRUE
 nv_reduce_prod(nv_array(c(2, NaN, 3)))
 nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}

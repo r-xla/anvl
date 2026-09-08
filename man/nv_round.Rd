@@ -8,7 +8,8 @@ nv_round(x, method = "nearest_even")
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any float data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{method}{(\code{character(1)})\cr
 Rounding method.
@@ -16,7 +17,7 @@ Either \code{"nearest_even"} (default) or \code{"afz"} (away from zero).}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the input's shape and data type.
 }
 \description{
 Element-wise rounding. You can also use the \code{round()} generic.

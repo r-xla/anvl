@@ -8,22 +8,21 @@ prim_reduce_sum(x, axes, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()})\cr
-Axes to reduce over.
-Negative values count from the end, i.e. \code{-1} refers to the last axis.}
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop the reduced axes from the output shape.
-If \code{TRUE}, the reduced axes are removed.
-If \code{FALSE}, the reduced axes are set to 1.}
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input.
-When \code{drop = TRUE}, the shape is that of \code{x} with \code{axes} removed.
-When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 1.
+Has the input's data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Sums array elements along the specified axes.
@@ -48,7 +47,14 @@ Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stab
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
+# reducing axis 1 removes it from the shape, and the data type is kept
 prim_reduce_sum(x, axes = 1L)
+
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_reduce_sum(x, axes = 1L, drop = FALSE)
+
+# reducing every axis gives a scalar
+prim_reduce_sum(x, axes = c(1L, 2L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

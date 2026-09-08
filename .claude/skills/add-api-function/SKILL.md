@@ -135,10 +135,19 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@title`**: short, e.g. "Absolute Value", "Addition", "Transpose"
 - **`@description`**: one sentence describing what the function does. If an R operator or generic dispatches to this function, mention it: "You can also use `abs()`.", "You can also use the `+` operator."
 - **`@template`**: use templates for common parameter/return patterns:
-  - `param_x` — single input array
-  - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
+  - `param_unary_x` — the input of an elementwise unary function: states the accepted data types
+    and that an R value commits to its default. Needs `@templateVar dtypes <phrase>` above it,
+    from the same vocabulary as below. Shared with the `prim_*` layer, which behaves identically.
+  - `param_x` — a bare "Input array.", for a function whose `x` is neither of those: a reduction,
+    a reshape, or one whose `x` is promoted with a sibling (`nv_clamp()`, `nv_pad()`)
+  - `params_lhs_rhs` — binary operands: states the promotion, the scalar broadcasting and how R
+    values take a data type. Needs `@templateVar dtypes <phrase>` above it, from the vocabulary
+    defined in `?dtypes` (`any data type`, `any numeric data type`, `any integerish data type`,
+    `any float data type`). Its stricter `prim_*` counterpart is `params_prim_lhs_rhs`.
   - `param_dtype`, `param_shape`, `param_device` — common params
-  - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
+  - `return_unary`, `return_binary`; for a reduction `@templateVar dtype_out <phrase>` +
+    `@template return_reduce`, plus `@templateVar axes_all` + `@template params_reduce` so `axes`
+    documents its `NULL` default
   - `params_reduce` — axes + drop params for reductions
 - **`@param`**: write inline for parameters not covered by templates
 - **`@seealso`**: always link to the underlying `prim_*` primitive. Optionally link to related `nv_*` functions.

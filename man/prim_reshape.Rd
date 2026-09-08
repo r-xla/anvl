@@ -8,7 +8,8 @@ prim_reshape(x, shape)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. Must have the same number of elements as \code{x}.

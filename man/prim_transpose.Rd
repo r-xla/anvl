@@ -8,7 +8,8 @@ prim_transpose(x, permutation)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{permutation}{(\code{integer()})\cr
 Specifies the new ordering of axes. Must be a permutation of
@@ -17,7 +18,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input and shape \code{nv_shape(x)[permutation]}.
+Has the input's data type and shape \code{nv_shape(x)[permutation]}.
 }
 \description{
 Permutes the axes of an array.

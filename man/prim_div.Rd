@@ -8,12 +8,14 @@ prim_div(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type integer, unsigned integer, or floating-point.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any numeric data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+Has the inputs' shape and data type.
 }
 \description{
 Divides two arrays element-wise.
@@ -34,9 +36,11 @@ Lowers to \code{\link[stablehlo:hlo_divide]{hlo_divide()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(10, 20, 30))
-y <- nv_array(c(2, 5, 10))
-prim_div(x, y)
+# two R values: both take an R double's default data type
+prim_div(10, 4)
+
+# the R value is built at the array's data type instead
+prim_div(10, nv_scalar(4, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

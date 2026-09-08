@@ -8,22 +8,31 @@ nv_ne(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape as the inputs and boolean data type.
+Has the inputs' broadcast shape and boolean data type.
 }
 \description{
-Element-wise inequality comparison. You can also use the \code{!=} operator.
+Element-wise inequality comparison, after promoting to a common data type and broadcasting
+scalars. You can also use the \code{!=} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(1, 3, 2))
 x != y
+
+# Different data types are promoted to their common one
+nv_ne(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
+
+# A scalar is broadcast and an R integer is converted to a float
+x != 2L
 \dontshow{\}) # examplesIf}
 }
 \seealso{

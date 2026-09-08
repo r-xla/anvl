@@ -1,4 +1,6 @@
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   Left and right operand.
-#'   Operands are [promoted to a common data type][nv_promote_to_common()].
-#'   Scalars are [broadcast][nv_broadcast_scalars()] to the shape of the other operand.
+#'   Two inputs with a [common data type][common_dtype]. Can be
+#'   <%= dtypes %>. Scalars are broadcast, and R values assume the other
+#'   operand's data type within their [data type category][dtypes],
+#'   otherwise falling back to their [default data type][default_dtypes] and
+#'   being converted to the common data type.

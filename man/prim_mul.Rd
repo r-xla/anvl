@@ -8,12 +8,14 @@ prim_mul(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of any data type.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+Has the inputs' shape and data type.
 }
 \description{
 Multiplies two arrays element-wise.
@@ -34,9 +36,11 @@ Lowers to \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(4, 5, 6))
-prim_mul(x, y)
+# two R values: both take an R double's default data type
+prim_mul(2, 3)
+
+# the R value is built at the array's data type instead
+prim_mul(2, nv_scalar(3, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

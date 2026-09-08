@@ -8,23 +8,31 @@ nv_remainder(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any numeric data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise remainder.
-This differs from base R's \code{\%\%}, use \code{\link[=nv_mod]{nv_mod()}}/\code{\%\%} instead.
+Element-wise remainder, after promoting to a common data type and broadcasting scalars. This
+differs from base R's \code{\%\%}, use \code{\link[=nv_mod]{nv_mod()}}/\code{\%\%} instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(7, 8, 9))
 y <- nv_array(c(3, 3, 4))
 nv_remainder(x, y)
+
+# Different data types are promoted to their common one
+nv_remainder(nv_scalar(7, "f32"), nv_scalar(3, "f64"))
+
+# A scalar is broadcast and an R integer is converted to a float
+nv_remainder(x, 3L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

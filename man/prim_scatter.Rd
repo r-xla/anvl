@@ -21,7 +21,8 @@ prim_scatter(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type. The base array to scatter into.}
+The base array to scatter into. Can be any data type.
+\code{x} and \code{update} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
 Array of indices. Contains index vectors that map to positions in
@@ -29,7 +30,7 @@ Array of indices. Contains index vectors that map to positions in
 by \code{index_vector_axis} holds the index vectors.}
 
 \item{update}{(\code{\link{arrayish}})\cr
-Update values array. Must have the same data type as \code{x}.}
+Update values array.}
 
 \item{update_window_axes}{(\code{integer()})\cr
 Axes of \code{update} that are window axes, i.e. they

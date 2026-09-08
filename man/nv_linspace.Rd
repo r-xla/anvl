@@ -18,10 +18,10 @@ which case the values decrease.}
 Number of values to generate. Must be at least 1; for \code{steps = 1} the
 result is \code{start}.}
 
-\item{dtype}{(\code{character(1)})\cr
-Floating-point data type. Default \code{"f32"}.
-For \code{nv_linspace_like()}, \code{NULL} uses \code{dtype(like)}, which must then be a
-floating-point data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Must be \code{f32} or \code{f64}; the default (\code{NULL}) is
+\code{f32}. For \code{nv_linspace_like()}, \code{NULL} uses \code{dtype(like)}, which must
+then be one of those two.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -43,7 +43,7 @@ Existing array whose attributes are used as defaults
 }
 \value{
 \code{\link{arrayish}}\cr
-1-D array of length \code{steps}.
+Has \code{dtype} and shape \code{steps}.
 }
 \description{
 Creates a 1-D array with \code{steps} evenly spaced values from \code{start} to \code{end}
@@ -60,10 +60,23 @@ default to those of \code{like}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_linspace(0, 1, steps = 5L)
+
+# end below start counts down
+nv_linspace(1, 0, steps = 3L)
+
+# steps = 1 gives start alone
+nv_linspace(2.5, 10, steps = 1L)
+
+# the data type must be a float; convert afterwards for integers
+nv_convert(nv_linspace(0, 10, steps = 5L), "i32")
+
+# nv_linspace_like() takes dtype and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_linspace_like(x, 0, 1, steps = 3L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_seq]{nv_seq()}} for consecutive integers.
+\code{\link[=nv_seq]{nv_seq()}} for consecutive integers, \code{\link[=nv_iota]{nv_iota()}} for values
+increasing along an axis of any shape, \code{\link{dtypes}} for the data type
+categories.
 }

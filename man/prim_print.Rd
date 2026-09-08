@@ -8,11 +8,12 @@ prim_print(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Returns \code{x} as-is.
+Returns the input unchanged.
 }
 \description{
 Prints an array value to the console during execution and returns the

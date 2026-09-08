@@ -7,14 +7,20 @@
 nv_polygamma(n, x)
 }
 \arguments{
-\item{n, x}{(\code{\link{arrayish}})\cr
-Floating-point arrayish values. After promotion and broadcasting,
-\code{n} and \code{x} must have the same shape; \code{n} typically holds
-non-negative integer values.}
+\item{n}{(\code{numeric(1)})\cr
+Order of the polygamma function, typically a non-negative whole number.
+A plain R value: \code{n} is a static argument, so an \code{\link{AnvlArray}} is
+rejected. It is broadcast against \code{x}.}
+
+\item{x}{(\code{\link{arrayish}})\cr
+One input. Can be any data type: it is promoted with \code{n} to a float, so an
+integer or boolean array is converted rather than refused, where
+\code{\link[=prim_polygamma]{prim_polygamma()}} requires a float outright. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise polygamma function: the \code{(n+1)}-th derivative of the

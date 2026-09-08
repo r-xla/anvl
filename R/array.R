@@ -64,7 +64,7 @@
 #'   `bool`). Defaults to `FALSE`. See the "Gotchas" vignette.
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
-#' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
+#' # A 1-d array (vector) with shape (4), at the default data type for integers
 #' nv_array(1:4)
 #'
 #' # Specify a dtype

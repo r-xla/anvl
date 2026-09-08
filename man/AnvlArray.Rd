@@ -147,7 +147,7 @@ The supported data types and devices differ between backends.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# A 1-d array (vector) with shape (4). Default type for integers is `i32`
+# A 1-d array (vector) with shape (4), at the default data type for integers
 nv_array(1:4)
 
 # Specify a dtype

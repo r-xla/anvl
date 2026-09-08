@@ -8,17 +8,20 @@ nv_mod(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any numeric data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise flooring remainder of division. The sign of the result equals
-the sign of \code{rhs}, matching base R's \code{\%\%} operator.
+Element-wise flooring remainder of division, after promoting to a common data type and
+broadcasting scalars. The sign of the result equals the sign of \code{rhs}, matching base R's \code{\%\%}
+operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -26,6 +29,12 @@ x <- nv_array(c(1L, -1L))
 y <- nv_array(c(-3L, 3L))
 nv_mod(x, y)
 as.vector(x) \%\% as.vector(y)
+
+# Different data types are promoted to their common one
+nv_mod(nv_scalar(1L, "i32"), nv_scalar(-3L, "i64"))
+
+# A scalar is broadcast
+x \%\% 2L
 \dontshow{\}) # examplesIf}
 }
 \seealso{

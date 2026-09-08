@@ -1,2 +1,2 @@
 #' @return [`arrayish`]\cr
-#'   Has the same shape and the promoted common data type of the inputs.
+#'   Has the inputs' broadcast shape and common data type.

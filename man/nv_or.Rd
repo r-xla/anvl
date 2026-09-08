@@ -8,22 +8,31 @@ nv_or(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any integerish data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise logical OR. You can also use the \code{|} operator.
+Element-wise logical OR, after promoting to a common data type and broadcasting scalars. You
+can also use the \code{|} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(TRUE, FALSE, TRUE))
 y <- nv_array(c(TRUE, TRUE, FALSE))
 x | y
+
+# Different data types are promoted to their common one
+nv_or(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
+
+# A scalar is broadcast
+x | TRUE
 \dontshow{\}) # examplesIf}
 }
 \seealso{

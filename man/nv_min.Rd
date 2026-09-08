@@ -8,22 +8,31 @@ nv_min(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise minimum of two arrays.
+Element-wise minimum of two arrays, after promoting to a common data type and broadcasting
+scalars.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 5, 3))
 y <- nv_array(c(4, 2, 6))
 nv_min(x, y)
+
+# Different data types are promoted to their common one
+nv_min(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
+
+# A scalar is broadcast and an R integer is converted to a float
+nv_min(x, 2L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

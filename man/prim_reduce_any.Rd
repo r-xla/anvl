@@ -8,22 +8,20 @@ prim_reduce_any(x, axes, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of boolean data type.}
+One input. Must be a boolean or an R logical.}
 
 \item{axes}{(\code{integer()})\cr
-Axes to reduce over.
-Negative values count from the end, i.e. \code{-1} refers to the last axis.}
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop the reduced axes from the output shape.
-If \code{TRUE}, the reduced axes are removed.
-If \code{FALSE}, the reduced axes are set to 1.}
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Boolean array.
-When \code{drop = TRUE}, the shape is that of \code{x} with \code{axes} removed.
-When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 1.
+Has boolean data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Performs logical OR along the specified axes.
@@ -45,7 +43,11 @@ Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stab
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
+# TRUE where any element is TRUE along axis 1
 prim_reduce_any(x, axes = 1L)
+
+# drop = FALSE keeps the reduced axis at size 1 instead
+prim_reduce_any(x, axes = 1L, drop = FALSE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

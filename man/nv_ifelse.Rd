@@ -7,21 +7,23 @@
 nv_ifelse(pred, true_value, false_value)
 }
 \arguments{
-\item{pred}{(\code{\link{arrayish}} of boolean type)\cr
-Predicate array. Must be scalar or have the same shape as the
-non-scalar arguments.}
+\item{pred}{(\code{\link{arrayish}})\cr
+Predicate array. Must be a boolean or an R logical, and scalar or the same
+shape as the non-scalar arguments. It keeps its own data type and takes no
+part in the promotion below.}
 
 \item{true_value, false_value}{(\code{\link{arrayish}})\cr
-Values to return where \code{pred} is \code{TRUE} / \code{FALSE}.
-\code{true_value} and \code{false_value} are
-\link[=nv_promote_to_common]{promoted to a common data type}.
+Values to return where \code{pred} is \code{TRUE} / \code{FALSE}. Can be of any data
+type; the two are
+\link[=nv_promote_to_common]{promoted to a common data type}, where
+\code{\link[=prim_ifelse]{prim_ifelse()}} would require them to agree already.
 Scalars (including \code{pred}) are
 \link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar arguments.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the common data type of \code{true_value} and \code{false_value} and the
-shape of the non-scalar arguments.
+Has the common data type of \code{true_value} and \code{false_value}, and their
+broadcast shape.
 }
 \description{
 Selects elements from \code{true_value} or \code{false_value} based on \code{pred},

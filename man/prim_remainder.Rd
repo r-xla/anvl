@@ -8,12 +8,14 @@ prim_remainder(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type integer, unsigned integer, or floating-point.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any numeric data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise remainder.
@@ -35,7 +37,13 @@ Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# two R values: both take an R double's default data type
 prim_remainder(1, -3)
+
+# the R value is built at the array's data type instead
+prim_remainder(1, nv_scalar(-3, "f64"))
+
+# the sign follows the dividend, where base R's \%\% follows the divisor
 1 \%\% -3
 \dontshow{\}) # examplesIf}
 }

@@ -610,6 +610,42 @@ common_dtype_of <- function(..., .fallback = NULL) {
 }
 
 
+#' @title Data Types: Categories and Defaults
+#' @name dtypes
+#' @aliases default_dtypes
+#' @description
+#' For promotion, every data type belongs to one of three categories, ordered
+#' boolean < integer < float:
+#'
+#' * **boolean** -- `bool`
+#' * **integer** -- `i8`, `i16`, `i32`, `i64` and their unsigned counterparts
+#'   `ui8`, `ui16`, `ui32`, `ui64`
+#' * **float** -- `f32`, `f64`
+#'
+#' Documentation names a group of them with a single word: *any* data type is
+#' all of them, *numeric* is integer and float, *integer* is signed and
+#' unsigned integer, *integerish* is boolean and integer, *signed numeric* is
+#' signed integer and float.
+#'
+#' These are the categories promotion works in, where signed and unsigned
+#' integers count as one. [`tengen::dtype_category()`] reports a finer split
+#' that names `int` and `uint` separately.
+#'
+#' @section Default Data Types:
+#' An R value has no data type of its own. Where nothing in the program says
+#' which one it should take, it commits to the default of its R storage type: a
+#' `double` becomes `f32`, an `integer` becomes `i32`, a `logical` becomes
+#' `bool`. [`peek_dtype()`] reports the default an R value would commit to.
+#'
+#' Within its own category an R value assumes the data type it meets instead,
+#' and is built at it directly rather than converted to it, which is what keeps
+#' `nv_scalar(1, "f64") / sqrt(2)` exact. The primitives require operands that
+#' have a data type to agree on it; the `nv_*` functions promote them to a
+#' common one.
+#' @seealso [`common_dtype()`], [`nv_promote_to_common()`], [`nv_convert()`],
+#'   `vignette("type-promotion")`
+NULL
+
 dtype_category <- function(dtype) {
   if (is_dtype_bool(dtype)) {
     1L

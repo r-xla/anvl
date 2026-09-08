@@ -8,12 +8,12 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 }
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
-Triangular coefficient matrix of data type floating-point with at least 2
-axes. The last two axes must be equal (square matrix); any
-leading axes are batch axes.}
+Triangular coefficient matrix with at least 2 axes. The last two axes must
+be equal (square matrix); any leading axes are batch axes. Can be any
+float data type. \code{a} and \code{b} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
-Right-hand side. Same data type and rank as \code{a} (rank >= 2), with
+Right-hand side. Same rank as \code{a} (rank >= 2), with
 matching leading batch axes. The size of \code{a}'s last two (square)
 axes must equal \code{b}'s second-to-last axis when
 \code{left_side = TRUE}, or \code{b}'s last axis when \code{left_side = FALSE}.}

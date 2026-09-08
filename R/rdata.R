@@ -33,7 +33,7 @@ NULL
 #' # Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
 #' # dtype becomes f64.
 #' # By NOT converting RData to their default data type we prevent loss of precision
-#' # (double -> f32 -> f64 roundrips)
+#' # (avoiding a double -> default data type -> f64 round trip)
 #' graph <- trace_fn(function(x) {
 #'     print(x)
 #'     list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))

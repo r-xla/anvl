@@ -20,10 +20,12 @@ prim_gather(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
-\item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
-Array of starting indices. Contains index vectors that map to
+\item{start_indices}{(\code{\link{arrayish}})\cr
+Array of starting indices, of an integer data type, which it keeps -- the
+indices take no part in \code{x}'s. Contains index vectors that map to
 positions in \code{x} via \code{start_index_map}. The axis
 specified by \code{index_vector_axis} holds the index vectors.}
 

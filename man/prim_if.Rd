@@ -8,14 +8,18 @@ prim_if(pred, true, false)
 }
 \arguments{
 \item{pred}{(\code{\link{arrayish}})\cr
-Scalar boolean predicate that determines which branch to execute.}
+Predicate deciding which branch to execute. Must be a scalar of the
+boolean data type, or an R logical.}
 
 \item{true, false}{(\verb{function()})\cr
-Zero-argument functions for the true and false branches. Both must return outputs
-with the same structure, dtypes, and shapes.}
+Zero-argument functions for the true and false branches. Both must return
+outputs of the same structure, data types and shapes. Unlike
+\code{\link[=prim_ifelse]{prim_ifelse()}}, which promotes its two values onto one data type, these
+are only checked: branches that disagree are an error.}
 }
 \value{
-Result of the executed branch.\cr
+Result of the executed branch, with the structure, data types and
+shapes both branches share.\cr
 }
 \description{
 Conditional execution of one of two branches based on a scalar boolean

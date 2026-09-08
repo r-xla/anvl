@@ -7,16 +7,18 @@
 prim_ifelse(pred, true_value, false_value)
 }
 \arguments{
-\item{pred}{(\code{\link{arrayish}} of boolean type)\cr
-Predicate array. Must be scalar or have the same shape as
-\code{true_value}.}
+\item{pred}{(\code{\link{arrayish}})\cr
+Predicate array. Must be a boolean or an R logical, and scalar or the same
+shape as \code{true_value}.}
 
 \item{true_value, false_value}{(\code{\link{arrayish}})\cr
-Values to select from. Must have the same dtype and shape.}
+Values to select from, of the same shape. Can be any data type.
+\code{true_value} and \code{false_value} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same dtype and shape as \code{true_value}.
+Has the shape of \code{true_value} and \code{false_value}, and the data type they
+agreed on. \code{pred} only selects between them and never widens the result.
 }
 \description{
 Element-wise selection based on a boolean predicate, like R's \code{\link[=ifelse]{ifelse()}}.

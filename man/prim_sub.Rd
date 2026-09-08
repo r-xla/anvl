@@ -8,12 +8,14 @@ prim_sub(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type integer, unsigned integer, or floating-point.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any numeric data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+Has the inputs' shape and data type.
 }
 \description{
 Subtracts two arrays element-wise.
@@ -34,9 +36,11 @@ Lowers to \code{\link[stablehlo:hlo_subtract]{hlo_subtract()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(4, 5, 6))
-prim_sub(x, y)
+# two R values: both take an R double's default data type
+prim_sub(5, 3)
+
+# the R value is built at the array's data type instead
+prim_sub(5, nv_scalar(3, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

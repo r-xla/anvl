@@ -8,7 +8,8 @@ nv_cummax(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to accumulate. Negative values count from the end,

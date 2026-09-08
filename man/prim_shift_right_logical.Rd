@@ -8,12 +8,14 @@ prim_shift_right_logical(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type boolean, integer, or unsigned integer.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any integerish data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise logical right bit shift.
@@ -33,9 +35,11 @@ Lowers to \code{\link[stablehlo:hlo_shift_right_logical]{hlo_shift_right_logical
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(8L, 16L, 32L))
-y <- nv_array(c(1L, 2L, 3L))
-prim_shift_right_logical(x, y)
+# two R values: both take an R integer's default data type
+prim_shift_right_logical(32L, 2L)
+
+# the R value is built at the array's data type instead
+prim_shift_right_logical(32L, nv_scalar(2L, "i64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
