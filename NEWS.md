@@ -56,6 +56,12 @@
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.
 
+## Bug fixes
+
+* `?prim_dot_general` no longer claims that its operands are promoted to a
+  common data type and that scalars are broadcast. It did neither -- it used
+  the documentation template written for the `nv_*` layer.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.
