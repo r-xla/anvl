@@ -11,8 +11,9 @@ old_opts <- options(
 #   ANVL_DEFAULT_DTYPES="float=f64,int=i64" devtools::test()
 #
 # The value has the shape the `anvl.default_dtypes` option takes, written as
-# `category=dtype` pairs. A test that asserts a particular default sets it
-# itself and is unaffected; one that asserts the *registered* default calls
+# `category=dtype` pairs -- naming no backend, so that it applies to every one
+# the suite runs on. A test that asserts a particular default sets it itself
+# and is unaffected; one that asserts the *registered* default calls
 # `local_registered_default_dtypes()` (see `helper.R`) to clear the override.
 default_dtypes_env <- Sys.getenv("ANVL_DEFAULT_DTYPES")
 if (nzchar(default_dtypes_env)) {

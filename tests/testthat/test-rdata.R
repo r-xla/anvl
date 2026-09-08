@@ -677,3 +677,48 @@ describe("staging an R value out of its own category", {
     quiet(trace_fn(function(x) prim_convert(x, "f64"), list(x = nv_aval("double", integer()))))
   })
 })
+
+describe("the default float", {
+  it("does not warn about staging through a narrower data type", {
+    # Staging is only worth a warning when it widens past the data type the
+    # value would have taken anyway. An R integer stages through `i32`, which
+    # under an `i64` default is narrower than its own default.
+    local_default_dtypes(c(int = "i64"))
+    expect_no_warning(nv_array(1L, dtype = "i8") * 2L)
+    expect_no_warning(jit(function(x) nv_convert(x, "f64"))(1L))
+    # An R double staged through `f64` under an `f32` default still warns.
+    with_default_dtypes(
+      c(float = "f32"),
+      expect_warning(nv_convert(1.5, "i32"), class = "anvl_staging_widens_warning")
+    )
+    local_default_dtypes(c(float = "f64"))
+    expect_no_warning(nv_convert(1.5, "i32"))
+  })
+
+  it("decides what an R double commits to in a trace", {
+    local_default_dtypes(c(float = "f64"))
+    expect_equal(dtype(jit(function() 1.5)()), as_dtype("f64"))
+    # An R argument is uploaded at the default.
+    expect_equal(dtype(jit(function(x) x)(1.5)), as_dtype("f64"))
+    # Constants built inside the trace as well.
+    expect_equal(dtype(jit(function() nv_array(c(1, 2)))()), as_dtype("f64"))
+    expect_equal(dtype(jit(function() nv_fill(0, 2))()), as_dtype("f64"))
+    # And the all-R-values branch of promotion.
+    expect_equal(dtype(jit(function(x, y) x + y)(1, 2)), as_dtype("f64"))
+  })
+
+  it("keeps an R value exact", {
+    local_default_dtypes(c(float = "f64"))
+    expect_identical(as_array(jit(function(x) x / sqrt(2))(1)), 1 / sqrt(2))
+    expect_identical(as_array(nv_scalar(1) / sqrt(2)), 1 / sqrt(2))
+  })
+})
+
+describe("the default integer", {
+  it("decides what an R integer commits to in a trace", {
+    local_default_dtypes(c(int = "i64"))
+    expect_equal(dtype(jit(function() 1L)()), as_dtype("i64"))
+    expect_equal(dtype(jit(function(x) x)(1L)), as_dtype("i64"))
+    expect_equal(dtype(jit(function() nv_seq(1, 3))()), as_dtype("i64"))
+  })
+})

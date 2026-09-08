@@ -14,9 +14,7 @@ The scalar value or scalarish AnvlArray (contains 1 element).}
 The shape of the array.}
 
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The data type. Defaults to the one the R value commits to (see
-\code{\link[=default_dtypes]{default_dtypes()}}): the default float for a \code{double}, the default
-integer for an \code{integer}, and \code{bool} for a \code{logical}.}
+The data type. For the default, see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \description{
 An \code{\link{AbstractArray}} where all elements have the same constant value.

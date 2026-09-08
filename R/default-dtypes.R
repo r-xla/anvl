@@ -1,93 +1,24 @@
-# The default data types: what an R double and an R integer commit to when
-# nothing else decides one. Registered per backend, overridden by one global
-# option, and pinned on a trace as the pair the dispatcher keyed the compiled
-# program on.
-
-# The dtypes a default may be set to, per category. `f16` / `bf16` are left out
-# because the boundary cannot carry them, not because an R double could not be
-# built at one: pjrt's dispatcher neither keys nor wraps them, and a program
-# that reaches one fails at a different layer depending on how it got there.
-# Lifting the restriction means fixing that boundary first. An integer default
-# is limited to the signed dtypes an R integer builds at directly (see
-# `rdata_builds_directly()`): a narrower one would make the upload of an R
-# argument go through R's coercion, which wraps where the program's `convert`
-# clamps, and an unsigned one cannot hold a negative R integer at all.
-default_dtype_choices <- list(
-  float = c("f32", "f64"),
-  int = c("i32", "i64")
-)
-
-# The override lives in one option rather than one per category, so that it has
-# the same shape as `default_dtypes()` reports and as the setters take.
-default_dtypes_option <- "anvl.default_dtypes"
-
-# What the option's value is called in an error, as cli markup.
-option_what <- "The {.code anvl.default_dtypes} option"
-
-# Validate one category's default. `source` says where it came from.
-check_default_dtype <- function(x, category, source) {
-  allowed <- default_dtype_choices[[category]]
-  dtype <- tryCatch(as_dtype(x), error = function(e) NULL)
-  if (is.null(dtype) || !(as.character(dtype) %in% allowed)) {
-    cli_abort(
-      c(
-        "The {.field {category}} default must be one of {.val {allowed}}.",
-        x = "Got {.val {x}}.",
-        i = paste0("Set in ", source, ".")
-      ),
-      call = NULL
-    )
-  }
-  dtype
+as_default_dtypes <- function(dtypes) {
+  vapply(names(dtypes), function(category) as.character(as_dtype(dtypes[[category]])), character(1L))
 }
 
-# Validate a set of defaults -- the option's value, or a setter's argument --
-# as a named character vector of canonical dtype names over a subset of the
-# categories. `what` leads the error, `source` says where the value came from.
-check_default_dtypes <- function(dtypes, what, source) {
-  categories <- names(dtypes)
-  if (
-    !(is.list(dtypes) || is.character(dtypes)) ||
-      (length(dtypes) && (is.null(categories) || !all(categories %in% names(default_dtype_choices))))
-  ) {
-    cli_abort(
-      c(
-        paste0(what, " must be a named list or character vector with elements {.val float} and/or {.val int}."),
-        x = "Got {.obj_type_friendly {dtypes}} with names {.val {categories}}."
-      ),
-      call = NULL
-    )
-  }
-  if (anyDuplicated(categories)) {
-    duplicated <- unique(categories[duplicated(categories)])
-    cli_abort(
-      c(
-        paste0(what, " names {cli::qty(duplicated)}{?a category/categories} more than once: {.val {duplicated}}."),
-        i = "Give each of {.val float} and {.val int} at most one data type."
-      ),
-      call = NULL
-    )
-  }
-  vapply(
-    categories,
-    function(category) as.character(check_default_dtype(dtypes[[category]], category, source)),
-    character(1L)
-  )
+resolve_option_default_dtypes <- function(value, backend) {
+  names_ <- names(value)
+  override <- as_default_dtypes(value[names_ %in% c("float", "int")])
+  named <- if (backend %in% names_) as_default_dtypes(value[[backend]]) else character()
+  override[names(named)] <- named
+  override
 }
 
-# The override in force, validated. Empty when the option is unset.
-option_default_dtypes <- function() {
-  value <- getOption(default_dtypes_option)
+option_default_dtypes <- function(backend) {
+  value <- getOption("anvl.default_dtypes")
   if (is.null(value)) {
     return(character())
   }
-  check_default_dtypes(value, option_what, paste0("option ", "{.code anvl.default_dtypes}"))
+  resolve_option_default_dtypes(value, backend)
 }
 
-# `baseline` -- a list of DataTypes -- with the override applied over it. A
-# category the override does not name keeps the baseline's data type, which is
-# what lets a scope raise the float default without disturbing the integer one.
-apply_default_dtypes <- function(baseline, override = option_default_dtypes()) {
+apply_default_dtypes <- function(baseline, override) {
   for (category in names(override)) {
     baseline[[category]] <- as_dtype(override[[category]])
   }
@@ -96,97 +27,71 @@ apply_default_dtypes <- function(baseline, override = option_default_dtypes()) {
 
 # The effective pair for `backend`: the override over its registered defaults.
 effective_default_dtypes <- function(backend) {
-  apply_default_dtypes(registered_default_dtypes(backend))
+  apply_default_dtypes(registered_default_dtypes(backend), option_default_dtypes(backend))
 }
 
-#' Default data types
+#' @title Default Data Types
+#' @description
+#' The default data types for the [active backend][active_backend()].
+#' They decide the data type an R value is materialized at when it cannot be
+#' inferred from another operand.
 #'
-#' An R value entering a program has no data type of its own (see
-#' [`RData`]). Where nothing it meets decides one, it commits to a default
-#' for its R type: a double to the default *float*, an integer to the default
-#' *integer*, a logical to `bool`. These are the data types [`nv_array()`] and
-#' [`nv_scalar()`] build at when `dtype` is not given, that a literal in a
-#' [`jit()`]ted function commits to, and that [`nv_seq()`], [`nv_eye()`] and the
-#' random samplers use when their `dtype` is `NULL`.
+#' This includes array creation via (`nv_array(1)`) or passing R values to unary functions
+#' (`prim_exp(1)`).
 #'
 #' `default_dtypes()` reports both categories at once; `default_float()` and
-#' `default_int()` report one each, for where naming a single category reads
-#' better than subsetting the pair.
+#' `default_int()` report one each.
 #'
-#' Each backend registers its own defaults -- `f32` / `i32` for `"pjrt"`, `f64`
-#' / `i32` for `"quickr"`, which has no single precision -- and they follow the
-#' active backend ([`active_backend()`]): `with_backend("quickr", ...)` commits
-#' a double to `f64`. The option `anvl.default_dtypes` overrides them on every
-#' backend, e.g. `options(anvl.default_dtypes = c(float = "f64"))`;
-#' `local_default_dtypes()` and `with_default_dtypes()` set it for a scope, and
-#' name only the categories they change: `local_default_dtypes(c(float =
-#' "f64"))` leaves the integer default alone.
+#' Each backend registers its own -- `f32` / `i32` for `"pjrt"`, `f64` / `i32`
+#' for `"quickr"` -- and the `anvl.default_dtypes` option overrides them.
+#' [`local_default_dtypes()`] and [`with_default_dtypes()`] set the option for
+#' a scope.
+#'
+#' Below, we configure any backend to use the default `f64` for floats and `i64` for integers:
+#'
+#' ```
+#' options(anvl.default_dtypes = c(float = "f64", int = "i64"))
+#' ```
+#'
+#' You can also only change the float dtype, leaving
+#' the backend's default integer dtype unchanged:
+#'
+#' ```
+#' options(anvl.default_dtypes = c(float = "f64"))
+#' ```
+#'
+#' It is also possible to specify the defaults per-backend:
+#'
+#' ```
+#' options(anvl.default_dtypes = list(
+#'   pjrt = list(float = "f64", int = "i64"),
+#'   quickr = list(int = "i32")
+#' ))
+#' ```
+#'
+#' An entry that names a backend wins over the categories beside it.
 #'
 #' The defaults decide only what a value becomes when *nothing else does*: an R
 #' value that meets a typed array of its own category still takes that array's
-#' data type, whatever the default (`vignette("type-promotion")`). A float
-#' default is `"f32"` or `"f64"`, an integer default `"i32"` or `"i64"`; a
-#' backend that cannot represent the one you set says so rather than quietly
-#' falling back, so both `"f32"` and `"i64"` are errors on `"quickr"`, which
-#' has neither. A compiled program is keyed on the defaults it was compiled
+#' data type, whatever the default (`vignette("type-promotion")`). The data
+#' type you name is taken on trust, so one that does not fit is an error where
+#' the data is allocated or the program compiled rather than where it is set.
+#' Which ones fit is the backend's own business -- see the *Supported data
+#' types* section of [`AnvlBackendPjrt()`] and of [`AnvlBackendQuickr()`],
+#' which has only `f64`, `i32` and `bool`, so both `"f32"` and `"i64"` are
+#' errors there. A compiled program is keyed on the defaults it was compiled
 #' under, so changing them never serves a stale program.
 #'
-#' Inside a [`jit()`]ted body the keyed defaults are the *baseline*, and a
-#' scoped override applies to its scope. What it changes is what an
-#' **uncommitted** R value in that scope commits to: a literal, an R array, or
-#' a constructor called without a `dtype`. It does **not** change the data type
-#' of an operand that already has one, so it cannot raise the precision of
-#' arithmetic on typed arrays -- `with_default_dtypes(c(float = "f64"), x * 2)`
-#' is `f32` for an `f32` `x`. Convert those explicitly with [`nv_convert()`].
-#' Switching the *backend* inside a traced body changes nothing either, since a
-#' program is compiled for one backend.
-#'
-#' Only the baseline is part of the compilation cache key, so inside a traced
-#' body the override has to be written out literally rather than read from a
-#' variable. And because an R *argument* of a jitted function is uploaded at a
-#' single data type for the whole program, an override that reaches such an
-#' argument in one part of a body decides how the caller's value arrives for
-#' every part of it.
-#'
-#' A scope covers the values *built* inside it. A bare R value handed back out
-#' of one has not committed to anything yet, and takes the default in force
-#' wherever it is eventually used -- the same rule that lets it take the data
-#' type of whatever array it meets (see `vignette("type-promotion")`).
-#'
-#' Only the baseline is part of the compilation cache key, so an override
-#' inside a body carries the same constraint as any other value the body reads
-#' from its enclosing environment: it must not change between calls.
-#' `with_default_dtypes(c(float = prec), ...)` with a `prec` that later changes
-#' keeps serving the first program, exactly as a changing `dtype` argument
-#' would.
-#'
-#' @param dtypes (named `character()` | named `list()`)\cr
-#'   The defaults to set, by category: element `float` (`"f32"` or `"f64"`)
-#'   and/or element `int` (`"i32"` or `"i64"`), each a string or a
-#'   [`DataType`]. A category that is not named is left as it is.
-#' @param envir (`environment`)\cr
-#'   The environment to scope the change to.
-#' @param code An expression to evaluate with the given defaults.
 #' @return `default_dtypes()` returns a named `list` with elements `float` and
-#'   `int`, each a [`DataType`]: the defaults in force where it is called, which
-#'   inside a [`jit()`]ted body is the trace's baseline and any override over
-#'   it. `default_float()` and `default_int()` return that one [`DataType`] of
-#'   their category.
-#'   `local_default_dtypes()` returns the previous values of the options it set,
-#'   invisibly. `with_default_dtypes()` returns the result of evaluating `code`.
-#' @seealso [`active_backend()`], [`peek_dtype()`]
+#'   `int`, each a [`DataType`]
+#' @seealso [`local_default_dtypes()`], [`with_default_dtypes()`]
 #' @examplesIf pjrt::plugins_downloaded()
+#' with_backend("quickr", default_dtypes())
+#' with_backend("pjrt", default_dtypes())
 #' default_dtypes()
 #' default_float()
 #' default_int()
 #' dtype(nv_array(1.5))
-#' with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
-#' # A value that meets a typed array still takes that array's data type
-#' with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
-#' # Untyped values in one program can commit at different precisions
-#' jit(function() {
-#'   list(single = nv_fill(0, 2), double = with_default_dtypes(c(float = "f64"), nv_fill(0, 2)))
-#' })()
 #' @export
 default_dtypes <- function() {
   current_default_dtypes()
@@ -220,12 +125,11 @@ default_dtypes_context <- function(backend) {
   registered <- registered_default_dtypes(backend)
   fallback <- c(float = as.character(registered$float), int = as.character(registered$int))
   function() {
-    value <- getOption(default_dtypes_option)
+    value <- getOption("anvl.default_dtypes")
     if (is.null(value)) {
-      # The overwhelmingly common case: nothing set, so the backend decides.
       return(fallback)
     }
-    override <- check_default_dtypes(value, option_what, paste0("option ", "{.code anvl.default_dtypes}"))
+    override <- resolve_option_default_dtypes(value, backend)
     pair <- fallback
     pair[names(override)] <- override
     pair
@@ -241,78 +145,100 @@ default_dtypes_from_key <- function(key) {
   list(float = as_dtype(key[["float"]]), int = as_dtype(key[["int"]]))
 }
 
-# The option value `dtypes` asks for, merged over whatever is already set so
-# that a scope naming one category leaves the other where it was.
-merged_default_dtypes <- function(dtypes) {
-  current <- option_default_dtypes()
-  new <- check_default_dtypes(dtypes, "{.arg dtypes}", "{.arg dtypes}")
-  current[names(new)] <- new
-  setNames(list(current), default_dtypes_option)
+# Used for context managers: insert dtypes into default default_dtypes
+merged_default_dtypes <- function(dtypes, backend) {
+  backend <- backend %??% active_backend()
+  new <- as_default_dtypes(dtypes)
+  current <- getOption("anvl.default_dtypes")
+  if (is.null(current)) {
+    current <- list()
+  } else {
+    # Read what is there, so that merging into a value nothing recognizes fails
+    # here rather than on the next read.
+    resolve_option_default_dtypes(current, backend)
+    current <- as.list(current)
+  }
+  entry <- if (is.null(current[[backend]])) {
+    character()
+  } else {
+    as_default_dtypes(current[[backend]])
+  }
+  entry[names(new)] <- new
+  current[[backend]] <- entry
+  list(anvl.default_dtypes = current)
 }
 
-#' @rdname default_dtypes
+#' @title Set the Default Data Types
+#' @description
+#' Set the default data types (see [`default_dtypes()`]) for a scope:
+#' `local_default_dtypes()` until the calling frame exits,
+#' `with_default_dtypes()` for the duration of `code`. Both write the
+#' `anvl.default_dtypes` option for one backend, and change only the
+#' categories they name.
+#'
+#' @details
+#' What an override changes is what an **uncommitted** R value in its scope
+#' commits to: a literal, an R array, or a constructor called without a
+#' `dtype`. It does **not** change the data type of an operand that already
+#' has one, so it cannot raise the precision of arithmetic on typed arrays --
+#' `with_default_dtypes(c(float = "f64"), x * 2)` is `f32` for an `f32` `x`.
+#' Convert those explicitly with [`nv_convert()`].
+#'
+#' Inside a [`jit()`]ted body the defaults the program was keyed on are the
+#' *baseline* and an override applies to its scope, so one program can use
+#' different precisions in different parts of itself. Only that baseline is
+#' part of the compilation cache key, so an override in a body must not change
+#' between calls: write it out literally rather than reading it from a
+#' variable. `with_default_dtypes(c(float = prec), ...)` with a `prec` that
+#' later changes keeps serving the first program, exactly as a changing `dtype`
+#' argument would.
+#'
+#' @param dtypes (named `character()` | named `list()`)\cr
+#'   A mapping of the data type categories (`float` and `int`) to data types,
+#'   e.g. `c(float = "f64", int = "i32")`. Each may be a string or a
+#'   [`DataType`]. Can also be a partial override, such as `c(float = "f64")`,
+#'   in which case the category it does not name is left as it is.
+#' @param backend (`NULL` | `character(1)`)\cr
+#'   The backend whose defaults to set -- the registered defaults are a
+#'   property of the backend, and so is an override of them. `NULL` (default)
+#'   is the backend in force ([`active_backend()`]).
+#' @param envir (`environment`)\cr
+#'   The environment to scope the change to.
+#' @param code An expression to evaluate with the given defaults.
+#' @return `local_default_dtypes()` returns the previous values of the options
+#'   it set, invisibly. `with_default_dtypes()` returns the result of
+#'   evaluating `code`.
+#' @seealso [`default_dtypes()`], [`local_backend()`], [`with_backend()`]
+#' @examplesIf pjrt::plugins_downloaded()
+#' with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
+#' # A value that meets a typed array still takes that array's data type
+#' with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
+#' # Untyped values in one program can commit at different precisions
+#' jit(function() {
+#'   list(single = nv_fill(0, 2), double = with_default_dtypes(c(float = "f64"), nv_fill(0, 2)))
+#' })()
 #' @export
-local_default_dtypes <- function(dtypes, envir = parent.frame()) {
-  check_literal_override(substitute(dtypes))
-  withr::local_options(merged_default_dtypes(dtypes), .local_envir = envir)
+local_default_dtypes <- function(dtypes, backend = NULL, envir = parent.frame()) {
+  withr::local_options(merged_default_dtypes(dtypes, backend), .local_envir = envir)
 }
 
-#' @rdname default_dtypes
+#' @rdname local_default_dtypes
 #' @export
-with_default_dtypes <- function(dtypes, code) {
-  check_literal_override(substitute(dtypes))
-  withr::with_options(merged_default_dtypes(dtypes), code)
-}
-
-# Inside a trace an override belongs to the program but not to its compilation
-# cache key, so it has to be the same on every call: written out literally.
-# Read from a variable it would let the program's data types depend on session
-# state the key cannot see -- and, since the key does carry the inputs' shapes,
-# on the shape a call happens to be made with, which is how the same source
-# text could give two precisions.
-check_literal_override <- function(expr) {
-  if (!currently_tracing() || is_literal_dtypes(expr)) {
-    return(invisible(NULL))
-  }
-  cli_abort(c(
-    "Inside a {.fn jit}ted function the defaults must be written out literally.",
-    x = "Got {.code {deparse1(expr)}}.",
-    i = "Only the baseline is part of the compilation cache key, so an override read from a variable would let the program's data types depend on state the key cannot see.", # nolint
-    i = "Write it out, as in {.code with_default_dtypes(c(float = \"f64\"), ...)}, or convert the values explicitly with {.fn nv_convert}." # nolint
-  ))
-}
-
-# An expression whose value cannot differ between two calls: `c(float =
-# "f64")`, `list(int = "i64")`, or a character vector written out.
-is_literal_dtypes <- function(expr) {
-  if (is.character(expr)) {
-    return(TRUE)
-  }
-  if (!is.call(expr) || !is.symbol(expr[[1L]]) || !(as.character(expr[[1L]]) %in% c("c", "list"))) {
-    return(FALSE)
-  }
-  args <- as.list(expr)[-1L]
-  length(args) > 0L && all(vapply(args, is.character, logical(1L)))
+with_default_dtypes <- function(dtypes, code, backend = NULL) {
+  withr::with_options(merged_default_dtypes(dtypes, backend), code)
 }
 
 # The default dtypes (see `default_dtypes()`) in force here.
-#
-# Eagerly that is the override option over the registered default of the
-# backend in force -- the pair the next dispatch keys its program on, since
-# every operation runs on that backend.
-#
-# Inside a trace the *baseline* is the pair the dispatcher did key the program
-# on, so switching the backend in a traced body changes nothing: the program is
-# compiled for one backend. An override is still honoured, and applies to its
-# scope: one written in the body is part of the program, so it traces the same
-# way every time that key does, and a program may use different precisions in
-# different parts of itself.
 current_default_dtypes <- function() {
   desc <- globals[["CURRENT_DESCRIPTOR"]]
   if (is.null(desc)) {
+    # Eager mode: The active backend's default_dtypes with a possible
+    # overwrite by the anvl.default_dtypes option
     return(effective_default_dtypes(active_backend()))
   }
-  apply_default_dtypes(desc$default_dtypes)
+  # Insert options over desc$default_dtypes -- the pair the dispatcher keyed
+  # the program on.
+  apply_default_dtypes(desc$default_dtypes, option_default_dtypes(desc$backend))
 }
 
 default_dtype <- function(x, defaults = current_default_dtypes()) {
@@ -322,9 +248,6 @@ default_dtype <- function(x, defaults = current_default_dtypes()) {
   default_dtype_r(typeof(x), defaults)
 }
 
-# `dtype`, or -- when it is `NULL` and `data` is an R value that has a default --
-# the default `data` commits to. Anything else (a `PJRTBuffer`, a raw vector)
-# is left for the backend to handle.
 resolve_default_dtype <- function(data, dtype, defaults = current_default_dtypes()) {
   if (is.null(dtype) && (is.numeric(data) || is.logical(data))) {
     return(default_dtype(data, defaults))
@@ -332,10 +255,6 @@ resolve_default_dtype <- function(data, dtype, defaults = current_default_dtypes
   dtype
 }
 
-# The dtype an R value of this storage type commits to when nothing in the
-# program tells it what it is. The single place that decision is made;
-# `defaults` is the pair (see `default_dtypes()`) the current computation is
-# pinned to: the trace's while tracing, the default backend's otherwise.
 default_dtype_r <- function(r_type, defaults = current_default_dtypes()) {
   switch(
     r_type,

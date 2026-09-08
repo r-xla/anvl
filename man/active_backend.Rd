@@ -14,5 +14,5 @@ Retrieves the active backend (option \code{anvl.backend}), falling back to the d
 backend.
 }
 \seealso{
-\code{\link[=local_backend]{local_backend()}}, \code{\link[=with_backend]{with_backend()}}
+\code{\link[=local_backend]{local_backend()}}, \code{\link[=with_backend]{with_backend()}}, \code{\link[=default_dtypes]{default_dtypes()}}
 }

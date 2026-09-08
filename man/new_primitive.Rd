@@ -38,4 +38,5 @@ A callable of class \code{c("JitPrimitive", "JitFunction")}.
 \description{
 Create a new primitive.
 For details on how to do this, see the article on \emph{Adding a Primitive}.
+Like every jitted function it runs on the active backend when called.
 }

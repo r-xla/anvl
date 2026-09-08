@@ -31,20 +31,20 @@ prim_convolution(
 \item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
 
 \item{input_batch_axis, input_feature_axis}{(\code{integer(1)})\cr
-1-based batch/feature axis of \code{x}.}
+batch/feature axis of \code{x}.}
 
-\item{input_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{x}.}
+\item{input_spatial_axes}{(\code{integer()})\cr spatial axes of \code{x}.}
 
 \item{kernel_input_feature_axis, kernel_output_feature_axis}{(\code{integer(1)})\cr
-1-based input/output feature axis of \code{kernel}.}
+input/output feature axis of \code{kernel}.}
 
-\item{kernel_spatial_axes}{(\code{integer()})\cr 1-based spatial axes of \code{kernel}.}
+\item{kernel_spatial_axes}{(\code{integer()})\cr spatial axes of \code{kernel}.}
 
 \item{output_batch_axis, output_feature_axis}{(\code{integer(1)})\cr
-1-based batch/feature axis of the output.}
+batch/feature axis of the output.}
 
 \item{output_spatial_axes}{(\code{integer()})\cr
-1-based spatial axes of the output.}
+spatial axes of the output.}
 
 \item{window_strides}{(\code{integer()})\cr Stride per spatial axis.}
 
@@ -62,7 +62,5 @@ prim_convolution(
 }
 \description{
 General N-D windowed convolution, lowering to StableHLO's
-\code{convolution} op. Axis numbers are given 1-based (anvl
-convention) and converted to StableHLO's 0-based layout internally.
-Most users want \code{\link[=nv_conv1d]{nv_conv1d()}} / \code{\link[=nv_conv2d]{nv_conv2d()}} / \code{\link[=nv_conv3d]{nv_conv3d()}} instead.
+\code{convolution} op.
 }

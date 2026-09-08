@@ -1840,3 +1840,51 @@ test_that("nv_mod and `%%` follow base R flooring semantics across sign combos",
     1L %% -3L
   )
 })
+
+describe("the default integer", {
+  it("decides the data type of the indices an operation returns", {
+    x <- nv_array(c(3, 1, 4, 1, 5))
+    local_default_dtypes(c(int = "i64"))
+    i64 <- as_dtype("i64")
+    expect_equal(dtype(nv_argmax(x)), i64)
+    expect_equal(dtype(nv_argmin(x)), i64)
+    expect_equal(dtype(nv_argsort(x)), i64)
+    expect_equal(dtype(nv_cummax(x, with_indices = TRUE)$indices), i64)
+    expect_equal(dtype(nv_cummin(x, with_indices = TRUE)$indices), i64)
+    # `hlo_top_k` fixes its indices at i32, so these are converted.
+    expect_equal(dtype(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), i64)
+    # And in a trace, where the program is keyed on the defaults.
+    expect_equal(dtype(jit(function(x) nv_argmax(x))(x)), i64)
+    expect_equal(dtype(jit(function(x) nv_argsort(x))(x)), i64)
+    expect_equal(dtype(jit(function(x) nv_cummin(x, with_indices = TRUE)$indices)(x)), i64)
+    expect_equal(dtype(jit(function(x) nv_top_k(x, k = 2L, with_indices = TRUE)$indices)(x)), i64)
+  })
+
+  it("does not change the indices themselves", {
+    x <- nv_array(c(3, 1, 4, 1, 5))
+    at_i32 <- list(
+      argmax = as_array(nv_argmax(x)),
+      argsort = as_array(nv_argsort(x)),
+      cummax = as_array(nv_cummax(x, with_indices = TRUE)$indices),
+      top_k = as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices)
+    )
+    local_default_dtypes(c(int = "i64"))
+    expect_equal(as_array(nv_argmax(x)), at_i32$argmax)
+    expect_equal(as_array(nv_argsort(x)), at_i32$argsort)
+    expect_equal(as_array(nv_cummax(x, with_indices = TRUE)$indices), at_i32$cummax)
+    expect_equal(as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), at_i32$top_k)
+  })
+
+  it("decides the data type of an LU decomposition's pivots", {
+    # LAPACK's getrf writes 32-bit pivots, so `pivots` and `permutation` are
+    # converted after the custom call rather than produced at the default.
+    a <- nv_matrix(c(4, 3, 6, 3, 2, 8, 1, 5, 7), nrow = 3, dtype = "f64")
+    at_i32 <- lapply(nv_lu(a)[c("pivots", "permutation")], as_array)
+    local_default_dtypes(c(int = "i64"))
+    factored <- nv_lu(a)
+    expect_equal(dtype(factored$pivots), as_dtype("i64"))
+    expect_equal(dtype(factored$permutation), as_dtype("i64"))
+    expect_equal(as_array(factored$pivots), at_i32$pivots)
+    expect_equal(as_array(factored$permutation), at_i32$permutation)
+  })
+})

@@ -41,9 +41,7 @@
 #' rational approximation on the same intervals for `f32`.
 #'
 #' The thresholds and coefficients of `nv_pnorm()` and `nv_qnorm()` are written
-#' for `f32` and `f64`, so those two are the only data types they accept; a
-#' half-precision operand is an error rather than a silent use of the `f64`
-#' constants. `nv_dnorm()` has no such table and works at any float.
+#' for `f32` and `f64`, so those two are the only data types they accept.
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.

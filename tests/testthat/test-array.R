@@ -1045,3 +1045,47 @@ describe("as.vector()", {
     expect_error(as.vector(nv_array(1:3, dtype = "i32"), mode = "double"), "only supports")
   })
 })
+
+describe("the default float", {
+  it("decides what an R double is built at eagerly", {
+    local_default_dtypes(c(float = "f64"))
+    expect_equal(dtype(nv_array(1.5)), as_dtype("f64"))
+    expect_equal(dtype(nv_scalar(1.5)), as_dtype("f64"))
+    expect_equal(dtype(nv_array(matrix(c(1.5, 2.5, 3.5, 4.5), 2))), as_dtype("f64"))
+    expect_equal(dtype(nv_fill(0, 3)), as_dtype("f64"))
+    expect_equal(dtype(nv_seq(0, 1, steps = 3)), as_dtype("f64"))
+    expect_equal(dtype(nv_eye(2)), as_dtype("f64"))
+    state <- nv_rng_state(1L)
+    expect_equal(dtype(nv_rnorm(3, state)[[2L]]), as_dtype("f64"))
+    expect_equal(dtype(nv_runif(3, state)[[2L]]), as_dtype("f64"))
+    expect_equal(peek_dtype(1.5), as_dtype("f64"))
+    expect_error(dtype(1.5), "f64")
+    # An explicit dtype still wins, and the other categories are untouched.
+    expect_equal(dtype(nv_array(1.5, dtype = "f32")), as_dtype("f32"))
+    expect_equal(dtype(nv_array(1L)), default_int())
+    expect_equal(dtype(nv_array(TRUE)), as_dtype("bool"))
+  })
+
+  it("leaves data that is not an R value alone", {
+    local_default_dtypes(c(float = "f64", int = "i64"))
+    # A buffer already has its dtype; nv_minval() builds one from raw bytes.
+    expect_equal(dtype(nv_scalar(pjrt::pjrt_scalar(1L, dtype = "i32"))), as_dtype("i32"))
+    expect_equal(as.integer(nv_reduce_max(nv_array(1:3, dtype = "i32"))), 3L)
+    expect_equal(as.integer(jit(function(x) nv_reduce_min(x))(nv_array(1:3, dtype = "i32"))), 1L)
+  })
+})
+
+describe("the default integer", {
+  it("decides what an R integer is built at eagerly", {
+    local_default_dtypes(c(int = "i64"))
+    expect_equal(dtype(nv_array(1L)), as_dtype("i64"))
+    expect_equal(dtype(nv_scalar(1L)), as_dtype("i64"))
+    expect_equal(dtype(nv_seq(1, 3)), as_dtype("i64"))
+    expect_equal(dtype(nv_fill(0L, 3)), as_dtype("i64"))
+    state <- nv_rng_state(1L)
+    expect_equal(dtype(nv_rbinom(3, state)[[2L]]), as_dtype("i64"))
+    expect_equal(dtype(nv_sample_int(3, state, 6L)[[2L]]), as_dtype("i64"))
+    expect_equal(peek_dtype(1L), as_dtype("i64"))
+    expect_equal(dtype(nv_array(1.5)), default_float())
+  })
+})

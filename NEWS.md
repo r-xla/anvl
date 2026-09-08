@@ -9,30 +9,13 @@
 * `jit_eval()` was removed as it is no longer needed.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
-* The data types an R double and an R integer commit to when nothing else
-  decides one follow the active backend: `f32` / `i32` on pjrt, `f64` / `i32`
-  on quickr, which has no single precision -- a literal in a jitted function
-  used to be labelled `f32` there. `default_dtypes()` reports them
-  (`default_float()` and `default_int()` report one category each), and the
-  option `anvl.default_dtypes` -- a named vector such as `c(float = "f64")`,
-  naming only the categories it changes -- overrides them on every backend, as
-  do `local_default_dtypes()` and `with_default_dtypes()` for a scope.
-  Compiled programs are keyed on the defaults they were compiled under, and
-  inside a jitted body those keyed defaults are the baseline that a scoped
-  `with_default_dtypes()` overrides, so one program can use different
-  precisions in different parts of itself. `nv_seq()`, `nv_eye()`,
-  `nv_runif()`, `nv_rnorm()`, `nv_rbinom()` and `nv_sample_int()` take
-  `dtype = NULL` for the default instead of a hardcoded `"f32"` / `"i32"`.
-* The indices an operation returns follow the default integer data type
-  instead of always being `i32`: `nv_argmax()`, `nv_argmin()`, `nv_argsort()`,
-  the `indices` of `nv_cummax()` / `nv_cummin()` and of
-  `nv_top_k(with_indices = TRUE)`, and the `pivots` / `permutation` of
-  `nv_lu()` (and the primitives behind them). Where the backend fixes the
-  width -- `hlo_top_k()`'s `i32` indices, LAPACK's 32-bit pivots -- the
-  operation is built as before and its indices converted.
 
 ## Features
 
+* The default data types for floating point numbers and integers can now be
+  configured via the `anvl.default_dtypes` field.
+  You can configure this for a specific scope via `local_default_dtypes()`
+  and `with_default_dtypes()`.
 * `as.vector` now and returns `bit64::integer64`
   for integer types that don't fit into R's 32 bit integers.
 * There is now exactly one backend used at a time and it is configured via the

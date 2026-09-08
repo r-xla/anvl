@@ -3572,21 +3572,19 @@ prim_eigh <- new_primitive(
 #' @title Primitive Convolution
 #' @description
 #' General N-D windowed convolution, lowering to StableHLO's
-#' `convolution` op. Axis numbers are given 1-based (anvl
-#' convention) and converted to StableHLO's 0-based layout internally.
-#' Most users want [nv_conv1d()] / [nv_conv2d()] / [nv_conv3d()] instead.
+#' `convolution` op.
 #' @param x ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
 #' @param kernel ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
 #' @param input_batch_axis,input_feature_axis (`integer(1)`)\cr
-#'   1-based batch/feature axis of `x`.
-#' @param input_spatial_axes (`integer()`)\cr 1-based spatial axes of `x`.
+#'   batch/feature axis of `x`.
+#' @param input_spatial_axes (`integer()`)\cr spatial axes of `x`.
 #' @param kernel_input_feature_axis,kernel_output_feature_axis (`integer(1)`)\cr
-#'   1-based input/output feature axis of `kernel`.
-#' @param kernel_spatial_axes (`integer()`)\cr 1-based spatial axes of `kernel`.
+#'   input/output feature axis of `kernel`.
+#' @param kernel_spatial_axes (`integer()`)\cr spatial axes of `kernel`.
 #' @param output_batch_axis,output_feature_axis (`integer(1)`)\cr
-#'   1-based batch/feature axis of the output.
+#'   batch/feature axis of the output.
 #' @param output_spatial_axes (`integer()`)\cr
-#'   1-based spatial axes of the output.
+#'   spatial axes of the output.
 #' @param window_strides (`integer()`)\cr Stride per spatial axis.
 #' @param padding (`matrix`)\cr `[n_spatial, 2]` of `(low, high)` padding.
 #' @param x_dilation,kernel_dilation (`integer()`)\cr Input/kernel dilation.

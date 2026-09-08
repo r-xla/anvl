@@ -234,7 +234,7 @@ gather_clamp_indices <- function(
 
     # The max bound is the same for a given slice along the index_vector_axis
     max_tensor_vals <- prim_reshape(
-      nv_convert(
+      prim_convert(
         nv_array(max_bounds, dtype = default_int()),
         dtype = dtype(start_indices)
       ),
@@ -283,4 +283,3 @@ col_major_layout <- function(naxes) {
 col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
 }
-

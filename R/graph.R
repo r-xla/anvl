@@ -190,9 +190,14 @@ AnvlGraph <- function(
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
 #'   The data types every R value in this trace commits to when nothing else
-#'   decides one (see [`default_dtypes()`]) -- the pair the dispatcher keyed the
-#'   compiled program on, so the program cannot disagree with its cache key.
-#'   `NULL` lets [`local_descriptor()`] fill in the pair in force.
+#'   decides one (see [`default_dtypes()`]).
+#' @param backend (`character(1)`)\cr
+#'   The backend this trace is compiled for. Required: it decides which entry
+#'   of the `anvl.default_dtypes` option applies to the trace, so switching the
+#'   ambient backend inside a traced body changes nothing.
+#'   [`local_descriptor()`] fills it in -- from the descriptor a sub-trace
+#'   nests in, else from [`active_backend()`] -- so only a direct call has to
+#'   name it.
 #' @param devices (`list()`)\cr
 #'   Devices encountered during tracing: the device of every concrete array
 #'   registered in the graph, plus the ones declared by [`graph_desc_add()`].
@@ -210,7 +215,8 @@ GraphDescriptor <- function(
   is_static_flat = NULL,
   static_args_flat = NULL,
   devices = character(),
-  default_dtypes = NULL
+  default_dtypes = NULL,
+  backend
 ) {
   # Use an environment for reference semantics (mutable)
   env <- new.env(parent = emptyenv())
@@ -231,10 +237,8 @@ GraphDescriptor <- function(
   env$is_static_flat <- is_static_flat
   env$static_args_flat <- static_args_flat
   env$devices <- devices
-  # The default dtypes (see `default_dtypes()`) every R value in this trace
-  # commits to when nothing else decides: the pair the dispatcher keyed the
-  # compiled program on. `local_descriptor()` fills it in when not given.
   env$default_dtypes <- default_dtypes
+  env$backend <- backend
   # Calls that have to run before everything else, because they only depend on
   # the graph's inputs: the converts finalize_rdata_inputs() adds for an R
   # argument that one program used at more than one dtype.
@@ -798,12 +802,26 @@ local_descriptor <- function(..., envir = parent.frame()) {
     cli_abort("Don't run local_descriptor in the global environment")
   }
 
-  desc <- GraphDescriptor(...)
-  if (is.null(desc$default_dtypes)) {
-    # A sub-descriptor inherits the trace's pair; a top-level one without a
-    # dispatcher in front of it takes the default backend's current defaults.
-    desc$default_dtypes <- current_default_dtypes()
+  # Both are settled here rather than on the constructed descriptor, because
+  # both read the descriptor this one nests in.
+  args <- list(...)
+  parent <- globals[["CURRENT_DESCRIPTOR"]]
+  if (is.null(args$backend)) {
+    # A sub-descriptor inherits the trace's backend: the body may have switched
+    # the ambient one, but a program is compiled for one backend.
+    args$backend <- if (is.null(parent)) active_backend() else parent$backend
   }
+  if (is.null(args$default_dtypes)) {
+    # A sub-descriptor inherits the trace's pair; a top-level one without a
+    # dispatcher in front of it takes the current defaults of the backend it
+    # just settled on, so the two cannot disagree.
+    args$default_dtypes <- if (is.null(parent)) {
+      effective_default_dtypes(args$backend)
+    } else {
+      current_default_dtypes()
+    }
+  }
+  desc <- do.call(GraphDescriptor, args)
   if (!is.null(globals[["CURRENT_DESCRIPTOR"]])) {
     globals[["DESCRIPTOR_STASH"]] <- c(
       globals[["DESCRIPTOR_STASH"]],

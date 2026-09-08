@@ -148,7 +148,7 @@ compile_pjrt <- function(
   fallback_device = NULL,
   default_dtypes = NULL
 ) {
-  desc <- local_descriptor(default_dtypes = default_dtypes)
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt")
   graph <- trace_fn(
     f,
     desc = desc,
@@ -276,6 +276,12 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' device defaults to the `PJRT_PLATFORM` environment variable (falling back
 #' to `"cpu"`), or is inferred from the existing inputs of a jitted call.
 #' Operations require all inputs to live on the same device.
+#'
+#' @section Supported data types:
+#' `bool`; the signed integers `i8`, `i16`, `i32` and `i64`; the unsigned
+#' integers `ui8`, `ui16`, `ui32` and `ui64`; and the floats `f32` and `f64`.
+#' An R double commits to `f32` on this backend and an R integer to `i32`
+#' unless the defaults say otherwise (see [`default_dtypes()`]).
 #'
 #' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose

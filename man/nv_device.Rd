@@ -21,6 +21,8 @@ Constructs a backend-specific device object for the active backend
 
 A device identifies a compute resources, such as CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via \code{\link[=nv_array]{nv_array()}}) but also compilation (\link{jit}).
+A device belongs to the active backend (\code{\link[=active_backend]{active_backend()}}); a device
+object of another backend is an error.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

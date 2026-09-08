@@ -6,11 +6,8 @@
 # stablehlo skip re-inference. Composite and region rules (reduce, cumulative
 # ops, linalg decompositions, ...) omit the parameter and keep normal inference.
 
-# A composite rule that builds indices needs the data type the *trace* gave
-# them (the default integer of the program being lowered), which it cannot get
-# from `default_int()` because lowering happens outside the descriptor.
-# It declares `output_types` purely to read that data type back off output `i`.
 index_dtype_of <- function(output_types, i) {
+  # REVIEW: Do we need as.character()? stablehlo should also work with tengen::DataType
   as.character(output_types[[i]]$type$dtype)
 }
 

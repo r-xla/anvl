@@ -17,5 +17,6 @@ The result of evaluating \code{code}.
 }
 \description{
 Sets the \code{anvl.backend} option for the duration of the expression. Every
-array built and every operation run in \code{code} uses the backend.
+array built and every operation run in \code{code} uses the backend, and R values
+commit to its default data types (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }

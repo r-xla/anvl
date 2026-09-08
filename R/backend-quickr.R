@@ -78,7 +78,6 @@ jit_quickr_impl <- function(f, static, cache_size, unwrap, device) {
     # one device today, but the dispatcher keys on whatever this returns, so a
     # second one would split the cache without further work here.
     default_device = function() default_device("quickr"),
-    # See jit_pjrt_impl().
     context = default_dtypes_context("quickr")
   )
   dispatch <- pjrt::dispatch
@@ -114,7 +113,7 @@ compile_quickr <- function(
   flat = FALSE,
   default_dtypes = NULL
 ) {
-  desc <- local_descriptor(default_dtypes = default_dtypes)
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "quickr")
   graph <- trace_fn(f, desc = desc, args_flat = args_flat, in_tree = in_tree, mode = "toplevel")
   check_single_backend(graph, arg_devices = arg_devices, expected = "quickr")
   list(fun = graph_to_quickr_function(graph, unwrap = unwrap, flat = flat))
@@ -149,11 +148,11 @@ compile_quickr <- function(
 #'   compilation cost is amortized.
 #' * Only a subset of the primitives that the PJRT backend supports are currently
 #'   lowered to quickr code. See `vignette("primitives")` for an overview.
-#' * Only the data types `f64`, `i32`, and `bool` are supported. Accordingly,
-#'   an R double commits to `f64` on this backend (see [`default_dtypes()`]),
-#'   and any other float -- `f32` included, since quickr has no single
-#'   precision -- is an error rather than a double wearing the wrong label.
 #' * Only CPU execution is supported.
+#' * Only three data types are supported; see the section below.
+#'
+#' @section Supported data types:
+#' `f64`, `i32` and `bool` -- the three R storage types.
 #'
 #' @section Quickr JIT arguments:
 #'

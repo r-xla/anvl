@@ -1416,6 +1416,7 @@ nv_iota <- prim_iota
 #' @jit static 1:5
 nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
   if (is.null(steps)) {
+    # REVIEW: Inconsistent return types is bad. Split up into nv_linspace
     dtype <- dtype %||% default_int()
     assert_int(start)
     assert_int(end)

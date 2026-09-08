@@ -49,10 +49,6 @@ RData <- function(shape, r_type) {
   shape <- as_shape(shape)
   r_type <- match.arg(r_type, c("double", "integer", "logical"))
   structure(
-    # Deliberately no `dtype`: the value has none until it commits, and the
-    # default it would commit to depends on the backend in force
-    # (`default_dtype_r()`), so code that reaches for `$dtype` must not
-    # silently get one.
     list(r_type = r_type, shape = shape),
     class = c("RData", "AbstractArray")
   )

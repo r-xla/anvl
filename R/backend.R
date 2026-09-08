@@ -24,14 +24,9 @@ NULL
 #' @param await_data (`function`)\cr Blocks until the array's underlying data
 #'   is ready. Called by [`await()`] for `AnvlArray`s; a no-op for backends
 #'   without async execution.
-#' @param default_dtypes (`NULL` | `list(float, int)`)\cr The data types an R
-#'   double (`float`) and an R integer (`int`) commit to on this backend when
-#'   nothing else decides one. `float` must be `"f32"` or `"f64"`, `int` must
-#'   be `"i32"` or `"i64"`. The option `anvl.default_dtypes` overrides them on
-#'   every backend; see [`default_dtypes()`]. `NULL` for a backend that never builds a value at a
-#'   default of its own (the `"plain"` backend, which only holds constants
-#'   captured while tracing for another backend). `new_data` is always handed
-#'   a dtype: [`nv_array()`] resolves the default before calling it.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The default data types for this backend.
+#'   Can be overwritten, see [`default_dtypes()`].
 #' @return An `AnvlBackend` object.
 #' @keywords internal
 #' @export
@@ -52,8 +47,8 @@ AnvlBackend <- function(
 ) {
   if (!is.null(default_dtypes)) {
     default_dtypes <- list(
-      float = check_default_dtype(default_dtypes$float, "float", "The backend's {.field float} default"),
-      int = check_default_dtype(default_dtypes$int, "int", "The backend's {.field int} default")
+      float = as_dtype(default_dtypes$float),
+      int = as_dtype(default_dtypes$int)
     )
   }
   structure(
@@ -77,6 +72,9 @@ AnvlBackend <- function(
 }
 
 register_backend <- function(name, backend) {
+  if (name %in% c("float", "int")) {
+    cli_abort("A backend must not be named after a data type category ({.val float} or {.val int}).")
+  }
   globals$backends[[name]] <- backend
 }
 
@@ -193,8 +191,6 @@ register_backend(
       cli_abort("JIT compilation is not supported for the {.val plain} backend.")
     },
     await_data = function(x) invisible(NULL),
-    # A plain array only ever exists inside a trace, where the R value it is
-    # built from takes the default of the backend being traced for.
     default_dtypes = NULL
   )
 )
@@ -202,8 +198,7 @@ register_backend(
 #' Get Active Backend
 #'
 #' Retrieves the active backend (option `anvl.backend`), falling back to the default `"pjrt"`
-#' backend. The active backend also decides the data types an R value commits
-#' to when nothing else does, see [`default_dtypes()`].
+#' backend.
 #'
 #' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
 #' @seealso [local_backend()], [with_backend()], [default_dtypes()]

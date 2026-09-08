@@ -17,7 +17,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
 The running minimum (same dtype as \code{x}) and the
-running argmin (1-based, of the default integer data
+running argmin (of the default integer data
 type -- see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the same shape as \code{x}.
 }
 \description{

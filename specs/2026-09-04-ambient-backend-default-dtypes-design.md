@@ -299,9 +299,72 @@ old entry.
   `anvl.default_backend` directly gives a different result from the context
   manager, and a backend switch has to decide whether to clobber a user's
   override. The fallback lookup gives the same behaviour with no state.
+- **Per-backend options** (as the superseded design had). Partly reversed by
+  the amendment at the end of this document: an override now belongs to a
+  backend, though through one option's value rather than one option per
+  backend.
 - **A global default with no per-backend fallback** (JAX's model). Every JAX
   backend supports `f32`; quickr does not, so a global `f32` keeps today's
   `f32`-labelled doubles on quickr and a global `f64` penalizes pjrt users.
 - **Keeping explicit `jit(f, backend = )`.** Its outputs are arrays of a
   non-ambient backend, unusable until the scope changes; it is `with_backend()`
   with an extra way to spell it. One mechanism.
+
+## Amendment: the override belongs to a backend (2026-09-07)
+
+The design above kept the registered defaults per backend but made the
+*override* one global option, and rejected per-backend options as
+configuration surface the feature does not deserve. That is wrong in one
+concrete way: a global override reaches a backend it was never meant for, and
+the backends do not admit the same data types. `local_default_dtypes(c(float =
+"f32"))` -- explicit, and pjrt's default anyway -- makes every uncommitted R
+double an *error* under `with_backend("quickr", ...)`, because quickr has no
+single precision at all. The baseline is a property of the backend; so is an
+override of it.
+
+What changes:
+
+- The option's value may name a backend per element. `float` / `int` at its top
+  level apply to every backend, as before; an element named after a backend is
+  that backend's own and wins over them
+  (`list(int = "i64", pjrt = c(int = "i32"))`). A plain `c(float = "f64")` is
+  the degenerate case, so `ANVL_DEFAULT_DTYPES` and existing code are
+  unaffected.
+- `local_default_dtypes()` and `with_default_dtypes()` take `backend = NULL`,
+  the backend in force, and write an entry for it -- merging into whatever is
+  already there, so the other backends and the categories that apply to all of
+  them stay as they are. This is the `backend` argument the design rejected,
+  but only as an escape hatch: the common call is unchanged, and the setters
+  now stop leaking across a `with_backend()` boundary.
+- Inside a traced body the backend a setter resolves to is the one the program
+  is compiled for (`GraphDescriptor$backend`, from the compile callback), not
+  the ambient one, which the body may have switched. An explicit `backend =`
+  that names another is an error: a program is compiled for one backend, so an
+  override for another could not reach it. The descriptor's option lookup is
+  keyed on the same field, so `default_dtypes()` in a body is unaffected by a
+  `with_backend()` around part of it.
+- The literal-override *check* is gone with it. Guarantee 6's "an override
+  inside a traced body is required to be a literal" is now a documented
+  contract rather than an enforced one: `check_literal_override()` /
+  `is_literal_dtypes()` are removed, and the rule -- write the override out
+  literally, because only the baseline is keyed -- is stated on the setters'
+  own help page and in `vignette("type-promotion")`. Reading it from a variable
+  that later changes keeps serving the first program, exactly as a changing
+  `dtype` argument would.
+- `local_default_dtypes()` and `with_default_dtypes()` have their own help
+  page (`?local_default_dtypes`), separate from the reporting side
+  (`?default_dtypes`), and each backend documents what it can represent in a
+  *Supported data types* section that page points at.
+- The data types themselves are no longer validated at all -- not against a
+  per-category list, and not against what a backend can represent. Only the
+  *names* are read (a category, or a registered backend at the top level of
+  the option), because they decide which default a value is and an unknown one
+  would otherwise be silently ignored. A data type that does not fit is an
+  error where the backend allocates the data or compiles the program, as it
+  would be if it had been asked for with `dtype = `: `f32` and `i64` on quickr
+  are errors that way, and so is `f16` anywhere, at whatever layer it reaches
+  first.
+
+Guarantee 4 is unchanged: for any operation the default is the effective pair
+of the backend it runs on. What the amendment changes is which reads count as
+"for that backend".

@@ -4,115 +4,76 @@
 \alias{default_dtypes}
 \alias{default_float}
 \alias{default_int}
-\alias{local_default_dtypes}
-\alias{with_default_dtypes}
-\title{Default data types}
+\title{Default Data Types}
 \usage{
 default_dtypes()
 
 default_float()
 
 default_int()
-
-local_default_dtypes(dtypes, envir = parent.frame())
-
-with_default_dtypes(dtypes, code)
-}
-\arguments{
-\item{dtypes}{(named \code{character()} | named \code{list()})\cr
-The defaults to set, by category: element \code{float} (\code{"f32"} or \code{"f64"})
-and/or element \code{int} (\code{"i32"} or \code{"i64"}), each a string or a
-\code{\link[tengen:DataType]{DataType}}. A category that is not named is left as it is.}
-
-\item{envir}{(\code{environment})\cr
-The environment to scope the change to.}
-
-\item{code}{An expression to evaluate with the given defaults.}
 }
 \value{
 \code{default_dtypes()} returns a named \code{list} with elements \code{float} and
-\code{int}, each a \code{\link[tengen:DataType]{DataType}}: the defaults in force where it is called, which
-inside a \code{\link[=jit]{jit()}}ted body is the trace's baseline and any override over
-it. \code{default_float()} and \code{default_int()} return that one \code{\link[tengen:DataType]{DataType}} of
-their category.
-\code{local_default_dtypes()} returns the previous values of the options it set,
-invisibly. \code{with_default_dtypes()} returns the result of evaluating \code{code}.
+\code{int}, each a \code{\link[tengen:DataType]{DataType}}
 }
 \description{
-An R value entering a program has no data type of its own (see
-\code{\link{RData}}). Where nothing it meets decides one, it commits to a default
-for its R type: a double to the default \emph{float}, an integer to the default
-\emph{integer}, a logical to \code{bool}. These are the data types \code{\link[=nv_array]{nv_array()}} and
-\code{\link[=nv_scalar]{nv_scalar()}} build at when \code{dtype} is not given, that a literal in a
-\code{\link[=jit]{jit()}}ted function commits to, and that \code{\link[=nv_seq]{nv_seq()}}, \code{\link[=nv_eye]{nv_eye()}} and the
-random samplers use when their \code{dtype} is \code{NULL}.
-}
-\details{
-\code{default_dtypes()} reports both categories at once; \code{default_float()} and
-\code{default_int()} report one each, for where naming a single category reads
-better than subsetting the pair.
+The default data types for the \link[=active_backend]{active backend}.
+They decide the data type an R value is materialized at when it cannot be
+inferred from another operand.
 
-Each backend registers its own defaults -- \code{f32} / \code{i32} for \code{"pjrt"}, \code{f64}
-/ \code{i32} for \code{"quickr"}, which has no single precision -- and they follow the
-backend in force (\code{\link[=default_backend]{default_backend()}}): \code{with_backend("quickr", ...)} commits
-a double to \code{f64}. The option \code{anvl.default_dtypes} overrides them on every
-backend, e.g. \code{options(anvl.default_dtypes = c(float = "f64"))};
-\code{local_default_dtypes()} and \code{with_default_dtypes()} set it for a scope, and
-name only the categories they change: \code{local_default_dtypes(c(float = "f64"))} leaves the integer default alone.
+This includes array creation via (\code{nv_array(1)}) or passing R values to unary functions
+(\code{prim_exp(1)}).
+
+\code{default_dtypes()} reports both categories at once; \code{default_float()} and
+\code{default_int()} report one each.
+
+Each backend registers its own -- \code{f32} / \code{i32} for \code{"pjrt"}, \code{f64} / \code{i32}
+for \code{"quickr"} -- and the \code{anvl.default_dtypes} option overrides them.
+\code{\link[=local_default_dtypes]{local_default_dtypes()}} and \code{\link[=with_default_dtypes]{with_default_dtypes()}} set the option for
+a scope.
+
+Below, we configure any backend to use the default \code{f64} for floats and \code{i64} for integers:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = c(float = "f64", int = "i64"))
+}\if{html}{\out{</div>}}
+
+You can also only change the float dtype, leaving
+the backend's default integer dtype unchanged:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = c(float = "f64"))
+}\if{html}{\out{</div>}}
+
+It is also possible to specify the defaults per-backend:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{options(anvl.default_dtypes = list(
+  pjrt = list(float = "f64", int = "i64"),
+  quickr = list(int = "i32")
+))
+}\if{html}{\out{</div>}}
+
+An entry that names a backend wins over the categories beside it.
 
 The defaults decide only what a value becomes when \emph{nothing else does}: an R
 value that meets a typed array of its own category still takes that array's
-data type, whatever the default (\code{vignette("type-promotion")}). A float
-default is \code{"f32"} or \code{"f64"}, an integer default \code{"i32"} or \code{"i64"}; a
-backend that cannot represent the one you set says so rather than quietly
-falling back, so both \code{"f32"} and \code{"i64"} are errors on \code{"quickr"}, which
-has neither. A compiled program is keyed on the defaults it was compiled
+data type, whatever the default (\code{vignette("type-promotion")}). The data
+type you name is taken on trust, so one that does not fit is an error where
+the data is allocated or the program compiled rather than where it is set.
+Which ones fit is the backend's own business -- see the \emph{Supported data
+types} section of \code{\link[=AnvlBackendPjrt]{AnvlBackendPjrt()}} and of \code{\link[=AnvlBackendQuickr]{AnvlBackendQuickr()}},
+which has only \code{f64}, \code{i32} and \code{bool}, so both \code{"f32"} and \code{"i64"} are
+errors there. A compiled program is keyed on the defaults it was compiled
 under, so changing them never serves a stale program.
-
-Inside a \code{\link[=jit]{jit()}}ted body the keyed defaults are the \emph{baseline}, and a
-scoped override applies to its scope. What it changes is what an
-\strong{uncommitted} R value in that scope commits to: a literal, an R array, or
-a constructor called without a \code{dtype}. It does \strong{not} change the data type
-of an operand that already has one, so it cannot raise the precision of
-arithmetic on typed arrays -- \code{with_default_dtypes(c(float = "f64"), x * 2)}
-is \code{f32} for an \code{f32} \code{x}. Convert those explicitly with \code{\link[=nv_convert]{nv_convert()}}.
-Switching the \emph{backend} inside a traced body changes nothing either, since a
-program is compiled for one backend.
-
-Only the baseline is part of the compilation cache key, so inside a traced
-body the override has to be written out literally rather than read from a
-variable. And because an R \emph{argument} of a jitted function is uploaded at a
-single data type for the whole program, an override that reaches such an
-argument in one part of a body decides how the caller's value arrives for
-every part of it.
-
-A scope covers the values \emph{built} inside it. A bare R value handed back out
-of one has not committed to anything yet, and takes the default in force
-wherever it is eventually used -- the same rule that lets it take the data
-type of whatever array it meets (see \code{vignette("type-promotion")}).
-
-Only the baseline is part of the compilation cache key, so an override
-inside a body carries the same constraint as any other value the body reads
-from its enclosing environment: it must not change between calls.
-\code{with_default_dtypes(c(float = prec), ...)} with a \code{prec} that later changes
-keeps serving the first program, exactly as a changing \code{dtype} argument
-would.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+with_backend("quickr", default_dtypes())
+with_backend("pjrt", default_dtypes())
 default_dtypes()
 default_float()
 default_int()
 dtype(nv_array(1.5))
-with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
-# A value that meets a typed array still takes that array's data type
-with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
-# Untyped values in one program can commit at different precisions
-jit(function() {
-  list(single = nv_fill(0, 2), double = with_default_dtypes(c(float = "f64"), nv_fill(0, 2)))
-})()
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=default_backend]{default_backend()}}, \code{\link[=peek_dtype]{peek_dtype()}}
+\code{\link[=local_default_dtypes]{local_default_dtypes()}}, \code{\link[=with_default_dtypes]{with_default_dtypes()}}
 }
