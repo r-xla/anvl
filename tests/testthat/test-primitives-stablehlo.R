@@ -345,6 +345,51 @@ test_that("prim_broadcast_in_axes", {
   )
 })
 
+test_that("prim_broadcast_in_axes names its own arguments when they do not fit", {
+  # stablehlo reports both of these as `broadcast_dimensions`, in 0-based
+  # half-open notation, which is not what the caller wrote.
+  x <- nv_array(c(1, 2, 3))
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = 3L),
+    "`broadcast_axes` must be axes of the result, between 1 and 2"
+  )
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = c(1L, 2L)),
+    "one axis of the result per axis of `x`"
+  )
+})
+
+test_that("the elementwise primitives name their own operands on a shape mismatch", {
+  # `prim_ifelse` is stablehlo's `select` (`on_true` / `on_false`),
+  # `prim_polygamma` a CHLO binary op (`lhs` / `rhs`), and `prim_clamp`'s
+  # bounds are its `min` / `max`.
+  expect_error(
+    prim_ifelse(nv_array(c(TRUE, FALSE)), nv_array(c(1, 2)), nv_array(c(1, 2, 3))),
+    "`true_value` and `false_value` must have the same shape"
+  )
+  expect_error(
+    prim_ifelse(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(1, 2)), nv_array(c(3, 4))),
+    "`pred` and `true_value` must have the same shape"
+  )
+  expect_error(
+    prim_polygamma(nv_array(c(1, 2)), nv_array(c(1, 2, 3))),
+    "`n` and `x` must have the same shape"
+  )
+  expect_error(
+    prim_clamp(nv_array(c(0, 0)), nv_array(c(1, 2, 3)), nv_array(c(1, 1))),
+    "`min_val`, `x`, and `max_val` must all have the same shape"
+  )
+  # A scalar bound is still fine, and so is a scalar `pred`.
+  expect_equal(
+    as.vector(as_array(prim_clamp(nv_scalar(0), nv_array(c(-1, 2)), nv_scalar(1)))),
+    c(0, 1)
+  )
+  expect_equal(
+    as.vector(as_array(prim_ifelse(nv_scalar(TRUE), nv_array(c(1, 2)), nv_array(c(3, 4))))),
+    c(1, 2)
+  )
+})
+
 test_that("prim_reshape", {
   f <- jit(prim_reshape, static = "shape")
   x <- array(1:6, c(3, 2))

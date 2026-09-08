@@ -1266,7 +1266,10 @@ triangular_mask <- function(n, lower, unit_diagonal) {
 prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   lower <- params$lower
   if (length(shape(outputs[[1L]])) > 2L) {
-    cli_abort("Batched cholesky gradient is not yet supported.")
+    cli_abort(c(
+      "The gradient of a batched Cholesky decomposition is not supported yet.",
+      i = "Differentiate one matrix at a time."
+    ))
   }
 
   # The Jacobian for cholesky is actually not unique.
@@ -1333,7 +1336,10 @@ prim_triangular_solve[["reverse"]] <- rule_reverse(function(inputs, outputs, gra
   grad <- grads[[1L]]
 
   if (length(shape(a)) > 2L) {
-    cli_abort("Batched triangular_solve gradient is not yet supported.")
+    cli_abort(c(
+      "The gradient of a batched triangular solve is not supported yet.",
+      i = "Differentiate one system at a time."
+    ))
   }
 
   # op(A) is A or A^T depending on transpose_a

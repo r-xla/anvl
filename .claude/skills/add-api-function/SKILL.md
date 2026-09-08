@@ -106,9 +106,24 @@ args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = p
 
 ### Static arguments
 
-Any argument the function body *inspects* -- branches on, validates with `assert_*`, uses to compute shape/axes -- must be declared `static =` on the outer `jit()` call.
+An API function is not wrapped in `jit()` by hand -- it is tagged with the
+`@jit` roclet, and `R/zzz.R` rebinds it to `jit(f, static = <static>)` at build
+time (see `?jit_roclet`):
+
+```r
+#' @export
+#' @jit static "axis"        # or: @jit static 2:4, or a bare @jit for none
+nv_foo <- function(x, axis) { ... }
+```
+
+Any argument the function body *inspects* -- branches on, validates with
+`assert_*`, uses to compute shape/axes -- must be named (or positioned) in that
+`static` list.
 Typical candidates: `axes`, `shape`, `axis`, flags, mode strings, dtype specifiers.
 Arrayish inputs (the actual data) should never be static.
+
+After adding or changing a `@jit` tag, run `devtools::document()` so
+`R/jit-registry.R` is regenerated. Never edit that file by hand.
 
 ## Roxygen2 Documentation
 
@@ -218,7 +233,7 @@ devtools::test()
 - [ ] No-op shortcuts return the input unchanged (e.g. identity reshape / convert / broadcast)
 - [ ] Constants created inside the function use `nv_<op>_like()` so they live on the right backend/device
 - [ ] If the function is an array creator, a matching `nv_<name>_like()` variant is provided
-- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are declared `static =` on every `jit()` call
+- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are listed in the function's `#' @jit static ...` tag, and `devtools::document()` has regenerated `R/jit-registry.R`
 - [ ] `_pkgdown.yml`: added to appropriate semantic section
 - [ ] Forward-pass test in `tests/testthat/test-api.R` covers the wrapper's convenience behavior
 - [ ] `devtools::document()` run

@@ -676,6 +676,18 @@ describe("staging an R value out of its own category", {
     # An in-category target is built directly: there is no staging at all.
     quiet(trace_fn(function(x) prim_convert(x, "f64"), list(x = nv_aval("double", integer()))))
   })
+
+  it("stays quiet where the caller could not have avoided the staging", {
+    # Under a default integer narrower than `i32`, an R integer stages through
+    # `i32` whatever the target -- converting in its own category first would
+    # stage through `i32` too. The warning would name a remedy that does not
+    # exist, so it does not fire.
+    local_default_dtypes(c(int = "i16"))
+    quiet <- function(expr) expect_no_warning(expr, class = "anvl_staging_widens_warning")
+    quiet(nv_convert(1L, "i8"))
+    quiet(nv_convert(1L, "f32"))
+    quiet(nv_array(1L) * 2L)
+  })
 })
 
 describe("the default float", {

@@ -10,13 +10,19 @@ boolean < integer < float:
 \item \strong{boolean} -- \code{bool}
 \item \strong{integer} -- \code{i8}, \code{i16}, \code{i32}, \code{i64} and their unsigned counterparts
 \code{ui8}, \code{ui16}, \code{ui32}, \code{ui64}
-\item \strong{float} -- \code{f32}, \code{f64}, and the narrower floats such as \code{f16} and
-\code{bf16} where a backend supports them
+\item \strong{float} -- \code{f32}, \code{f64}, and the narrower floats \code{f16} and \code{bf16}
 }
 
 These are the categories promotion works in, where signed and unsigned
 integers count as one. \code{\link[tengen:dtype_category]{tengen::dtype_category()}} reports a finer split
 that names \code{int} and \code{uint} separately.
+
+Being in a category is not the same as being runnable: \code{f16} and \code{bf16} are
+float data types everywhere anvl reasons about data types -- wherever a page
+says \emph{any float data type}, they are included, and promotion treats them as
+floats -- but no backend materializes them today, so an array at one of them
+fails when it reaches the backend (\verb{Unsupported type: f16}) rather than at
+the anvl call. There is no support for complex data types at all.
 }
 \section{Data Type Vocabulary}{
 

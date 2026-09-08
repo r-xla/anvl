@@ -54,6 +54,10 @@ nv_fill <- function(value, shape, dtype = NULL, device = NULL) {
 ## Conversion ------------------------------------------------------------------
 
 broadcast_shapes <- function(shape_lhs, shape_rhs) {
+  # Kept for the message: the two are padded below, and reporting the padded
+  # shapes back would name axes the caller never wrote.
+  given_lhs <- shape_lhs
+  given_rhs <- shape_rhs
   if (length(shape_lhs) > length(shape_rhs)) {
     shape_rhs <- c(rep(1L, length(shape_lhs) - length(shape_rhs)), shape_rhs)
   } else if (length(shape_lhs) < length(shape_rhs)) {
@@ -66,7 +70,10 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
     d_lhs <- shape_lhs[i]
     d_rhs <- shape_rhs[i]
     if (d_lhs != d_rhs && d_lhs != 1L && d_rhs != 1L) {
-      cli_abort("lhs and rhs are not broadcastable")
+      cli_abort(c(
+        "Shapes {xlamisc::shapevec_repr(given_lhs)} and {xlamisc::shapevec_repr(given_rhs)} are not broadcastable.", # nolint
+        x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
+      ))
     }
     shape_out[i] <- max(d_lhs, d_rhs)
   }
@@ -1887,7 +1894,7 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
   dtype <- assert_float_dtype(
     dtype %||% default_float(),
     arg = "dtype",
-    hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
+    hint = "Convert the result instead, e.g. {.code nv_convert(x, default_int())}."
   )
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
@@ -1994,10 +2001,10 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   if (naxes(lhs) < 2L) {
-    cli_abort("lhs of matmul must have at least 2 axes")
+    cli_abort("{.arg lhs} must have at least 2 axes, but it has {naxes(lhs)}.")
   }
   if (naxes(rhs) < 2L) {
-    cli_abort("rhs of matmul must have at least 2 axes")
+    cli_abort("{.arg rhs} must have at least 2 axes, but it has {naxes(rhs)}.")
   }
   nbatch <- naxes(lhs) - 2L
   prim_dot_general(
@@ -2013,6 +2020,9 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' Supports batched inputs: axes before the last two are batch axes.
+#' @details
+#' Differentiation is only implemented for a single matrix: a [gradient()] of a
+#' batched decomposition errors.
 #' @param x ([`arrayish`])\cr
 #'   Symmetric positive-definite matrix with at least 2 axes, of any float data
 #'   type. The last two axes form the square matrix; any leading axes are batch
@@ -2122,6 +2132,9 @@ nv_solve <- function(a, b) {
 #' `(B..., n, n)`). It is reshaped internally to a column (`left_side =
 #' TRUE`) or row (`left_side = FALSE`) and reshaped back on the way out.
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
+#'
+#' Differentiation is only implemented for a single system: a [gradient()] of a
+#' batched solve errors.
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The last two
 #'   axes must be equal; any leading axes are batch axes. Can be any float
@@ -3270,10 +3283,10 @@ nv_outer <- function(lhs, rhs) {
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   if (naxes(lhs) != 1L) {
-    cli_abort("lhs must be a 1-D array")
+    cli_abort("{.arg lhs} must be a 1-D array, but it has {naxes(lhs)} axes.")
   }
   if (naxes(rhs) != 1L) {
-    cli_abort("rhs must be a 1-D array")
+    cli_abort("{.arg rhs} must be a 1-D array, but it has {naxes(rhs)} axes.")
   }
   lhs_exp <- nv_unsqueeze(lhs, axis = 2L)
   rhs_exp <- nv_unsqueeze(rhs, axis = 1L)
@@ -3578,7 +3591,7 @@ nv_select <- function(x, axis, index) {
   x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot select along a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to select along, but it is a scalar.")
   }
   axis <- resolve_axis(axis, rank)
 
@@ -3664,7 +3677,7 @@ nv_select <- function(x, axis, index) {
 nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot sort a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
   }
   prim_sort(list(x), axis = axis %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
 }
@@ -3702,7 +3715,7 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot argsort a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
   }
   axis <- axis %||% naxes(x)
   idx <- nv_iota_like(x, axis = axis, dtype = default_int())
@@ -3751,7 +3764,7 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
   x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot take top-k of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
   }
   axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
   k <- as.integer(k)
@@ -3834,7 +3847,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot compute quantile of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to take quantiles along, but it is a scalar.")
   }
   assert_choice(interpolation, c("linear", "lower", "higher", "nearest", "midpoint"))
   if (!is_valid_r(probs)) {
@@ -4014,7 +4027,7 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   assert_flag(nan_rm)
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
   }
   axis <- axis %||% naxes(x)
   .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmax)
@@ -4051,7 +4064,7 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   assert_flag(nan_rm)
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
   }
   axis <- axis %||% naxes(x)
   .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmin)

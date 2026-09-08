@@ -464,7 +464,7 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
   rank <- length(shape_in)
 
   if (rank == 0L) {
-    cli_abort("reverse: scalar operands are not supported by quickr lowering") # nocov
+    cli_abort("The quickr backend cannot reverse a scalar {.arg x}.") # nocov
   }
   if (rank > 5L) {
     cli_abort("reverse: only arrays up to rank 5 are supported")
@@ -821,7 +821,7 @@ quickr_emit_gather <- function(
   out_rank <- length(out_shape)
 
   if (!op_rank) {
-    cli_abort("gather: scalar operands are not supported by quickr lowering")
+    cli_abort("The quickr backend cannot gather from a scalar {.arg x}.")
   }
   if (op_rank > 5L || si_rank > 5L || out_rank > 5L) {
     cli_abort("gather: only arrays up to rank 5 are supported")
@@ -836,7 +836,9 @@ quickr_emit_gather <- function(
     cli_abort("gather: start_indices must have rank >= 1")
   }
   if (!identical(length(slice_sizes), op_rank)) {
-    cli_abort("gather: slice_sizes must have length equal to operand rank")
+    cli_abort(
+      "{.arg slice_sizes} must have one entry per axis of {.arg x}."
+    )
   }
   index_vector_size <- as.integer(shape_start_indices[[si_rank]])
   if (!identical(as.integer(length(start_index_map)), as.integer(index_vector_size))) {

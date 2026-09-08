@@ -158,6 +158,10 @@ nv_array <- function(
   }
   if (!is.null(shape)) {
     shape <- as.integer(shape)
+  } else if (is.null(dim(data)) && length(data) == 0L) {
+    # An empty vector: name the axis, since a `NULL` shape means "a scalar" to
+    # the pjrt backend and a scalar cannot hold zero elements.
+    shape <- 0L
   }
   if (byrow) {
     fill_shape <- shape %||% (if (!is.null(dim(data))) as.integer(dim(data)) else as.integer(length(data)))

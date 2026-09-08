@@ -359,7 +359,14 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   use_far_tail <- z >= 8
   # See important "NOTE" preceding coefficients above regarding this helper func
   select_far <- function(far, near) {
-    Map(function(x, y) nv_ifelse(use_far_tail, x, y), far, near)
+    # The coefficients are plain R numbers, so a bare `nv_ifelse(pred, x, y)`
+    # would have nothing to yield to and commit at the default float, dragging
+    # the whole result up with it. They are built at `p`'s data type instead.
+    Map(
+      function(x, y) nv_ifelse(use_far_tail, nv_scalar_like(p, x), nv_scalar_like(p, y)),
+      far,
+      near
+    )
   }
   ratio <- horner(inv_z, select_far(cf$p_far_tail, cf$p_tail)) /
     horner(inv_z, select_far(cf$q_far_tail, cf$q_tail))
@@ -379,7 +386,14 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
     res_central,
     nv_ifelse(use_upper, res_tail, -res_tail)
   )
-  res_std <- nv_ifelse(is_boundary, nv_ifelse(use_upper, Inf, -Inf), res_std)
+  # The infinities are built at `p`'s data type: two bare R doubles here would
+  # have nothing to yield to, commit at the default float, and drag the result
+  # up with them.
+  res_std <- nv_ifelse(
+    is_boundary,
+    nv_ifelse(use_upper, nv_scalar_like(p, Inf), nv_scalar_like(p, -Inf)),
+    res_std
+  )
   # Handle tail switch
   if (!lower_tail) {
     res_std <- -res_std

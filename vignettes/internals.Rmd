@@ -384,11 +384,13 @@ trace_fn(\(x) {
 }, list(nv_aval("double", c())))
 ```
 
-Otherwise, the `double` input is fed at the default float data type to the pjrt program:
+Otherwise the input is fed at whatever data type its use sites ask for, and a
+use site that asks for nothing in particular -- a bare R number on the other
+side -- settles on the default float:
 
 ```{r}
 trace_fn(\(x) {
-  prim_add(x, nv_scalar(1, "f32"))
+  prim_add(x, 1)
 }, list(nv_aval("double", c())))
 ```
 
@@ -403,7 +405,13 @@ trace_fn(\(x) {
 }, list(nv_aval("double", c())))
 ```
 
-Because of its possibly problematic implications, a warning message is thrown when this happens.
+Because of its possibly problematic implications, a warning message is thrown
+when the staging widens past the data type the value would have committed to
+anyway -- as above, where an R `double` reaches `i32` through `f64` under an
+`f32` default. Under an `f64` default the staging brings in nothing new and
+there is nothing to warn about; the same goes the other way, for a default
+integer narrower than `i32`, where the staging is unavoidable and the caller
+has no remedy to be pointed at.
 In the future, we might also implement a better solution to this problem.
 One idea would be to convert the `double` input directly to an `i32` before passing it to the compiled program.
 

@@ -42,6 +42,10 @@ Axes before the last two are batch axes and must match
 between \code{a} and \code{b} (no broadcasting).
 Here \code{op} is \code{A} or \code{A^T} depending on \code{transpose_a}.
 }
+\details{
+Differentiation is only implemented for a single system: the \code{reverse} rule
+errors on batched operands (operands with more than 2 axes).
+}
 \section{Implemented Rules}{
 
 \itemize{

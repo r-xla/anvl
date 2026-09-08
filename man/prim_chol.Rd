@@ -26,6 +26,10 @@ The values in the triangle not specified by \code{lower} are implementation-defi
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 Axes before the last two are batch axes.
 }
+\details{
+Differentiation is only implemented for a single matrix: the \code{reverse} rule
+errors on a batched input (an input with more than 2 axes).
+}
 \section{Implemented Rules}{
 
 \itemize{

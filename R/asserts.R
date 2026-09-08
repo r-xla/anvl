@@ -210,6 +210,38 @@ assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt
 }
 
+# Assert that the named operands have the same shape, allowing a scalar among
+# them where `scalar_ok` says so. The primitives do not broadcast, so a
+# mismatch is an error either way -- but stablehlo's inference names *its*
+# operands (`on_true`, `on_false`, `min`, `max`, `lhs`, `rhs`), which no anvl
+# caller wrote. Checking here keeps the caller's own argument in the message.
+assert_shapes_agree <- function(..., scalar_ok = FALSE, call = rlang::caller_env()) {
+  args <- list(...)
+  shapes <- lapply(args, shape)
+  if (scalar_ok) {
+    keep <- lengths(shapes) > 0L
+    args <- args[keep]
+    shapes <- shapes[keep]
+  }
+  if (length(shapes) < 2L || all(vapply(shapes[-1L], identical, logical(1L), shapes[[1L]]))) {
+    return(invisible(NULL))
+  }
+  got <- paste0(
+    "`",
+    names(args),
+    "` is ",
+    vapply(shapes, xlamisc::shapevec_repr, character(1L)),
+    collapse = ", "
+  )
+  all_of <- if (length(args) > 2L) "all " else ""
+  headline <- if (scalar_ok) {
+    "{.arg {names(args)}} must {all_of}have the same shape, apart from any scalar among them."
+  } else {
+    "{.arg {names(args)}} must {all_of}have the same shape."
+  }
+  cli_abort(c(headline, x = "Got {got}."), call = call)
+}
+
 # Assert that a variadic function was given at least one array. Without this an
 # empty `...` reaches `max()`, `Reduce()` or stablehlo and produces a warning or
 # a raw backend message.

@@ -1351,8 +1351,8 @@ describe("nv_select", {
     expect_error(nv_select(nv_array(c(1, 2, 3)), axis = 1L, index = 5L))
   })
 
-  it("errors on a 0-dimensional input", {
-    expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "0-dimensional")
+  it("errors on a scalar input", {
+    expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "at least one axis")
   })
 
   it("accepts a negative dim", {
@@ -1383,8 +1383,8 @@ describe("nv_sort", {
     expect_equal(nv_sort(m), expected)
   })
 
-  it("errors on a 0-dimensional input", {
-    expect_error(nv_sort(nv_scalar(1)), "0-dimensional")
+  it("errors on a scalar input", {
+    expect_error(nv_sort(nv_scalar(1)), "at least one axis")
   })
 
   it("dispatches via the sort() generic", {
@@ -1414,8 +1414,12 @@ describe("nv_argsort", {
     expect_equal(as.vector(x)[perm], c(5, 4, 3, 1, 1))
   })
 
-  it("returns i32 dtype", {
+  it("returns the default integer data type", {
     expect_equal(dtype(nv_argsort(nv_array(c(1, 2)))), default_int())
+    with_default_dtypes(
+      c(int = "i64"),
+      expect_equal(dtype(nv_argsort(nv_array(c(1, 2)))), as_dtype("i64"))
+    )
   })
 
   it("accepts a negative dim", {
@@ -1657,8 +1661,8 @@ describe("nv_quantile", {
     expect_error(nv_quantile(nv_array(c(1, 2)), 1.5))
   })
 
-  it("errors on a 0-dimensional input", {
-    expect_error(nv_quantile(nv_scalar(1), 0.5), "0-dimensional")
+  it("errors on a scalar input", {
+    expect_error(nv_quantile(nv_scalar(1), 0.5), "at least one axis")
   })
 
   it("accepts a negative dim", {
@@ -1689,8 +1693,8 @@ describe("nv_argmax / nv_argmin", {
     expect_equal(nv_argmax(m), prim_argmax(m, axis = 2L))
     expect_equal(nv_argmin(m), prim_argmin(m, axis = 2L))
   })
-  it("errors on a 0-dimensional input", {
-    expect_error(nv_argmax(nv_scalar(3)))
+  it("errors on a scalar input", {
+    expect_error(nv_argmax(nv_scalar(3)), "at least one axis")
     expect_error(nv_argmin(nv_scalar(3)))
   })
   it("accepts a negative dim", {

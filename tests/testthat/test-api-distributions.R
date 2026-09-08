@@ -346,8 +346,17 @@ describe("nv_qnorm", {
   })
 
   it("converts mean/sd to the dtype of p", {
+    # `p`'s own data type, not the default float: the R integers yield to it and
+    # so do the coefficients inside.
     out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), default_float())
+    expect_equal(dtype(out), as_dtype("f32"))
+    with_default_dtypes(
+      c(float = "f64"),
+      expect_equal(
+        dtype(nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)),
+        as_dtype("f32")
+      )
+    )
   })
 })
 

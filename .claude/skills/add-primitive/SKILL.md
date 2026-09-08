@@ -23,13 +23,13 @@ The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always name
 - Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
 - Two symmetric operands of a binary op: `lhs` / `rhs`.
 - Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
-- Dimension-number arguments derived from `x` follow it: `x_batching_dims`, `scatter_dims_to_x_dims`.
+- Axis arguments derived from `x` follow it, and are spelled *axes*, never *dims*: `x_batching_axes`, `scatter_axes_to_x_axes`, `offset_axes`, `index_vector_axis`.
 
 When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.
 
 ```r
 stablehlo::GatherDimensionNumbers(
-  operand_batching_dims = x_batching_dims - 1L,  # spec name on the left
+  operand_batching_dims = x_batching_axes - 1L,  # spec name on the left
   ...
 )
 ```
@@ -90,7 +90,7 @@ Beyond what the vignette covers:
 
 ## Optional: Quickr Rule
 
-If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend — the quickr meta test simply excludes it from coverage.
+If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend; only the quickr one refuses it.
 
 ## API Wrapper (`nv_*`)
 

@@ -65,6 +65,9 @@ As a convenience, \code{b} may have one fewer axis than \code{a} (a single
 right-hand side per batch, shape \verb{(B..., n)} for \code{a} of shape
 \verb{(B..., n, n)}). It is reshaped internally to a column (\code{left_side = TRUE}) or row (\code{left_side = FALSE}) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
+
+Differentiation is only implemented for a single system: a \code{\link[=gradient]{gradient()}} of a
+batched solve errors.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

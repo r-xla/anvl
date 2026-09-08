@@ -45,7 +45,13 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 ## Supported dtypes
 
-- there is currently no support for complex numbers.
+The data types and the words the docs use for groups of them are in `?dtypes`
+(`R/promotion.R`) and `man-roxygen/section_dtype_words.R`: *any* / *numeric* / *integer* /
+*integerish* / *signed numeric* / *float* / *boolean*. Two things to keep in mind:
+
+- There is currently no support for complex numbers.
+- `f16` / `bf16` exist but only some primitives lower for them; the whole float *category* counts
+  as float, so a page that says "any float data type" includes them.
 
 ## Type Promotion
 
@@ -68,16 +74,18 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
   the whole pair.
 - **One backend at a time.** The backend is the option `anvl.backend` (`active_backend()`,
   `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
-  nothing infers a backend from an argument, no function takes a `backend` argument, and an array
-  or device of another backend is an error. This is what makes the default dtypes unambiguous in
-  eager code.
+  nothing infers a backend from an argument, no array operation or `jit()` takes a `backend`
+  argument, and an array or device of another backend is an error. This is what makes the default
+  dtypes unambiguous in eager code. (A handful of helpers about the backend itself do name one:
+  `install_anvl()`, `default_device()`, `local_default_dtypes()` / `with_default_dtypes()`.)
 
 ## One Backend at a Time
 
 The backend is the option `anvl.backend` (`active_backend()`, `local_backend()`, `with_backend()`).
 Every jitted function runs on it, reading it at call time; nothing infers a backend from an
-argument, no function takes a `backend` argument, and an array or device of another backend is an
-error.
+argument, no array operation or `jit()` takes a `backend` argument, and an array or device of
+another backend is an error. Only helpers *about* the backend name one (`install_anvl()`,
+`default_device()`, `local_default_dtypes()` / `with_default_dtypes()`).
 
 ## Primitive System
 

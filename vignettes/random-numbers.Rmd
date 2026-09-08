@@ -61,10 +61,12 @@ result$values
 ```
 
 `mean` and `sd` are arrayish, so they may vary across the sample: each is
-either a scalar or exactly the sample's shape. They are brought to the
-sample's data type, so an `sd` that would have to narrow to reach it is an
-error -- here `sds` and the sample share the default float, so nothing has to
-move:
+either a scalar or exactly the sample's shape. They also decide what the sample
+is drawn at when `dtype` is left unset: they are promoted to a common float
+data type -- the default float if both are plain R numbers -- and the sample
+comes out at it. Passing `dtype` turns that around and brings `mean` and `sd`
+to it instead, which is an error for one that would have to narrow. Here `sds`
+is a default-float matrix and no `dtype` is given, so the sample follows it:
 
 ```{r}
 sds <- nv_matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2)

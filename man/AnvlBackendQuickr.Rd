@@ -51,11 +51,12 @@ lowered to quickr code. See \code{vignette("primitives")} for an overview.
 
 \code{f64}, \code{i32} and \code{bool} -- the three R storage types.
 
-Two families are narrower still: the bitwise primitives (\code{prim_and()},
-\code{prim_or()}, \code{prim_xor()}, \code{prim_not()}) and the boolean reductions
-(\code{prim_reduce_any()}, \code{prim_reduce_all()}) lower only for \code{bool} here, so
+One family is narrower still: the bitwise primitives (\code{prim_and()},
+\code{prim_or()}, \code{prim_xor()}, \code{prim_not()}) lower only for \code{bool} here, so
 their integer forms -- which the pjrt backend runs -- are refused with a
-\code{cli} error rather than silently mis-lowered.
+\code{cli} error rather than silently mis-lowered. (\code{prim_reduce_any()} and
+\code{prim_reduce_all()} take a boolean operand on every backend, so they lose
+nothing here.)
 }
 
 \section{Quickr JIT arguments}{

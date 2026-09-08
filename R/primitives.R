@@ -268,6 +268,28 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 prim_broadcast_in_axes <- new_primitive(
   "broadcast_in_axes",
   function(x, shape, broadcast_axes) {
+    shape <- assert_shapevec(shape)
+    # stablehlo's inference reports these as `broadcast_dimensions` out of
+    # range, naming its own argument and a 0-based half-open interval.
+    ok_axes <- checkmate::test_integerish(
+      broadcast_axes,
+      lower = 1L,
+      upper = length(shape),
+      any.missing = FALSE
+    )
+    if (!ok_axes) {
+      cli_abort(c(
+        "{.arg broadcast_axes} must be axes of the result, between 1 and {length(shape)}.",
+        x = "Got {.val {broadcast_axes}}."
+      ))
+    }
+    broadcast_axes <- as.integer(broadcast_axes)
+    if (length(broadcast_axes) != naxes(x)) {
+      cli_abort(c(
+        "{.arg broadcast_axes} must name one axis of the result per axis of {.arg x}.",
+        x = "{.arg x} has {naxes(x)} axi{?s/es}, but {.arg broadcast_axes} has {length(broadcast_axes)} entr{?y/ies}." # nolint
+      ))
+    }
     infer_fn <- function(x, shape, broadcast_axes) {
       bd_attr <- r_to_constant(
         as.integer(broadcast_axes - 1L),
@@ -473,7 +495,7 @@ prim_concatenate <- new_primitive(
   function(..., axis) {
     dots <- list(...)
     if (!length(dots)) {
-      cli_abort("{.fn prim_concatenate} needs at least one operand.")
+      cli_abort("{.fn prim_concatenate} needs at least one array to concatenate.")
     }
     axis <- resolve_axis(axis, naxes(dots[[1L]]))
     infer_fn <- function(..., axis) {
@@ -891,7 +913,7 @@ prim_reduce_all <- new_primitive("reduce_all", make_reduce_op(infer_reduce_boole
 infer_cum <- function(x, axis) {
   rank <- length(shape(x))
   if (rank == 0L) {
-    cli_abort("cumulative ops require at least a 1-dimensional {.arg x}, but it is a scalar")
+    cli_abort("{.arg x} must have at least one axis to accumulate along, but it is a scalar.")
   }
   if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
     cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
@@ -911,7 +933,7 @@ cum_op <- function(x, axis) {
 infer_cum_extreme <- function(x, axis) {
   rank <- length(shape(x))
   if (rank == 0L) {
-    cli_abort("cumulative ops require at least a 1-dimensional {.arg x}, but it is a scalar")
+    cli_abort("{.arg x} must have at least one axis to accumulate along, but it is a scalar.")
   }
   if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
     cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
@@ -1103,7 +1125,7 @@ prim_reduce <- new_primitive(
     # `x` and `init` agree: the rule above brought them together or refused.
     op_dtype <- dtype(x)
     if (naxes(init) != 0L) {
-      cli_abort("{.arg init} must be a scalar (0-dimensional)")
+      cli_abort("{.arg init} must be a scalar, but it has shape {xlamisc::shapevec_repr(shape(init))}.")
     }
 
     current_desc <- .current_descriptor(silent = TRUE)
@@ -2320,6 +2342,7 @@ prim_polygamma <- new_primitive(
       list(out)
     }
     operands <- apply_promotion(list(n = n, x = x), promote_rdata_common())
+    assert_shapes_agree(n = operands$n, x = operands$x)
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -2483,6 +2506,12 @@ prim_clamp <- new_primitive(
       list(out)
     }
     operands <- apply_promotion(list(min_val = min_val, x = x, max_val = max_val), promote_rdata_common())
+    assert_shapes_agree(
+      min_val = operands$min_val,
+      x = operands$x,
+      max_val = operands$max_val,
+      scalar_ok = TRUE
+    )
     graph_desc_add(
       self,
       operands,
@@ -2788,6 +2817,10 @@ prim_ifelse <- new_primitive(
     }
     # `pred` is a bool and keeps out of it; the two branches must agree.
     operands <- apply_promotion(list(true_value = true_value, false_value = false_value), promote_rdata_common())
+    assert_shapes_agree(true_value = operands$true_value, false_value = operands$false_value)
+    if (naxes(pred) != 0L) {
+      assert_shapes_agree(pred = pred, true_value = operands$true_value)
+    }
     graph_desc_add(
       self,
       c(list(pred = pred), operands),
@@ -2962,8 +2995,21 @@ prim_while <- new_primitive(
       mismatch <- function(a, b) {
         which(!vapply(seq_along(a), \(i) eq_type(a[[i]], b[[i]]), logical(1L)))
       }
-      describe <- function(i, a, b, verb) {
-        sprintf("`%s` %s %s and %s %s", labels[i], verb[[1L]], repr(a[[i]]), verb[[2L]], repr(b[[i]]))
+      describe <- function(idx, a, b, verb) {
+        vapply(
+          idx,
+          function(i) {
+            sprintf(
+              "`%s` %s %s and %s %s",
+              labels[[i]],
+              verb[[1L]],
+              repr(a[[i]]),
+              verb[[2L]],
+              repr(b[[i]])
+            )
+          },
+          character(1L)
+        )
       }
       bad <- mismatch(outs, outs_body)
       if (length(bad)) {
@@ -3665,6 +3711,9 @@ prim_gather <- new_primitive(
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' Axes before the last two are batch axes.
+#' @details
+#' Differentiation is only implemented for a single matrix: the `reverse` rule
+#' errors on a batched input (an input with more than 2 axes).
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes
 #' @template param_unary_x
@@ -3716,6 +3765,9 @@ prim_chol <- new_primitive(
 #' Axes before the last two are batch axes and must match
 #' between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
+#' @details
+#' Differentiation is only implemented for a single system: the `reverse` rule
+#' errors on batched operands (operands with more than 2 axes).
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The last two axes must
 #'   be equal (square matrix); any leading axes are batch axes. Can be any

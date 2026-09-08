@@ -12,6 +12,12 @@
 #'   integer meet (`ui8` and `i8` give `i16`). That last rule saturates at
 #'   `i64`, which cannot hold the upper half of `ui64` -- `common_dtype("ui64",
 #'   "i8")` is `i64`, so convert explicitly where those values matter.
+#'
+#'   Floats are ordered by width alone, which leaves `f16` and `bf16` -- the
+#'   same width, but neither one's range and precision covering the other's --
+#'   without a true common type. They give `f16`, which loses `bf16`'s exponent
+#'   range, so bring them together explicitly (at `f32`, say) where that
+#'   matters.
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
@@ -626,12 +632,18 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' * **boolean** -- `bool`
 #' * **integer** -- `i8`, `i16`, `i32`, `i64` and their unsigned counterparts
 #'   `ui8`, `ui16`, `ui32`, `ui64`
-#' * **float** -- `f32`, `f64`, and the narrower floats such as `f16` and
-#'   `bf16` where a backend supports them
+#' * **float** -- `f32`, `f64`, and the narrower floats `f16` and `bf16`
 #'
 #' These are the categories promotion works in, where signed and unsigned
 #' integers count as one. [`tengen::dtype_category()`] reports a finer split
 #' that names `int` and `uint` separately.
+#'
+#' Being in a category is not the same as being runnable: `f16` and `bf16` are
+#' float data types everywhere anvl reasons about data types -- wherever a page
+#' says *any float data type*, they are included, and promotion treats them as
+#' floats -- but no backend materializes them today, so an array at one of them
+#' fails when it reaches the backend (`Unsupported type: f16`) rather than at
+#' the anvl call. There is no support for complex data types at all.
 #'
 #' @template section_dtype_words
 #' @section Where a Data Type Comes From:

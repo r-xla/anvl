@@ -20,6 +20,12 @@ integers or among the floats, the higher category where the categories
 differ, and a wider \emph{signed} integer where a signed and an unsigned
 integer meet (\code{ui8} and \code{i8} give \code{i16}). That last rule saturates at
 \code{i64}, which cannot hold the upper half of \code{ui64} -- \code{common_dtype("ui64", "i8")} is \code{i64}, so convert explicitly where those values matter.
+
+Floats are ordered by width alone, which leaves \code{f16} and \code{bf16} -- the
+same width, but neither one's range and precision covering the other's --
+without a true common type. They give \code{f16}, which loses \code{bf16}'s exponent
+range, so bring them together explicitly (at \code{f32}, say) where that
+matters.
 }
 \description{
 Compute the common data type.

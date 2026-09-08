@@ -62,8 +62,11 @@ The general survival rate was `r sprintf("%.2f", mean(y) * 100)`%.
 Now we convert the data to `AnvlArray`s.
 
 ```{r}
-X_tensor <- nv_array(X, dtype = "f32")
-y_tensor <- nv_array(y, dtype = "f32", shape = c(n, 1L))
+# `X` is numeric, so it takes the default float on its own; `y` is an R
+# integer, which would take the default *integer* instead, so we name the float
+# we want. Everything downstream follows, whatever the defaults are set to.
+X_tensor <- nv_array(X)
+y_tensor <- nv_array(y, dtype = default_float(), shape = c(n, 1L))
 ```
 
 ## Model
@@ -134,8 +137,8 @@ fit_logreg <- jit(function(X, y, beta, alpha, n_epochs, lr) {
 We initialize the parameters and train the model with a single function call.
 
 ```{r}
-beta_init <- nv_array(rnorm(p), dtype = "f32", shape = c(p, 1L))
-alpha_init <- nv_scalar(0, dtype = "f32")
+beta_init <- nv_array(rnorm(p), shape = c(p, 1L))
+alpha_init <- nv_scalar(0)
 
 result <- fit_logreg(
   X_tensor, y_tensor,

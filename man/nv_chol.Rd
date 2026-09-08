@@ -28,6 +28,10 @@ triangle not selected by \code{lower} are implementation-defined.
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 Supports batched inputs: axes before the last two are batch axes.
 }
+\details{
+Differentiation is only implemented for a single matrix: a \code{\link[=gradient]{gradient()}} of a
+batched decomposition errors.
+}
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the factor has the matrix's shape and data type

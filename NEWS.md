@@ -112,6 +112,19 @@
   `nv_reduce_all()`) now reject a non-boolean input.
 * `nv_runif()` with `min == max` now returns the `state` / `values` list every
   other sampler returns, instead of the filled array on its own.
+* `nv_qnorm()` now returns `p`'s data type whatever the default float is. Its
+  tail coefficients and its infinities were plain R numbers with nothing typed
+  to yield to, so they committed at the default and dragged the result up with
+  them.
+* `prim_while()` now names every state member whose data type or shape changes
+  across the body; it used to report the first label repeated once per mismatch,
+  without the data types.
+* `nv_array()` of a zero-length vector gives a length-0 array instead of
+  failing inside pjrt.
+* The staging warning (`anvl_staging_widens_warning`) no longer fires where the
+  caller has no way to avoid the staging -- under a default integer narrower
+  than `i32`, where converting in its own category first would stage through
+  `i32` too. Its hint used to name a remedy that could not work.
 
 ## Documentation
 
@@ -134,6 +147,26 @@
   value takes, and are shown on `?arrayish`.
 * Primitives modelled on a StableHLO or CHLO op now link that op's
   specification instead of restating it.
+* `prim_chol()` / `nv_chol()` and `prim_triangular_solve()` /
+  `nv_triangular_solve()` say that differentiation is only implemented for a
+  single matrix, not a batch, which is what their `reverse` rules do.
+* `?dtypes` says that `f16` and `bf16` count as float data types everywhere
+  anvl reasons about data types but are not materialized by any backend today,
+  and `?common_dtype` that the two have no true common type (they give `f16`).
+* `?AnvlBackendQuickr` and `vignette("primitives")` no longer claim the boolean
+  reductions have an integer form on pjrt -- `prim_reduce_any()` /
+  `prim_reduce_all()` take a boolean operand on every backend.
+* `vignette("random-numbers")` had the promotion direction backwards: `mean` and
+  `sd` decide what the sample is drawn at when `dtype` is unset, not the other
+  way around.
+* `vignette("internals")` no longer implies that a use site asking for `f32`
+  demonstrates the default float, and says when the staging warning fires.
+* `vignette("logistic-regression")` follows the configured default float instead
+  of pinning `f32` for the data and the default for the learning rate, which did
+  not agree under an `f64` default.
+* A number of error messages now speak anvl's vocabulary -- *scalar* rather than
+  "0-dimensional array", the offending shapes rather than "lhs and rhs are not
+  broadcastable", and the argument's name rather than a stablehlo operand name.
 
 ## Tests
 

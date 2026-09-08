@@ -327,13 +327,76 @@ that errored under an `f64` default, four `gotchas.Rmd` demonstrations that
 only held at one default, and every remaining place a vignette named `f32` or
 `i32` as a fact rather than as the default in force.
 
+### Round three
+
+A third review confirmed the round-two fixes and found seventeen more, all
+addressed here.
+
+Code:
+
+- `nv_qnorm()` returned the default float rather than `p`'s data type. The
+  boundary infinities and the tail coefficients were plain R numbers with
+  nothing typed to yield to, so they committed at the default and took the
+  result with them; they are built with `nv_scalar_like(p, ...)` now. Accuracy
+  is unchanged (`f64` max relative error 3.4e-16 against `stats::qnorm()`).
+- `prim_while()` reported the first mismatched state member once per mismatch
+  and dropped the data types -- `a[[bad]]` with a vector `bad` is recursive
+  indexing. It now names every member that changes.
+- `nv_array(numeric(0))` failed inside pjrt; it gives a length-0 array.
+- The staging warning fired where the caller could do nothing about it: under a
+  default integer narrower than `i32`, an R integer stages through `i32`
+  whatever the target, and the hint's remedy (convert in its own category
+  first) stages through `i32` too. It now fires only where the remedy exists.
+- Four elementwise primitives let stablehlo name *its* operands on a shape
+  mismatch (`on_true`/`on_false`, `min`/`max`, `lhs`/`rhs`,
+  `broadcast_dimensions`). A new `assert_shapes_agree()` checks first, so the
+  message names the argument the caller passed. Ten more messages now say
+  *scalar* rather than "0-dimensional array", or name the shapes rather than
+  "lhs and rhs are not broadcastable".
+
+Documentation:
+
+- `prim_chol()` / `nv_chol()` / `prim_triangular_solve()` /
+  `nv_triangular_solve()` list a `reverse` rule but abort on a batched input;
+  each page says so, and the two aborts read like anvl's other messages.
+- `?dtypes` on `f16` / `bf16`: they are float data types everywhere anvl
+  reasons about data types, but no backend materializes them, so an array at
+  one fails at the backend. `?common_dtype` on the pair having no true common
+  type (they meet at `f16`, losing `bf16`'s exponent range).
+- `?AnvlBackendQuickr` and `vignette("primitives")` claimed the boolean
+  reductions have an integer form on pjrt; they take a boolean operand
+  everywhere. Only the bitwise primitives are narrower on quickr.
+- `vignette("random-numbers")` had `nv_rnorm()`'s promotion backwards --
+  `mean` / `sd` decide the sample's data type when `dtype` is unset, and
+  `dtype` turns that around.
+- `vignette("internals")` used an explicit `f32` use site to demonstrate the
+  *default* float, and asserted the staging warning without its condition.
+- `vignette("logistic-regression")` pinned `f32` for the data and left the
+  learning rate at the default, which disagreed under an `f64` default. It
+  follows the default throughout now (verified at both, same fit).
+- `.claude/skills/add-api-function` never mentioned the `@jit` roclet, which is
+  how a shipped API function is jitted; `add-primitive` still said `_dims`
+  where the arguments are `_axes`, and named a quickr meta test that does not
+  exist. `AGENTS.md`'s "no function takes a `backend` argument" is true of
+  array operations, not of `install_anvl()` / `default_device()` /
+  `local_default_dtypes()`, and its `## Supported dtypes` section now points at
+  `?dtypes`. `../claude-config/CLAUDE.md` said `nvl_*`, `nv_jit()` and
+  `ndims()`.
+
+Not changed, with reasons:
+
+- The `f64`/`i64` CI override makes a few `as_dtype("f64")` assertions
+  vacuous, but each is live in the ordinary run at the registered defaults, so
+  the two workflows cover each other. One stale label (`"returns i32 dtype"`
+  for a `default_int()` assertion) is fixed, and that test now also checks
+  under a moved default.
+
 ### Left for you
 
 - `prim_cumprod` is the only cumulative primitive with no reverse rule; the
   gradient needs care around zeros, so it is not written here.
-- Errors still leak stablehlo's operand names on `prim_clamp` (`min`),
-  `prim_polygamma` (`lhs`/`rhs`), `prim_ifelse` (`on_true`/`on_false`) and
-  `prim_broadcast_in_axes` (`broadcast_dimensions`).
+- Batched `prim_chol()` / `prim_triangular_solve()` have no gradient. Both
+  pages now say so; the rules are still worth writing.
 - `axis = NULL` means "all axes" for the reductions, "flatten" for the
   cumulatives and "the last axis" for the order statistics -- the third
   diverges from base R for the S3-dispatched `median()` and `sort()`.
