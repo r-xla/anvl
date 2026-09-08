@@ -81,7 +81,8 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #'   fills with `3`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
-#' @template param_dtype
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   Data type of the result. Can be any data type.
 #' @template param_device
 #' @return ([`arrayish`])\cr
 #'   Has the given `shape` and `dtype`.
@@ -1200,7 +1201,8 @@ prim_argmax <- new_primitive(
 #' @description
 #' Returns the index of the minimum value along a single axis. Ties
 #' are broken by returning the smallest index.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @inheritParams prim_argmax
 #' @return ([`arrayish`])\cr
 #'   Has `i32` data type whatever the input's is, and the input's shape with

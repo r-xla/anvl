@@ -8,7 +8,8 @@ prim_argmin(x, axis, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to find the index of the maximum.
