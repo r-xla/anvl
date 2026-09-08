@@ -165,36 +165,8 @@ as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
     ##  2
     ## [ CPUf64{} ]
 
-One common rule is
-[`promote_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
-which is used by functions such as `nv_add` above. It computes the
-common data type of the inputs. In this case, it returns `f32`, which is
-the default data type of R `double`s. We can also override the default
-via
-[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md),
-which we use below to use double-precision floats.
-
-``` r
-
-with_default_dtypes(c(float = "f64"), {
-  list(
-    committed = jit(\() 1.0)(),
-    yielded = nv_array(1, dtype = "f32") + 1.5
-  )
-})
-```
-
-    ## $committed
-    ## AnvlArray
-    ##  1
-    ## [ CPUf64{} ] 
-    ## 
-    ## $yielded
-    ## AnvlArray
-    ##  2.5000
-    ## [ CPUf32{1} ]
-
-Below, we compute the common data type of the arguments.
+Below, we show how to actually compute the common data type of some
+arguments using the `promote_common` rule.
 
 ``` r
 
