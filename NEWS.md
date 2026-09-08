@@ -19,6 +19,10 @@
 
 ## Features
 
+* `nv_polygamma()`'s `n` is now an ordinary arrayish argument rather than a
+  static one, so it accepts an array and not just a plain R value, matching
+  `prim_polygamma()` and JAX's `jax.scipy.special.polygamma()`.
+
 * New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with 
   a provided `steps` argument.
 * `as.vector` now and returns `bit64::integer64`

@@ -147,10 +147,12 @@ package. None of it is fixed here — this is documentation work.
   value") rather than in an anvl check.
 - `prim_iota()` rejects boolean, as `nv_seq()` does, but `prim_fill()` accepts
   it — the constructors do not agree on which data types they cover.
-- `nv_polygamma()`'s `n` is a static argument, so it takes a plain R value and
-  rejects an `AnvlArray`, while `prim_polygamma()`'s `n` is a normal arrayish
-  operand. The `nv_*` page described `n` and `x` together as arrayish values
-  that get promoted and broadcast, which held for `x` alone.
+- `nv_polygamma()`'s `n` used to be a static argument, so it rejected an
+  `AnvlArray` while `prim_polygamma()`'s `n` accepted one. Nothing in the body
+  needed the static value, and JAX treats `n` as a traced array too, so the
+  annotation was dropped and both layers now agree. Note that JAX additionally
+  requires `n` to arrive with an integer dtype; anvl cannot copy that check
+  without rejecting `nv_polygamma(1, x)`, since R's `1` is a double.
 - `nv_polygamma()` promotes an integer or boolean `x` to a float, where
   `prim_polygamma()` refuses anything but a float. Same for `nv_median()` /
   `nv_quantile()` against a float-only reading of their primitives.

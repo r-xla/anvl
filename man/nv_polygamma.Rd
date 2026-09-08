@@ -7,16 +7,15 @@
 nv_polygamma(n, x)
 }
 \arguments{
-\item{n}{(\code{numeric(1)})\cr
-Order of the polygamma function, typically a non-negative whole number.
-A plain R value: \code{n} is a static argument, so an \code{\link{AnvlArray}} is
-rejected. It is broadcast against \code{x}.}
-
-\item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any data type: it is promoted with \code{n} to a float, so an
-integer or boolean array is converted rather than refused, where
-\code{\link[=prim_polygamma]{prim_polygamma()}} requires a float outright. An R value commits to its
-\link[=default_dtypes]{default data type}.}
+\item{n, x}{(\code{\link{arrayish}})\cr
+Order of the polygamma function and the value to evaluate it at. \code{n}
+typically holds non-negative whole numbers. Can be of any data type: the
+two are
+\link[=nv_promote_to_common]{promoted to a common data type}, which is a float
+because that is all \code{\link[=prim_polygamma]{prim_polygamma()}} takes, so an integer or boolean
+input is converted rather than refused. Scalars are
+\link[=nv_broadcast_scalars]{broadcast} to the shape of the other, so
+\code{nv_polygamma(1, x)} works for any \code{x}.}
 }
 \value{
 (\code{\link{arrayish}})\cr

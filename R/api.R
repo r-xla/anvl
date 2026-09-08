@@ -1444,22 +1444,22 @@ nv_lgamma <- prim_lgamma
 #' scalar arguments are
 #' [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar
 #' arguments.
-#' @param n (`numeric(1)`)\cr
-#'   Order of the polygamma function, typically a non-negative whole number.
-#'   A plain R value: `n` is a static argument, so an [`AnvlArray`] is
-#'   rejected. It is broadcast against `x`.
-#' @param x ([`arrayish`])\cr
-#'   One input. Can be any data type: it is promoted with `n` to a float, so an
-#'   integer or boolean array is converted rather than refused, where
-#'   [prim_polygamma()] requires a float outright. An R value commits to its
-#'   [default data type][default_dtypes].
+#' @param n,x ([`arrayish`])\cr
+#'   Order of the polygamma function and the value to evaluate it at. `n`
+#'   typically holds non-negative whole numbers. Can be of any data type: the
+#'   two are
+#'   [promoted to a common data type][nv_promote_to_common()], which is a float
+#'   because that is all [prim_polygamma()] takes, so an integer or boolean
+#'   input is converted rather than refused. Scalars are
+#'   [broadcast][nv_broadcast_scalars()] to the shape of the other, so
+#'   `nv_polygamma(1, x)` works for any `x`.
 #' @template return_binary
 #' @seealso [prim_polygamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' nv_polygamma(1, x) # trigamma
 #' @export
-#' @jit static 1L
+#' @jit
 nv_polygamma <- function(n, x) {
   args <- nv_promote_to_common(n, x)
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
