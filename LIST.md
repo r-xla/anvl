@@ -76,7 +76,8 @@ Matrix decompositions: `prim_chol` `prim_qr` `prim_lu` `prim_svd` `prim_eigh`
 
 ### To do
 
-None. Every primitive except `prim_rng_bit_generator` is covered.
+None. `prim_rng_bit_generator` is covered too: the algorithm names, the state
+whose length depends on the choice, and the data types it can draw.
 
 ## API functions
 
@@ -186,5 +187,8 @@ crashes R), so the image's plugin is left in place.
 
 Owned by the maintainer, not to be touched by this effort: the random number
 generators and the distribution and density functions —
-`prim_rng_bit_generator` `nv_rng_state` `nv_rnorm` `nv_runif` `nv_rbinom`
-`nv_sample` `nv_sample_int` `nv_dnorm` `nv_pnorm` `nv_qnorm`
+`nv_rng_state` `nv_rnorm` `nv_runif` `nv_rbinom` `nv_sample` `nv_sample_int`
+`nv_dnorm` `nv_pnorm` `nv_qnorm`. `prim_rng_bit_generator` was documented on
+request; the `param_initial_state` template it used to share with those
+`nv_*` functions was left alone, since they always drive `"THREE_FRY"` and so
+always take a two-element state.
