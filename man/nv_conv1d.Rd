@@ -15,11 +15,13 @@ nv_conv1d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}. Can be any data type.
-\code{x} and \code{weight} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}. Can be any data type; \code{x} and
+\code{weight} are \link[=nv_promote_to_common]{promoted to a common data type}. An
+R value assumes the other operand's data type, and commits to its
+\link[=default_dtypes]{default data type} when that has none either.}
 
 \item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.
-Shares \code{x}'s data type -- see \code{x}.}
+Promoted together with \code{x} -- see \code{x}.}
 
 \item{stride, padding, dilation}{(\code{integer()})\cr Length 1.}
 
@@ -29,7 +31,7 @@ Shares \code{x}'s data type -- see \code{x}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the data type \code{x} and \code{weight} agreed on, and shape
+Has the operands' common data type, and shape
 \verb{[N, C_out, out_W]}.
 }
 \description{

@@ -2050,12 +2050,16 @@ nv_chol <- prim_chol
 #'
 #' @param a ([`arrayish`])\cr
 #'   Square non-singular matrix with exactly 2 axes. Can be any float data
-#'   type. `r roxy_agree("a", "b")`
+#'   type; `a` and `b` are
+#'   [promoted to a common data type][nv_promote_to_common()], which must come
+#'   out a float. An R value assumes the other operand's data type, and commits
+#'   to its [default data type][default_dtypes] when that has none either.
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side, vector of length `n` or matrix with `n` rows.
+#'   Right-hand side, vector of length `n` or matrix with `n` rows. Promoted
+#'   together with `a` -- see `a`.
 #' @return ([`arrayish`])\cr
-#'   The solution `x` such that `a %*% x = b`, with `b`'s shape and the data
-#'   type `a` and `b` agreed on.
+#'   The solution `x` such that `a %*% x = b`, with `b`'s shape and the
+#'   operands' common data type.
 #' @seealso [nv_chol()], [nv_triangular_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the solution has `b`'s shape and the operands' common data type
@@ -2065,12 +2069,19 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  # `a` and `b` must agree, and neither is widened to meet the other: an R
-  # matrix yields to `a`'s data type, two typed arrays that disagree are
-  # rejected.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  # The `nv_*` layer promotes across data types, as `nv_matmul()` does: an
+  # `f32` and an `f64` meet at `f64` rather than being refused. The primitives
+  # underneath still require operands that already agree.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_common())
   a <- args$a
   b <- args$b
+  # After promotion both carry the common data type, so one check covers them
+  # and names an argument the caller passed.
+  assert_float_dtype(
+    dtype(a),
+    arg = "a",
+    hint = "`a` and `b` are promoted together, so the common data type must be a float."
+  )
   a_shape <- shape(a)
   if (length(a_shape) != 2L || a_shape[1L] != a_shape[2L]) {
     cli_abort("{.arg a} must be a square 2-D matrix")
@@ -2113,7 +2124,10 @@ nv_solve <- function(a, b) {
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The last two
 #'   axes must be equal; any leading axes are batch axes. Can be any float
-#'   data type. `r roxy_agree("a", "b")`
+#'   data type; `a` and `b` are
+#'   [promoted to a common data type][nv_promote_to_common()], which must come
+#'   out a float. An R value assumes the other operand's data type, and commits
+#'   to its [default data type][default_dtypes] when that has none either.
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
 #'   * full rank — shape `(B..., n, k)` when `left_side = TRUE`, or
@@ -2123,7 +2137,8 @@ nv_solve <- function(a, b) {
 #'     is reshaped internally and the reshape is undone on the result so
 #'     the output rank matches `b`.
 #'
-#'   `b`'s batch axes (`B...`) must match `a`'s exactly.
+#'   `b`'s batch axes (`B...`) must match `a`'s exactly. It is promoted
+#'   together with `a` -- see `a`.
 #' @param left_side (`logical(1)`)\cr
 #'   If `TRUE` (default), solve `op(a) %*% x = b`; if `FALSE`,
 #'   solve `x %*% op(a) = b`.
@@ -2135,8 +2150,7 @@ nv_solve <- function(a, b) {
 #' @param transpose_a (`logical(1)`)\cr
 #'   If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
 #' @return ([`arrayish`])\cr
-#'   The solution `x`, with `b`'s shape and the data type `a` and `b` agreed
-#'   on.
+#'   The solution `x`, with `b`'s shape and the operands' common data type.
 #' @seealso [nv_solve()], [nv_chol()], [prim_triangular_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' L <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
@@ -2152,10 +2166,15 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  # As in `nv_solve()`: the two must agree, and neither is widened.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  # As in `nv_solve()`: the `nv_*` layer promotes across data types.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promote_common())
   a <- args$a
   b <- args$b
+  assert_float_dtype(
+    dtype(a),
+    arg = "a",
+    hint = "`a` and `b` are promoted together, so the common data type must be a float."
+  )
 
   a_shape <- shape(a)
   b_shape <- shape(b)
@@ -4071,15 +4090,17 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' `[batch, in_channels, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kW]`, output is
 #' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, W]`. Can be any data type.
-#'   `r roxy_agree("x", "weight")`
+#' @param x ([`arrayish`])\cr `[N, C_in, W]`. Can be any data type; `x` and
+#'   `weight` are [promoted to a common data type][nv_promote_to_common()]. An
+#'   R value assumes the other operand's data type, and commits to its
+#'   [default data type][default_dtypes] when that has none either.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
-#'   Shares `x`'s data type -- see `x`.
+#'   Promoted together with `x` -- see `x`.
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
 #' @return ([`arrayish`])\cr
-#'   Has the data type `x` and `weight` agreed on, and shape
+#'   Has the operands' common data type, and shape
 #'   `[N, C_out, out_W]`.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -4103,17 +4124,19 @@ nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' `[batch, in_channels, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kh, kw]`, output is
 #' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. Can be any data type.
-#'   `r roxy_agree("x", "weight")`
+#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. Can be any data type; `x` and
+#'   `weight` are [promoted to a common data type][nv_promote_to_common()]. An
+#'   R value assumes the other operand's data type, and commits to its
+#'   [default data type][default_dtypes] when that has none either.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
-#'   Shares `x`'s data type -- see `x`.
+#'   Promoted together with `x` -- see `x`.
 #' @param stride (`integer()`)\cr Length 1 or 2.
 #' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
 #' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
 #' @return ([`arrayish`])\cr
-#'   Has the data type `x` and `weight` agreed on, and shape
+#'   Has the operands' common data type, and shape
 #'   `[N, C_out, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -4137,14 +4160,16 @@ nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
 #' padding (e.g. causal temporal padding) is available via
 #' [prim_convolution()].
-#' @param x ([`arrayish`])\cr `[N, C_in, D, H, W]`. Can be any data type.
-#'   `r roxy_agree("x", "weight")`
+#' @param x ([`arrayish`])\cr `[N, C_in, D, H, W]`. Can be any data type; `x` and
+#'   `weight` are [promoted to a common data type][nv_promote_to_common()]. An
+#'   R value assumes the other operand's data type, and commits to its
+#'   [default data type][default_dtypes] when that has none either.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kD, kH, kW]`.
-#'   Shares `x`'s data type -- see `x`.
+#'   Promoted together with `x` -- see `x`.
 #' @inheritParams nv_conv2d
 #' @param stride,padding,dilation (`integer()`)\cr Length 1 or 3.
 #' @return ([`arrayish`])\cr
-#'   Has the data type `x` and `weight` agreed on, and shape
+#'   Has the operands' common data type, and shape
 #'   `[N, C_out, out_D, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -4158,8 +4183,11 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 }
 
 .nv_convnd <- function(x, weight, n, stride, padding, dilation, groups, precision) {
-  # `x`/`weight` are left as raw arrayish; prim_convolution's machinery
-  # (graph_desc_add -> maybe_box_arrayish) coerces them.
+  # The `nv_*` layer promotes across data types; `prim_convolution()` would
+  # require `x` and `weight` to agree already, and would name its own operand.
+  args <- as_anvl_arrays(x = x, weight = weight, .promote = promote_common())
+  x <- args$x
+  weight <- args$weight
   stride <- .nv_conv_vec(stride, n, "stride")
   pad <- .nv_conv_vec(padding, n, "padding")
   dilation <- .nv_conv_vec(dilation, n, "dilation")

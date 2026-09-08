@@ -12,17 +12,21 @@ nv_solve(a, b)
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
 Square non-singular matrix with exactly 2 axes. Can be any float data
-type. \code{a} and \code{b} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+type; \code{a} and \code{b} are
+\link[=nv_promote_to_common]{promoted to a common data type}, which must come
+out a float. An R value assumes the other operand's data type, and commits
+to its \link[=default_dtypes]{default data type} when that has none either.}
 
 \item{b}{(\code{\link{arrayish}})\cr
-Right-hand side, vector of length \code{n} or matrix with \code{n} rows.}
+Right-hand side, vector of length \code{n} or matrix with \code{n} rows. Promoted
+together with \code{a} -- see \code{a}.}
 
 \item{...}{No additional arguments.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-The solution \code{x} such that \code{a \%*\% x = b}, with \code{b}'s shape and the data
-type \code{a} and \code{b} agreed on.
+The solution \code{x} such that \code{a \%*\% x = b}, with \code{b}'s shape and the
+operands' common data type.
 }
 \description{
 Solves the linear system \code{a \%*\% x = b} for \code{x}. Uses LU decomposition

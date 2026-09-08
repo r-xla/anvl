@@ -22,6 +22,15 @@
   *named* lists -- `values` / `indices` for the first three, `state` /
   `values` for the rest -- as `prim_qr()` and `prim_svd()` already did.
   Positional indexing keeps working.
+* `nv_solve()`, `nv_triangular_solve()` and `nv_conv1d()` / `nv_conv2d()` /
+  `nv_conv3d()` now promote their operands to a common data type, like every
+  other `nv_*` function: `nv_solve(a_f32, b_f64)` gives `f64` where it used to
+  refuse the pair, and an integer input meets a float weight at the float. They
+  used to apply `promote_rdata_common()`, the primitive layer's rule, so a
+  mismatch was rejected -- with a hint telling the caller to use an operation
+  that promotes, which is what they were already calling. The solves still
+  require the common data type to be a float, and now say so naming `a`
+  instead of leaking `prim_lu()`'s operand name.
 * `nv_quantile()` and `nv_median()` now interpolate at a float data type, so
   they are correct for a non-float input: `nv_median(nv_array(1:4))` was `1`
   and is now `2.5`. `probs` used to be built at the input's data type, where

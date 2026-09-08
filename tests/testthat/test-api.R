@@ -2063,3 +2063,71 @@ test_that("nv_serialize returns NULL when it writes to a connection", {
   close(con)
   expect_equal(nv_read(path)$x, nv_array(c(1, 2)))
 })
+
+test_that("nv_solve, nv_triangular_solve and nv_conv* promote across data types", {
+  # The `nv_*` layer promotes, as `nv_matmul()` does; the primitives underneath
+  # still require operands that already agree.
+  a32 <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f32")
+  a64 <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
+  b32 <- nv_matrix(c(1, 2), nrow = 2, dtype = "f32")
+  b64 <- nv_matrix(c(1, 2), nrow = 2, dtype = "f64")
+
+  out_dtype <- function(f) {
+    graph <- trace_fn(f, list())
+    dtype(graph$outputs[[1L]]$aval)
+  }
+  # `nv_solve()` needs the `lu` FFI handler to run, so the data type is read
+  # off the traced graph.
+  expect_equal(out_dtype(function() nv_solve(a32, b64)), as_dtype("f64"))
+  expect_equal(out_dtype(function() nv_solve(a64, b32)), as_dtype("f64"))
+  expect_equal(out_dtype(function() nv_solve(a32, b32)), as_dtype("f32"))
+
+  L32 <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
+  L64 <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f64")
+  expect_equal(dtype(nv_triangular_solve(L32, b64)), as_dtype("f64"))
+  expect_equal(dtype(nv_triangular_solve(L64, b32)), as_dtype("f64"))
+  expect_equal(dtype(nv_triangular_solve(L32, b32)), as_dtype("f32"))
+  # An R value takes the array's data type rather than forcing its default.
+  expect_equal(
+    dtype(nv_triangular_solve(L64, matrix(c(4, 3), ncol = 1L))),
+    as_dtype("f64")
+  )
+
+  x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
+  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+  w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
+  expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
+  # An integer input meets a float weight at the float.
+  expect_equal(
+    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
+    as_dtype("f32")
+  )
+  expect_equal(
+    dtype(nv_conv2d(
+      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+  expect_equal(
+    dtype(nv_conv3d(
+      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+
+  # The solves still need the common data type to be a float, and say which
+  # argument to look at.
+  expect_error(
+    nv_solve(nv_array(matrix(1:4, 2)), nv_array(matrix(1:2, 2))),
+    "`a` must be a float data type"
+  )
+  expect_error(
+    nv_triangular_solve(nv_array(matrix(1:4, 2)), nv_array(matrix(1:2, 2))),
+    "`a` must be a float data type"
+  )
+})

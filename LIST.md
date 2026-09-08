@@ -232,6 +232,13 @@ in the six variadic functions, and `like` in the `_like` family -- which called
 `dtype()` on a value that may be a bare R one, the single instance of that bug
 class in the package.
 
+`nv_solve()`, `nv_triangular_solve()` and the three `nv_conv*()` wrappers now
+promote to a common data type through `promote_common()`, like every other
+`nv_*` function; they used to carry the primitive layer's
+`promote_rdata_common()`, which refuses a mixed `f32`/`f64` pair. The solves
+keep the float requirement and state it against `a`, rather than leaking
+`prim_lu()`'s operand name.
+
 Consistency, in the implementation: `assert_matrix()`, `assert_some_arrays()`
 and `assert_nonempty_axis()` join the assertion helpers; `assert_shapevec()`
 accepts a zero-size axis, as the rest of the package does; the reverse rules
@@ -266,9 +273,6 @@ and the returns that named only a data type or only a shape
 - `axis = NULL` means "all axes" for the reductions, "flatten" for the
   cumulatives and "the last axis" for the order statistics -- the third
   diverges from base R for the S3-dispatched `median()` and `sort()`.
-- `nv_solve()` / `nv_triangular_solve()` / `nv_conv*()` promote with
-  `promote_rdata_common()`, the primitive layer's rule, so they refuse a mixed
-  `f32`/`f64` pair that `nv_matmul()` accepts.
 - A fill above R's 32-bit integer range, and a `bit64::integer64` value, both
   fail in stablehlo's constant builder rather than in anvl.
 
