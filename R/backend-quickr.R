@@ -154,6 +154,12 @@ compile_quickr <- function(
 #' @section Supported data types:
 #' `f64`, `i32` and `bool` -- the three R storage types.
 #'
+#' Two families are narrower still: the bitwise primitives (`prim_and()`,
+#' `prim_or()`, `prim_xor()`, `prim_not()`) and the boolean reductions
+#' (`prim_reduce_any()`, `prim_reduce_all()`) lower only for `bool` here, so
+#' their integer forms -- which the pjrt backend runs -- are refused with a
+#' `cli` error rather than silently mis-lowered.
+#'
 #' @section Quickr JIT arguments:
 #'
 #' * `unwrap` (`logical(1)`, default `FALSE`): if `TRUE`, the compiled function

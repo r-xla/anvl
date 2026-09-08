@@ -124,7 +124,7 @@ trace_fn(prim_repeat_along, list(nv_aval("double", c(2, 3)), 2, 1))
 ```
 
 Where the default goes wrong is when a primitive has several operands that must agree.
-Committing each to its own default would make `prim_add(1, nv_scalar(2, "f64"))` an error -- the literal would become `f32` and meet an `f64` -- where it should give `f64`.
+Committing each to its own default would make `prim_add(1, nv_scalar(2, "f64"))` an error -- the literal would become the default float and could meet an `f64` -- where it should give `f64`.
 In such cases, you should call `apply_promotion()` in the primitive and pass the rules you want to apply.
 This needs to be done before calling `graph_desc_add()`.
 These should *not* change the data type of any `AnvlArray` inputs, which is what the `promote_rdata_common()` rule is for.

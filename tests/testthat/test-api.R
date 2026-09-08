@@ -2071,9 +2071,16 @@ test_that("nv_quantile and nv_median interpolate at a float data type", {
     as.vector(as_array(nv_median(nv_array(c(TRUE, TRUE, FALSE, FALSE))))),
     0.5
   )
-  # The result is a float whatever the interpolation mode does.
-  expect_equal(dtype(nv_quantile(nv_array(1:4), 0.5, interpolation = "lower")), as_dtype("f32"))
-  expect_equal(dtype(nv_median(nv_array(1:4, dtype = "i8"))), as_dtype("f32"))
+  # The result is a float whatever the interpolation mode does, and a non-float
+  # input is interpolated at the default float rather than a fixed one.
+  expect_equal(
+    dtype(nv_quantile(nv_array(1:4), 0.5, interpolation = "lower")),
+    default_float()
+  )
+  expect_equal(dtype(nv_median(nv_array(1:4, dtype = "i8"))), default_float())
+  with_default_dtypes(c(float = "f64"), {
+    expect_equal(dtype(nv_median(nv_array(1:4))), as_dtype("f64"))
+  })
   expect_equal(dtype(nv_median(nv_array(c(1, 2), dtype = "f64"))), as_dtype("f64"))
   # `probs` is a scalar or a 1-D array.
   expect_error(
@@ -2219,5 +2226,36 @@ test_that("nv_solve, nv_triangular_solve and nv_conv* promote across data types"
   expect_error(
     nv_triangular_solve(nv_array(matrix(1:4, 2)), nv_array(matrix(1:2, 2))),
     "`a` must be a float data type"
+  )
+})
+
+test_that("prim_chol and nv_chol accept batched inputs", {
+  # The lowering broadcasts its triangle mask over the batch axes, and both
+  # pages promise batch support.
+  spd <- matrix(c(4, 1, 1, 1, 4, 1, 1, 1, 4), nrow = 3)
+  bx <- array(NA_real_, dim = c(2L, 3L, 3L))
+  bx[1L, , ] <- spd
+  bx[2L, , ] <- spd * 2
+  out <- nv_chol(nv_array(bx, dtype = "f64"))
+  expect_equal(shape(out), c(2L, 3L, 3L))
+  got <- as_array(out)
+  expect_equal(got[1L, , ], chol(spd), tolerance = 1e-8)
+  expect_equal(got[2L, , ], chol(spd * 2), tolerance = 1e-8)
+
+  # A single matrix still works, and the constraints still fire, on the last
+  # two axes.
+  expect_equal(shape(nv_chol(nv_array(spd, dtype = "f32"))), c(3L, 3L))
+  expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its last two axes")
+  expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
+  expect_error(nv_chol(nv_array(spd)), NA)
+  expect_error(nv_chol(nv_array(matrix(1:4, 2))), "float data type")
+})
+
+test_that("nv_inv reports its own argument, and gradient accepts any float", {
+  expect_error(nv_inv(nv_array(matrix(1:4, 2))), "`x` must be a float data type")
+  # The check and the message agree on what "float" means.
+  expect_error(
+    jit(gradient(function(x) nv_reduce_sum(nv_convert(x, "i32"))))(nv_array(c(1, 2))),
+    "float scalar"
   )
 })

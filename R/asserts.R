@@ -260,9 +260,19 @@ assert_matrix <- function(x, arg = rlang::caller_arg(x), square = FALSE) {
   invisible(x)
 }
 
-assert_linalg_matrix <- function(x, arg, square = FALSE) {
+# `batched = TRUE` accepts leading batch axes and checks only the last two,
+# which is what the operations whose lowering broadcasts over batches take
+# (`prim_chol()`, `prim_triangular_solve()`); the others are strictly 2-D.
+assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   s <- shape(x)
-  if (length(s) != 2L) {
+  if (batched) {
+    if (length(s) < 2L) {
+      cli_abort(c(
+        "{.arg {arg}} must have at least 2 axes, the last two forming a matrix.",
+        "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      ))
+    }
+  } else if (length(s) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a 2-D matrix.",
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
@@ -274,9 +284,10 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
     ))
   }
-  if (square && s[[1L]] != s[[2L]]) {
+  mat <- utils::tail(s, 2L)
+  if (square && mat[[1L]] != mat[[2L]]) {
     cli_abort(c(
-      "{.arg {arg}} must be a square matrix.",
+      "{.arg {arg}} must be square in its last two axes.",
       "x" = "Got shape {xlamisc::shapevec_repr(s)}."
     ))
   }

@@ -58,28 +58,30 @@ Three things happen:
 ### The compilation cache
 
 When a call's inputs match a cached entry, both tracing and compilation are skipped.
-We can observe this directly by inspecting the size of the cache held inside the jitted function:
+The function body runs only while tracing, so counting how often it runs shows the cache at work:
 
 ```{r}
-cache_size <- function(f) environment(f)$cache$size
+traces <- 0L
+counted <- function(x, w, b) {
+  traces <<- traces + 1L
+  linear(x, w, b)
+}
+counted_jit <- jit(counted)
 
-linear_jit <- jit(linear)
-cache_size(linear_jit)   # 0: nothing cached yet
+counted_jit(nv_scalar(2), nv_scalar(3), nv_scalar(1))
+traces # 1: the first call had to be traced
 
-linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(1))
-cache_size(linear_jit)   # 1: a new entry was added
+# same data types and shapes -> cache hit, no retrace
+counted_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
+traces # still 1
 
-# same shapes -> cache hit, size unchanged
-linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
-cache_size(linear_jit)
-
-# different shapes -> a second entry is added
-linear_jit(
+# different shapes -> a second entry, so a second trace
+counted_jit(
   nv_array(c(1, 2)),
   nv_array(c(3, 4)),
   nv_array(c(1, 1))
 )
-cache_size(linear_jit)
+traces # 2
 ```
 
 Each input to the function contributes to the cache key differently, depending on whether it is *dynamic* (an arrayish value, the default) or *static* (marked via the `static =` argument of `jit()`):
@@ -90,7 +92,7 @@ Each input to the function contributes to the cache key differently, depending o
   They stay as regular R values during the compilation, but their value is fixed for a compiled program.
   Two calls with `flag = TRUE` and `flag = FALSE` therefore land on different cache entries.
 
-In the snippet above all three inputs are dynamic, so the first two calls share a key (three `f32[]` scalars) and hit the cache, while the third call presents three `f32[2]` vectors and forces a retrace.
+In the snippet above all three inputs are dynamic, so the first two calls share a key (three scalars of the default float data type) and hit the cache, while the third call presents three vectors of length 2 and forces a retrace.
 
 You'll want `static =` when the body of the function needs to look at a concrete R value -- typically a flag, a small integer, or a string.
 It's also the only way to do R-level input validation on a value: a dynamic input is just a shape/dtype placeholder during tracing, so a check like `stopifnot(abs(sum(p) - 1) < 1e-6)` -- verifying that `p` is a proper probability vector -- only works if `p` is static.
@@ -222,7 +224,7 @@ linear_default_b <- function(x, w) linear(x, w, default_b)
 trace_fn(linear_default_b, args = list(x = f32_scalar, w = f32_scalar))
 ```
 
-The graph contains `add(%1, 5:f32?)` -- the value `5` is hard-wired into the program.
+The graph contains an `add` whose second operand is the literal `5` -- the value is hard-wired into the program, at the default float data type.
 Changing `default_b` afterwards has no effect on the graph (and, once the graph is compiled, no effect on the executable either).
 
 ### Side effects only fire during tracing

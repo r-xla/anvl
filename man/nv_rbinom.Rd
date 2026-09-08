@@ -26,7 +26,7 @@ Probability of success on each trial.}
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sample. Can be any numeric data type; the successes are
 counted and converted to it. Boolean is not one, and is rejected: it
-cannot hold a count. \code{NULL} (default) uses the backend's default integer
+cannot hold a count. \code{NULL} (default) uses the default integer
 data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{

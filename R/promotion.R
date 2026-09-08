@@ -645,9 +645,9 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' where no R value is involved at all: an index (`nv_argmax()`,
 #' `nv_argsort()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
 #' the accumulator a boolean input is counted at (`nv_reduce_sum()`,
-#' `nv_cumsum()`, `nv_trace()`), and the float a non-float input is averaged or
-#' interpolated at (`nv_mean()`, `nv_var()`, `nv_sd()`, `nv_median()`,
-#' `nv_quantile()`).
+#' `nv_reduce_prod()`, `nv_cumsum()`, `nv_cumprod()`, `nv_trace()`), and the
+#' float a non-float input is averaged or interpolated at (`nv_mean()`,
+#' `nv_var()`, `nv_sd()`, `nv_median()`, `nv_quantile()`).
 #'
 #' Within its own category an R value assumes the data type it meets instead,
 #' and is built at it directly rather than converted to it, which is what keeps

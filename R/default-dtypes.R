@@ -37,9 +37,10 @@ effective_default_dtypes <- function(backend) {
 #' inferred from another operand, and the data type of a result anvl chooses on
 #' its own: an index (`nv_argmax()`, `nv_argsort()`, `nv_top_k()`, the
 #' cumulative extrema, `nv_lu()`'s pivots), the accumulator a boolean input is
-#' counted at (`nv_reduce_sum()`, `nv_cumsum()`, `nv_trace()`), and the float a
-#' non-float input is averaged or interpolated at (`nv_mean()`, `nv_var()`,
-#' `nv_sd()`, `nv_median()`, `nv_quantile()`).
+#' counted at (`nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()`,
+#' `nv_cumprod()`, `nv_trace()`), and the float a non-float input is averaged or
+#' interpolated at (`nv_mean()`, `nv_var()`, `nv_sd()`, `nv_median()`,
+#' `nv_quantile()`).
 #'
 #' This includes array creation via (`nv_array(1)`) or passing R values to unary functions
 #' (`prim_exp(1)`).
@@ -222,9 +223,13 @@ merged_default_dtypes <- function(dtypes, backend) {
 #' with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 #' # A value that meets a typed array still takes that array's data type
 #' with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
-#' # Untyped values in one program can commit at different precisions
+#' # Untyped values in one program can commit at different precisions: one at
+#' # whatever the default is, one at the `f64` the override asks for
 #' jit(function() {
-#'   list(single = nv_fill(0, 2), double = with_default_dtypes(c(float = "f64"), nv_fill(0, 2)))
+#'   list(
+#'     at_default = nv_fill(0, 2),
+#'     forced_f64 = with_default_dtypes(c(float = "f64"), nv_fill(0, 2))
+#'   )
 #' })()
 #' @export
 local_default_dtypes <- function(dtypes, backend = NULL, envir = parent.frame()) {

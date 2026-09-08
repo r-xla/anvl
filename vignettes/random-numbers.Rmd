@@ -49,30 +49,33 @@ Let's generate some uniform random numbers:
 
 ```{r}
 result <- nv_runif(state, dtype = "f32", shape = c(2, 3))
-result[[1]]  # new state
-result[[2]]  # random numbers
+result$state
+result$values
 ```
 
 For normally distributed random numbers:
 
 ```{r}
-result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mean = 0, sd = 1)
-result[[2]]
+result <- nv_rnorm(state, shape = c(2, 3), mean = 0, sd = 1)
+result$values
 ```
 
-`mean` and `sd` are arrayish, so they may vary across the sample, as long as
-they have the same shape as it:
+`mean` and `sd` are arrayish, so they may vary across the sample: each is
+either a scalar or exactly the sample's shape. They are brought to the
+sample's data type, so an `sd` that would have to narrow to reach it is an
+error -- here `sds` and the sample share the default float, so nothing has to
+move:
 
 ```{r}
 sds <- nv_matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2)
-nv_rnorm(state, dtype = "f32", shape = c(2, 3), sd = sds)[[2]]
+nv_rnorm(state, shape = c(2, 3), sd = sds)$values
 ```
 
 To draw integers, use `nv_sample_int()`, the counterpart to R's `sample.int()`:
 
 ```{r}
 # roll six dice
-nv_sample_int(6L, state, 6L)[[2]]
+nv_sample_int(6L, state, 6L)$values
 ```
 
 `nv_sample()` draws from an arbitrary population instead.
@@ -80,7 +83,7 @@ Unlike R's `sample()`, its population argument is never overloaded with a count,
 
 ```{r}
 population <- nv_array(c(10, 20, 30))
-nv_sample(8L, state, population)[[2]]
+nv_sample(8L, state, population)$values
 ```
 
 One thing to avoid is to reuse the same state for multiple calls as done in the example below:
@@ -88,7 +91,7 @@ One thing to avoid is to reuse the same state for multiple calls as done in the 
 ```{r}
 result1 <- nv_runif(state, dtype = "f32", shape = 3L)
 result2 <- nv_runif(state, dtype = "f32", shape = 3L)
-list(first = result1[[2]], second = result2[[2]])
+list(first = result1$values, second = result2$values)
 ```
 
 As you can see, both calls produced identical random numbers because we used the same state for both.
@@ -96,9 +99,9 @@ To get different random numbers in subsequent calls, you need to pass the **new*
 
 ```{r}
 result1 <- nv_runif(state, dtype = "f32", shape = 3L)
-new_state <- result1[[1]]
+new_state <- result1$state
 result2 <- nv_runif(new_state, dtype = "f32", shape = 3L)
-list(first = result1[[2]], second = result2[[2]])
+list(first = result1$values, second = result2$values)
 ```
 
 Now we get different random numbers because we properly propagated the state.

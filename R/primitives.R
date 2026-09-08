@@ -3690,7 +3690,7 @@ prim_chol <- new_primitive(
   "cholesky",
   function(x, lower = FALSE) {
     assert_flag(lower)
-    assert_linalg_matrix(x, "x", square = TRUE)
+    assert_linalg_matrix(x, "x", square = TRUE, batched = TRUE)
     infer_fn <- function(x, lower) {
       # Output has same shape and dtype as input (square matrix)
       list(AbstractArray(

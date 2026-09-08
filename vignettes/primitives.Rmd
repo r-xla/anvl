@@ -44,6 +44,7 @@ rownames(primitives_df) <- NULL
 
 The table below shows all `r nrow(primitives_df)` primitives and which rules they implement.
 Note that a rule might be missing because it was just not added yet, or because it does not apply for a specific primitive.
+A ✓ also says nothing about which *data types* the rule covers: the quickr backend represents only `f64`, `i32` and `bool`, and within that its bitwise primitives (`prim_and()`, `prim_or()`, `prim_xor()`, `prim_not()`) and boolean reductions (`prim_reduce_any()`, `prim_reduce_all()`) lower for `bool` alone -- see `AnvlBackendQuickr()`.
 
 
 ```{r, echo = FALSE}

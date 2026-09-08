@@ -102,7 +102,10 @@ as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
 One common rule is `promote_common()`, which is used by functions such as `nv_add` above.
 It computes the common data type of the inputs.
 In this case, it returns the default data type of an R `double`, as neither input has one of its own.
-We can override that default via `with_default_dtypes()`, which we use below to work in double precision.
+We can override that default via `with_default_dtypes()`, which we use below to ask for double precision.
+The two elements contrast what the override does and does not touch: `committed` is an R literal with
+no data type of its own, so it follows the new default, while `yielded` meets a typed `f32` array and
+takes *its* data type -- a default only decides what happens when nothing else does.
 
 ```{r}
 with_default_dtypes(c(float = "f64"), {

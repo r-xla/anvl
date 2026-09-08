@@ -24,7 +24,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
         cli_abort(c(
           "Cannot compute gradient with respect to a value that has no data type.",
           x = "It is an R {peek_r_type(args_flat[[i]])}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-          i = "Give it one first, e.g. {.code nv_array(x, \"f32\")} or {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
+          i = "Give it one first, e.g. {.code nv_array(x, default_float())} or an explicit {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
         ))
       }
     }
@@ -168,7 +168,7 @@ validate_gradient_output <- function(out_gvals) {
     cli_abort("gradient can only be computed for functions that return a scalar")
   }
   dt <- out$aval$dtype
-  if (!(dt == as_dtype("f32") || dt == as_dtype("f64"))) {
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
       x = "gradient can only be computed for functions that return float scalar",
       i = "Got dtype={.field {repr(dt)}}"

@@ -173,20 +173,28 @@ One might think that `jit()` first calls `trace_fn()`, then runs `stablehlo()`, 
 This is, however, not what is happening, as this requires the input types to be known.
 Instead, `f_jit` is a "lazy" function that will only perform these steps once the inputs are provided.
 However, if those steps were applied every time the `f_jit` function is called, this would be very inefficient, because tracing and compiling take some time.
-Therefore, the function `f_jit` also contains a cache (implemented as an `xlamisc::LRUCache`), which will check whether there is already a compiled executable for the given inputs.
-For this, the types of all `AnvlArray`s need to match exactly (data type and shape) and all static arguments need to be identical.
-For example, if we run the function with `AnvlArray`s of the same type, but different values, the function won't be recompiled, which we can see by checking the size of the cache, which is already 1, because we have called it on `x` and `y` above.
+Therefore, `f_jit` also holds a cache -- pjrt's dispatcher, which keeps the compiled executables and picks one per call.
+For a hit, the types of all `AnvlArray`s need to match exactly (data type and shape) and all static arguments need to be identical.
+The body of the traced function runs only while tracing, so a counter inside it shows when the cache is used and when it is missed:
 
 ```{r}
-cache_size <- function(f) environment(f)$cache$size
-cache_size(f_jit)
-```
+traces <- 0L
+counted <- function(x, y, op) {
+  traces <<- traces + 1L
+  f(x, y, op)
+}
+counted_jit <- jit(counted, static = 3L)
 
-After calling it with arrays of the same types and identical static argument values, the size of the cache remains 1:
+counted_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "add")
+traces # 1: traced once
 
-```{r}
-f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
-cache_size(f_jit)
+# same data types and shapes, different values and the same static argument
+counted_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
+traces # still 1: served from the cache
+
+# a different static argument is a different program
+counted_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
+traces # 2
 ```
 
 When we execute the function with arrays of different `dtype` or `shape`, the function will be recompiled:
@@ -262,21 +270,18 @@ graph <- trace_fn(function(x) {
 graph
 ```
 
-Here, `y` is a closed-over constant and it is included in the `$constants` field of the graph, just like the literal `1`.
+Here, `y` is a closed-over constant and it is included in the `$constants` field of the graph. The literal `1` is not: it is written straight into the body.
 
 ```{r}
 graph$constants
 ```
 
-When compiling such a program to StableHLO, constants are treated differently depending on their shape (we follow JAX's approach here).
-That is, constants with 1 element are **inlined** into the program, whereas other constants are added as inputs to the StableHLO program.
-This is because inlining large constants into the executable is inefficient.
-However, if we didn't inline small scalars, the compiler would be unable to do constant folding.
+When compiling such a program to StableHLO, an R literal is **inlined** into the program -- there it is a `stablehlo.constant`, which the compiler can fold -- while a captured `AnvlArray` becomes an input to the StableHLO program, whatever its size.
+This is because inlining an array into the executable would copy its data into the program text, which is wasteful for a large one and buys nothing for a small one: the value is already a buffer on the device.
 
 ```{r}
 out <- stablehlo(graph)
 out[[1L]]
-out[[2L]]
 ```
 
 Also, before compiling, we remove unused constants.
@@ -370,7 +375,8 @@ The problem with this approach is that:
 2. some accelerators (such as Metal) do not support `f64` at all.
 
 Therefore, one of the underlying ideas is to only introduce `f64` values when someone actually requested
-this data type.
+this data type -- which is why `f32` is the default float on pjrt, and why that default is configurable
+(`default_dtypes()`): a program that wants double precision throughout can ask for it.
 
 ```{r}
 trace_fn(\(x) {
@@ -378,7 +384,7 @@ trace_fn(\(x) {
 }, list(nv_aval("double", c())))
 ```
 
-Otherwise, the `double` input is fed as an `f32` to the pjrt program:
+Otherwise, the `double` input is fed at the default float data type to the pjrt program:
 
 ```{r}
 trace_fn(\(x) {

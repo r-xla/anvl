@@ -12,7 +12,8 @@ One input. Can be any data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Each existing axis must either match or be 1.}
+Target shape. The input's axes are matched against its trailing axes, and
+each must either match or be 1; leading axes are added.}
 }
 \value{
 (\code{\link{arrayish}})\cr

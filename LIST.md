@@ -172,8 +172,8 @@ Everything it found that was *wrong* is fixed here:
   limit, `prim_argmin` inherited an `axis` describing the maximum, the `nv_conv*`
   returns named a `kernel` argument that is called `weight`, `nv_polygamma`
   claimed integer inputs are converted where an all-integer call is refused,
-  `nv_trace` claimed the input's data type for a boolean input (it counts at
-  `i32`), and `prim_dynamic_update_slice` inherited a clamp formula with a
+  `nv_trace` claimed the input's data type for a boolean input (it counts at the
+  default integer), and `prim_dynamic_update_slice` inherited a clamp formula with a
   `slice_sizes` argument it does not have.
 - Dead links: the fifteen CHLO ops (`acos`, `erf`, `top_k`, ...) pointed at
   StableHLO spec anchors that do not exist, so they go through the new
@@ -183,7 +183,7 @@ Everything it found that was *wrong* is fixed here:
   `nv_*` pages still on a bare "Input array.", `nv_matmul`'s and `nv_fill`'s
   empty return and `dtype`, and `nv_chol`'s accepted data types.
 - Consistency: `nv_array` no longer spells out the concrete defaults (`?dtypes`
-  carries them, including the backend caveat), `nv_and`/`nv_or`/`nv_xor`/`nv_not`
+  carries the categories and points at [`default_dtypes()`] for the values), `nv_and`/`nv_or`/`nv_xor`/`nv_not`
   are described as bitwise rather than logical, the boolean and integer
   constraints moved out of the type slot into prose, "dtype" and
   "floating-point" as prose are gone, and the unused templates (`param_x`,
@@ -304,13 +304,33 @@ and the returns that named only a data type or only a shape
 `nv_subset_assign`, `nv_squeeze`, `nv_unsqueeze`, `nv_cummax`, `nv_cummin`,
 `nv_chol`, `nv_conv1d` / `2d` / `3d`) now state both.
 
+### Round two
+
+A second review, after the merge, found and this change fixes: a regression in
+`prim_chol()` -- the assertion added in the first round required exactly two
+axes, where the lowering broadcasts its mask over batch axes and both pages
+promise batched inputs (verified per batch against `base::chol()`); the two
+`nv_rbinom()` / `nv_sample_int()` pages the "backend's default" sweep missed;
+`nv_extract_diag()`'s missing shape constraint; `?common_dtype`'s and the two
+concept pages' lists; `gradient()`'s hint, which suggested an `f32` array that
+the quickr backend refuses; `nv_inv()` leaking `nv_solve()`'s argument names;
+the gradient's float check, which accepted only `f32` and `f64` while its
+message said "float"; five quickr messages naming stablehlo's `pred`; and two
+of this branch's own tests, which asserted `f32` where the value follows the
+default float and so failed under `ANVL_DEFAULT_DTYPES`.
+
+In the vignettes it fixes the `jit`/`internals` compilation-cache narrative
+(main moved the cache into pjrt's dispatcher, so the chunks printed `NULL`
+under prose asserting sizes -- they now count traces instead), three false
+statements about constants in `internals.Rmd`, the `random-numbers.Rmd` chunk
+that errored under an `f64` default, four `gotchas.Rmd` demonstrations that
+only held at one default, and every remaining place a vignette named `f32` or
+`i32` as a fact rather than as the default in force.
+
 ### Left for you
 
 - `prim_cumprod` is the only cumulative primitive with no reverse rule; the
   gradient needs care around zeros, so it is not written here.
-- `peek_dtype()` reports `f32` for an R double on the `"quickr"` backend, where
-  the value really commits to `f64`: `default_dtype_r()` does not consult the
-  backend, and `R/backend-quickr.R` overrides it separately.
 - Errors still leak stablehlo's operand names on `prim_clamp` (`min`),
   `prim_polygamma` (`lhs`/`rhs`), `prim_ifelse` (`on_true`/`on_false`) and
   `prim_broadcast_in_axes` (`broadcast_dimensions`).
@@ -422,8 +442,8 @@ crashes R), so the image's plugin is left in place.
   functions built on them (`nv_qr`, `nv_lu`, `nv_svd`, `nv_eigh`, `nv_det`,
   `nv_determinant`, `nv_inv`, `nv_solve`)
 
-These are exactly the twelve help pages whose examples cannot run here; every
-other page changed by this pass had its examples executed.
+These are exactly the fourteen help pages whose examples cannot run here;
+every other page changed by this pass had its examples executed.
 
 ## Out of scope
 

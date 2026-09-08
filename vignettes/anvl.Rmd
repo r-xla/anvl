@@ -35,14 +35,14 @@ x <- nv_scalar(1L, dtype = "i16")
 x
 ```
 
-We can also create higher-dimensional arrays, for example a `2x3` array with single-precision floating-point numbers.
+We can also create higher-dimensional arrays, for example a `2x3` array at the default float data type.
 
 ```{r}
 y <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(2, 3))
 y
 ```
 
-Without specifying the data type, it will default to the data types of the backend in force: `"f32"` for R doubles and `"i32"` for integers on pjrt, and `"bool"` for logicals everywhere.
+Without specifying the data type, it will default to the data types in force, which `default_dtypes()` reports: on pjrt `"f32"` for R doubles and `"i32"` for integers, `"bool"` for logicals everywhere, and whatever the `anvl.default_dtypes` option says once it is set.
 We chose this default, because on modern accelerators such as GPUs, single-precision floating point operations are considerably faster than when working in double precision.
 It is possible to change this default via the `anvl.default_dtypes` option.
 Below, `with_default_dtypes()` modifies this option temporarily:
@@ -168,7 +168,7 @@ This applies to both `nv_*` calls and your own `jit()`-compiled functions:
 nv_add(1, array(2:3))
 ```
 
-An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to a default (on pjrt `f32` for doubles and `i32` for integers, and `bool` for logicals) when it meets nothing else.
+An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to the default in force (see `default_dtypes()`) when it meets nothing else.
 See `vignette("type-promotion")` for the full rules.
 
 Note that we only auto-convert `double`/`integer`/`logical`s that are

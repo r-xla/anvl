@@ -8,7 +8,7 @@ nv_extract_diag(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any data type. An R value commits to its
+One input, with exactly 2 axes. Can be any data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 }
 \value{

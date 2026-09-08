@@ -22,6 +22,15 @@
   *named* lists -- `values` / `indices` for the first three, `state` /
   `values` for the rest -- as `prim_qr()` and `prim_svd()` already did.
   Positional indexing keeps working.
+* `nv_chol()` / `prim_chol()` accept batched inputs again -- axes before the
+  last two are batch axes, as their pages say and as the lowering has always
+  handled. A check added earlier in this cycle had narrowed them to exactly two
+  axes.
+* `nv_inv()` names `x` when its input is not a float, instead of reporting
+  `nv_solve()`'s `a` and `b`; `gradient()` accepts any float output data type,
+  matching its own message, and its hint no longer suggests an `f32` array that
+  the `"quickr"` backend refuses; and the quickr lowering's messages say `bool`
+  rather than stablehlo's `pred`.
 * `nv_solve()`, `nv_triangular_solve()` and `nv_conv1d()` / `nv_conv2d()` /
   `nv_conv3d()` now promote their operands to a common data type, like every
   other `nv_*` function: `nv_solve(a_f32, b_f64)` gives `f64` where it used to

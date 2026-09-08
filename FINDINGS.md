@@ -7,7 +7,9 @@ it ran. Every runtime claim was verified by executing in the dev container;
 every spec anchor against `../stablehlo/SPEC.md`.
 
 **Status:** everything below that was wrong, dead or missing has since been
-fixed; `LIST.md`'s "Review" section lists what changed and the two
+fixed, and two later rounds of review (plus the merge of main's configurable
+default data types) have moved on from it -- where this report says a page
+states `i32`, the page now says "the default integer data type"; `LIST.md`'s "Review" section lists what changed and the two
 observations that were deliberately left alone. The report is kept as the record
 of what was checked.
 

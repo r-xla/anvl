@@ -291,7 +291,7 @@ graph_to_quickr_r_function <- function(graph) {
 #'
 #' For a list of supported primitives see `vignette("primitives")`.
 #'
-#' Supported dtypes are `f64`, `i32`, and `pred`.
+#' Supported data types are `f64`, `i32` and `bool`.
 #' The code generator currently supports arrays up to rank 5. Some primitives
 #' are more restricted (e.g. `transpose` currently only handles rank-2 arrays).
 #'

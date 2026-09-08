@@ -238,7 +238,7 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sample. Can be any numeric data type; the successes are
 #'   counted and converted to it. Boolean is not one, and is rejected: it
-#'   cannot hold a count. `NULL` (default) uses the backend's default integer
+#'   cannot hold a count. `NULL` (default) uses the default integer
 #'   data type (see [`default_dtypes()`]).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
@@ -299,7 +299,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sampled integers. Can be any numeric data type; the drawn
 #'   indices are converted to it. Boolean is not one, and is rejected: it
-#'   cannot hold an index. `NULL` (default) uses the backend's default integer
+#'   cannot hold an index. `NULL` (default) uses the default integer
 #'   data type (see [`default_dtypes()`]).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers

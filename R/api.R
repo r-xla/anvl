@@ -189,7 +189,8 @@ nv_broadcast_arrays <- function(...) {
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param shape (`integer()`)\cr
-#'   Target shape. Each existing axis must either match or be 1.
+#'   Target shape. The input's axes are matched against its trailing axes, and
+#'   each must either match or be 1; leading axes are added.
 #' @return ([`arrayish`])\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
@@ -2351,6 +2352,11 @@ nv_inv <- function(x) {
   if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
     cli_abort("{.arg x} must be a square 2-D matrix")
   }
+  assert_float_dtype(
+    dtype(x),
+    arg = "x",
+    hint = "The inverse is computed through an LU decomposition, which needs a float."
+  )
   n <- shp[[1L]]
   # The inverse of the 0x0 matrix is itself; short-circuit since prim_lu
   # rejects zero-sized inputs.
@@ -3279,6 +3285,7 @@ nv_outer <- function(lhs, rhs) {
 #' @description
 #' Extracts the diagonal elements from a 2-D array.
 #' @templateVar dtypes any data type
+#' @templateVar shapes with exactly 2 axes
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type, and one axis of length `min(nrow, ncol)`
