@@ -634,7 +634,9 @@ describe("prim_lu", {
     expect_equal(shape(out$permutation), 2L)
     LU <- as_array(out$LU)
     pivots <- as_array(out$pivots)
-    permutation <- as_array(out$permutation)
+    # `as.integer()`: the permutation follows the default integer data type, and
+    # an `i64` array materializes as a `bit64::integer64`, which cannot index.
+    permutation <- as.integer(as_array(out$permutation))
     # Documented: pivots are 1-based, each in 1..m; permutation is a 1-based
     # permutation of 1..m such that (P %*% A)[i, ] == A[permutation[i], ].
     expect_true(all(pivots >= 1L & pivots <= nrow(LU)))

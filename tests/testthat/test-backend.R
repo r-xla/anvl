@@ -84,6 +84,6 @@ describe("eager code", {
     skip_if_no_quickr()
     x <- with_backend("quickr", nv_array(1L))
     expect_error(x + 1.5, "quickr")
-    expect_error(nv_fill_like(x, 0), "backend in force")
+    expect_error(nv_fill_like(x, 0), "belongs to the .*quickr.* backend")
   })
 })

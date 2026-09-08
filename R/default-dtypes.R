@@ -84,7 +84,8 @@ effective_default_dtypes <- function(backend) {
 #'
 #' @return `default_dtypes()` returns a named `list` with elements `float` and
 #'   `int`, each a [`DataType`]
-#' @seealso [`local_default_dtypes()`], [`with_default_dtypes()`]
+#' @seealso [`local_default_dtypes()`], [`with_default_dtypes()`],
+#'   [`with_dtypes()`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' with_backend("quickr", default_dtypes())
 #' with_backend("pjrt", default_dtypes())
@@ -229,6 +230,132 @@ local_default_dtypes <- function(dtypes, backend = NULL, envir = parent.frame())
 #' @export
 with_default_dtypes <- function(dtypes, code, backend = NULL) {
   withr::with_options(merged_default_dtypes(dtypes, backend), code)
+}
+
+#' @title Run a Function at Given Data Types
+#' @description
+#' `with_dtypes()` wraps `f` into a function that works at the data types
+#' `dtypes` names: on each call every array argument of a category `dtypes`
+#' names is converted to that data type, the defaults (see
+#' [`default_dtypes()`]) are set to the `float` / `int` entries for the
+#' duration of the call, and every returned array of a named category is
+#' converted as well.
+#'
+#' ```r
+#' nv_add_f64 <- with_dtypes(nv_add, c(float = "f64"))
+#' ```
+#'
+#' A category `dtypes` does not name is left alone, in the arguments, in the
+#' body and in the result.
+#'
+#' @details
+#' Note that `f` itself can also change the default data types, which overrides the
+#' defaults configured by `with_dtypes()`.
+#' @param f (`function`)\cr
+#'   The function to wrap.
+#' @param dtypes (named `character()` | named `list()`)\cr
+#'   A mapping of the data type categories (`float`, `int` and `uint`) to data
+#'   types, e.g. `c(float = "f64", int = "i64")`. Each may be a string or a
+#'   [`DataType`]. A category it does not name is left as it is.
+#' @return A `function` with the same arguments as `f`, a `JitFunction` if `f`
+#'   was one.
+#' @seealso [`default_dtypes()`], [`local_default_dtypes()`]
+#' @examplesIf pjrt::plugins_downloaded()
+#' add_f64 <- with_dtypes(nv_add, c(float = "f64"))
+#' # An `f32` argument is converted, and the result comes back as `f64`
+#' dtype(add_f64(nv_array(1, dtype = "f32"), 2.5))
+#' # A category that is not named is untouched
+#' dtype(add_f64(nv_array(1L, dtype = "i32"), 2L))
+#' # `uint` is converted too, but sets no default
+#' dtype(with_dtypes(nv_add, c(uint = "ui32"))(nv_array(1L, dtype = "ui8"), 2L))
+#' @export
+with_dtypes <- function(f, dtypes) {
+  if (!is.function(f)) {
+    cli_abort("{.arg f} must be a function, not {.obj_type_friendly {f}}.")
+  }
+  .dtypes_targets <- assert_dtype_categories(dtypes)
+  .dtypes_defaults <- dtypes[names(dtypes) %in% c("float", "int")]
+
+  cfg <- jit_config(f)
+  .dtypes_f <- cfg$f %||% f
+
+  wrapper <- if (length(.dtypes_defaults)) {
+    function() {
+      local_default_dtypes(.dtypes_defaults)
+      .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+      convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
+    }
+  } else {
+    function() {
+      .dtypes_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+      convert_call(.dtypes_f, .dtypes_args, .dtypes_targets)
+    }
+  }
+  formals(wrapper) <- formals2(.dtypes_f)
+
+  if (is.null(cfg)) {
+    return(wrapper)
+  }
+  do.call(
+    jit,
+    c(
+      list(
+        f = wrapper,
+        static = cfg$static,
+        cache_size = cfg$cache_size,
+        device = cfg$device
+      ),
+      cfg$dots
+    )
+  )
+}
+
+convert_call <- function(f, args, targets) {
+  args <- convert_tree(args, targets)
+  convert_tree(do.call(f, args), targets)
+}
+
+assert_dtype_categories <- function(dtypes) {
+  categories <- names(dtypes)
+  ok <- length(dtypes) &&
+    !is.null(categories) &&
+    !anyDuplicated(categories) &&
+    all(categories %in% c("float", "int", "uint"))
+  if (!ok) {
+    cli_abort(c(
+      "{.arg dtypes} must map the data type categories to data types.",
+      i = "The categories are {.val float}, {.val int} and {.val uint},
+           e.g. {.code c(float = \"f64\")}."
+    ))
+  }
+  lapply(dtypes, as_dtype)
+}
+
+convert_tree <- function(x, targets) {
+  map_tree(x, convert_leaf, targets = targets)
+}
+
+convert_leaf <- function(x, targets) {
+  if (!is_arrayish(x, convert_ok = FALSE)) {
+    return(x)
+  }
+  category <- convertible_dtype_category(peek_dtype(x))
+  if (is.null(category) || !category %in% names(targets)) {
+    return(x)
+  }
+  nv_convert(x, targets[[category]])
+}
+
+convertible_dtype_category <- function(dtype) {
+  if (is_dtype_float(dtype)) {
+    "float"
+  } else if (is_dtype_int(dtype)) {
+    "int"
+  } else if (is_dtype_uint(dtype)) {
+    "uint"
+  } else {
+    NULL
+  }
 }
 
 # The default dtypes (see `default_dtypes()`) in force here.

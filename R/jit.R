@@ -54,6 +54,19 @@
 #' used. A constructor that has no array to name a device declares the one it
 #' was asked for itself, see [`graph_desc_add()`]'s `device` argument.
 #'
+#' @section Default Data Types:
+#' It is possible to configure the default data types for `float`s and `int`s
+#' via the `anvl.default_dtypes` option, see [`default_dtypes()`].
+#' Note that the defaults will be read at *call-time** and not when
+#' `jit()` is called.
+#'
+#' To pin a jitted function to a pair of data types instead of letting it
+#' follow the configured defaults, wrap it in [`with_dtypes()`]: the wrapper
+#' converts the array arguments and results of a category it names, and sets
+#' the defaults for the duration of the call, so
+#' `f_f64 <- with_dtypes(f, c(float = "f64"))` runs `f` at `f64`, unless `f` itself
+#' changes the default data types.
+#'
 #' @section Jitting in a Package:
 #' To `jit()` a function defined in an R package, prefer the `@jit` roxygen
 #' tag over a top-level `jit()` call:
@@ -159,6 +172,16 @@ jit <- function(
   formals(wrapper) <- formals2(f)
   class(wrapper) <- "JitFunction"
   wrapper
+}
+
+# The configuration `jit()` built `f` with, or `NULL` for anything else -- a
+# plain function, or a backend's own implementation (see jit_with_backend()),
+# which carries no configuration to read.
+jit_config <- function(f) {
+  if (!inherits(f, "JitFunction")) {
+    return(NULL)
+  }
+  environment(f)$.jit_cfg
 }
 
 # The options a backend's `jit` method takes beyond the ones every backend

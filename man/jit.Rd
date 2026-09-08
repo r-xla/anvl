@@ -66,6 +66,21 @@ used. A constructor that has no array to name a device declares the one it
 was asked for itself, see \code{\link[=graph_desc_add]{graph_desc_add()}}'s \code{device} argument.
 }
 
+\section{Default Data Types}{
+
+It is possible to configure the default data types for \code{float}s and \code{int}s
+via the \code{anvl.default_dtypes} option, see \code{\link[=default_dtypes]{default_dtypes()}}.
+Note that the defaults will be read at \emph{call-time}* and not when
+\code{jit()} is called.
+
+To pin a jitted function to a pair of data types instead of letting it
+follow the configured defaults, wrap it in \code{\link[=with_dtypes]{with_dtypes()}}: the wrapper
+converts the array arguments and results of a category it names, and sets
+the defaults for the duration of the call, so
+\code{f_f64 <- with_dtypes(f, c(float = "f64"))} runs \code{f} at \code{f64}, unless \code{f} itself
+changes the default data types.
+}
+
 \section{Jitting in a Package}{
 
 To \code{jit()} a function defined in an R package, prefer the \verb{@jit} roxygen

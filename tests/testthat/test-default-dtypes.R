@@ -199,3 +199,103 @@ describe("an override of one backend", {
     expect_identical(quickr_key(), c(float = "f64", int = "i32"))
   })
 })
+
+describe("with_dtypes()", {
+  it("converts the arguments, the body's defaults and the result", {
+    local_registered_default_dtypes()
+    add_f64 <- with_dtypes(nv_add, c(float = "f64"))
+    out <- add_f64(nv_array(1, dtype = "f32"), 2.5)
+    expect_equal(dtype(out), as_dtype("f64"))
+    # The `f32` operand is converted before the call, so the R value meets an
+    # `f64` array and the sum keeps every digit of 2.5.
+    expect_equal(as.vector(out), 3.5)
+    # A category the wrapper does not name is untouched, in the arguments and
+    # in the result.
+    expect_equal(dtype(add_f64(nv_array(1L, dtype = "i32"), 2L)), as_dtype("i32"))
+    expect_equal(dtype(add_f64(nv_array(TRUE), TRUE)), as_dtype("bool"))
+    # Inside the body the defaults are the ones the wrapper names.
+    expect_equal(dtype(with_dtypes(function() nv_fill(0, 2), c(float = "f64"))()), as_dtype("f64"))
+    expect_equal(default_float(), as_dtype("f32"))
+  })
+
+  it("converts every output of a jitted function and leaves a static argument alone", {
+    local_registered_default_dtypes()
+    f <- jit(function(x, n) list(a = x + 1, b = nv_fill(0, n)), static = "n")
+    g <- with_dtypes(f, c(float = "f64", int = "i64"))
+    out <- g(nv_array(c(1, 2), dtype = "f32"), 2L)
+    expect_equal(lapply(out, dtype), list(a = as_dtype("f64"), b = as_dtype("f64")))
+    expect_equal(as.vector(out$a), c(2, 3))
+  })
+
+  it("converts an unsigned array without setting a default for it", {
+    local_registered_default_dtypes()
+    # `uint` is a conversion category only, so a wrapper naming just it leaves
+    # the defaults of the call alone.
+    f <- with_dtypes(function(x) list(x = x, filled = nv_fill(0, 2)), c(uint = "ui32"))
+    out <- f(nv_array(1L, dtype = "ui8"))
+    expect_equal(dtype(out$x), as_dtype("ui32"))
+    expect_equal(dtype(out$filled), as_dtype("f32"))
+    # Named alongside the others it converts as they do.
+    g <- with_dtypes(nv_add, c(float = "f64", uint = "ui32"))
+    expect_equal(dtype(g(nv_array(1L, dtype = "ui8"), 2L)), as_dtype("ui32"))
+    expect_equal(dtype(g(nv_array(1, dtype = "f32"), 2)), as_dtype("f64"))
+  })
+
+  it("keeps the signature of the function it wraps", {
+    local_registered_default_dtypes()
+    f <- function(x, n = 2, ...) list(x = x, filled = nv_fill(0, n))
+    g <- with_dtypes(f, c(float = "f64"))
+    expect_identical(formals(g), formals(f))
+    # An argument the wrapper is not given is left out, so `f`'s own default
+    # decides -- and `...` reaches `f` as it would without the wrapper.
+    expect_equal(shape(g(nv_array(1, dtype = "f32"))$filled), 2L)
+    expect_equal(shape(g(nv_array(1, dtype = "f32"), 3)$filled), 3L)
+    expect_equal(
+      dtype(with_dtypes(function(...) nv_add(...), c(float = "f64"))(
+        nv_array(1, dtype = "f32"),
+        2
+      )),
+      as_dtype("f64")
+    )
+  })
+
+  it("walks a structured argument and result as a tree", {
+    local_registered_default_dtypes()
+    f <- with_dtypes(
+      function(pair, scale) {
+        list(sum = pair$a + pair$b, scaled = list(pair$a * scale))
+      },
+      c(float = "f64")
+    )
+    out <- f(list(a = nv_array(1, dtype = "f32"), b = nv_array(2, dtype = "f32")), 2)
+    expect_named(out, c("sum", "scaled"))
+    expect_equal(dtype(out$sum), as_dtype("f64"))
+    expect_equal(dtype(out$scaled[[1L]]), as_dtype("f64"))
+    expect_equal(as.vector(out$sum), 3)
+  })
+
+  it("jits a jitted function again with its own configuration", {
+    local_registered_default_dtypes()
+    f <- jit(function(x, flag) if (flag) x + 1 else x * 2, static = "flag", cache_size = 7L, donate = "x")
+    g <- with_dtypes(f, c(float = "f64"))
+    # The conversions are part of the compiled program, so the result is a
+    # `JitFunction` again -- with the configuration `f` was built with.
+    expect_s3_class(g, "JitFunction")
+    cfg <- jit_config(g)
+    expect_identical(cfg$static, "flag")
+    expect_identical(cfg$cache_size, 7L)
+    expect_identical(cfg$dots, list(donate = "x"))
+    # The static argument still selects the branch, and stays an R value.
+    expect_equal(as.vector(g(nv_array(3, dtype = "f32"), TRUE)), 4)
+    expect_equal(as.vector(g(nv_array(3, dtype = "f32"), FALSE)), 6)
+    expect_equal(dtype(g(nv_array(3, dtype = "f32"), TRUE)), as_dtype("f64"))
+  })
+
+  it("rejects anything but a mapping of the data type categories", {
+    expect_error(with_dtypes(1, c(float = "f64")), "must be a function")
+    expect_error(with_dtypes(nv_add, "f64"), "must map the data type categories")
+    expect_error(with_dtypes(nv_add, c(flaot = "f64")), "must map the data type categories")
+    expect_error(with_dtypes(nv_add, c(bool = "bool")), "must map the data type categories")
+    expect_error(with_dtypes(nv_add, character()), "must map the data type categories")
+  })
+})

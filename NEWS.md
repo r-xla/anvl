@@ -23,6 +23,8 @@
   configured via the `anvl.default_dtypes` field.
   You can configure this for a specific scope via `local_default_dtypes()`
   and `with_default_dtypes()`.
+  To convert a function to one running at a specified precision, use
+  `with_dtypes()`.
 * New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with
   a provided `steps` argument.
 * `as.vector` now and returns `bit64::integer64`

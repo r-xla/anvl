@@ -75,5 +75,6 @@ dtype(nv_array(1.5))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=local_default_dtypes]{local_default_dtypes()}}, \code{\link[=with_default_dtypes]{with_default_dtypes()}}
+\code{\link[=local_default_dtypes]{local_default_dtypes()}}, \code{\link[=with_default_dtypes]{with_default_dtypes()}},
+\code{\link[=with_dtypes]{with_dtypes()}}
 }

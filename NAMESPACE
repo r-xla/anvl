@@ -466,6 +466,7 @@ export(vt)
 export(vt2at)
 export(with_backend)
 export(with_default_dtypes)
+export(with_dtypes)
 import(checkmate)
 import(tengen)
 importFrom(cli,

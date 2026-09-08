@@ -466,6 +466,9 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
       # Avoid `n:1` when `n == 0`: `0:1` is non-empty in R and selects the wrong
       # elements (and quickr lowers it to an invalid Fortran slice).
       n <- as.integer(shape_in[[d]])
+      if (n == 0L) {
+        return(quickr_empty_idx())
+      }
       rlang::call2("+", rlang::call2("-", n, rlang::call2("seq_len", n)), 1L)
     } else {
       rlang::call2("seq_len", shape_in[[d]])
@@ -559,6 +562,9 @@ quickr_emit_static_slice <- function(
 
   idxs <- Map(
     function(start, stride, n) {
+      if (n == 0L) {
+        return(quickr_empty_idx())
+      }
       rlang::call2(
         "+",
         start,
@@ -581,9 +587,20 @@ quickr_clamp_scalar <- function(x, lower, upper) {
   rlang::call2("min", upper, rlang::call2("max", x, lower))
 }
 
+# The index vector of an axis that selects nothing. Emitted for a zero-size
+# axis instead of the general index arithmetic: quickr rejects an elementwise
+# operation with an empty operand (Fortran has no recycling), and the
+# arithmetic would select nothing anyway.
+quickr_empty_idx <- function() {
+  rlang::call2("seq_len", 0L)
+}
+
 quickr_dynamic_slice_idxs <- function(start_indices_expr, shape_in, slice_sizes) {
   Map(
     function(start_expr, n_in, n_slice) {
+      if (n_slice == 0L) {
+        return(quickr_empty_idx())
+      }
       upper <- as.integer(n_in - n_slice + 1L)
       start <- quickr_clamp_scalar(start_expr, 1L, upper)
       rlang::call2("+", start, rlang::call2("-", rlang::call2("seq_len", n_slice), 1L))
@@ -1466,6 +1483,21 @@ quickr_register_prim_lowerer <- function(primitive, fun) {
   invisible(fun)
 }
 
+# Registers `fun` for an elementwise primitive: one whose output has the shape
+# of its operands, so an output with a zero-size axis has nothing to compute.
+# Such an output is allocated directly instead -- quickr rejects an elementwise
+# operation with an empty operand (Fortran has no recycling).
+quickr_register_elementwise_lowerer <- function(primitive, fun) {
+  guarded <- function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
+    empty <- quickr_emit_known_empty(out_syms[[1L]], out_avals[[1L]])
+    if (!is.null(empty)) {
+      return(empty)
+    }
+    fun(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = ctx)
+  }
+  quickr_register_prim_lowerer(primitive, guarded)
+}
+
 quickr_supported_prims <- function() {
   sort(unlist(
     eapply(primitive_env, function(primitive) {
@@ -1599,7 +1631,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_convert,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
@@ -1917,7 +1949,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     list(prim_add, prim_sub, prim_mul),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       op <- switch(
@@ -1931,7 +1963,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_div,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_aval <- out_avals[[1L]]
@@ -1945,14 +1977,14 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_negate,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       quickr_emit_assign(out_syms[[1L]], rlang::call2("-", inputs[[1L]]))
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     list(prim_eq, prim_ne, prim_gt, prim_ge, prim_lt, prim_le),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       dt_lhs <- as.character(dtype(input_nodes[[1L]]$aval))
@@ -1997,7 +2029,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     list(prim_and, prim_or, prim_xor),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       dt <- as.character(dtype(input_nodes[[1L]]$aval))
@@ -2025,7 +2057,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_not,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       dt <- as.character(dtype(input_nodes[[1L]]$aval))
@@ -2036,7 +2068,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_ifelse,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       quickr_emit_select(
@@ -2050,7 +2082,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     list(prim_abs, prim_sqrt, prim_log, prim_floor, prim_ceil, prim_exp, prim_sin, prim_cos, prim_tan),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       fun <- switch(
@@ -2064,36 +2096,28 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_tanh,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       quickr_emit_assign(out_syms[[1L]], rlang::call2("tanh", inputs[[1L]]))
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_expm1,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
-      empty <- quickr_emit_known_empty(out_syms[[1L]], out_avals[[1L]])
-      if (!is.null(empty)) {
-        return(empty)
-      }
       quickr_emit_assign(out_syms[[1L]], quickr_stable_expm1_expr(inputs[[1L]]))
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_log1p,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
-      empty <- quickr_emit_known_empty(out_syms[[1L]], out_avals[[1L]])
-      if (!is.null(empty)) {
-        return(empty)
-      }
       quickr_emit_assign(out_syms[[1L]], quickr_stable_log1p_expr(inputs[[1L]]))
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_logistic,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       x <- inputs[[1L]]
@@ -2102,13 +2126,9 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     list(prim_max, prim_min),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
-      empty <- quickr_emit_known_empty(out_syms[[1L]], out_avals[[1L]])
-      if (!is.null(empty)) {
-        return(empty)
-      }
       cmp <- if (prim_name == "maximum") ">=" else "<="
       quickr_emit_assign(
         out_syms[[1L]],
@@ -2117,7 +2137,7 @@ local({
     }
   )
 
-  quickr_register_prim_lowerer(
+  quickr_register_elementwise_lowerer(
     prim_pow,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_aval <- out_avals[[1L]]

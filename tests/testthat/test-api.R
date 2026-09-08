@@ -1812,7 +1812,9 @@ describe("nv_lu", {
     expect_equal(shape(out$permutation), 2L)
     L <- as_array(out$L)
     U <- as_array(out$U)
-    permutation <- as_array(out$permutation)
+    # `as.integer()`: the permutation follows the default integer data type, and
+    # an `i64` array materializes as a `bit64::integer64`, which cannot index.
+    permutation <- as.integer(as_array(out$permutation))
     # L is unit lower-triangular, U is upper-triangular.
     expect_equal(L[upper.tri(L)], rep(0, sum(upper.tri(L))))
     expect_equal(diag(L), c(1, 1))
@@ -1831,7 +1833,9 @@ describe("nv_lu", {
     expect_equal(shape(out$U), c(k, n))
     L <- as_array(out$L)
     U <- as_array(out$U)
-    permutation <- as_array(out$permutation)
+    # `as.integer()`: the permutation follows the default integer data type, and
+    # an `i64` array materializes as a `bit64::integer64`, which cannot index.
+    permutation <- as.integer(as_array(out$permutation))
     # L: unit diagonal on the first k rows, zeros above the diagonal.
     L_top <- L[seq_len(k), , drop = FALSE]
     expect_equal(L_top[upper.tri(L_top)], rep(0, sum(upper.tri(L_top))))
@@ -1850,7 +1854,9 @@ describe("nv_lu", {
     expect_equal(shape(out$U), c(k, n))
     L <- as_array(out$L)
     U <- as_array(out$U)
-    permutation <- as_array(out$permutation)
+    # `as.integer()`: the permutation follows the default integer data type, and
+    # an `i64` array materializes as a `bit64::integer64`, which cannot index.
+    permutation <- as.integer(as_array(out$permutation))
     expect_equal(diag(L), c(1, 1))
     expect_equal(L %*% U, A_mat[permutation, , drop = FALSE], tolerance = 1e-5)
   })
