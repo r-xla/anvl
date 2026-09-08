@@ -3015,24 +3015,39 @@ prim_print <- new_primitive(
 #' @description
 #' Generates pseudo-random numbers using the specified algorithm and returns
 #' the updated RNG state together with the generated values.
-#' @template param_initial_state
+#' @param initial_state ([`arrayish`])\cr
+#'   RNG state: a 1-D array of the `ui64` data type. Its length depends on
+#'   `rng_algorithm` -- exactly 2 for `"THREE_FRY"`, 2 or 3 for `"PHILOX"`,
+#'   and whatever the implementation wants for `"DEFAULT"`.
 #' @param rng_algorithm (`character(1)`)\cr
-#'   RNG algorithm name. Default is `"THREE_FRY"`.
+#'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
+#'   leaving the choice to the implementation.
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values.
+#'   Data type of the generated random values. Can be any numeric data type,
+#'   boolean being the one exception.
 #' @template param_shape
 #' @return (`list` of two [`arrayish`])\cr
-#'   The first element is the updated RNG state with the same dtype and shape
-#'   as `initial_state`. The second element is an array of random values with
-#'   the given `dtype` and `shape`.
+#'   Unnamed. The updated RNG state, with `initial_state`'s data type and
+#'   shape, and the random values, with the given `dtype` and `shape`.
 #' @templateVar primitive_id rng_bit_generator
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_rng_bit_generator()].
 #' @seealso [nv_runif()], [nv_rnorm()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # THREE_FRY, the default, takes a two-element state
 #' state <- nv_array(c(0L, 0L), dtype = "ui64")
 #' prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
+#'
+#' # the updated state feeds the next draw, so the two differ
+#' out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
+#' prim_rng_bit_generator(out[[1L]], dtype = "f32", shape = 3L)
+#'
+#' # PHILOX also accepts a three-element state
+#' prim_rng_bit_generator(
+#'   nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
+#'   dtype = "i32", shape = 4L
+#' )
 #' @export
 prim_rng_bit_generator <- new_primitive(
   "rng_bit_generator",

@@ -13,22 +13,25 @@ prim_rng_bit_generator(
 }
 \arguments{
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of the \code{ui64} data type. Its length depends on
+\code{rng_algorithm} -- exactly 2 for \code{"THREE_FRY"}, 2 or 3 for \code{"PHILOX"},
+and whatever the implementation wants for \code{"DEFAULT"}.}
 
 \item{rng_algorithm}{(\code{character(1)})\cr
-RNG algorithm name. Default is \code{"THREE_FRY"}.}
+One of \code{"THREE_FRY"} (default), \code{"PHILOX"} or \code{"DEFAULT"}, the last
+leaving the choice to the implementation.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the generated random values.}
+Data type of the generated random values. Can be any numeric data type,
+boolean being the one exception.}
 
 \item{shape}{(\code{integer()})\cr
 Shape.}
 }
 \value{
 (\code{list} of two \code{\link{arrayish}})\cr
-The first element is the updated RNG state with the same dtype and shape
-as \code{initial_state}. The second element is an array of random values with
-the given \code{dtype} and \code{shape}.
+Unnamed. The updated RNG state, with \code{initial_state}'s data type and
+shape, and the random values, with the given \code{dtype} and \code{shape}.
 }
 \description{
 Generates pseudo-random numbers using the specified algorithm and returns
@@ -48,8 +51,19 @@ Lowers to \code{\link[stablehlo:hlo_rng_bit_generator]{hlo_rng_bit_generator()}}
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# THREE_FRY, the default, takes a two-element state
 state <- nv_array(c(0L, 0L), dtype = "ui64")
 prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
+
+# the updated state feeds the next draw, so the two differ
+out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
+prim_rng_bit_generator(out[[1L]], dtype = "f32", shape = 3L)
+
+# PHILOX also accepts a three-element state
+prim_rng_bit_generator(
+  nv_array(c(0L, 0L, 0L), dtype = "ui64"), "PHILOX",
+  dtype = "i32", shape = 4L
+)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
