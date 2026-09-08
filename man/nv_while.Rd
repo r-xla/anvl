@@ -8,8 +8,9 @@ nv_while(init, cond, body)
 }
 \arguments{
 \item{init}{(\verb{named list()})\cr
-Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs. R values are committed at their default data type.}
+Named list of initial state values, a tree in the sense of pjrt's
+\code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
+sub-graphs. R values are committed at their default data type.}
 
 \item{cond}{(\code{function})\cr
 Condition function returning a scalar boolean.
@@ -21,8 +22,9 @@ with the same structure as \code{init}.}
 }
 \value{
 (named \code{list})\cr
-A tree holding the loop-carried arrays, in its final state after the loop
-terminates, with \code{init}'s structure, data types and shapes.
+A tree of the loop-carried arrays -- see \code{\link[pjrt:build_tree]{RTree}} -- in its
+final state after the loop terminates, with \code{init}'s structure, data
+types and shapes.
 }
 \description{
 Executes a functional while loop.

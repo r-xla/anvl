@@ -2607,9 +2607,9 @@ prim_ifelse <- new_primitive(
 #'   [prim_ifelse()], which promotes its two values onto one data type, these
 #'   are only checked: branches that disagree are an error.
 #' @return ([`arrayish`] | `list`)\cr
-#'   Result of the executed branch: an array, or a tree (a `list`, nested
-#'   arbitrarily) holding them, with the structure, data types and shapes both
-#'   branches share.
+#'   Result of the executed branch: an array, or a tree of them in the sense
+#'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
+#'   the structure, data types and shapes both branches share.
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2679,9 +2679,9 @@ prim_if <- new_primitive(
 #'   as `init`. Nothing is promoted: a loop-carried state is meant to be
 #'   heterogeneous, so each member keeps its own data type across iterations.
 #' @return (named `list`)\cr
-#'   A tree holding the loop-carried arrays, with the same structure, data
-#'   types and shapes as `init`, in its final state after the loop
-#'   terminates.
+#'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- with the
+#'   same structure, data types and shapes as `init`, in its final state after
+#'   the loop terminates.
 #' @templateVar primitive_id while
 #' @template section_rules
 #' @section StableHLO:
@@ -2908,10 +2908,9 @@ prim_sort <- new_primitive(
 #'   Number of top elements. Must satisfy
 #'   `1 <= k <= shape(x)[naxes(x)]`.
 #' @return (`list` of two [`arrayish`])\cr
-#'   Unnamed:
-#'   The top-`k` values, at the input's data type, and their indices along the
-#'   last axis, at `i32` (matching JAX). Both have the input's shape with the
-#'   last axis replaced by `k`. Ties are broken by lower index first.
+#'   Unnamed. The top-`k` values, at the input's data type, and their indices
+#'   along the last axis, at `i32`. Both have the input's shape with the last
+#'   axis replaced by `k`. Ties are broken by lower index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:

@@ -2688,9 +2688,9 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
 #'   Zero-argument function for the false branch.
 #'   Must return outputs with the same shapes as the true branch.
 #' @return ([`arrayish`] | `list`)\cr
-#'   Result of the executed branch: an array, or a tree (a `list`, nested
-#'   arbitrarily) holding them, with the structure, data types and shapes both
-#'   branches share.
+#'   Result of the executed branch: an array, or a tree of them in the sense
+#'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
+#'   the structure, data types and shapes both branches share.
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2709,8 +2709,9 @@ nv_if <- prim_if
 #'   Body function returning the updated state as a named list
 #'   with the same structure as `init`.
 #' @return (named `list`)\cr
-#'   A tree holding the loop-carried arrays, in its final state after the loop
-#'   terminates, with `init`'s structure, data types and shapes.
+#'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- in its
+#'   final state after the loop terminates, with `init`'s structure, data
+#'   types and shapes.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_while(

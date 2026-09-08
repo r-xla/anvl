@@ -8,8 +8,9 @@ prim_while(init, cond, body)
 }
 \arguments{
 \item{init}{(\verb{named list()})\cr
-Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs. R values are committed at their default data type.}
+Named list of initial state values, a tree in the sense of pjrt's
+\code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
+sub-graphs. R values are committed at their default data type.}
 
 \item{cond}{(\code{function})\cr
 Condition function that receives the current state as arguments
@@ -23,9 +24,9 @@ heterogeneous, so each member keeps its own data type across iterations.}
 }
 \value{
 (named \code{list})\cr
-A tree holding the loop-carried arrays, with the same structure, data
-types and shapes as \code{init}, in its final state after the loop
-terminates.
+A tree of the loop-carried arrays -- see \code{\link[pjrt:build_tree]{RTree}} -- with the
+same structure, data types and shapes as \code{init}, in its final state after
+the loop terminates.
 }
 \description{
 Repeatedly executes \code{body} while \code{cond} returns \code{TRUE}, like R's
