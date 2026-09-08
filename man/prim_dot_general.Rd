@@ -57,6 +57,7 @@ Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}, specified 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,

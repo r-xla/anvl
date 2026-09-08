@@ -24,13 +24,14 @@ prim_scatter(
 The base array to scatter into. Can be any data type.
 \code{x} and \code{update} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
-\item{scatter_indices}{(\code{\link{arrayish}} of integer type)\cr
-Array of indices. Contains index vectors that map to positions in
+\item{scatter_indices}{(\code{\link{arrayish}})\cr
+Array of indices, of an integer data type, which it keeps -- the indices
+take no part in \code{x}'s. Contains index vectors that map to positions in
 \code{x} via \code{scatter_axes_to_x_axes}. The axis specified
 by \code{index_vector_axis} holds the index vectors.}
 
 \item{update}{(\code{\link{arrayish}})\cr
-Update values array.}
+Update values array. Shares \code{x}'s data type -- see \code{x}.}
 
 \item{update_window_axes}{(\code{integer()})\cr
 Axes of \code{update} that are window axes, i.e. they
@@ -115,8 +116,8 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 \section{StableHLO}{
 
 Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}, specified under \href{https://openxla.org/stablehlo/spec#scatter}{scatter}.
-The dimension numbers are intricate; anvl states them 1-based and converts
-on the way down.
+The axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.
 }
 
 \examples{

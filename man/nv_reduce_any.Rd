@@ -20,7 +20,7 @@ set to 1 if \code{FALSE}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has boolean data type. The shape is the input's with the reduced axes
+Has the boolean data type. The shape is the input's with the reduced axes
 removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{

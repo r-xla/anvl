@@ -30,6 +30,7 @@ it to the other's size; otherwise raise an error.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the length-3 vector is stretched to the matrix's shape
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_array(c(10, 20, 30))
 nv_broadcast_arrays(x, y)

@@ -5,7 +5,9 @@
 #'   The left-hand side type.
 #' @param rhs_dtype ([`tengen::DataType`])\cr
 #'   The right-hand side type.
-#' @return ([`tengen::DataType`])
+#' @return ([`tengen::DataType`])\cr
+#'   The data type both inputs promote to, which is the wider of the two within
+#'   a category and the higher category otherwise.
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
@@ -118,8 +120,9 @@ promote_dtype <- function(dtype, on = NULL, coerce = FALSE) {
 }
 
 #' @description
-#' `promote_rdata_common()` brings the *R values* to the common data type, as long
-#' it is within their category (a `double` can e.g. *not* become a float).
+#' `promote_rdata_common()` brings the *R values* to the common data type, as
+#' long as it is within their category (a `double` can e.g. *not* become an
+#' integer).
 #' `AnvlArray` inputs are left as they are and the function throws an error
 #' if not all of them have exactly the same data type.
 #' This rule is commonly used in primitives expecting homogenous inputs
@@ -620,7 +623,8 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' * **boolean** -- `bool`
 #' * **integer** -- `i8`, `i16`, `i32`, `i64` and their unsigned counterparts
 #'   `ui8`, `ui16`, `ui32`, `ui64`
-#' * **float** -- `f32`, `f64`
+#' * **float** -- `f32`, `f64`, and the narrower floats such as `f16` and
+#'   `bf16` where a backend supports them
 #'
 #' These are the categories promotion works in, where signed and unsigned
 #' integers count as one. [`tengen::dtype_category()`] reports a finer split
@@ -632,6 +636,9 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' which one it should take, it commits to the default of its R storage type: a
 #' `double` becomes `f32`, an `integer` becomes `i32`, a `logical` becomes
 #' `bool`. [`peek_dtype()`] reports the default an R value would commit to.
+#'
+#' The backend has the final say on the float default: `"quickr"` computes in
+#' double precision throughout, so a `double` becomes `f64` there.
 #'
 #' Within its own category an R value assumes the data type it meets instead,
 #' and is built at it directly rather than converted to it, which is what keeps

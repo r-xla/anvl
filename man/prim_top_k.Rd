@@ -16,10 +16,11 @@ Number of top elements. Must satisfy
 \verb{1 <= k <= shape(x)[naxes(x)]}.}
 }
 \value{
-(\code{list} of two \code{\link{arrayish}})\cr
-Unnamed. The top-\code{k} values, at the input's data type, and their indices
-along the last axis, at \code{i32}. Both have the input's shape with the last
-axis replaced by \code{k}. Ties are broken by lower index first.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{values}, the top-\code{k} values at the input's data type, and
+\code{indices}, their indices along the last axis at \code{i32}. Both have the
+input's shape with the last axis replaced by \code{k}. Ties are broken by lower
+index first.
 }
 \description{
 Returns the \code{k} largest values along the last axis, sorted in
@@ -38,11 +39,12 @@ For other axes, transpose so the target axis is last, call
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}, specified under \href{https://openxla.org/stablehlo/spec#top_k}{top_k}.
+Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlotop_k_chlotop_kop}{chlo.top_k}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` keeps the input's data type, `indices` is `i32`
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 prim_top_k(x, k = 3L)
 \dontshow{\}) # examplesIf}

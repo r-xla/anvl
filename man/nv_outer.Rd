@@ -21,6 +21,7 @@ Computes the outer product of two 1-D arrays.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a length-3 and a length-2 vector give a 3x2 at their common data type
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5))
 nv_outer(x, y)

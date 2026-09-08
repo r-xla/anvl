@@ -23,7 +23,7 @@ Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
 set to 1 if \code{FALSE}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 
 \item{trim}{Currently not supported.}

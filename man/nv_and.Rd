@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_and}
 \alias{nv_and}
-\title{Logical And}
+\title{Bitwise And}
 \usage{
 nv_and(lhs, rhs)
 }
@@ -19,8 +19,8 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise logical AND. You
-can also use the \code{&} operator.
+Element-wise bitwise AND -- a logical AND on a boolean input, and a
+bit-by-bit one on an integer. You can also use the \code{&} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

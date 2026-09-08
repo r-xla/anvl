@@ -28,6 +28,7 @@ Concatenates arrays along an axis.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the operands are promoted to a common data type; axis 1 grows to 6
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
 nv_concatenate(x, y)

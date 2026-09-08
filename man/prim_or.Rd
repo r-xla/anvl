@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_or}
 \alias{prim_or}
-\title{Primitive Or}
+\title{Primitive Bitwise Or}
 \usage{
 prim_or(lhs, rhs)
 }
@@ -18,7 +18,8 @@ values assume the other operand's data type when it is in their
 Has the inputs' shape and data type.
 }
 \description{
-Element-wise logical OR.
+Element-wise bitwise OR -- a logical OR on a boolean input, and a
+bit-by-bit one on an integer.
 }
 \section{Implemented Rules}{
 

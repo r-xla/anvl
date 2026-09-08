@@ -10,7 +10,8 @@ prim_while(init, cond, body)
 \item{init}{(\verb{named list()})\cr
 Named list of initial state values, a tree in the sense of pjrt's
 \code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
-sub-graphs. R values are committed at their default data type.}
+sub-graphs. R values are committed at their
+\link[=default_dtypes]{default data type}.}
 
 \item{cond}{(\code{function})\cr
 Condition function that receives the current state as arguments
@@ -30,9 +31,8 @@ the loop terminates.
 }
 \description{
 Repeatedly executes \code{body} while \code{cond} returns \code{TRUE}, like R's
-\code{while} loop. The loop state is initialized with \code{init} and
-passed through each iteration.
-Otherwise, no state is maintained between iterations.
+\code{while} loop. The loop state is initialized with \code{init} and passed through
+each iteration; it is the only thing carried from one iteration to the next.
 }
 \section{Implemented Rules}{
 
@@ -49,6 +49,7 @@ Lowers to \code{\link[stablehlo:hlo_while]{hlo_while()}}, specified under \href{
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the loop state is a named list, and each member keeps its data type
 prim_while(
   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
   cond = function(i, total) i <= 5L,

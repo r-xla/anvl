@@ -16,10 +16,10 @@ Axis along which to accumulate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-(\code{list} of two \code{\link{arrayish}})\cr
-Unnamed. The running maximum, at the input's data type,
-and the running argmax, at \code{i32}. Both have the input's
-shape.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{values}, the running maximum at the input's data
+type, and \code{indices}, the running argmax at \code{i32}. Both
+have the input's shape.
 }
 \description{
 Running maximum of array elements along a single axis along with
@@ -43,6 +43,7 @@ Lowers to a variadic \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window(
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` keeps the input's data type, `indices` is `i32`
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 prim_cummax(x, axis = 1L)
 \dontshow{\}) # examplesIf}

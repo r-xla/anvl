@@ -28,7 +28,7 @@ Element-wise hyperbolic cosine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cosh]{hlo_cosh()}}, specified under \href{https://openxla.org/stablehlo/spec#cosh}{cosh}.
+Lowers to \code{\link[stablehlo:hlo_cosh]{hlo_cosh()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlocosh_chlocoshop}{chlo.cosh}.
 }
 
 \examples{

@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_not}
 \alias{prim_not}
-\title{Primitive Not}
+\title{Primitive Bitwise Not}
 \usage{
 prim_not(x)
 }
@@ -16,7 +16,8 @@ One input. Can be any integerish data type. An R value commits to its
 Has the input's shape and data type.
 }
 \description{
-Element-wise logical NOT.
+Element-wise bitwise NOT -- a logical NOT on a boolean input, and a
+bit-by-bit one on an integer.
 }
 \section{Implemented Rules}{
 
@@ -34,8 +35,12 @@ Lowers to \code{\link[stablehlo:hlo_not]{hlo_not()}}, specified under \href{http
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# on a boolean this is a logical negation
 x <- nv_array(c(TRUE, FALSE, TRUE))
 prim_not(x)
+
+# on an integer it complements every bit, so `12L` becomes `-13`
+prim_not(nv_array(12L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

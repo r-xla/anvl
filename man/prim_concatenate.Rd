@@ -41,6 +41,7 @@ Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}, specified 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the inputs already agree on a data type; axis 1 grows to 6
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
 prim_concatenate(x, y, axis = 1L)

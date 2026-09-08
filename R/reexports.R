@@ -53,7 +53,8 @@ tengen::device
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
 #' @returns ([`array`][base::array] | `vector`)\cr
-#'   Of length 1.
+#'   An R array with the input's shape, or -- for a scalar, which R cannot
+#'   represent as an array -- a vector of length 1.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' as_array(x)

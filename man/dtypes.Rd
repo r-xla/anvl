@@ -11,7 +11,8 @@ boolean < integer < float:
 \item \strong{boolean} -- \code{bool}
 \item \strong{integer} -- \code{i8}, \code{i16}, \code{i32}, \code{i64} and their unsigned counterparts
 \code{ui8}, \code{ui16}, \code{ui32}, \code{ui64}
-\item \strong{float} -- \code{f32}, \code{f64}
+\item \strong{float} -- \code{f32}, \code{f64}, and the narrower floats such as \code{f16} and
+\code{bf16} where a backend supports them
 }
 
 These are the categories promotion works in, where signed and unsigned
@@ -29,7 +30,8 @@ and the floats.
 \item \emph{integer} -- signed and unsigned integer.
 \item \emph{integerish} -- boolean and integer, signed or unsigned.
 \item \emph{signed numeric} -- signed integer and float.
-\item \emph{float} -- \code{f32} and \code{f64}.
+\item \emph{float} -- the whole float category: \code{f32}, \code{f64} and any narrower float
+a backend supports.
 \item \emph{boolean} -- \code{bool}, the only member of its category.
 }
 
@@ -43,6 +45,9 @@ An R value has no data type of its own. Where nothing in the program says
 which one it should take, it commits to the default of its R storage type: a
 \code{double} becomes \code{f32}, an \code{integer} becomes \code{i32}, a \code{logical} becomes
 \code{bool}. \code{\link[=peek_dtype]{peek_dtype()}} reports the default an R value would commit to.
+
+The backend has the final say on the float default: \code{"quickr"} computes in
+double precision throughout, so a \code{double} becomes \code{f64} there.
 
 Within its own category an R value assumes the data type it meets instead,
 and is built at it directly rather than converted to it, which is what keeps

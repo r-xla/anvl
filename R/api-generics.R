@@ -173,9 +173,10 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #'   New ordering of axes. If `NULL` (default), reverses the axes.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return ([`arrayish`])\cr
-#'   Has the same data type as `x` and shape `nv_shape(x)[permutation]`.
+#'   Has the same data type as `x` and shape `shape(x)[permutation]`.
 #' @seealso [prim_transpose()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the 2x3 becomes a 3x2, keeping its data type
 #' x <- nv_matrix(1:6, nrow = 2)
 #' t(x)
 #' @method t AnvlArray

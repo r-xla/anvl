@@ -19,7 +19,7 @@ Has the inputs' shape and data type.
 }
 \description{
 Element-wise remainder.
-Result has sign of the divident, which differs from base R's \code{\%\%}, which is available
+Result has sign of the dividend, which differs from base R's \code{\%\%}, which is available
 via \code{\link[=nv_mod]{nv_mod()}} and has sign of divisor.
 }
 \section{Implemented Rules}{

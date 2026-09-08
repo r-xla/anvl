@@ -36,6 +36,7 @@ transparently via a layout flip for wide matrices.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# all three outputs have the input's data type
 x <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 3, dtype = "f64")
 nv_svd(x)
 \dontshow{\}) # examplesIf}

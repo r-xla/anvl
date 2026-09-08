@@ -8,14 +8,18 @@ nv_bitcast_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Target data type.}
+Target data type, reinterpreting the bits rather than the values. One of
+the same bit width as the input's leaves the shape unchanged; a narrower
+one adds a trailing axis holding the pieces; a wider one consumes the last
+axis, whose size must equal the ratio of the two widths.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the given \code{dtype}.
+Has the given \code{dtype}, and the shape described under \code{dtype}.
 }
 \description{
 Reinterprets the bits of an array as a different data type without modifying
@@ -24,11 +28,13 @@ axis is added; if wider, the last axis is consumed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the bits of one i32 reread as four i8, in a new trailing axis
 x <- nv_array(1L)
-prim_bitcast_convert(x, dtype = "i8")
+nv_bitcast_convert(x, dtype = "i8")
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_bitcast_convert]{prim_bitcast_convert()}} for the underlying primitive, \code{\link[=nv_convert]{nv_convert()}}
-for value-preserving type conversion.
+\code{\link[=prim_bitcast_convert]{prim_bitcast_convert()}}, which this is an alias of -- a single
+operand leaves the API layer nothing to promote or broadcast -- and
+\code{\link[=nv_convert]{nv_convert()}} for value-preserving type conversion.
 }

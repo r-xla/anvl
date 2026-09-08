@@ -75,7 +75,7 @@ behavior if the indices are not actually unique. Default \code{FALSE}.}
 (\code{\link{arrayish}})\cr
 Has the input's data type. The output shape is composed
 of the offset axes (from the slice) and the remaining
-axes from \code{start_indices}. See the underluing stableHLO function
+axes from \code{start_indices}. See the underlying stableHLO function
 for more details.
 }
 \description{
@@ -92,7 +92,7 @@ given indices.
 \section{Out Of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
-\code{clamp(1, start_index, nv_shape(x) - slice_sizes + 1)}.
+\code{clamp(1, start_index, shape(x) - slice_sizes + 1)}.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.
 }
@@ -109,8 +109,8 @@ the effective start position may differ from the requested one.
 \section{StableHLO}{
 
 Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}, specified under \href{https://openxla.org/stablehlo/spec#gather}{gather}.
-The dimension numbers are intricate; anvl states them 1-based and converts
-on the way down.
+The axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.
 }
 
 \examples{

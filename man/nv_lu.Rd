@@ -20,8 +20,8 @@ indices at \code{i32}.
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.
 \item \code{U} -- upper-triangular factor of shape \verb{(k, n)}.
 \item \code{pivots} -- length \code{k}, dtype \code{i32}. LAPACK-style sequential
-1-based row swaps as returned by \code{getrf}.
-\item \code{permutation} -- length \code{m}, dtype \code{i32}. A 1-based permutation
+sequential row swaps as returned by \code{getrf}.
+\item \code{permutation} -- length \code{m}, at \code{i32}. A permutation
 vector representing \eqn{P}.
 }
 }
@@ -36,6 +36,7 @@ Use \code{\link[=prim_lu]{prim_lu()}} to get them in packed \code{LU} form.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `LU` keeps the input's data type; `pivots` and `permutation` are `i32`
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_lu(x)
 \dontshow{\}) # examplesIf}

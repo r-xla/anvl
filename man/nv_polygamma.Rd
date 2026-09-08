@@ -9,13 +9,13 @@ nv_polygamma(n, x)
 \arguments{
 \item{n, x}{(\code{\link{arrayish}})\cr
 Order of the polygamma function and the value to evaluate it at. \code{n}
-typically holds non-negative whole numbers. Can be of any data type: the
-two are
-\link[=nv_promote_to_common]{promoted to a common data type}, which is a float
-because that is all \code{\link[=prim_polygamma]{prim_polygamma()}} takes, so an integer or boolean
-input is converted rather than refused. Scalars are
-\link[=nv_broadcast_scalars]{broadcast} to the shape of the other, so
-\code{nv_polygamma(1, x)} works for any \code{x}.}
+typically holds non-negative whole numbers. The two are
+\link[=nv_promote_to_common]{promoted to a common data type}, which must come
+out a float, since that is all \code{\link[=prim_polygamma]{prim_polygamma()}} takes: an integer or
+boolean operand is converted where the other side is a float (or an R
+double, which becomes one), and a call in which neither side is refused.
+Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other,
+so \code{nv_polygamma(1, x)} works for any float \code{x}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -28,6 +28,7 @@ log-gamma function. For \code{n = 0} this is the digamma function; for \code{n =
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R `1` is built at `x`'s float data type and broadcast
 x <- nv_array(c(0.5, 1, 2, 5))
 nv_polygamma(1, x) # trigamma
 \dontshow{\}) # examplesIf}

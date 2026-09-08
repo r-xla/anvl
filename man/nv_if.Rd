@@ -7,8 +7,8 @@
 nv_if(pred, true, false)
 }
 \arguments{
-\item{pred}{(\code{\link{arrayish}} of boolean type, scalar)\cr
-Predicate.}
+\item{pred}{(\code{\link{arrayish}})\cr
+Predicate. Must be a scalar of the boolean data type, or an R logical.}
 
 \item{true}{(\verb{function()})\cr
 Zero-argument function for the true branch.}
@@ -30,6 +30,7 @@ of the two branches depending on a scalar predicate.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# both branches must return the same structure, data types and shapes
 nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 \dontshow{\}) # examplesIf}
 }

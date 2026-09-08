@@ -38,6 +38,7 @@ Lowers to \code{\link[stablehlo:hlo_convert]{hlo_convert()}}, specified under \h
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the values are preserved, the data type changes
 x <- nv_array(c(1L, 2L, 3L))
 prim_convert(x, dtype = "f32")
 \dontshow{\}) # examplesIf}

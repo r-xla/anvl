@@ -14,17 +14,20 @@ Shape.}
 RNG state (\code{ui64[2]}).}
 
 \item{size}{(\code{integer(1)})\cr
-Number of trials.}
+Number of trials. A plain R number rather than \code{\link{arrayish}}, as is \code{prob},
+so nothing is promoted.}
 
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Data type of the sample. Can be any numeric data type; the successes are
+counted and converted to it.}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})\cr
-List of two elements: the updated RNG state and the sampled values.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{state}, the updated RNG state, and \code{values}, the sample of shape
+\code{shape} and data type \code{dtype}.
 }
 \description{
 Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
@@ -32,10 +35,10 @@ When \code{size = 1} (the default), this is a Bernoulli distribution.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# Bernoulli samples; `state` is the updated RNG state
 state <- nv_rng_state(42L)
-# Bernoulli samples
 result <- nv_rbinom(c(2, 3), state)
-result[[2]]
+result$values
 \dontshow{\}) # examplesIf}
 }
 \seealso{

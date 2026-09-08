@@ -47,6 +47,7 @@ You can also use \code{sort()} directly.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# sorting moves elements, so the data type and shape stay
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_sort(x)
 sort(x) # via the S3 generic

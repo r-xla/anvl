@@ -28,7 +28,7 @@ Element-wise inverse tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_atan]{hlo_atan()}}, specified under \href{https://openxla.org/stablehlo/spec#atan}{atan}.
+Lowers to \code{\link[stablehlo:hlo_atan]{hlo_atan()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloatan_chloatanop}{chlo.atan}.
 }
 
 \examples{

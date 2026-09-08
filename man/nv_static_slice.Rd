@@ -8,7 +8,8 @@ nv_static_slice(x, start_indices, limit_indices, strides)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{start_indices}{(\code{integer()})\cr
 Start indices (inclusive), one per axis.}
@@ -29,6 +30,7 @@ For dynamic indexing, use \code{\link[=nv_subset]{nv_subset()}} instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# elements 2 through 5, the limit being inclusive
 x <- nv_array(1:10)
 nv_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 \dontshow{\}) # examplesIf}

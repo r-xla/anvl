@@ -44,6 +44,7 @@ Lowers to \code{\link[stablehlo:hlo_if]{hlo_if()}}, specified under \href{https:
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# both branches must return the same structure, data types and shapes
 prim_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 \dontshow{\}) # examplesIf}
 }

@@ -12,9 +12,9 @@ One input. Can be any data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Target data type, reinterpreting the bits rather than the values. Of the
-same bit width as the input's leaves the shape unchanged; a narrower one
-adds a trailing axis holding the pieces; a wider one consumes the last
+Target data type, reinterpreting the bits rather than the values. One of
+the same bit width as the input's leaves the shape unchanged; a narrower
+one adds a trailing axis holding the pieces; a wider one consumes the last
 axis, whose size must equal the ratio of the two widths.}
 }
 \value{

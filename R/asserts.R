@@ -109,15 +109,30 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   shape
 }
 
-# Convert `x` to a DataType via `as_dtype()` and assert it is a floating-point
-# dtype (f32 or f64). Returns the converted DataType.
+# Like `assert_float_dtype()`, but only the widths the RNG can build: it
+# assembles floats out of random bits, so it needs a 32- or 64-bit layout and
+# cannot serve `bf16` or `f16` even though those are floats.
+assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- assert_float_dtype(x, arg = arg, hint = hint)
+  if (!dtype_width(dt) %in% c(32L, 64L)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a 32- or 64-bit float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
+# Convert `x` to a DataType via `as_dtype()` and assert it belongs to the float
+# category. Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
-  # Deliberately narrower than is_dtype_float(): the callers (rng, sampling)
-  # assume 32/64-bit float layouts.
-  if (dt != "f32" && dt != "f64") {
+  # The float category, as `?dtypes` defines it, so this and `is_dtype_float()`
+  # agree on what counts as a float.
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
-      "{.arg {arg}} must be a floating-point dtype (f32 or f64).",
+      "{.arg {arg}} must be a float data type.",
       "x" = "Got {.val {as.character(dt)}}.",
       "i" = hint
     ))
@@ -147,7 +162,7 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
   }
   if (!is_dtype_float(peek_dtype(x))) {
     cli_abort(c(
-      "{.arg {arg}} must have a floating-point dtype.",
+      "{.arg {arg}} must have a float data type.",
       "x" = "Got dtype {.val {as.character(peek_dtype(x))}}."
     ))
   }

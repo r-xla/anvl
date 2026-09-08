@@ -38,6 +38,7 @@ Lowers to \code{\link[stablehlo:hlo_reverse]{hlo_reverse()}}, specified under \h
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the order along axis 1 is flipped
 x <- nv_array(c(1, 2, 3, 4, 5))
 prim_reverse(x, axes = 1L)
 \dontshow{\}) # examplesIf}

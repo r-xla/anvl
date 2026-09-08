@@ -30,6 +30,7 @@ Computes \code{lhs \%*\% t(rhs)}. If \code{rhs} is missing, computes \code{lhs \
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `x \%*\% t(x)`, so a 2x3 gives a 2x2
 x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
 nv_tcrossprod(x)
 \dontshow{\}) # examplesIf}

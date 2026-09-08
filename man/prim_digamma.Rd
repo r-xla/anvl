@@ -28,7 +28,7 @@ Element-wise digamma function (logarithmic derivative of the gamma function).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_digamma]{hlo_digamma()}}, specified under \href{https://openxla.org/stablehlo/spec#digamma}{digamma}.
+Lowers to \code{\link[stablehlo:hlo_digamma]{hlo_digamma()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlodigamma_chlodigammaop}{chlo.digamma}.
 }
 
 \examples{

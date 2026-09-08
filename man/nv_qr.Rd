@@ -32,6 +32,7 @@ shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `Q` is 3x2 and `R` 2x2, both at the input's data type
 x <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 3, dtype = "f32")
 nv_qr(x)
 \dontshow{\}) # examplesIf}

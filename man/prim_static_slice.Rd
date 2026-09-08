@@ -17,7 +17,7 @@ Start indices (inclusive), one per axis. Must satisfy
 
 \item{limit_indices}{(\code{integer()})\cr
 End indices (inclusive), one per axis. Must satisfy
-\code{limit_indices <= nv_shape(x)} per axis.}
+\code{limit_indices <= shape(x)} per axis.}
 
 \item{strides}{(\code{integer()})\cr
 Step sizes, one per axis. Must be \verb{>= 1}. A stride of \code{1}
@@ -51,7 +51,7 @@ Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}, specified under \href{
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# 1-D: extract elements 2 through 4 (limit is exclusive)
+# 1-D: extract elements 2 through 5, the limit being inclusive
 x <- nv_array(1:10)
 prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 
@@ -59,7 +59,7 @@ prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 x <- nv_array(1:10)
 prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
 
-# 2-D: extract a submatrix (rows 1-2, columns 2-3)
+# 2-D: extract the submatrix of rows 1-3 and columns 2-4
 x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 prim_static_slice(x,
   start_indices = c(1L, 2L),

@@ -8,18 +8,21 @@ nv_select(x, axis, index)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis to index into.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{index}{(\code{\link{arrayish}})\cr
-Scalar or 1D arrayish input (integer).}
+Scalar or 1-D array of an integer data type, which it keeps -- the index
+takes no part in \code{x}'s data type.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Same data type as \code{x}. \code{axis} is dropped if \code{index} was scalar.
+Has \code{x}'s data type. \code{axis} is dropped if \code{index} was scalar, and
+otherwise resized to the number of selected elements.
 }
 \description{
 Picks one or more elements along axis \code{axis} of \code{x}.
@@ -28,6 +31,7 @@ programmatically.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a scalar index drops the axis, an index array keeps it
 m <- nv_matrix(1:6, nrow = 2)
 nv_select(m, axis = 2L, index = 2L)
 nv_select(m, axis = 1L, index = 1L)

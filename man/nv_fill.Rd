@@ -17,8 +17,10 @@ that data type cannot hold exactly is converted to it.}
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{character(1)} | \code{NULL})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Can be any data type the backend supports. The
+default (\code{NULL}) is the \link[=default_dtypes]{default data type} of \code{value}'s R
+storage type, and \code{dtype(like)} for \code{nv_fill_like()}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -51,7 +53,10 @@ Creates an array filled with a scalar value. More memory-efficient than
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R double settles the data type, the shape is given
 nv_fill(0, shape = c(2, 3))
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_matrix(1:6, nrow = 2)
 nv_fill_like(x, 0)
 \dontshow{\}) # examplesIf}

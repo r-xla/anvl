@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_xor}
 \alias{prim_xor}
-\title{Primitive Xor}
+\title{Primitive Bitwise Xor}
 \usage{
 prim_xor(lhs, rhs)
 }
@@ -18,7 +18,8 @@ values assume the other operand's data type when it is in their
 Has the inputs' shape and data type.
 }
 \description{
-Element-wise logical XOR.
+Element-wise bitwise XOR -- a logical XOR on a boolean input, and a
+bit-by-bit one on an integer.
 }
 \section{Implemented Rules}{
 

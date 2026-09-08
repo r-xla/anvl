@@ -8,7 +8,8 @@ nv_squeeze(x, axes = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
 Axes to squeeze. Negative values count from the end, i.e. \code{-1}
@@ -24,6 +25,7 @@ Removes axes of size 1 from an array.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the two size-1 axes are dropped
 x <- nv_array(1:6, shape = c(1, 6, 1))
 nv_squeeze(x)
 \dontshow{\}) # examplesIf}

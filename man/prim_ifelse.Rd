@@ -41,6 +41,7 @@ Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}, specified under \hre
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result takes the branches' data type; `pred` only selects
 pred <- nv_array(c(TRUE, FALSE, TRUE))
 prim_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 \dontshow{\}) # examplesIf}

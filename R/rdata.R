@@ -292,12 +292,14 @@ r_const_at <- function(x, dtype, desc) {
 
 #' @title Peek at a Data Type
 #' @description
-#' The data type `x` would use if was conveted to an `AnvlArray`.
+#' The data type `x` would use if it was converted to an `AnvlArray`.
 #' Relevant for R objects and their [`RData`] trace-time analogon.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
-#' @return ([`tengen::DataType`])
+#' @return ([`tengen::DataType`])\cr
+#'   The data type `x` has, or the [default data type][default_dtypes] it would
+#'   commit to if it is still a bare R value.
 #' @seealso [as_anvl_arrays()], [RData], [shape()][tengen::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)

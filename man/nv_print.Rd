@@ -21,6 +21,7 @@ input unchanged. Useful for debugging.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the value is printed and handed back unchanged
 x <- nv_array(c(1, 2, 3))
 nv_print(x)
 \dontshow{\}) # examplesIf}

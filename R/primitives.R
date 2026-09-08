@@ -89,9 +89,11 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' @templateVar primitive_id fill
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("tensor")`
+#' Lowers to [hlo_tensor()], stablehlo's constant builder, specified under
+#' [constant](https://openxla.org/stablehlo/spec#constant).
 #' @seealso [nv_fill()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the R double is built at the requested data type
 #' prim_fill(3.14, shape = c(2, 3), dtype = "f32")
 #' @export
 prim_fill <- new_primitive(
@@ -248,6 +250,7 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 #' `r roxy_spec("broadcast_in_dim")`
 #' @seealso [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # axis 1 of the input becomes axis 2 of the result, which repeats it
 #' x <- nv_array(c(1, 2, 3))
 #' prim_broadcast_in_axes(x, shape = c(2, 3), broadcast_axes = 2L)
 #' @export
@@ -307,6 +310,7 @@ prim_broadcast_in_axes <- new_primitive(
 #' `r roxy_spec("dot_general")`
 #' @seealso [nv_matmul()], `%*%`
 #' @examplesIf pjrt::plugins_downloaded()
+#' # contracting a 2x3 with a 3x2 gives a 2x2 at the operands' data type
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
 #' prim_dot_general(x, y,
@@ -351,13 +355,14 @@ prim_dot_general <- new_primitive(
 #'   `seq_len(naxes(x))`, the axis indices of `x`.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return ([`arrayish`])\cr
-#'   Has the input's data type and shape `nv_shape(x)[permutation]`.
+#'   Has the input's data type and shape `shape(x)[permutation]`.
 #' @templateVar primitive_id transpose
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("transpose")`
 #' @seealso [nv_transpose()], [t()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the 2x3 becomes a 3x2, keeping its data type
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_transpose(x, permutation = c(2L, 1L))
 #' @export
@@ -403,6 +408,7 @@ prim_transpose <- new_primitive(
 #' `r roxy_spec("reshape")`
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the elements are reread in row-major order; the data type is untouched
 #' x <- nv_array(1:6)
 #' prim_reshape(x, shape = c(2, 3))
 #' @export
@@ -445,6 +451,7 @@ prim_reshape <- new_primitive(
 #' `r roxy_spec("concatenate")`
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the inputs already agree on a data type; axis 1 grows to 6
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
 #' prim_concatenate(x, y, axis = 1L)
@@ -494,7 +501,7 @@ prim_concatenate <- new_primitive(
 #'   `1 <= start_indices <= limit_indices` per axis.
 #' @param limit_indices (`integer()`)\cr
 #'   End indices (inclusive), one per axis. Must satisfy
-#'   `limit_indices <= nv_shape(x)` per axis.
+#'   `limit_indices <= shape(x)` per axis.
 #' @param strides (`integer()`)\cr
 #'   Step sizes, one per axis. Must be `>= 1`. A stride of `1`
 #'   selects every element; a stride of `2` selects every other element, etc.
@@ -507,7 +514,7 @@ prim_concatenate <- new_primitive(
 #' `r roxy_spec("slice")`
 #' @seealso [prim_dynamic_slice()], [prim_scatter()], [prim_gather()], [nv_subset()], `[`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # 1-D: extract elements 2 through 4 (limit is exclusive)
+#' # 1-D: extract elements 2 through 5, the limit being inclusive
 #' x <- nv_array(1:10)
 #' prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 #'
@@ -515,7 +522,7 @@ prim_concatenate <- new_primitive(
 #' x <- nv_array(1:10)
 #' prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
 #'
-#' # 2-D: extract a submatrix (rows 1-2, columns 2-3)
+#' # 2-D: extract the submatrix of rows 1-3 and columns 2-4
 #' x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 #' prim_static_slice(x,
 #'   start_indices = c(1L, 2L),
@@ -565,11 +572,11 @@ prim_static_slice <- new_primitive(
 #'   integer data type, and keeps it -- the indices take no part in `x`'s.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
-#'   `naxes(x)` and satisfy `1 <= slice_sizes <= nv_shape(x)`
+#'   `naxes(x)` and satisfy `1 <= slice_sizes <= shape(x)`
 #'   per axis.
 #' @section Out Of Bounds Behavior:
 #' Start indices are clamped before the slice is extracted:
-#' `adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)`.
+#' `adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)`.
 #' This means that out-of-bounds indices will not cause an error, but
 #' the effective start position may differ from the requested one.
 #' @return ([`arrayish`])\cr
@@ -629,11 +636,16 @@ prim_dynamic_slice <- new_primitive(
 #'   `r roxy_agree("x", "update")`
 #' @param update ([`arrayish`])\cr
 #'   The values to write at the specified position. Must have the same
-#'   number of axes as `x`, with `nv_shape(update) <= nv_shape(x)` per axis.
-#' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per axis of `x`.
-#'   Each must be a scalar array.
-#' @inheritSection prim_dynamic_slice Out Of Bounds Behavior
+#'   number of axes as `x`, with `shape(update) <= shape(x)` per axis.
+#'   Shares `x`'s data type -- see `x`.
+#' @param ... ([`arrayish`])\cr
+#'   Scalar start indices, one per axis of `x`. Each must be a scalar of an
+#'   integer data type, and keeps it -- the indices take no part in `x`'s.
+#' @section Out Of Bounds Behavior:
+#' Start indices are clamped before the update is written:
+#' `adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)`.
+#' This means that out-of-bounds indices will not cause an error, but the
+#' effective start position may differ from the requested one.
 #' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @templateVar primitive_id dynamic_update_slice
@@ -816,7 +828,7 @@ prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 #' @templateVar dtypes a boolean or an R logical
 #' @template param_unary_x_must
 #' @template params_reduce
-#' @templateVar dtype_out boolean data type
+#' @templateVar dtype_out the boolean data type
 #' @template return_reduce
 #' @templateVar primitive_id reduce_any
 #' @template section_rules
@@ -840,7 +852,7 @@ prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boole
 #' @templateVar dtypes a boolean or an R logical
 #' @template param_unary_x_must
 #' @template params_reduce
-#' @templateVar dtype_out boolean data type
+#' @templateVar dtype_out the boolean data type
 #' @template return_reduce
 #' @templateVar primitive_id reduce_all
 #' @template section_rules
@@ -888,11 +900,11 @@ infer_cum_extreme <- function(x, axis) {
     cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
   }
   list(
-    AbstractArray(
+    values = AbstractArray(
       dtype = dtype(x),
       shape = Shape(shape(x))
     ),
-    AbstractArray(
+    indices = AbstractArray(
       dtype = "i32",
       shape = Shape(shape(x))
     )
@@ -969,6 +981,7 @@ prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L)
 #' Lowers to a variadic [hlo_reduce_window()] over `(values, iota)`.
 #' @seealso [nv_cummax()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `values` keeps the input's data type, `indices` is `i32`
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' prim_cummax(x, axis = 1L)
 #' @export
@@ -993,6 +1006,7 @@ prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L)
 #' Lowers to a variadic [hlo_reduce_window()] over `(values, iota)`.
 #' @seealso [nv_cummin()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `values` keeps the input's data type, `indices` is `i32`
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' prim_cummin(x, axis = 1L)
 #' @export
@@ -1008,7 +1022,7 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #' implementation-defined. If the reductor is not associative, the result
 #' is ill-defined.
 #' Furthermore, `init` must be the neutral element for this reductor.
-#' Because floating point math is non-associative, the output of
+#' Because floating-point arithmetic is non-associative, the output of
 #' the reduction can differ between backends (GPU, CPU), even if the underlying mathematical
 #' function (like `+`) is associative.
 #'
@@ -1016,8 +1030,8 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #'   The array to reduce. Can be any data type.
 #'   `r roxy_agree("x", "init")`
 #' @param init ([`arrayish`])\cr
-#'   Scalar (0-dimensional) initial value. Must be the neutral element
-#'   w.r.t. `reductor`.
+#'   Scalar initial value, with no axes. Must be the neutral element
+#'   w.r.t. `reductor`, and shares `x`'s data type -- see `x`.
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
@@ -1038,6 +1052,7 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #' The body is `reductor`.
 #' @seealso [prim_reduce_sum()], [prim_reduce_max()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `init` shares `x`'s data type, and the reduced axis disappears
 #' x <- nv_array(c(1, 2, 3, 4))
 #' prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
 #' prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)
@@ -1180,7 +1195,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it is
 #'   kept with size 1.
 #' @return ([`arrayish`])\cr
-#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   Has `i32` data type regardless of the input's, and the input's shape with
 #'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmax
 #' @template section_rules
@@ -1189,6 +1204,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #' with a (value > value | (value == value & idx < idx)) selector.
 #' @seealso [prim_argmin()], [nv_argmax()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the index comes out at `i32`, whatever the input is
 #' prim_argmax(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_argmax <- new_primitive(
@@ -1212,9 +1228,12 @@ prim_argmax <- new_primitive(
 #' are broken by returning the smallest index.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which to find the index of the minimum.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @inheritParams prim_argmax
 #' @return ([`arrayish`])\cr
-#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   Has `i32` data type regardless of the input's, and the input's shape with
 #'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmin
 #' @template section_rules
@@ -1223,6 +1242,7 @@ prim_argmax <- new_primitive(
 #' with a (value < value | (value == value & idx < idx)) selector.
 #' @seealso [prim_argmax()], [nv_argmin()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the index comes out at `i32`, whatever the input is
 #' prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_argmin <- new_primitive(
@@ -1436,7 +1456,7 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' @title Primitive Remainder
 #' @description
 #' Element-wise remainder.
-#' Result has sign of the divident, which differs from base R's `%%`, which is available
+#' Result has sign of the dividend, which differs from base R's `%%`, which is available
 #' via [`nv_mod()`] and has sign of divisor.
 #' @templateVar dtypes any numeric data type
 #' @template params_prim_lhs_rhs
@@ -1461,9 +1481,10 @@ prim_remainder <- new_primitive(
   make_binary_op(stablehlo::infer_types_remainder)
 )
 
-#' @title Primitive And
+#' @title Primitive Bitwise And
 #' @description
-#' Element-wise logical AND.
+#' Element-wise bitwise AND -- a logical AND on a boolean input, and a
+#' bit-by-bit one on an integer.
 #' @templateVar dtypes any integerish data type
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
@@ -1481,9 +1502,10 @@ prim_remainder <- new_primitive(
 #' @export
 prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 
-#' @title Primitive Not
+#' @title Primitive Bitwise Not
 #' @description
-#' Element-wise logical NOT.
+#' Element-wise bitwise NOT -- a logical NOT on a boolean input, and a
+#' bit-by-bit one on an integer.
 #' @templateVar dtypes any integerish data type
 #' @template param_unary_x
 #' @template return_prim_unary
@@ -1493,14 +1515,19 @@ prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 #' `r roxy_spec("not")`
 #' @seealso [nv_not()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # on a boolean this is a logical negation
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
 #' prim_not(x)
+#'
+#' # on an integer it complements every bit, so `12L` becomes `-13`
+#' prim_not(nv_array(12L))
 #' @export
 prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 
-#' @title Primitive Or
+#' @title Primitive Bitwise Or
 #' @description
-#' Element-wise logical OR.
+#' Element-wise bitwise OR -- a logical OR on a boolean input, and a
+#' bit-by-bit one on an integer.
 #' @templateVar dtypes any integerish data type
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
@@ -1518,9 +1545,10 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @export
 prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 
-#' @title Primitive Xor
+#' @title Primitive Bitwise Xor
 #' @description
-#' Element-wise logical XOR.
+#' Element-wise bitwise XOR -- a logical XOR on a boolean input, and a
+#' bit-by-bit one on an integer.
 #' @templateVar dtypes any integerish data type
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
@@ -1652,9 +1680,9 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Target data type, reinterpreting the bits rather than the values. Of the
-#'   same bit width as the input's leaves the shape unchanged; a narrower one
-#'   adds a trailing axis holding the pieces; a wider one consumes the last
+#'   Target data type, reinterpreting the bits rather than the values. One of
+#'   the same bit width as the input's leaves the shape unchanged; a narrower
+#'   one adds a trailing axis holding the pieces; a wider one consumes the last
 #'   axis, whose size must equal the ratio of the two widths.
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype`, and the shape described under `dtype`.
@@ -1967,7 +1995,7 @@ prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_
 #' @templateVar primitive_id acos
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("acos")`
+#' `r roxy_spec_chlo("acos")`
 #' @seealso [nv_acos()], [acos()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -1984,7 +2012,7 @@ prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
 #' @templateVar primitive_id acosh
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("acosh")`
+#' `r roxy_spec_chlo("acosh")`
 #' @seealso [nv_acosh()], [acosh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 10))
@@ -2001,7 +2029,7 @@ prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh)
 #' @templateVar primitive_id asin
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("asin")`
+#' `r roxy_spec_chlo("asin")`
 #' @seealso [nv_asin()], [asin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2018,7 +2046,7 @@ prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
 #' @templateVar primitive_id asinh
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("asinh")`
+#' `r roxy_spec_chlo("asinh")`
 #' @seealso [nv_asinh()], [asinh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2035,7 +2063,7 @@ prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh)
 #' @templateVar primitive_id atan
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("atan")`
+#' `r roxy_spec_chlo("atan")`
 #' @seealso [nv_atan()], [atan()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2052,7 +2080,7 @@ prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
 #' @templateVar primitive_id atanh
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("atanh")`
+#' `r roxy_spec_chlo("atanh")`
 #' @seealso [nv_atanh()], [atanh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
@@ -2069,7 +2097,7 @@ prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh)
 #' @templateVar primitive_id cosh
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("cosh")`
+#' `r roxy_spec_chlo("cosh")`
 #' @seealso [nv_cosh()], [cosh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2086,7 +2114,7 @@ prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
 #' @templateVar primitive_id sinh
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("sinh")`
+#' `r roxy_spec_chlo("sinh")`
 #' @seealso [nv_sinh()], [sinh()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2103,7 +2131,7 @@ prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
 #' @templateVar primitive_id digamma
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("digamma")`
+#' `r roxy_spec_chlo("digamma")`
 #' @seealso [nv_digamma()], [digamma()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
@@ -2120,7 +2148,7 @@ prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_di
 #' @templateVar primitive_id lgamma
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("lgamma")`
+#' `r roxy_spec_chlo("lgamma")`
 #' @seealso [nv_lgamma()], [lgamma()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
@@ -2140,9 +2168,10 @@ prim_lgamma <- new_primitive("lgamma", make_unary_op(stablehlo::infer_types_lgam
 #' @templateVar primitive_id polygamma
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("polygamma")`
+#' `r roxy_spec_chlo("polygamma")`
 #' @seealso [nv_polygamma()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # both operands are floats, as the primitive requires
 #' n <- nv_array(c(1, 1, 2))
 #' x <- nv_array(c(0.5, 1, 2))
 #' prim_polygamma(n, x)
@@ -2169,7 +2198,7 @@ prim_polygamma <- new_primitive(
 #' @templateVar primitive_id erf
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("erf")`
+#' `r roxy_spec_chlo("erf")`
 #' @seealso [nv_erf()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2186,7 +2215,7 @@ prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
 #' @templateVar primitive_id erf_inv
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("erf_inv")`
+#' `r roxy_spec_chlo("erf_inv")`
 #' @seealso [nv_erf_inv()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
@@ -2203,7 +2232,7 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_er
 #' @templateVar primitive_id erfc
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("erfc")`
+#' `r roxy_spec_chlo("erfc")`
 #' @seealso [nv_erfc()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -2250,6 +2279,7 @@ prim_is_finite <- new_primitive(
 #' `r roxy_spec("popcnt")`
 #' @seealso [nv_popcnt()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the set bits are counted, at the input's own integer data type
 #' x <- nv_array(c(7L, 3L, 15L))
 #' prim_popcnt(x)
 #' @export
@@ -2329,6 +2359,7 @@ prim_clamp <- new_primitive(
 #' `r roxy_spec("reverse")`
 #' @seealso [nv_reverse()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the order along axis 1 is flipped
 #' x <- nv_array(c(1, 2, 3, 4, 5))
 #' prim_reverse(x, axes = 1L)
 #' @export
@@ -2370,6 +2401,7 @@ prim_reverse <- new_primitive(
 #' `r roxy_spec("iota")`
 #' @seealso [nv_iota()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the sequence is built at the requested data type
 #' prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 #' @export
 prim_iota <- new_primitive(
@@ -2409,7 +2441,7 @@ prim_iota <- new_primitive(
 #'   The array to pad. Can be any data type.
 #'   `r roxy_agree("x", "padding_value")`
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding.
+#'   Scalar value to use for padding. Shares `x`'s data type -- see `x`.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -2484,7 +2516,7 @@ prim_pad <- new_primitive(
 #'   Rounding method. `"nearest_even"` (default) rounds to the nearest even
 #'   integer on a tie, `"afz"` rounds away from zero on a tie.
 #' @return ([`arrayish`])\cr
-#'   Has the same dtype and shape as `x`.
+#'   Has `x`'s data type and shape.
 #' @templateVar primitive_id round
 #' @template section_rules
 #' @section StableHLO:
@@ -2533,6 +2565,7 @@ prim_round <- new_primitive(
 #' `r roxy_spec("convert")`
 #' @seealso [nv_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the values are preserved, the data type changes
 #' x <- nv_array(c(1L, 2L, 3L))
 #' prim_convert(x, dtype = "f32")
 #' @export
@@ -2583,6 +2616,7 @@ prim_convert <- new_primitive(
 #' `r roxy_spec("select")`
 #' @seealso [nv_ifelse()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the result takes the branches' data type; `pred` only selects
 #' pred <- nv_array(c(TRUE, FALSE, TRUE))
 #' prim_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 #' @export
@@ -2635,6 +2669,7 @@ prim_ifelse <- new_primitive(
 #' `r roxy_spec("if")`
 #' @seealso [nv_if()], [prim_ifelse()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # both branches must return the same structure, data types and shapes
 #' prim_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 #' @export
 prim_if <- new_primitive(
@@ -2685,9 +2720,8 @@ prim_if <- new_primitive(
 #' @title Primitive While Loop
 #' @description
 #' Repeatedly executes `body` while `cond` returns `TRUE`, like R's
-#' `while` loop. The loop state is initialized with `init` and
-#' passed through each iteration.
-#' Otherwise, no state is maintained between iterations.
+#' `while` loop. The loop state is initialized with `init` and passed through
+#' each iteration; it is the only thing carried from one iteration to the next.
 #' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function that receives the current state as arguments
@@ -2707,6 +2741,7 @@ prim_if <- new_primitive(
 #' `r roxy_spec("while")`
 #' @seealso [nv_while()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the loop state is a named list, and each member keeps its data type
 #' prim_while(
 #'   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
 #'   cond = function(i, total) i <= 5L,
@@ -2830,7 +2865,7 @@ prim_while <- new_primitive(
 #' paired with an `iota` and read off the second output) and key-value
 #' sorts (sort `keys` paired with `values`).
 #'
-#' 1-dimensional slices along `axis` are sorted independently; other
+#' 1-D slices along `axis` are sorted independently; other
 #' axes are preserved.
 #' @param xs (`list` of [`arrayish`])\cr
 #'   One or more arrays to sort. The first is the sort key; the rest are
@@ -2919,23 +2954,24 @@ prim_sort <- new_primitive(
 #'
 #' For other axes, transpose so the target axis is last, call
 #' `prim_top_k()`, then transpose back. [nv_top_k()] does this.
-#' @param x ([`arrayish`])\cr
 #' @templateVar dtypes any numeric data type
 #' @templateVar shapes with at least 1 axis
 #' @template param_unary_x
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
 #'   `1 <= k <= shape(x)[naxes(x)]`.
-#' @return (`list` of two [`arrayish`])\cr
-#'   Unnamed. The top-`k` values, at the input's data type, and their indices
-#'   along the last axis, at `i32`. Both have the input's shape with the last
-#'   axis replaced by `k`. Ties are broken by lower index first.
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `values`, the top-`k` values at the input's data type, and
+#'   `indices`, their indices along the last axis at `i32`. Both have the
+#'   input's shape with the last axis replaced by `k`. Ties are broken by lower
+#'   index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
-#' `r roxy_spec("top_k")`
+#' `r roxy_spec_chlo("top_k")`
 #' @seealso [nv_top_k()], [prim_sort()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `values` keeps the input's data type, `indices` is `i32`
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' prim_top_k(x, k = 3L)
 #' @export
@@ -2952,7 +2988,7 @@ prim_top_k <- new_primitive(
         shape = integer()
       )
       vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
-      list(vt2at(vts[[1L]]), vt2at(vts[[2L]]))
+      list(values = vt2at(vts[[1L]]), indices = vt2at(vts[[2L]]))
     }
 
     graph_desc_add(
@@ -3040,12 +3076,13 @@ prim_print <- new_primitive(
 #'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
 #'   leaving the choice to the implementation.
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values. Can be any numeric data type,
-#'   boolean being the one exception.
+#'   Data type of the generated random values. Can be any numeric data type;
+#'   boolean is not one, and is rejected.
 #' @template param_shape
-#' @return (`list` of two [`arrayish`])\cr
-#'   Unnamed. The updated RNG state, with `initial_state`'s data type and
-#'   shape, and the random values, with the given `dtype` and `shape`.
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `state`, the updated RNG state with `initial_state`'s data type
+#'   and shape, and `values`, the random values with the given `dtype` and
+#'   `shape`.
 #' @templateVar primitive_id rng_bit_generator
 #' @template section_rules
 #' @section StableHLO:
@@ -3058,7 +3095,7 @@ prim_print <- new_primitive(
 #'
 #' # the updated state feeds the next draw, so the two differ
 #' out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
-#' prim_rng_bit_generator(out[[1L]], dtype = "f32", shape = 3L)
+#' prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
 #'
 #' # PHILOX also accepts a three-element state
 #' prim_rng_bit_generator(
@@ -3070,7 +3107,8 @@ prim_rng_bit_generator <- new_primitive(
   "rng_bit_generator",
   function(initial_state, rng_algorithm = "THREE_FRY", dtype, shape) {
     infer_fn <- function(initial_state, rng_algorithm, dtype, shape) {
-      lapply(stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape), vt2at)
+      out <- stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape)
+      list(state = vt2at(out[[1L]]), values = vt2at(out[[2L]]))
     }
     graph_desc_add(
       self,
@@ -3096,12 +3134,13 @@ prim_rng_bit_generator <- new_primitive(
 #' @param x ([`arrayish`])\cr
 #'   The base array to scatter into. Can be any data type.
 #'   `r roxy_agree("x", "update")`
-#' @param scatter_indices ([`arrayish`] of integer type)\cr
-#'   Array of indices. Contains index vectors that map to positions in
+#' @param scatter_indices ([`arrayish`])\cr
+#'   Array of indices, of an integer data type, which it keeps -- the indices
+#'   take no part in `x`'s. Contains index vectors that map to positions in
 #'   `x` via `scatter_axes_to_x_axes`. The axis specified
 #'   by `index_vector_axis` holds the index vectors.
 #' @param update ([`arrayish`])\cr
-#'   Update values array.
+#'   Update values array. Shares `x`'s data type -- see `x`.
 #' @param update_window_axes (`integer()`)\cr
 #'   Axes of `update` that are window axes, i.e. they
 #'   correspond to the slice being written into `x`.
@@ -3149,8 +3188,8 @@ prim_rng_bit_generator <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("scatter")`
-#' The dimension numbers are intricate; anvl states them 1-based and converts
-#' on the way down.
+#' The axis and index arguments are intricate; anvl states them in its own
+#' terms and converts on the way down.
 #' @seealso [prim_gather()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Scatter values 10 and 30 into positions 1 and 3 of a zero vector
@@ -3357,19 +3396,19 @@ prim_scatter <- new_primitive(
 #' @return ([`arrayish`])\cr
 #'   Has the input's data type. The output shape is composed
 #'   of the offset axes (from the slice) and the remaining
-#'   axes from `start_indices`. See the underluing stableHLO function
+#'   axes from `start_indices`. See the underlying stableHLO function
 #'   for more details.
 #' @section Out Of Bounds Behavior:
 #' Start indices are clamped before the slice is extracted:
-#' `clamp(1, start_index, nv_shape(x) - slice_sizes + 1)`.
+#' `clamp(1, start_index, shape(x) - slice_sizes + 1)`.
 #' This means that out-of-bounds indices will not cause an error, but
 #' the effective start position may differ from the requested one.
 #' @templateVar primitive_id gather
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("gather")`
-#' The dimension numbers are intricate; anvl states them 1-based and converts
-#' on the way down.
+#' The axis and index arguments are intricate; anvl states them in its own
+#' terms and converts on the way down.
 #' @seealso [prim_scatter()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Gather rows 1 and 3 from a 3x3 matrix
@@ -3603,6 +3642,7 @@ prim_triangular_solve <- new_primitive(
 #' (backed by LAPACK on CPU and cuSOLVER on CUDA) + postprocessing.
 #' @seealso [nv_qr()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `Q` is 3x2 and `R` 2x2, both at the input's data type
 #' x <- nv_array(1:6, shape = c(3, 2), dtype = "f32")
 #' prim_qr(x)
 #' @export
@@ -3646,10 +3686,10 @@ prim_qr <- new_primitive(
 #' @template param_unary_x
 #' @return (`list` of three [`arrayish`])\cr
 #'   `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at `i32` with
-#'   `k = min(m, n)` (1-based row swaps such that row `i` was exchanged
-#'   with row `pivots[i]` during elimination step `i`); and `permutation`
-#'   `(m,)` at `i32`, a 1-based permutation vector for \eqn{P} such
-#'   that `(P %*% A)[i, ]` equals `A[permutation[i], ]`.
+#'   `k = min(m, n)` (sequential row swaps: row `i` was exchanged with row
+#'   `pivots[i]` during elimination step `i`); and `permutation` `(m,)` at
+#'   `i32`, a permutation vector for \eqn{P} such that `(P %*% A)[i, ]` equals
+#'   `A[permutation[i], ]`.
 #' @templateVar primitive_id lu
 #' @template section_rules
 #' @section StableHLO:
@@ -3760,7 +3800,7 @@ prim_svd <- new_primitive(
 #' @template param_unary_x
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `values` (length `n`) and `vectors`
-#'   (shape `(n, n)`). Both have the same dtype as the input.
+#'   (shape `(n, n)`). Both have the input's data type.
 #' @templateVar primitive_id eigh
 #' @template section_rules
 #' @section StableHLO:
@@ -3795,30 +3835,54 @@ prim_eigh <- new_primitive(
 
 #' @title Primitive Convolution
 #' @description
-#' General N-D windowed convolution, lowering to StableHLO's
-#' `convolution` op. Axis numbers are given 1-based (anvl
-#' convention) and converted to StableHLO's 0-based layout internally.
+#' General N-D windowed convolution. The axis arguments say which axis of each
+#' operand plays which role, so any layout can be described.
 #' Most users want [nv_conv1d()] / [nv_conv2d()] / [nv_conv3d()] instead.
 #' @param x ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
 #'   Can be any data type. `r roxy_agree("x", "kernel")`
 #' @param kernel ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
+#'   Shares `x`'s data type -- see `x`.
 #' @param input_batch_axis,input_feature_axis (`integer(1)`)\cr
-#'   1-based batch/feature axis of `x`.
-#' @param input_spatial_axes (`integer()`)\cr 1-based spatial axes of `x`.
+#'   Batch and feature axis of `x`.
+#' @param input_spatial_axes (`integer()`)\cr Spatial axes of `x`.
 #' @param kernel_input_feature_axis,kernel_output_feature_axis (`integer(1)`)\cr
-#'   1-based input/output feature axis of `kernel`.
-#' @param kernel_spatial_axes (`integer()`)\cr 1-based spatial axes of `kernel`.
+#'   Input and output feature axis of `kernel`.
+#' @param kernel_spatial_axes (`integer()`)\cr Spatial axes of `kernel`.
 #' @param output_batch_axis,output_feature_axis (`integer(1)`)\cr
-#'   1-based batch/feature axis of the output.
+#'   Batch and feature axis of the output.
 #' @param output_spatial_axes (`integer()`)\cr
-#'   1-based spatial axes of the output.
+#'   Spatial axes of the output.
 #' @param window_strides (`integer()`)\cr Stride per spatial axis.
 #' @param padding (`matrix`)\cr `[n_spatial, 2]` of `(low, high)` padding.
 #' @param x_dilation,kernel_dilation (`integer()`)\cr Input/kernel dilation.
 #' @param feature_group_count,batch_group_count (`integer(1)`)\cr Grouping.
 #' @param precision (`character(1)`)\cr One of `"highest"`, `"high"`,
 #'   `"default"`.
-#' @return ([`arrayish`])
+#' @return ([`arrayish`])\cr
+#'   Has the data type `x` and `kernel` agreed on. Its shape is given by the
+#'   output axis arguments: the batch axis holds `x`'s batch size divided by
+#'   `batch_group_count`, the feature axis `kernel`'s output feature size, and
+#'   each spatial axis the number of window positions along it.
+#' @templateVar primitive_id convolution
+#' @template section_rules
+#' @section StableHLO:
+#' `r roxy_spec("convolution")`
+#' The axis numbers are converted on the way down.
+#' @seealso [nv_conv1d()], [nv_conv2d()], [nv_conv3d()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' # a 1-D convolution in NCW layout: one batch, one channel, width 5,
+#' # convolved with a width-3 kernel, giving 3 window positions
+#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+#' kernel <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' prim_convolution(
+#'   x, kernel,
+#'   input_batch_axis = 1L, input_feature_axis = 2L, input_spatial_axes = 3L,
+#'   kernel_output_feature_axis = 1L, kernel_input_feature_axis = 2L,
+#'   kernel_spatial_axes = 3L,
+#'   output_batch_axis = 1L, output_feature_axis = 2L, output_spatial_axes = 3L,
+#'   window_strides = 1L, padding = matrix(0L, nrow = 1, ncol = 2),
+#'   x_dilation = 1L, kernel_dilation = 1L
+#' )
 #' @export
 prim_convolution <- new_primitive(
   "convolution",

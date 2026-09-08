@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_flatten}
 \alias{nv_flatten}
-\title{Flatte}
+\title{Flatten}
 \usage{
 nv_flatten(x)
 }
@@ -16,9 +16,12 @@ One input, with at least 1 axis. Can be any data type. An R value commits to its
 Has the input's data type, and one axis holding all of its elements.
 }
 \description{
-Flattens an N-dimensional array into a 1-dimensional array.
+Flattens an array of any rank into an array with a single axis.
 Fails with scalar inputs.
 }
 \examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the 2x2 matrix becomes a length-4 vector
 nv_flatten(matrix(1:4, nrow = 2))
+\dontshow{\}) # examplesIf}
 }

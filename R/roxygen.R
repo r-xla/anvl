@@ -46,12 +46,28 @@ roxy_agree <- function(...) {
   )
 }
 
+# The CHLO op a primitive lowers to, for inline use in roxygen blocks as
+# `r roxy_spec_chlo("erf")`. CHLO ops are not in the StableHLO specification --
+# they are lowered to StableHLO during compilation -- so they link the generated
+# CHLO reference instead, whose anchors stablehlo's own `op_chlo` template
+# builds the same way.
+roxy_spec_chlo <- function(op) {
+  sprintf(
+    paste(
+      "Lowers to [hlo_%1$s()], an op of the CHLO dialect, a higher-level",
+      "companion to StableHLO that is lowered to it during compilation.",
+      "See [chlo.%1$s](https://openxla.org/stablehlo/generated/chlo#chlo%1$s_chlo%1$sop)."
+    ),
+    op
+  )
+}
+
 # The StableHLO op a primitive lowers to, with a link to its entry in the
 # specification, for inline use in roxygen blocks as `r roxy_spec("gather")`.
 # The op name is both the `hlo_*` function's suffix and the spec's anchor.
 roxy_spec <- function(op) {
-  paste0(
-    "Lowers to [hlo_", op, "()], specified under ",
-    "[", op, "](https://openxla.org/stablehlo/spec#", op, ")."
+  sprintf(
+    "Lowers to [hlo_%1$s()], specified under [%1$s](https://openxla.org/stablehlo/spec#%1$s).",
+    op
   )
 }

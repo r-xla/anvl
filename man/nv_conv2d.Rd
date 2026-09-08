@@ -31,7 +31,7 @@ nv_conv2d(
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the data type \code{x} and \code{kernel} agreed on, and shape
+Has the data type \code{x} and \code{weight} agreed on, and shape
 \verb{[N, C_out, out_H, out_W]}.
 }
 \description{

@@ -28,7 +28,7 @@ Element-wise inverse hyperbolic tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_atanh]{hlo_atanh()}}, specified under \href{https://openxla.org/stablehlo/spec#atanh}{atanh}.
+Lowers to \code{\link[stablehlo:hlo_atanh]{hlo_atanh()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloatanh_chloatanhop}{chlo.atanh}.
 }
 
 \examples{

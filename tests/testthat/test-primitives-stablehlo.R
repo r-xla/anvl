@@ -620,7 +620,7 @@ describe("prim_qr", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_qr(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_qr(int_mat), "floating-point")
+    expect_error(prim_qr(int_mat), "float data type")
   })
 })
 
@@ -655,7 +655,7 @@ describe("prim_lu", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_lu(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_lu(int_mat), "floating-point")
+    expect_error(prim_lu(int_mat), "float data type")
   })
 })
 
@@ -699,7 +699,7 @@ describe("prim_svd", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_svd(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_svd(int_mat), "floating-point")
+    expect_error(prim_svd(int_mat), "float data type")
   })
 })
 
@@ -729,7 +729,7 @@ describe("prim_eigh", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f32")
     expect_error(prim_eigh(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_eigh(int_mat), "floating-point")
+    expect_error(prim_eigh(int_mat), "float data type")
     rect <- nv_matrix(1:6, nrow = 2, dtype = "f32")
     expect_error(prim_eigh(rect), "square")
   })

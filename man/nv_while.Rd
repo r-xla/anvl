@@ -10,7 +10,8 @@ nv_while(init, cond, body)
 \item{init}{(\verb{named list()})\cr
 Named list of initial state values, a tree in the sense of pjrt's
 \code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
-sub-graphs. R values are committed at their default data type.}
+sub-graphs. R values are committed at their
+\link[=default_dtypes]{default data type}.}
 
 \item{cond}{(\code{function})\cr
 Condition function returning a scalar boolean.
@@ -33,6 +34,7 @@ Executes a functional while loop.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the loop state is a named list, and each member keeps its data type
 nv_while(
   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
   cond = function(i, total) i < 5L,

@@ -12,7 +12,7 @@ One input. Can be any data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
-Axis along which to find the index of the maximum.
+Axis along which to find the index of the minimum.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
@@ -21,7 +21,7 @@ kept with size 1.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{i32} data type whatever the input's is, and the input's shape with
+Has \code{i32} data type regardless of the input's, and the input's shape with
 \code{axis} removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
@@ -44,6 +44,7 @@ with a (value < value | (value == value & idx < idx)) selector.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the index comes out at `i32`, whatever the input is
 prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 \dontshow{\}) # examplesIf}
 }

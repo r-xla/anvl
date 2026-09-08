@@ -57,6 +57,7 @@ Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}, specified under \href{ht
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the sequence is built at the requested data type
 prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 \dontshow{\}) # examplesIf}
 }

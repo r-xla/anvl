@@ -557,12 +557,18 @@ subset_scatter_core <- jit(
 #' @description
 #' Updates elements of an array at specified positions, returning a new array.
 #' You can also use the `[<-` operator.
-#' @template param_x
+#' @param x ([`arrayish`])\cr
+#'   The array to update. Can be any data type; `value` is brought to it --
+#'   see `value`.
 #' @param ... Subset specifications, one per axis. See
 #'   `vignette("subsetting")` for details.
 #' @param value ([`arrayish`])\cr
-#'   Replacement values. Scalars are broadcast to the subset shape.
-#'   Non-scalar values must match the subset shape.
+#'   Replacement values. Scalars are broadcast to the subset shape; non-scalar
+#'   values must match it. Brought to `x`'s data type: an R value is built at it
+#'   when its category can reach it (`0L` serves an integer and a float `x`
+#'   alike, `0` only a float one), and a value that already has a data type is
+#'   converted unless that would narrow it -- an `f64` value for an `f32` `x` is
+#'   an error rather than a silent narrowing.
 #' @return ([`arrayish`])\cr
 #'   A new array with the same shape as `x` and the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.

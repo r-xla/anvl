@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_or}
 \alias{nv_or}
-\title{Logical Or}
+\title{Bitwise Or}
 \usage{
 nv_or(lhs, rhs)
 }
@@ -19,8 +19,8 @@ being converted to the common data type.}
 Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise logical OR. You
-can also use the \code{|} operator.
+Element-wise bitwise OR -- a logical OR on a boolean input, and a
+bit-by-bit one on an integer. You can also use the \code{|} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

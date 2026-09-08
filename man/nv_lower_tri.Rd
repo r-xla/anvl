@@ -49,6 +49,7 @@ triangle of an existing array instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a boolean mask, whatever the array it is later used with
 nv_lower_tri(c(3, 3))
 nv_lower_tri(c(3, 3), diagonal = 0L)
 x <- nv_fill(0, shape = c(3, 3))

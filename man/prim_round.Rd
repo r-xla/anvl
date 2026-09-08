@@ -17,7 +17,7 @@ integer on a tie, \code{"afz"} rounds away from zero on a tie.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the same dtype and shape as \code{x}.
+Has \code{x}'s data type and shape.
 }
 \description{
 Rounds the elements of an array to the nearest integer.

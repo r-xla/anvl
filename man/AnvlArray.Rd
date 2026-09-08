@@ -47,9 +47,9 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 Data type of the result: one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64, or a
 \code{\link[tengen:DataType]{tengen::DataType}}. Can be any data type the backend supports; \code{data}
 is built at it, so a value that data type cannot hold exactly is
-converted. The default (\code{NULL}) uses the backend's default for the R
-storage type of \code{data}: \code{f32} for a double on \code{"pjrt"}, \code{f64} for a
-double on \code{"quickr"}, \code{i32} for an integer and \code{bool} for a logical.}
+converted. The default (\code{NULL}) is the
+\link[=default_dtypes]{default data type} of the R storage type of \code{data}, which
+for a double depends on the backend.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -114,7 +114,7 @@ is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2
 \code{\link[tengen:naxes]{naxes()}} for the number of axes and
 \code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
 axis} rather than an array's "dimensions", as the latter is generally
-overloaded as it is used to refer to both the axis and it's size.
+overloaded as it is used to refer to both the axis and its size.
 }
 
 \section{Extractors}{

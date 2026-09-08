@@ -18,7 +18,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the input's data type and shape \code{nv_shape(x)[permutation]}.
+Has the input's data type and shape \code{shape(x)[permutation]}.
 }
 \description{
 Permutes the axes of an array.
@@ -39,6 +39,7 @@ Lowers to \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}}, specified unde
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the 2x3 becomes a 3x2, keeping its data type
 x <- nv_matrix(1:6, nrow = 2)
 prim_transpose(x, permutation = c(2L, 1L))
 \dontshow{\}) # examplesIf}

@@ -46,7 +46,8 @@ and the floats.
 \item \emph{integer} -- signed and unsigned integer.
 \item \emph{integerish} -- boolean and integer, signed or unsigned.
 \item \emph{signed numeric} -- signed integer and float.
-\item \emph{float} -- \code{f32} and \code{f64}.
+\item \emph{float} -- the whole float category: \code{f32}, \code{f64} and any narrower float
+a backend supports.
 \item \emph{boolean} -- \code{bool}, the only member of its category.
 }
 

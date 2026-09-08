@@ -72,13 +72,13 @@ nv_add(1, nv_scalar(1, "f64"))
 nv_add(1, 2)
 ```
 
-It is therefore important to understand to understand the rules that govern the materialization of R objects as `AnvlArray`s.
+It is therefore important to understand the rules that govern the materialization of R objects as `AnvlArray`s.
 Generally, there are two routes:
 
-1. An R values it commited at its default data type (`double -> f32`, `integer -> i32`, `logical -> bool`).
+1. The R value is committed at the default data type of its R storage type, which `help(dtypes)` lists.
    This is e.g. the case in unary functions such as `nv_exp`.
-2. The R values data type is inferred from other arguments, as is the case of the `nv_add` call above.
-   When no concrete data type is present, `nv_add(1, 2)` falls back to the default, which is `f32` for `double`s.
+2. The R value's data type is inferred from the other arguments, as in the `nv_add` call above.
+   When no concrete data type is present, `nv_add(1, 2)` falls back to that default again.
 
 Note that these rules are not universal and exceptions exist.
 Some functions, such as `nv_clamp`, prioritize the data type of a specific argument, in this case `x`, the value that is being clamped.
@@ -103,7 +103,7 @@ as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
 
 One common rule is `promote_common()`, which is used by functions such as `nv_add` above.
 It computes the common data type of the inputs.
-In this case, it returns `f32`, which is the default data type of R `double`s.
+In this case, it returns the default data type of an R `double`, as neither input has one of its own.
 
 
 ```{r}

@@ -15,9 +15,10 @@ Axis along which values increase.
 Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
 last axis.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result. Can be any numeric data type, boolean being the
-one exception. For \code{nv_iota_like()}, \code{NULL} uses \code{dtype(like)}.}
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result, required here. Can be any numeric data type;
+boolean is not one, and is rejected. For \code{nv_iota_like()} it may be
+\code{NULL}, which uses \code{dtype(like)}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape.}
@@ -56,7 +57,10 @@ starting from \code{start}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the sequence is built at the requested data type
 nv_iota(axis = 1L, dtype = "i32", shape = 5L)
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_fill(0L, shape = c(2, 3))
 nv_iota_like(x, axis = 1L)
 \dontshow{\}) # examplesIf}

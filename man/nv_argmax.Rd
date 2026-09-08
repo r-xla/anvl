@@ -21,12 +21,12 @@ If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it
 is kept with size 1.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{i32} data type whatever the input's is, and the input's shape with
+Has \code{i32} data type regardless of the input's, and the input's shape with
 \code{axis} removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
@@ -42,6 +42,7 @@ With \code{nan_rm = FALSE} (default), if any entry along the reduced axis is
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the index comes out at `i32`, whatever the input is
 nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
   axis = 2L

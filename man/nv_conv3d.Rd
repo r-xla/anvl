@@ -15,9 +15,9 @@ nv_conv3d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, D, H, W]}.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.}
+\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kD, kH, kW]}.}
 
 \item{stride, padding, dilation}{(\code{integer()})\cr Length 1 or 3.}
 
@@ -27,7 +27,7 @@ nv_conv3d(
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the data type \code{x} and \code{kernel} agreed on, and shape
+Has the data type \code{x} and \code{weight} agreed on, and shape
 \verb{[N, C_out, out_D, out_H, out_W]}.
 }
 \description{

@@ -14,23 +14,27 @@ Shape.}
 RNG state (\code{ui64[2]}).}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Data type of the sample: a 32- or 64-bit float, as the sample is assembled
+from random bits.}
 
 \item{min, max}{(\code{numeric(1)})\cr
-Lower and upper bound.}
+Lower and upper bound. Plain R numbers rather than \code{\link{arrayish}}, so they
+are built at \code{dtype} and nothing is promoted.}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})\cr
-List of two elements: the updated RNG state and the sampled values.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{state}, the updated RNG state, and \code{values}, the sample of shape
+\code{shape} and data type \code{dtype}.
 }
 \description{
 Samples from a uniform distribution in the open interval \verb{(min, max)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `state` is the updated RNG state, `values` the sample
 state <- nv_rng_state(42L)
 result <- nv_runif(c(2, 3), state)
-result[[2]]
+result$values
 \dontshow{\}) # examplesIf}
 }
 \seealso{

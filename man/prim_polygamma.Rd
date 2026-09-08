@@ -30,11 +30,12 @@ typically holds non-negative integer values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, specified under \href{https://openxla.org/stablehlo/spec#polygamma}{polygamma}.
+Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlopolygamma_chlopolygammaop}{chlo.polygamma}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# both operands are floats, as the primitive requires
 n <- nv_array(c(1, 1, 2))
 x <- nv_array(c(0.5, 1, 2))
 prim_polygamma(n, x)

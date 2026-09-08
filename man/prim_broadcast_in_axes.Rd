@@ -42,6 +42,7 @@ Lowers to \code{\link[stablehlo:hlo_broadcast_in_dim]{hlo_broadcast_in_dim()}}, 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# axis 1 of the input becomes axis 2 of the result, which repeats it
 x <- nv_array(c(1, 2, 3))
 prim_broadcast_in_axes(x, shape = c(2, 3), broadcast_axes = 2L)
 \dontshow{\}) # examplesIf}

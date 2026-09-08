@@ -120,7 +120,8 @@ If no proper template for a parameter or the return value exist, write the docum
 #' @title <Short Title>
 #' @description
 #' <One-sentence description.> You can also use `<R operator or generic>()`.
-#' @template param_x                    # or @template params_lhs_rhs, etc.
+#' @templateVar dtypes any data type    # the phrase the operand accepts
+#' @template param_unary_x              # or @template params_lhs_rhs, etc.
 #' @param <custom_param> (<type>)\cr    # for params not covered by templates
 #'   <Description.>
 #' @template return_unary               # or return_binary, return_reduce, etc.
@@ -138,13 +139,15 @@ If no proper template for a parameter or the return value exist, write the docum
   - `param_unary_x` — the input of an elementwise unary function: states the accepted data types
     and that an R value commits to its default. Needs `@templateVar dtypes <phrase>` above it,
     from the same vocabulary as below. Shared with the `prim_*` layer, which behaves identically.
-  - `param_x` — a bare "Input array.", for a function whose `x` is neither of those: a reduction,
-    a reshape, or one whose `x` is promoted with a sibling (`nv_clamp()`, `nv_pad()`)
+  - A function whose `x` is promoted with a sibling (`nv_clamp()`, `nv_pad()`,
+    `nv_subset_assign()`) writes `x` inline: it names the accepted data types and points at the
+    sibling, whose own `@param` carries the promotion sentence
   - `params_lhs_rhs` — binary operands: states the promotion, the scalar broadcasting and how R
     values take a data type. Needs `@templateVar dtypes <phrase>` above it, from the vocabulary
     defined in `?dtypes` (`any data type`, `any numeric data type`, `any integerish data type`,
     `any float data type`). Its stricter `prim_*` counterpart is `params_prim_lhs_rhs`.
-  - `param_dtype`, `param_shape`, `param_device` — common params
+  - `param_shape`, `param_device` — common params. A `dtype` parameter is written inline,
+    since what it accepts and what it does with the other arguments differs per function
   - `return_unary`, `return_binary`; for a reduction `@templateVar dtype_out <phrase>` +
     `@template return_reduce`, plus `@templateVar axes_all` + `@template params_reduce` so `axes`
     documents its `NULL` default

@@ -43,8 +43,9 @@ Use templates from `man-roxygen/` where applicable:
   (`any data type`, `any numeric data type`, `any integer data type`, `any integerish data type`,
   `any signed numeric data type`, `any float data type`). The same template serves the `nv_*`
   wrapper, which behaves identically -- a unary function promotes nothing.
-  A primitive whose `x` is promoted with a sibling (`prim_clamp()`, `prim_pad()`) keeps
-  `@template param_prim_x_any` instead, since its R values do not fall back to a default.
+  A primitive whose `x` is promoted with a sibling (`prim_clamp()`, `prim_pad()`) writes `x`
+  inline instead: it names the accepted data types and then `` `r roxy_agree("x", "<sibling>")` ``,
+  which states the agreement and what an R value among them does.
 - **Binary ops:** `@templateVar dtypes <phrase>` + `@template params_prim_lhs_rhs`. The phrase
   completes "Can be ..." and comes from the vocabulary defined in `?dtypes`: `any data type`,
   `any numeric data type`, `any integerish data type`, `any float data type`. The template also
@@ -59,7 +60,12 @@ Use templates from `man-roxygen/` where applicable:
   one-line comment naming the data type that comes out. Show working calls only -- no `try()`
   around a rejected one. Pick operand values that also show what the primitive computes (`-32L`
   for an arithmetic shift), and write literals in the primitive's own category.
-- **StableHLO link:** `@section StableHLO:\n Lowers to [stablehlo::hlo_<name>()].`
+- **StableHLO link:** `@section StableHLO:` followed by `` `r roxy_spec("<op>")` `` for a
+  StableHLO op, or `` `r roxy_spec_chlo("<op>")` `` for a CHLO one (`prim_erf()`, `prim_acos()`,
+  `prim_top_k()`, ...). Both name the `hlo_*` function and link the op's specification; anything
+  the primitive adds on top -- a reducer, a comparison direction, a comparator -- follows as its
+  own sentence. A primitive backed by a custom call (`prim_qr()`, `prim_lu()`) writes the section
+  by hand, since no spec op describes it.
 - Do NOT mention "1-based indexing" — it's the R default.
 - Add `@export` to the roxygen block.
 

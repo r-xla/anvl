@@ -28,6 +28,7 @@ closes a file connection.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 path <- tempfile(fileext = ".safetensors")

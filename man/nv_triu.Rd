@@ -8,7 +8,8 @@ nv_triu(x, diagonal = 0L)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input, with exactly 2 axes. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset. \code{0} (default) is the main diagonal, positive values
@@ -24,6 +25,7 @@ the specified diagonal to zero.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# elements below the main diagonal become zero
 x <- nv_fill(1, c(3, 3))
 nv_triu(x)
 \dontshow{\}) # examplesIf}

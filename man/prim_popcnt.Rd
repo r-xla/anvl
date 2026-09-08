@@ -33,6 +33,7 @@ Lowers to \code{\link[stablehlo:hlo_popcnt]{hlo_popcnt()}}, specified under \hre
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the set bits are counted, at the input's own integer data type
 x <- nv_array(c(7L, 3L, 15L))
 prim_popcnt(x)
 \dontshow{\}) # examplesIf}

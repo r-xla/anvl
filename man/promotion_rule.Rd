@@ -73,8 +73,9 @@ If the selected data type is an R value, it's default data type is used.
 
 \code{promote_dtype()} brings the inputs to the specified data type.
 
-\code{promote_rdata_common()} brings the \emph{R values} to the common data type, as long
-it is within their category (a \code{double} can e.g. \emph{not} become a float).
+\code{promote_rdata_common()} brings the \emph{R values} to the common data type, as
+long as it is within their category (a \code{double} can e.g. \emph{not} become an
+integer).
 \code{AnvlArray} inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs

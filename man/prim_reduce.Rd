@@ -12,8 +12,8 @@ The array to reduce. Can be any data type.
 \code{x} and \code{init} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{init}{(\code{\link{arrayish}})\cr
-Scalar (0-dimensional) initial value. Must be the neutral element
-w.r.t. \code{reductor}.}
+Scalar initial value, with no axes. Must be the neutral element
+w.r.t. \code{reductor}, and shares \code{x}'s data type -- see \code{x}.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reduce over.
@@ -44,7 +44,7 @@ The order in which \code{reductor} is applied across the reduction window is
 implementation-defined. If the reductor is not associative, the result
 is ill-defined.
 Furthermore, \code{init} must be the neutral element for this reductor.
-Because floating point math is non-associative, the output of
+Because floating-point arithmetic is non-associative, the output of
 the reduction can differ between backends (GPU, CPU), even if the underlying mathematical
 function (like \code{+}) is associative.
 }
@@ -64,6 +64,7 @@ The body is \code{reductor}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `init` shares `x`'s data type, and the reduced axis disappears
 x <- nv_array(c(1, 2, 3, 4))
 prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
 prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)

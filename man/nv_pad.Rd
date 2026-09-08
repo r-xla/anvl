@@ -14,7 +14,8 @@ nv_pad(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+The array to pad. Can be any data type; \code{padding_value} is brought to it
+-- see \code{padding_value}.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
 Scalar value to use for padding. It is
@@ -43,6 +44,7 @@ Pads an array with a given value at the edges and optionally between elements.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# two zeros in front, one behind
 x <- nv_array(c(1, 2, 3))
 nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 \dontshow{\}) # examplesIf}

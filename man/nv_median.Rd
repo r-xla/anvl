@@ -32,7 +32,7 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation fo
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has a float data type whatever the input's is, and the input's shape with
+Has a float data type regardless of the input's, and the input's shape with
 \code{axis} removed.
 }
 \description{

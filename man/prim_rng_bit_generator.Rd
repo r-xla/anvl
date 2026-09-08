@@ -22,16 +22,17 @@ One of \code{"THREE_FRY"} (default), \code{"PHILOX"} or \code{"DEFAULT"}, the la
 leaving the choice to the implementation.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the generated random values. Can be any numeric data type,
-boolean being the one exception.}
+Data type of the generated random values. Can be any numeric data type;
+boolean is not one, and is rejected.}
 
 \item{shape}{(\code{integer()})\cr
 Shape.}
 }
 \value{
-(\code{list} of two \code{\link{arrayish}})\cr
-Unnamed. The updated RNG state, with \code{initial_state}'s data type and
-shape, and the random values, with the given \code{dtype} and \code{shape}.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{state}, the updated RNG state with \code{initial_state}'s data type
+and shape, and \code{values}, the random values with the given \code{dtype} and
+\code{shape}.
 }
 \description{
 Generates pseudo-random numbers using the specified algorithm and returns
@@ -57,7 +58,7 @@ prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
 
 # the updated state feeds the next draw, so the two differ
 out <- prim_rng_bit_generator(state, dtype = "f32", shape = 3L)
-prim_rng_bit_generator(out[[1L]], dtype = "f32", shape = 3L)
+prim_rng_bit_generator(out$state, dtype = "f32", shape = 3L)
 
 # PHILOX also accepts a three-element state
 prim_rng_bit_generator(

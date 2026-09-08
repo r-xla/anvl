@@ -12,7 +12,7 @@
 #' [`naxes()`][tengen::naxes] for the number of axes and
 #' [`shape()`][tengen::shape] for the axis sizes. We speak of the *size of an
 #' axis* rather than an array's "dimensions", as the latter is generally
-#' overloaded as it is used to refer to both the axis and it's size.
+#' overloaded as it is used to refer to both the axis and its size.
 #'
 #'
 #' @section Extractors:
@@ -43,9 +43,9 @@
 #'   Data type of the result: one of `r roxy_dtypes()`, or a
 #'   [`tengen::DataType`]. Can be any data type the backend supports; `data`
 #'   is built at it, so a value that data type cannot hold exactly is
-#'   converted. The default (`NULL`) uses the backend's default for the R
-#'   storage type of `data`: `f32` for a double on `"pjrt"`, `f64` for a
-#'   double on `"quickr"`, `i32` for an integer and `bool` for a logical.
+#'   converted. The default (`NULL`) is the
+#'   [default data type][default_dtypes] of the R storage type of `data`, which
+#'   for a double depends on the backend.
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
@@ -64,7 +64,9 @@
 #'   coerced to the closest available value of the target dtype (e.g. `NaN`
 #'   for floats, the bit pattern `-2147483648` for `i32`, `TRUE` for
 #'   `bool`). Defaults to `FALSE`. See the "Gotchas" vignette.
-#' @return ([`AnvlArray`])
+#' @return ([`AnvlArray`])\cr
+#'   Has the given `dtype` (or the default for `data`'s R storage type) and the
+#'   given `shape` (or the one inferred from `data`).
 #' @examplesIf pjrt::plugins_downloaded()
 #' # A 1-d array (vector) with shape (4), at the default data type for integers
 #' nv_array(1:4)
@@ -1098,7 +1100,8 @@ is_shape <- function(x) {
 #'   Object to check.
 #' @param convert_ok (`logical(1)`)\cr
 #'   Whether to accept `numeric(1)` and `logical(1)` and R arrays of type `numeric` and `logical`.
-#' @return (`logical(1)`)
+#' @return (`logical(1)`)\cr
+#'   Whether `x` is arrayish.
 #' @name arrayish
 #' @seealso [AnvlArray], [GraphBox]
 #' @examplesIf pjrt::plugins_downloaded()

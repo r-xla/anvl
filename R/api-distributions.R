@@ -9,15 +9,23 @@
 #' standard deviation `sd`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
-#'   function (`q`).
+#'   function (`q`). Can be any float data type; `mean` and `sd` are brought to
+#'   it. An R value commits to its [default data type][default_dtypes].
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
-#'   \eqn{[0, 1]} give `NaN`.
+#'   \eqn{[0, 1]} give `NaN`. Can be any float data type; `mean` and `sd` are
+#'   brought to it. An R value commits to its
+#'   [default data type][default_dtypes].
 #' @param mean ([`arrayish`])\cr
-#'   Mean of the distribution (scalar or same shape as `x`/`q`/`p`).
+#'   Mean of the distribution, scalar or the same shape as `x`/`q`/`p`; a scalar
+#'   is broadcast. Brought to that argument's data type: an R value is built at
+#'   it, and a value that already has a data type is converted unless that would
+#'   narrow it -- an `f64` mean for an `f32` `x` is an error rather than a silent
+#'   narrowing.
 #' @param sd ([`arrayish`])\cr
-#'   Standard deviation of the distribution (scalar or same shape as
-#'   `x`/`q`/`p`). Must be positive, otherwise results are invalid.
+#'   Standard deviation of the distribution, scalar or the same shape as
+#'   `x`/`q`/`p`; a scalar is broadcast, and it is brought to that argument's
+#'   data type like `mean`. Must be positive, otherwise results are invalid.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms. For
 #'   `nv_qnorm` this describes the input `p`.
@@ -29,7 +37,6 @@
 #' \deqn{f(x) = \frac{1}{\sigma\sqrt{2\pi}}
 #'   \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)}
 #' where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
-#' The `mean` and `sd` are converted to the data type of `x`/`q`/`p`.
 #'
 #' `nv_pnorm` uses the asymptotic expansion from
 #' `r xlamisc::cite_bib("abramowitz1964handbook")`, equation 26.2.12, in the
@@ -43,11 +50,11 @@
 #' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
 #' @return
-#' `nv_dnorm()` and `nv_pnorm()` return an [`arrayish`] with the same shape and
-#' data type as `x`/`q`.
+#' `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an [`arrayish`] with the
+#' shape and data type of `x`/`q`/`p`.
 #'
-#' `nv_rnorm()` returns a `list()` of two [`arrayish`] elements: the updated
-#' RNG state and the sampled values.
+#' `nv_rnorm()` returns a named `list` of two [`arrayish`]: `state`, the updated
+#' RNG state, and `values`, the sample of shape `shape`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))

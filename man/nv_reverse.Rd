@@ -8,7 +8,8 @@ nv_reverse(x, axes)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reverse.
@@ -23,6 +24,7 @@ Reverses the order of elements along specified axes.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the order along axis 1 is flipped
 x <- nv_array(c(1, 2, 3, 4, 5))
 nv_reverse(x, axes = 1L)
 \dontshow{\}) # examplesIf}

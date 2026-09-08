@@ -28,7 +28,7 @@ Element-wise error function \verb{erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_erf]{hlo_erf()}}, specified under \href{https://openxla.org/stablehlo/spec#erf}{erf}.
+Lowers to \code{\link[stablehlo:hlo_erf]{hlo_erf()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloerf_chloerfop}{chlo.erf}.
 }
 
 \examples{

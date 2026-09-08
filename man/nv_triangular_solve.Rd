@@ -48,7 +48,8 @@ If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{F
 }
 \value{
 (\code{\link{arrayish}})\cr
-The solution \code{x}, with the same shape and dtype as \code{b}.
+The solution \code{x}, with \code{b}'s shape and the data type \code{a} and \code{b} agreed
+on.
 }
 \description{
 Solves a triangular system of linear equations. When \code{left_side = TRUE},

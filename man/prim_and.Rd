@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_and}
 \alias{prim_and}
-\title{Primitive And}
+\title{Primitive Bitwise And}
 \usage{
 prim_and(lhs, rhs)
 }
@@ -18,7 +18,8 @@ values assume the other operand's data type when it is in their
 Has the inputs' shape and data type.
 }
 \description{
-Element-wise logical AND.
+Element-wise bitwise AND -- a logical AND on a boolean input, and a
+bit-by-bit one on an integer.
 }
 \section{Implemented Rules}{
 

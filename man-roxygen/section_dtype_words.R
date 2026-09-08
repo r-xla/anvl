@@ -8,7 +8,8 @@
 #' * *integer* -- signed and unsigned integer.
 #' * *integerish* -- boolean and integer, signed or unsigned.
 #' * *signed numeric* -- signed integer and float.
-#' * *float* -- `f32` and `f64`.
+#' * *float* -- the whole float category: `f32`, `f64` and any narrower float
+#'   a backend supports.
 #' * *boolean* -- `bool`, the only member of its category.
 #'
 #' See [`dtypes`] for the categories these groups are built from and for the

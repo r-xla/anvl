@@ -11,9 +11,9 @@ nv_chol(x, lower = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Symmetric positive-definite matrix with at least 2 axes.
-The last two axes form the square matrix; any leading axes
-are batch axes.}
+Symmetric positive-definite matrix with at least 2 axes, of any float data
+type. The last two axes form the square matrix; any leading axes are batch
+axes.}
 
 \item{lower}{(\code{logical(1)})\cr If \code{TRUE}, return the lower-triangular factor.}
 
@@ -29,6 +29,7 @@ Supports batched inputs: axes before the last two are batch axes.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the factor has the matrix's shape and data type
 a <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f32")
 nv_chol(a)
 \dontshow{\}) # examplesIf}

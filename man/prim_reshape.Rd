@@ -40,6 +40,7 @@ Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}, specified under \h
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the elements are reread in row-major order; the data type is untouched
 x <- nv_array(1:6)
 prim_reshape(x, shape = c(2, 3))
 \dontshow{\}) # examplesIf}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_not}
 \alias{nv_not}
-\title{Logical Not}
+\title{Bitwise Not}
 \usage{
 nv_not(x)
 }
@@ -16,12 +16,18 @@ One input. Can be any integerish data type. An R value commits to its
 Has the input's shape and data type.
 }
 \description{
-Element-wise logical NOT. You can also use the \code{!} operator.
+Element-wise bitwise NOT -- a logical negation on a boolean input, and a
+bit-by-bit complement on an integer, so \code{nv_not(12L)} is \code{-13}. You can also
+use the \code{!} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# on a boolean this is a logical negation
 x <- nv_array(c(TRUE, FALSE, TRUE))
 !x
+
+# on an integer it complements every bit, so `12L` becomes `-13`
+nv_not(nv_array(12L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

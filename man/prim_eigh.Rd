@@ -14,7 +14,7 @@ One input, a symmetric square matrix with exactly 2 axes. Can be any float data 
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
 Elements \code{values} (length \code{n}) and \code{vectors}
-(shape \verb{(n, n)}). Both have the same dtype as the input.
+(shape \verb{(n, n)}). Both have the input's data type.
 }
 \description{
 Computes the eigendecomposition of a symmetric matrix \code{x} of

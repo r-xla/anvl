@@ -53,11 +53,13 @@ efficiently represented in the compiled program, while the latter uses
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}, specified under \href{https://openxla.org/stablehlo/spec#tensor}{tensor}.
+Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}, stablehlo's constant builder, specified under
+\href{https://openxla.org/stablehlo/spec#constant}{constant}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R double is built at the requested data type
 prim_fill(3.14, shape = c(2, 3), dtype = "f32")
 \dontshow{\}) # examplesIf}
 }

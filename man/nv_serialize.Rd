@@ -26,6 +26,7 @@ Serializes a named list of arrays into the
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
+# data types and shapes round-trip unchanged
 x <- nv_matrix(1:6, nrow = 2)
 x
 raw_data <- nv_serialize(list(x = x))

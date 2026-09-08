@@ -25,6 +25,7 @@ Returns the input unchanged if it already has the target type.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the values are preserved, the data type changes
 x <- nv_array(c(1L, 2L, 3L))
 nv_convert(x, dtype = "f32")
 \dontshow{\}) # examplesIf}

@@ -19,12 +19,12 @@ is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}
 \item{with_indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns the running-maximum array.
 If \code{TRUE}, returns \code{list(values = ..., indices = ...)} where \code{indices}
-is the 1-based index of the last occurrence of the running
-maximum at each position (dtype \code{i32}, matching torch).
+is the index of the last occurrence of the running
+maximum at each position, at \code{i32}.
 When \code{axis = NULL}, indices refer to the flattened input.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates forward from its first occurrence. If
 \code{TRUE}, \code{NaN} is treated as the identity element of the cumulative
 op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min) and
@@ -41,7 +41,7 @@ Running maximum, optionally along a single axis.
 \section{Relation to base R}{
 
 Both \code{nv_cummax()} (with \code{axis = NULL}) and \code{\link[base:cummax]{base::cummax()}}
-flatten a multi-dimensional input to 1-D before accumulating, but the
+flatten an input of any rank to 1-D before accumulating, but the
 flatten order differs: anvl arrays are row-major (C order), so the
 flattened sequence iterates the last axis fastest, whereas base R uses
 column-major (Fortran) order. The two agree on 1-D inputs.
@@ -49,6 +49,7 @@ column-major (Fortran) order. The two agree on 1-D inputs.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the running maximum keeps the data type; the indices are `i32`
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummax(x)
 nv_cummax(x, axis = 1L)

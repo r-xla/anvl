@@ -13,11 +13,12 @@ The array to write into. Can be any data type.
 
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
-number of axes as \code{x}, with \code{nv_shape(update) <= nv_shape(x)} per axis.}
+number of axes as \code{x}, with \code{shape(update) <= shape(x)} per axis.
+Shares \code{x}'s data type -- see \code{x}.}
 
-\item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per axis of \code{x}.
-Each must be a scalar array.}
+\item{...}{(\code{\link{arrayish}})\cr
+Scalar start indices, one per axis of \code{x}. Each must be a scalar of an
+integer data type, and keeps it -- the indices take no part in \code{x}'s.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -29,6 +30,14 @@ runtime-determined position. This is the write counterpart of
 \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}: dynamic slice reads a block from an array,
 while dynamic update slice writes a block into an array.
 }
+\section{Out Of Bounds Behavior}{
+
+Start indices are clamped before the update is written:
+\code{adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)}.
+This means that out-of-bounds indices will not cause an error, but the
+effective start position may differ from the requested one.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
@@ -41,14 +50,6 @@ while dynamic update slice writes a block into an array.
 \section{StableHLO}{
 
 Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}, specified under \href{https://openxla.org/stablehlo/spec#dynamic_update_slice}{dynamic_update_slice}.
-}
-
-\section{Out Of Bounds Behavior}{
-
-Start indices are clamped before the slice is extracted:
-\code{adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)}.
-This means that out-of-bounds indices will not cause an error, but
-the effective start position may differ from the requested one.
 }
 
 \examples{

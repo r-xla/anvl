@@ -8,8 +8,7 @@ nv_clamp(min_val, x, max_val)
 }
 \arguments{
 \item{min_val, max_val}{(\code{\link{arrayish}})\cr
-Lower and upper bound, each scalar or the same shape as \code{x}. They take
-\code{x}'s data type -- see \code{x} -- and are
+Lower and upper bound, each scalar or the same shape as \code{x}. They are
 brought to \code{x}'s data type: an R value is built at it when its category can
 reach it (\code{0L} serves an integer and a float \code{x} alike, \code{0} only a float
 one), and a value that already has a data type is converted unless that
@@ -32,8 +31,12 @@ The underlying stableHLO function already broadcasts scalars, so no need to broa
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the bounds are brought to `x`'s data type
 x <- nv_array(c(-1, 0.5, 2))
 nv_clamp(nv_scalar(0), x, nv_scalar(1))
+
+# an R integer serves a float `x` too, since a float can hold it
+nv_clamp(0L, x, 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

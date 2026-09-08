@@ -40,6 +40,7 @@ Lowers to a \code{"geqrf"} + \code{"orgqr"} \code{\link[stablehlo:hlo_custom_cal
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `Q` is 3x2 and `R` 2x2, both at the input's data type
 x <- nv_array(1:6, shape = c(3, 2), dtype = "f32")
 prim_qr(x)
 \dontshow{\}) # examplesIf}

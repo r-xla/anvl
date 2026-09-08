@@ -8,7 +8,8 @@ nv_broadcast_to(x, shape)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. Each existing axis must either match or be 1.}
@@ -22,6 +23,7 @@ Broadcasts an array to a target shape using NumPy-style broadcasting rules.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the length-3 vector is repeated along a new leading axis
 x <- nv_array(c(1, 2, 3))
 nv_broadcast_to(x, shape = c(2, 3))
 \dontshow{\}) # examplesIf}

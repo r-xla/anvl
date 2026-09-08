@@ -27,12 +27,12 @@ One of \code{"linear"} (default), \code{"lower"}, \code{"higher"}, \code{"neares
 \code{"midpoint"}. See "Interpolation modes".}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has a float data type whatever the input's is. For scalar \code{probs} the
+Has a float data type regardless of the input's. For scalar \code{probs} the
 shape is the input's with \code{axis} removed; for array \code{probs} a \strong{leading}
 axis of size \code{length(probs)} is prepended.
 }
@@ -67,6 +67,7 @@ length \code{n} and probability \code{q}, with \code{lo = floor(h)}, \code{hi = 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a float result even for an integer input, since it interpolates
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_quantile(x, 0.5) # = nv_median(x)
 nv_quantile(x, array(c(0.25, 0.5, 0.75)))

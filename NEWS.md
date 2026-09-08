@@ -16,6 +16,16 @@
 * There is now exactly one backend used at a time and it is configured via the
   `anvl.backend` option.
 * A `Shape` is now represented as an integer vector.
+* `prim_top_k()`, `prim_cummax()`, `prim_cummin()`,
+  `prim_rng_bit_generator()` and the `nv_*` samplers (`nv_runif()`,
+  `nv_rnorm()`, `nv_rbinom()`, `nv_sample()`, `nv_sample_int()`) now return
+  *named* lists -- `values` / `indices` for the first three, `state` /
+  `values` for the rest -- as `prim_qr()` and `prim_svd()` already did.
+  Positional indexing keeps working.
+* Every data type of the float category now counts as a float, so `f16` and
+  `bf16` pass the checks that used to accept only `f32` and `f64` (and the
+  error message is now "must be a float data type"). The RNG, which assembles
+  floats out of random bits, still requires a 32- or 64-bit float and says so.
 
 ## Features
 
@@ -42,10 +52,19 @@
   using a function such as `(a, b) a + b` failed.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
   `nv_reduce_all()`) now reject a non-boolean input.
+* `nv_runif()` with `min == max` now returns the `state` / `values` list every
+  other sampler returns, instead of the filled array on its own.
 
 ## Documentation
 
-* Improved the documentation for primitives and API functions.
+* Every `prim_*` and `nv_*` help page now states, in its parameters and its
+  return value, which data types it accepts, what an R value among them
+  commits to, whether operands are promoted and whether scalars are broadcast.
+  The group names (*numeric*, *integerish*, *float*, ...) are defined once on
+  the new `?dtypes` page, which also documents the default data type an R
+  value takes, and are shown on `?arrayish`.
+* Primitives modelled on a StableHLO or CHLO op now link that op's
+  specification instead of restating it.
 
 ## Tests
 
