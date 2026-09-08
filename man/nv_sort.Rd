@@ -11,7 +11,8 @@ nv_sort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to sort. Negative values count from the end,
@@ -31,7 +32,7 @@ values the result is identical either way.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same shape and data type as \code{x}.
+Has the input's shape and data type.
 }
 \description{
 Sorts an array along an axis.

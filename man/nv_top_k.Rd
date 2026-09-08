@@ -8,7 +8,8 @@ nv_top_k(x, k, axis = NULL, with_indices = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input, with at least 1 axis. Can be any numeric data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements to return. Must satisfy
@@ -21,13 +22,14 @@ uses the last axis.}
 
 \item{with_indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns just the top-\code{k} values. If \code{TRUE},
-returns \code{list(values = ..., indices = ...)} where \code{indices} is the
-1-based position of each top-\code{k} value along \code{axis} (dtype \code{i32}).}
+returns \code{list(values = ..., indices = ...)} where \code{indices} holds the
+1-based position of each top-\code{k} value along \code{axis}.}
 }
 \value{
-\code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
-arrays (when \code{with_indices = TRUE}). Output shape matches \code{x} with
-\code{axis} resized to \code{k}; values are sorted decreasing along \code{axis}.
+\code{\link{arrayish}} (when \code{with_indices = FALSE}) or a named \code{list} of two
+arrays (when \code{with_indices = TRUE}). The values have the input's data
+type and the indices \code{i32}. Both have the input's shape with \code{axis}
+resized to \code{k}; values are sorted decreasing along \code{axis}.
 }
 \description{
 Returns the \code{k} largest values along an axis, sorted in decreasing order.

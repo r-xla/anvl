@@ -489,18 +489,20 @@ nv_print <- prim_print
 #' @description
 #' Selects elements from `true_value` or `false_value` based on `pred`,
 #' analogous to R's [ifelse()].
-#' @param pred ([`arrayish`] of boolean type)\cr
-#'   Predicate array. Must be scalar or have the same shape as the
-#'   non-scalar arguments.
+#' @param pred ([`arrayish`])\cr
+#'   Predicate array. Must be a boolean or an R logical, and scalar or the same
+#'   shape as the non-scalar arguments. It keeps its own data type and takes no
+#'   part in the promotion below.
 #' @param true_value,false_value ([`arrayish`])\cr
-#'   Values to return where `pred` is `TRUE` / `FALSE`.
-#'   `true_value` and `false_value` are
-#'   [promoted to a common data type][nv_promote_to_common()].
+#'   Values to return where `pred` is `TRUE` / `FALSE`. Can be of any data
+#'   type; the two are
+#'   [promoted to a common data type][nv_promote_to_common()], where
+#'   [prim_ifelse()] would require them to agree already.
 #'   Scalars (including `pred`) are
 #'   [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar arguments.
 #' @return [`arrayish`]\cr
-#'   Has the common data type of `true_value` and `false_value` and the
-#'   shape of the non-scalar arguments.
+#'   Has the common data type of `true_value` and `false_value`, and their
+#'   broadcast shape.
 #' @seealso [prim_ifelse()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' pred <- nv_array(c(TRUE, FALSE, TRUE))
@@ -1442,10 +1444,15 @@ nv_lgamma <- prim_lgamma
 #' scalar arguments are
 #' [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar
 #' arguments.
-#' @param n,x ([`arrayish`])\cr
-#'   Floating-point arrayish values. After promotion and broadcasting,
-#'   `n` and `x` must have the same shape; `n` typically holds
-#'   non-negative integer values.
+#' @param n (`numeric(1)`)\cr
+#'   Order of the polygamma function, typically a non-negative whole number.
+#'   A plain R value: `n` is a static argument, so an [`AnvlArray`] is
+#'   rejected. It is broadcast against `x`.
+#' @param x ([`arrayish`])\cr
+#'   One input. Can be any data type: it is promoted with `n` to a float, so an
+#'   integer or boolean array is converted rather than refused, where
+#'   [prim_polygamma()] requires a float outright. An R value commits to its
+#'   [default data type][default_dtypes].
 #' @template return_binary
 #' @seealso [prim_polygamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1531,9 +1538,16 @@ nv_popcnt <- prim_popcnt
 #' @details
 #' The underlying stableHLO function already broadcasts scalars, so no need to broadcast manually.
 #' @param min_val,max_val ([`arrayish`])\cr
-#'   Minimum and maximum values (scalar or same shape as `x`).
-#' @template param_x
-#' @template return_unary
+#'   Lower and upper bound, each scalar or the same shape as `x`. They are
+#'   brought to `x`'s data type: an R value is built at it when its category can
+#'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
+#'   one), and a value that already has a data type is converted unless that
+#'   would narrow it -- an `f64` bound for an `f32` `x` is an error rather than
+#'   a silent narrowing.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @return [`arrayish`]\cr
+#'   Has `x`'s shape and data type.
 #' @seealso [prim_clamp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0.5, 2))
@@ -1708,11 +1722,12 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
 #' Pads an array with a given value at the edges and optionally between elements.
 #' @template param_x
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. It is brought to `x`'s data type: an R
-#'   value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as well),
-#'   and a value that already has one is converted, unless `x`'s data type
-#'   cannot hold it -- an `f64` padding value for an `f32` array is an error
-#'   rather than a silent narrowing.
+#'   Scalar value to use for padding. It is
+#'   brought to `x`'s data type: an R value is built at it when its category can
+#'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
+#'   one), and a value that already has a data type is converted unless that
+#'   would narrow it -- an `f64` padding value for an `f32` `x` is an error rather than
+#'   a silent narrowing.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -3269,7 +3284,8 @@ nv_select <- function(x, axis, index) {
 #' Sorts an array along an axis.
 #'
 #' You can also use `sort()` directly.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to sort. Negative values count from the end,
 #'   i.e. `-1` refers to the last axis. If `NULL` (default), uses the last
@@ -3283,7 +3299,7 @@ nv_select <- function(x, axis, index) {
 #'   (they compare equal under the total order used here); for distinct
 #'   values the result is identical either way.
 #' @return [`arrayish`]\cr
-#'   Same shape and data type as `x`.
+#'   Has the input's shape and data type.
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
@@ -3310,7 +3326,8 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @title Argsort
 #' @description
 #' Returns the indices that would sort the array along an axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to compute the sort permutation. Negative values
 #'   count from the end, i.e. `-1` refers to the last axis. If `NULL`
@@ -3321,9 +3338,10 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @param stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: indices for equal values keep their
 #'   original relative order. Default `FALSE`.
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `x`. For a size-0 axis, the output is an empty `i32`
-#'   array of the same shape (a valid empty permutation).
+#' @return [`arrayish`]\cr
+#'   Has `i32` data type whatever the input's is, and the input's shape. For a
+#'   size-0 axis, the output is an empty `i32` array of the same shape (a valid
+#'   empty permutation).
 #'   `as_array(x)[as_array(nv_argsort(x))]` reproduces the sorted
 #'   array (for 1-D inputs).
 #' @inheritSection nv_sort NaN handling
@@ -3346,7 +3364,9 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @title Top-K Elements
 #' @description
 #' Returns the `k` largest values along an axis, sorted in decreasing order.
-#' @template param_x
+#' @templateVar dtypes any numeric data type
+#' @templateVar shapes with at least 1 axis
+#' @template param_unary_x
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements to return. Must satisfy
 #'   `1 <= k <= shape(x)[axis]`.
@@ -3356,11 +3376,12 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #'   uses the last axis.
 #' @param with_indices (`logical(1)`)\cr
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
-#'   returns `list(values = ..., indices = ...)` where `indices` is the
-#'   1-based position of each top-`k` value along `axis` (dtype `i32`).
-#' @return [`arrayish`] (when `with_indices = FALSE`) or named list of two
-#'   arrays (when `with_indices = TRUE`). Output shape matches `x` with
-#'   `axis` resized to `k`; values are sorted decreasing along `axis`.
+#'   returns `list(values = ..., indices = ...)` where `indices` holds the
+#'   1-based position of each top-`k` value along `axis`.
+#' @return [`arrayish`] (when `with_indices = FALSE`) or a named `list` of two
+#'   arrays (when `with_indices = TRUE`). The values have the input's data
+#'   type and the indices `i32`. Both have the input's shape with `axis`
+#'   resized to `k`; values are sorted decreasing along `axis`.
 #' @section NaN handling:
 #' `NaN` ranks larger than any finite value (so it appears first in the
 #' top-`k` output); `-NaN` ranks smaller. Unlike [nv_sort()], the sign
@@ -3427,7 +3448,8 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' * `"higher"`: `sorted[hi]` — the upper bracket of `linear`.
 #' * `"nearest"`: `sorted[lo]` if `frac < 0.5` else `sorted[hi]`.
 #' * `"midpoint"`: `(sorted[lo] + sorted[hi]) / 2`.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param probs (`numeric(1)` | 1-D `array`)\cr
 #'   One or more probabilities in `[0, 1]`. Either a length-1 numeric
 #'   (scalar; `axis` is dropped) or a 1-D `array` (a leading axis of size
@@ -3442,9 +3464,9 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #'   `"midpoint"`. See "Interpolation modes".
 #' @template param_nan_rm
 #' @return [`arrayish`]\cr
-#'   For scalar `probs`: same shape as `x` with `axis` removed. For
-#'   array `probs`: a **leading** axis of size `length(probs)` is
-#'   prepended.
+#'   Has a float data type whatever the input's is. For scalar `probs` the
+#'   shape is the input's with `axis` removed; for array `probs` a **leading**
+#'   axis of size `length(probs)` is prepended.
 #' @seealso [nv_median()], [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -3545,7 +3567,8 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #'
 #' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
 #' extra arguments (e.g. `interpolation`) are forwarded via `...`.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to compute the median. Negative values count from
 #'   the end, i.e. `-1` refers to the last axis. If `NULL` (default),
@@ -3556,7 +3579,8 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #' @param nan_rm (`logical(1)`)\cr
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
-#'   Same shape as `x` with `axis` removed.
+#'   Has a float data type whatever the input's is, and the input's shape with
+#'   `axis` removed.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
@@ -3578,7 +3602,8 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 #' @description
 #' Returns the index of the maximum value along an axis. Ties are broken
 #' by returning the smallest index.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to find the index. Negative values count from the
 #'   end, i.e. `-1` refers to the last axis. If `NULL` (default), uses
@@ -3616,7 +3641,8 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @description
 #' Returns the index of the minimum value along an axis. Ties are broken
 #' by returning the smallest index.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to find the index. Negative values count from the
 #'   end, i.e. `-1` refers to the last axis. If `NULL` (default), uses

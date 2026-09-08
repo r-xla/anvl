@@ -8,7 +8,8 @@ nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{probs}{(\code{numeric(1)} | 1-D \code{array})\cr
 One or more probabilities in \verb{[0, 1]}. Either a length-1 numeric
@@ -31,9 +32,9 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-For scalar \code{probs}: same shape as \code{x} with \code{axis} removed. For
-array \code{probs}: a \strong{leading} axis of size \code{length(probs)} is
-prepended.
+Has a float data type whatever the input's is. For scalar \code{probs} the
+shape is the input's with \code{axis} removed; for array \code{probs} a \strong{leading}
+axis of size \code{length(probs)} is prepended.
 }
 \description{
 Computes the \code{probs} quantile(s) of an array along an axis.

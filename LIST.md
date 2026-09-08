@@ -68,7 +68,7 @@ None. Every primitive except `prim_rng_bit_generator` is covered.
 
 ## API functions
 
-### Covered (74)
+### Covered (85)
 
 Elementwise binary: `nv_add` `nv_sub` `nv_mul` `nv_div` `nv_pow`
 `nv_remainder` `nv_mod` `nv_max` `nv_min` `nv_atan2` `nv_and` `nv_or` `nv_xor`
@@ -89,7 +89,12 @@ Reductions and scans: `nv_reduce_sum` `nv_reduce_prod` `nv_reduce_max`
 
 Sequences: `nv_seq` `nv_seq_like` `nv_linspace` `nv_linspace_like`
 
-### To do (77)
+Operands that must agree: `nv_clamp` `nv_pad` `nv_ifelse` `nv_polygamma`
+
+Order statistics and indices: `nv_sort` `nv_argsort` `nv_top_k` `nv_argmax`
+`nv_argmin` `nv_median` `nv_quantile`
+
+### To do (66)
 
 - Shape and layout: `nv_transpose` `nv_reshape` `nv_flatten` `nv_squeeze`
   `nv_unsqueeze` `nv_reverse` `nv_broadcast_to` `nv_broadcast_arrays`
@@ -102,9 +107,6 @@ Sequences: `nv_seq` `nv_seq_like` `nv_linspace` `nv_linspace_like`
 - Constructors: `nv_array` `nv_array_like` `nv_scalar` `nv_scalar_like`
   `nv_fill` `nv_fill_like` `nv_empty` `nv_empty_like` `nv_iota` `nv_iota_like`
   `nv_eye` `nv_eye_like`
-- Operands that must agree: `nv_clamp` `nv_pad` `nv_ifelse` `nv_polygamma`
-- Order statistics and indices: `nv_sort` `nv_argsort` `nv_top_k` `nv_argmax`
-  `nv_argmin` `nv_median` `nv_quantile`
 - Linear algebra: `nv_matmul` `nv_outer` `nv_crossprod` `nv_tcrossprod`
   `nv_trace` `nv_det` `nv_determinant` `nv_inv` `nv_solve`
   `nv_triangular_solve` `nv_chol` `nv_qr` `nv_lu` `nv_svd` `nv_eigh`
@@ -141,6 +143,17 @@ package. None of it is fixed here — this is documentation work.
   value") rather than in an anvl check.
 - `prim_iota()` rejects boolean, as `nv_seq()` does, but `prim_fill()` accepts
   it — the constructors do not agree on which data types they cover.
+- `nv_polygamma()`'s `n` is a static argument, so it takes a plain R value and
+  rejects an `AnvlArray`, while `prim_polygamma()`'s `n` is a normal arrayish
+  operand. The `nv_*` page described `n` and `x` together as arrayish values
+  that get promoted and broadcast, which held for `x` alone.
+- `nv_polygamma()` promotes an integer or boolean `x` to a float, where
+  `prim_polygamma()` refuses anything but a float. Same for `nv_median()` /
+  `nv_quantile()` against a float-only reading of their primitives.
+- `nv_pad()` and `nv_clamp()` refuse an R double for an integer `x`
+  (`nv_pad(x_i32, 0)` errors, `0L` works), because `promote_like("x")` keeps
+  the literal in its own category. Easy to trip over, and the old `nv_pad()`
+  text implied either literal would do.
 
 ## Cannot be verified in this container
 

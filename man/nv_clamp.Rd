@@ -8,14 +8,20 @@ nv_clamp(min_val, x, max_val)
 }
 \arguments{
 \item{min_val, max_val}{(\code{\link{arrayish}})\cr
-Minimum and maximum values (scalar or same shape as \code{x}).}
+Lower and upper bound, each scalar or the same shape as \code{x}. They are
+brought to \code{x}'s data type: an R value is built at it when its category can
+reach it (\code{0L} serves an integer and a float \code{x} alike, \code{0} only a float
+one), and a value that already has a data type is converted unless that
+would narrow it -- an \code{f64} bound for an \code{f32} \code{x} is an error rather than
+a silent narrowing.}
 
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the input's shape and data type.
+Has \code{x}'s shape and data type.
 }
 \description{
 Element-wise clamp: \code{max(min_val, min(x, max_val))}.
