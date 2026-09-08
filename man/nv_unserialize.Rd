@@ -2,7 +2,7 @@
 % Please edit documentation in R/serialize.R
 \name{nv_unserialize}
 \alias{nv_unserialize}
-\title{Deserialize arrays from raw bytes}
+\title{Deserialize Arrays from Raw Bytes}
 \usage{
 nv_unserialize(con, device = NULL)
 }

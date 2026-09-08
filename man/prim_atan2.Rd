@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_atan2}
 \alias{prim_atan2}
-\title{Primitive Atan2}
+\title{Primitive Arctangent 2}
 \usage{
 prim_atan2(lhs, rhs)
 }

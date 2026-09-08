@@ -33,7 +33,7 @@ analogous to R's \code{\link[=ifelse]{ifelse()}}.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 pred <- nv_array(c(TRUE, FALSE, TRUE))
 nv_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
-# scalar branches are broadcast and promoted to a common dtype
+# scalar branches are broadcast and promoted to a common data type
 nv_ifelse(pred, nv_scalar(1L), nv_scalar(0.5))
 \dontshow{\}) # examplesIf}
 }

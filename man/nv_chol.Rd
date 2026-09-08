@@ -21,7 +21,8 @@ axes.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Triangular matrix with the same shape and data type as the input.
+Triangular matrix with the input's shape and data type. The values in the
+triangle not selected by \code{lower} are implementation-defined.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.

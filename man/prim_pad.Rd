@@ -71,3 +71,6 @@ prim_pad(nv_matrix(1:4, nrow = 2), 0L, c(1L, 0L), c(0L, 1L), c(0L, 0L))
 prim_pad(nv_array(c(1.5, 2.5), dtype = "f64"), 0, 1L, 1L, 0L)
 \dontshow{\}) # examplesIf}
 }
+\seealso{
+\code{\link[=nv_pad]{nv_pad()}}
+}

@@ -24,7 +24,9 @@ Ops.AnvlArray <- function(e1, e2) {
     "<=" = nv_le(e1, e2),
     "!" = nv_not(e1),
     "&" = nv_and(e1, e2),
-    "|" = nv_or(e1, e2)
+    "|" = nv_or(e1, e2),
+    "%/%" = nv_div(nv_sub(e1, nv_mod(e1, e2)), e2),
+    cli_abort("{.fn {(.Generic)}} is not supported for an {.cls AnvlArray}.")
   )
 }
 
@@ -80,7 +82,7 @@ Math.AnvlArray <- function(x, ...) {
     "cumprod" = nv_cumprod(x, ...),
     "cummax" = nv_cummax(x, ...),
     "cummin" = nv_cummin(x, ...),
-    cli_abort("invalid method: {(.Generic)}")
+    cli_abort("{.fn {(.Generic)}} is not supported for an {.cls AnvlArray}.")
   )
 }
 
@@ -173,7 +175,8 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 #'   New ordering of axes. If `NULL` (default), reverses the axes.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return ([`arrayish`])\cr
-#'   Has the same data type as `x` and shape `shape(x)[permutation]`.
+#'   Has `x`'s data type and shape `shape(x)[permutation]`, or `rev(shape(x))`
+#'   when `permutation` is `NULL`.
 #' @seealso [prim_transpose()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the 2x3 becomes a 3x2, keeping its data type

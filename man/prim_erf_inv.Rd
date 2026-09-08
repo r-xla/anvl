@@ -28,7 +28,7 @@ Element-wise inverse error function (the inverse of \code{erf} on \verb{(-1, 1)}
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_erf_inv]{hlo_erf_inv()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloerf_inv_chloerf_invop}{chlo.erf_inv}.
+Lowers to \code{\link[stablehlo:hlo_erf_inv]{hlo_erf_inv()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloerf_inv_chloerfinvop}{chlo.erf_inv}.
 }
 
 \examples{

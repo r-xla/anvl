@@ -1966,3 +1966,100 @@ test_that("nv_mod and `%%` follow base R flooring semantics across sign combos",
     1L %% -3L
   )
 })
+
+test_that("nv_quantile and nv_median interpolate at a float data type", {
+  # `probs` used to be built at the key's data type, so at an integer one it
+  # rounded to 0 and every quantile came back as the smallest element.
+  expect_equal(as.vector(as_array(nv_median(nv_array(1:4)))), 2.5)
+  expect_equal(as.vector(as_array(nv_median(nv_array(c(1, 2, 3, 4))))), 2.5)
+  expect_equal(as.vector(as_array(nv_quantile(nv_array(1:4), 0.25))), 1.75)
+  expect_equal(
+    as.vector(as_array(nv_quantile(nv_array(1:4), array(c(0.25, 0.5, 0.75))))),
+    c(1.75, 2.5, 3.25)
+  )
+  expect_equal(
+    as.vector(as_array(nv_median(nv_array(c(TRUE, TRUE, FALSE, FALSE))))),
+    0.5
+  )
+  # The result is a float whatever the interpolation mode does.
+  expect_equal(dtype(nv_quantile(nv_array(1:4), 0.5, interpolation = "lower")), as_dtype("f32"))
+  expect_equal(dtype(nv_median(nv_array(1:4, dtype = "i8"))), as_dtype("f32"))
+  expect_equal(dtype(nv_median(nv_array(c(1, 2), dtype = "f64"))), as_dtype("f64"))
+  # `probs` is a scalar or a 1-D array.
+  expect_error(
+    nv_quantile(nv_array(c(1, 2, 3, 4)), array(c(0.25, 0.5), dim = c(1, 2))),
+    "must be a length-1 numeric or a 1-D array"
+  )
+})
+
+test_that("`%/%` is flooring integer division", {
+  expect_equal(as.integer(nv_array(c(7L, 8L, 9L)) %/% 2L), c(3L, 4L, 4L))
+  expect_equal(as.integer(nv_array(-7L) %/% 2L), -7L %/% 2L)
+  expect_equal(as.vector(as_array(nv_array(c(7, 8)) %/% 2)), c(3, 4))
+  # An unimplemented member of a group generic errors instead of returning NULL.
+  expect_error(gamma(nv_array(c(1, 2))), "is not supported for an")
+})
+
+test_that("shape mismatches print the shapes once each", {
+  a <- nv_array(matrix(1:6 / 1, 2), dtype = "f32")
+  b <- nv_array(matrix(1:6 / 1, 3), dtype = "f32")
+  expect_error(nv_concatenate(a, b, axis = 1L), "\\(2,3\\), \\(3,2\\)")
+  expect_error(
+    nv_rbind(a, nv_array(matrix(1:8 / 1, 2), dtype = "f32")),
+    "\\(2,3\\), \\(2,4\\)"
+  )
+})
+
+test_that("the flag and enum arguments are checked in the nv_* layer", {
+  x <- nv_array(c(1, 2, 3, 4))
+  for (f in list(nv_reduce_sum, nv_reduce_prod, nv_reduce_max, nv_reduce_min, nv_mean)) {
+    expect_error(f(x, nan_rm = "yes"), "logical flag")
+  }
+  expect_error(nv_cumsum(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_cummax(x, with_indices = "yes"), "logical flag")
+  expect_error(nv_argmax(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "logical flag")
+  m <- nv_array(matrix(c(4, 2, 2, 3), 2), dtype = "f32")
+  expect_error(nv_chol(m, lower = "yes"), "logical flag")
+  expect_error(nv_triangular_solve(m, m, lower = "yes"), "logical flag")
+  expect_error(nv_seq(7, 3), "must not be greater than")
+})
+
+test_that("crossprod and tcrossprod are matrices only", {
+  a3 <- nv_array(array(1:8 / 1, c(2, 2, 2)), dtype = "f32")
+  expect_error(nv_crossprod(a3), "exactly 2 axes")
+  expect_error(nv_tcrossprod(a3), "exactly 2 axes")
+  x <- nv_array(matrix(1:6 / 1, 3), dtype = "f32")
+  expect_equal(as_array(nv_crossprod(x)), crossprod(matrix(1:6 / 1, 3)))
+  expect_equal(as_array(nv_tcrossprod(x)), tcrossprod(matrix(1:6 / 1, 3)))
+})
+
+test_that("the variadic functions and `like` refuse nothing to work with", {
+  expect_error(nv_concatenate(), "At least one array")
+  expect_error(nv_rbind(), "At least one array")
+  expect_error(nv_cbind(), "At least one array")
+  expect_error(nv_broadcast_arrays(), "At least one array")
+  expect_error(nv_broadcast_scalars(), "At least one array")
+  expect_error(nv_promote_to_common(), "At least one array")
+  expect_error(nv_fill_like(1, 2, shape = 2L), "must be an array")
+})
+
+test_that("an operation that reads along an axis refuses an empty one", {
+  empty <- nv_array(numeric(), shape = 0L, dtype = "f32")
+  expect_error(nv_cumsum(empty, axis = 1L), "must have elements along the axis")
+  expect_error(nv_cummax(empty, axis = 1L), "must have elements along the axis")
+  expect_error(nv_quantile(empty, 0.5), "must have elements along the axis")
+  # The reductions define the empty case, and keep it.
+  expect_equal(as.vector(as_array(nv_reduce_sum(empty))), 0)
+  expect_equal(shape(nv_sort(empty)), 0L)
+})
+
+test_that("nv_serialize returns NULL when it writes to a connection", {
+  path <- withr::local_tempfile()
+  con <- file(path, "wb")
+  expect_null(nv_serialize(list(x = nv_array(c(1, 2))), con = con))
+  # The caller owns the connection, so it is flushed here before reading back.
+  close(con)
+  expect_equal(nv_read(path)$x, nv_array(c(1, 2)))
+})

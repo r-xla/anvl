@@ -27,10 +27,10 @@ x <- nv_array(c(8L, -16L, 32L))
 y <- nv_array(c(1L, 2L, 3L))
 nv_shift_right_arithmetic(x, y)
 
-# Different data types are promoted to their common one
+# different data types are promoted to their common one
 nv_shift_right_arithmetic(nv_scalar(-32L, "i32"), nv_scalar(2L, "i64"))
 
-# A scalar is broadcast
+# a scalar is broadcast
 nv_shift_right_arithmetic(x, 1L)
 \dontshow{\}) # examplesIf}
 }

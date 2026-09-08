@@ -75,7 +75,7 @@ behavior if the indices are not actually unique. Default \code{FALSE}.}
 (\code{\link{arrayish}})\cr
 Has the input's data type. The output shape is composed
 of the offset axes (from the slice) and the remaining
-axes from \code{start_indices}. See the underlying stableHLO function
+axes from \code{start_indices}. See the underlying StableHLO function
 for more details.
 }
 \description{
@@ -89,7 +89,7 @@ This is the inverse of \code{\link[=prim_scatter]{prim_scatter()}}: gather reads
 array at given indices, while scatter writes slices into an array at
 given indices.
 }
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
 \code{clamp(1, start_index, shape(x) - slice_sizes + 1)}.
@@ -115,7 +115,7 @@ terms and converts on the way down.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Gather rows 1 and 3 from a 3x3 matrix
+# gather rows 1 and 3 from a 3x3 matrix
 x <- nv_matrix(1:9, nrow = 3)
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(

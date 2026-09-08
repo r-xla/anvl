@@ -16,7 +16,8 @@ One input. Can be any float data type. An R value commits to its
 Has the input's shape and data type.
 }
 \description{
-Element-wise \code{log(1 + x)}, more accurate for small \code{x}.
+Element-wise \code{log(1 + x)}, more accurate for small \code{x}. You can also use
+\code{log1p()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

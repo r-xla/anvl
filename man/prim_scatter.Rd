@@ -91,7 +91,7 @@ This is the inverse of \code{\link[=prim_gather]{prim_gather()}}: gather reads s
 at given indices, while scatter writes slices into an array at given
 indices.
 }
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 If a computed result index falls outside the bounds of \code{x}, the
 update for that index is silently ignored.
@@ -122,7 +122,7 @@ terms and converts on the way down.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Scatter values 10 and 30 into positions 1 and 3 of a zero vector
+# scatter values 10 and 30 into positions 1 and 3 of a zero vector
 x <- nv_array(c(0, 0, 0, 0, 0))
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))

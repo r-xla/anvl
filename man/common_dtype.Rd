@@ -15,8 +15,10 @@ The right-hand side type.}
 }
 \value{
 (\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The data type both inputs promote to, which is the wider of the two within
-a category and the higher category otherwise.
+The narrowest data type that holds both inputs: the wider of the two among
+the signed integers or among the floats, the higher category where the
+categories differ, and a wider \emph{signed} integer where a signed and an
+unsigned integer meet (\code{ui8} and \code{i8} give \code{i16}).
 }
 \description{
 Compute the common data type.

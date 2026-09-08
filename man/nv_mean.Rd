@@ -44,10 +44,10 @@ use \code{mean()}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-# The result is a float, even though the input is an integer
+# the result is a float, even though the input is an integer
 nv_mean(x)
 
-# Reducing axis 1 removes it, drop = FALSE keeps it at size 1
+# reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_mean(x, axes = 1L)
 nv_mean(x, axes = 1L, drop = FALSE)
 

@@ -37,7 +37,9 @@ If \code{NULL} (default), no interior padding is applied.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the same data type as \code{x}.
+Has \code{x}'s data type. Each axis grows by
+\code{edge_padding_low + edge_padding_high}, plus \code{interior_padding} between
+every pair of elements; negative edge padding trims.
 }
 \description{
 Pads an array with a given value at the edges and optionally between elements.

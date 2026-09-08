@@ -22,6 +22,29 @@
   *named* lists -- `values` / `indices` for the first three, `state` /
   `values` for the rest -- as `prim_qr()` and `prim_svd()` already did.
   Positional indexing keeps working.
+* `nv_quantile()` and `nv_median()` now interpolate at a float data type, so
+  they are correct for a non-float input: `nv_median(nv_array(1:4))` was `1`
+  and is now `2.5`. `probs` used to be built at the input's data type, where
+  `0.5` rounds to `0` and every quantile came back as the smallest element.
+  `interpolation = "lower"` / `"higher"` / `"nearest"` now also return a float,
+  as documented.
+* `nv_crossprod()` and `nv_tcrossprod()` now require a matrix, like
+  [base::crossprod()]. They transpose every axis, so an input above rank 2
+  silently contracted the wrong pair.
+* `x %/% y` on an `AnvlArray` now performs flooring division instead of
+  returning `NULL`, and an unimplemented member of a group generic errors.
+* `nv_rbinom()`, `nv_sample_int()`, `nv_seq()`, the twelve functions taking
+  `nan_rm`, the reductions' `drop`, `prim_chol()`'s and
+  `prim_triangular_solve()`'s flags, `prim_static_slice()`'s `strides`,
+  `prim_sort()`'s `xs`, `prim_fill()`'s `shape`, `nv_eye()`'s `n`,
+  `nv_quantile()`'s `probs`, the six variadic functions' empty `...` and the
+  `_like` functions' `like` are now all checked in anvl, with a message naming
+  the argument. Several of these used to reach the backend and fail there with
+  a raw MLIR message, a base-R warning, or `NULL`.
+* A cumulative operation or a quantile over a zero-size axis is now refused
+  with an anvl error; the reductions still define the empty case and keep it.
+* `nv_serialize()` now returns `NULL` invisibly when it writes to a connection,
+  as its documentation says (it returned the connection).
 * `prim_fill()` (and so `nv_fill()` / `nv_fill_like()`) now checks that
   `value` is something `dtype` can hold: a number for a float, a whole number
   for an integer, a non-negative whole number for an unsigned integer and a
@@ -69,6 +92,17 @@
 
 ## Documentation
 
+* Corrections found by auditing every page against the running package:
+  `prim_clamp()`'s formula (`min(max(min_val, x), max_val)`, which differs from
+  what was documented when `min_val > max_val`), `nv_tril()`'s and
+  `nv_triu()`'s `diagonal`, the six shift pages' accepted data types (*integer*,
+  not *integerish* -- `bool` is refused), `prim_bitcast_convert()`'s `bool`
+  exclusion, `common_dtype()`'s promotion rule (a signed and an unsigned
+  integer meet at a wider *signed* type), the `axis = NULL` shape of
+  `nv_cumsum()` / `nv_cumprod()` / `nv_cummax()` / `nv_cummin()`,
+  `nv_transpose()`'s `NULL` permutation, `prim_triangular_solve()`'s
+  `transpose_a` and its example matrix, and the CHLO specification links for
+  `prim_erf_inv()` and `prim_top_k()`.
 * Every `prim_*` and `nv_*` help page now states, in its parameters and its
   return value, which data types it accepts, what an R value among them
   commits to, whether operands are promoted and whether scalars are broadcast.

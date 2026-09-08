@@ -30,9 +30,9 @@ NULL
 #' RData(c(2, 3), "double")
 #' # is equivalent to
 #' nv_aval("double", c(2, 3))
-#' # Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
+#' # below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
 #' # dtype becomes f64.
-#' # By NOT converting RData to their default data type we prevent loss of precision
+#' # by NOT converting RData to their default data type we prevent loss of precision
 #' # (avoiding a double -> default data type -> f64 round trip)
 #' graph <- trace_fn(function(x) {
 #'     print(x)
@@ -40,9 +40,9 @@ NULL
 #'   }, list(x = nv_aval("double", c()))
 #' )
 #' print(graph)
-#' # The actual inputs to the compiled program
+#' # the actual inputs to the compiled program
 #' graph$inputs
-#' # The data types of the R values; AnvlArrays get NA here
+#' # the data types of the R values; AnvlArrays get NA here
 #' graph$rdata_types
 #' @export
 RData <- function(shape, r_type) {

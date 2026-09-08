@@ -32,7 +32,7 @@ a fixed R integer vector.
 Use \code{\link[=prim_static_slice]{prim_static_slice()}} instead when all indices are known at compile
 time and you need stride support.
 }
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
 \code{adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)}.

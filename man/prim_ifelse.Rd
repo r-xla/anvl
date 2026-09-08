@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_ifelse}
 \alias{prim_ifelse}
-\title{Primitive Ifelse}
+\title{Primitive Conditional Element Selection}
 \usage{
 prim_ifelse(pred, true_value, false_value)
 }

@@ -41,10 +41,10 @@ Set \code{correction = 0} for population variance.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:5)
-# The result is a float, even though the input is an integer
+# the result is a float, even though the input is an integer
 nv_var(x)
 
-# Bessel's correction by default, correction = 0 for the population variance
+# bessel's correction by default, correction = 0 for the population variance
 nv_var(x, correction = 0L)
 
 # NaN propagates unless nan_rm = TRUE

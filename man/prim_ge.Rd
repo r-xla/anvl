@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_ge}
 \alias{prim_ge}
-\title{Primitive Greater Equal}
+\title{Primitive Greater Than or Equal}
 \usage{
 prim_ge(lhs, rhs)
 }

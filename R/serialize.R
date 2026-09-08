@@ -1,4 +1,4 @@
-#' @title Save arrays to a file
+#' @title Save Arrays to a File
 #'
 #' @description
 #' Saves a named list of arrays to a file in the
@@ -35,7 +35,7 @@ nv_save <- function(arrays, path) {
   invisible(NULL)
 }
 
-#' @title Read arrays from a file
+#' @title Read Arrays from a File
 #'
 #' @description
 #' Loads arrays from a file in the
@@ -70,7 +70,7 @@ nv_read <- function(path, device = NULL) {
   nv_unserialize(con, device = device)
 }
 
-#' @title Serialize arrays to raw bytes
+#' @title Serialize Arrays to Raw Bytes
 #'
 #' @description
 #' Serializes a named list of arrays into the
@@ -108,13 +108,15 @@ nv_serialize <- function(arrays, con = NULL) {
   })
 
   if (is.null(con)) {
-    safetensors::safe_serialize(arrays_unwrapped)
-  } else {
-    safetensors::safe_save_file(arrays_unwrapped, con)
+    return(safetensors::safe_serialize(arrays_unwrapped))
   }
+  safetensors::safe_save_file(arrays_unwrapped, con)
+  # The connection is written for its side effect; `nv_save()` returns nothing
+  # either.
+  invisible(NULL)
 }
 
-#' @title Deserialize arrays from raw bytes
+#' @title Deserialize Arrays from Raw Bytes
 #'
 #' @description
 #' Deserializes arrays from the

@@ -13,9 +13,9 @@ boolean data type, or an R logical.}
 
 \item{true, false}{(\verb{function()})\cr
 Zero-argument functions for the true and false branches. Both must return
-outputs of the same structure, data types and shapes. Unlike
-\code{\link[=prim_ifelse]{prim_ifelse()}}, which promotes its two values onto one data type, these
-are only checked: branches that disagree are an error.}
+outputs of the same structure, data types and shapes. As with
+\code{\link[=prim_ifelse]{prim_ifelse()}}, whose two values must already agree, nothing is promoted:
+branches that disagree are an error.}
 }
 \value{
 (\code{\link{arrayish}} | \code{list})\cr
@@ -33,7 +33,6 @@ evaluates only the selected branch.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
 }
 }
 

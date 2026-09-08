@@ -20,7 +20,8 @@ result is \code{start}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the result. Must be a float data type; the default (\code{NULL})
-is \code{f32}, since the spacing is fractional. For \code{nv_linspace_like()},
+is an R double's \link[=default_dtypes]{default data type}, since the spacing is
+fractional. For \code{nv_linspace_like()},
 \code{NULL} uses \code{dtype(like)}, which must then be a float too. To obtain
 integers, convert the result with \code{\link[=nv_convert]{nv_convert()}}, which leaves the
 rounding yours to choose.}
@@ -70,7 +71,7 @@ nv_linspace(2.5, 10, steps = 1L)
 # the data type must be a float; convert afterwards for integers
 nv_convert(nv_linspace(0, 10, steps = 5L), "i32")
 
-# nv_linspace_like() takes dtype and device from an existing array
+# nv_linspace_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_linspace_like(x, 0, 1, steps = 3L)
 \dontshow{\}) # examplesIf}

@@ -10,7 +10,9 @@
 #'   Invisibly returns `x` if the assertion passes.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
-  ok <- test_integerish(x, lower = 1, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
+  # `lower = 0`: a zero-size axis is a legal shape, and the constructors
+  # (`nv_fill()`, `nv_iota()`, `nv_empty()`) all accept one.
+  ok <- test_integerish(x, lower = 0, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
       cli_abort("{.arg {var_name}} must be an integer vector, not {.cls {class(x)}}")
@@ -21,8 +23,11 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
     if (length(x) < min_len) {
       cli_abort("{.arg {var_name}} must have at least {min_len} element{?s}")
     }
-    if (any(x < 1)) {
-      cli_abort("{.arg {var_name}} must contain only positive integers (>= 1)")
+    if (any(x < 0)) {
+      cli_abort(c(
+        "{.arg {var_name}} must not contain a negative axis size.",
+        x = "Got {.val {as.integer(x)}}."
+      ))
     }
   }
   as.integer(x)
@@ -203,6 +208,56 @@ assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
     ))
   }
   dt
+}
+
+# Assert that a variadic function was given at least one array. Without this an
+# empty `...` reaches `max()`, `Reduce()` or stablehlo and produces a warning or
+# a raw backend message.
+assert_some_arrays <- function(..., call = rlang::caller_env()) {
+  if (...length() == 0L) {
+    cli_abort(
+      "At least one array is required, but none was given.",
+      call = call
+    )
+  }
+  invisible(NULL)
+}
+
+# Assert that `axis` of `x` holds elements. Operations that read a position
+# along the axis (a cumulative op, a quantile) have nothing to read otherwise,
+# and the backend's complaint names its own window arguments.
+assert_nonempty_axis <- function(x, axis, arg = rlang::caller_arg(x), call = rlang::caller_env()) {
+  shp <- shape(x)
+  if (length(shp) >= axis && shp[[axis]] == 0L) {
+    cli_abort(
+      c(
+        "{.arg {arg}} must have elements along the axis this reads.",
+        x = "Operand has shape {xlamisc::shapevec_repr(shp)}; axis {axis} has size 0."
+      ),
+      call = call
+    )
+  }
+  invisible(x)
+}
+
+# Assert `x` has exactly two axes, and optionally that it is square. Unlike
+# `assert_linalg_matrix()` this says nothing about the data type, so it serves
+# the operations that work at any of them.
+assert_matrix <- function(x, arg = rlang::caller_arg(x), square = FALSE) {
+  shp <- shape(x)
+  if (length(shp) != 2L) {
+    cli_abort(c(
+      "{.arg {arg}} must be a matrix with exactly 2 axes.",
+      x = "Got shape {xlamisc::shapevec_repr(shp)}."
+    ))
+  }
+  if (square && shp[1L] != shp[2L]) {
+    cli_abort(c(
+      "{.arg {arg}} must be a square matrix.",
+      x = "Got shape {xlamisc::shapevec_repr(shp)}."
+    ))
+  }
+  invisible(x)
 }
 
 assert_linalg_matrix <- function(x, arg, square = FALSE) {

@@ -1328,3 +1328,29 @@ describe("prim_reduce_any / prim_reduce_all input data type", {
     expect_error(nv_reduce_any(nv_array(c(1, 0))), "Got \"f32\"")
   })
 })
+
+test_that("prim_static_slice requires a stride of at least 1", {
+  x <- nv_array(1:10)
+  expect_error(
+    prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 0L),
+    "strides"
+  )
+  expect_equal(
+    as.integer(prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 2L)),
+    c(1L, 3L, 5L)
+  )
+})
+
+test_that("prim_sort takes a list of arrays, not an array", {
+  expect_error(prim_sort(nv_array(c(3, 1, 2)), axis = 1L), "non-empty list")
+  expect_equal(
+    as.vector(as_array(prim_sort(list(nv_array(c(3, 1, 2))), axis = 1L)[[1L]])),
+    c(1, 2, 3)
+  )
+})
+
+test_that("prim_fill names `shape` in its own error", {
+  expect_error(prim_fill(0, shape = -1L, dtype = "f32"), "negative axis size")
+  expect_equal(shape(prim_fill(0, shape = c(), dtype = "f32")), integer())
+  expect_equal(shape(prim_fill(0, shape = 0L, dtype = "f32")), 0L)
+})

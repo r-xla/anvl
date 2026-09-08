@@ -6,8 +6,10 @@
 #' @param rhs_dtype ([`tengen::DataType`])\cr
 #'   The right-hand side type.
 #' @return ([`tengen::DataType`])\cr
-#'   The data type both inputs promote to, which is the wider of the two within
-#'   a category and the higher category otherwise.
+#'   The narrowest data type that holds both inputs: the wider of the two among
+#'   the signed integers or among the floats, the higher category where the
+#'   categories differ, and a wider *signed* integer where a signed and an
+#'   unsigned integer meet (`ui8` and `i8` give `i16`).
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
@@ -80,7 +82,7 @@ promote_common <- function(on = NULL, fallback = NULL) {
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' promote_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
-#' # Without `coerce`, a target the input cannot hold is refused.
+#' # without `coerce`, a target the input cannot hold is refused
 #' try(promote_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 promote_like <- function(arg, on = NULL, coerce = FALSE) {
   assert_arg_ref(arg, "arg", len = 1L)
@@ -215,7 +217,7 @@ assert_disjoint_rules <- function(rules) {
 #' @param kind (`character(1)`)\cr
 #'   What the rule is, for printing: it shows as `<promote_{kind}>`.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Every input at the widest float in the call, and never below f32.
+#' # every input at the widest float in the call, and never below f32.
 #' widest_float <- promotion_rule(
 #'   function(args) {
 #'     widths <- vapply(args, function(a) {
@@ -381,7 +383,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   `operands`, each realized at the data type the rule named for it.
 #' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # An R value takes the data type of the operand it meets.
+#' # an R value takes the data type of the operand it meets
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promote_rdata_common())
 #' dtype(operands$rhs)
 #' @export

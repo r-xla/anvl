@@ -13,9 +13,9 @@ nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 \item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
 Scalar value to fill the array with, which has to be something \code{dtype} can
 hold: a number for a float, a whole number for an integer, a non-negative
-whole number for an unsigned integer and a logical for \code{bool}. A
-\code{\link[bit64:integer64]{bit64::integer64}} counts as a whole number, and \code{NA} is rejected, since
-XLA has no missing value.}
+whole number for an unsigned integer and a logical for \code{bool}. \code{NA} is
+rejected, since XLA has no missing value. Whether the value fits the data
+type's range is left to the backend.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}

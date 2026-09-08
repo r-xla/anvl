@@ -30,10 +30,10 @@ Returns \code{TRUE} if any element is \code{TRUE}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-# No axes given: reduce over all of them
+# no axes given: reduce over all of them
 nv_reduce_any(x)
 
-# Reducing axis 1 removes it, drop = FALSE keeps it at size 1
+# reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_reduce_any(x, axes = 1L)
 nv_reduce_any(x, axes = 1L, drop = FALSE)
 \dontshow{\}) # examplesIf}

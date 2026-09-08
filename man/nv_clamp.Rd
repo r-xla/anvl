@@ -24,10 +24,7 @@ One input. Can be any data type. An R value commits to its
 Has \code{x}'s shape and data type.
 }
 \description{
-Element-wise clamp: \code{max(min_val, min(x, max_val))}.
-}
-\details{
-The underlying stableHLO function already broadcasts scalars, so no need to broadcast manually.
+Element-wise clamp: \code{min(max(min_val, x), max_val)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

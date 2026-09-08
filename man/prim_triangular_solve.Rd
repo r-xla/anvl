@@ -28,11 +28,11 @@ If \code{TRUE}, \code{a} is lower triangular. If \code{FALSE}, \code{a} is upper
 If \code{TRUE}, assume diagonal elements of \code{a} are 1.}
 
 \item{transpose_a}{(\code{logical(1)})\cr
-If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{FALSE}.}
+If \code{TRUE}, solve with \code{t(a)} in place of \code{a}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the same shape and data type as \code{b}.
+Has \code{b}'s shape and the data type \code{a} and \code{b} agreed on.
 }
 \description{
 Solves a system of linear equations with a triangular coefficient matrix.
@@ -57,8 +57,8 @@ Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}, 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Solve L \%*\% x = b where L is lower triangular
-L <- nv_matrix(c(2, 0, 1, 3), nrow = 2, dtype = "f32")
+# solve L \%*\% x = b where L is lower triangular
+L <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
 b <- nv_matrix(c(4, 3), nrow = 2, dtype = "f32")
 prim_triangular_solve(L, b,
   left_side = TRUE, lower = TRUE,

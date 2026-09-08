@@ -2,7 +2,7 @@
 % Please edit documentation in R/serialize.R
 \name{nv_serialize}
 \alias{nv_serialize}
-\title{Serialize arrays to raw bytes}
+\title{Serialize Arrays to Raw Bytes}
 \usage{
 nv_serialize(arrays, con = NULL)
 }

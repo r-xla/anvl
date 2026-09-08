@@ -18,7 +18,7 @@ Position at which to insert the new axis. Valid positions range from
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the same data type as \code{x} with an extra axis of size 1.
+Has \code{x}'s data type, with an extra axis of size 1 in its shape.
 }
 \description{
 Inserts an axis of size 1 at the specified position.

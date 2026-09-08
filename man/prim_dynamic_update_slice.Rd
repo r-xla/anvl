@@ -30,7 +30,7 @@ runtime-determined position. This is the write counterpart of
 \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}: dynamic slice reads a block from an array,
 while dynamic update slice writes a block into an array.
 }
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 Start indices are clamped before the update is written:
 \code{adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)}.

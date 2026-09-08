@@ -34,7 +34,8 @@ Only the StableHLO backend honors this; it is ignored by the quickr backend.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-The output shape is the batch axes followed by the remaining
+Has the data type the operands agreed on. The output shape is the batch
+axes followed by the remaining
 (non-contracted, non-batched) axes of \code{lhs}, then \code{rhs}.
 }
 \description{

@@ -15,9 +15,11 @@ nv_conv2d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, H, W]}. Can be any data type.
+\code{x} and \code{weight} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.}
+\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kH, kW]}.
+Shares \code{x}'s data type -- see \code{x}.}
 
 \item{stride}{(\code{integer()})\cr Length 1 or 2.}
 

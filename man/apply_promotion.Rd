@@ -57,7 +57,7 @@ realizing them again changes nothing.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# An R value takes the data type of the operand it meets.
+# an R value takes the data type of the operand it meets
 operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promote_rdata_common())
 dtype(operands$rhs)
 \dontshow{\}) # examplesIf}

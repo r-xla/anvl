@@ -459,10 +459,10 @@ parse_subset_spec <- function(quo, axis_size) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
 #' x
-#' # Select row 2
+#' # select row 2
 #' x[2, ]
 #'
-#' # Select rows 1 to 2, all columns
+#' # select rows 1 to 2, all columns
 #' x[1:2, ]
 #' @export
 nv_subset <- function(x, ...) {
@@ -570,11 +570,11 @@ subset_scatter_core <- jit(
 #'   converted unless that would narrow it -- an `f64` value for an `f32` `x` is
 #'   an error rather than a silent narrowing.
 #' @return ([`arrayish`])\cr
-#'   A new array with the same shape as `x` and the subset replaced.
+#'   Has `x`'s data type and shape, with the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
-#' # Set row 1 to zeros
+#' # set row 1 to zeros
 #' x[1, ] <- nv_scalar(0L)
 #' x
 #' @export

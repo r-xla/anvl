@@ -2,7 +2,7 @@
 % Please edit documentation in R/serialize.R
 \name{nv_read}
 \alias{nv_read}
-\title{Read arrays from a file}
+\title{Read Arrays from a File}
 \usage{
 nv_read(path, device = NULL)
 }

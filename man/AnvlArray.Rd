@@ -151,22 +151,22 @@ The supported data types and devices differ between backends.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# A 1-d array (vector) with shape (4), at the default data type for integers
+# a 1-d array (vector) with shape (4), at the default data type for integers
 nv_array(1:4)
 
-# Specify a dtype
+# specify a dtype
 nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 
-# A 2x3 matrix
+# a 2x3 matrix
 nv_array(1:6, shape = c(2L, 3L))
 
-# A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+# a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 
-# A scalar array.
+# a scalar array
 nv_scalar(3.14)
 
-# An uninitialized 2x3 array (contents are unspecified)
+# an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 
 # --- Extractors ---

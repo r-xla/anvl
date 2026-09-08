@@ -15,9 +15,10 @@ Start and end values, which must satisfy \code{start <= end}. Both are plain R
 values built into the program, not arrays.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result. Can be any numeric data type, boolean being the
-one exception; the default (\code{NULL}) is \code{i32}. For \code{nv_seq_like()}, \code{NULL}
-uses \code{dtype(like)}.}
+Data type of the result. Can be any numeric data type; boolean is not one,
+and is rejected. The default (\code{NULL}) is an R integer's
+\link[=default_dtypes]{default data type}, since the values are whole. For
+\code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -55,7 +56,7 @@ nv_seq(3, 7)
 # a float data type gives the same values as floats
 nv_seq(3, 7, dtype = "f32")
 
-# nv_seq_like() takes dtype and device from an existing array
+# nv_seq_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 \dontshow{\}) # examplesIf}

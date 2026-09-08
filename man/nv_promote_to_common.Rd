@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_promote_to_common}
 \alias{nv_promote_to_common}
-\title{Promote Arrays to a Common Dtype}
+\title{Promote Arrays to a Common Data Type}
 \usage{
 nv_promote_to_common(...)
 }

@@ -39,7 +39,7 @@ For other axes, transpose so the target axis is last, call
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlotop_k_chlotop_kop}{chlo.top_k}.
+Lowers to \code{\link[stablehlo:hlo_top_k]{hlo_top_k()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlotop_k_chlotopkop}{chlo.top_k}.
 }
 
 \examples{

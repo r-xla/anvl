@@ -32,8 +32,10 @@ contributes nothing to the running value.}
 }
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
-One array when \code{with_indices = FALSE}, a named \code{list} when
-\code{with_indices = TRUE}.
+One array when \code{with_indices = FALSE}, a named \code{list} of \code{values} and
+\code{indices} when \code{with_indices = TRUE}. The values have the input's data
+type and the indices \code{i32}; both have the input's shape when \code{axis} is
+given, and are 1-D of length \code{prod(shape(x))} when \code{axis} is \code{NULL}.
 }
 \description{
 Running maximum, optionally along a single axis.

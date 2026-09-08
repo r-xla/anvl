@@ -3,7 +3,7 @@
 \name{nv_determinant}
 \alias{nv_determinant}
 \alias{determinant.AnvlArray}
-\title{Determinant in modulus/sign form}
+\title{Determinant in Modulus/Sign Form}
 \usage{
 nv_determinant(x, logarithm = TRUE)
 

@@ -6,7 +6,7 @@
 \alias{nv_cbind}
 \alias{rbind.AnvlArray}
 \alias{cbind.AnvlArray}
-\title{Combine arrays by rows or columns}
+\title{Combine Arrays by Rows or Columns}
 \usage{
 nv_rbind(...)
 
@@ -41,7 +41,7 @@ Each input is handled according to its rank:
 \item Other: used as-is.
 }
 }
-\section{Differences from base R}{
+\section{differences from base R}{
 \code{\link[base:rbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[base:array]{array()}} of rank > 2
 flatten the trailing axes into the column axis (so a \code{c(2, 3, 4)}
 array becomes a \verb{2 x 12} matrix). \code{nv_rbind} and \code{nv_cbind} instead
@@ -52,14 +52,14 @@ with \code{nv_rbind} produces a \code{c(4, 3, 4)} array, and with \code{nv_cbind
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Vectors as rows / columns
+# vectors as rows / columns
 nv_rbind(nv_array(1:3), nv_array(4:6))
 nv_cbind(nv_array(1:3), nv_array(4:6))
 
-# Scalar broadcasting
+# scalar broadcasting
 nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 
-# Rank-3 arrays preserve trailing axes
+# rank-3 arrays preserve trailing axes
 a <- nv_array(1:24, shape = c(2, 3, 4))
 shape(nv_rbind(a, a)) # c(4, 3, 4)
 \dontshow{\}) # examplesIf}

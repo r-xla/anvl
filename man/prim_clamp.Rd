@@ -21,7 +21,7 @@ Has \code{x}'s shape and the data type the operands agreed on.
 }
 \description{
 Clamps every element of \code{x} to the range \verb{[min_val, max_val]},
-i.e. \code{max(min_val, min(x, max_val))}.
+i.e. \code{min(max(min_val, x), max_val)}.
 }
 \section{Implemented Rules}{
 

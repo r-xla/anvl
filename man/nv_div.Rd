@@ -27,10 +27,10 @@ x <- nv_array(c(10, 20, 30))
 y <- nv_array(c(2, 5, 10))
 x / y
 
-# Different data types are promoted to their common one
+# different data types are promoted to their common one
 nv_div(nv_scalar(10, "f32"), nv_scalar(4, "f64"))
 
-# A scalar is broadcast and an R integer is converted to a float
+# a scalar is broadcast and an R integer is converted to a float
 x / 2L
 \dontshow{\}) # examplesIf}
 }

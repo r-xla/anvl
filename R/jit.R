@@ -84,7 +84,7 @@
 #' f <- jit(function(x, y) x + y)
 #' f(nv_array(1), nv_array(2))
 #'
-#' # Static arguments enable data-dependent control flow
+#' # static arguments enable data-dependent control flow
 #' g <- jit(function(x, flag) {
 #'   if (flag) x + 1 else x * 2
 #' }, static = "flag")
@@ -92,7 +92,7 @@
 #' g(nv_array(3), FALSE)
 #'
 #' @examplesIf requireNamespace("quickr", quietly = TRUE)
-#' # The same function runs on whichever backend is active when it is called
+#' # the same function runs on whichever backend is active when it is called
 #' with_backend("quickr", f(nv_array(1), nv_array(2)))
 jit <- function(
   f,

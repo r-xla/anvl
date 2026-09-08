@@ -41,8 +41,8 @@ Computes the median along an axis. Equivalent to
 with the default \code{"linear"} interpolation, the average of the two middle
 values is returned, matching base R's \code{median()}.
 
-You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{AnvlBox}};
-extra arguments (e.g. \code{interpolation}) are forwarded via \code{...}.
+You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{AnvlBox}},
+where the arguments after \code{x} are matched by name.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

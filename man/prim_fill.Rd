@@ -11,9 +11,10 @@ prim_fill(value, shape, dtype, device = NULL)
 Scalar value to fill the array with, which has to be something \code{dtype} can
 hold: a number for a float, a whole number for an integer, a non-negative
 whole number for an unsigned integer and a logical for \code{bool}. A
-\code{\link[bit64:integer64]{bit64::integer64}} counts as a whole number, and \code{NA} is rejected, since
-XLA has no missing value. Whether the value is \emph{in range} is the backend's
-business -- \code{prim_fill(300L, dtype = "i8")} still wraps.}
+\code{NA} is rejected, since XLA has no missing value. Whether the value fits
+the data type's \emph{range} is left to the backend, which refuses a literal it
+cannot parse -- unlike \code{\link[=nv_array]{nv_array()}}, which wraps. A
+\code{\link[bit64:integer64]{bit64::integer64}} passes this check but has no lowering yet.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}

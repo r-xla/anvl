@@ -16,7 +16,8 @@ One input. Can be any float data type. An R value commits to its
 Has the input's shape and data type.
 }
 \description{
-Element-wise \code{exp(x) - 1}, more accurate for small \code{x}.
+Element-wise \code{exp(x) - 1}, more accurate for small \code{x}. You can also use
+\code{expm1()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

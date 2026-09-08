@@ -25,7 +25,9 @@ contributes nothing to the running value.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the same shape as the input, and the same data type, except for a
+Has the input's shape when \code{axis} is given, and is 1-D of length
+\code{prod(shape(x))} when \code{axis} is \code{NULL}, which flattens first. Has the
+input's data type, except for a
 boolean input, which is accumulated at \code{i32}.
 }
 \description{

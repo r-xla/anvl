@@ -23,7 +23,7 @@ Element-wise check if values are NaN. You can also use \code{is.nan()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# a boolean result, whatever the input's float data type
+# a boolean result, whatever the input's data type
 x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 nv_is_nan(x)
 \dontshow{\}) # examplesIf}

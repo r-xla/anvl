@@ -25,11 +25,11 @@ It is relevant for data allocation (e.g. via \code{\link[=nv_array]{nv_array()}}
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Create CPU device for the active backend
+# create CPU device for the active backend
 nv_device("cpu")
-# Create CPU device for the quickr backend:
+# create CPU device for the quickr backend:
 with_backend("quickr", nv_device("cpu"))
-# Pass through an existing device:
+# pass through an existing device:
 dev <- nv_device("cpu")
 identical(nv_device(dev), dev)
 \dontshow{\}) # examplesIf}

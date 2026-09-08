@@ -2,7 +2,7 @@
 % Please edit documentation in R/serialize.R
 \name{nv_save}
 \alias{nv_save}
-\title{Save arrays to a file}
+\title{Save Arrays to a File}
 \usage{
 nv_save(arrays, path)
 }

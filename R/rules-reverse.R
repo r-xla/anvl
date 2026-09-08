@@ -124,7 +124,7 @@ prim_tanh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx tanh(x) = 1 - tanh(x)^2
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(y), shape = shape(y))
+      one <- ones_like(y)
       prim_mul(grad, prim_sub(one, prim_mul(y, y)))
     }
   )
@@ -136,7 +136,7 @@ prim_tan[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   list(
     # d/dx tan(x) = 1 + tan(x)^2
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(y), shape = shape(y))
+      one <- ones_like(y)
       prim_mul(grad, prim_add(one, prim_mul(y, y)))
     }
   )
@@ -166,7 +166,7 @@ prim_acos[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx acos(x) = -1 / sqrt(1 - x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_sub(one, prim_mul(x, x)))
       prim_negate(prim_div(grad, denom))
     }
@@ -179,7 +179,7 @@ prim_acosh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx acosh(x) = 1 / sqrt(x^2 - 1)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_sub(prim_mul(x, x), one))
       prim_div(grad, denom)
     }
@@ -192,7 +192,7 @@ prim_asin[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx asin(x) = 1 / sqrt(1 - x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_sub(one, prim_mul(x, x)))
       prim_div(grad, denom)
     }
@@ -205,7 +205,7 @@ prim_asinh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx asinh(x) = 1 / sqrt(1 + x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       denom <- prim_sqrt(prim_add(one, prim_mul(x, x)))
       prim_div(grad, denom)
     }
@@ -218,7 +218,7 @@ prim_atan[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx atan(x) = 1 / (1 + x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       prim_div(grad, prim_add(one, prim_mul(x, x)))
     }
   )
@@ -230,7 +230,7 @@ prim_atanh[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx atanh(x) = 1 / (1 - x^2)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       prim_div(grad, prim_sub(one, prim_mul(x, x)))
     }
   )
@@ -260,7 +260,7 @@ prim_digamma[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   list(
     # d/dx digamma(x) = trigamma(x) = polygamma(1, x)
     if (required[[1L]]) {
-      n_one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      n_one <- ones_like(x)
       prim_mul(grad, prim_polygamma(n_one, x))
     }
   )
@@ -285,7 +285,7 @@ prim_polygamma[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, par
     if (required[[1L]]) cli_abort("Gradient for {.arg n} of {.fn prim_polygamma} not implemented"),
     # d/dx polygamma(n, x) = polygamma(n + 1, x)
     if (required[[2L]]) {
-      one <- prim_fill(1, dtype = dtype(n), shape = shape(n))
+      one <- ones_like(n)
       prim_mul(grad, prim_polygamma(prim_add(n, one), x))
     }
   )
@@ -550,10 +550,6 @@ prim_ifelse[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
   )
 })
 
-prim_if[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  cli_abort("Not yet implemented")
-})
-
 # convert reverse -----------------
 
 # A conversion is the identity, and so passes the cotangent through, only
@@ -567,7 +563,7 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   differentiable <- is_dtype_float(dtype(x)) && is_dtype_float(dtype(outputs[[1L]]))
   list(
     if (required[[1L]]) {
-      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else zeros(dtype(x), shape(x))
+      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else zeros_like(x)
     }
   )
 })
@@ -582,7 +578,7 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 
 reverse_zero_bin <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
-  grad_in <- zeros(dtype(x), shape(x))
+  grad_in <- zeros_like(x)
 
   list(
     if (required[[1L]]) grad_in,
@@ -602,7 +598,7 @@ prim_le[["reverse"]] <- reverse_zero_bin
 reverse_zero_uni <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   list(
-    if (required[[1L]]) zeros(dtype(x), shape(x))
+    if (required[[1L]]) zeros_like(x)
   )
 })
 
@@ -641,7 +637,7 @@ prim_log1p[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params,
   list(
     # d/dx log(1 + x) = 1 / (1 + x)
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+      one <- ones_like(x)
       prim_div(grad, prim_add(one, x))
     }
   )
@@ -653,7 +649,7 @@ prim_logistic[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, para
   list(
     # d/dx sigmoid(x) = sigmoid(x) * (1 - sigmoid(x))
     if (required[[1L]]) {
-      one <- prim_fill(1, dtype = dtype(y), shape = shape(y))
+      one <- ones_like(y)
       prim_mul(grad, prim_mul(y, prim_sub(one, y)))
     }
   )
@@ -744,7 +740,7 @@ prim_reduce_any[["reverse"]] <- prim_reduce_all[["reverse"]]
 prim_bitcast_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   list(
-    if (required[[1L]]) zeros(dtype(x), shape(x))
+    if (required[[1L]]) zeros_like(x)
   )
 })
 
@@ -1290,7 +1286,7 @@ prim_chol[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   # Phi: keep lower triangle, halve diagonal, zero upper triangle
   phi <- function(x) {
     eye <- prim_convert(diag_mask(n), dtype = dtype(x))
-    one <- prim_fill(1, dtype = dtype(x), shape = shape(x))
+    one <- ones_like(x)
     x <- prim_div(x, prim_add(one, eye))
     prim_ifelse(tri_mask(c(n, n), 0L, lower = TRUE), x, zeros_like(x))
   }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_argmin}
 \alias{prim_argmin}
-\title{Primitive Argmin}
+\title{Primitive Index of the Minimum}
 \usage{
 prim_argmin(x, axis, drop = TRUE)
 }
@@ -38,8 +38,9 @@ are broken by returning the smallest index.
 
 \section{StableHLO}{
 
-Lowers to a variadic \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} over \verb{(values, indices)}
-with a (value < value | (value == value & idx < idx)) selector.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+The reduction is variadic over \verb{(values, indices)}, with a
+(value < value | (value == value & idx < idx)) selector.
 }
 
 \examples{

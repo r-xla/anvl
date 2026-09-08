@@ -22,7 +22,8 @@ Step sizes, one per axis. A stride of 1 selects every element.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the same data type as \code{x}.
+Has \code{x}'s data type and shape
+\code{ceiling((limit_indices - start_indices + 1) / strides)} per axis.
 }
 \description{
 Extracts a slice from an array using static (compile-time) indices.

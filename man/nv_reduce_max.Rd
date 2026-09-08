@@ -34,14 +34,14 @@ Finds the maximum of array elements along the specified axes.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-# No axes given: reduce over all of them
+# no axes given: reduce over all of them
 nv_reduce_max(x)
 
-# Reducing axis 1 removes it, drop = FALSE keeps it at size 1
+# reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_reduce_max(x, axes = 1L)
 nv_reduce_max(x, axes = 1L, drop = FALSE)
 
-# Negative axes count from the end
+# negative axes count from the end
 nv_reduce_max(x, axes = -1L)
 
 # NaN propagates unless nan_rm = TRUE

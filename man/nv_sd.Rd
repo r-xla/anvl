@@ -41,10 +41,10 @@ Set \code{correction = 0} for population standard deviation.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(1:5)
-# The result is a float, even though the input is an integer
+# the result is a float, even though the input is an integer
 nv_sd(x)
 
-# Bessel's correction by default, correction = 0 for the population value
+# bessel's correction by default, correction = 0 for the population value
 nv_sd(x, correction = 0L)
 \dontshow{\}) # examplesIf}
 }

@@ -195,6 +195,83 @@ Two of its observations were deliberately left alone: the `try()` on
 "NumPy-style broadcasting" / "Torch-style NCW layout" name a layout convention
 rather than claiming a framework match.
 
+## Second review
+
+Four agents audited the branch: documentation against the implementation,
+the input/output behavior (data type, shape, promotion, broadcasting), the
+consistency of the pages, and the consistency of the implementation. Their
+reports are the record of what was checked; what they found is fixed here.
+
+Bugs, all with tests:
+
+- `nv_quantile()` / `nv_median()` built `probs` at the *input's* data type, so
+  at an integer one `0.5` rounded to `0` and every quantile was the smallest
+  element (`nv_median(nv_array(1:4))` gave `1`). The interpolation now happens
+  at a float data type, which is also what the pages promise.
+- `nv_crossprod()` / `nv_tcrossprod()` used `nv_transpose()`, which reverses
+  *every* axis, so an input above rank 2 contracted the wrong pair. They now
+  require a matrix, as `base::crossprod()` does.
+- `Ops.AnvlArray` had no default arm, so `x %/% y` -- an `Arith` member it did
+  not list -- returned `NULL`. It now divides, and an unlisted generic errors.
+- `shapes2string()` used `paste0(..., sep = ", ")`, which appends the separator
+  to every element and returns a vector; three shape-mismatch messages printed
+  trailing commas and a spurious "and".
+- `nv_serialize(con = )` returned the connection where its page says `NULL`.
+- `nv_seq(7, 3)` reported `Assertion on 'start' failed: FALSE.` --
+  `checkmate::assert()` used as a predicate check.
+- A cumulative operation or a quantile over a zero-size axis reached the
+  backend, which complains about `window_dimensions` or `slice_sizes`.
+
+Checks that were missing, so bad input reached the backend (or nothing):
+`nan_rm` and `with_indices` in twelve functions, `drop` in the reductions,
+`prim_chol()`'s and `prim_triangular_solve()`'s flags, `prim_convolution()`'s
+and `prim_round()`'s enums, `prim_static_slice()`'s `strides` (documented
+`>= 1`, checked `>= 0`), `prim_sort()`'s `xs` (an `AnvlArray` *is* a list, so
+the guard never fired), `prim_fill()`'s and `nv_eye()`'s shape, an empty `...`
+in the six variadic functions, and `like` in the `_like` family -- which called
+`dtype()` on a value that may be a bare R one, the single instance of that bug
+class in the package.
+
+Consistency, in the implementation: `assert_matrix()`, `assert_some_arrays()`
+and `assert_nonempty_axis()` join the assertion helpers; `assert_shapevec()`
+accepts a zero-size axis, as the rest of the package does; the reverse rules
+use `ones_like()` / `zeros_like()` instead of spelling out `prim_fill()`;
+`prim_if`'s reverse rule was a registered stub, so the generated rules section
+claimed it is differentiable, and is gone; `nv_reduce_any()`, `nv_reduce_all()`
+and `nv_sort()` got the `@jit static` tags their families carry;
+`nv_maxval()` / `nv_minval()` got the `device = NULL` default every other
+constructor has; and the distribution functions check their primary argument is
+a float instead of complaining about a defaulted `mean`.
+
+Consistency, in the pages: eight `prim_*` titles now match their wrapper's
+noun phrase, six sentence-case titles were recased, 113 example comments were
+lowercased to the corpus norm, "stableHLO" and "Out Of Bounds" were respelled,
+`prim_argmax` / `prim_argmin` / `prim_cummax` / `prim_cummin` now link their
+op's specification, `prim_pad` gained the `@seealso` every other primitive has,
+and the returns that named only a data type or only a shape
+(`prim_dot_general`, `prim_reduce`, `prim_lu`, `nv_pad`, `nv_static_slice`,
+`nv_subset_assign`, `nv_squeeze`, `nv_unsqueeze`, `nv_cummax`, `nv_cummin`,
+`nv_chol`, `nv_conv1d` / `2d` / `3d`) now state both.
+
+### Left for you
+
+- `prim_cumprod` is the only cumulative primitive with no reverse rule; the
+  gradient needs care around zeros, so it is not written here.
+- `peek_dtype()` reports `f32` for an R double on the `"quickr"` backend, where
+  the value really commits to `f64`: `default_dtype_r()` does not consult the
+  backend, and `R/backend-quickr.R` overrides it separately.
+- Errors still leak stablehlo's operand names on `prim_clamp` (`min`),
+  `prim_polygamma` (`lhs`/`rhs`), `prim_ifelse` (`on_true`/`on_false`) and
+  `prim_broadcast_in_axes` (`broadcast_dimensions`).
+- `axis = NULL` means "all axes" for the reductions, "flatten" for the
+  cumulatives and "the last axis" for the order statistics -- the third
+  diverges from base R for the S3-dispatched `median()` and `sort()`.
+- `nv_solve()` / `nv_triangular_solve()` / `nv_conv*()` promote with
+  `promote_rdata_common()`, the primitive layer's rule, so they refuse a mixed
+  `f32`/`f64` pair that `nv_matmul()` accepts.
+- A fill above R's 32-bit integer range, and a `bit64::integer64` value, both
+  fail in stablehlo's constant builder rather than in anvl.
+
 ## Noticed while documenting
 
 Behavior worth a second look, found by checking claims against the running
@@ -215,6 +292,8 @@ would otherwise be false; the items marked **Fixed here** are the exceptions.
   `prim_cummax()`, `prim_cummin()`, `prim_rng_bit_generator()` and the `nv_*`
   samplers returned unnamed two-element ones. They are all named now
   (`values`/`indices`, `state`/`values`); positional indexing still works.
+  `prim_lu`'s page was the last one still typing its return `list` rather than
+  named `list`, corrected in the second review.
 - On the `"quickr"` backend, a result's data type does not come from the graph
   at all: `quickr_restore_leaf()` (`R/graph-to-quickr.R:42`) calls the backend's
   `new_data()` with `dtype = NULL`, so the label is re-derived from the R storage

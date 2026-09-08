@@ -12,8 +12,10 @@ One input, with exactly 2 axes. Can be any data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{diagonal}{(\code{integer(1)})\cr
-Diagonal offset. \code{0} (default) is the main diagonal, positive values
-include diagonals above, negative values exclude diagonals below.}
+Diagonal offset: the kept region is \code{col - row <= diagonal}. \code{0} (default)
+keeps the main diagonal and everything below it, a positive value keeps
+that many diagonals above it as well, and a negative one drops the main
+diagonal and \code{-diagonal - 1} below it.}
 }
 \value{
 (\code{\link{arrayish}})\cr

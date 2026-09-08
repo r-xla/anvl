@@ -16,7 +16,8 @@ One input, with at least 1 axis. Can be any data type. An R value commits to its
 Has the input's data type, and one axis holding all of its elements.
 }
 \description{
-Flattens an array of any rank into an array with a single axis.
+Flattens an array of any rank into an array with a single axis, reading the
+elements in row-major order (the last axis fastest), as \code{\link[=nv_reshape]{nv_reshape()}} does.
 Fails with scalar inputs.
 }
 \examples{

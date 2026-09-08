@@ -67,8 +67,8 @@ appropriate.
 x <- nv_array(c(3, 1, 4, 1, 5))
 prim_sort(list(x), axis = 1L)[[1L]]
 
-# Sort indices by the values (argsort): pair x with iota and read off
-# the second result.
+# sort indices by the values (argsort): pair x with iota and read off
+# the second result
 idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
 out <- prim_sort(list(x, idx), axis = 1L)
 out[[1L]] # sorted x

@@ -80,7 +80,7 @@ minmax_raw <- function(bits, signed = TRUE) {
 }
 
 
-nv_minval <- function(dtype, device) {
+nv_minval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(-Inf, dtype = dtype, device = device)
@@ -97,7 +97,7 @@ nv_minval <- function(dtype, device) {
   }
 }
 
-nv_maxval <- function(dtype, device) {
+nv_maxval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(Inf, dtype = dtype, device = device)
@@ -131,7 +131,7 @@ shape2string <- function(x, parenthesize = TRUE) {
 }
 
 shapes2string <- function(shapes) {
-  paste0(sapply(shapes, shape2string), sep = ", ")
+  paste0(vapply(shapes, shape2string, character(1)), collapse = ", ")
 }
 
 # `value` (0 or 1) written in the category `dtype` belongs to. A fill only

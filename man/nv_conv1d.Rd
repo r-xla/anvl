@@ -15,9 +15,11 @@ nv_conv1d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}. Can be any data type.
+\code{x} and \code{weight} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.}
+\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.
+Shares \code{x}'s data type -- see \code{x}.}
 
 \item{stride, padding, dilation}{(\code{integer()})\cr Length 1.}
 
@@ -43,7 +45,8 @@ x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
 weight <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
 nv_conv1d(x, weight)
 
-# `padding = 1` keeps the width, `stride = 2` halves it
+# `padding = 1` keeps the input width, `stride = 2` visits every other
+# window position
 nv_conv1d(x, weight, padding = 1L)
 nv_conv1d(x, weight, stride = 2L)
 \dontshow{\}) # examplesIf}

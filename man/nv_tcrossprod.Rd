@@ -11,8 +11,9 @@ nv_tcrossprod(lhs, rhs = NULL)
 }
 \arguments{
 \item{lhs}{(\code{\link{arrayish}})\cr
-An array with at least 2 axes. Can be of any data type; \code{lhs} and \code{rhs}
-are \link[=nv_promote_to_common]{promoted to a common data type}.}
+A matrix with exactly 2 axes, as for \code{\link[base:tcrossprod]{base::tcrossprod()}}. Can be of any
+data type; \code{lhs} and \code{rhs} are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 
 \item{rhs}{(\code{\link{arrayish}} | \code{NULL})\cr
 Optional second array. If \code{NULL}, uses \code{lhs}.}

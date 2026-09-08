@@ -30,8 +30,8 @@ Must be associative (see "Associativity Requirement").}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Same data type as \code{x}. Shape is \code{x} with \code{axes} removed
-(or set to 1 if \code{drop = FALSE}).
+Has the input's data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Reduces an array along the specified axes using a user-supplied
@@ -44,7 +44,7 @@ The order in which \code{reductor} is applied across the reduction window is
 implementation-defined. If the reductor is not associative, the result
 is ill-defined.
 Furthermore, \code{init} must be the neutral element for this reductor.
-Because floating-point arithmetic is non-associative, the output of
+Because arithmetic in a float data type is non-associative, the output of
 the reduction can differ between backends (GPU, CPU), even if the underlying mathematical
 function (like \code{+}) is associative.
 }

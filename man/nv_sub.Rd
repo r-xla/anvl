@@ -27,10 +27,10 @@ x <- nv_array(c(4, 5, 6))
 y <- nv_array(c(1, 2, 3))
 x - y
 
-# Different data types are promoted to their common one
+# different data types are promoted to their common one
 nv_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64"))
 
-# A scalar is broadcast and an R integer is converted to a float
+# a scalar is broadcast and an R integer is converted to a float
 x - 1L
 \dontshow{\}) # examplesIf}
 }

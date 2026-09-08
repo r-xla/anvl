@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_le}
 \alias{prim_le}
-\title{Primitive Less Equal}
+\title{Primitive Less Than or Equal}
 \usage{
 prim_le(lhs, rhs)
 }
