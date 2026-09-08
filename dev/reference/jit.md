@@ -91,6 +91,22 @@ a device declares the one it was asked for itself, see
 [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md)'s
 `device` argument.
 
+## Default Data Types
+
+It is possible to configure the default data types for `float`s and
+`int`s via the `anvl.default_dtypes` option, see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
+Note that the defaults will be read at *call-time*\* and not when
+`jit()` is called.
+
+To pin a jitted function to a pair of data types instead of letting it
+follow the configured defaults, wrap it in
+[`with_dtypes()`](https://r-xla.github.io/anvl/dev/reference/with_dtypes.md):
+the wrapper converts the array arguments and results of a category it
+names, and sets the defaults for the duration of the call, so
+`f_f64 <- with_dtypes(f, c(float = "f64"))` runs `f` at `f64`, unless
+`f` itself changes the default data types.
+
 ## Jitting in a Package
 
 To `jit()` a function defined in an R package, prefer the `@jit` roxygen

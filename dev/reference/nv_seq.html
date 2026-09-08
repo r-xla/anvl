@@ -105,9 +105,9 @@ Start and end values, which must satisfy <code>start &lt;= end</code>.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
-<dd><p>(<code>character(1)</code>)<br>
-Data type. Default <code>"i32"</code>.
-For <code>nv_seq_like()</code>, <code>NULL</code> uses <code>dtype(like)</code>.</p></dd>
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
+Data type. <code>NULL</code> (default) uses the backend's default integer data type
+(see <code><a href="default_dtypes.html">default_dtypes()</a></code>). For <code>nv_seq_like()</code>, <code>NULL</code> uses <code>dtype(like)</code>.</p></dd>
 
 
 <dt id="arg-device">device<a class="anchor" aria-label="anchor" href="#arg-device"></a></dt>

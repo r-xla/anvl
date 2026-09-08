@@ -113,10 +113,11 @@ Matrix of data type floating-point with exactly 2 axes.</p></dd>
     <p>Named <code>list</code>:</p><ul><li><p><code>L</code> – unit lower-triangular factor of shape <code>(m, k)</code>, where
 <code>(m, n) = shape(x)</code> and <code>k = min(m, n)</code>.</p></li>
 <li><p><code>U</code> – upper-triangular factor of shape <code>(k, n)</code>.</p></li>
-<li><p><code>pivots</code> – length <code>k</code>, dtype <code>i32</code>. LAPACK-style sequential
-1-based row swaps as returned by <code>getrf</code>.</p></li>
-<li><p><code>permutation</code> – length <code>m</code>, dtype <code>i32</code>. A 1-based permutation
-vector representing \(P\).</p></li>
+<li><p><code>pivots</code> – length <code>k</code>, of the default integer data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>). LAPACK-style sequential 1-based row swaps as
+returned by <code>getrf</code>.</p></li>
+<li><p><code>permutation</code> – length <code>m</code>, of the default integer data type. A
+1-based permutation vector representing \(P\).</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

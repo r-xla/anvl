@@ -1,9 +1,12 @@
 # Peek at a Data Type
 
-The data type `x` would use if was conveted to an `AnvlArray`. Relevant
-for R objects and their
+The data type `x` would use if it was converted to an `AnvlArray`.
+Relevant for R objects and their
 [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md)
-trace-time analogon.
+trace-time analogon: for those it is the default of the backend in force
+(see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),
+which the value has not committed to yet.
 
 ## Usage
 

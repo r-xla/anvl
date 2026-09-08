@@ -158,6 +158,21 @@ used. A constructor that has no array to name a device declares the one it
 was asked for itself, see <code><a href="graph_desc_add.html">graph_desc_add()</a></code>'s <code>device</code> argument.</p>
     </div>
     <div class="section level2">
+    <h2 id="default-data-types">Default Data Types<a class="anchor" aria-label="anchor" href="#default-data-types"></a></h2>
+
+
+<p>It is possible to configure the default data types for <code>float</code>s and <code>int</code>s
+via the <code>anvl.default_dtypes</code> option, see <code><a href="default_dtypes.html">default_dtypes()</a></code>.
+Note that the defaults will be read at <em>call-time</em>* and not when
+<code>jit()</code> is called.</p>
+<p>To pin a jitted function to a pair of data types instead of letting it
+follow the configured defaults, wrap it in <code><a href="with_dtypes.html">with_dtypes()</a></code>: the wrapper
+converts the array arguments and results of a category it names, and sets
+the defaults for the duration of the call, so
+<code>f_f64 &lt;- with_dtypes(f, c(float = "f64"))</code> runs <code>f</code> at <code>f64</code>, unless <code>f</code> itself
+changes the default data types.</p>
+    </div>
+    <div class="section level2">
     <h2 id="jitting-in-a-package">Jitting in a Package<a class="anchor" aria-label="anchor" href="#jitting-in-a-package"></a></h2>
 
 

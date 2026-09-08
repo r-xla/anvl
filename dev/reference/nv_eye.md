@@ -8,7 +8,7 @@ of `like`.
 ## Usage
 
 ``` r
-nv_eye(n, dtype = "f32", device = NULL)
+nv_eye(n, dtype = NULL, device = NULL)
 
 nv_eye_like(like, n, dtype = NULL, device = NULL)
 ```
@@ -22,9 +22,11 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 
 - dtype:
 
-  (`character(1)` \|
+  (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Data type. `NULL` (default) uses the backend's default float data type
+  (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 - device:
 

@@ -154,8 +154,9 @@ When doing so, you need to:
 
 One question that the primitive needs to answer is how it materializes R
 inputs: The default rule is to materialize an R input at its default
-data type, which is `f32` for doubles, `i32` for integers, and `bool`
-for logicals.
+data type, which on pjrt is `f32` for doubles and `i32` for integers,
+and `bool` for logicals everywhere (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 For functions taking a single dynamic input, as does `prim_repeat_along`
 from above, this is almost always the right thing to do. The inputs
@@ -419,7 +420,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x55778f656e08>
+#> <environment: 0x559bf1efdf18>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")

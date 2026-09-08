@@ -93,7 +93,8 @@
 <span>  <span class="va">new_device</span>,</span>
 <span>  <span class="va">print_data</span>,</span>
 <span>  <span class="va">jit</span>,</span>
-<span>  <span class="va">await_data</span></span>
+<span>  <span class="va">await_data</span>,</span>
+<span>  <span class="va">default_dtypes</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -156,6 +157,12 @@ object from a device type string (e.g. <code>"cpu"</code>). Called by <code><a h
 <dd><p>(<code>function</code>)<br> Blocks until the array's underlying data
 is ready. Called by <code><a href="await.html">await()</a></code> for <code>AnvlArray</code>s; a no-op for backends
 without async execution.</p></dd>
+
+
+<dt id="arg-default-dtypes">default_dtypes<a class="anchor" aria-label="anchor" href="#arg-default-dtypes"></a></dt>
+<dd><p>(<code>NULL</code> | <code>list(float, int)</code>)<br>
+The default data types for this backend.
+Can be overwritten, see <code><a href="default_dtypes.html">default_dtypes()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

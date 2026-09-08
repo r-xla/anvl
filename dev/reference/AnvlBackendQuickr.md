@@ -55,9 +55,13 @@ This backend is **experimental** and has a number of limitations:
   [`vignette("primitives")`](https://r-xla.github.io/anvl/dev/articles/primitives.md)
   for an overview.
 
-- Only the data types `f64`, `i32`, and `bool` are supported.
-
 - Only CPU execution is supported.
+
+- Only three data types are supported; see the section below.
+
+## Supported data types
+
+`f64`, `i32` and `bool` – the three R storage types.
 
 ## Quickr JIT arguments
 

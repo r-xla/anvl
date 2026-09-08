@@ -16,8 +16,8 @@
   [`nv_cumsum()`](https://r-xla.github.io/anvl/dev/reference/nv_cumsum.md)
   and
   [`nv_cumprod()`](https://r-xla.github.io/anvl/dev/reference/nv_cumprod.md)
-  now accumulate a boolean array at `i32` instead of returning a
-  boolean.
+  now accumulate a boolean array at the default integer data type
+  instead of returning a boolean.
 - [`as.vector()`](https://rdrr.io/r/base/vector.html) on an `AnvlArray`
   now only accepts `mode = "any"` (the default) and errors for any other
   `mode`.
@@ -33,6 +33,14 @@
 
 ### Features
 
+- The default data types for floating point numbers and integers can now
+  be configured via the `anvl.default_dtypes` field. You can configure
+  this for a specific scope via
+  [`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  and
+  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md).
+  To convert a function to one running at a specified precision, use
+  [`with_dtypes()`](https://r-xla.github.io/anvl/dev/reference/with_dtypes.md).
 - New
   [`nv_linspace()`](https://r-xla.github.io/anvl/dev/reference/nv_linspace.md)
   and

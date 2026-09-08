@@ -94,7 +94,8 @@ metadata needed for execution.</p>
 <span>  donate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  device <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  arg_devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  fallback_device <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  fallback_device <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  default_dtypes <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -141,6 +142,13 @@ The device to compile for when <code>device</code> is <code>NULL</code> and noth
 names one. pjrt's dispatcher supplies the device it keyed the entry on, so
 the program and its cache key agree. <code>NULL</code> (a caller with no dispatcher in
 front of it) falls back to <code><a href="default_device.html">default_device()</a></code>.</p></dd>
+
+
+<dt id="arg-default-dtypes">default_dtypes<a class="anchor" aria-label="anchor" href="#arg-default-dtypes"></a></dt>
+<dd><p>(<code>NULL</code> | <code>list(float, int)</code>)<br>
+The data types the traced R values commit to when nothing else decides one
+(see <code><a href="default_dtypes.html">default_dtypes()</a></code>), read off <code>info$context</code> so the program matches
+the cache key it is filed under. <code>NULL</code> uses the pair in force.</p></dd>
 
 </dl></div>
     <div class="section level2">

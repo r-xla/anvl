@@ -124,8 +124,9 @@ result is <code>start</code>.</p></dd>
 
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
-<dd><p>(<code>character(1)</code>)<br>
-Floating-point data type. Default <code>"f32"</code>.
+<dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
+Floating-point data type. <code>NULL</code> (default) uses the backend's default
+float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).
 For <code>nv_linspace_like()</code>, <code>NULL</code> uses <code>dtype(like)</code>, which must then be a
 floating-point data type.</p></dd>
 

@@ -2,7 +2,8 @@
 
 Sets the `anvl.backend` option for the duration of the calling scope.
 Every array built and every operation run in that scope uses the
-backend.
+backend, and R values commit to its default data types (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Usage
 

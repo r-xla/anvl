@@ -36,10 +36,13 @@ nv_linspace_like(like, start, end, steps, dtype = NULL, device = NULL)
 
 - dtype:
 
-  (`character(1)`)  
-  Floating-point data type. Default `"f32"`. For `nv_linspace_like()`,
-  `NULL` uses `dtype(like)`, which must then be a floating-point data
-  type.
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  Floating-point data type. `NULL` (default) uses the backend's default
+  float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must then
+  be a floating-point data type.
 
 - device:
 

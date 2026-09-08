@@ -17,7 +17,8 @@ AnvlBackend(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 )
 ```
 
@@ -99,6 +100,12 @@ AnvlBackend(
   Blocks until the array's underlying data is ready. Called by
   [`await()`](https://r-xla.github.io/anvl/dev/reference/await.md) for
   `AnvlArray`s; a no-op for backends without async execution.
+
+- default_dtypes:
+
+  (`NULL` \| `list(float, int)`)  
+  The default data types for this backend. Can be overwritten, see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md).
 
 ## Value
 

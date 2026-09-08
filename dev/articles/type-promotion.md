@@ -10,7 +10,7 @@ latter’s type, because it’s more expressive.
 ``` r
 
 library(anvl)
-jit(nv_add)(
+nv_add(
   nv_scalar(1.0, dtype = "f32"),
   nv_scalar(1.0, dtype = "f64")
 )
@@ -19,10 +19,6 @@ jit(nv_add)(
     ## AnvlArray
     ##  2
     ## [ CPUf64{} ]
-
-The type-promotion rules are inspired by JAX, and they are designed for
-execution on accelerators like GPUs, where one often wants speed instead
-of precision.
 
 The rules are defined by the
 [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
@@ -116,13 +112,14 @@ It is therefore important to understand to understand the rules that
 govern the materialization of R objects as `AnvlArray`s. Generally,
 there are two routes:
 
-1.  An R values it commited at its default data type (`double -> f32`,
-    `integer -> i32`, `logical -> bool`). This is e.g. the case in unary
+1.  An R value is committed at its default data type (`double` and
+    `integer` take the defaults of the backend in force, `f32` and `i32`
+    on pjrt; `logical` takes `bool`). This is e.g. the case in unary
     functions such as `nv_exp`.
 2.  The R values data type is inferred from other arguments, as is the
     case of the `nv_add` call above. When no concrete data type is
     present, `nv_add(1, 2)` falls back to the default, which is `f32`
-    for `double`s.
+    for `double`s on pjrt.
 
 Note that these rules are not universal and exceptions exist. Some
 functions, such as `nv_clamp`, prioritize the data type of a specific
@@ -172,7 +169,32 @@ One common rule is
 [`promote_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
 which is used by functions such as `nv_add` above. It computes the
 common data type of the inputs. In this case, it returns `f32`, which is
-the default data type of R `double`s.
+the default data type of R `double`s. We can also override the default
+via
+[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md),
+which we use below to use double-precision floats.
+
+``` r
+
+with_default_dtypes(c(float = "f64"), {
+  list(
+    committed = jit(\() 1.0)(),
+    yielded = nv_array(1, dtype = "f32") + 1.5
+  )
+})
+```
+
+    ## $committed
+    ## AnvlArray
+    ##  1
+    ## [ CPUf64{} ] 
+    ## 
+    ## $yielded
+    ## AnvlArray
+    ##  2.5000
+    ## [ CPUf32{1} ]
+
+Below, we compute the common data type of the arguments.
 
 ``` r
 

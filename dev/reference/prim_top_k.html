@@ -112,9 +112,9 @@ Number of top elements. Must satisfy
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list</code> of two <code><a href="arrayish.html">arrayish</a></code> values:<br>
 The top-<code>k</code> values (same dtype as <code>x</code>) and their indices along
-the last axis (dtype <code>i32</code>, matching JAX). Both have the same
-shape as <code>x</code> with the last axis replaced by <code>k</code>. Ties are
-broken by lower index first.</p>
+the last axis, of the default integer data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>). Both have the same shape as <code>x</code> with the
+last axis replaced by <code>k</code>. Ties are broken by lower index first.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>

@@ -769,7 +769,7 @@ constructor. If
 [`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
 were to follow the usual rule of committing its R inputs to their
 default data type, then `prim_convert(large_double, "i32")` would first
-convert the R `double` to an `f32` (the default data type for floats)
+convert the R `double` to an `f32` (the default float data type on pjrt)
 and then to an `i32`, which would result in a loss of precision. In
 order to prevent this,
 [`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
@@ -784,7 +784,7 @@ trace_fn(\(x) {
 
     ## Warning: Converting an R double to "i32" brings "f64" into the program.
     ## ✖ An R double cannot be built at "i32" directly, so it is built at "f64" and
-    ##   the program converts -- and nothing else here asked for "f64".
+    ##   the program converts.
     ## ℹ To keep it out, convert in its own category first: `nv_convert(nv_convert(x,
     ##   "f32"), "i32")`. The result differs for values its data type cannot hold
     ##   exactly.
@@ -814,7 +814,10 @@ the option `anvl.backend`). A `JitFunction` reads it on every call and
 keeps one implementation – the backend’s `jit` method’s result, with its
 own compilation cache – per backend it has been called on. Nothing
 infers a backend from the arguments: an array of another backend is
-rejected by the dispatcher.
+rejected by the dispatcher. This is what makes the default data types
+([`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+unambiguous in eager code, where a bare R value has nothing but the
+active backend to take its default from.
 
 Device handling within a backend has two things to be aware of:
 

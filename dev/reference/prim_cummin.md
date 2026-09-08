@@ -30,8 +30,10 @@ prim_cummin(x, axis)
 `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 values:  
-The running minimum (same dtype as `x`) and the running argmin (dtype
-`i32`, 1-based). Both have the same shape as `x`.
+The running minimum (same dtype as `x`) and the running argmin (of the
+default integer data type – see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+Both have the same shape as `x`.
 
 ## Implemented Rules
 

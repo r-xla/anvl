@@ -30,11 +30,12 @@ Named `list`:
 
 - `U` – upper-triangular factor of shape `(k, n)`.
 
-- `pivots` – length `k`, dtype `i32`. LAPACK-style sequential 1-based
-  row swaps as returned by `getrf`.
+- `pivots` – length `k`, of the default integer data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  LAPACK-style sequential 1-based row swaps as returned by `getrf`.
 
-- `permutation` – length `m`, dtype `i32`. A 1-based permutation vector
-  representing \\P\\.
+- `permutation` – length `m`, of the default integer data type. A
+  1-based permutation vector representing \\P\\.
 
 ## See also
 

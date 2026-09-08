@@ -23,9 +23,12 @@ nv_seq_like(like, start, end, dtype = NULL, device = NULL)
 
 - dtype:
 
-  (`character(1)`)  
-  Data type. Default `"i32"`. For `nv_seq_like()`, `NULL` uses
-  `dtype(like)`.
+  (`NULL` \| `character(1)` \|
+  [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
+  Data type. `NULL` (default) uses the backend's default integer data
+  type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  For `nv_seq_like()`, `NULL` uses `dtype(like)`.
 
 - device:
 

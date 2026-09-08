@@ -92,7 +92,9 @@
 <span>  outputs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  is_static_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  static_args_flat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  devices <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  default_dtypes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">backend</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -157,6 +159,21 @@ Flattened traced values for the static arguments indicated by <code>is_static_fl
 <dd><p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br>
 Devices encountered during tracing: the device of every concrete array
 registered in the graph, plus the ones declared by <code><a href="graph_desc_add.html">graph_desc_add()</a></code>.</p></dd>
+
+
+<dt id="arg-default-dtypes">default_dtypes<a class="anchor" aria-label="anchor" href="#arg-default-dtypes"></a></dt>
+<dd><p>(<code>NULL</code> | <code>list(float, int)</code>)<br>
+The data types every R value in this trace commits to when nothing else
+decides one (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p></dd>
+
+
+<dt id="arg-backend">backend<a class="anchor" aria-label="anchor" href="#arg-backend"></a></dt>
+<dd><p>(<code>character(1)</code>)<br>
+The backend this trace is compiled for. Required: it decides which entry
+of the <code>anvl.default_dtypes</code> option applies to the trace, so switching the
+active backend inside a traced body changes nothing.
+<code><a href="local_descriptor.html">local_descriptor()</a></code> fills it in from <code><a href="active_backend.html">active_backend()</a></code>, so only a
+direct call has to name it.</p></dd>
 
 </dl></div>
     <div class="section level2">

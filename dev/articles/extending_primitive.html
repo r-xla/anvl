@@ -264,8 +264,9 @@ using <code><a href="../reference/at2vt.html">at2vt()</a></code>.</li>
 </h4>
 <p>One question that the primitive needs to answer is how it
 materializes R inputs: The default rule is to materialize an R input at
-its default data type, which is <code>f32</code> for doubles,
-<code>i32</code> for integers, and <code>bool</code> for logicals.</p>
+its default data type, which on pjrt is <code>f32</code> for doubles and
+<code>i32</code> for integers, and <code>bool</code> for logicals
+everywhere (see <code><a href="../reference/default_dtypes.html">default_dtypes()</a></code>).</p>
 <p>For functions taking a single dynamic input, as does
 <code>prim_repeat_along</code> from above, this is almost always the
 right thing to do. The inputs section of the printed graph shows both
@@ -522,7 +523,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55778f656e08&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x559bf1efdf18&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>

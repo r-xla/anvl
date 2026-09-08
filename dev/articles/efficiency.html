@@ -235,8 +235,8 @@ the parallel version does more total work.</li>
 </h2>
 <p>The data type of an <code>AnvlArray</code> (<code>f32</code>,
 <code>f64</code>, <code>i32</code>, <code>i64</code>, …) affects both
-how much memory it uses and how fast operations on it run. The default
-is to use <code>f32</code> for R <code>double</code>s and
+how much memory it uses and how fast operations on it run. On the pjrt
+backend the default is <code>f32</code> for R <code>double</code>s and
 <code>i32</code> for R <code>integer</code>s. Currently, we don’t
 support other floating-point data types such as <code>f16</code> or
 <code>bf16</code>. There is of course a trade-off between efficiency and
@@ -245,6 +245,14 @@ precision here. Speedups from using <code>f32</code> over
 <code>f32</code> is the default data type for floating-point operations
 in GPU-accelerated frameworks, so unless you have a specific reason, we
 recommend sticking with the defaults.</p>
+<p>If you do want <code>f64</code> throughout, set it once rather than
+annotating every value:
+<code>options(anvl.default_dtypes = c(float = "f64"))</code>, or
+<code>with_default_dtypes(c(float = "f64"), ...)</code> for a single
+scope. <code><a href="../reference/default_dtypes.html">default_dtypes()</a></code> reports what is in force. Note that
+a program is compiled for the defaults it was compiled under, so
+changing them recompiles rather than reusing a program built at the
+other precision.</p>
 </div>
 <div class="section level2">
 <h2 id="blas-lapack">BLAS / LAPACK<a class="anchor" aria-label="anchor" href="#blas-lapack"></a>

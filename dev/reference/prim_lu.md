@@ -26,10 +26,12 @@ prim_lu(x)
 `list` of three
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 values: `LU` `(m, n)` with the same dtype as the input; `pivots` `(k,)`
-of dtype `i32` with `k = min(m, n)` (1-based row swaps such that row `i`
-was exchanged with row `pivots[i]` during elimination step `i`); and
-`permutation` `(m,)` of dtype `i32`, a 1-based permutation vector for
-\\P\\ such that `(P %*% A)[i, ]` equals `A[permutation[i], ]`.
+of the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+with `k = min(m, n)` (1-based row swaps such that row `i` was exchanged
+with row `pivots[i]` during elimination step `i`); and `permutation`
+`(m,)` of the same data type, a 1-based permutation vector for \\P\\
+such that `(P %*% A)[i, ]` equals `A[permutation[i], ]`.
 
 ## Implemented Rules
 

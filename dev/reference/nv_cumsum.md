@@ -38,8 +38,9 @@ nv_cumsum(x, axis = NULL, nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same shape as the input, and the same data type, except for a
-boolean input, which is accumulated at `i32`: `TRUE` counts as one,
-rather than being folded with a logical or/and.
+boolean input, which is accumulated at the default integer data type
+(see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Relation to base R
 

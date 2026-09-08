@@ -34,7 +34,9 @@ nv_top_k(x, k, axis = NULL, with_indices = FALSE)
   (`logical(1)`)  
   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
   returns `list(values = ..., indices = ...)` where `indices` is the
-  1-based position of each top-`k` value along `axis` (dtype `i32`).
+  1-based position of each top-`k` value along `axis`, of the default
+  integer data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Value
 

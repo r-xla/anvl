@@ -18,7 +18,9 @@ GraphDescriptor(
   outputs = list(),
   is_static_flat = NULL,
   static_args_flat = NULL,
-  devices = character()
+  devices = character(),
+  default_dtypes = NULL,
+  backend
 )
 ```
 
@@ -84,6 +86,24 @@ GraphDescriptor(
   Devices encountered during tracing: the device of every concrete array
   registered in the graph, plus the ones declared by
   [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md).
+
+- default_dtypes:
+
+  (`NULL` \| `list(float, int)`)  
+  The data types every R value in this trace commits to when nothing
+  else decides one (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+
+- backend:
+
+  (`character(1)`)  
+  The backend this trace is compiled for. Required: it decides which
+  entry of the `anvl.default_dtypes` option applies to the trace, so
+  switching the active backend inside a traced body changes nothing.
+  [`local_descriptor()`](https://r-xla.github.io/anvl/dev/reference/local_descriptor.md)
+  fills it in from
+  [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
+  so only a direct call has to name it.
 
 ## Value
 

@@ -1,7 +1,8 @@
 # Create a Primitive
 
 Create a new primitive. For details on how to do this, see the article
-on *Adding a Primitive*.
+on *Adding a Primitive*. Like every jitted function it runs on the
+active backend when called.
 
 ## Usage
 

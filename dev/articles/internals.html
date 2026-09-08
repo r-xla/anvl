@@ -762,7 +762,7 @@ request a data type, such as <code><a href="../reference/prim_convert.html">prim
 to follow the usual rule of committing its R inputs to their default
 data type, then <code>prim_convert(large_double, "i32")</code> would
 first convert the R <code>double</code> to an <code>f32</code> (the
-default data type for floats) and then to an <code>i32</code>, which
+default float data type on pjrt) and then to an <code>i32</code>, which
 would result in a loss of precision. In order to prevent this,
 <code><a href="../reference/prim_convert.html">prim_convert()</a></code> materializes its input at its natural
 representation.</p>
@@ -772,7 +772,7 @@ representation.</p>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Converting an R double to <span style="color: #0000BB;">"i32"</span> brings <span style="color: #0000BB;">"f64"</span> into the program.</span></span>
 <span><span class="co">## <span style="color: #BB0000;">✖</span> An R double cannot be built at <span style="color: #0000BB;">"i32"</span> directly, so it is built at <span style="color: #0000BB;">"f64"</span> and</span></span>
-<span><span class="co">##   the program converts -- and nothing else here asked for <span style="color: #0000BB;">"f64"</span>.</span></span>
+<span><span class="co">##   the program converts.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> To keep it out, convert in its own category first: `nv_convert(nv_convert(x,</span></span>
 <span><span class="co">##   "f32"), "i32")`. The result differs for values its data type cannot hold</span></span>
 <span><span class="co">##   exactly.</span></span></code></pre>
@@ -801,7 +801,9 @@ the inputs right at the beginning, so this problem rarely happens.</p>
 implementation – the backend’s <code>jit</code> method’s result, with
 its own compilation cache – per backend it has been called on. Nothing
 infers a backend from the arguments: an array of another backend is
-rejected by the dispatcher.</p>
+rejected by the dispatcher. This is what makes the default data types
+(<code><a href="../reference/default_dtypes.html">default_dtypes()</a></code>) unambiguous in eager code, where a bare
+R value has nothing but the active backend to take its default from.</p>
 <p>Device handling within a backend has two things to be aware of:</p>
 <ol style="list-style-type: decimal">
 <li><p>We don’t know the inferred device just from looking at the input,

@@ -33,8 +33,10 @@ prim_top_k(x, k)
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
 values:  
 The top-`k` values (same dtype as `x`) and their indices along the last
-axis (dtype `i32`, matching JAX). Both have the same shape as `x` with
-the last axis replaced by `k`. Ties are broken by lower index first.
+axis, of the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+Both have the same shape as `x` with the last axis replaced by `k`. Ties
+are broken by lower index first.
 
 ## Implemented Rules
 

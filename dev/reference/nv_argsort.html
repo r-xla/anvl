@@ -114,8 +114,9 @@ original relative order. Default <code>FALSE</code>.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code> of dtype <code>i32</code><br>
-Same shape as <code>x</code>. For a size-0 axis, the output is an empty <code>i32</code>
+    <p><code><a href="arrayish.html">arrayish</a></code> of the default integer data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>)<br>
+Same shape as <code>x</code>. For a size-0 axis, the output is an empty
 array of the same shape (a valid empty permutation).
 <code>as_array(x)[as_array(nv_argsort(x))]</code> reproduces the sorted
 array (for 1-D inputs).</p>

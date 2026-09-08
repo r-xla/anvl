@@ -117,11 +117,12 @@ Matrix of data type floating-point with exactly 2 axes.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code>list</code> of three <code><a href="arrayish.html">arrayish</a></code> values: <code>LU</code> <code>(m, n)</code> with the same
-dtype as the input; <code>pivots</code> <code>(k,)</code> of dtype <code>i32</code> with
-<code>k = min(m, n)</code> (1-based row swaps such that row <code>i</code> was exchanged
-with row <code>pivots[i]</code> during elimination step <code>i</code>); and <code>permutation</code>
-<code>(m,)</code> of dtype <code>i32</code>, a 1-based permutation vector for \(P\) such
-that <code>(P %*% A)[i, ]</code> equals <code>A[permutation[i], ]</code>.</p>
+dtype as the input; <code>pivots</code> <code>(k,)</code> of the default integer data type
+(see <code><a href="default_dtypes.html">default_dtypes()</a></code>) with <code>k = min(m, n)</code> (1-based row swaps such
+that row <code>i</code> was exchanged with row <code>pivots[i]</code> during elimination step
+<code>i</code>); and <code>permutation</code> <code>(m,)</code> of the same data type, a 1-based
+permutation vector for \(P\) such that <code>(P %*% A)[i, ]</code> equals
+<code>A[permutation[i], ]</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>

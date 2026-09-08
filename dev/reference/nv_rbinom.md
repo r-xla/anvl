@@ -7,7 +7,7 @@ distribution.
 ## Usage
 
 ``` r
-nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32")
+nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 ```
 
 ## Arguments
@@ -34,9 +34,11 @@ nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32")
 
 - dtype:
 
-  (`character(1)` \|
+  (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Data type of the sampled values. `NULL` (default) uses the backend's
+  default integer data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Value
 

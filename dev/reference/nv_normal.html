@@ -152,7 +152,8 @@ RNG state (<code>ui64[2]</code>).</p></dd>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
 Data type of the sample, <code>"f32"</code> or <code>"f64"</code>. <code>NULL</code> (default) takes it from
 <code>mean</code> and <code>sd</code> where either is a real array, and falls back to the default
-float data type (<code>"f32"</code>) where both are bare R values, which have none.</p></dd>
+float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where both are bare R values,
+which have none.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -176,6 +177,8 @@ left tail when <code>log_p = TRUE</code> to maintain accuracy.</p>
 Moshier (1989) (this is <code>ndtri</code> in the Cephes
 library as used by JAX) for <code>f64</code>, and uses a new lower degree Remez minimax
 rational approximation on the same intervals for <code>f32</code>.</p>
+<p>The thresholds and coefficients of <code>nv_pnorm()</code> and <code>nv_qnorm()</code> are written
+for <code>f32</code> and <code>f64</code>, so those two are the only data types they accept.</p>
     </div>
     <div class="section level2">
     <h2 id="random-generation">Random generation<a class="anchor" aria-label="anchor" href="#random-generation"></a></h2>

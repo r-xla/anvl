@@ -10,7 +10,7 @@ To sample from a population other than `1:n`, use
 ## Usage
 
 ``` r
-nv_sample_int(shape, initial_state, n, dtype = "i32")
+nv_sample_int(shape, initial_state, n, dtype = NULL)
 ```
 
 ## Arguments
@@ -32,9 +32,11 @@ nv_sample_int(shape, initial_state, n, dtype = "i32")
 
 - dtype:
 
-  (`character(1)` \|
+  (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sampled integers.
+  Data type of the sampled integers. `NULL` (default) uses the backend's
+  default integer data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Value
 

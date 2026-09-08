@@ -38,9 +38,10 @@ nv_reduce_sum(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as the input, except for a boolean input, which
-is accumulated at `i32`: `TRUE` counts as one, rather than being folded
-with a logical or/and. When `drop = TRUE`, the reduced axes are removed.
-When `drop = FALSE`, the reduced axes are set to 1.
+is accumulated at the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+When `drop = TRUE`, the reduced axes are removed. When `drop = FALSE`,
+the reduced axes are set to 1.
 
 ## See also
 

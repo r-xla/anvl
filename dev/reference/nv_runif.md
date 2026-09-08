@@ -5,7 +5,7 @@ Samples from a uniform distribution in the open interval `(min, max)`.
 ## Usage
 
 ``` r
-nv_runif(shape, initial_state, dtype = "f32", min = 0, max = 1)
+nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 ```
 
 ## Arguments
@@ -22,9 +22,11 @@ nv_runif(shape, initial_state, dtype = "f32", min = 0, max = 1)
 
 - dtype:
 
-  (`character(1)` \|
+  (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type.
+  Data type of the sampled values. `NULL` (default) uses the backend's
+  default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 - min, max:
 

@@ -16,4 +16,5 @@ active_backend()
 ## See also
 
 [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
-[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md),
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)

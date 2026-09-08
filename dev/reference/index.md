@@ -505,6 +505,15 @@ Backend-related functionality and implementations
   : Temporarily set the backend
 - [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
   : Run code with a specific backend
+- [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  [`default_float()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  [`default_int()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
+  : Default Data Types
+- [`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  : Set the Default Data Types
+- [`with_dtypes()`](https://r-xla.github.io/anvl/dev/reference/with_dtypes.md)
+  : Run a Function at Given Data Types
 - [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md)
   : Install what a backend needs to run
 - [`nv_device()`](https://r-xla.github.io/anvl/dev/reference/nv_device.md)

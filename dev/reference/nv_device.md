@@ -7,7 +7,10 @@ A device identifies a compute resources, such as CPU, or a specific GPU.
 It is relevant for data allocation (e.g. via
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md))
 but also compilation
-([jit](https://r-xla.github.io/anvl/dev/reference/jit.md)).
+([jit](https://r-xla.github.io/anvl/dev/reference/jit.md)). A device
+belongs to the active backend
+([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md));
+a device object of another backend is an error.
 
 ## Usage
 

@@ -87,8 +87,32 @@ Accelerated array computing and code transformations for R. Numerical programs o
     <h2 id="options">Options<a class="anchor" aria-label="anchor" href="#options"></a></h2>
 
 
-<ul><li><p><code>anvl.backend</code> (<code>character(1)</code>, default <code>"pjrt"</code>): active backend that is used
-for compilation and data allocation.</p></li>
+<ul><li><p><code>anvl.backend</code> (<code>character(1)</code>, default <code>"pjrt"</code>): the backend every
+operation runs on – <code>"pjrt"</code> or <code>"quickr"</code>. Arrays are allocated with it
+and jitted functions are compiled for it.
+Also see  <code><a href="active_backend.html">active_backend()</a></code>, <code><a href="local_backend.html">local_backend()</a></code> and <code><a href="with_backend.html">with_backend()</a></code>.</p></li>
+<li><p><code>anvl.default_dtypes</code> (named <code><a href="https://rdrr.io/r/base/character.html" class="external-link">character()</a></code> | named <code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>): the data
+types an R double and integer materialize at when it cannot be inferred from
+another operand.
+See <code><a href="default_dtypes.html">default_dtypes()</a></code> for more details.</p></li>
+</ul></div>
+    <div class="section level2">
+    <h2 id="environment-variables">Environment variables<a class="anchor" aria-label="anchor" href="#environment-variables"></a></h2>
+
+
+<ul><li><p><code>PJRT_PLATFORM</code>: the platform the <code>"pjrt"</code> backend allocates on and
+compiles for when a call names no device – <code>"cpu"</code> (the default),
+<code>"cuda"</code>, <code>"metal"</code>, ... It is read afresh whenever a default device is
+needed; see <code><a href="default_device.html">default_device()</a></code> and <code><a href="nv_device.html">nv_device()</a></code>. The variable is
+pjrt's, anvl only follows it.</p></li>
+</ul><p>The remaining ones affect only anvl's own test suite, not the package:</p><ul><li><p><code>ANVL_TEST</code>: <code>tests/testthat.R</code> runs the tests only when this is <code>"1"</code>,
+so <code>R CMD check</code> in a shell without it runs none of them.</p></li>
+<li><p><code>ANVL_SKIP_QUICKR</code>: when set to anything non-empty, the tests that need
+the quickr backend are skipped – they are comparatively slow.</p></li>
+<li><p><code>ANVL_DEFAULT_DTYPES</code>: <code>category=dtype</code> pairs such as
+<code>"float=f64,int=i64"</code>, which the test setup turns into the
+<code>anvl.default_dtypes</code> option for the whole run, so that anything
+hardcoding <code>f32</code> / <code>i32</code> where it should read <code><a href="default_dtypes.html">default_dtypes()</a></code> fails.</p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="third-party-licenses">Third-Party Licenses<a class="anchor" aria-label="anchor" href="#third-party-licenses"></a></h2>

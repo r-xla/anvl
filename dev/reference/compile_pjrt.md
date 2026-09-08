@@ -14,7 +14,8 @@ compile_pjrt(
   donate = character(),
   device = NULL,
   arg_devices = list(),
-  fallback_device = NULL
+  fallback_device = NULL,
+  default_dtypes = NULL
 )
 ```
 
@@ -61,6 +62,15 @@ compile_pjrt(
   entry on, so the program and its cache key agree. `NULL` (a caller
   with no dispatcher in front of it) falls back to
   [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md).
+
+- default_dtypes:
+
+  (`NULL` \| `list(float, int)`)  
+  The data types the traced R values commit to when nothing else decides
+  one (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),
+  read off `info$context` so the program matches the cache key it is
+  filed under. `NULL` uses the pair in force.
 
 ## Value
 

@@ -104,8 +104,9 @@ is first flattened to a 1-D array, like <code><a href="https://rdrr.io/r/base/cu
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>FALSE</code> (default), returns the running-minimum array.
 If <code>TRUE</code>, returns <code>list(values = ..., indices = ...)</code> where <code>indices</code>
-is the 1-based index of the last occurrence of the running
-minimum at each position (dtype <code>i32</code>, matching torch).
+is the index of the last occurrence of the running
+minimum at each position, of the default integer data
+type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).
 When <code>axis = NULL</code>, indices refer to the flattened input.</p></dd>
 
 

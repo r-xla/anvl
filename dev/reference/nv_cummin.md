@@ -28,9 +28,10 @@ nv_cummin(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
   (`logical(1)`)  
   If `FALSE` (default), returns the running-minimum array. If `TRUE`,
   returns `list(values = ..., indices = ...)` where `indices` is the
-  1-based index of the last occurrence of the running minimum at each
-  position (dtype `i32`, matching torch). When `axis = NULL`, indices
-  refer to the flattened input.
+  index of the last occurrence of the running minimum at each position,
+  of the default integer data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  When `axis = NULL`, indices refer to the flattened input.
 
 - nan_rm:
 

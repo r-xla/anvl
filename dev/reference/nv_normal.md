@@ -69,8 +69,9 @@ nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   Data type of the sample, `"f32"` or `"f64"`. `NULL` (default) takes it
   from `mean` and `sd` where either is a real array, and falls back to
-  the default float data type (`"f32"`) where both are bare R values,
-  which have none.
+  the default float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+  where both are bare R values, which have none.
 
 ## Value
 
@@ -98,6 +99,10 @@ maintain accuracy.
 (1989) (this is `ndtri` in the Cephes library as used by JAX) for `f64`,
 and uses a new lower degree Remez minimax rational approximation on the
 same intervals for `f32`.
+
+The thresholds and coefficients of `nv_pnorm()` and `nv_qnorm()` are
+written for `f32` and `f64`, so those two are the only data types they
+accept.
 
 ## Random generation
 

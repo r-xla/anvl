@@ -30,8 +30,8 @@ LiteralArray(data, shape, dtype = default_dtype(data))
 - dtype:
 
   ([`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  The data type. Defaults to the current backend's default floating
-  dtype, `i32` for integer, and `bool` for logical.
+  The data type. For the default, see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Lowering
 

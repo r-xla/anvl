@@ -48,20 +48,43 @@ x
     ## [ CPUi16{} ]
 
 We can also create higher-dimensional arrays, for example a `2x3` array
-with single-precision floating-point numbers. Without specifying the
-data type, it will default to `"f32"` for R doubles, `"i32"` for
-integers, and `"bool"` for logicals.
+with single-precision floating-point numbers.
 
 ``` r
 
-y <- nv_array(1:6, shape = c(2, 3))
+y <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(2, 3))
 y
 ```
 
     ## AnvlArray
     ##  1 3 5
     ##  2 4 6
-    ## [ CPUi32{2,3} ]
+    ## [ CPUf32{2,3} ]
+
+Without specifying the data type, it will default to the data types of
+the backend in force: `"f32"` for R doubles and `"i32"` for integers on
+pjrt, and `"bool"` for logicals everywhere. We chose this default,
+because on modern accelerators such as GPUs, single-precision floating
+point operations are considerably faster than when working in double
+precision. It is possible to change this default via the
+`anvl.default_dtypes` option. Below,
+[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+modifies this option temporarily:
+
+``` r
+
+with_default_dtypes(c(float = "f64", int = "i64"), {
+  print(nv_scalar(2L))
+  print(nv_scalar(pi))
+})
+```
+
+    ## AnvlArray
+    ##  2
+    ## [ CPUi64{} ] 
+    ## AnvlArray
+    ##  3.1416
+    ## [ CPUf64{} ]
 
 You can extract the object’s properties using getter methods.
 
@@ -70,7 +93,7 @@ You can extract the object’s properties using getter methods.
 dtype(y)
 ```
 
-    ## <i32>
+    ## <f32>
 
 ``` r
 
@@ -98,7 +121,7 @@ y2[1, 1]
 
     ## AnvlArray
     ##  99
-    ## [ CPUi32{} ]
+    ## [ CPUf32{} ]
 
 ``` r
 
@@ -107,7 +130,7 @@ y[1, 1]
 
     ## AnvlArray
     ##  1
-    ## [ CPUi32{} ]
+    ## [ CPUf32{} ]
 
 Note that such subset assignment always copies – unlike plain R, where
 `y[i] <- val` can be done in place when `y` has only one reference. This
@@ -175,7 +198,7 @@ prim_add(y, y)
     ## AnvlArray
     ##   2  6 10
     ##   4  8 12
-    ## [ CPUi32{2,3} ]
+    ## [ CPUf32{2,3} ]
 
 ``` r
 
@@ -185,7 +208,7 @@ prim_add(y, x)
     ## Error:
     ## ! These inputs have no common data type to reach without converting one
     ##   of them.
-    ## ✖ `lhs` is `i32` and `rhs` is `i16`.
+    ## ✖ `lhs` is `f32` and `rhs` is `i16`.
     ## ℹ Use an operation that promotes across data types, or convert one explicitly
     ##   with `nv_convert()`.
 
@@ -197,7 +220,7 @@ nv_add(y, x)
     ## AnvlArray
     ##  2 4 6
     ##  3 5 7
-    ## [ CPUi32{2,3} ]
+    ## [ CPUf32{2,3} ]
 
 Next we define a function that computes the output of a linear model \\y
 = X \beta + \alpha\\, generate some example data and call the function.
@@ -224,7 +247,7 @@ y <- X %*% beta_true + alpha_true + rnorm(100, sd = 0.5)
 plot(X, y)
 ```
 
-![](anvl_files/figure-html/unnamed-chunk-10-1.png)
+![](anvl_files/figure-html/unnamed-chunk-11-1.png)
 
 ``` r
 
@@ -309,8 +332,8 @@ nv_add(1, array(2:3))
 
 An R value does not carry a data type of its own – `1` is neither an
 `f32` nor an `f64` – so it takes the one of the array it is combined
-with, and falls back to a default (`f32` for doubles, `i32` for
-integers, `bool` for logicals) when it meets nothing else. See
+with, and falls back to a default (on pjrt `f32` for doubles and `i32`
+for integers, and `bool` for logicals) when it meets nothing else. See
 [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
 for the full rules.
 
@@ -449,7 +472,7 @@ for (i in 1:100) {
 }
 ```
 
-![](anvl_files/figure-html/unnamed-chunk-18-1.png)
+![](anvl_files/figure-html/unnamed-chunk-19-1.png)
 
 One problem with the above approach is that we are creating new weight
 arrays in each iteration and throw away the previous weights, just like

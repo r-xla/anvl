@@ -154,41 +154,58 @@ omit specifying the device, as CPU is the default.</p>
 <span><span class="co">##  1</span></span>
 <span><span class="co">## [ CPUi16{} ]</span></span></code></pre>
 <p>We can also create higher-dimensional arrays, for example a
-<code>2x3</code> array with single-precision floating-point numbers.
-Without specifying the data type, it will default to <code>"f32"</code>
-for R doubles, <code>"i32"</code> for integers, and <code>"bool"</code>
-for logicals.</p>
+<code>2x3</code> array with single-precision floating-point numbers.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">5</span>, <span class="fl">6</span><span class="op">)</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">y</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1 3 5</span></span>
 <span><span class="co">##  2 4 6</span></span>
-<span><span class="co">## [ CPUi32{2,3} ]</span></span></code></pre>
-<p>You can extract the object’s properties using getter methods.</p>
+<span><span class="co">## [ CPUf32{2,3} ]</span></span></code></pre>
+<p>Without specifying the data type, it will default to the data types
+of the backend in force: <code>"f32"</code> for R doubles and
+<code>"i32"</code> for integers on pjrt, and <code>"bool"</code> for
+logicals everywhere. We chose this default, because on modern
+accelerators such as GPUs, single-precision floating point operations
+are considerably faster than when working in double precision. It is
+possible to change this default via the <code>anvl.default_dtypes</code>
+option. Below, <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code> modifies this option
+temporarily:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;i32&gt;</span></span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/local_default_dtypes.html">with_default_dtypes</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>float <span class="op">=</span> <span class="st">"f64"</span>, int <span class="op">=</span> <span class="st">"i64"</span><span class="op">)</span>, <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="va">pi</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  2</span></span>
+<span><span class="co">## [ CPUi64{} ] </span></span>
+<span><span class="co">## AnvlArray</span></span>
+<span><span class="co">##  3.1416</span></span>
+<span><span class="co">## [ CPUf64{} ]</span></span></code></pre>
+<p>You can extract the object’s properties using getter methods.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/dtype.html">dtype</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## &lt;f32&gt;</span></span></code></pre>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/shape.html">shape</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="co"># or dim()</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] 2 3</span></span></code></pre>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/device.html">device</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## &lt;CpuDevice(id=0)&gt;</span></span></code></pre>
 <p><code>AnvlArray</code>s have value semantics and are (with an
 exception we cover later) never modified in-place.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y2</span> <span class="op">&lt;-</span> <span class="va">y</span></span>
 <span><span class="va">y2</span><span class="op">[</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">99L</span></span>
 <span><span class="va">y2</span><span class="op">[</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  99</span></span>
-<span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">y</span><span class="op">[</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">]</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1</span></span>
-<span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
+<span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <p>Note that such subset assignment always copies – unlike plain R,
 where <code>y[i] &lt;- val</code> can be done in place when
 <code>y</code> has only one reference. This only applies to
@@ -199,7 +216,7 @@ copy-on-write.</p>
 <code>AnvlArray</code>s back to R objects, which involves copying the
 data. Note that for 0-dimensional arrays, the result is an R vector of
 length 1, as R arrays cannot have 0 axes.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##      [,1] [,2] [,3]</span></span>
 <span><span class="co">## [1,]    1    3    5</span></span>
@@ -208,7 +225,7 @@ length 1, as R arrays cannot have 0 axes.</p>
 <code><a href="../reference/nv_save.html">nv_save()</a></code> / <code><a href="../reference/nv_read.html">nv_read()</a></code>, which use the <a href="https://huggingface.co/docs/safetensors/index" class="external-link">safetensors</a>
 format – a simple, cross-framework standard also used by e.g. PyTorch
 and JAX:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".safetensors"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_save.html">nv_save</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span>, <span class="va">path</span><span class="op">)</span></span>
 <span></span>
@@ -236,46 +253,46 @@ overloaded R operators that dispatch to them. They are built on top of
 the primitives and either add convenience or higher-level
 functionality.</li>
 </ol>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">y</span>, <span class="va">y</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##   2  6 10</span></span>
 <span><span class="co">##   4  8 12</span></span>
-<span><span class="co">## [ CPUi32{2,3} ]</span></span></code></pre>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<span><span class="co">## [ CPUf32{2,3} ]</span></span></code></pre>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">y</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> These inputs have no common data type to reach without converting one</span></span>
 <span><span class="co">##   of them.</span></span>
-<span><span class="co">## <span style="color: #BB0000;">✖</span> `lhs` is `i32` and `rhs` is `i16`.</span></span>
+<span><span class="co">## <span style="color: #BB0000;">✖</span> `lhs` is `f32` and `rhs` is `i16`.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Use an operation that promotes across data types, or convert one explicitly</span></span>
 <span><span class="co">##   with `nv_convert()`.</span></span></code></pre>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">y</span>, <span class="va">x</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  2 4 6</span></span>
 <span><span class="co">##  3 5 7</span></span>
-<span><span class="co">## [ CPUi32{2,3} ]</span></span></code></pre>
+<span><span class="co">## [ CPUf32{2,3} ]</span></span></code></pre>
 <p>Next we define a function that computes the output of a linear model
 <span class="math inline">\(y = X \beta + \alpha\)</span>, generate some
 example data and call the function. We could have also used the
 overloaded <code>%*%</code> and <code>+</code> operators, but chose the
 underlying <code>nv_*</code> function for clarity.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">linear_model_r</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">X</span>, <span class="va">beta</span>, <span class="va">alpha</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">y0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/nv_matmul.html">nv_matmul</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">beta</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">y0</span>, <span class="va">alpha</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>We simulate some training data from a univariate linear model and
 randomly initialize some parameters that we’ll fit later.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">beta_true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">alpha_true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta_true</span> <span class="op">+</span> <span class="va">alpha_true</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">100</span>, sd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">y</span><span class="op">)</span></span></code></pre></div>
-<p><img src="anvl_files/figure-html/unnamed-chunk-10-1.png" class="r-plt" alt="" width="700"></p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<p><img src="anvl_files/figure-html/unnamed-chunk-11-1.png" class="r-plt" alt="" width="700"></p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="va">X</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
 <span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="va">y</span>, dtype <span class="op">=</span> <span class="st">"f32"</span><span class="op">)</span></span>
 <span></span>
@@ -306,7 +323,7 @@ usually <code><a href="../reference/jit.html">jit()</a></code> your functions. F
 jit-compile the <code>linear_model_r</code> function we defined earlier.
 The output is a function with the same signature that produces the same
 results:</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">linear_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">linear_model_r</span><span class="op">)</span></span>
 <span><span class="va">y_hat1</span> <span class="op">&lt;-</span> <span class="fu">linear_model</span><span class="op">(</span><span class="va">X</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, <span class="op">]</span>, <span class="va">beta</span>, <span class="va">alpha</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">y_hat0</span> <span class="op">==</span> <span class="va">y_hat1</span><span class="op">)</span></span></code></pre></div>
@@ -328,7 +345,7 @@ JIT deep dive for a more thorough explanation.</p>
 <code>AnvlArray</code>s, so you don’t need to wrap every input in
 <code><a href="../reference/AnvlArray.html">nv_array()</a></code> yourself. This applies to both <code>nv_*</code>
 calls and your own <code><a href="../reference/jit.html">jit()</a></code>-compiled functions:</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  3</span></span>
@@ -336,8 +353,8 @@ calls and your own <code><a href="../reference/jit.html">jit()</a></code>-compil
 <span><span class="co">## [ CPUf32{2} ]</span></span></code></pre>
 <p>An R value does not carry a data type of its own – <code>1</code> is
 neither an <code>f32</code> nor an <code>f64</code> – so it takes the
-one of the array it is combined with, and falls back to a default
-(<code>f32</code> for doubles, <code>i32</code> for integers,
+one of the array it is combined with, and falls back to a default (on
+pjrt <code>f32</code> for doubles and <code>i32</code> for integers, and
 <code>bool</code> for logicals) when it meets nothing else. See
 <code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for the full rules.</p>
 <p>Note that we only auto-convert
@@ -361,7 +378,7 @@ recompilation for every new value.</p>
 whose reduction is configurable – <code>reduction = "mean"</code>
 returns a scalar loss, <code>"sum"</code> returns the un-normalized
 total:</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mse</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">y_hat</span>, <span class="va">y</span>, <span class="va">reduction</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">se</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">y_hat</span> <span class="op">-</span> <span class="va">y</span><span class="op">)</span><span class="op">^</span><span class="fl">2.0</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">reduction</span> <span class="op">==</span> <span class="st">"mean"</span><span class="op">)</span> <span class="op">{</span></span>
@@ -375,7 +392,7 @@ total:</p>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1.3679</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">mse</span><span class="op">(</span><span class="fu">linear_model</span><span class="op">(</span><span class="va">X</span>, <span class="va">beta</span>, <span class="va">alpha</span><span class="op">)</span>, <span class="va">y</span>, reduction <span class="op">=</span> <span class="st">"sum"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  136.7889</span></span>
@@ -385,7 +402,7 @@ total:</p>
 compiled and executed separately – instead, they are compiled together.
 We combine <code>linear_model</code> and <code>mse</code> into a jitted
 <code>model_loss</code>:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model_loss</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">X</span>, <span class="va">beta</span>, <span class="va">alpha</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">y_hat</span> <span class="op">&lt;-</span> <span class="fu">linear_model</span><span class="op">(</span><span class="va">X</span>, <span class="va">beta</span>, <span class="va">alpha</span><span class="op">)</span></span>
 <span>  <span class="fu">mse</span><span class="op">(</span><span class="va">y_hat</span>, <span class="va">y</span>, reduction <span class="op">=</span> <span class="st">"mean"</span><span class="op">)</span></span>
@@ -416,7 +433,7 @@ with respect to a subset of its arguments that we specify via
 static values. The resulting <code>model_loss_grad</code> has the same
 signature as <code>model_loss</code>, but returns a named list of
 gradients – one entry per argument listed in <code>wrt</code>:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model_loss_grad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="fu"><a href="../reference/gradient.html">gradient</a></span><span class="op">(</span></span>
 <span>  <span class="va">model_loss</span>,</span>
 <span>  wrt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"beta"</span>, <span class="st">"alpha"</span><span class="op">)</span></span>
@@ -437,7 +454,7 @@ descent. We group the parameters into a <code>weights</code> list that
 the function both accepts and returns – this shows that inputs and
 outputs of a <code><a href="../reference/jit.html">jit()</a></code>-compiled function can be (nested) lists
 of <code>AnvlArray</code>s, not just bare arrays:</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">update_weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">X</span>, <span class="va">weights</span>, <span class="va">y</span>, <span class="va">lr</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">grads</span> <span class="op">&lt;-</span> <span class="fu">model_loss_grad</span><span class="op">(</span><span class="va">X</span>, <span class="va">weights</span><span class="op">$</span><span class="va">beta</span>, <span class="va">weights</span><span class="op">$</span><span class="va">alpha</span>, <span class="va">y</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
@@ -446,13 +463,13 @@ of <code>AnvlArray</code>s, not just bare arrays:</p>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>This already allows us to fit the linear model.</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>beta <span class="op">=</span> <span class="va">beta</span>, alpha <span class="op">=</span> <span class="va">alpha</span><span class="op">)</span></span>
 <span><span class="va">lr</span> <span class="op">&lt;-</span> <span class="fl">0.1</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">100</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">weights</span> <span class="op">&lt;-</span> <span class="fu">update_weights</span><span class="op">(</span><span class="va">X</span>, <span class="va">weights</span>, <span class="va">y</span>, <span class="va">lr</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><img src="anvl_files/figure-html/unnamed-chunk-18-1.png" class="r-plt" alt="" width="700"></p>
+<p><img src="anvl_files/figure-html/unnamed-chunk-19-1.png" class="r-plt" alt="" width="700"></p>
 <p>One problem with the above approach is that we are creating new
 weight arrays in each iteration and throw away the previous weights,
 just like we saw earlier when demonstrating subset assignment. We can
@@ -491,7 +508,7 @@ and returns a logical flag indicating whether to continue the loop.</li>
 <li>A <code>body</code> function, which takes as input the current state
 and returns a new state.</li>
 </ol>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">train_while</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">X</span>, <span class="va">beta</span>, <span class="va">alpha</span>, <span class="va">y</span>, <span class="va">n_steps</span>, <span class="va">lr</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_while.html">nv_while</a></span><span class="op">(</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>beta <span class="op">=</span> <span class="va">beta</span>, alpha <span class="op">=</span> <span class="va">alpha</span>, i <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>

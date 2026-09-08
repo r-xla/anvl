@@ -31,7 +31,8 @@ prim_argmin(x, axis, drop = TRUE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md) of
-dtype `i32`  
+the default integer data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))  
 Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 
 ## Implemented Rules
