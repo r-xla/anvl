@@ -19,8 +19,9 @@ nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
-function (\code{q}). Can be any float data type; \code{mean} and \code{sd} are brought to
-it. An R value commits to its \link[=default_dtypes]{default data type}.}
+function (\code{q}). \code{x} can be any float data type; \code{q} must be \code{f32} or \code{f64}
+(see "Details"). \code{mean} and \code{sd} are brought to it. An R value commits to
+its \link[=default_dtypes]{default data type}.}
 
 \item{mean}{(\code{\link{arrayish}})\cr
 Mean of the distribution, scalar or the same shape as \code{x}/\code{q}/\code{p}; a scalar
@@ -44,8 +45,8 @@ If \code{TRUE} (default), probabilities are \eqn{P(X \le x)}; otherwise,
 
 \item{p}{(\code{\link{arrayish}})\cr
 Probabilities at which to evaluate the quantile function. Values outside
-\eqn{[0, 1]} give \code{NaN}. Can be any float data type; \code{mean} and \code{sd} are
-brought to it. An R value commits to its
+\eqn{[0, 1]} give \code{NaN}. Must be \code{f32} or \code{f64} (see "Details"); \code{mean}
+and \code{sd} are brought to it. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
@@ -96,7 +97,9 @@ library as used by JAX) for \code{f64}, and uses a new lower degree Remez minima
 rational approximation on the same intervals for \code{f32}.
 
 The thresholds and coefficients of \code{nv_pnorm()} and \code{nv_qnorm()} are written
-for \code{f32} and \code{f64}, so those two are the only data types they accept.
+for \code{f32} and \code{f64}, one set per width, so those two are the only data types
+they accept: a narrower float (\code{f16}, \code{bf16}) is refused rather than served
+by the wrong set. \code{nv_dnorm()} has no coefficients and takes any float.
 }
 \section{Random generation}{
 

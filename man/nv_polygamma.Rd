@@ -13,7 +13,8 @@ typically holds non-negative whole numbers. The two are
 \link[=nv_promote_to_common]{promoted to a common data type}, which must come
 out a float, since that is all \code{\link[=prim_polygamma]{prim_polygamma()}} takes: an integer or
 boolean operand is converted where the other side is a float (or an R
-double, which becomes one), and a call in which neither side is refused.
+double, which becomes one), and a call in which neither side is a float
+is refused.
 Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other,
 so \code{nv_polygamma(1, x)} works for any float \code{x}.}
 }

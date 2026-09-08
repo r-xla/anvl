@@ -15,7 +15,8 @@ Zero-argument function for the true branch.}
 
 \item{false}{(\verb{function()})\cr
 Zero-argument function for the false branch.
-Must return outputs with the same shapes as the true branch.}
+Must return the same structure, data types and shapes as the true
+branch; nothing is promoted.}
 }
 \value{
 (\code{\link{arrayish}} | \code{list})\cr

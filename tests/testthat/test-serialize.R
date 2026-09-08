@@ -67,3 +67,15 @@ test_that("serialization round-trips scalars and typed arrays", {
   expect_equal(lst$scalar, reloaded2$scalar)
   expect_equal(lst$typed, reloaded2$typed)
 })
+
+test_that("nv_serialize() and nv_save() name the argument on a bare array", {
+  # `assert_list(types = )` subsets `arrays` internally and an `AnvlArray` has
+  # a `[` method, so the assertion used to dispatch into `nv_subset()` and the
+  # caller saw a subsetting error.
+  x <- nv_array(c(1, 2, 3))
+  expect_error(nv_serialize(x), "must be a named list of arrays")
+  expect_error(nv_save(x, tempfile()), "must be a named list of arrays")
+  expect_error(nv_serialize(nv_scalar(1)), "must be a named list of arrays")
+  # A named list still works.
+  expect_type(nv_serialize(list(x = x)), "raw")
+})

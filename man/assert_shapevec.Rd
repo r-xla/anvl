@@ -10,16 +10,18 @@ assert_shapevec(x, min_len = 0L, var_name = rlang::caller_arg(x))
 \item{x}{Object to check.}
 
 \item{min_len}{(\code{integer(1)})\cr
-Minimum length of the shape vector. Default is 1.}
+Minimum number of axes. Default is 0, which admits \code{integer()} -- the
+shape of a scalar.}
 
 \item{var_name}{(\code{character(1)})\cr
 Name of the variable to use in error messages.}
 }
 \value{
-(\code{any})\cr
-Invisibly returns \code{x} if the assertion passes.
+(\code{integer()})\cr
+\code{x} as an integer vector.
 }
 \description{
-Check whether an input is a valid shape vector (integer vector with all positive values).
+Check whether an input is a valid shape vector: whole, non-negative axis
+sizes. A zero-size axis is legal, so 0 is accepted.
 }
 \keyword{internal}

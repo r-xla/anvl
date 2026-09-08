@@ -53,9 +53,10 @@ make the array intent explicit.
 }
 \section{Interpolation modes}{
 
-Let \code{h = (n - 1) * q} be the 0-based fractional index for an axis of
-length \code{n} and probability \code{q}, with \code{lo = floor(h)}, \code{hi = ceil(h)},
-\code{frac = h - lo}. Then:
+For an axis of size \code{n} and a probability \code{q}, let
+\code{h = 1 + (n - 1) * q} be the position \code{q} falls at in the sorted values,
+with \code{lo = floor(h)}, \code{hi = ceiling(h)} and \code{frac = h - lo}. Then, writing
+\code{sorted} for the values sorted along the axis:
 \itemize{
 \item \code{"linear"} (default): \code{(1 - frac) * sorted[lo] + frac * sorted[hi]}.
 \item \code{"lower"}: \code{sorted[lo]} — the lower bracket of \code{linear}.

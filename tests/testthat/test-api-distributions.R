@@ -370,3 +370,18 @@ describe("eager/jit equivalence", {
     ))
   })
 })
+
+test_that("nv_pnorm() and nv_qnorm() refuse a float width they have no coefficients for", {
+  # One coefficient set per width, so a narrower float would silently take the
+  # `f64` set -- which the page said was refused.
+  expect_error(
+    trace_fn(function(p) nv_qnorm(p), list(nv_aval("f16", 3L))),
+    "must be a 32- or 64-bit float"
+  )
+  expect_error(
+    trace_fn(function(q) nv_pnorm(q), list(nv_aval("bf16", 3L))),
+    "must be a 32- or 64-bit float"
+  )
+  # `nv_dnorm()` has no coefficients and takes any float.
+  expect_s3_class(trace_fn(function(x) nv_dnorm(x), list(nv_aval("f16", 3L))), "AnvlGraph")
+})

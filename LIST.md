@@ -391,12 +391,73 @@ Not changed, with reasons:
   for a `default_int()` assertion) is fixed, and that test now also checks
   under a moved default.
 
+### Round four
+
+A fourth review confirmed round three and found 35 more, all addressed here.
+
+Bugs:
+
+- `prim_scatter()`'s `update_computation` could not close over an array: the
+  inference stub passed `constants_as_inputs = FALSE`, which needs every
+  constant already bound, and it is not at inference time.
+  `prim_reduce()`'s `reductor` had it right.
+- `nv_serialize()` / `nv_save()` on a single array failed inside
+  `nv_subset()` -- `checkmate::assert_list(types = )` subsets its input, and an
+  `AnvlArray` has a `[` method. The same trap round two fixed in `prim_sort()`,
+  in mirror image.
+- `assert_shapevec()` truncated a fractional axis size and turned one above
+  `.Machine$integer.max` into `NA`: no arm of the check fired for either, so
+  both fell through to `as.integer()`.
+- `nv_top_k()` coerced `k` before checking it and never checked `with_indices`.
+- `prim_while()`'s "init must have only named arguments" never fired for a
+  fully unnamed list, whose `names()` is `NULL`; the call then blamed `body`.
+- `nv_subset()` refused the R value its page promises.
+- `nv_pnorm()` / `nv_qnorm()` served `f16` / `bf16` with the `f64`
+  coefficients, on a page that said they accept only `f32` and `f64`.
+- `vignettes/internals.Rmd` called the unexported `cache_size()` in two
+  chunks, which `knit()` tolerates and `R CMD build` does not. Round two
+  deleted the chunk that defined it and missed these.
+
+Messages. Wherever a mistake was caught by stablehlo's inference -- or, for the
+dynamic slices and `prim_gather()`, by the PJRT compiler as a raw MLIR dump --
+the operation now checks first, so what the message names is what the caller
+passed. Two helpers carry the repeated shapes of this: `assert_arrayish_scalar()`
+and `assert_per_axis()`. Sixteen primitives and five API functions were touched;
+`?nv_quantile`'s formula is stated 1-based; and the words *dimension*,
+*tensor*, *0-dimensional* and *operand* are gone from anvl-authored messages
+and pages.
+
+Documentation corrected: `?LiteralArray` (a `nv_fill()` is a recorded operation,
+not a constant -- the page's own example printed an `AbstractArray` under a
+comment claiming otherwise), `?to_abstract`, `?nv_convert` (wrap vs. saturate vs.
+round), `?nv_eye`'s `like`, `?nv_if`'s branches, `?nv_concatenate`'s
+`axis = NULL`, `?nv_polygamma`'s promotion sentence, `?assert_shapevec`, the
+`shape` argument of `?nv_iota` / `?nv_lower_tri` / `?nv_upper_tri`,
+`vignette("jit")`'s literal and `vignette("anvl")`'s `default_dtypes()` list.
+
+Not changed, with reasons:
+
+- The review flagged the `f64`/`i64` CI override as making some `as_dtype("f64")`
+  assertions vacuous. Each is live in the ordinary run at the registered
+  defaults, so the two workflows cover each other.
+- `with_indices` and the other flags keep `assert_flag()`'s `checkmate` wording,
+  which is the package's house style for a flag; the finding was that
+  `nv_top_k()` had no check at all, and now it has the same one as
+  `nv_cummax()`.
+
 ### Left for you
 
 - `prim_cumprod` is the only cumulative primitive with no reverse rule; the
   gradient needs care around zeros, so it is not written here.
 - Batched `prim_chol()` / `prim_triangular_solve()` have no gradient. Both
   pages now say so; the rules are still worth writing.
+- Shape rendering still differs by path: `(2,3)` from
+  `xlamisc::shapevec_repr()`, `(2x3)` from stablehlo, `array<2x3xf32>` from
+  MLIR. Every anvl-authored message uses the first; settling the rest means
+  changing stablehlo.
+- `f16` / `bf16` are float data types anvl reasons about but no backend
+  materializes. `dtype_materializable()` in `R/rdata.R` is the single place
+  that encodes this, for the staging warning's hint.
 - `axis = NULL` means "all axes" for the reductions, "flatten" for the
   cumulatives and "the last axis" for the order statistics -- the third
   diverges from base R for the S3-dispatched `median()` and `sort()`.

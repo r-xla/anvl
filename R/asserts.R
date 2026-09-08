@@ -1,18 +1,27 @@
 #' @title Assert Shape Vector
 #' @description
-#' Check whether an input is a valid shape vector (integer vector with all positive values).
+#' Check whether an input is a valid shape vector: whole, non-negative axis
+#' sizes. A zero-size axis is legal, so 0 is accepted.
 #' @param x Object to check.
 #' @param min_len (`integer(1)`)\cr
-#'   Minimum length of the shape vector. Default is 1.
+#'   Minimum number of axes. Default is 0, which admits `integer()` -- the
+#'   shape of a scalar.
 #' @param var_name (`character(1)`)\cr
 #'   Name of the variable to use in error messages.
-#' @return (`any`)\cr
-#'   Invisibly returns `x` if the assertion passes.
+#' @return (`integer()`)\cr
+#'   `x` as an integer vector.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   # `lower = 0`: a zero-size axis is a legal shape, and the constructors
   # (`nv_fill()`, `nv_iota()`, `nv_empty()`) all accept one.
-  ok <- test_integerish(x, lower = 0, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
+  ok <- test_integerish(
+    x,
+    lower = 0,
+    upper = .Machine$integer.max,
+    min.len = min_len,
+    any.missing = FALSE,
+    null.ok = FALSE
+  )
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
       cli_abort("{.arg {var_name}} must be an integer vector, not {.cls {class(x)}}")
@@ -26,9 +35,17 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
     if (any(x < 0)) {
       cli_abort(c(
         "{.arg {var_name}} must not contain a negative axis size.",
-        x = "Got {.val {as.integer(x)}}."
+        x = "Got {.val {x}}."
       ))
     }
+    # Everything else `test_integerish()` rejects: a fractional size, or one
+    # above what an R integer holds. Without this arm both fell through to
+    # `as.integer()`, which truncates the first and turns the second into `NA`.
+    int_max <- .Machine$integer.max
+    cli_abort(c(
+      "{.arg {var_name}} must contain whole numbers no larger than {.val {int_max}}.",
+      x = "Got {.val {x}}."
+    ))
   }
   as.integer(x)
 }
@@ -89,7 +106,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   invalid <- shape < -1L
   if (any(invalid)) {
     cli_abort(c(
-      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer a dimension.",
+      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
       x = "Got {.val {shape[invalid]}}."
     ))
   }
@@ -106,7 +123,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   known <- prod(shape[-inferred])
   if (known <= 0 || nelts %% known != 0) {
     cli_abort(c(
-      "Cannot infer dimension {inferred} of {.arg {arg}}.",
+      "Cannot infer the size of axis {inferred} of {.arg {arg}}.",
       x = "{nelts} element{?s} cannot be divided evenly into shape {.val {shape}}."
     ))
   }
@@ -114,9 +131,10 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   shape
 }
 
-# Like `assert_float_dtype()`, but only the widths the RNG can build: it
-# assembles floats out of random bits, so it needs a 32- or 64-bit layout and
-# cannot serve `bf16` or `f16` even though those are floats.
+# Like `assert_float_dtype()`, but only the two widths written for: the RNG
+# assembles floats out of random bits, so it needs a 32- or 64-bit layout, and
+# `nv_pnorm()` / `nv_qnorm()` carry one coefficient set per width. Neither can
+# serve `bf16` or `f16` even though those are floats.
 assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- assert_float_dtype(x, arg = arg, hint = hint)
   if (!dtype_width(dt) %in% c(32L, 64L)) {
@@ -210,6 +228,77 @@ assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt
 }
 
+# Assert that the start indices of a dynamic slice are one integer scalar per
+# axis of `x`. These primitives build their output aval themselves rather than
+# calling stablehlo's inference, so a mistake here survives to the PJRT
+# compiler and reaches the user as a raw MLIR dump.
+assert_start_indices <- function(x, indices, call = rlang::caller_env()) {
+  if (length(indices) != naxes(x)) {
+    cli_abort(
+      c(
+        "One start index per axis of {.arg x} is required.",
+        x = "{.arg x} has {naxes(x)} ax{?is/es}, but {length(indices)} ind{?ex/ices} {?was/were} given."
+      ),
+      call = call
+    )
+  }
+  for (i in seq_along(indices)) {
+    idx <- indices[[i]]
+    if (naxes(idx) != 0L) {
+      cli_abort(
+        c(
+          "Every start index must be a scalar.",
+          x = "Index {i} has shape {xlamisc::shapevec_repr(shape(idx))}."
+        ),
+        call = call
+      )
+    }
+    dt <- peek_dtype(idx)
+    if (!is_dtype_int(dt) && !is_dtype_uint(dt)) {
+      cli_abort(
+        c(
+          "Every start index must have an integer data type.",
+          x = "Index {i} is {.val {as.character(dt)}}.",
+          i = "Convert it with {.fn nv_convert}."
+        ),
+        call = call
+      )
+    }
+  }
+  invisible(NULL)
+}
+
+# Assert that `value` is a scalar, for the operands whose spec allows a single
+# value only (a padding value, a reduction's `init`). stablehlo reports these
+# as "0-dimensional", the word anvl's pages do not use.
+assert_arrayish_scalar <- function(value, arg = rlang::caller_arg(value), call = rlang::caller_env()) {
+  if (naxes(value) != 0L) {
+    cli_abort(
+      c(
+        "{.arg {arg}} must be a scalar.",
+        x = "Got shape {xlamisc::shapevec_repr(shape(value))}."
+      ),
+      call = call
+    )
+  }
+  invisible(NULL)
+}
+
+# Assert that `axes_arg` names one entry per axis of `x`, for the arguments
+# stablehlo checks against the operand rank and reports under its own name.
+assert_per_axis <- function(x, value, arg = rlang::caller_arg(value), call = rlang::caller_env()) {
+  if (length(value) != naxes(x)) {
+    cli_abort(
+      c(
+        "{.arg {arg}} must have one entry per axis of {.arg x}.",
+        x = "{.arg x} has {naxes(x)} ax{?is/es}, but {.arg {arg}} has {length(value)} entr{?y/ies}."
+      ),
+      call = call
+    )
+  }
+  invisible(NULL)
+}
+
 # Assert that the named operands have the same shape, allowing a scalar among
 # them where `scalar_ok` says so. The primitives do not broadcast, so a
 # mismatch is an error either way -- but stablehlo's inference names *its*
@@ -264,7 +353,7 @@ assert_nonempty_axis <- function(x, axis, arg = rlang::caller_arg(x), call = rla
     cli_abort(
       c(
         "{.arg {arg}} must have elements along the axis this reads.",
-        x = "Operand has shape {xlamisc::shapevec_repr(shp)}; axis {axis} has size 0."
+        x = "{.arg {arg}} has shape {xlamisc::shapevec_repr(shp)}; axis {axis} has size 0."
       ),
       call = call
     )

@@ -195,20 +195,14 @@ traces # still 1: served from the cache
 # a different static argument is a different program
 counted_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
 traces # 2
-```
 
-When we execute the function with arrays of different `dtype` or `shape`, the function will be recompiled:
+# a different data type is another one again
+counted_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
+traces # 3
 
-```{r}
-f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
-cache_size(f_jit)
-```
-
-Also, if we provide different values for static arguments, the function will be recompiled:
-
-```{r}
-f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
-cache_size(f_jit)
+# and so is a different shape
+counted_jit(nv_array(c(1, 2), "f32"), nv_array(c(3, 4), "f32"), "add")
+traces # 4
 ```
 
 
@@ -396,7 +390,7 @@ trace_fn(\(x) {
 
 
 There is one special case, however: operations that explicitly request a data type, such as `prim_convert()` and the `nv_array()` constructor.
-If `prim_convert()` were to follow the usual rule of committing its R inputs to their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to an `f32` (the default float data type on pjrt) and then to an `i32`, which would result in a loss of precision.
+If `prim_convert()` were to follow the usual rule of committing its R inputs to their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to the default float (`f32` as pjrt registers it -- see `default_dtypes()`) and then to an `i32`, which would result in a loss of precision.
 In order to prevent this, `prim_convert()` materializes its input at its natural representation.
 
 ```{r}

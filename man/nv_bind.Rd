@@ -36,7 +36,7 @@ Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) axis.
 
 Each input is handled according to its rank:
 \itemize{
-\item 0-D: broadcast to match the non-stacked axes of the other inputs.
+\item a scalar: broadcast to match the non-stacked axes of the other inputs.
 \item 1-D: treated as a single row/column.
 \item Other: used as-is.
 }

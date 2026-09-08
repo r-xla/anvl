@@ -21,8 +21,9 @@ boolean is not one, and is rejected. For \code{nv_iota_like()} it may be
 \code{NULL}, which uses \code{dtype(like)}.}
 
 \item{shape}{(\code{integer()})\cr
-Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
-A plain R vector built into the program, not an array.}
+Shape of the result: one axis size per axis, at least one of them, since
+\code{axis} has to name one. A plain R vector built into the program, not an
+array.}
 
 \item{start}{(\code{integer(1)})\cr
 Starting value (default 1). Built at \code{dtype}, as the increments are.}

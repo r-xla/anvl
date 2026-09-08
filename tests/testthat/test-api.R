@@ -1964,7 +1964,7 @@ describe("nv_reshape", {
     expect_error(nv_reshape(nv_array(1:6), c(-1, -1)), "at most one")
   })
   it("rejects a shape that does not divide evenly", {
-    expect_error(nv_reshape(nv_array(1:6), c(4, -1)), "Cannot infer dimension")
+    expect_error(nv_reshape(nv_array(1:6), c(4, -1)), "Cannot infer the size of axis")
   })
   it("rejects negative values other than -1", {
     expect_error(nv_reshape(nv_array(1:6), c(2, -2)), "must contain only non-negative")
@@ -2262,4 +2262,108 @@ test_that("nv_inv reports its own argument, and gradient accepts any float", {
     jit(gradient(function(x) nv_reduce_sum(nv_convert(x, "i32"))))(nv_array(c(1, 2))),
     "float scalar"
   )
+})
+
+test_that("the API layer checks what its pages promise", {
+  x3 <- nv_array(c(3, 1, 2))
+  f23 <- nv_array(matrix(1:6, 2, 3) + 0)
+
+  # `nv_top_k()` coerced `k` before checking it, so a fractional or logical `k`
+  # was silently truncated where `prim_top_k()` refuses both -- and
+  # `with_indices` reached a bare `if()`.
+  expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 1L, with_indices = 1), "logical flag")
+  expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
+
+  # `nv_quantile()`'s bad-`probs` message was raw `checkmate` output.
+  expect_error(nv_quantile(x3, 1.5), "`probs` must be probabilities")
+  expect_error(nv_quantile(x3, NA_real_), "`probs` must be probabilities")
+
+  # `nv_matmul()` left conformability to `prim_dot_general()`, which reports it
+  # in terms of `contracting_axes` with 0-based numbers.
+  expect_error(nv_matmul(f23, f23), "are not conformable")
+  expect_error(
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(matrix(1, 2, 2))),
+    "same number of axes"
+  )
+  expect_error(
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(array(1, c(3, 2, 2)))),
+    "must have the same batch axes"
+  )
+  expect_equal(shape(nv_matmul(f23, nv_array(matrix(1:6, 3, 2) + 0))), c(2L, 2L))
+
+  # A rank mismatch and a size mismatch are different mistakes.
+  expect_error(nv_concatenate(f23, nv_array(c(1, 2, 3)), axis = 1L), "same number of axes")
+  expect_error(
+    nv_concatenate(f23, nv_array(matrix(1:4, 2, 2) + 0), axis = 1L),
+    "same shape apart from axis 1"
+  )
+
+  # `nv_conv*` reported `kernel_input_feature_dimension` and `N`, neither of
+  # which is an argument of theirs.
+  expect_error(
+    nv_conv1d(nv_array(array(1, c(1, 2, 4))), nv_array(array(1, c(1, 3, 2)))),
+    "`weight`'s second axis"
+  )
+  expect_error(
+    nv_conv1d(nv_array(matrix(1, 2, 2)), nv_array(matrix(1, 2, 2))),
+    "must have 3 axes for a 1-D convolution"
+  )
+  expect_equal(
+    shape(nv_conv1d(nv_array(array(1, c(1, 1, 5))), nv_array(array(1, c(1, 1, 3))))),
+    c(1L, 1L, 3L)
+  )
+
+  # `nv_subset()`'s page says an R value is accepted, and now it is.
+  quos <- list(rlang::quo(1L), rlang::missing_arg())
+  # `as.integer()` rather than `as.vector()`: under an `i64` default the result
+  # comes back as a `bit64::integer64`, whose class `as.vector()` strips.
+  expect_equal(
+    as.integer(as_array(rlang::inject(nv_subset(array(1:6, c(2, 3)), !!!quos)))),
+    c(1L, 3L, 5L)
+  )
+})
+
+test_that("assert_shapevec() rejects what it cannot represent", {
+  # None of the specific arms fired for a fractional or out-of-range size, so
+  # both fell through to `as.integer()` -- truncating the first and turning the
+  # second into `NA`.
+  expect_error(nv_fill(1, shape = 2.7), "must contain whole numbers")
+  expect_error(nv_fill(1, shape = 1e10), "must contain whole numbers")
+  expect_error(nv_fill(1, shape = Inf), "must contain whole numbers")
+  expect_error(nv_fill(1, shape = c(-1L, 2L)), "must not contain a negative axis size")
+  # A zero-size axis is still legal, and the argument keeps its own name.
+  expect_equal(shape(nv_fill(1, shape = c(0L, 3L))), c(0L, 3L))
+  expect_error(nv_fill(1, shape = c(-1L, 2L)), "`shape`")
+})
+
+test_that("the quantile page's formula is the one the code computes", {
+  # `h = 1 + (n - 1) * q` in 1-based terms, as the page now states.
+  x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
+  n <- 4L
+  sorted <- c(1, 2, 3, 4)
+  for (q in c(0, 0.1, 0.3, 0.5, 0.75, 1)) {
+    h <- 1 + (n - 1) * q
+    lo <- floor(h)
+    hi <- ceiling(h)
+    frac <- h - lo
+    want <- list(
+      linear = (1 - frac) * sorted[lo] + frac * sorted[hi],
+      lower = sorted[lo],
+      higher = sorted[hi],
+      nearest = if (frac < 0.5) sorted[lo] else sorted[hi],
+      midpoint = (sorted[lo] + sorted[hi]) / 2
+    )
+    for (mode in names(want)) {
+      expect_equal(
+        as.vector(as_array(nv_quantile(x, q, interpolation = mode))),
+        want[[mode]],
+        tolerance = 1e-12,
+        info = paste(mode, q)
+      )
+    }
+  }
 })

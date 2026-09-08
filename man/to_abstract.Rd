@@ -11,7 +11,7 @@ to_abstract(x, pure = FALSE)
 Object to convert.}
 
 \item{pure}{(\code{logical(1)})\cr
-Whether to convert to a pure \code{AbstractArray} and not e.g. \code{LiteralArray} or \code{ConcreteArray}.}
+Whether to convert to a pure \code{AbstractArray} and not e.g. \code{RData} or \code{ConcreteArray}.}
 }
 \value{
 (\code{\link{AbstractArray}})
@@ -21,12 +21,12 @@ Convert an object to its abstract array representation (\code{\link{AbstractArra
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# R literals become LiteralArrays
+# an R value becomes `RData`: it has no data type of its own yet
 to_abstract(1.5)
 to_abstract(1L)
 to_abstract(TRUE)
 
-# anvlArrays become ConcreteArrays
+# an AnvlArray becomes a ConcreteArray
 to_abstract(nv_array(1:4))
 
 # use pure = TRUE to strip subclass info

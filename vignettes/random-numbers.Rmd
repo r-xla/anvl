@@ -40,10 +40,11 @@ state
 ```
 
 The main functions for generating random numbers are `nv_runif()`, `nv_rnorm()`, `nv_rbinom()`, `nv_sample_int()`, and `nv_sample()`.
-All those functions return a list with two elements:
+All those functions return a named list of two elements:
 
-1. The **new** RNG state (to be used for subsequent random number generation).
-2. The generated random numbers.
+1. `state` -- the **new** RNG state, to be used for subsequent random number
+   generation.
+2. `values` -- the generated random numbers.
 
 Let's generate some uniform random numbers:
 

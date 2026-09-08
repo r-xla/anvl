@@ -167,7 +167,7 @@ AnvlGraph <- function(
 #' Descriptor of an [`AnvlGraph`]. This is a mutable class.
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param tensor_to_gval (`hashtab`)\cr
+#' @param data_to_gval (`hashtab`)\cr
 #'   Mapping: `AnvlArray` -> `GraphValue`
 #' @param gval_to_box (`hashtab`)\cr
 #'   Mapping: `GraphValue` -> `GraphBox`
@@ -204,7 +204,7 @@ AnvlGraph <- function(
 #' @export
 GraphDescriptor <- function(
   calls = list(),
-  tensor_to_gval = NULL,
+  data_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -226,7 +226,7 @@ GraphDescriptor <- function(
   if (length(calls)) {
     env$calls$madd(.list = calls)
   }
-  env$data_to_gval <- tensor_to_gval %||% hashtab()
+  env$data_to_gval <- data_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
   env$constants <- constants
   env$in_tree <- in_tree

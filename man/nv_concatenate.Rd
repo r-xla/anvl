@@ -16,7 +16,8 @@ along \code{axis}.}
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to concatenate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.
-If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along axis 1.}
+If \code{NULL} (default), concatenates along axis 1, which requires every
+input to be at most 1-D.}
 }
 \value{
 (\code{\link{arrayish}})\cr

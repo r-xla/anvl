@@ -9,12 +9,13 @@
 #' standard deviation `sd`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
-#'   function (`q`). Can be any float data type; `mean` and `sd` are brought to
-#'   it. An R value commits to its [default data type][default_dtypes].
+#'   function (`q`). `x` can be any float data type; `q` must be `f32` or `f64`
+#'   (see "Details"). `mean` and `sd` are brought to it. An R value commits to
+#'   its [default data type][default_dtypes].
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
-#'   \eqn{[0, 1]} give `NaN`. Can be any float data type; `mean` and `sd` are
-#'   brought to it. An R value commits to its
+#'   \eqn{[0, 1]} give `NaN`. Must be `f32` or `f64` (see "Details"); `mean`
+#'   and `sd` are brought to it. An R value commits to its
 #'   [default data type][default_dtypes].
 #' @param mean ([`arrayish`])\cr
 #'   Mean of the distribution, scalar or the same shape as `x`/`q`/`p`; a scalar
@@ -48,7 +49,9 @@
 #' rational approximation on the same intervals for `f32`.
 #'
 #' The thresholds and coefficients of `nv_pnorm()` and `nv_qnorm()` are written
-#' for `f32` and `f64`, so those two are the only data types they accept.
+#' for `f32` and `f64`, one set per width, so those two are the only data types
+#' they accept: a narrower float (`f16`, `bf16`) is refused rather than served
+#' by the wrong set. `nv_dnorm()` has no coefficients and takes any float.
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
@@ -110,7 +113,9 @@ nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   mean <- args$mean
   sd <- args$sd
   # The thresholds below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(q), arg = "q")
+  # One coefficient set per width, so a narrower float has none: it would
+  # silently take the `f64` set.
+  op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
 
   # Standardise, flipping sign if computing upper tail
   d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
@@ -306,7 +311,8 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   mean <- args$mean
   sd <- args$sd
   # The coefficients below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(p), arg = "p")
+  # One coefficient set per width -- see `nv_pnorm()`.
+  op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
 
   is_f32 <- op_dtype == "f32"
 

@@ -224,7 +224,7 @@ linear_default_b <- function(x, w) linear(x, w, default_b)
 trace_fn(linear_default_b, args = list(x = f32_scalar, w = f32_scalar))
 ```
 
-The graph contains an `add` whose second operand is the literal `5` -- the value is hard-wired into the program, at the default float data type.
+The graph contains an `add` whose second operand is the literal `5` -- the value is hard-wired into the program, at the data type of the array it meets (`f32` here, from the `f32` inputs; a default only steps in for a literal that meets nothing typed).
 Changing `default_b` afterwards has no effect on the graph (and, once the graph is compiled, no effect on the executable either).
 
 ### Side effects only fire during tracing

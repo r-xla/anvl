@@ -792,16 +792,18 @@ ConcreteArray <- function(data) {
 
 #' @title Literal Array Class
 #' @description
-#' An [`AbstractArray`] where all elements have the same constant value.
-#' This either arises when using literals in traced code (e.g. `x + 1`) or when using
-#' [`nv_fill()`] to create a constant.
+#' An [`AbstractArray`] where all elements have the same constant value. This
+#' arises from a literal in traced code (`x + 1`, say). A [`nv_fill()`] is a
+#' recorded operation rather than a constant, so its output is an ordinary
+#' [`AbstractArray`].
 #'
 #' @section Lowering:
 #' `LiteralArray`s become constants inlined into the StableHLO program.
 #' I.e., they lower to [`hlo_tensor()`].
 #'
 #' @param data (`double(1)` | `integer(1)` | `logical(1)` | [`AnvlArray`])\cr
-#'   The scalar value or scalarish AnvlArray (contains 1 element).
+#'   The scalar value, or a one-element [`AnvlArray`] -- for which `dtype` has
+#'   to be named, since the default takes it from an R value's storage type.
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array.
 #' @param dtype ([`tengen::DataType`])\cr
@@ -813,19 +815,18 @@ ConcreteArray <- function(data) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # how it appears during tracing:
-#' # 1. via R literals
+#' # how it appears during tracing: an R literal that meets nothing
 #' graph <- trace_fn(function() 1, list())
 #' graph
 #' graph$outputs[[1]]$aval
-#' # 2. via nv_fill()
+#' # a `nv_fill()`, by contrast, is a recorded operation
 #' graph <- trace_fn(function() nv_fill(2L, shape = c(2, 2)), list())
 #' graph
 #' graph$outputs[[1]]$aval
 #' @export
 LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
   if (!is_valid_r_lit(data) && !inherits(data, "AnvlArray")) {
-    cli_abort("LiteralArrays expect scalars or AnvlArray")
+    cli_abort("{.arg data} must be a scalar or a one-element {.cls AnvlArray}.")
   }
   if (inherits(data, "AnvlArray")) {
     if (prod(shape(data)) != 1L) {
@@ -1034,15 +1035,15 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #' @param x (`any`)\cr
 #'   Object to convert.
 #' @param pure (`logical(1)`)\cr
-#'   Whether to convert to a pure `AbstractArray` and not e.g. `LiteralArray` or `ConcreteArray`.
+#'   Whether to convert to a pure `AbstractArray` and not e.g. `RData` or `ConcreteArray`.
 #' @return ([`AbstractArray`])
 #' @examplesIf pjrt::plugins_downloaded()
-#' # R literals become LiteralArrays
+#' # an R value becomes `RData`: it has no data type of its own yet
 #' to_abstract(1.5)
 #' to_abstract(1L)
 #' to_abstract(TRUE)
 #'
-#' # anvlArrays become ConcreteArrays
+#' # an AnvlArray becomes a ConcreteArray
 #' to_abstract(nv_array(1:4))
 #'
 #' # use pure = TRUE to strip subclass info

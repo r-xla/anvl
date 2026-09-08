@@ -124,7 +124,27 @@
 * The staging warning (`anvl_staging_widens_warning`) no longer fires where the
   caller has no way to avoid the staging -- under a default integer narrower
   than `i32`, where converting in its own category first would stage through
-  `i32` too. Its hint used to name a remedy that could not work.
+  `i32` too, or under a default float no backend can materialize. Its hint used
+  to name a remedy that could not work.
+* `prim_scatter()`'s `update_computation` may close over an array again. The
+  inference stub asked for the sub-graph's constants to already be bound, which
+  they are not at inference time, so a closed-over array failed with
+  `GraphValue not found in environment` where `prim_reduce()`'s `reductor`
+  accepted one.
+* `nv_serialize()` and `nv_save()` given a single array now say so, instead of
+  failing inside `nv_subset()`: `checkmate::assert_list(types = )` subsets its
+  input, and an `AnvlArray` has a `[` method.
+* `nv_subset()` accepts a plain R array, as its page says.
+* `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k` is
+  refused rather than silently truncated, and it validates `with_indices`.
+* `assert_shapevec()` -- and so every `shape` argument -- rejects a fractional
+  axis size instead of truncating it, and one above `.Machine$integer.max`
+  instead of turning it into `NA`.
+* `prim_while()` names `init` when it is not a named list. A fully unnamed list
+  slipped past the check (`names()` is `NULL`) and the call died blaming `body`.
+* `nv_pnorm()` and `nv_qnorm()` refuse `f16` / `bf16`, which their page already
+  said they do not accept; a narrower float silently took the `f64`
+  coefficients.
 
 ## Documentation
 
@@ -165,8 +185,31 @@
   of pinning `f32` for the data and the default for the learning rate, which did
   not agree under an `f64` default.
 * A number of error messages now speak anvl's vocabulary -- *scalar* rather than
-  "0-dimensional array", the offending shapes rather than "lhs and rhs are not
-  broadcastable", and the argument's name rather than a stablehlo operand name.
+  "0-dimensional array", *axis size* rather than "dimension", the offending
+  shapes rather than "lhs and rhs are not broadcastable", and the argument's
+  name rather than a stablehlo operand name. Where a mistake used to be caught
+  by stablehlo's inference (or, for the dynamic slices and `prim_gather()`, by
+  the PJRT compiler as a raw MLIR dump), the operation checks first, so the
+  message names what the caller passed: `prim_clamp()`, `prim_ifelse()`,
+  `prim_polygamma()`, `prim_broadcast_in_axes()`, `prim_pad()`,
+  `prim_reduce()`, `prim_if()`, `prim_static_slice()`, `prim_dynamic_slice()`,
+  `prim_dynamic_update_slice()`, `prim_gather()`, `prim_reshape()`,
+  `prim_concatenate()`, `prim_iota()`, `prim_dot_general()`, `nv_matmul()`,
+  `nv_concatenate()`, `nv_quantile()` and `nv_conv1d()` / `2d` / `3d`.
+* `?nv_quantile`'s interpolation formula is stated in 1-based terms, so it
+  gives the number the function returns.
+* `?nv_convert` says what happens to a value the target cannot hold: an
+  integer narrowing wraps, a float reaching an integer truncates toward zero
+  and saturates, a float narrowing rounds.
+* Corrected: `?LiteralArray` (a `nv_fill()` is a recorded operation, not a
+  constant), `?to_abstract` (an R value becomes `RData`), `?nv_eye`'s `like`,
+  `?nv_if`'s branches (data types must agree too, since nothing is promoted),
+  `?nv_concatenate`'s `axis = NULL`, `?nv_polygamma`'s promotion sentence,
+  `?assert_shapevec`'s `min_len` and return value, and the `shape` argument of
+  `?nv_iota` / `?nv_lower_tri` / `?nv_upper_tri`, which cannot be `integer()`.
+* `vignette("jit")` no longer credits the default float for a literal that took
+  its data type from the array it met, and `vignette("anvl")` no longer lists
+  `bool` among what `default_dtypes()` reports.
 
 ## Tests
 

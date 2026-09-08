@@ -225,8 +225,13 @@ nv_broadcast_to <- function(x, shape) {
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Target data type. Can be any data type; the values are converted, so the
-#'   result may lose precision or wrap around.
+#'   Target data type. Can be any data type. The values are converted, and what
+#'   happens to one the target cannot hold depends on the pair: a narrowing
+#'   between integer data types wraps (`nv_convert(nv_array(300L), "i8")` is
+#'   44); a float converted to an integer truncates toward zero and saturates
+#'   at the target's range (`300` reaches `i8` as 127, `-1` reaches `ui8` as 0,
+#'   and `NaN` becomes 0); a narrowing between floats rounds, and may become
+#'   `Inf`.
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and the input's shape.
 #' @seealso [prim_convert()] for the underlying primitive.
@@ -323,7 +328,8 @@ nv_flatten <- function(x) {
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to concatenate.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#'   If `NULL` (default), assumes all inputs are at most 1-D and concatenates along axis 1.
+#'   If `NULL` (default), concatenates along axis 1, which requires every
+#'   input to be at most 1-D.
 #' @return ([`arrayish`])\cr
 #'   Has the common data type and a shape matching the inputs in all
 #'   axes except `axis`, which is the sum of input sizes.
@@ -352,13 +358,22 @@ nv_concatenate <- function(..., axis = NULL) {
     axis <- resolve_axis(axis, max_axis)
   }
 
+  # A rank mismatch and a size mismatch are different mistakes; reported
+  # together the diagnosis reads as if the sizes were the problem.
+  non_scalar_ranks <- unique(lengths(non_scalar_shapes))
+  if (length(non_scalar_ranks) > 1L) {
+    cli_abort(c(
+      "All non-scalar arrays must have the same number of axes.",
+      x = "Got shapes {shapes2string(shapes)}."
+    ))
+  }
   non_scalar_shapes_without_axis <- lapply(non_scalar_shapes, \(shape) {
     shape[-axis]
   })
   if (length(non_scalar_shapes) && length(unique(non_scalar_shapes_without_axis)) != 1L) {
     cli_abort(c(
-      "All non-scalar arrays must have the same shape (except for the concatenation axis)",
-      x = "Got shapes {shapes2string(shapes)} and axis {axis}"
+      "All non-scalar arrays must have the same shape apart from axis {axis}, the one they are joined along.", # nolint
+      x = "Got shapes {shapes2string(shapes)}."
     ))
   }
   size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
@@ -388,7 +403,7 @@ nv_concatenate <- function(..., axis = NULL) {
 #'
 #' Each input is handled according to its rank:
 #'
-#' * 0-D: broadcast to match the non-stacked axes of the other inputs.
+#' * a scalar: broadcast to match the non-stacked axes of the other inputs.
 #' * 1-D: treated as a single row/column.
 #' * Other: used as-is.
 #'
@@ -1602,7 +1617,8 @@ nv_lgamma <- prim_lgamma
 #'   [promoted to a common data type][nv_promote_to_common()], which must come
 #'   out a float, since that is all [prim_polygamma()] takes: an integer or
 #'   boolean operand is converted where the other side is a float (or an R
-#'   double, which becomes one), and a call in which neither side is refused.
+#'   double, which becomes one), and a call in which neither side is a float
+#'   is refused.
 #'   Scalars are [broadcast][nv_broadcast_scalars()] to the shape of the other,
 #'   so `nv_polygamma(1, x)` works for any float `x`.
 #' @template return_binary
@@ -1766,7 +1782,10 @@ nv_reverse <- prim_reverse
 #'   Data type of the result, required here. Can be any numeric data type;
 #'   boolean is not one, and is rejected. For `nv_iota_like()` it may be
 #'   `NULL`, which uses `dtype(like)`.
-#' @template param_shape
+#' @param shape (`integer()`)\cr
+#'   Shape of the result: one axis size per axis, at least one of them, since
+#'   `axis` has to name one. A plain R vector built into the program, not an
+#'   array.
 #' @param start (`integer(1)`)\cr
 #'   Starting value (default 1). Built at `dtype`, as the increments are.
 #' @template param_device
@@ -2006,7 +2025,32 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   if (naxes(rhs) < 2L) {
     cli_abort("{.arg rhs} must have at least 2 axes, but it has {naxes(rhs)}.")
   }
+  # The commonest shape mistake in the package. Left to `prim_dot_general()` it
+  # would be reported in terms of `contracting_axes`, which `nv_matmul()` does
+  # not have.
+  if (naxes(lhs) != naxes(rhs)) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have the same number of axes.",
+      x = "{.arg lhs} is {xlamisc::shapevec_repr(shape(lhs))} and {.arg rhs} is {xlamisc::shapevec_repr(shape(rhs))}." # nolint
+    ))
+  }
+  inner_lhs <- shape(lhs)[naxes(lhs)]
+  inner_rhs <- shape(rhs)[naxes(rhs) - 1L]
+  if (inner_lhs != inner_rhs) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} are not conformable.",
+      x = "The last axis of {.arg lhs} has size {inner_lhs}, but the second-to-last axis of {.arg rhs} has size {inner_rhs}." # nolint
+    ))
+  }
   nbatch <- naxes(lhs) - 2L
+  batch_lhs <- shape(lhs)[seq_len(nbatch)]
+  batch_rhs <- shape(rhs)[seq_len(nbatch)]
+  if (!identical(batch_lhs, batch_rhs)) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have the same batch axes -- the axes before the last two.",
+      x = "{.arg lhs} has {xlamisc::shapevec_repr(batch_lhs)} and {.arg rhs} has {xlamisc::shapevec_repr(batch_rhs)}." # nolint
+    ))
+  }
   prim_dot_general(
     lhs,
     rhs,
@@ -2521,7 +2565,7 @@ nv_diag <- function(x) {
 #' `like`.
 #' @param n (`integer(1)`)\cr
 #'   Size of the identity matrix.
-#' @param like ([`arrayish`])\cr
+#' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_eye_like()`).
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
@@ -2979,7 +3023,8 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
 #'   Zero-argument function for the true branch.
 #' @param false (`function()`)\cr
 #'   Zero-argument function for the false branch.
-#'   Must return outputs with the same shapes as the true branch.
+#'   Must return the same structure, data types and shapes as the true
+#'   branch; nothing is promoted.
 #' @return ([`arrayish`] | `list`)\cr
 #'   Result of the executed branch: an array, or a tree of them in the sense
 #'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
@@ -3377,7 +3422,9 @@ assert_tri_args <- function(shape, diagonal) {
 #' Returns a boolean matrix that is `TRUE` on and below the given diagonal,
 #' mirroring base R's `lower.tri()`. Use [nv_tril()] to zero out the other
 #' triangle of an existing array instead.
-#' @template param_shape
+#' @param shape (`integer()`)\cr
+#'   Shape of the result: exactly two axis sizes, since the result is a matrix.
+#'   A plain R vector built into the program, not an array.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
 #'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
@@ -3409,7 +3456,9 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #' Returns a boolean matrix that is `TRUE` on and above the given diagonal,
 #' mirroring base R's `upper.tri()`. Use [nv_triu()] to zero out the other
 #' triangle of an existing array instead.
-#' @template param_shape
+#' @param shape (`integer()`)\cr
+#'   Shape of the result: exactly two axis sizes, since the result is a matrix.
+#'   A plain R vector built into the program, not an array.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
 #'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to
@@ -3761,14 +3810,22 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
+  assert_flag(with_indices)
   x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
   }
   axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+  # Check before coercing: `as.integer()` first would silently truncate a
+  # fractional `k` and accept a logical one, where `prim_top_k()` refuses both.
+  if (!checkmate::test_int(k, lower = 1L, upper = shape(x)[axis])) {
+    cli_abort(c(
+      "{.arg k} must be a single whole number between 1 and the size of {.arg axis}.",
+      x = "Axis {axis} has size {shape(x)[axis]}, and {.arg k} is {.val {k}}."
+    ))
+  }
   k <- as.integer(k)
-  assert_int(k, lower = 1L, upper = shape(x)[axis])
 
   # prim_top_k operates on the last axis; transpose axis to last and back.
   if (axis != rank) {
@@ -3803,9 +3860,10 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' Plain length-K (K > 1) vectors are rejected; wrap with `array()` to
 #' make the array intent explicit.
 #' @section Interpolation modes:
-#' Let `h = (n - 1) * q` be the 0-based fractional index for an axis of
-#' length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
-#' `frac = h - lo`. Then:
+#' For an axis of size `n` and a probability `q`, let
+#' `h = 1 + (n - 1) * q` be the position `q` falls at in the sorted values,
+#' with `lo = floor(h)`, `hi = ceiling(h)` and `frac = h - lo`. Then, writing
+#' `sorted` for the values sorted along the axis:
 #'
 #' * `"linear"` (default): `(1 - frac) * sorted[lo] + frac * sorted[hi]`.
 #' * `"lower"`: `sorted[lo]` — the lower bracket of `linear`.
@@ -3853,7 +3911,12 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   if (!is_valid_r(probs)) {
     cli_abort("{.arg probs} must either be a length-1 numeric or 1-D R array.")
   }
-  checkmate::assert_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)
+  if (!checkmate::test_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)) {
+    cli_abort(c(
+      "{.arg probs} must be probabilities: numbers between 0 and 1, none missing.",
+      x = "Got {.val {as.vector(probs)}}."
+    ))
+  }
 
   is_probs_array <- !is.null(dim(probs))
   if (is_probs_array && length(dim(probs)) != 1L) {
@@ -4222,6 +4285,37 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
   args <- as_anvl_arrays(x = x, weight = weight, .promote = promote_common())
   x <- args$x
   weight <- args$weight
+  assert_int(groups, lower = 1L)
+  # `prim_convolution()` and stablehlo below both speak of `lhs`, `rhs` and
+  # `kernel_input_feature_dimension`; none of those is an argument here.
+  for (nm in c("x", "weight")) {
+    value <- get(nm)
+    if (naxes(value) != n + 2L) {
+      cli_abort(c(
+        "{.arg {nm}} must have {n + 2L} axes for a {n}-D convolution.",
+        x = "Got shape {xlamisc::shapevec_repr(shape(value))}."
+      ))
+    }
+  }
+  in_channels <- shape(x)[2L]
+  if (in_channels %% groups != 0L) {
+    cli_abort(c(
+      "{.arg groups} must divide the number of input channels of {.arg x}.",
+      x = "{.arg x} has {in_channels} input channel{?s}, and {.arg groups} is {groups}."
+    ))
+  }
+  if (shape(weight)[2L] != in_channels / groups) {
+    cli_abort(c(
+      "{.arg weight}'s second axis must be {.arg x}'s input channels divided by {.arg groups}.",
+      x = "Expected {in_channels / groups}, but {.arg weight} is {xlamisc::shapevec_repr(shape(weight))}."
+    ))
+  }
+  if (shape(weight)[1L] %% groups != 0L) {
+    cli_abort(c(
+      "{.arg groups} must divide the number of output channels of {.arg weight}.",
+      x = "{.arg weight} has {shape(weight)[1L]} output channel{?s}, and {.arg groups} is {groups}."
+    ))
+  }
   stride <- .nv_conv_vec(stride, n, "stride")
   pad <- .nv_conv_vec(padding, n, "padding")
   dilation <- .nv_conv_vec(dilation, n, "dilation")

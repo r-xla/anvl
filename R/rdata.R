@@ -181,7 +181,8 @@ rdata_staging_dtype <- function(r_type, dtype) {
   # unavoidable, because converting in its own category first would stage
   # through `i32` too. Warning there would offer a remedy that does not exist.
   own_default <- default_dtype_r(r_type)
-  if (!dtype_holds(own_default, staged) && rdata_builds_directly(r_type, own_default)) {
+  remedy_works <- rdata_builds_directly(r_type, own_default) && dtype_materializable(own_default)
+  if (!dtype_holds(own_default, staged) && remedy_works) {
     cli_warn(
       c(
         "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
@@ -192,6 +193,15 @@ rdata_staging_dtype <- function(r_type, dtype) {
     )
   }
   staged
+}
+
+# Whether a backend can hold an array of this data type at all. `f16` and
+# `bf16` are float data types everywhere anvl reasons about data types, but no
+# backend materializes them yet -- see `?dtypes`. The one caller is the staging
+# warning, whose hint must not recommend a conversion that cannot be built;
+# this is the single place to update when a backend gains them.
+dtype_materializable <- function(dtype) {
+  !is_dtype_float(dtype) || dtype_width(dtype) >= 32L
 }
 
 rdata_in_category <- function(r_type, dtype) {

@@ -9,9 +9,11 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       }
 
       if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
+        # `repr()` on a data type gives stablehlo's spelling (`i1` for a
+        # boolean); the pages speak anvl's, which `as.character()` gives.
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          x = "Got {repr(peek_dtype(args_flat[[i]]))}"
+          x = "Got {.val {as.character(peek_dtype(args_flat[[i]]))}}."
         ))
       }
 

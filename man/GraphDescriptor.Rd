@@ -6,7 +6,7 @@
 \usage{
 GraphDescriptor(
   calls = list(),
-  tensor_to_gval = NULL,
+  data_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -24,7 +24,7 @@ GraphDescriptor(
 \item{calls}{(\code{list(PrimitiveCall)})\cr
 The primitive calls that make up the graph.}
 
-\item{tensor_to_gval}{(\code{hashtab})\cr
+\item{data_to_gval}{(\code{hashtab})\cr
 Mapping: \code{AnvlArray} -> \code{GraphValue}}
 
 \item{gval_to_box}{(\code{hashtab})\cr
