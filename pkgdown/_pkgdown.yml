@@ -83,6 +83,7 @@ reference:
       - nv_fill
       - nv_iota
       - nv_seq
+      - nv_linspace
       - nv_diag
       - nv_eye
       - as_anvl_array

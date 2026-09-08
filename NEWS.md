@@ -7,8 +7,15 @@
   With it, also the promotion behavior of various primitives and API
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
+* `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
+  accumulate a boolean array at `i32` instead of returning a boolean.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
+* The `steps` argument of `nv_seq()` / `nv_seq_like()` was removed.
+* `default_backend()` is now called `active_backend()`.
+* There is now exactly one backend used at a time and it is configured via the
+  `anvl.backend` option.
+* A `Shape` is now represented as an integer vector.
 
 ## Features
 
@@ -16,18 +23,11 @@
   configured via the `anvl.default_dtypes` field.
   You can configure this for a specific scope via `local_default_dtypes()`
   and `with_default_dtypes()`.
+* New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with
+  a provided `steps` argument.
 * `as.vector` now and returns `bit64::integer64`
   for integer types that don't fit into R's 32 bit integers.
-* There is now exactly one backend used at a time and it is configured via the
-  `anvl.backend` option.
   With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
-* `default_backend()` is now called `active_backend()`.
-* A `Shape` (re-exported from {stablehlo}) *is* its integer vector now, with a
-  class attached, rather than a list wrapping one. `length(shape)` is the number
-  of axes, `shape[i]` is the size of axis `i`, and `shape$dims` is gone -- read
-  the axis sizes with `unclass()`. `shape()` keeps working on an array; it is
-  only the `Shape` object itself that no longer has a `shape()` method, having
-  nothing left to unwrap.
 
 ## Bug fixes
 

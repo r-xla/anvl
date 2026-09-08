@@ -89,6 +89,7 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' # scalar 1 is broadcast to shape [3]
 #' nv_broadcast_scalars(x, nv_scalar(1))
 #' @export
+#' @jit
 nv_broadcast_scalars <- function(...) {
   args <- as_anvl_arrays(...)
   shapes <- lapply(args, shape)
@@ -127,6 +128,7 @@ nv_broadcast_scalars <- function(...) {
 #' # integer is promoted to float
 #' nv_promote_to_common(x, y)
 #' @export
+#' @jit
 nv_promote_to_common <- function(...) {
   # An R value has no dtype to convert *from*: it is built at the common one
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
@@ -1375,7 +1377,8 @@ nv_reverse <- prim_reverse
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and `shape`.
-#' @seealso [nv_seq()] for a simpler 1-D sequence, [prim_iota()] for the underlying primitive.
+#' @seealso [nv_seq()] for a simpler 1-D sequence, [nv_linspace()] for evenly
+#'   spaced values, [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 #' x <- nv_fill(0L, shape = c(2, 3))
@@ -1385,52 +1388,89 @@ nv_iota <- prim_iota
 
 #' @title Sequence
 #' @description
-#' Creates a 1-D array with values from `start` to `end` (inclusive).
-#'
-#' Without `steps`, behaves like R's `seq(start, end)` producing integer values.
-#' With `steps`, produces `steps` evenly spaced values (like `seq(start, end, length.out = steps)`).
+#' Creates a 1-D array with the consecutive integer values from `start` to
+#' `end` (inclusive), like R's `seq(start, end)`.
 #'
 #' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
-#' @param start,end (`numeric(1)`)\cr
-#'   Start and end values. When `steps` is `NULL`, must satisfy `start <= end`.
-#' @param steps (`integer(1)` or `NULL`)\cr
-#'   Number of evenly spaced values to generate. Must be at least 1.
-#'   When `NULL` (default), generates consecutive integer values from `start` to `end`.
+#' @param start,end (`integer(1)`)\cr
+#'   Start and end values, which must satisfy `start <= end`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type. `NULL` (default) uses the backend's default integer data type
-#'   when `steps` is `NULL` and its default float data type when `steps` is
-#'   given (see [`default_dtypes()`]). For `nv_seq_like()`, `NULL` uses
-#'   `dtype(like)`.
+#'   (see [`default_dtypes()`]). For `nv_seq_like()`, `NULL` uses `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   1-D array of length `end - start + 1`.
+#' @seealso [nv_linspace()] for a given number of evenly spaced values,
+#'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
+#' @jit static 1:4
+nv_seq <- function(start, end, dtype = NULL, device = NULL) {
+  dtype <- dtype %||% default_int()
+  assert_int(start)
+  assert_int(end)
+  assert(start <= end)
+  nv_iota(
+    shape = end - start + 1,
+    dtype = dtype,
+    axis = 1L,
+    start = start,
+    device = device
+  )
+}
+
+#' @title Evenly Spaced Sequence
+#' @description
+#' Creates a 1-D array with `steps` evenly spaced values from `start` to `end`
+#' (both inclusive), like R's `seq(start, end, length.out = steps)`.
+#'
+#' The spacing `(end - start) / (steps - 1)` is generally not a whole number, so
+#' the result is floating-point and `dtype` must name a float data type. Convert
+#' the result with [`nv_convert()`] to obtain integers, which leaves the
+#' rounding yours to choose.
+#'
+#' `nv_linspace_like()` is a variant where `dtype` and `device`
+#' default to those of `like`.
+#' @param start,end (`numeric(1)`)\cr
+#'   First and last value of the sequence. `end` may lie below `start`, in
+#'   which case the values decrease.
+#' @param steps (`integer(1)`)\cr
+#'   Number of values to generate. Must be at least 1; for `steps = 1` the
+#'   result is `start`.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Floating-point data type. `NULL` (default) uses the backend's default
+#'   float data type (see [`default_dtypes()`]).
+#'   For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must then be a
+#'   floating-point data type.
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_linspace_like()`).
+#' @template param_device
+#' @return [`arrayish`]\cr
+#'   1-D array of length `steps`.
+#' @seealso [nv_seq()] for consecutive integers.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_linspace(0, 1, steps = 5L)
+#' x <- nv_array(c(1, 2, 3), dtype = "f64")
+#' nv_linspace_like(x, 0, 1, steps = 3L)
+#' @export
 #' @jit static 1:5
-nv_seq <- function(start, end, steps = NULL, dtype = NULL, device = NULL) {
-  if (is.null(steps)) {
-    # REVIEW: Inconsistent return types is bad. Split up into nv_linspace
-    dtype <- dtype %||% default_int()
-    assert_int(start)
-    assert_int(end)
-    assert(start <= end)
-    return(nv_iota(
-      shape = end - start + 1,
-      dtype = dtype,
-      axis = 1L,
-      start = start,
-      device = device
-    ))
-  }
-  dtype <- dtype %||% default_float()
+nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
+  assert_number(start)
+  assert_number(end)
   assert_int(steps, lower = 1L)
+  dtype <- assert_float_dtype(
+    dtype %||% default_float(),
+    arg = "dtype",
+    hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
+  )
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
   }
@@ -2020,12 +2060,17 @@ nv_eye <- function(n, dtype = NULL, device = NULL) {
   resolve_axes(axes, naxes(x), arg = "axes", unique = TRUE)
 }
 
+.count_bool <- function(x) {
+  if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int()) else x
+}
+
 #' @title Sum Reduction
 #' @description
 #' Sums array elements along the specified axes.
+#' A boolean array is counted, like [base::sum()] does.
 #' @template param_x
 #' @template params_reduce
-#' @template return_reduce
+#' @template return_reduce_accumulate
 #' @template param_nan_rm
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2034,9 +2079,11 @@ nv_eye <- function(n, dtype = NULL, device = NULL) {
 #' nv_reduce_sum(x, axes = 1L)
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)))
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#' nv_reduce_sum(nv_array(c(TRUE, FALSE, TRUE))) # counts: 2
 #' @export
+#' @jit static 2:4
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 0, x)
@@ -2077,9 +2124,10 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @title Product Reduction
 #' @description
 #' Multiplies array elements along the specified axes.
+#' A boolean array is multiplied as zeroes and ones, like [base::prod()] does.
 #' @template param_x
 #' @template params_reduce
-#' @template return_reduce
+#' @template return_reduce_accumulate
 #' @template param_nan_rm
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2089,8 +2137,9 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)))
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), 1, x)
@@ -2113,6 +2162,7 @@ nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_reduce_max(nv_array(c(1, NaN, 3)))
 #' nv_reduce_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
@@ -2134,6 +2184,7 @@ nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_reduce_min(nv_array(c(1, NaN, 3)))
 #' nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
@@ -2198,11 +2249,12 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' @title Cumulative Sum
 #' @description
 #' Cumulative sum, optionally along a single axis.
+#' A boolean array is counted, like [base::cumsum()] does.
 #' @template param_x
 #' @templateVar cum_base_fn cumsum
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
-#' @template return_unary
+#' @template return_cum_accumulate
 #' @templateVar cum_nv_name nv_cumsum
 #' @template section_nv_cum_relation
 #' @seealso [prim_cumsum()] for the underlying primitive.
@@ -2215,7 +2267,7 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' @export
 #' @jit static 2:3
 nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
@@ -2229,11 +2281,12 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @title Cumulative Product
 #' @description
 #' Cumulative product, optionally along a single axis.
+#' A boolean array is multiplied as zeroes and ones, like [base::cumprod()] does.
 #' @template param_x
 #' @templateVar cum_base_fn cumprod
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
-#' @template return_unary
+#' @template return_cum_accumulate
 #' @templateVar cum_nv_name nv_cumprod
 #' @template section_nv_cum_relation
 #' @seealso [prim_cumprod()] for the underlying primitive.
@@ -2246,7 +2299,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:3
 nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
+  x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
     axis <- 1L
@@ -2432,6 +2485,7 @@ nv_is_nan <- function(x) {
 #' x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 #' nv_is_infinite(x)
 #' @export
+#' @jit
 nv_is_infinite <- function(x) {
   x <- as_anvl_array(x)
   !nv_is_finite(x) & (x == x)
@@ -3235,6 +3289,7 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 #' nv_argmax(nv_array(c(1, NaN, 3)))
 #' nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
@@ -3267,6 +3322,7 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)))
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 #' @export
+#' @jit static 2:4
 nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {

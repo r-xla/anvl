@@ -24,10 +24,13 @@ contributes nothing to the running value.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the same shape as the input, and the same data type, except for a
+boolean input, which is accumulated at the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}).
 }
 \description{
 Cumulative sum, optionally along a single axis.
+A boolean array is counted, like \code{\link[base:cumsum]{base::cumsum()}} does.
 }
 \section{Relation to base R}{
 
