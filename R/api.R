@@ -1597,9 +1597,8 @@ nv_iota <- prim_iota
 #'   values built into the program, not arrays.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Can be any numeric data type, boolean being the
-#'   one exception. The default (`NULL`) is the
-#'   [default data type][default_dtypes] of an R integer, since the sequence
-#'   holds whole numbers. For `nv_seq_like()`, `NULL` uses `dtype(like)`.
+#'   one exception; the default (`NULL`) is `i32`. For `nv_seq_like()`, `NULL`
+#'   uses `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
@@ -1621,7 +1620,7 @@ nv_iota <- prim_iota
 #' @export
 #' @jit static 1:4
 nv_seq <- function(start, end, dtype = NULL, device = NULL) {
-  dtype <- dtype %||% default_dtype_r("integer")
+  dtype <- dtype %||% "i32"
   assert_int(start)
   assert_int(end)
   assert(start <= end)
@@ -1651,10 +1650,9 @@ nv_seq <- function(start, end, dtype = NULL, device = NULL) {
 #'   Number of values to generate. Must be at least 1; for `steps = 1` the
 #'   result is `start`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the result. Must be `f32` or `f64`. The default (`NULL`) is
-#'   the [default data type][default_dtypes] of an R double, since the spacing
-#'   is fractional. For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which
-#'   must then be one of those two. To obtain integers, convert the result with
+#'   Data type of the result. Must be `f32` or `f64`; the default (`NULL`) is
+#'   `f32`. For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must
+#'   then be one of those two. To obtain integers, convert the result with
 #'   [`nv_convert()`], which leaves the rounding yours to choose.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
@@ -1687,7 +1685,7 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
   assert_number(end)
   assert_int(steps, lower = 1L)
   dtype <- assert_float_dtype(
-    dtype %||% default_dtype_r("double"),
+    dtype %||% "f32",
     arg = "dtype",
     hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
   )

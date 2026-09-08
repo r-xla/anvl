@@ -16,9 +16,8 @@ values built into the program, not arrays.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the result. Can be any numeric data type, boolean being the
-one exception. The default (\code{NULL}) is the
-\link[=default_dtypes]{default data type} of an R integer, since the sequence
-holds whole numbers. For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
+one exception; the default (\code{NULL}) is \code{i32}. For \code{nv_seq_like()}, \code{NULL}
+uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

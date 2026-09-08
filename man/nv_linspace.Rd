@@ -19,10 +19,9 @@ Number of values to generate. Must be at least 1; for \code{steps = 1} the
 result is \code{start}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result. Must be \code{f32} or \code{f64}. The default (\code{NULL}) is
-the \link[=default_dtypes]{default data type} of an R double, since the spacing
-is fractional. For \code{nv_linspace_like()}, \code{NULL} uses \code{dtype(like)}, which
-must then be one of those two. To obtain integers, convert the result with
+Data type of the result. Must be \code{f32} or \code{f64}; the default (\code{NULL}) is
+\code{f32}. For \code{nv_linspace_like()}, \code{NULL} uses \code{dtype(like)}, which must
+then be one of those two. To obtain integers, convert the result with
 \code{\link[=nv_convert]{nv_convert()}}, which leaves the rounding yours to choose.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr

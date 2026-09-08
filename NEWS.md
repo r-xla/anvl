@@ -22,10 +22,6 @@
 * `nv_polygamma()`'s `n` is now an ordinary arrayish argument rather than a
   static one, so it accepts an array and not just a plain R value, matching
   `prim_polygamma()` and JAX's `jax.scipy.special.polygamma()`.
-* `nv_seq()` and `nv_linspace()` take their default data type from the default
-  an R integer and an R double commit to, rather than hardcoding `i32` and
-  `f32`. The values are unchanged today, but the defaults now follow if those
-  ever move.
 
 * New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with 
   a provided `steps` argument.
