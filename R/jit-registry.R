@@ -29,6 +29,7 @@
   list(name = "nv_min", static = character(0)),
   list(name = "nv_remainder", static = character(0)),
   list(name = "nv_mod", static = character(0)),
+  list(name = "nv_int_div", static = character(0)),
   list(name = "nv_and", static = character(0)),
   list(name = "nv_or", static = character(0)),
   list(name = "nv_xor", static = character(0)),

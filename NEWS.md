@@ -16,6 +16,28 @@
 * There is now exactly one backend used at a time and it is configured via the
   `anvl.backend` option.
 * A `Shape` is now represented as an integer vector.
+* The `&`, `|` and `!` operators are now *logical*, like in base R: a
+  non-boolean operand is compared against zero and the result is boolean.
+  They used to be bitwise, so `nv_array(12L) & nv_array(10L)` was `8` where
+  `12L & 10L` is `TRUE`, and a float operand was rejected outright.
+  `xor()`, which base R builds on `|` and `&`, follows. The named functions
+  `nv_and()`, `nv_or()`, `nv_xor()` and `nv_not()` are unchanged and remain
+  bitwise; their documentation now says so.
+* `any()` and `all()` on an `AnvlArray` now compare a non-boolean array
+  against zero, like base R does, instead of erroring.
+  `nv_reduce_any()` / `nv_reduce_all()` still require a boolean array.
+* The `Summary` group generics (`sum()`, `prod()`, `max()`, `min()`,
+  `range()`, `any()`, `all()`) now treat *unnamed* extra arguments as data,
+  like base R: `sum(x, y)` is the sum of both arrays and `sum(x, 2)` adds 2.
+  An unnamed extra argument used to be matched positionally against the
+  underlying `nv_reduce_*()`'s `axes` argument, so `sum(x, 2)` silently
+  reduced axis 2. Pass `axes` by name (`sum(x, axes = 2L)`), as
+  `nv_reduce_sum()` does.
+* `nv_quantile()` and `nv_median()` now compute at the default float data
+  type for a non-float input, like base R's `quantile()` / `median()` return
+  a double for an integer vector.
+* `round()`, `floor()`, `ceiling()` and `trunc()` on an integer array now
+  return it unchanged, like base R, instead of erroring.
 
 ## Features
 
@@ -30,9 +52,35 @@
 * `as.vector` now and returns `bit64::integer64`
   for integer types that don't fit into R's 32 bit integers.
   With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* New `nv_int_div()` for flooring (integer) division, and the `%/%` operator
+  now works on arrays.
+* The `Math` group generic is complete: `gamma()`, `sinpi()`, `cospi()`,
+  `tanpi()` and `signif()` now work on arrays, and `round(x, digits)` and
+  `log(x, base)` accept their second argument like in base R.
+* `c()` now works on an `AnvlArray` / `AnvlBox`: it flattens its arguments
+  and concatenates them, like `base::c()`. It used to fall through to base R's
+  default method and return a list of the array's internals.
+* `rev()` now works on an `AnvlArray` / `AnvlBox`. It reverses along every
+  axis, which puts the elements in the same order as `base::rev()` while
+  keeping the shape.
+* Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now errors saying that
+  `drop` is not supported, instead of reporting too many subset
+  specifications.
+* The new `?"anvl-generics"` help page documents the semantics of the group
+  generics and lists where anvl deliberately differs from base R.
 
 ## Bug fixes
 
+* The `%/%` operator returned `NULL` on an `AnvlArray` instead of dividing:
+  `Ops.AnvlArray` had no branch for it and its `switch()` had no default.
+  Unhandled operators now error.
+* `nv_quantile()` (and with it `nv_median()`) returned wrong values for an
+  integer array: the interpolation weights were built at the input's data
+  type, so `probs = 0.5` became `0` and `median(nv_array(1:4))` was `1`
+  instead of `2.5`.
+* `rev()` on an `AnvlArray` failed with an internal error about
+  `slice_sizes`, because `rev.default()` subset the array with a decreasing
+  index vector.
 * `as.vector()` now works correctly for `AnvlArray`s that are converted
   to `bit64::integer64`. It used to drop that class along with the shape,
   exposing the raw 64-bit pattern as a double.

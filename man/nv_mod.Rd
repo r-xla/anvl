@@ -29,6 +29,6 @@ as.vector(x) \%\% as.vector(y)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_remainder]{nv_remainder()}} for truncating remainder, \code{\link[=prim_remainder]{prim_remainder()}} for
-the underlying primitive.
+\code{\link[=nv_remainder]{nv_remainder()}} for truncating remainder, \code{\link[=nv_int_div]{nv_int_div()}} for the
+matching division, \code{\link[=prim_remainder]{prim_remainder()}} for the underlying primitive.
 }

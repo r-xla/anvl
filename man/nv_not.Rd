@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_not}
 \alias{nv_not}
-\title{Logical Not}
+\title{Bitwise Not}
 \usage{
 nv_not(x)
 }
@@ -15,12 +15,18 @@ Input array.}
 Has the same shape and data type as the input.
 }
 \description{
-Element-wise logical NOT. You can also use the \code{!} operator.
+Element-wise bitwise NOT of an integer array, which for a boolean array is
+the logical NOT.
+
+This is \emph{not} what the \code{!} operator does: like in base R, \code{!} is logical,
+i.e. it compares a non-boolean operand against zero and returns a boolean
+array. See \code{\link{anvl-generics}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(TRUE, FALSE, TRUE))
-!x
+nv_not(nv_array(c(TRUE, FALSE, TRUE)))
+nv_not(nv_array(12L)) # bitwise: -13
+!nv_array(12L) # logical: FALSE
 \dontshow{\}) # examplesIf}
 }
 \seealso{

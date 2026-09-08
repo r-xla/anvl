@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_and}
 \alias{nv_and}
-\title{Logical And}
+\title{Bitwise And}
 \usage{
 nv_and(lhs, rhs)
 }
@@ -17,13 +17,18 @@ Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other op
 Has the same shape and the promoted common data type of the inputs.
 }
 \description{
-Element-wise logical AND. You can also use the \code{&} operator.
+Element-wise bitwise AND of two integer arrays, which for a boolean array
+is the logical AND.
+
+This is \emph{not} what the \code{&} operator does: like in base R, \code{&} is logical,
+i.e. it compares a non-boolean operand against zero and returns a boolean
+array. See \code{\link{anvl-generics}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-x & y
+nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
+nv_array(12L) & nv_array(10L) # logical: TRUE
 \dontshow{\}) # examplesIf}
 }
 \seealso{

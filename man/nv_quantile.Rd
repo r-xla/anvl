@@ -33,7 +33,8 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 \code{\link{arrayish}}\cr
 For scalar \code{probs}: same shape as \code{x} with \code{axis} removed. For
 array \code{probs}: a \strong{leading} axis of size \code{length(probs)} is
-prepended.
+prepended. The data type is that of \code{x}, or the default float for a
+non-float \code{x}.
 }
 \description{
 Computes the \code{probs} quantile(s) of an array along an axis.
@@ -49,6 +50,11 @@ axis of size \code{length(probs)}.
 
 Plain length-K (K > 1) vectors are rejected; wrap with \code{array()} to
 make the array intent explicit.
+
+A quantile generally falls between two elements, so a non-float \code{x} is
+computed (and returned) at the default float data type, like
+\code{\link[stats:quantile]{stats::quantile()}} returns a double for an integer vector. See
+\code{\link[=default_dtypes]{default_dtypes()}}.
 }
 \section{Interpolation modes}{
 

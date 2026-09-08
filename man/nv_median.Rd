@@ -31,7 +31,8 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation fo
 }
 \value{
 \code{\link{arrayish}}\cr
-Same shape as \code{x} with \code{axis} removed.
+Same shape as \code{x} with \code{axis} removed. The data type is that of \code{x}, or
+the default float for a non-float \code{x}.
 }
 \description{
 Computes the median along an axis. Equivalent to
@@ -42,6 +43,15 @@ values is returned, matching base R's \code{median()}.
 You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{AnvlBox}};
 extra arguments (e.g. \code{interpolation}) are forwarded via \code{...}.
 }
+\section{Relation to base R}{
+
+\code{\link[stats:median]{stats::median()}} flattens a multi-axis array, while \code{nv_median()} (and
+\code{median()} on an anvl array) reduces a single axis, the last one by
+default. Pass \code{axis} explicitly, or flatten first with \code{\link[=nv_flatten]{nv_flatten()}}, to
+say which you mean. A non-float \code{x} is computed at the default float, like
+base R returns a double.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))

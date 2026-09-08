@@ -116,6 +116,11 @@ reference:
       - nv_serialize
       - nv_unserialize
 
+  - subtitle: Base R Generics
+    desc: How base R's generic functions behave on anvl arrays
+    contents:
+      - anvl-generics
+
   - title: API Functions
     desc: User-facing `nv_*` functions for array operations
 
@@ -166,6 +171,7 @@ reference:
       - nv_negate
       - nv_remainder
       - nv_mod
+      - nv_int_div
 
   - subtitle: Comparison Operations
     desc: Element-wise comparison operations

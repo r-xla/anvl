@@ -277,6 +277,8 @@ nv_flatten <- function(x) {
 #' @description
 #' Concatenates arrays along an axis. Operands are promoted to a common
 #' data type and scalars are broadcast before concatenation.
+#'
+#' You can also use `c()`, which flattens its arguments first, like base R.
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to concatenate. Must have the same shape except along `axis`.
 #' @param axis (`integer(1)` | `NULL`)\cr
@@ -738,8 +740,8 @@ nv_remainder <- make_do_binary(prim_remainder)
 #'
 #' @template params_lhs_rhs
 #' @template return_binary
-#' @seealso [nv_remainder()] for truncating remainder, [prim_remainder()] for
-#'   the underlying primitive.
+#' @seealso [nv_remainder()] for truncating remainder, [nv_int_div()] for the
+#'   matching division, [prim_remainder()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1L, -1L))
 #' y <- nv_array(c(-3L, 3L))
@@ -755,44 +757,94 @@ nv_mod <- function(lhs, rhs) {
   nv_remainder(nv_remainder(lhs, rhs) + rhs, rhs)
 }
 
-#' @title Logical And
+#' @title Integer Division
 #' @description
-#' Element-wise logical AND. You can also use the `&` operator.
+#' Element-wise flooring division, matching base R's `%/%` operator: the
+#' result is the largest whole number that does not exceed `lhs / rhs`.
+#' You can also use the `%/%` operator.
+#'
+#' @template params_lhs_rhs
+#' @template return_binary
+#' @seealso [nv_mod()] for the matching remainder, [nv_div()] for the
+#'   division itself.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(7L, -7L))
+#' y <- nv_array(c(2L, 2L))
+#' nv_int_div(x, y)
+#' as.vector(x) %/% as.vector(y)
+#' @export
+#' @jit
+nv_int_div <- function(lhs, rhs) {
+  args <- nv_promote_to_common(lhs, rhs)
+  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  lhs <- args[[1L]]
+  rhs <- args[[2L]]
+  dt <- peek_dtype(lhs)
+  if (is_dtype_float(dt)) {
+    return(nv_floor(nv_div(lhs, rhs)))
+  }
+  if (is_dtype_uint(dt)) {
+    # Unsigned division cannot be negative, so there is nothing to floor.
+    return(nv_div(lhs, rhs))
+  }
+  # Integer division truncates towards zero, so subtract the flooring
+  # remainder first to make the division exact.
+  nv_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs)
+}
+
+#' @title Bitwise And
+#' @description
+#' Element-wise bitwise AND of two integer arrays, which for a boolean array
+#' is the logical AND.
+#'
+#' This is *not* what the `&` operator does: like in base R, `&` is logical,
+#' i.e. it compares a non-boolean operand against zero and returns a boolean
+#' array. See [`anvl-generics`].
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_and()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' x & y
+#' nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
+#' nv_array(12L) & nv_array(10L) # logical: TRUE
 #' @export
 #' @jit
 nv_and <- make_do_binary(prim_and)
 
-#' @title Logical Or
+#' @title Bitwise Or
 #' @description
-#' Element-wise logical OR. You can also use the `|` operator.
+#' Element-wise bitwise OR of two integer arrays, which for a boolean array
+#' is the logical OR.
+#'
+#' This is *not* what the `|` operator does: like in base R, `|` is logical,
+#' i.e. it compares a non-boolean operand against zero and returns a boolean
+#' array. See [`anvl-generics`].
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_or()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' x | y
+#' nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
+#' nv_array(12L) | nv_array(10L) # logical: TRUE
 #' @export
 #' @jit
 nv_or <- make_do_binary(prim_or)
 
-#' @title Logical Xor
+#' @title Bitwise Xor
 #' @description
-#' Element-wise logical XOR.
+#' Element-wise bitwise XOR of two integer arrays, which for a boolean array
+#' is the logical XOR.
+#'
+#' Base R's `xor()` is logical instead: it is built on `|` and `&` and
+#' therefore compares a non-boolean operand against zero. See
+#' [`anvl-generics`].
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_xor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' nv_xor(x, y)
+#' nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
+#' xor(nv_array(12L), nv_array(10L)) # logical: FALSE
 #' @export
 #' @jit
 nv_xor <- make_do_binary(prim_xor)
@@ -888,15 +940,21 @@ nv_bitcast_convert <- prim_bitcast_convert
 #' @export
 nv_negate <- prim_negate
 
-#' @title Logical Not
+#' @title Bitwise Not
 #' @description
-#' Element-wise logical NOT. You can also use the `!` operator.
+#' Element-wise bitwise NOT of an integer array, which for a boolean array is
+#' the logical NOT.
+#'
+#' This is *not* what the `!` operator does: like in base R, `!` is logical,
+#' i.e. it compares a non-boolean operand against zero and returns a boolean
+#' array. See [`anvl-generics`].
 #' @template param_x
 #' @template return_unary
 #' @seealso [prim_not()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' !x
+#' nv_not(nv_array(c(TRUE, FALSE, TRUE)))
+#' nv_not(nv_array(12L)) # bitwise: -13
+#' !nv_array(12L) # logical: FALSE
 #' @export
 nv_not <- prim_not
 
@@ -1343,6 +1401,7 @@ nv_clamp <- function(min_val, x, max_val) {
 #' @title Reverse
 #' @description
 #' Reverses the order of elements along specified axes.
+#' You can also use `rev()`, which reverses along every axis.
 #' @template param_x
 #' @param axes (`integer()`)\cr
 #'   Axes to reverse.
@@ -2977,6 +3036,11 @@ nv_select <- function(x, axis, index) {
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
+#' @section Relation to base R:
+#' [base::sort()] flattens a multi-axis array into a vector, while
+#' `nv_sort()` (and `sort()` on an anvl array) sorts along a single axis, the
+#' last one by default, and keeps the shape. Flatten with [nv_flatten()]
+#' first if you want a single sorted sequence.
 #' @seealso [prim_sort()] for the underlying primitive,
 #'   [nv_argsort()], [nv_top_k()], [nv_median()],
 #'   [nv_argmax()], [nv_argmin()].
@@ -3109,6 +3173,11 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #'
 #' Plain length-K (K > 1) vectors are rejected; wrap with `array()` to
 #' make the array intent explicit.
+#'
+#' A quantile generally falls between two elements, so a non-float `x` is
+#' computed (and returned) at the default float data type, like
+#' [stats::quantile()] returns a double for an integer vector. See
+#' [`default_dtypes()`].
 #' @section Interpolation modes:
 #' Let `h = (n - 1) * q` be the 0-based fractional index for an axis of
 #' length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
@@ -3136,7 +3205,8 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' @return [`arrayish`]\cr
 #'   For scalar `probs`: same shape as `x` with `axis` removed. For
 #'   array `probs`: a **leading** axis of size `length(probs)` is
-#'   prepended.
+#'   prepended. The data type is that of `x`, or the default float for a
+#'   non-float `x`.
 #' @seealso [nv_median()], [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -3149,6 +3219,12 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' @jit static 2:5
 nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
   x <- as_anvl_array(x)
+  # A quantile lies between two elements, so -- like base R's quantile() --
+  # a non-float array is computed at the default float instead of rounding the
+  # interpolation weights down to whole numbers.
+  if (!is_dtype_float(peek_dtype(x))) {
+    x <- nv_convert(x, default_float())
+  }
   rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("Cannot compute quantile of a 0-dimensional array")
@@ -3240,6 +3316,12 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #'
 #' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
 #' extra arguments (e.g. `interpolation`) are forwarded via `...`.
+#' @section Relation to base R:
+#' [stats::median()] flattens a multi-axis array, while `nv_median()` (and
+#' `median()` on an anvl array) reduces a single axis, the last one by
+#' default. Pass `axis` explicitly, or flatten first with [nv_flatten()], to
+#' say which you mean. A non-float `x` is computed at the default float, like
+#' base R returns a double.
 #' @template param_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to compute the median. Negative values count from
@@ -3251,7 +3333,8 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #' @param nan_rm (`logical(1)`)\cr
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
-#'   Same shape as `x` with `axis` removed.
+#'   Same shape as `x` with `axis` removed. The data type is that of `x`, or
+#'   the default float for a non-float `x`.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))

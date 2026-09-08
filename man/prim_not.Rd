@@ -15,7 +15,9 @@ Arrayish value of data type boolean, integer, or unsigned integer.}
 Has the same shape and data type as the input.
 }
 \description{
-Element-wise logical NOT.
+Element-wise bitwise NOT, which for a boolean array is the logical NOT.
+Note that the \code{!} operator is logical instead, like in base R
+(see \code{\link{anvl-generics}}).
 }
 \section{Implemented Rules}{
 

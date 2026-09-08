@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_or}
 \alias{nv_or}
-\title{Logical Or}
+\title{Bitwise Or}
 \usage{
 nv_or(lhs, rhs)
 }
@@ -17,13 +17,18 @@ Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other op
 Has the same shape and the promoted common data type of the inputs.
 }
 \description{
-Element-wise logical OR. You can also use the \code{|} operator.
+Element-wise bitwise OR of two integer arrays, which for a boolean array
+is the logical OR.
+
+This is \emph{not} what the \code{|} operator does: like in base R, \code{|} is logical,
+i.e. it compares a non-boolean operand against zero and returns a boolean
+array. See \code{\link{anvl-generics}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-x | y
+nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
+nv_array(12L) | nv_array(10L) # logical: TRUE
 \dontshow{\}) # examplesIf}
 }
 \seealso{
