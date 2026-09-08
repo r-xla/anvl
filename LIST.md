@@ -136,9 +136,13 @@ package. None of it is fixed here — this is documentation work.
   `nv_linspace()` is restricted to `f32` and `f64` by `assert_float_dtype()`,
   which is deliberately narrower than `is_dtype_float()`. Two different notions
   of "floating-point" are in play across the API.
-- `nv_linspace()` defaults to `f32` regardless of backend, while `nv_array()`
-  documents a backend-dependent default (`f64` on `"quickr"`). The sequence
-  constructors do not follow the backend.
+- `nv_seq()` and `nv_linspace()` now derive their default from
+  `default_dtype_r()` rather than naming `i32` / `f32`, so a change to the
+  defaults carries. One gap remains: `nv_array()` resolves its default inside
+  the backend, where `"quickr"` maps a double to `f64`, so on that backend
+  `nv_array(1.5)` is `f64` while `nv_linspace(0, 1, 3L)` is `f32`. Closing it
+  needs a default-data-type hook on the backend interface, which has none
+  today. `nv_fill()` uses `default_dtype()` and is in the same position.
 - List returns are inconsistently named: `prim_qr()` and `prim_svd()` return
   named lists (`Q`/`R`, `d`/`u`/`v`), while `prim_top_k()`, `prim_cummax()` and
   `prim_cummin()` return unnamed two-element lists, so callers index them
