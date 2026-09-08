@@ -809,7 +809,7 @@ prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 #' @description
 #' Performs logical OR along the specified axes.
 #' @templateVar dtypes a boolean or an R logical
-#' @template param_unary_x
+#' @template param_unary_x_must
 #' @template params_reduce
 #' @templateVar dtype_out boolean data type
 #' @template return_reduce
@@ -832,7 +832,7 @@ prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boole
 #' @description
 #' Performs logical AND along the specified axes.
 #' @templateVar dtypes a boolean or an R logical
-#' @template param_unary_x
+#' @template param_unary_x_must
 #' @template params_reduce
 #' @templateVar dtype_out boolean data type
 #' @template return_reduce
@@ -1647,10 +1647,14 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #' Lowers to [hlo_bitcast_convert()].
 #' @seealso [nv_bitcast_convert()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(1L)
-#' prim_bitcast_convert(x, dtype = "i8")
-#' x <- nv_array(rep(1L, 4), dtype = "i8")
-#' prim_bitcast_convert(x, dtype = "i32")
+#' # same width: the bits are reread, the shape stays
+#' prim_bitcast_convert(nv_array(1L), dtype = "f32")
+#'
+#' # narrower: a trailing axis holds the four bytes of each i32
+#' prim_bitcast_convert(nv_array(1L), dtype = "i8")
+#'
+#' # wider: the last axis is consumed, and its size must be the width ratio
+#' prim_bitcast_convert(nv_array(rep(1L, 4), dtype = "i8"), dtype = "i32")
 #' @export
 prim_bitcast_convert <- new_primitive(
   "bitcast_convert",
@@ -2249,7 +2253,8 @@ prim_popcnt <- new_primitive(
 #' Clamps every element of `x` to the range `[min_val, max_val]`,
 #' i.e. `max(min_val, min(x, max_val))`.
 #' @param min_val,max_val ([`arrayish`])\cr
-#'   Lower and upper bound. Each must be scalar or the same shape as `x`.
+#'   Lower and upper bound. Each must be scalar or the same shape as `x`, and
+#'   shares its data type -- see `x`.
 #' @param x ([`arrayish`])\cr
 #'   The array to clamp. Can be any data type.
 #'   `r roxy_agree("min_val", "x", "max_val")`
@@ -2601,9 +2606,10 @@ prim_ifelse <- new_primitive(
 #'   outputs of the same structure, data types and shapes. Unlike
 #'   [prim_ifelse()], which promotes its two values onto one data type, these
 #'   are only checked: branches that disagree are an error.
-#' @return (any)\cr
-#'   Result of the executed branch, with the structure, data types and
-#'   shapes both branches share.
+#' @return ([`arrayish`] | `list`)\cr
+#'   Result of the executed branch: an array, or a tree (a `list`, nested
+#'   arbitrarily) holding them, with the structure, data types and shapes both
+#'   branches share.
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2673,8 +2679,9 @@ prim_if <- new_primitive(
 #'   as `init`. Nothing is promoted: a loop-carried state is meant to be
 #'   heterogeneous, so each member keeps its own data type across iterations.
 #' @return (named `list`)\cr
-#'   Has the same structure, data types and shapes as
-#'   `init`, holding the final state after the loop terminates.
+#'   A tree holding the loop-carried arrays, with the same structure, data
+#'   types and shapes as `init`, in its final state after the loop
+#'   terminates.
 #' @templateVar primitive_id while
 #' @template section_rules
 #' @section StableHLO:

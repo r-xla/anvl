@@ -1517,7 +1517,8 @@ nv_popcnt <- prim_popcnt
 #' @details
 #' The underlying stableHLO function already broadcasts scalars, so no need to broadcast manually.
 #' @param min_val,max_val ([`arrayish`])\cr
-#'   Lower and upper bound, each scalar or the same shape as `x`. They are
+#'   Lower and upper bound, each scalar or the same shape as `x`. They take
+#'   `x`'s data type -- see `x` -- and are
 #'   brought to `x`'s data type: an R value is built at it when its category can
 #'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
 #'   one), and a value that already has a data type is converted unless that
@@ -2491,7 +2492,7 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' Performs logical OR along the specified axes.
 #' Returns `TRUE` if any element is `TRUE`.
 #' @templateVar dtypes a boolean or an R logical
-#' @template param_unary_x
+#' @template param_unary_x_must
 #' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @templateVar dtype_out boolean data type
@@ -2516,7 +2517,7 @@ nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
 #' Performs logical AND along the specified axes.
 #' Returns `TRUE` only if all elements are `TRUE`.
 #' @templateVar dtypes a boolean or an R logical
-#' @template param_unary_x
+#' @template param_unary_x_must
 #' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @templateVar dtype_out boolean data type
@@ -2686,8 +2687,10 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
 #' @param false (`function()`)\cr
 #'   Zero-argument function for the false branch.
 #'   Must return outputs with the same shapes as the true branch.
-#' @return (any)\cr
-#'   Result of the executed branch.
+#' @return ([`arrayish`] | `list`)\cr
+#'   Result of the executed branch: an array, or a tree (a `list`, nested
+#'   arbitrarily) holding them, with the structure, data types and shapes both
+#'   branches share.
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2706,8 +2709,8 @@ nv_if <- prim_if
 #'   Body function returning the updated state as a named list
 #'   with the same structure as `init`.
 #' @return (named `list`)\cr
-#'   Final state after the loop terminates, with `init`'s structure, data
-#'   types and shapes.
+#'   A tree holding the loop-carried arrays, in its final state after the loop
+#'   terminates, with `init`'s structure, data types and shapes.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_while(

@@ -8,7 +8,8 @@ prim_clamp(min_val, x, max_val)
 }
 \arguments{
 \item{min_val, max_val}{(\code{\link{arrayish}})\cr
-Lower and upper bound. Each must be scalar or the same shape as \code{x}.}
+Lower and upper bound. Each must be scalar or the same shape as \code{x}, and
+shares its data type -- see \code{x}.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 The array to clamp. Can be any data type.

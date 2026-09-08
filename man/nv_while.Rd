@@ -21,8 +21,8 @@ with the same structure as \code{init}.}
 }
 \value{
 (named \code{list})\cr
-Final state after the loop terminates, with \code{init}'s structure, data
-types and shapes.
+A tree holding the loop-carried arrays, in its final state after the loop
+terminates, with \code{init}'s structure, data types and shapes.
 }
 \description{
 Executes a functional while loop.

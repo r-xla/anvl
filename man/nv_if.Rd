@@ -18,8 +18,10 @@ Zero-argument function for the false branch.
 Must return outputs with the same shapes as the true branch.}
 }
 \value{
-(any)\cr
-Result of the executed branch.
+(\code{\link{arrayish}} | \code{list})\cr
+Result of the executed branch: an array, or a tree (a \code{list}, nested
+arbitrarily) holding them, with the structure, data types and shapes both
+branches share.
 }
 \description{
 Conditional execution of two branches.

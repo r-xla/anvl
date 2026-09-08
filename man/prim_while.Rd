@@ -23,8 +23,9 @@ heterogeneous, so each member keeps its own data type across iterations.}
 }
 \value{
 (named \code{list})\cr
-Has the same structure, data types and shapes as
-\code{init}, holding the final state after the loop terminates.
+A tree holding the loop-carried arrays, with the same structure, data
+types and shapes as \code{init}, in its final state after the loop
+terminates.
 }
 \description{
 Repeatedly executes \code{body} while \code{cond} returns \code{TRUE}, like R's

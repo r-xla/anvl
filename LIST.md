@@ -13,10 +13,13 @@ file in the same change that documents a function.
   operands it meets, or commits to its
   [default data type][default_dtypes] when nothing claims it. Never name the
   default's concrete value, since defaults will become configurable.
-- Templates: `param_unary_x` (single arrayish operand), `params_prim_lhs_rhs` /
-  `params_lhs_rhs` (binary), `params_reduce` + `return_reduce` (reductions).
+- Templates: `param_unary_x` for a single arrayish operand, or
+  `param_unary_x_must` where the phrase names the R side and the default
+  sentence would be redundant; `params_prim_lhs_rhs` / `params_lhs_rhs`
+  (binary); `params_reduce` + `return_reduce` (reductions).
   `roxy_agree("x", "update")` is the inline helper for a primitive whose
-  operands must reach one data type.
+  operands must reach one data type; it goes on the primary operand, and the
+  other parameters point at it.
 - Return values say the resulting data type and shape, not "the same as the
   input" where an input may be a bare R value, and state their type in
   parentheses the way parameters do: `@return ([`arrayish`])\cr`.
