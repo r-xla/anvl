@@ -1,3 +1,4 @@
 #' @return ([`arrayish`])\cr
 #'   Has the same shape as the input, and the same data type, except for a
-#'   boolean input, which is accumulated at `i32`.
+#'   boolean input, which is accumulated at the [default integer
+#'   data type][default_dtypes].

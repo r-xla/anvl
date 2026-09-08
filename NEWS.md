@@ -26,6 +26,12 @@
   an R integer and an R double commit to, rather than hardcoding `i32` and
   `f32`. The values are unchanged today, but the defaults now follow if those
   ever move.
+* The indices anvl produces -- `prim_argmax()` / `nv_argmax()` and their
+  `argmin` counterparts, `prim_top_k()` / `nv_top_k()`, the cumulative-extreme
+  positions, `nv_argsort()`'s permutation and `prim_lu()`'s pivots -- and the
+  integer a boolean is counted at now follow the default integer data type
+  instead of a hardcoded `i32`. The StableHLO lowerings keep computing in
+  whatever the backend gives them and convert on the way out.
 
 * New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with 
   a provided `steps` argument.

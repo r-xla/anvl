@@ -2145,9 +2145,10 @@ nv_qr <- prim_qr
 #'   * `L` -- unit lower-triangular factor of shape `(m, k)`, where
 #'     `(m, n) = shape(x)` and `k = min(m, n)`.
 #'   * `U` -- upper-triangular factor of shape `(k, n)`.
-#'   * `pivots` -- length `k`, dtype `i32`. LAPACK-style sequential
+#'   * `pivots` -- length `k`, at the [default integer data type][default_dtypes].
+#'     LAPACK-style sequential
 #'     1-based row swaps as returned by `getrf`.
-#'   * `permutation` -- length `m`, dtype `i32`. A 1-based permutation
+#'   * `permutation` -- length `m`, at the same. A 1-based permutation
 #'     vector representing \eqn{P}.
 #' @seealso [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2281,7 +2282,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 }
 
 .count_bool <- function(x) {
-  if (is_dtype_bool(peek_dtype(x))) nv_convert(x, "i32") else x
+  if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int_dtype()) else x
 }
 
 #' @title Sum Reduction
@@ -2292,7 +2293,7 @@ nv_eye <- function(n, dtype = "f32", device = NULL) {
 #' @template param_unary_x
 #' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at `i32`
+#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at the [default integer data type][default_dtypes]
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
@@ -2370,7 +2371,7 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @template param_unary_x
 #' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at `i32`
+#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at the [default integer data type][default_dtypes]
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
@@ -3328,9 +3329,9 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #'   If `TRUE`, the sort is stable: indices for equal values keep their
 #'   original relative order. Default `FALSE`.
 #' @return ([`arrayish`])\cr
-#'   Has `i32` data type whatever the input's is, and the input's shape. For a
-#'   size-0 axis, the output is an empty `i32` array of the same shape (a valid
-#'   empty permutation).
+#'   Has the [default integer data type][default_dtypes] whatever the input's is, and the
+#'   input's shape. For a size-0 axis, the output is an empty array of the
+#'   same shape (a valid empty permutation).
 #'   `as_array(x)[as_array(nv_argsort(x))]` reproduces the sorted
 #'   array (for 1-D inputs).
 #' @inheritSection nv_sort NaN handling
@@ -3346,7 +3347,7 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
     cli_abort("Cannot argsort a 0-dimensional array")
   }
   axis <- axis %||% naxes(x)
-  idx <- nv_iota_like(x, axis = axis, dtype = "i32")
+  idx <- nv_iota_like(x, axis = axis, dtype = default_int_dtype())
   prim_sort(list(x, idx), axis = axis, descending = decreasing, is_stable = stable)[[2L]]
 }
 
@@ -3369,9 +3370,10 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #'   1-based position of each top-`k` value along `axis`.
 #' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
 #'   One array when `with_indices = FALSE`, a named `list` when
-#'   `with_indices = TRUE`. The values have the input's data
-#'   type and the indices `i32`. Both have the input's shape with `axis`
-#'   resized to `k`; values are sorted decreasing along `axis`.
+#'   `with_indices = TRUE`. The values have the input's data type and the
+#'   indices the [default integer data type][default_dtypes]. Both have the input's
+#'   shape with `axis` resized to `k`; values are sorted decreasing along
+#'   `axis`.
 #' @section NaN handling:
 #' `NaN` ranks larger than any finite value (so it appears first in the
 #' top-`k` output); `-NaN` ranks smaller. Unlike [nv_sort()], the sign
@@ -3603,8 +3605,9 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 #'   is kept with size 1.
 #' @template param_nan_rm
 #' @return ([`arrayish`])\cr
-#'   Has `i32` data type whatever the input's is, and the input's shape with
-#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
+#'   Has the [default integer data type][default_dtypes] whatever the input's is, and the
+#'   input's shape with `axis` removed (`drop = TRUE`) or set to 1
+#'   (`drop = FALSE`).
 #' @section NaN handling:
 #' With `nan_rm = FALSE` (default), if any entry along the reduced axis is
 #' `NaN`, the returned index points at the first such `NaN`. With
@@ -3643,8 +3646,9 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #'   is kept with size 1.
 #' @template param_nan_rm
 #' @return ([`arrayish`])\cr
-#'   Has `i32` data type whatever the input's is, and the input's shape with
-#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
+#'   Has the [default integer data type][default_dtypes] whatever the input's is, and the
+#'   input's shape with `axis` removed (`drop = TRUE`) or set to 1
+#'   (`drop = FALSE`).
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()

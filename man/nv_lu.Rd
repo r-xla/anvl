@@ -17,9 +17,10 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.
 \item \code{U} -- upper-triangular factor of shape \verb{(k, n)}.
-\item \code{pivots} -- length \code{k}, dtype \code{i32}. LAPACK-style sequential
+\item \code{pivots} -- length \code{k}, at the \link[=default_dtypes]{default integer data type}.
+LAPACK-style sequential
 1-based row swaps as returned by \code{getrf}.
-\item \code{permutation} -- length \code{m}, dtype \code{i32}. A 1-based permutation
+\item \code{permutation} -- length \code{m}, at the same. A 1-based permutation
 vector representing \eqn{P}.
 }
 }

@@ -711,6 +711,16 @@ default_dtype <- function(x) {
 
 # The dtype an R value of this storage type commits to when nothing in the
 # program tells it what it is. The single place that decision is made.
+# The integer data type anvl reaches for when it needs one of its own: the
+# indices it produces (argmax/argmin, top-k and cumulative-extreme positions,
+# sort permutations, LU pivots) and the integer a boolean is counted at. It
+# follows the default integer data type, so a change there carries. The
+# lowerings compute in whatever the backend gives them and convert on the way
+# out.
+default_int_dtype <- function() {
+  default_dtype_r("integer")
+}
+
 default_dtype_r <- function(r_type) {
   switch(
     r_type,

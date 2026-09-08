@@ -146,6 +146,9 @@ package. None of it is fixed here — this is documentation work.
   `nv_array(1.5)` is `f64` while `nv_linspace(0, 1, 3L)` is `f32`. Closing it
   needs a default-data-type hook on the backend interface, which has none
   today. `nv_fill()` uses `default_dtype()` and is in the same position.
+- The quickr backend supports only `f64`, `i32` and `pred`, so a default
+  integer data type other than `i32` would make its index-producing lowerings
+  refuse the graph. The pjrt path converts and is fine.
 - List returns are inconsistently named: `prim_qr()` and `prim_svd()` return
   named lists (`Q`/`R`, `d`/`u`/`v`), while `prim_top_k()`, `prim_cummax()` and
   `prim_cummin()` return unnamed two-element lists, so callers index them
