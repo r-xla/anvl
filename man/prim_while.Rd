@@ -17,12 +17,13 @@ and outputs whether to continue the loop.}
 
 \item{body}{(\code{function})\cr
 Body function that receives the current state as arguments and
-returns a named list with the same structure, dtypes, and shapes
-as \code{init}.}
+returns a named list with the same structure, data types and shapes
+as \code{init}. Nothing is promoted: a loop-carried state is meant to be
+heterogeneous, so each member keeps its own data type across iterations.}
 }
 \value{
-Named list with the same structure as \code{init} containing the
-final state after the loop terminates.
+Named list with the same structure, data types and shapes as
+\code{init}, holding the final state after the loop terminates.
 }
 \description{
 Repeatedly executes \code{body} while \code{cond} returns \code{TRUE}, like R's

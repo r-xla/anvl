@@ -948,7 +948,8 @@ prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L)
 #' At output position `j`, the values output is `max(input[1:j])` and the
 #' indices output is the largest `i` in `1:j` with
 #' `input[i] == values[j]` (last-occurrence tiebreak).
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @template param_prim_cum_axis
 #' @templateVar cum_extreme_name maximum
 #' @templateVar cum_extreme_arg argmax
@@ -971,7 +972,8 @@ prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L)
 #' At output position `j`, the values output is `min(input[1:j])` and the
 #' indices output is the largest `i` in `1:j` with
 #' `input[i] == values[j]` (last-occurrence tiebreak).
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @template param_prim_cum_axis
 #' @templateVar cum_extreme_name minimum
 #' @templateVar cum_extreme_arg argmin
@@ -2592,11 +2594,15 @@ prim_ifelse <- new_primitive(
 #' predicate. Unlike [prim_ifelse()] which operates element-wise, this
 #' evaluates only the selected branch.
 #' @param pred ([`arrayish`])\cr
-#'   Scalar boolean predicate that determines which branch to execute.
+#'   Predicate deciding which branch to execute. Must be a scalar of the
+#'   boolean data type, or an R logical.
 #' @param true,false (`function()`)\cr
-#'   Zero-argument functions for the true and false branches. Both must return outputs
-#'   with the same structure, dtypes, and shapes.
-#' @return Result of the executed branch.\cr
+#'   Zero-argument functions for the true and false branches. Both must return
+#'   outputs of the same structure, data types and shapes. Unlike
+#'   [prim_ifelse()], which promotes its two values onto one data type, these
+#'   are only checked: branches that disagree are an error.
+#' @return Result of the executed branch, with the structure, data types and
+#'   shapes both branches share.\cr
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2662,10 +2668,11 @@ prim_if <- new_primitive(
 #'   and outputs whether to continue the loop.
 #' @param body (`function`)\cr
 #'   Body function that receives the current state as arguments and
-#'   returns a named list with the same structure, dtypes, and shapes
-#'   as `init`.
-#' @return Named list with the same structure as `init` containing the
-#'   final state after the loop terminates.
+#'   returns a named list with the same structure, data types and shapes
+#'   as `init`. Nothing is promoted: a loop-carried state is meant to be
+#'   heterogeneous, so each member keeps its own data type across iterations.
+#' @return Named list with the same structure, data types and shapes as
+#'   `init`, holding the final state after the loop terminates.
 #' @templateVar primitive_id while
 #' @template section_rules
 #' @section StableHLO:
@@ -2801,6 +2808,9 @@ prim_while <- new_primitive(
 #' @param xs (`list` of [`arrayish`])\cr
 #'   One or more arrays to sort. The first is the sort key; the rest are
 #'   carried along under the same permutation. All must share the same shape.
+#'   Each can be of any data type, and they need not agree: a key and its
+#'   payloads are meant to differ, so nothing here is promoted. An R value
+#'   among them commits to its [default data type][default_dtypes].
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which to sort.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
@@ -2812,9 +2822,8 @@ prim_while <- new_primitive(
 #'   If `TRUE`, the sort is stable: the relative order of equal *keys* is
 #'   preserved. Default `FALSE`.
 #' @return `list` of [`arrayish`]\cr
-#'   One sorted output per element of `xs`, in the same order. Each
-#'   output has the same shape and data type as the
-#'   corresponding input.
+#'   One sorted output per element of `xs`, in the same order, each with the
+#'   shape and data type of its input.
 #' @templateVar primitive_id sort
 #' @template section_rules
 #' @section StableHLO:
@@ -2885,6 +2894,7 @@ prim_sort <- new_primitive(
 #' `prim_top_k()`, then transpose back. [nv_top_k()] does this.
 #' @param x ([`arrayish`])\cr
 #' @templateVar dtypes any numeric data type
+#' @templateVar shapes with at least 1 axis
 #' @template param_unary_x
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
@@ -3260,9 +3270,11 @@ prim_scatter <- new_primitive(
 #' This is the inverse of [prim_scatter()]: gather reads slices from a
 #' array at given indices, while scatter writes slices into an array at
 #' given indices.
-#' @template param_prim_x_any
-#' @param start_indices ([`arrayish`] of integer type)\cr
-#'   Array of starting indices. Contains index vectors that map to
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @param start_indices ([`arrayish`])\cr
+#'   Array of starting indices, of an integer data type, which it keeps -- the
+#'   indices take no part in `x`'s. Contains index vectors that map to
 #'   positions in `x` via `start_index_map`. The axis
 #'   specified by `index_vector_axis` holds the index vectors.
 #' @param slice_sizes (`integer()`)\cr
@@ -3407,10 +3419,9 @@ prim_gather <- new_primitive(
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' Axes before the last two are batch axes.
-#' @param x ([`arrayish`])\cr
-#'   Arrayish value of data type floating-point with at least 2 axes.
-#'   The last two axes must be equal (square matrix); any leading
-#'   axes are batch axes.
+#' @templateVar dtypes any float data type
+#' @templateVar shapes with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes
+#' @template param_unary_x
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
 #'   upper triangular factor `U` such that `x = t(U) %*% U`. If
@@ -3532,8 +3543,9 @@ prim_triangular_solve <- new_primitive(
 #' \eqn{R} is upper triangular.
 #' For an \eqn{m \times n} input with \eqn{k = \min(m, n)}, \eqn{Q} has
 #' shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
-#' @param x ([`arrayish`])\cr
-#'   Matrix of data type floating-point with exactly 2 axes.
+#' @templateVar dtypes any float data type
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x
 #' @return Named `list` with elements `Q` (shape `(m, k)`) and `R`
 #'   (shape `(k, n)`), where `(m, n) = shape(x)` and
 #'   `k = min(m, n)`. Both have the same data type as `x`.
@@ -3582,8 +3594,9 @@ prim_qr <- new_primitive(
 #' sequential row-swap encoding) and `permutation` (an explicit
 #' permutation vector).
 #'
-#' @param x ([`arrayish`])\cr
-#'   Matrix of data type floating-point with exactly 2 axes.
+#' @templateVar dtypes any float data type
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x
 #' @return `list` of three [`arrayish`] values: `LU` `(m, n)` with the same
 #'   dtype as the input; `pivots` `(k,)` of dtype `i32` with
 #'   `k = min(m, n)` (1-based row swaps such that row `i` was exchanged
@@ -3645,8 +3658,9 @@ prim_lu <- new_primitive(
 #' Supports any matrix shape on both the host (LAPACK `gesdd`) and CUDA
 #' (cuSOLVER `gesvd`) backends. cuSOLVER's `m >= n` requirement is handled
 #' transparently via a layout flip for wide matrices.
-#' @param x ([`arrayish`])\cr
-#'   Matrix of data type floating-point with exactly 2 axes.
+#' @templateVar dtypes any float data type
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x
 #' @return Named `list` with elements `d` (length `k`), `u` (shape
 #'   `(m, k)`), and `vt` (shape `(k, n)`). All have the same dtype as
 #'   the input.
@@ -3694,8 +3708,9 @@ prim_svd <- new_primitive(
 #' are the (orthonormal) eigenvectors and `values` is the length-`n`
 #' vector of (real) eigenvalues in ascending order. Output names and
 #' order match [base::eigen()].
-#' @param x ([`arrayish`])\cr
-#'   Symmetric square matrix of floating-point data type.
+#' @templateVar dtypes any float data type
+#' @templateVar shapes a symmetric square matrix with exactly 2 axes
+#' @template param_unary_x
 #' @return Named `list` with elements `values` (length `n`) and `vectors`
 #'   (shape `(n, n)`). Both have the same dtype as the input.
 #' @templateVar primitive_id eigh

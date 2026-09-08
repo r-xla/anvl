@@ -8,7 +8,8 @@ prim_eigh(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Symmetric square matrix of floating-point data type.}
+One input, a symmetric square matrix with exactly 2 axes. Can be any float data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 Named \code{list} with elements \code{values} (length \code{n}) and \code{vectors}

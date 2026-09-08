@@ -8,7 +8,7 @@ prim_top_k(x, k)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any numeric data type. An R value commits to its
+One input, with at least 1 axis. Can be any numeric data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{k}{(\code{integer(1)})\cr

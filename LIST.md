@@ -26,7 +26,7 @@ Every claim is checked against the running package before it is written.
 
 ## Primitives
 
-### Covered (73)
+### Covered (99 of 100)
 
 Elementwise binary: `prim_add` `prim_sub` `prim_mul` `prim_div` `prim_pow`
 `prim_remainder` `prim_max` `prim_min` `prim_atan2` `prim_and` `prim_or`
@@ -54,16 +54,17 @@ Shape and data type changing, single operand: `prim_transpose`
 `prim_reshape` `prim_broadcast_in_axes` `prim_reverse` `prim_convert`
 `prim_bitcast_convert` `prim_print`
 
-Slicing, indices and constructors: `prim_static_slice` `prim_dynamic_slice`
-`prim_top_k` `prim_argmax` `prim_argmin` `prim_fill` `prim_iota`
-`prim_concatenate`
+Slicing, gathering, indices and constructors: `prim_static_slice`
+`prim_dynamic_slice` `prim_gather` `prim_top_k` `prim_argmax` `prim_argmin`
+`prim_cummax` `prim_cummin` `prim_fill` `prim_iota` `prim_concatenate`
 
-### To do (11)
+Higher order, promoting nothing on purpose: `prim_sort` `prim_if` `prim_while`
 
-- Gathering: `prim_gather`
-- Scans returning indices: `prim_cummax` `prim_cummin`
-- Higher order, promotes nothing on purpose: `prim_sort` `prim_if` `prim_while`
-- Matrix decompositions: `prim_chol` `prim_qr` `prim_lu` `prim_svd` `prim_eigh`
+Matrix decompositions: `prim_chol` `prim_qr` `prim_lu` `prim_svd` `prim_eigh`
+
+### To do
+
+None. Every primitive except `prim_rng_bit_generator` is covered.
 
 ## API functions
 

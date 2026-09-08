@@ -8,17 +8,17 @@ prim_cummin(x, axis)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to accumulate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{list} of two \code{\link{arrayish}} values:\cr
-The running minimum (same dtype as \code{x}) and the
-running argmin (dtype \code{i32}, 1-based). Both have
-the same shape as \code{x}.
+Unnamed \code{list} of two \code{\link{arrayish}} values:\cr
+The running minimum, at the input's data type, and the
+running argmin, at \code{i32}. Both have the input's shape.
 }
 \description{
 Running minimum of array elements along a single axis along with

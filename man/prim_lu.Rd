@@ -8,7 +8,8 @@ prim_lu(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 axes.}
+One input, with exactly 2 axes. Can be any float data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 \code{list} of three \code{\link{arrayish}} values: \code{LU} \verb{(m, n)} with the same
