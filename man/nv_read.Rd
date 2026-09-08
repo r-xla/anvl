@@ -15,7 +15,8 @@ The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...
 Default is to use the CPU.}
 }
 \value{
-(named \code{list} of \code{\link{AnvlArray}})
+(named \code{list} of \code{\link{AnvlArray}})\cr
+The arrays, each with the data type, shape and name it was written with.
 }
 \description{
 Loads arrays from a file in the

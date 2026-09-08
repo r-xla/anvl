@@ -16,7 +16,8 @@ nv_triangular_solve(
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
 Triangular coefficient matrix with at least 2 axes. The last two
-axes must be equal; any leading axes are batch axes.}
+axes must be equal; any leading axes are batch axes. Can be any float
+data type. \code{a} and \code{b} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side. For \code{a} of shape \verb{(B..., n, n)}, \code{b} may be either:

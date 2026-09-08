@@ -13,7 +13,8 @@ One input. Can be any data type. An R value commits to its
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the input's data type. A 1-D array of length \code{min(nrow, ncol)} containing the diagonal elements.
+Has the input's data type, and one axis of length \code{min(nrow, ncol)}
+holding the diagonal elements.
 }
 \description{
 Extracts the diagonal elements from a 2-D array.

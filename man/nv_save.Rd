@@ -8,7 +8,8 @@ nv_save(arrays, path)
 }
 \arguments{
 \item{arrays}{(named \code{list} of \code{\link{AnvlArray}})\cr
-Named list of arrays to save. Names must be unique.}
+Named list of arrays. Names must be unique. Any data type and shape,
+both of which round-trip unchanged.}
 
 \item{path}{(\code{character(1)})\cr
 File path to write to.}

@@ -114,26 +114,24 @@ Operands that must agree: `nv_clamp` `nv_pad` `nv_ifelse` `nv_polygamma`
 Order statistics and indices: `nv_sort` `nv_argsort` `nv_top_k` `nv_argmax`
 `nv_argmin` `nv_median` `nv_quantile`
 
-### To do (66)
+### To do
 
-- Shape and layout: `nv_transpose` `nv_reshape` `nv_flatten` `nv_squeeze`
-  `nv_unsqueeze` `nv_reverse` `nv_broadcast_to` `nv_broadcast_arrays`
-  `nv_broadcast_scalars` `nv_concatenate` `nv_rbind` `nv_cbind` `nv_matrix`
-- Subsetting: `nv_subset` `nv_static_slice` `nv_select` `nv_diag`
-  `nv_extract_diag` `nv_tril` `nv_triu` `nv_lower_tri` `nv_lower_tri_like`
-  `nv_upper_tri` `nv_upper_tri_like`
-- Data types: `nv_convert` `nv_bitcast_convert` `nv_promote_to_common`
-  `nv_aval`
-- Constructors: `nv_array` `nv_array_like` `nv_scalar` `nv_scalar_like`
-  `nv_fill` `nv_fill_like` `nv_empty` `nv_empty_like` `nv_iota` `nv_iota_like`
-  `nv_eye` `nv_eye_like`
-- Linear algebra: `nv_matmul` `nv_outer` `nv_crossprod` `nv_tcrossprod`
-  `nv_trace` `nv_det` `nv_determinant` `nv_inv` `nv_solve`
-  `nv_triangular_solve` `nv_chol` `nv_qr` `nv_lu` `nv_svd` `nv_eigh`
-- Convolutions: `nv_conv1d` `nv_conv2d` `nv_conv3d`
-- Control flow: `nv_if` `nv_while`
-- Device and IO: `nv_device` `nv_print` `nv_save` `nv_read` `nv_serialize`
-  `nv_unserialize`
+None. The remaining pages state their data types and shapes in the parameters
+and the return value:
+
+- Constructors: the `AnvlArray` page (`nv_array`, `nv_scalar`, `nv_matrix`,
+  `nv_empty`), `nv_fill`, `nv_iota`, `nv_eye` and their `_like` variants.
+- Shape and layout: `nv_flatten`, `nv_bind`, `nv_diag`, `nv_extract_diag`,
+  `nv_subset`, `nv_lower_tri` / `nv_upper_tri`.
+- Data types and broadcasting: `nv_convert`, `nv_promote_to_common`,
+  `nv_broadcast_scalars`, `nv_broadcast_arrays`, `nv_aval`.
+- Linear algebra: `nv_outer`, `nv_crossprod`, `nv_tcrossprod`, `nv_inv`,
+  `nv_solve`, `nv_triangular_solve`, `nv_lu`, and `nv_qr` / `nv_svd` /
+  `nv_eigh`, which inherit their primitives'.
+- Control flow: `nv_if`, `nv_while`.
+- IO: `nv_save`, `nv_read`, `nv_serialize`, `nv_unserialize`, `nv_print`.
+
+`nv_device` has no array data type to state, so it was left alone.
 
 ## Noticed while documenting
 

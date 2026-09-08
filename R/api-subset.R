@@ -447,10 +447,13 @@ parse_subset_spec <- function(quo, axis_size) {
 #' Supports R-style indexing including scalar indices (which drop axes),
 #' ranges (`a:b`), and `array(c(...))` for selecting multiple elements along a
 #' axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
 #'   axes select all elements. See `vignette("subsetting")` for details.
-#' @return ([`arrayish`])
+#' @return ([`arrayish`])\cr
+#'   Has the input's data type, and the shape the specifications select --
+#'   a scalar index drops its axis, a range or an index array keeps it.
 #' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()

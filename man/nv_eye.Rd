@@ -14,7 +14,8 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 Size of the identity matrix.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Data type of the result. Can be any data type; defaults to \code{"f32"}. For
+\code{nv_eye_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -36,7 +37,8 @@ Existing array whose attributes are used as defaults
 }
 \value{
 (\code{\link{arrayish}})\cr
-An \verb{n x n} identity matrix.
+Has the given \code{dtype} and shape \verb{(n, n)}: ones on the diagonal, zeros
+elsewhere.
 }
 \description{
 Creates an \verb{n x n} identity matrix.

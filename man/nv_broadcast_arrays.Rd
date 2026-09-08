@@ -8,11 +8,12 @@ nv_broadcast_arrays(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to broadcast.}
+Arrays to broadcast. Can be of any data types, which are left as they
+are: only the shapes change.}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr
-List of arrays, all with the same shape.
+The inputs, each with its own data type and the common shape.
 }
 \description{
 Broadcasts arrays to a common shape using NumPy-style broadcasting rules.

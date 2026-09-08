@@ -8,14 +8,16 @@ nv_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Target data type. Can be any data type; the values are converted, so the
+result may lose precision or wrap around.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the given \code{dtype} and the same shape as \code{x}.
+Has the given \code{dtype} and the input's shape.
 }
 \description{
 Converts the elements of an array to a different data type.

@@ -17,8 +17,10 @@ Condition function returning a scalar boolean.
 Receives the state values as arguments.}
 
 \item{body}{(\code{function})\cr
-Body function returning the updated state as a named list
-with the same structure as \code{init}.}
+Body function returning the updated state as a named list with the same
+structure, data types and shapes as \code{init}. Nothing is promoted: a
+loop-carried state is meant to be heterogeneous, so each member keeps its
+own data type across iterations.}
 }
 \value{
 (named \code{list})\cr

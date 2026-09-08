@@ -8,11 +8,12 @@ nv_print(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Returns \code{x} unchanged.
+Returns the input unchanged, data type and shape included.
 }
 \description{
 Prints an array value to the console during JIT execution and returns the

@@ -38,7 +38,9 @@ Existing array whose attributes are used as defaults
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the given \code{shape} and dtype \code{bool}.
+Has the given \code{shape} and boolean data type. It is a mask over positions,
+so no array data enters it -- pass it to \code{\link[=nv_ifelse]{nv_ifelse()}} or multiply by it
+to use it.
 }
 \description{
 Returns a boolean matrix that is \code{TRUE} on and above the given diagonal,

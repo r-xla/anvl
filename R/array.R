@@ -40,10 +40,12 @@
 #' @param data (any)\cr
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
-#'   The default (`NULL`) uses the current backend's default dtype:
-#'   `f32` for numeric data on `"pjrt"`, `f64` for numeric data on `"quickr"`,
-#'   `i32` for integer data, and `bool` for logical data.
+#'   Data type of the result: one of `r roxy_dtypes()`, or a
+#'   [`tengen::DataType`]. Can be any data type the backend supports; `data`
+#'   is built at it, so a value that data type cannot hold exactly is
+#'   converted. The default (`NULL`) uses the backend's default for the R
+#'   storage type of `data`: `f32` for a double on `"pjrt"`, `f64` for a
+#'   double on `"quickr"`, `i32` for an integer and `bool` for a logical.
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.

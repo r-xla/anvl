@@ -10,8 +10,9 @@ nv_fill(value, shape, dtype = NULL, device = NULL)
 nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+\item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
+Scalar value to fill the array with. It is built at \code{dtype}, so a value
+that data type cannot hold exactly is converted to it.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}

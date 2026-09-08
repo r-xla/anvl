@@ -8,11 +8,12 @@ nv_flatten(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input, with at least 1 axis. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-1-D array.
+Has the input's data type, and one axis holding all of its elements.
 }
 \description{
 Flattens an N-dimensional array into a 1-dimensional array.

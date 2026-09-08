@@ -44,10 +44,12 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 \code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the current backend's default dtype:
-\code{f32} for numeric data on \code{"pjrt"}, \code{f64} for numeric data on \code{"quickr"},
-\code{i32} for integer data, and \code{bool} for logical data.}
+Data type of the result: one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64, or a
+\code{\link[tengen:DataType]{tengen::DataType}}. Can be any data type the backend supports; \code{data}
+is built at it, so a value that data type cannot hold exactly is
+converted. The default (\code{NULL}) uses the backend's default for the R
+storage type of \code{data}: \code{f32} for a double on \code{"pjrt"}, \code{f64} for a
+double on \code{"quickr"}, \code{i32} for an integer and \code{bool} for a logical.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

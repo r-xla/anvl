@@ -9,7 +9,8 @@
 #' a file connection.
 #'
 #' @param arrays (named `list` of [`AnvlArray`])\cr
-#'   Named list of arrays to save. Names must be unique.
+#'   Named list of arrays. Names must be unique. Any data type and shape,
+#'   both of which round-trip unchanged.
 #' @param path (`character(1)`)\cr
 #'   File path to write to.
 #'
@@ -49,7 +50,8 @@ nv_save <- function(arrays, path) {
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
 #'
-#' @returns (named `list` of [`AnvlArray`])
+#' @returns (named `list` of [`AnvlArray`])\cr
+#'   The arrays, each with the data type, shape and name it was written with.
 #' @seealso [nv_save()], [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
@@ -73,7 +75,9 @@ nv_read <- function(path, device = NULL) {
 #' [safetensors](https://huggingface.co/docs/safetensors/index) format.
 #'
 #' @param arrays (named `list` of [`AnvlArray`])\cr
-#'   Named list of arrays to serialize. Names must be unique.
+#'   Named list of arrays to serialize. Names must be unique. Any data type
+#'   and shape, both of which round-trip unchanged through
+#'   [`nv_unserialize()`].
 #' @param con (`NULL` | connection)\cr
 #'   An optional connection to write to.
 #'   If `NULL` (default), a raw vector is returned.
@@ -123,7 +127,8 @@ nv_serialize <- function(arrays, con = NULL) {
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
 #'
-#' @returns (named `list` of [`AnvlArray`])
+#' @returns (named `list` of [`AnvlArray`])\cr
+#'   The arrays, each with the data type, shape and name it was written with.
 #' @seealso [nv_serialize()], [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")

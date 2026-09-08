@@ -10,8 +10,9 @@
 #'
 #' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
-#' @param value (`numeric(1)`)\cr
-#'   Scalar value to fill the array with.
+#' @param value (`numeric(1)` | `logical(1)`)\cr
+#'   Scalar value to fill the array with. It is built at `dtype`, so a value
+#'   that data type cannot hold exactly is converted to it.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | `NULL`)\cr
@@ -81,9 +82,11 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' Broadcast scalar arrays to match the shape of non-scalar arrays.
 #' All non-scalar arrays must have the same shape.
 #' @param ... ([`arrayish`][arrayish])\cr
-#'   Arrays to broadcast. Scalars will be broadcast to the common non-scalar shape.
+#'   Arrays to broadcast. Can be of any data types, which are left as they
+#'   are: only the shapes change. Scalars are broadcast to the common
+#'   non-scalar shape.
 #' @return (`list()` of [`arrayish`])\cr
-#'   List of broadcasted arrays.
+#'   The inputs, each with its own data type and the common shape.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' # scalar 1 is broadcast to shape [3]
@@ -120,8 +123,10 @@ nv_broadcast_scalars <- function(...) {
 #' @description
 #' Promote arrays to a common data type, see [`common_dtype`] for more details.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to promote.
-#' @return (`list()` of [`arrayish`])
+#'   Arrays to promote. Can be of any data types; an R value among them
+#'   contributes its category rather than a data type of its own.
+#' @return (`list()` of [`arrayish`])\cr
+#'   The inputs, each at their common data type and with its own shape.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1L)
 #' y <- nv_array(1.5)
@@ -149,9 +154,10 @@ nv_promote_to_common <- function(...) {
 #'    it to the other's size; otherwise raise an error.
 #'
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to broadcast.
+#'   Arrays to broadcast. Can be of any data types, which are left as they
+#'   are: only the shapes change.
 #' @return (`list()` of [`arrayish`])\cr
-#'   List of arrays, all with the same shape.
+#'   The inputs, each with its own data type and the common shape.
 #' @seealso [nv_broadcast_scalars()], [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -194,10 +200,13 @@ nv_broadcast_to <- function(x, shape) {
 #' @description
 #' Converts the elements of an array to a different data type.
 #' Returns the input unchanged if it already has the target type.
-#' @template param_x
-#' @template param_dtype
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   Target data type. Can be any data type; the values are converted, so the
+#'   result may lose precision or wrap around.
 #' @return ([`arrayish`])\cr
-#'   Has the given `dtype` and the same shape as `x`.
+#'   Has the given `dtype` and the input's shape.
 #' @seealso [prim_convert()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1L, 2L, 3L))
@@ -259,9 +268,11 @@ nv_reshape <- function(x, shape) {
 #' @description
 #' Flattens an N-dimensional array into a 1-dimensional array.
 #' Fails with scalar inputs.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @templateVar shapes with at least 1 axis
+#' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   1-D array.
+#'   Has the input's data type, and one axis holding all of its elements.
 #' @export
 #' @examples
 #' nv_flatten(matrix(1:4, nrow = 2))
@@ -480,9 +491,10 @@ nv_static_slice <- prim_static_slice
 #' @description
 #' Prints an array value to the console during JIT execution and returns the
 #' input unchanged. Useful for debugging.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   Returns `x` unchanged.
+#'   Returns the input unchanged, data type and shape included.
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -1572,10 +1584,12 @@ nv_reverse <- prim_reverse
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_iota_like()`).
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type of the result. Can be any numeric data type, boolean being the
+#'   one exception. For `nv_iota_like()`, `NULL` uses `dtype(like)`.
 #' @template param_shape
 #' @param start (`integer(1)`)\cr
-#'   Starting value (default 1).
+#'   Starting value (default 1). Built at `dtype`, as the increments are.
 #' @template param_device
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and `shape`.
@@ -1900,7 +1914,8 @@ nv_solve <- function(a, b) {
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The last two
-#'   axes must be equal; any leading axes are batch axes.
+#'   axes must be equal; any leading axes are batch axes. Can be any float
+#'   data type. `r roxy_agree("a", "b")`
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
 #'   * full rank — shape `(B..., n, k)` when `left_side = TRUE`, or
@@ -2216,10 +2231,12 @@ nv_eigh <- prim_eigh
 #' @title Diagonal Matrix
 #' @description
 #' Creates a diagonal matrix from a 1-D array.
-#' @param x ([`arrayish`])\cr
-#'   A 1-D array of length `n` whose elements become the diagonal entries.
+#' @templateVar dtypes any data type
+#' @templateVar shapes a 1-D array of length `n` whose elements become the diagonal entries
+#' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   An `n x n` matrix with `x` on the diagonal and zeros elsewhere.
+#'   Has the input's data type and shape `(n, n)`, with the input on the
+#'   diagonal and zeros elsewhere.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_diag(nv_array(c(1, 2, 3)))
 #' @export
@@ -2261,10 +2278,13 @@ nv_diag <- function(x) {
 #' @param like ([`arrayish`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_eye_like()`).
-#' @template param_dtype
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   Data type of the result. Can be any data type; defaults to `"f32"`. For
+#'   `nv_eye_like()`, `NULL` uses `dtype(like)`.
 #' @template param_device
 #' @return ([`arrayish`])\cr
-#'   An `n x n` identity matrix.
+#'   Has the given `dtype` and shape `(n, n)`: ones on the diagonal, zeros
+#'   elsewhere.
 #' @seealso [nv_diag()] for general diagonal matrices.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_eye(3L)
@@ -2712,8 +2732,10 @@ nv_if <- prim_if
 #'   Condition function returning a scalar boolean.
 #'   Receives the state values as arguments.
 #' @param body (`function`)\cr
-#'   Body function returning the updated state as a named list
-#'   with the same structure as `init`.
+#'   Body function returning the updated state as a named list with the same
+#'   structure, data types and shapes as `init`. Nothing is promoted: a
+#'   loop-carried state is meant to be heterogeneous, so each member keeps its
+#'   own data type across iterations.
 #' @return (named `list`)\cr
 #'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- in its
 #'   final state after the loop terminates, with `init`'s structure, data
@@ -2983,7 +3005,8 @@ nv_outer <- function(lhs, rhs) {
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   Has the input's data type. A 1-D array of length `min(nrow, ncol)` containing the diagonal elements.
+#'   Has the input's data type, and one axis of length `min(nrow, ncol)`
+#'   holding the diagonal elements.
 #' @seealso [nv_diag()] for creating a diagonal matrix, [nv_trace()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:9, shape = c(3, 3))
@@ -3063,7 +3086,9 @@ assert_tri_args <- function(shape, diagonal) {
 #'   (only for `nv_lower_tri_like()`).
 #' @template param_device
 #' @return ([`arrayish`])\cr
-#'   Has the given `shape` and dtype `bool`.
+#'   Has the given `shape` and boolean data type. It is a mask over positions,
+#'   so no array data enters it -- pass it to [nv_ifelse()] or multiply by it
+#'   to use it.
 #' @seealso [nv_upper_tri()], [nv_tril()], [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_lower_tri(c(3, 3))
@@ -3092,7 +3117,9 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #'   (only for `nv_upper_tri_like()`).
 #' @template param_device
 #' @return ([`arrayish`])\cr
-#'   Has the given `shape` and dtype `bool`.
+#'   Has the given `shape` and boolean data type. It is a mask over positions,
+#'   so no array data enters it -- pass it to [nv_ifelse()] or multiply by it
+#'   to use it.
 #' @seealso [nv_lower_tri()], [nv_triu()], [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_upper_tri(c(3, 3))

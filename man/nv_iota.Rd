@@ -15,14 +15,15 @@ Axis along which values increase.
 Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
 last axis.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Can be any numeric data type, boolean being the
+one exception. For \code{nv_iota_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape.}
 
 \item{start}{(\code{integer(1)})\cr
-Starting value (default 1).}
+Starting value (default 1). Built at \code{dtype}, as the increments are.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
