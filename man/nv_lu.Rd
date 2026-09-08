@@ -14,14 +14,15 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 \value{
 (named \code{list} of \code{\link{arrayish}})\cr
 \code{L} and \code{U} have the input's data type; \code{pivots} and \code{permutation} are
-indices at \code{i32}.
+indices at the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 \itemize{
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.
 \item \code{U} -- upper-triangular factor of shape \verb{(k, n)}.
-\item \code{pivots} -- length \code{k}, at \code{i32}. LAPACK-style sequential row swaps
-as returned by \code{getrf}.
-\item \code{permutation} -- length \code{m}, at \code{i32}. A permutation
+\item \code{pivots} -- length \code{k}, at the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). LAPACK-style sequential row swaps as returned by
+\code{getrf}.
+\item \code{permutation} -- length \code{m}, at that same data type. A permutation
 vector representing \eqn{P}.
 }
 }
@@ -36,7 +37,7 @@ Use \code{\link[=prim_lu]{prim_lu()}} to get them in packed \code{LU} form.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# `L` and `U` keep the input's data type; `pivots` and `permutation` are `i32`
+# `L` and `U` keep the input's data type; the pivots are the default integer
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_lu(x)
 \dontshow{\}) # examplesIf}

@@ -13,11 +13,11 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 }
 \value{
 (named \code{list} of three \code{\link{arrayish}})\cr
-Elements \code{LU} \verb{(m, n)} with the input's data type; \code{pivots} \verb{(k,)} at
-\code{i32} with
-\code{k = min(m, n)} (sequential row swaps: row \code{i} was exchanged with row
-\code{pivots[i]} during elimination step \code{i}); and \code{permutation} \verb{(m,)} at
-\code{i32}, a permutation vector for \eqn{P} such that \code{(P \%*\% A)[i, ]} equals
+Elements \code{LU} \verb{(m, n)} with the input's data type; \code{pivots} \verb{(k,)} at the
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) with \code{k = min(m, n)}
+(sequential row swaps: row \code{i} was exchanged with row \code{pivots[i]} during
+elimination step \code{i}); and \code{permutation} \verb{(m,)} at that same data type, a
+permutation vector for \eqn{P} such that \code{(P \%*\% A)[i, ]} equals
 \code{A[permutation[i], ]}.
 }
 \description{
@@ -47,7 +47,7 @@ in-graph.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# `LU` keeps the input's data type; `pivots` and `permutation` are `i32`
+# `LU` keeps the input's data type; the pivots are the default integer
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 prim_lu(x)
 \dontshow{\}) # examplesIf}

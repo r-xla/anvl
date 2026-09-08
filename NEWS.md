@@ -8,7 +8,7 @@
   functions was improved.
 * `jit_eval()` was removed as it is no longer needed.
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
-  accumulate a boolean array at `i32` instead of returning a boolean.
+  accumulate a boolean array at the default integer data type instead of returning a boolean.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
 * The `steps` argument of `nv_seq()` / `nv_seq_like()` was removed.
@@ -70,10 +70,15 @@
 
 ## Features
 
+* The default data types for floating point numbers and integers can now be
+  configured via the `anvl.default_dtypes` field.
+  You can configure this for a specific scope via `local_default_dtypes()`
+  and `with_default_dtypes()`.
+  To convert a function to one running at a specified precision, use
+  `with_dtypes()`.
 * `nv_polygamma()`'s `n` is now an ordinary arrayish argument rather than a
   static one, so it accepts an array and not just a plain R value, matching
   `prim_polygamma()` and JAX's `jax.scipy.special.polygamma()`.
-
 * New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with 
   a provided `steps` argument.
 * `as.vector` now and returns `bit64::integer64`

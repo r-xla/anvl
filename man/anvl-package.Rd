@@ -13,8 +13,37 @@ Accelerated array computing and code transformations for R. Numerical programs o
 \section{Options}{
 
 \itemize{
-\item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): active backend that is used
-for compilation and data allocation.
+\item \code{anvl.backend} (\code{character(1)}, default \code{"pjrt"}): the backend every
+operation runs on -- \code{"pjrt"} or \code{"quickr"}. Arrays are allocated with it
+and jitted functions are compiled for it.
+Also see  \code{\link[=active_backend]{active_backend()}}, \code{\link[=local_backend]{local_backend()}} and \code{\link[=with_backend]{with_backend()}}.
+\item \code{anvl.default_dtypes} (named \code{character()} | named \code{list()}): the data
+types an R double and integer materialize at when it cannot be inferred from
+another operand.
+See \code{\link[=default_dtypes]{default_dtypes()}} for more details.
+}
+}
+
+\section{Environment variables}{
+
+\itemize{
+\item \code{PJRT_PLATFORM}: the platform the \code{"pjrt"} backend allocates on and
+compiles for when a call names no device -- \code{"cpu"} (the default),
+\code{"cuda"}, \code{"metal"}, ... It is read afresh whenever a default device is
+needed; see \code{\link[=default_device]{default_device()}} and \code{\link[=nv_device]{nv_device()}}. The variable is
+pjrt's, anvl only follows it.
+}
+
+The remaining ones affect only anvl's own test suite, not the package:
+\itemize{
+\item \code{ANVL_TEST}: \code{tests/testthat.R} runs the tests only when this is \code{"1"},
+so \verb{R CMD check} in a shell without it runs none of them.
+\item \code{ANVL_SKIP_QUICKR}: when set to anything non-empty, the tests that need
+the quickr backend are skipped -- they are comparatively slow.
+\item \code{ANVL_DEFAULT_DTYPES}: \code{category=dtype} pairs such as
+\code{"float=f64,int=i64"}, which the test setup turns into the
+\code{anvl.default_dtypes} option for the whole run, so that anything
+hardcoding \code{f32} / \code{i32} where it should read \code{\link[=default_dtypes]{default_dtypes()}} fails.
 }
 }
 

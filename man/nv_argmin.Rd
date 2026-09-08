@@ -26,8 +26,9 @@ How to handle \code{NaN} values in float inputs. If \code{FALSE}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{i32} data type regardless of the input's, and the input's shape with
-\code{axis} removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
+Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
+the input's, and the input's shape with \code{axis} removed (\code{drop = TRUE}) or
+set to 1 (\code{drop = FALSE}).
 }
 \description{
 Returns the index of the minimum value along an axis. Ties are broken
@@ -42,7 +43,7 @@ With \code{nan_rm = FALSE} (default), if any entry along the reduced axis is
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the index comes out at `i32`, whatever the input is
+# the index comes out at the default integer data type
 nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 nv_argmin(nv_array(c(2, NaN, 1, 3)))
 nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)

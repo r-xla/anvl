@@ -28,9 +28,10 @@ position of each top-\code{k} value along \code{axis}.}
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
 One array when \code{with_indices = FALSE}, a named \code{list} when
-\code{with_indices = TRUE}. The values have the input's data
-type and the indices \code{i32}. Both have the input's shape with \code{axis}
-resized to \code{k}; values are sorted decreasing along \code{axis}.
+\code{with_indices = TRUE}. The values have the input's data type and the
+indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both
+have the input's shape with \code{axis} resized to \code{k}; values are sorted
+decreasing along \code{axis}.
 }
 \description{
 Returns the \code{k} largest values along an axis, sorted in decreasing order.
@@ -44,7 +45,7 @@ bit is not canonicalized.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the values keep the input's data type, the indices are `i32`
+# the values keep the input's data type, the indices the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_top_k(x, k = 3L)
 nv_top_k(x, k = 3L, with_indices = TRUE)

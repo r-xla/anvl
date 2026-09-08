@@ -78,6 +78,7 @@ print.AnvlPrimitive <- function(x, ...) {
 #' @description
 #' Create a new primitive.
 #' For details on how to do this, see the article on *Adding a Primitive*.
+#' Like every jitted function it runs on the active backend when called.
 #' @param name (`character(1)`)\cr
 #'   Primitive name.
 #' @param fn (`function`)\cr
@@ -89,6 +90,7 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
 #'   Passed to [`jit()`].
+
 #' @param register (`logical(1)`)\cr
 #'   If `TRUE` (default), register the result under `name` in the primitive
 #'   registry.

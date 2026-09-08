@@ -18,6 +18,11 @@ config above. anvl-specific:
 - `ANVL_SKIP_QUICKR=1` skips the (slow) quickr tests; `PJRT_PLATFORM=cuda` runs the suite on the CUDA
   plugin (`is_cpu()` / `is_cuda()` in `helper.R` branch on it). `setup.R` sets
   `PJRT_CPU_DEVICE_COUNT=2` so multi-device tests have something to spread over.
+- `ANVL_DEFAULT_DTYPES="float=f64,int=i64"` runs the whole suite at another pair of default data
+  types; `setup.R` turns it into the `anvl.default_dtypes` option. The `default-dtypes` workflow
+  runs the suite this way so that anything hardcoding `f32` / `i32` where it should read
+  `default_dtypes()` fails in CI. A test that asserts the *registered* pair calls
+  `local_registered_default_dtypes()` (`helper.R`) to clear the override.
 - anvl tracks the **dev** versions of its r-xla dependencies:
   `pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))`.
 
@@ -54,6 +59,18 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
   `peek_dtype()` to ask what it *would* commit to.
 - A primitive promotes nothing unless its body says so: one whose operands must agree calls
   `apply_promotion()` on them before anything else reads them.
+- A trace output that met nothing commits at the default float / integer of the backend in force,
+  which `default_dtypes()` reports (`default_float()` / `default_int()` for one category) and the
+  option `anvl.default_dtypes` overrides. A trace is pinned to the pair the dispatcher keyed its
+  program on (`GraphDescriptor$default_dtypes`); name a category with `default_float()` /
+  `default_int()`, never hardcode `"f32"` / `"i32"` as a default. `default_dtype_r()` is for the
+  few places that map an R storage type chosen at run time, and `current_default_dtypes()` for
+  the whole pair.
+- **One backend at a time.** The backend is the option `anvl.backend` (`active_backend()`,
+  `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
+  nothing infers a backend from an argument, no function takes a `backend` argument, and an array
+  or device of another backend is an error. This is what makes the default dtypes unambiguous in
+  eager code.
 
 ## One Backend at a Time
 

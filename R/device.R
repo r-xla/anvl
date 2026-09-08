@@ -23,6 +23,8 @@ default_device <- function(backend = NULL) {
 #'
 #' A device identifies a compute resources, such as CPU, or a specific GPU.
 #' It is relevant for data allocation (e.g. via [nv_array()]) but also compilation ([jit]).
+#' A device belongs to the active backend ([`active_backend()`]); a device
+#' object of another backend is an error.
 #'
 #' @param x (`character(1)` | device object)\cr
 #'   Identifier for the device (e.g. `"cpu"`, `"cuda"`, `"cuda:<n>"`),

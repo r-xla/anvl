@@ -11,8 +11,16 @@ file in the same change that documents a function.
   supplied through the `dtypes` template variable where a template applies.
 - What an R value does is stated once per page: it assumes the data type of the
   operands it meets, or commits to its
-  [default data type][default_dtypes] when nothing claims it. Never name the
-  default's concrete value, since defaults will become configurable.
+  [default data type][default_dtypes] when nothing claims it. **Never name the
+  default's concrete value.** The defaults are configurable through the
+  `anvl.default_dtypes` option ([`default_dtypes()`], [`local_default_dtypes()`],
+  [`with_default_dtypes()`]), so a page that says `i32` or `f32` where it means
+  "the default" is wrong, not merely off-style. This covers the index outputs
+  (`argmax`, `argsort`, `top_k`, the cumulative extrema, `lu`'s pivots), the
+  data type a boolean input is counted at, and every constructor's `dtype`
+  default. A concrete data type in a page is only correct where the choice is
+  fixed: `nv_rng_state()`'s `ui64` state, `prim_bitcast_convert()`'s widths, and
+  the explicit `dtype =` in an example.
 - Templates: `param_unary_x` for a single arrayish operand, or
   `param_unary_x_must` where the phrase names the R side and the default
   sentence would be redundant; `params_prim_lhs_rhs` / `params_lhs_rhs`
@@ -194,6 +202,42 @@ Two of its observations were deliberately left alone: the `try()` on
 `?promotion_rule` demonstrates the narrowing error that page is about, and
 "NumPy-style broadcasting" / "Torch-style NCW layout" name a layout convention
 rather than claiming a framework match.
+
+## After merging main
+
+main's #471 made the default data types configurable
+(`anvl.default_dtypes`, [`default_dtypes()`], [`local_default_dtypes()`],
+[`with_default_dtypes()`]), and every index output now follows the default
+integer rather than a fixed `i32`. Merging it into this branch meant:
+
+- taking main's mechanism wherever the two touched the same code
+  (`prim_argmax` / `prim_argmin` / `prim_top_k` / the cumulative extrema build
+  their indices at `default_int()`; the RNG's `dtype` defaults to `NULL` and
+  resolves through `default_float()` / `default_int()`; `nv_eye()`,
+  `nv_seq()`, `nv_linspace()` likewise), while keeping this branch's checks on
+  top of it -- the boolean rejection in `nv_rbinom()` / `nv_sample_int()`, the
+  32/64-bit float requirement in the RNG, and the named list returns;
+- `nv_quantile()` interpolating at `default_float()` rather than a hardcoded
+  float;
+- retiring this branch's `?dtypes` alias for `default_dtypes`: that name now
+  belongs to main's function page, which is the better target for the 17
+  "commits to its [default data type][default_dtypes]" links. `?dtypes` keeps
+  the categories and the vocabulary and points at it.
+- a sweep over every page for a hardcoded default: 17 example comments and
+  parameter sentences that said `i32` now say "the default integer data type",
+  and the `nv_seq()` / `nv_linspace()` / `nv_eye()` / `AnvlArray` `dtype`
+  defaults point at [`default_dtypes()`]. Verified by running the claims under
+  `with_default_dtypes(c(float = "f64", int = "i64"))`, where `nv_argmax()`,
+  `nv_cumsum()` on a boolean, `nv_median()`, the samplers and the constructors
+  all follow.
+
+The RNG and distribution pages, previously left to the maintainer, now state
+their argument and output data types like the rest: `param_shape` and
+`param_initial_state` say what they hold (and that the `ui64[2]` state is fixed
+rather than defaulted), `nv_rng_state()`'s seed says it is built at `i32` so a
+seed names the same stream in every configuration, `nv_sample_int()`'s `n` says
+it is a plain R number, and the `nv_normal` page's return finally opens with a
+parenthesized type.
 
 ## Second review
 

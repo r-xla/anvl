@@ -20,7 +20,8 @@ is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}
 If \code{FALSE} (default), returns the running-maximum array.
 If \code{TRUE}, returns \code{list(values = ..., indices = ...)} where \code{indices}
 is the index of the last occurrence of the running
-maximum at each position, at \code{i32}.
+maximum at each position, of the default integer data
+type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 When \code{axis = NULL}, indices refer to the flattened input.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
@@ -34,7 +35,7 @@ contributes nothing to the running value.}
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
 One array when \code{with_indices = FALSE}, a named \code{list} of \code{values} and
 \code{indices} when \code{with_indices = TRUE}. The values have the input's data
-type and the indices \code{i32}; both have the input's shape when \code{axis} is
+type and the indices the default integer data type; both have the input's shape when \code{axis} is
 given, and are 1-D of length \code{prod(shape(x))} when \code{axis} is \code{NULL}.
 }
 \description{
@@ -51,7 +52,7 @@ column-major (Fortran) order. The two agree on 1-D inputs.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the running maximum keeps the data type; the indices are `i32`
+# the running maximum keeps the data type; the indices are the default integer
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummax(x)
 nv_cummax(x, axis = 1L)

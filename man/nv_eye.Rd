@@ -5,7 +5,7 @@
 \alias{nv_eye_like}
 \title{Identity Matrix}
 \usage{
-nv_eye(n, dtype = "f32", device = NULL)
+nv_eye(n, dtype = NULL, device = NULL)
 
 nv_eye_like(like, n, dtype = NULL, device = NULL)
 }
@@ -13,9 +13,9 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 \item{n}{(\code{integer(1)})\cr
 Size of the identity matrix.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result. Can be any data type; the default is shown in
-the usage above. For
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Can be any data type; \code{NULL} (default) uses the
+backend's default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}). For
 \code{nv_eye_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr

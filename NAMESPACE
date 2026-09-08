@@ -152,6 +152,9 @@ export(build_tree)
 export(common_dtype)
 export(current_platform)
 export(default_device)
+export(default_dtypes)
+export(default_float)
+export(default_int)
 export(device)
 export(dtype)
 export(eq_type)
@@ -166,6 +169,7 @@ export(is_dtype)
 export(jit)
 export(jit_roclet)
 export(local_backend)
+export(local_default_dtypes)
 export(local_descriptor)
 export(local_platform)
 export(map_tree)
@@ -461,6 +465,8 @@ export(value_and_gradient)
 export(vt)
 export(vt2at)
 export(with_backend)
+export(with_default_dtypes)
+export(with_dtypes)
 import(checkmate)
 import(tengen)
 importFrom(cli,
@@ -596,7 +602,10 @@ importFrom(stablehlo,hlo_transpose)
 importFrom(stablehlo,hlo_triangular_solve)
 importFrom(stablehlo,hlo_while)
 importFrom(stablehlo,hlo_xor)
-importFrom(stats,median)
+importFrom(stats,
+  median,
+  setNames
+)
 importFrom(tengen,
   as_array,
   as_dtype,

@@ -2,8 +2,7 @@
 % Please edit documentation in R/promotion.R
 \name{dtypes}
 \alias{dtypes}
-\alias{default_dtypes}
-\title{Data Types: Categories and Defaults}
+\title{Data Type Categories}
 \description{
 For promotion, every data type belongs to one of three categories, ordered
 boolean < integer < float:
@@ -39,15 +38,13 @@ See \code{\link{dtypes}} for the categories these groups are built from and for 
 default data type an R value commits to.
 }
 
-\section{Default Data Types}{
+\section{Where a Data Type Comes From}{
 
 An R value has no data type of its own. Where nothing in the program says
-which one it should take, it commits to the default of its R storage type: a
-\code{double} becomes \code{f32}, an \code{integer} becomes \code{i32}, a \code{logical} becomes
-\code{bool}. \code{\link[=peek_dtype]{peek_dtype()}} reports the default an R value would commit to.
-
-The backend has the final say on the float default: \code{"quickr"} computes in
-double precision throughout, so a \code{double} becomes \code{f64} there.
+which one it should take, it commits to the default of its category, which
+\code{\link[=default_dtypes]{default_dtypes()}} reports and the \code{anvl.default_dtypes} option
+configures. \code{\link[=peek_dtype]{peek_dtype()}} reports the default a given R value would
+commit to.
 
 Within its own category an R value assumes the data type it meets instead,
 and is built at it directly rather than converted to it, which is what keeps
@@ -57,6 +54,7 @@ common one.
 }
 
 \seealso{
-\code{\link[=common_dtype]{common_dtype()}}, \code{\link[=nv_promote_to_common]{nv_promote_to_common()}}, \code{\link[=nv_convert]{nv_convert()}},
+\code{\link[=default_dtypes]{default_dtypes()}}, \code{\link[=common_dtype]{common_dtype()}},
+\code{\link[=nv_promote_to_common]{nv_promote_to_common()}}, \code{\link[=nv_convert]{nv_convert()}},
 \code{vignette("type-promotion")}
 }

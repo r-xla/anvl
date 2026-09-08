@@ -21,8 +21,9 @@ kept with size 1.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has \code{i32} data type regardless of the input's, and the input's shape with
-\code{axis} removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
+Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
+the input's, and the input's shape with \code{axis} removed (\code{drop = TRUE}) or
+set to 1 (\code{drop = FALSE}).
 }
 \description{
 Returns the index of the minimum value along a single axis. Ties
@@ -45,7 +46,7 @@ The reduction is variadic over \verb{(values, indices)}, with a
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the index comes out at `i32`, whatever the input is
+# the index comes out at the default integer data type
 prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 \dontshow{\}) # examplesIf}
 }

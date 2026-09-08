@@ -237,7 +237,7 @@ test_that("Only constants in group generics", {
 test_that("... works (#19)", {
   expect_equal(
     jit(sum)(nv_array(1:10)),
-    nv_scalar(55L, dtype = "i32")
+    nv_scalar(55L, dtype = default_int())
   )
 
   f <- function(..., a) {
@@ -245,7 +245,7 @@ test_that("... works (#19)", {
   }
   expect_equal(
     jit(f)(a = nv_scalar(1L), nv_array(1:10)),
-    nv_scalar(56L, dtype = "i32")
+    nv_scalar(56L, dtype = default_int())
   )
 })
 
@@ -423,7 +423,9 @@ describe("jit: backend and device handling", {
 
   # a constructor declares the device it was asked for (graph_desc_add(device = ))
   it("reads a constructor's device from a static argument", {
-    f <- jit(function(val, dev) nv_fill(val, 2L, dtype = "f32", device = dev), static = c("val", "dev"))
+    # No `dtype`: the fill takes the default float of the backend in force, so
+    # this also runs on quickr (which has no `f32`).
+    f <- jit(function(val, dev) nv_fill(val, 2L, device = dev), static = c("val", "dev"))
     expect_equal(device(f(1, "cpu:0")), nv_device("cpu:0"))
     expect_equal(device(f(1, nv_device("cpu:1"))), nv_device("cpu:1"))
     skip_if_no_quickr()
@@ -518,4 +520,68 @@ test_that("rejecting a reference-semantics static names it helpfully", {
   e <- new.env()
   f <- jit(function(s, x) x + 1, static = "s")
   expect_snapshot(f(list(a = 1, opts = list(env = e)), nv_array(1)), error = TRUE)
+})
+
+describe("a scoped override inside a jitted body", {
+  it("applies to the values built in its scope, and only there", {
+    # A trace's outputs are arrays, so the data types are recorded as a side
+    # effect of tracing rather than returned.
+    seen <- character()
+    note <- function(x) {
+      seen <<- c(seen, as.character(dtype(x)))
+      x
+    }
+    f <- jit(function(x) {
+      with_default_dtypes(c(float = "f64"), {
+        note(nv_array(1.5))
+        note(nv_fill(0, 3))
+        note(x + 1.5)
+        note(nv_eye(2))
+        note(nv_linspace(0, 1, steps = 3L))
+      })
+      note(nv_array(1.5))
+      x
+    })
+    invisible(f(nv_array(1L, dtype = "i32")))
+    expect_equal(seen, c(rep("f64", 5L), as.character(default_float())))
+  })
+
+  it("reaches a helper that builds its own literals", {
+    helper <- function(x) x * 2 + 0.5
+    f <- jit(function(x) list(lo = helper(x), hi = with_default_dtypes(c(float = "f64"), helper(x))))
+    out <- f(nv_array(1L, dtype = "i32"))
+    expect_equal(dtype(out$lo), default_float())
+    expect_equal(dtype(out$hi), as_dtype("f64"))
+  })
+
+  it("does not reach a bare R value handed out of the scope", {
+    # The value has committed to nothing inside the scope, so it takes the
+    # default where it is used -- the per-operation rule, not a special case.
+    expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), default_float())
+  })
+
+  it("takes the trace's baseline, not the backend in force", {
+    skip_if_no_quickr()
+    # A program is compiled for one backend, so switching inside the body
+    # cannot change what its R values commit to.
+    expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), default_float())
+  })
+
+  it("does not change what the program is keyed on", {
+    local_registered_default_dtypes()
+    n_traced <- 0L
+    f <- jit(function(x) {
+      n_traced <<- n_traced + 1L
+      with_default_dtypes(c(float = "f64"), x + 1.5)
+    })
+    x <- nv_array(1L, dtype = "i32")
+    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_equal(n_traced, 1L)
+    # The scoped region is `f64` either way, but the baseline still keys the
+    # cache, so a different default outside the body is a different program.
+    with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
+    expect_equal(n_traced, 2L)
+    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_equal(n_traced, 2L)
+  })
 })

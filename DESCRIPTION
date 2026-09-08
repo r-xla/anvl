@@ -60,6 +60,7 @@ Collate:
     'api-distributions.R'
     'array.R'
     'device.R'
+    'default-dtypes.R'
     'backend.R'
     'jit.R'
     'promotion.R'

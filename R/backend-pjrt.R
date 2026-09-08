@@ -19,7 +19,8 @@ jit_pjrt_compile_cb <- function(f, static, donate, device = NULL) {
       donate = donate,
       device = device,
       arg_devices = dispatch_arg_devices(info),
-      fallback_device = info$default_device
+      fallback_device = info$default_device,
+      default_dtypes = default_dtypes_from_key(info$context)
     )
     phantom_specs <- lapply(compiled$phantom_specs, function(spec) {
       list(dtype = as.character(spec$dtype), shape = as.integer(spec$shape))
@@ -58,7 +59,10 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
     # Consulted only when a call has no array input to name a device. It reads
     # the default afresh, so a call of literals alone recompiles when the
     # default device changes rather than reusing the old entry.
-    default_device = if (is.null(device)) function() default_device("pjrt")
+    default_device = if (is.null(device)) function() default_device("pjrt"),
+    # The default dtypes the program is compiled under are part of the key, so
+    # a program compiled under one pair is never served under another.
+    context = default_dtypes_context("pjrt")
   )
   # Hoisted out of the per-call path: `::` resolves via getExportedValue on
   # every evaluation, which costs ~1us per lookup.
@@ -112,6 +116,10 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Devices of the concrete (non-static) input arguments, extracted before
 #'   converting to abstract values. Used together with traced devices for
 #'   device inference when `device` is `NULL`.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The data types the traced R values commit to when nothing else decides one
+#'   (see [`default_dtypes()`]), read off `info$context` so the program matches
+#'   the cache key it is filed under. `NULL` uses the pair in force.
 #' @param fallback_device (`NULL` | device)\cr
 #'   The device to compile for when `device` is `NULL` and nothing in the graph
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
@@ -138,9 +146,10 @@ compile_pjrt <- function(
   donate = character(),
   device = NULL,
   arg_devices = list(),
-  fallback_device = NULL
+  fallback_device = NULL,
+  default_dtypes = NULL
 ) {
-  desc <- local_descriptor()
+  desc <- local_descriptor(default_dtypes = default_dtypes, backend = "pjrt")
   graph <- trace_fn(
     f,
     desc = desc,
@@ -269,6 +278,12 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' to `"cpu"`), or is inferred from the existing inputs of a jitted call.
 #' Operations require all inputs to live on the same device.
 #'
+#' @section Supported data types:
+#' `bool`; the signed integers `i8`, `i16`, `i32` and `i64`; the unsigned
+#' integers `ui8`, `ui16`, `ui32` and `ui64`; and the floats `f32` and `f64`.
+#' An R double commits to `f32` on this backend and an R integer to `i32`
+#' unless the defaults say otherwise (see [`default_dtypes()`]).
+#'
 #' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose
 #'   underlying buffers may be donated to (i.e., reused/consumed by) the
@@ -330,7 +345,8 @@ AnvlBackendPjrt <- function() {
       }
       jit_pjrt_impl(f, static, cache_size, donate, device)
     },
-    await_data = function(x) pjrt::await(x$data)
+    await_data = function(x) pjrt::await(x$data),
+    default_dtypes = list(float = "f32", int = "i32")
   )
   class(backend) <- c("AnvlBackendPjrt", class(backend))
   backend

@@ -9,7 +9,7 @@ test_that("shape2string", {
 test_that("peek_dtype", {
   expect_equal(
     peek_dtype(1L),
-    as_dtype("i32")
+    default_int()
   )
   expect_equal(
     peek_dtype(nv_scalar(1L, dtype = "f32")),

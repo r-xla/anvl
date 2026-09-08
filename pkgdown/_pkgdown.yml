@@ -346,6 +346,11 @@ reference:
       - active_backend
       - local_backend
       - with_backend
+      - default_dtypes
+      - default_float
+      - default_int
+      - local_default_dtypes
+      - with_dtypes
       - install_anvl
       - nv_device
       - default_device

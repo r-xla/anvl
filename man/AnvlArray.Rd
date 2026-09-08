@@ -47,9 +47,9 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 Data type of the result: one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64, or a
 \code{\link[tengen:DataType]{tengen::DataType}}. Can be any data type the backend supports; \code{data}
 is built at it, so a value that data type cannot hold exactly is
-converted. The default (\code{NULL}) is the
-\link[=default_dtypes]{default data type} of the R storage type of \code{data}, which
-for a double depends on the backend.}
+converted. The default (\code{NULL}) is the data type the R value commits to
+(see \code{\link[=default_dtypes]{default_dtypes()}}), which depends on the backend and on the
+\code{anvl.default_dtypes} option.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

@@ -922,7 +922,7 @@ infer_cum_extreme <- function(x, axis) {
       shape = Shape(shape(x))
     ),
     indices = AbstractArray(
-      dtype = "i32",
+      dtype = default_int(),
       shape = Shape(shape(x))
     )
   )
@@ -1003,7 +1003,7 @@ prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L)
 #' extremum is carried alongside it.
 #' @seealso [nv_cummax()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # `values` keeps the input's data type, `indices` is `i32`
+#' # `values` keeps the input's data type, `indices` is the default integer
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' prim_cummax(x, axis = 1L)
 #' @export
@@ -1030,7 +1030,7 @@ prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L)
 #' extremum is carried alongside it.
 #' @seealso [nv_cummin()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # `values` keeps the input's data type, `indices` is `i32`
+#' # `values` keeps the input's data type, `indices` is the default integer
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' prim_cummin(x, axis = 1L)
 #' @export
@@ -1174,8 +1174,8 @@ prim_reduce <- new_primitive(
   static = c("axes", "drop", "reductor")
 )
 
-# Shared shape inference for prim_argmax / prim_argmin: x -> i32
-# with `axis` dropped (or kept as size 1).
+# Shared shape inference for prim_argmax / prim_argmin: x -> the default
+# integer data type with `axis` dropped (or kept as size 1).
 infer_fn_arg_extreme <- function(x, axis, drop) {
   shp <- shape(x)
   if (axis > length(shp)) {
@@ -1201,7 +1201,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
     new_shape[axis] <- 1L
   }
   list(AbstractArray(
-    dtype = "i32",
+    dtype = default_int(),
     shape = Shape(new_shape)
   ))
 }
@@ -1219,8 +1219,9 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it is
 #'   kept with size 1.
 #' @return ([`arrayish`])\cr
-#'   Has `i32` data type regardless of the input's, and the input's shape with
-#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
+#'   Has the default integer data type (see [`default_dtypes()`]) regardless of
+#'   the input's, and the input's shape with `axis` removed (`drop = TRUE`) or
+#'   set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmax
 #' @template section_rules
 #' @section StableHLO:
@@ -1229,7 +1230,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #' (value > value | (value == value & idx < idx)) selector.
 #' @seealso [prim_argmin()], [nv_argmax()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the index comes out at `i32`, whatever the input is
+#' # the index comes out at the default integer data type
 #' prim_argmax(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_argmax <- new_primitive(
@@ -1258,8 +1259,9 @@ prim_argmax <- new_primitive(
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @inheritParams prim_argmax
 #' @return ([`arrayish`])\cr
-#'   Has `i32` data type regardless of the input's, and the input's shape with
-#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
+#'   Has the default integer data type (see [`default_dtypes()`]) regardless of
+#'   the input's, and the input's shape with `axis` removed (`drop = TRUE`) or
+#'   set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmin
 #' @template section_rules
 #' @section StableHLO:
@@ -1268,7 +1270,7 @@ prim_argmax <- new_primitive(
 #' (value < value | (value == value & idx < idx)) selector.
 #' @seealso [prim_argmax()], [nv_argmin()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the index comes out at `i32`, whatever the input is
+#' # the index comes out at the default integer data type
 #' prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_argmin <- new_primitive(
@@ -3095,7 +3097,7 @@ prim_sort <- new_primitive(
     )
   },
   # No promotion: a key and its payloads are meant to differ in data type
-  # (nv_argsort() sorts an f32 key alongside an i32 index).
+  # (nv_argsort() sorts a float key alongside an integer index).
   static = c("axis", "descending", "is_stable")
 )
 
@@ -3114,16 +3116,16 @@ prim_sort <- new_primitive(
 #'   `1 <= k <= shape(x)[naxes(x)]`.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `values`, the top-`k` values at the input's data type, and
-#'   `indices`, their indices along the last axis at `i32`. Both have the
-#'   input's shape with the last axis replaced by `k`. Ties are broken by lower
-#'   index first.
+#'   `indices`, their indices along the last axis at the default integer data
+#'   type (see [`default_dtypes()`]). Both have the input's shape with the last
+#'   axis replaced by `k`. Ties are broken by lower index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec_chlo("top_k")`
 #' @seealso [nv_top_k()], [prim_sort()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # `values` keeps the input's data type, `indices` is `i32`
+#' # `values` keeps the input's data type, `indices` is the default integer
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' prim_top_k(x, k = 3L)
 #' @export
@@ -3140,7 +3142,13 @@ prim_top_k <- new_primitive(
         shape = integer()
       )
       vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
-      list(values = vt2at(vts[[1L]]), indices = vt2at(vts[[2L]]))
+      # `hlo_top_k` fixes its indices at `i32`; the lowering converts them to
+      # the default integer, which is what the caller sees.
+      indices <- vt2at(vts[[2L]])
+      list(
+        values = vt2at(vts[[1L]]),
+        indices = AbstractArray(dtype = default_int(), shape = Shape(shape(indices)))
+      )
     }
 
     graph_desc_add(
@@ -3844,11 +3852,11 @@ prim_qr <- new_primitive(
 #' @templateVar shapes with exactly 2 axes
 #' @template param_unary_x
 #' @return (named `list` of three [`arrayish`])\cr
-#'   Elements `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at
-#'   `i32` with
-#'   `k = min(m, n)` (sequential row swaps: row `i` was exchanged with row
-#'   `pivots[i]` during elimination step `i`); and `permutation` `(m,)` at
-#'   `i32`, a permutation vector for \eqn{P} such that `(P %*% A)[i, ]` equals
+#'   Elements `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at the
+#'   default integer data type (see [`default_dtypes()`]) with `k = min(m, n)`
+#'   (sequential row swaps: row `i` was exchanged with row `pivots[i]` during
+#'   elimination step `i`); and `permutation` `(m,)` at that same data type, a
+#'   permutation vector for \eqn{P} such that `(P %*% A)[i, ]` equals
 #'   `A[permutation[i], ]`.
 #' @templateVar primitive_id lu
 #' @template section_rules
@@ -3859,7 +3867,7 @@ prim_qr <- new_primitive(
 #' in-graph.
 #' @seealso [nv_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # `LU` keeps the input's data type; `pivots` and `permutation` are `i32`
+#' # `LU` keeps the input's data type; the pivots are the default integer
 #' x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' prim_lu(x)
 #' @export
@@ -3873,10 +3881,11 @@ prim_lu <- new_primitive(
       m <- s[1L]
       n <- s[2L]
       k <- min(m, n)
+      index_dt <- default_int()
       list(
         LU = AbstractArray(dtype = dt, shape = Shape(c(m, n))),
-        pivots = AbstractArray(dtype = "i32", shape = Shape(k)),
-        permutation = AbstractArray(dtype = "i32", shape = Shape(m))
+        pivots = AbstractArray(dtype = index_dt, shape = Shape(k)),
+        permutation = AbstractArray(dtype = index_dt, shape = Shape(m))
       )
     }
     graph_desc_add(

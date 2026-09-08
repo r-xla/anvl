@@ -165,8 +165,9 @@ test_that("can pass constant to nested trace_fn call if it is defined in the par
 })
 
 test_that("GraphLiteral", {
+  local_registered_default_dtypes()
   gl <- GraphLiteral(LiteralArray(1L, integer()))
-  expect_equal(dtype(gl), as_dtype("i32"))
+  expect_equal(dtype(gl), default_int())
   expect_equal(shape(gl), integer())
   expect_snapshot(gl)
 })
@@ -205,6 +206,7 @@ test_that("can pass abstract arrays to trace_fn", {
 })
 
 test_that("error handling", {
+  local_registered_default_dtypes()
   expect_snapshot(error = TRUE, jit(prim_ceil)(nv_array(1:4)))
   expect_snapshot(
     error = TRUE,
@@ -213,6 +215,7 @@ test_that("error handling", {
 })
 
 test_that("error handling: stablehlo errors use anvl's terminology", {
+  local_registered_default_dtypes()
   # `cli_abort()` errors from stablehlo store an already formatted message in
   # the condition's fields. Shapes rather than data types, since operands whose
   # data types disagree are refused by `promote_rdata_common()` before inference
@@ -328,6 +331,8 @@ describe("how an R value is built into a graph", {
   })
 
   it("converts inside the program when the value crosses its category", {
+    # This only happens when the default float is narrower than an R double.
+    local_registered_default_dtypes()
     # An R double built at an integer data type is built at f64 -- where it is
     # exact -- and converted by the program, so narrowing follows XLA.
     f <- function(x) nv_add(x, nv_convert(1.5, "i32"))

@@ -1,7 +1,7 @@
 nv_unif_rand <- function(
   shape,
   initial_state,
-  dtype = "f64"
+  dtype
 ) {
   dtype <- assert_rng_float_dtype(dtype)
   shape <- assert_shapevec(shape)
@@ -54,9 +54,10 @@ nv_unif_rand <- function(
 #' Samples from a uniform distribution in the open interval `(min, max)`.
 #' @template param_shape
 #' @template param_initial_state
-#' @param dtype (`character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-#'   from random bits.
+#'   from random bits. `NULL` (default) uses the backend's default float data
+#'   type (see [`default_dtypes()`]).
 #' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound. Plain R numbers rather than [`arrayish`], so they
 #'   are built at `dtype` and nothing is promoted.
@@ -74,11 +75,11 @@ nv_unif_rand <- function(
 nv_runif <- function(
   shape,
   initial_state,
-  dtype = "f32",
+  dtype = NULL,
   min = 0,
   max = 1
 ) {
-  dtype <- assert_rng_float_dtype(dtype)
+  dtype <- assert_rng_float_dtype(dtype %||% default_float())
   checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
   checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
   shape <- assert_shapevec(shape)
@@ -131,9 +132,8 @@ nv_runif <- function(
 #'   from random bits. `mean` and `sd` are brought to it, widening but never
 #'   narrowing -- an `f64` `mean` for an `f32` sample is an error. `NULL`
 #'   (default) takes the data type from `mean` and `sd` instead, promoting them
-#'   to a common one, and falls back to an R double's
-#'   [default data type][default_dtypes] where both are bare R values, which
-#'   have none.
+#'   to a common one, and falls back to the default float data type (see
+#'   [`default_dtypes()`]) where both are bare R values, which have none.
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -157,7 +157,7 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   shape <- assert_shapevec(shape)
 
   rule <- if (is.null(dtype)) {
-    promote_common(fallback = default_dtype_r("double"))
+    promote_common(fallback = default_float())
   } else {
     promote_dtype(assert_rng_float_dtype(dtype))
   }
@@ -235,10 +235,11 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #'   so nothing is promoted.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
-#' @param dtype (`character(1)` | [`DataType`][tengen::DataType])\cr
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sample. Can be any numeric data type; the successes are
 #'   counted and converted to it. Boolean is not one, and is rejected: it
-#'   cannot hold a count.
+#'   cannot hold a count. `NULL` (default) uses the backend's default integer
+#'   data type (see [`default_dtypes()`]).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
@@ -250,12 +251,13 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #' result$values
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
-nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32") {
+nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
   # The sample counts successes, which `bool` cannot hold: it used to come back
-  # as `bool` for `size = 1` and silently as `i32` for anything above.
+  # as `bool` for `size = 1` and silently as an integer for anything above.
   dtype <- assert_numeric_dtype(
-    dtype,
-    hint = "A boolean cannot hold a count; use {.code \"i32\"} and compare it."
+    dtype %||% default_int(),
+    arg = "dtype",
+    hint = "A boolean cannot hold a count; use an integer data type and compare it."
   )
   checkmate::assert_int(size, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
@@ -292,11 +294,13 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
 #' @template param_shape
 #' @template param_initial_state
 #' @param n (`integer(1)`)\cr
-#'   Size of the population, i.e. the integers `1` to `n` are sampled.
-#' @param dtype (`character(1)` | [`DataType`][tengen::DataType])\cr
+#'   Size of the population, i.e. the integers `1` to `n` are sampled. A plain
+#'   R number rather than [`arrayish`], so it promotes nothing.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sampled integers. Can be any numeric data type; the drawn
 #'   indices are converted to it. Boolean is not one, and is rejected: it
-#'   cannot hold an index.
+#'   cannot hold an index. `NULL` (default) uses the backend's default integer
+#'   data type (see [`default_dtypes()`]).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
 #'   of shape `shape` and data type `dtype`.
@@ -309,11 +313,12 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
 #' result$values
 #' @export
 #' @jit static c(1L, 3L, 4L)
-nv_sample_int <- function(shape, initial_state, n, dtype = "i32") {
+nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
   # An index is a count too: at `bool` every draw collapsed to `TRUE`.
   dtype <- assert_numeric_dtype(
-    dtype,
-    hint = "A boolean cannot hold an index; use {.code \"i32\"}."
+    dtype %||% default_int(),
+    arg = "dtype",
+    hint = "A boolean cannot hold an index; use an integer data type."
   )
   assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)
@@ -334,7 +339,8 @@ nv_sample_int <- function(shape, initial_state, n, dtype = "i32") {
 #' @template param_initial_state
 #' @param x ([`arrayish`])\cr
 #'   The population to sample from, a 1-D array. Can be of any data type, which
-#'   the sample takes over; nothing is promoted.
+#'   the sample takes over; nothing is promoted. An R value commits to its
+#'   [default data type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and `x`'s data type.

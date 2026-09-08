@@ -8,14 +8,18 @@ nv_sample(shape, initial_state, x)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
+A plain R vector built into the program, not an array.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned \code{state} has them too.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 The population to sample from, a 1-D array. Can be of any data type, which
-the sample takes over; nothing is promoted.}
+the sample takes over; nothing is promoted. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

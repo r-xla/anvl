@@ -27,8 +27,8 @@ contributes nothing to the running value.}
 (\code{\link{arrayish}})\cr
 Has the input's shape when \code{axis} is given, and is 1-D of length
 \code{prod(shape(x))} when \code{axis} is \code{NULL}, which flattens first. Has the
-input's data type, except for a
-boolean input, which is accumulated at \code{i32}.
+input's data type, except for a boolean input, which is accumulated at the
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 \description{
 Cumulative sum, optionally along a single axis.

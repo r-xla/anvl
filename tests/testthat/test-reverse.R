@@ -251,6 +251,7 @@ test_that("wrt for non-array input: value_and_gradient", {
 })
 
 test_that("wrt for nested non-array input: gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -261,6 +262,7 @@ test_that("wrt for nested non-array input: gradient", {
 })
 
 test_that("wrt for nested non-array input: value_and_gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -271,6 +273,7 @@ test_that("wrt for nested non-array input: value_and_gradient", {
 })
 
 test_that("can only compute gradient w.r.t. float arrays", {
+  local_registered_default_dtypes()
   expect_snapshot(error = TRUE, {
     gradient(nv_floor, wrt = "x")(nv_scalar(1L))
   })
@@ -490,5 +493,50 @@ describe("rdata", {
     q <- function(u) nv_scalar(1, dtype = "f64") * u * u
     f <- jit(function(v) gradient(q)(v)[[1L]] + gradient(q)(v)[[1L]])
     expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"))), 4 * sqrt(2))
+  })
+})
+
+describe("a scoped override inside a differentiated body", {
+  # `gradient()` traces the reverse pass into its own descriptor, which inherits
+  # the defaults in force where it is opened. A cotangent belongs to the primal
+  # it is with respect to, so it takes *that* array's data type whatever the
+  # literals inside the body committed to. Upstream JAX does not support a
+  # scoped dtype override inside a traced body at all (jax-ml/jax#5982), so
+  # this is worth pinning rather than assuming.
+  x32 <- nv_array(c(1, 2, 3), dtype = "f32")
+
+  it("leaves the cotangent at the data type of the primal", {
+    f <- function(x) with_default_dtypes(c(float = "f64"), nv_reduce_sum(x * 2 + 0.5))
+    out <- jit(gradient(f))(x32)
+    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("holds when the override covers only part of the body", {
+    g <- function(x) {
+      a <- x * 2
+      nv_reduce_sum(with_default_dtypes(c(float = "f64"), a + 0.5))
+    }
+    out <- jit(gradient(g))(x32)
+    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("does not narrow a wider primal", {
+    # The scope makes the body's literals `f32`; the primal is `f64` and the
+    # cotangent stays there rather than following the scope down.
+    x64 <- nv_array(c(1, 2, 3), dtype = "f64")
+    h <- function(x) with_default_dtypes(c(float = "f32"), nv_reduce_sum(x * 2 + 0.5))
+    out <- jit(gradient(h))(x64)
+    expect_equal(dtype(out[[1L]]), as_dtype("f64"))
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("agrees with the same override set outside the body", {
+    k <- function(x) nv_reduce_sum(x * 2 + 0.5)
+    scoped <- jit(gradient(function(x) with_default_dtypes(c(float = "f64"), k(x))))(x32)
+    outside <- with_default_dtypes(c(float = "f64"), jit(gradient(k))(x32))
+    expect_equal(dtype(scoped[[1L]]), dtype(outside[[1L]]))
+    expect_equal(as_array(scoped[[1L]]), as_array(outside[[1L]]))
   })
 })

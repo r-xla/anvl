@@ -78,3 +78,12 @@ test_that("install_anvl rejects backends that have nothing to install", {
   expect_error(install_anvl("plain"))
   expect_error(install_anvl("not-a-backend"))
 })
+
+describe("eager code", {
+  it("rejects an array of another backend instead of guessing a default", {
+    skip_if_no_quickr()
+    x <- with_backend("quickr", nv_array(1L))
+    expect_error(x + 1.5, "quickr")
+    expect_error(nv_fill_like(x, 0), "belongs to the .*quickr.* backend")
+  })
+})

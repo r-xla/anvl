@@ -4,18 +4,22 @@
 \alias{nv_runif}
 \title{Sample from a Uniform Distribution}
 \usage{
-nv_runif(shape, initial_state, dtype = "f32", min = 0, max = 1)
+nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
+A plain R vector built into the program, not an array.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned \code{state} has them too.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-from random bits.}
+from random bits. \code{NULL} (default) uses the backend's default float data
+type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 
 \item{min, max}{(\code{numeric(1)})\cr
 Lower and upper bound. Plain R numbers rather than \code{\link{arrayish}}, so they

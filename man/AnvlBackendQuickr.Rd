@@ -42,9 +42,14 @@ suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.
 \item Only a subset of the primitives that the PJRT backend supports are currently
 lowered to quickr code. See \code{vignette("primitives")} for an overview.
-\item Only the data types \code{f64}, \code{i32}, and \code{bool} are supported.
 \item Only CPU execution is supported.
+\item Only three data types are supported; see the section below.
 }
+}
+
+\section{Supported data types}{
+
+\code{f64}, \code{i32} and \code{bool} -- the three R storage types.
 }
 
 \section{Quickr JIT arguments}{

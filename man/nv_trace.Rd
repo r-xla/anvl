@@ -14,7 +14,7 @@ One input, with exactly 2 axes. Can be any data type. An R value commits to its
 \value{
 (\code{\link{arrayish}})\cr
 A scalar with \code{x}'s data type, except a boolean input, which is counted
-at \code{i32}.
+at the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 \description{
 Computes the trace (sum of diagonal elements) of a 2-D array.

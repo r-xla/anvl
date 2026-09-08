@@ -464,7 +464,7 @@ assert_promotes_to <- function(x, dtype, args, i) {
   what <- arg_label(args, i)
   target <- as.character(dtype)
   if (is_rdata(aval)) {
-    if (promote_dt_rdata(aval$default_dtype, dtype) == dtype) {
+    if (promote_dt_rdata(peek_dtype(aval), dtype) == dtype) {
       return(invisible(NULL))
     }
     cli_abort(
@@ -615,9 +615,8 @@ common_dtype_of <- function(..., .fallback = NULL) {
 }
 
 
-#' @title Data Types: Categories and Defaults
+#' @title Data Type Categories
 #' @name dtypes
-#' @aliases default_dtypes
 #' @description
 #' For promotion, every data type belongs to one of three categories, ordered
 #' boolean < integer < float:
@@ -633,21 +632,20 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' that names `int` and `uint` separately.
 #'
 #' @template section_dtype_words
-#' @section Default Data Types:
+#' @section Where a Data Type Comes From:
 #' An R value has no data type of its own. Where nothing in the program says
-#' which one it should take, it commits to the default of its R storage type: a
-#' `double` becomes `f32`, an `integer` becomes `i32`, a `logical` becomes
-#' `bool`. [`peek_dtype()`] reports the default an R value would commit to.
-#'
-#' The backend has the final say on the float default: `"quickr"` computes in
-#' double precision throughout, so a `double` becomes `f64` there.
+#' which one it should take, it commits to the default of its category, which
+#' [`default_dtypes()`] reports and the `anvl.default_dtypes` option
+#' configures. [`peek_dtype()`] reports the default a given R value would
+#' commit to.
 #'
 #' Within its own category an R value assumes the data type it meets instead,
 #' and is built at it directly rather than converted to it, which is what keeps
 #' `nv_scalar(1, "f64") / sqrt(2)` exact. The primitives require operands that
 #' have a data type to agree on it; the `nv_*` functions promote them to a
 #' common one.
-#' @seealso [`common_dtype()`], [`nv_promote_to_common()`], [`nv_convert()`],
+#' @seealso [`default_dtypes()`], [`common_dtype()`],
+#'   [`nv_promote_to_common()`], [`nv_convert()`],
 #'   `vignette("type-promotion")`
 NULL
 
@@ -709,25 +707,6 @@ promote_dt_known <- function(dt1, dt2) {
   }
   # both are unsigned
   as_dtype(paste0("ui", max(dtype_width(dt1), dtype_width(dt2))))
-}
-
-default_dtype <- function(x) {
-  if (!is.numeric(x) && !is.logical(x)) {
-    cli_abort("No default type for: {.class class(x)[1L]}")
-  }
-  default_dtype_r(typeof(x))
-}
-
-# The dtype an R value of this storage type commits to when nothing in the
-# program tells it what it is. The single place that decision is made.
-default_dtype_r <- function(r_type) {
-  switch(
-    r_type,
-    double = as_dtype("f32"),
-    integer = as_dtype("i32"),
-    logical = as_dtype("bool"),
-    cli_abort("No default type for R type {.val {r_type}}")
-  )
 }
 
 promotable_to <- function(from, to) {

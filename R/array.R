@@ -43,9 +43,9 @@
 #'   Data type of the result: one of `r roxy_dtypes()`, or a
 #'   [`tengen::DataType`]. Can be any data type the backend supports; `data`
 #'   is built at it, so a value that data type cannot hold exactly is
-#'   converted. The default (`NULL`) is the
-#'   [default data type][default_dtypes] of the R storage type of `data`, which
-#'   for a double depends on the backend.
+#'   converted. The default (`NULL`) is the data type the R value commits to
+#'   (see [`default_dtypes()`]), which depends on the backend and on the
+#'   `anvl.default_dtypes` option.
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
@@ -168,13 +168,16 @@ nv_array <- function(
     }
   }
   if (currently_tracing() && is.null(device)) {
-    # A constant of the trace: it belongs to the backend being traced for.
+    # A constant of the trace: it belongs to the backend being traced for, and
+    # commits to the defaults the trace is pinned to.
+    dtype <- resolve_default_dtype(data, dtype)
     return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
   }
   backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
+  dtype <- resolve_default_dtype(data, dtype, current_default_dtypes())
   globals$backends[[backend]]$new_data(data, dtype, shape, device)
 }
 
@@ -798,8 +801,7 @@ ConcreteArray <- function(data) {
 #' @param shape ([`stablehlo::Shape`] | `integer()`)\cr
 #'   The shape of the array.
 #' @param dtype ([`tengen::DataType`])\cr
-#'   The data type. Defaults to the current backend's default floating dtype,
-#'   `i32` for integer, and `bool` for logical.
+#'   The data type. For the default, see [`default_dtypes()`]).
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- LiteralArray(1L, shape = integer())

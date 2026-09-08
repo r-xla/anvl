@@ -347,7 +347,7 @@ describe("nv_qnorm", {
 
   it("converts mean/sd to the dtype of p", {
     out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), as_dtype("f32"))
+    expect_equal(dtype(out), default_float())
   })
 })
 

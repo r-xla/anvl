@@ -1,4 +1,5 @@
 test_that("literals", {
+  local_registered_default_dtypes()
   f <- function(x) {
     x * 1L
   }
@@ -41,6 +42,7 @@ test_that("sub-graphs (while)", {
 })
 
 test_that("params", {
+  local_registered_default_dtypes()
   f <- function(x) {
     nv_reduce_max(x, axes = 1, drop = TRUE)
   }

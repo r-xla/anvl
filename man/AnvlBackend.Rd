@@ -16,7 +16,8 @@ AnvlBackend(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 )
 }
 \arguments{
@@ -52,9 +53,14 @@ object from a device type string (e.g. \code{"cpu"}). Called by \code{\link[=nv_
 \item{await_data}{(\code{function})\cr Blocks until the array's underlying data
 is ready. Called by \code{\link[=await]{await()}} for \code{AnvlArray}s; a no-op for backends
 without async execution.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
+The default data types for this backend.
+Can be overwritten, see \code{\link[=default_dtypes]{default_dtypes()}}.}
 }
 \value{
-(\code{AnvlBackend})
+(\code{AnvlBackend})\cr
+The backend object, which the registry stores under its name.
 }
 \description{
 Create a backend

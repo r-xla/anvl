@@ -2,8 +2,32 @@
 NULL
 
 #' @section Options:
-#' * `anvl.backend` (`character(1)`, default `"pjrt"`): active backend that is used
-#'   for compilation and data allocation.
+#' * `anvl.backend` (`character(1)`, default `"pjrt"`): the backend every
+#'   operation runs on -- `"pjrt"` or `"quickr"`. Arrays are allocated with it
+#'   and jitted functions are compiled for it.
+#'   Also see  [`active_backend()`], [`local_backend()`] and [`with_backend()`].
+#' * `anvl.default_dtypes` (named `character()` | named `list()`): the data
+#'   types an R double and integer materialize at when it cannot be inferred from
+#'   another operand.
+#'   See [`default_dtypes()`] for more details.
+#'
+#' @section Environment variables:
+#' * `PJRT_PLATFORM`: the platform the `"pjrt"` backend allocates on and
+#'   compiles for when a call names no device -- `"cpu"` (the default),
+#'   `"cuda"`, `"metal"`, ... It is read afresh whenever a default device is
+#'   needed; see [`default_device()`] and [`nv_device()`]. The variable is
+#'   pjrt's, anvl only follows it.
+#'
+#' The remaining ones affect only anvl's own test suite, not the package:
+#'
+#' * `ANVL_TEST`: `tests/testthat.R` runs the tests only when this is `"1"`,
+#'   so `R CMD check` in a shell without it runs none of them.
+#' * `ANVL_SKIP_QUICKR`: when set to anything non-empty, the tests that need
+#'   the quickr backend are skipped -- they are comparatively slow.
+#' * `ANVL_DEFAULT_DTYPES`: `category=dtype` pairs such as
+#'   `"float=f64,int=i64"`, which the test setup turns into the
+#'   `anvl.default_dtypes` option for the whole run, so that anything
+#'   hardcoding `f32` / `i32` where it should read [`default_dtypes()`] fails.
 #'
 #' @section Third-Party Licenses:
 #' The `anvl` package itself is MIT-licensed. The CUDA backend dynamically
@@ -34,7 +58,7 @@ NULL
 #' @importFrom rlang %||%
 #' @importFrom methods formalArgs is
 #' @importFrom utils capture.output
-#' @importFrom stats median
+#' @importFrom stats median setNames
 ## usethis namespace: end
 NULL
 

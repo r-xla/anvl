@@ -59,3 +59,4 @@ covr-*.rds
 .claude/settings.local.json
 .claude/worktrees/
 .worktrees/
+tests/testthat/_snaps/*.new.md

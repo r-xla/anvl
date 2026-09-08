@@ -8,7 +8,7 @@ describe("[", {
         idx2 <- nv_scalar(1L, dtype = "i32")
         x[idx1, idx2]
       },
-      nv_scalar(1)
+      nv_scalar(1, dtype = "f32")
     )
   })
 
@@ -21,7 +21,7 @@ describe("[", {
         x[idx1, idx2]
       },
       # Scalar array indices drop axes, so result is a scalar
-      nv_scalar(8)
+      nv_scalar(8, dtype = "f32")
     )
   })
 })
@@ -256,7 +256,7 @@ describe("Summary group generic", {
         x <- nv_array(matrix(1:6, 2))
         sum(x, axes = 1L)
       },
-      nv_array(c(3, 7, 11), dtype = "i32")
+      nv_array(c(3, 7, 11), dtype = default_int())
     )
   })
   it("forwards na.rm to the underlying nv_reduce_*", {

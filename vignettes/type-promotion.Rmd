@@ -20,13 +20,11 @@ For example, below we are adding an `f32` to an `f64`, where the former is promo
 
 ```{r}
 library(anvl)
-jit(nv_add)(
+nv_add(
   nv_scalar(1.0, dtype = "f32"),
   nv_scalar(1.0, dtype = "f64")
 )
 ```
-
-The type-promotion rules are inspired by JAX, and they are designed for execution on accelerators like GPUs, where one often wants speed instead of precision.
 
 The rules are defined by the `common_dtype()` function.
 
@@ -75,7 +73,7 @@ nv_add(1, 2)
 It is therefore important to understand the rules that govern the materialization of R objects as `AnvlArray`s.
 Generally, there are two routes:
 
-1. The R value is committed at the default data type of its R storage type, which `help(dtypes)` lists.
+1. The R value is committed at its default data type, which `default_dtypes()` reports: a `double` and an `integer` take the defaults of the backend in force, configurable through the `anvl.default_dtypes` option, and a `logical` takes `bool`.
    This is e.g. the case in unary functions such as `nv_exp`.
 2. The R value's data type is inferred from the other arguments, as in the `nv_add` call above.
    When no concrete data type is present, `nv_add(1, 2)` falls back to that default again.
@@ -104,6 +102,18 @@ as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
 One common rule is `promote_common()`, which is used by functions such as `nv_add` above.
 It computes the common data type of the inputs.
 In this case, it returns the default data type of an R `double`, as neither input has one of its own.
+We can override that default via `with_default_dtypes()`, which we use below to work in double precision.
+
+```{r}
+with_default_dtypes(c(float = "f64"), {
+  list(
+    committed = jit(\() 1.0)(),
+    yielded = nv_array(1, dtype = "f32") + 1.5
+  )
+})
+```
+
+Below, we compute the common data type of the arguments.
 
 
 ```{r}

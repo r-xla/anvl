@@ -201,3 +201,90 @@ test_that("the quickr backend dispatches through the closure engine", {
     expect_equal(jit_size(f), 1L)
   })
 })
+
+describe("a compiled program", {
+  it("is keyed on the defaults it was compiled under", {
+    # The baseline has to differ from the override applied below, or there is
+    # only ever one program and nothing to key.
+    local_registered_default_dtypes()
+    n_traced <- 0L
+    f <- jit(function(x) {
+      n_traced <<- n_traced + 1L
+      x + 1.5
+    })
+    x <- nv_array(1L, dtype = "i32") # the literal decides the float
+    expect_equal(dtype(f(x)), as_dtype("f32"))
+    expect_equal(n_traced, 1L)
+    expect_equal(dtype(f(x)), as_dtype("f32"))
+    expect_equal(n_traced, 1L)
+    with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
+    expect_equal(n_traced, 2L)
+    # Back to f32: the first entry is served, not the f64 one.
+    expect_equal(dtype(f(x)), as_dtype("f32"))
+    expect_equal(n_traced, 2L)
+    with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
+    expect_equal(n_traced, 2L)
+
+    # A literal-only program as well.
+    g <- jit(function() 1.5)
+    expect_equal(dtype(g()), as_dtype("f32"))
+    with_default_dtypes(c(float = "f64"), expect_equal(dtype(g()), as_dtype("f64")))
+    expect_equal(dtype(g()), as_dtype("f32"))
+  })
+
+  it("runs on, and is pinned to, the backend in force when it is called", {
+    skip_if_no_quickr()
+    local_registered_default_dtypes()
+    f <- jit(function() 1.5)
+    expect_equal(dtype(f()), as_dtype("f32"))
+    expect_equal(with_backend("quickr", dtype(f())), as_dtype("f64"))
+    expect_equal(dtype(f()), as_dtype("f32"))
+    # An override set on pjrt is pjrt's; quickr keeps what it registers.
+    local_default_dtypes(c(int = "i64"))
+    g <- jit(function() 1L)
+    expect_equal(dtype(g()), as_dtype("i64"))
+    expect_equal(with_backend("quickr", dtype(g())), as_dtype("i32"))
+    # A value that names no backend reaches quickr as well, which has no
+    # `i64`: an error there rather than a silent fallback to something the
+    # backend does support.
+    withr::local_options(anvl.default_dtypes = c(int = "i64"))
+    expect_error(with_backend("quickr", nv_array(1L)), "quickr")
+  })
+
+  it("resolves a constant that names a device like any other", {
+    # A constant that names a device takes the eager path, but it is still part
+    # of the trace and must read the defaults the rest of the trace reads --
+    # the baseline, and an override over it.
+    local_default_dtypes(c(float = "f64"))
+    f <- jit(function() {
+      dev <- nv_device("cpu")
+      list(
+        plain = nv_array(1.5),
+        with_device = nv_array(1.5, device = dev),
+        scoped_plain = with_default_dtypes(c(float = "f32"), nv_array(1.5)),
+        scoped_device = with_default_dtypes(c(float = "f32"), nv_array(1.5, device = dev))
+      )
+    })
+    out <- f()
+    expect_equal(dtype(out$plain), as_dtype("f64"))
+    expect_equal(dtype(out$with_device), as_dtype("f64"))
+    expect_equal(dtype(out$scoped_plain), as_dtype("f32"))
+    expect_equal(dtype(out$scoped_device), as_dtype("f32"))
+  })
+
+  it("keeps one cache per backend", {
+    skip_if_no_quickr()
+    local_registered_default_dtypes()
+    n_traced <- 0L
+    f <- jit(function(x) {
+      n_traced <<- n_traced + 1L
+      x + 1.5
+    })
+    expect_equal(dtype(f(nv_array(1L))), as_dtype("f32"))
+    expect_equal(with_backend("quickr", dtype(f(nv_array(1L)))), as_dtype("f64"))
+    expect_equal(n_traced, 2L)
+    expect_equal(dtype(f(nv_array(1L))), as_dtype("f32"))
+    expect_equal(with_backend("quickr", dtype(f(nv_array(1L)))), as_dtype("f64"))
+    expect_equal(n_traced, 2L)
+  })
+})

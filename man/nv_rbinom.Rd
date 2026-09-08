@@ -4,14 +4,17 @@
 \alias{nv_rbinom}
 \title{Sample from a Binomial Distribution}
 \usage{
-nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32")
+nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
+A plain R vector built into the program, not an array.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned \code{state} has them too.}
 
 \item{size}{(\code{integer(1)})\cr
 Number of trials. A plain R number rather than \code{\link{arrayish}}, as is \code{prob},
@@ -20,10 +23,11 @@ so nothing is promoted.}
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sample. Can be any numeric data type; the successes are
 counted and converted to it. Boolean is not one, and is rejected: it
-cannot hold a count.}
+cannot hold a count. \code{NULL} (default) uses the backend's default integer
+data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

@@ -49,26 +49,30 @@ brought to it. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
+A plain R vector built into the program, not an array.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sample: a 32- or 64-bit float, as the sample is assembled
 from random bits. \code{mean} and \code{sd} are brought to it, widening but never
 narrowing -- an \code{f64} \code{mean} for an \code{f32} sample is an error. \code{NULL}
 (default) takes the data type from \code{mean} and \code{sd} instead, promoting them
-to a common one, and falls back to an R double's
-\link[=default_dtypes]{default data type} where both are bare R values, which
-have none.}
+to a common one, and falls back to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}) where both are bare R values, which have none.}
 }
 \value{
+(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
 \code{nv_dnorm()}, \code{nv_pnorm()} and \code{nv_qnorm()} return an \code{\link{arrayish}} with the
 shape and data type of \code{x}/\code{q}/\code{p}.
 
 \code{nv_rnorm()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
-RNG state, and \code{values}, the sample of shape \code{shape}.
+RNG state with \code{initial_state}'s data type and shape, and \code{values}, the
+sample of shape \code{shape} and the data type described under \code{dtype}.
 }
 \description{
 Density (\code{nv_dnorm}), distribution function (\code{nv_pnorm}),
@@ -90,6 +94,9 @@ left tail when \code{log_p = TRUE} to maintain accuracy.
 Moshier (1989) (this is \code{ndtri} in the Cephes
 library as used by JAX) for \code{f64}, and uses a new lower degree Remez minimax
 rational approximation on the same intervals for \code{f32}.
+
+The thresholds and coefficients of \code{nv_pnorm()} and \code{nv_qnorm()} are written
+for \code{f32} and \code{f64}, so those two are the only data types they accept.
 }
 \section{Random generation}{
 

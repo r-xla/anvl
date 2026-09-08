@@ -1,3 +1,6 @@
+#' @include default-dtypes.R
+NULL
+
 #' Create a backend
 #'
 #' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
@@ -21,7 +24,11 @@
 #' @param await_data (`function`)\cr Blocks until the array's underlying data
 #'   is ready. Called by [`await()`] for `AnvlArray`s; a no-op for backends
 #'   without async execution.
-#' @return (`AnvlBackend`)
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The default data types for this backend.
+#'   Can be overwritten, see [`default_dtypes()`].
+#' @return (`AnvlBackend`)\cr
+#'   The backend object, which the registry stores under its name.
 #' @keywords internal
 #' @export
 AnvlBackend <- function(
@@ -36,8 +43,15 @@ AnvlBackend <- function(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 ) {
+  if (!is.null(default_dtypes)) {
+    default_dtypes <- list(
+      float = as_dtype(default_dtypes$float),
+      int = as_dtype(default_dtypes$int)
+    )
+  }
   structure(
     list(
       new_data = new_data,
@@ -51,13 +65,17 @@ AnvlBackend <- function(
       new_device = new_device,
       print_data = print_data,
       jit = jit,
-      await_data = await_data
+      await_data = await_data,
+      default_dtypes = default_dtypes
     ),
     class = "AnvlBackend"
   )
 }
 
 register_backend <- function(name, backend) {
+  if (name %in% c("float", "int")) {
+    cli_abort("A backend must not be named after a data type category ({.val float} or {.val int}).")
+  }
   globals$backends[[name]] <- backend
 }
 
@@ -113,9 +131,6 @@ register_backend(
   "plain",
   AnvlBackend(
     new_data = function(data, dtype, shape, device) {
-      if (is.null(dtype)) {
-        dtype <- default_dtype(data)
-      }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
@@ -176,7 +191,8 @@ register_backend(
     jit = function(f, static, cache_size, ...) {
       cli_abort("JIT compilation is not supported for the {.val plain} backend.")
     },
-    await_data = function(x) invisible(NULL)
+    await_data = function(x) invisible(NULL),
+    default_dtypes = NULL
   )
 )
 
@@ -187,7 +203,7 @@ register_backend(
 #'
 #' @return (`character(1)`)\cr
 #'   The backend name (e.g. `"pjrt"`, `"quickr"`).
-#' @seealso [local_backend()], [with_backend()]
+#' @seealso [local_backend()], [with_backend()], [default_dtypes()]
 #' @export
 active_backend <- function() {
   getOption("anvl.backend", "pjrt")
@@ -200,7 +216,8 @@ assert_backend <- function(backend) {
 #' Temporarily set the backend
 #'
 #' Sets the `anvl.backend` option for the duration of the calling scope. Every
-#' array built and every operation run in that scope uses the backend.
+#' array built and every operation run in that scope uses the backend, and R
+#' values commit to its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
@@ -216,7 +233,8 @@ local_backend <- function(backend, envir = parent.frame()) {
 #' Run code with a specific backend
 #'
 #' Sets the `anvl.backend` option for the duration of the expression. Every
-#' array built and every operation run in `code` uses the backend.
+#' array built and every operation run in `code` uses the backend, and R values
+#' commit to its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).

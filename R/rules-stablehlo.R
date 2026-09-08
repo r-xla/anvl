@@ -6,6 +6,10 @@
 # stablehlo skip re-inference. Composite and region rules (reduce, cumulative
 # ops, linalg decompositions, ...) omit the parameter and keep normal inference.
 
+index_dtype_of <- function(output_types, i) {
+  as.character(output_types[[i]]$type$dtype)
+}
+
 prim_fill[["stablehlo"]] <- function(value, shape, dtype) {
   list(hlo_tensor(value, shape = shape, dtype = dtype))
 }
@@ -213,7 +217,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
 }
 
 # Here we also return the indices to simplify reverse rule
-.stablehlo_apply_cum_extreme <- function(x, axis, is_max) {
+.stablehlo_apply_cum_extreme <- function(x, axis, is_max, index_dtype) {
   shp <- shape(x)
   rank <- length(shp)
   s_d <- shp[[axis]]
@@ -224,11 +228,12 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   padding[axis, 1L] <- s_d - 1L
 
   v_dtype <- as.character(x$value_type$type$dtype)
-  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = "i32", shape = shp)
+  i_dtype <- as.character(index_dtype)
+  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = i_dtype, shape = shp)
 
   init_v_fn <- if (is_max) nv_minval else nv_maxval
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
-  init_i <- hlo_scalar(0L, dtype = "i32", func = x$func)
+  init_i <- hlo_scalar(0L, dtype = i_dtype, func = x$func)
 
   cmp <- if (is_max) prim_gt else prim_lt
   is_float <- is_dtype_float(x$value_type$type$dtype)
@@ -264,9 +269,9 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
     reductor,
     list(
       lv = nv_aval(v_dtype, integer()),
-      li = nv_aval("i32", integer()),
+      li = nv_aval(i_dtype, integer()),
       rv = nv_aval(v_dtype, integer()),
-      ri = nv_aval("i32", integer())
+      ri = nv_aval(i_dtype, integer())
     )
   )
 
@@ -282,17 +287,20 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   )
   values <- out[[1L]]
   indices_0 <- out[[2L]]
-  one <- hlo_scalar(1L, dtype = "i32", func = indices_0$func)
+  one <- hlo_scalar(1L, dtype = i_dtype, func = indices_0$func)
   one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices_0$value_type))
   list(values, hlo_add(indices_0, one_bc))
 }
 
-prim_cummax[["stablehlo"]] <- function(x, axis) {
-  .stablehlo_apply_cum_extreme(x, axis, is_max = TRUE)
+# The index outputs follow the default integer data type, which the trace has
+# already committed to: it is read off the inferred output types rather than
+# from `default_int()`, which lowering runs too late to consult.
+prim_cummax[["stablehlo"]] <- function(x, axis, output_types) {
+  .stablehlo_apply_cum_extreme(x, axis, is_max = TRUE, index_dtype = index_dtype_of(output_types, 2L))
 }
 
-prim_cummin[["stablehlo"]] <- function(x, axis) {
-  .stablehlo_apply_cum_extreme(x, axis, is_max = FALSE)
+prim_cummin[["stablehlo"]] <- function(x, axis, output_types) {
+  .stablehlo_apply_cum_extreme(x, axis, is_max = FALSE, index_dtype = index_dtype_of(output_types, 2L))
 }
 
 prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env) {
@@ -316,12 +324,13 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env
   stablehlo(graph, id = "", constants_as_inputs = FALSE)[[1L]]
 }
 
-.stablehlo_arg_extreme <- function(x, axis, drop, direction, init_v_fn) {
+.stablehlo_arg_extreme <- function(x, axis, drop, direction, init_v_fn, index_dtype) {
   shp <- shape(x$value_type)
   v_dtype <- x$value_type$type$dtype
-  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = "i32", shape = shp)
+  i_dtype <- as.character(index_dtype)
+  iota <- hlo_iota(iota_dimension = axis - 1L, dtype = i_dtype, shape = shp)
   init_v <- hlo_scalar(init_v_fn(v_dtype, "cpu"))
-  init_i <- hlo_scalar(0L, dtype = "i32", func = x$func)
+  init_i <- hlo_scalar(0L, dtype = i_dtype, func = x$func)
 
   # Reductor: pick lhs unless rhs is strictly better. On a tie, pick the
   # smaller index. XLA's reduce is associative but may be applied in any order
@@ -337,9 +346,9 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env
     reductor,
     list(
       lv = nv_aval(v_dtype, integer()),
-      li = nv_aval("i32", integer()),
+      li = nv_aval(i_dtype, integer()),
       rv = nv_aval(v_dtype, integer()),
-      ri = nv_aval("i32", integer())
+      ri = nv_aval(i_dtype, integer())
     )
   )
 
@@ -351,7 +360,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env
   )
   # convert to 1-based
   result <- out[[2L]]
-  one <- hlo_scalar(1L, dtype = "i32", func = result$func)
+  one <- hlo_scalar(1L, dtype = i_dtype, func = result$func)
   one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(result$value_type))
   result <- hlo_add(result, one_bc)
   if (drop) {
@@ -362,12 +371,26 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env
   list(hlo_reshape(result, shape_out))
 }
 
-prim_argmax[["stablehlo"]] <- function(x, axis, drop) {
-  .stablehlo_arg_extreme(x, axis, drop, direction = "GT", init_v_fn = nv_minval)
+prim_argmax[["stablehlo"]] <- function(x, axis, drop, output_types) {
+  .stablehlo_arg_extreme(
+    x,
+    axis,
+    drop,
+    direction = "GT",
+    init_v_fn = nv_minval,
+    index_dtype = index_dtype_of(output_types, 1L)
+  )
 }
 
-prim_argmin[["stablehlo"]] <- function(x, axis, drop) {
-  .stablehlo_arg_extreme(x, axis, drop, direction = "LT", init_v_fn = nv_maxval)
+prim_argmin[["stablehlo"]] <- function(x, axis, drop, output_types) {
+  .stablehlo_arg_extreme(
+    x,
+    axis,
+    drop,
+    direction = "LT",
+    init_v_fn = nv_maxval,
+    index_dtype = index_dtype_of(output_types, 1L)
+  )
 }
 
 # comparison jit rules ----------------------------------------------------------
@@ -745,15 +768,21 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
   hlo_select(is_nan, canonical_nan, hlo_select(is_zero, zero, x))
 }
 
-prim_top_k[["stablehlo"]] <- function(x, k) {
+prim_top_k[["stablehlo"]] <- function(x, k, output_types) {
   out <- hlo_top_k(x, k = k)
   values <- out[[1L]]
   indices <- out[[2L]]
 
-  # to 1-based
+  # `hlo_top_k`'s indices are `i32` by spec, so the shift to 1-based happens
+  # there and only the result follows the default integer.
   one <- hlo_scalar(1L, dtype = "i32", func = indices$func)
   one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices$value_type))
   indices <- hlo_add(indices, one_bc)
+
+  index_dtype <- index_dtype_of(output_types, 2L)
+  if (index_dtype != "i32") {
+    indices <- hlo_convert(indices, index_dtype)
+  }
 
   list(values, indices)
 }
@@ -994,7 +1023,7 @@ pivots_to_permutation <- function(pivots, n) {
   )[[2L]]
 }
 
-prim_lu[["stablehlo"]] <- function(x) {
+prim_lu[["stablehlo"]] <- function(x, output_types) {
   vt <- x$value_type
   tt <- vt$type
   dt <- tt$dtype
@@ -1002,6 +1031,11 @@ prim_lu[["stablehlo"]] <- function(x) {
   m <- shp[1L]
   n <- shp[2L]
   k <- min(m, n)
+
+  # LAPACK's `getrf` (and cuSOLVER, which matches it) writes `ipiv` as 32-bit
+  # integers, so the custom call and the loop that walks it stay `i32`
+  # whatever the default integer is; only the two outputs are converted.
+  index_dtype <- index_dtype_of(output_types, 2L)
 
   lu_type <- vt(dtype = dt, shape = c(m, n))
   piv_type <- vt(dtype = "i32", shape = k)
@@ -1018,6 +1052,10 @@ prim_lu[["stablehlo"]] <- function(x) {
   LU <- out[[1L]]
   pivots <- out[[2L]]
   permutation <- pivots_to_permutation(pivots, m)
+  if (index_dtype != "i32") {
+    pivots <- hlo_convert(pivots, index_dtype)
+    permutation <- hlo_convert(permutation, index_dtype)
+  }
   list(LU, pivots, permutation)
 }
 

@@ -1,6 +1,6 @@
 test_that("common_dtype_of: single argument", {
   expect_equal(common_dtype_of(AbstractArray("i32", Shape(c(1, 2)))), as_dtype("i32"))
-  expect_equal(common_dtype_of(RData(integer(), "double")), as_dtype("f32"))
+  expect_equal(common_dtype_of(RData(integer(), "double")), default_float())
 })
 
 test_that("common_dtype_of: two typed arguments", {
@@ -33,8 +33,8 @@ test_that("common_dtype_of: an R value yields to a typed one", {
   # ... crosses to the other category when that is what it meets ...
   check(1L, "f64", "f64")
   # ... but a float R value never becomes an integer, and nothing becomes a bool.
-  check(1.5, "i32", "f32")
-  check(1L, "bool", "i32")
+  check(1.5, "i32", default_float())
+  check(1L, "bool", default_int())
   check(TRUE, "i32", "i32")
 })
 
@@ -45,12 +45,12 @@ test_that("common_dtype_of: R values among themselves take their defaults", {
     expect_equal(common_dtype_of(r1, r2), as_dtype(expected))
     expect_equal(common_dtype_of(r2, r1), as_dtype(expected))
   }
-  check(1L, 2L, "i32")
-  check(1.5, 2.5, "f32")
-  check(1L, 2.5, "f32")
+  check(1L, 2L, default_int())
+  check(1.5, 2.5, default_float())
+  check(1L, 2.5, default_float())
   check(TRUE, FALSE, "bool")
-  check(TRUE, 1L, "i32")
-  check(TRUE, 1.5, "f32")
+  check(TRUE, 1L, default_int())
+  check(TRUE, 1.5, default_float())
 })
 
 test_that("common_dtype_of: multiple arguments", {
@@ -164,12 +164,12 @@ test_that("common_dtype_of: a fallback settles what R values alone commit to", {
   expect_equal(common_dtype_of(rdbl, rdbl, .fallback = "f64"), as_dtype("f64"))
   expect_equal(common_dtype_of(rlgl, .fallback = "i8"), as_dtype("i8"))
   # ... and no fallback leaves them their default.
-  expect_equal(common_dtype_of(rint, rint), as_dtype("i32"))
+  expect_equal(common_dtype_of(rint, rint), default_int())
 
   # The R values yield to it as they do to any dtype, so one in a lower
   # category leaves them where they are.
-  expect_equal(common_dtype_of(rdbl, .fallback = "i32"), as_dtype("f32"))
-  expect_equal(common_dtype_of(rint, .fallback = "bool"), as_dtype("i32"))
+  expect_equal(common_dtype_of(rdbl, .fallback = "i32"), default_float())
+  expect_equal(common_dtype_of(rint, .fallback = "bool"), default_int())
 
   # An argument that brings a dtype of its own claims them instead: the
   # fallback is ignored, whatever it named.
@@ -191,8 +191,8 @@ test_that("promote_common(fallback = ) realizes R values at the fallback", {
 
   # An argument that has one wins over the fallback.
   args <- as_anvl_arrays(nv_array(1L), 2L, .promote = promote_common(fallback = "f64"))
-  expect_equal(dtype(args[[1L]]), as_dtype("i32"))
-  expect_equal(dtype(args[[2L]]), as_dtype("i32"))
+  expect_equal(dtype(args[[1L]]), default_int())
+  expect_equal(dtype(args[[2L]]), default_int())
 
   # `on` still restricts which arguments the rule covers.
   args <- as_anvl_arrays(
@@ -201,7 +201,7 @@ test_that("promote_common(fallback = ) realizes R values at the fallback", {
     .promote = promote_common(on = "x", fallback = "f64")
   )
   expect_equal(dtype(args$x), as_dtype("f64"))
-  expect_equal(dtype(args$y), as_dtype("f32"))
+  expect_equal(dtype(args$y), default_float())
 
   expect_equal(format(promote_common(fallback = "f64")), "<promote_common(fallback f64)>")
   expect_equal(format(promote_common()), "<promote_common>")
@@ -222,7 +222,7 @@ test_that("promote_rdata_common() moves the R values and nothing else", {
     .promote = promote_rdata_common(on = c("x", "y"))
   )
   expect_equal(dtype(args$y), as_dtype("i8"))
-  expect_equal(dtype(args$z), as_dtype("f32"))
+  expect_equal(dtype(args$z), default_float())
 
   # Several data types among the covered arguments have no common one to reach
   # without converting one of them, which this rule does not do.
@@ -273,7 +273,7 @@ test_that("a promotion rule is a function of the call's arguments", {
   }
 
   out <- as_anvl_arrays(nv_array(1L), 2.5, .promote = widest_float)
-  expect_equal(lapply(out, dtype), list(as_dtype("f32"), as_dtype("f32")))
+  expect_equal(lapply(out, dtype), list(default_float(), default_float()))
   out <- as_anvl_arrays(nv_array(1L), 2.5, nv_array(1, dtype = "f64"), .promote = widest_float)
   expect_equal(unique(lapply(out, dtype)), list(as_dtype("f64")))
 
@@ -380,7 +380,7 @@ test_that("promotion_rule() builds a rule that prints and groups like the built-
   grouped <- promote_grouped(mine, promote_common(on = "z"))
   expect_equal(attr(grouped, "spec")$on, c("x", "y", "z"))
   out <- as_anvl_arrays(x = 1L, y = 2L, z = 3.5, .promote = grouped)
-  expect_equal(lapply(out, dtype), list(x = as_dtype("f64"), y = as_dtype("f64"), z = as_dtype("f32")))
+  expect_equal(lapply(out, dtype), list(x = as_dtype("f64"), y = as_dtype("f64"), z = default_float()))
 
   # `on` is a promise the rule has to keep: one that places an argument outside
   # it is still caught when the rules actually answer.
