@@ -65,7 +65,7 @@ decides one (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 \item{backend}{(\code{character(1)})\cr
 The backend this trace is compiled for. Required: it decides which entry
 of the \code{anvl.default_dtypes} option applies to the trace, so switching the
-ambient backend inside a traced body changes nothing.
+active backend inside a traced body changes nothing.
 \code{\link[=local_descriptor]{local_descriptor()}} fills it in from \code{\link[=active_backend]{active_backend()}}, so only a
 direct call has to name it.}
 }

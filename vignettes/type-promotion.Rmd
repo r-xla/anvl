@@ -26,8 +26,6 @@ nv_add(
 )
 ```
 
-The type-promotion rules are inspired by JAX, and they are designed for execution on accelerators like GPUs, where one often wants speed instead of precision.
-
 The rules are defined by the `common_dtype()` function.
 
 ```{r}
