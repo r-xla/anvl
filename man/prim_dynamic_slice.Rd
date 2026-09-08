@@ -8,11 +8,12 @@ prim_dynamic_slice(x, ..., slice_sizes)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
-\item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per axis. Each must be a
-scalar array. Pass one scalar per axis of \code{x}.}
+\item{...}{(\code{\link{arrayish}})\cr
+Scalar start indices, one per axis of \code{x}. Each must be a scalar of an
+integer data type, and keeps it -- the indices take no part in \code{x}'s.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice in each axis. Must have length equal to
@@ -21,7 +22,7 @@ per axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input and shape \code{slice_sizes}.
+Has the input's data type and shape \code{slice_sizes}.
 }
 \description{
 Extracts a slice from an array whose start position is determined at

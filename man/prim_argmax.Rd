@@ -8,7 +8,8 @@ prim_argmax(x, axis, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to find the index of the maximum.
@@ -19,9 +20,9 @@ If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
 kept with size 1.}
 }
 \value{
-\code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{x} with \code{axis} removed (or set to 1 if
-\code{drop = FALSE}).
+\code{\link{arrayish}}\cr
+Has \code{i32} data type whatever the input's is, and the input's shape with
+\code{axis} removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Returns the index of the maximum value along a single axis. Ties

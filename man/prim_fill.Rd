@@ -7,8 +7,10 @@
 prim_fill(value, shape, dtype, device = NULL)
 }
 \arguments{
-\item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+\item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
+Scalar value to fill the array with. It is built at \code{dtype}, so a value
+that data type cannot hold exactly is converted to it -- \code{3.14} at \code{i32}
+fills with \code{3}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}

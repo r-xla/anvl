@@ -1599,20 +1599,28 @@ nv_iota <- prim_iota
 #' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
 #' @param start,end (`integer(1)`)\cr
-#'   Start and end values, which must satisfy `start <= end`.
-#' @param dtype (`character(1)`)\cr
-#'   Data type. Default `"i32"`.
-#'   For `nv_seq_like()`, `NULL` uses `dtype(like)`.
+#'   Start and end values, which must satisfy `start <= end`. Both are plain R
+#'   values built into the program, not arrays.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type of the result. Can be any numeric data type, boolean being the
+#'   one exception; the default (`NULL`) is `i32`. For `nv_seq_like()`, `NULL`
+#'   uses `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
 #' @template param_device
 #' @return [`arrayish`]\cr
-#'   1-D array of length `end - start + 1`.
+#'   Has `dtype` and shape `end - start + 1`.
 #' @seealso [nv_linspace()] for a given number of evenly spaced values,
+#'   [nv_iota()] for values increasing along an axis of any shape,
 #'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
+#'
+#' # a float data type gives the same values as floats
+#' nv_seq(3, 7, dtype = "f32")
+#'
+#' # nv_seq_like() takes dtype and device from an existing array
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
@@ -1649,19 +1657,32 @@ nv_seq <- function(start, end, dtype = NULL, device = NULL) {
 #' @param steps (`integer(1)`)\cr
 #'   Number of values to generate. Must be at least 1; for `steps = 1` the
 #'   result is `start`.
-#' @param dtype (`character(1)`)\cr
-#'   Floating-point data type. Default `"f32"`.
-#'   For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must then be a
-#'   floating-point data type.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type of the result. Must be `f32` or `f64`; the default (`NULL`) is
+#'   `f32`. For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must
+#'   then be one of those two.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_linspace_like()`).
 #' @template param_device
 #' @return [`arrayish`]\cr
-#'   1-D array of length `steps`.
-#' @seealso [nv_seq()] for consecutive integers.
+#'   Has `dtype` and shape `steps`.
+#' @seealso [nv_seq()] for consecutive integers, [nv_iota()] for values
+#'   increasing along an axis of any shape, [`dtypes`] for the data type
+#'   categories.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_linspace(0, 1, steps = 5L)
+#'
+#' # end below start counts down
+#' nv_linspace(1, 0, steps = 3L)
+#'
+#' # steps = 1 gives start alone
+#' nv_linspace(2.5, 10, steps = 1L)
+#'
+#' # the data type must be a float; convert afterwards for integers
+#' nv_convert(nv_linspace(0, 10, steps = 5L), "i32")
+#'
+#' # nv_linspace_like() takes dtype and device from an existing array
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_linspace_like(x, 0, 1, steps = 3L)
 #' @export

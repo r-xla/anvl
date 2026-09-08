@@ -8,16 +8,18 @@ prim_bitcast_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Target data type. If it has the same bit width as the input, the output
-shape is unchanged. If narrower, an extra trailing axis is added.
-If wider, the last axis is consumed.}
+Target data type, reinterpreting the bits rather than the values. Of the
+same bit width as the input's leaves the shape unchanged; a narrower one
+adds a trailing axis holding the pieces; a wider one consumes the last
+axis, whose size must equal the ratio of the two widths.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the given \code{dtype}.
+Has the given \code{dtype}, and the shape described under \code{dtype}.
 }
 \description{
 Reinterprets the bits of an array as a different data type without

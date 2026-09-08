@@ -8,8 +8,9 @@ prim_concatenate(..., axis)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to concatenate. Must all have the same data type, naxes,
-and shape except along \code{axis}.}
+Arrays to concatenate. Can be of any data type. Must all have the same
+number of axes, and the same shape except along \code{axis}.
+All inputs must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to concatenate.
@@ -17,7 +18,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the inputs.
+Has the data type the inputs agreed on.
 The output shape matches the inputs in all axes except \code{axis},
 which is the sum of the input sizes along that axis.
 }

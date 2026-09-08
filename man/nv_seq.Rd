@@ -11,11 +11,13 @@ nv_seq_like(like, start, end, dtype = NULL, device = NULL)
 }
 \arguments{
 \item{start, end}{(\code{integer(1)})\cr
-Start and end values, which must satisfy \code{start <= end}.}
+Start and end values, which must satisfy \code{start <= end}. Both are plain R
+values built into the program, not arrays.}
 
-\item{dtype}{(\code{character(1)})\cr
-Data type. Default \code{"i32"}.
-For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Can be any numeric data type, boolean being the
+one exception; the default (\code{NULL}) is \code{i32}. For \code{nv_seq_like()}, \code{NULL}
+uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -37,7 +39,7 @@ Existing array whose attributes are used as defaults
 }
 \value{
 \code{\link{arrayish}}\cr
-1-D array of length \code{end - start + 1}.
+Has \code{dtype} and shape \code{end - start + 1}.
 }
 \description{
 Creates a 1-D array with the consecutive integer values from \code{start} to
@@ -49,11 +51,17 @@ default to those of \code{like}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_seq(3, 7)
+
+# a float data type gives the same values as floats
+nv_seq(3, 7, dtype = "f32")
+
+# nv_seq_like() takes dtype and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_linspace]{nv_linspace()}} for a given number of evenly spaced values,
+\code{\link[=nv_iota]{nv_iota()}} for values increasing along an axis of any shape,
 \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }

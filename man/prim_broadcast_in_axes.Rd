@@ -8,7 +8,8 @@ prim_broadcast_in_axes(x, shape, broadcast_axes)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. The size of each mapped axis must either match the size of

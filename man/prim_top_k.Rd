@@ -8,18 +8,18 @@ prim_top_k(x, k)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.}
+One input. Can be any numeric data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements. Must satisfy
 \verb{1 <= k <= shape(x)[naxes(x)]}.}
 }
 \value{
-\code{list} of two \code{\link{arrayish}} values:\cr
-The top-\code{k} values (same dtype as \code{x}) and their indices along
-the last axis (dtype \code{i32}, matching JAX). Both have the same
-shape as \code{x} with the last axis replaced by \code{k}. Ties are
-broken by lower index first.
+Unnamed \code{list} of two \code{\link{arrayish}} values:\cr
+The top-\code{k} values, at the input's data type, and their indices along the
+last axis, at \code{i32} (matching JAX). Both have the input's shape with the
+last axis replaced by \code{k}. Ties are broken by lower index first.
 }
 \description{
 Returns the \code{k} largest values along the last axis, sorted in

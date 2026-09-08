@@ -29,7 +29,10 @@ roxy_dtypes <- function() {
 # argument the primitive's `apply_promotion()` call covers, in the order the
 # block documents them; the sentence goes on the primary operand's parameter.
 roxy_agree <- function(...) {
-  args <- paste0("`", c(...), "`")
+  args <- c(...)
+  # Argument names are shown as code; a phrase such as "All inputs" is not.
+  is_name <- grepl("^([A-Za-z._][A-Za-z0-9._]*|[.]{3})$", args)
+  args[is_name] <- paste0("`", args[is_name], "`")
   listed <- if (length(args) > 1L) {
     paste0(paste(args[-length(args)], collapse = ", "), " and ", args[[length(args)]])
   } else {

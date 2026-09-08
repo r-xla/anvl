@@ -8,7 +8,8 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{start_indices}{(\code{integer()})\cr
 Start indices (inclusive), one per axis. Must satisfy

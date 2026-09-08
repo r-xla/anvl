@@ -75,8 +75,10 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' `nv_array(1, shape = c(100, 100))` is that lowering of [prim_fill()] is
 #' efficiently represented in the compiled program, while the latter uses
 #' 100 * 100 * 4 bytes of memory.
-#' @param value (`numeric(1)`)\cr
-#'   Scalar value to fill the array with.
+#' @param value (`numeric(1)` | `logical(1)`)\cr
+#'   Scalar value to fill the array with. It is built at `dtype`, so a value
+#'   that data type cannot hold exactly is converted to it -- `3.14` at `i32`
+#'   fills with `3`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @template param_dtype
@@ -228,7 +230,8 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 #' @title Primitive Broadcast
 #' @description
 #' Broadcasts an array to a new shape by replicating the data along new or size-1 axes.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param shape (`integer()`)\cr
 #'   Target shape. The size of each mapped axis must either match the size of
 #'   the corresponding axis of `x`, or that axis of `x` must have size 1.
@@ -340,13 +343,14 @@ prim_dot_general <- new_primitive(
 #' @title Primitive Transpose
 #' @description
 #' Permutes the axes of an array.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param permutation (`integer()`)\cr
 #'   Specifies the new ordering of axes. Must be a permutation of
 #'   `seq_len(naxes(x))`, the axis indices of `x`.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as the input and shape `nv_shape(x)[permutation]`.
+#'   Has the input's data type and shape `nv_shape(x)[permutation]`.
 #' @templateVar primitive_id transpose
 #' @template section_rules
 #' @section StableHLO:
@@ -384,7 +388,8 @@ prim_transpose <- new_primitive(
 #' @description
 #' Reshapes an array to a new shape without changing the underlying data.
 #' Note that row-major order is used, which differs from R's column-major order.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param shape (`integer()`)\cr
 #'   Target shape. Must have the same number of elements as `x`.
 #'   At most one entry may be `-1`, in which case its extent is inferred from
@@ -423,13 +428,14 @@ prim_reshape <- new_primitive(
 #' @description
 #' Concatenates arrays along an axis.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to concatenate. Must all have the same data type, naxes,
-#'   and shape except along `axis`.
+#'   Arrays to concatenate. Can be of any data type. Must all have the same
+#'   number of axes, and the same shape except along `axis`.
+#'   `r roxy_agree("All inputs")`
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which to concatenate.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as the inputs.
+#'   Has the data type the inputs agreed on.
 #'   The output shape matches the inputs in all axes except `axis`,
 #'   which is the sum of the input sizes along that axis.
 #' @templateVar primitive_id concatenate
@@ -480,7 +486,8 @@ prim_concatenate <- new_primitive(
 #'
 #' Use [prim_dynamic_slice()] instead when the start position must be
 #' computed at runtime (e.g. depends on array values).
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param start_indices (`integer()`)\cr
 #'   Start indices (inclusive), one per axis. Must satisfy
 #'   `1 <= start_indices <= limit_indices` per axis.
@@ -550,10 +557,11 @@ prim_static_slice <- new_primitive(
 #'
 #' Use [prim_static_slice()] instead when all indices are known at compile
 #' time and you need stride support.
-#' @template param_prim_x_any
-#' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per axis. Each must be a
-#'   scalar array. Pass one scalar per axis of `x`.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @param ... ([`arrayish`])\cr
+#'   Scalar start indices, one per axis of `x`. Each must be a scalar of an
+#'   integer data type, and keeps it -- the indices take no part in `x`'s.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= nv_shape(x)`
@@ -564,7 +572,7 @@ prim_static_slice <- new_primitive(
 #' This means that out-of-bounds indices will not cause an error, but
 #' the effective start position may differ from the requested one.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as the input and shape `slice_sizes`.
+#'   Has the input's data type and shape `slice_sizes`.
 #' @templateVar primitive_id dynamic_slice
 #' @template section_rules
 #' @section StableHLO:
@@ -1151,16 +1159,17 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #' @description
 #' Returns the index of the maximum value along a single axis. Ties
 #' are broken by returning the smallest index.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which to find the index of the maximum.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it is
 #'   kept with size 1.
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `x` with `axis` removed (or set to 1 if
-#'   `drop = FALSE`).
+#' @return [`arrayish`]\cr
+#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmax
 #' @template section_rules
 #' @section StableHLO:
@@ -1191,9 +1200,9 @@ prim_argmax <- new_primitive(
 #' are broken by returning the smallest index.
 #' @template param_prim_x_any
 #' @inheritParams prim_argmax
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `x` with `axis` removed (or set to 1 if
-#'   `drop = FALSE`).
+#' @return [`arrayish`]\cr
+#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmin
 #' @template section_rules
 #' @section StableHLO:
@@ -1621,13 +1630,15 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #' @description
 #' Reinterprets the bits of an array as a different data type without
 #' modifying the underlying data.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Target data type. If it has the same bit width as the input, the output
-#'   shape is unchanged. If narrower, an extra trailing axis is added.
-#'   If wider, the last axis is consumed.
+#'   Target data type, reinterpreting the bits rather than the values. Of the
+#'   same bit width as the input's leaves the shape unchanged; a narrower one
+#'   adds a trailing axis holding the pieces; a wider one consumes the last
+#'   axis, whose size must equal the ratio of the two widths.
 #' @return [`arrayish`]\cr
-#'   Has the given `dtype`.
+#'   Has the given `dtype`, and the shape described under `dtype`.
 #' @templateVar primitive_id bitcast_convert
 #' @template section_rules
 #' @section StableHLO:
@@ -2281,12 +2292,13 @@ prim_clamp <- new_primitive(
 #' @title Primitive Reverse
 #' @description
 #' Reverses the order of elements along specified axes.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axes (`integer()`)\cr
 #'   Axes to reverse.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
-#'   Has the same data type and shape as `x`.
+#'   Has the input's data type and shape.
 #' @templateVar primitive_id reverse
 #' @template section_rules
 #' @section StableHLO:
@@ -2318,7 +2330,9 @@ prim_reverse <- new_primitive(
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which values increase. Negative values count from the end
 #'   of `shape`, i.e. `-1` refers to the last axis.
-#' @template param_dtype
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   Data type of the result. Can be any numeric data type, boolean being the
+#'   one exception.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param start (`integer(1)`)\cr
@@ -2480,11 +2494,13 @@ prim_round <- new_primitive(
 #' @title Primitive Convert
 #' @description
 #' Converts the elements of an array to a different data type.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Target data type.
+#'   Target data type. Can be any data type; the conversion is a value
+#'   conversion, so it may lose precision or wrap around.
 #' @return [`arrayish`]\cr
-#'   Has the given `dtype` and the same shape as `x`.
+#'   Has the given `dtype` and the input's shape.
 #' @templateVar primitive_id convert
 #' @template section_rules
 #' @section StableHLO:
@@ -2868,15 +2884,15 @@ prim_sort <- new_primitive(
 #' For other axes, transpose so the target axis is last, call
 #' `prim_top_k()`, then transpose back. [nv_top_k()] does this.
 #' @param x ([`arrayish`])\cr
-#'   Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.
+#' @templateVar dtypes any numeric data type
+#' @template param_unary_x
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
 #'   `1 <= k <= shape(x)[naxes(x)]`.
-#' @return `list` of two [`arrayish`] values:\cr
-#'   The top-`k` values (same dtype as `x`) and their indices along
-#'   the last axis (dtype `i32`, matching JAX). Both have the same
-#'   shape as `x` with the last axis replaced by `k`. Ties are
-#'   broken by lower index first.
+#' @return Unnamed `list` of two [`arrayish`] values:\cr
+#'   The top-`k` values, at the input's data type, and their indices along the
+#'   last axis, at `i32` (matching JAX). Both have the input's shape with the
+#'   last axis replaced by `k`. Ties are broken by lower index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
@@ -2917,9 +2933,10 @@ prim_top_k <- new_primitive(
 #' @description
 #' Prints an array value to the console during execution and returns the
 #' input unchanged. This is useful for debugging JIT-compiled code.
-#' @template param_prim_x_any
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @return [`arrayish`]\cr
-#'   Returns `x` as-is.
+#'   Returns the input unchanged.
 #' @templateVar primitive_id print
 #' @template section_rules
 #' @section StableHLO:
