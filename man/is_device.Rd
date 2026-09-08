@@ -10,7 +10,8 @@ is_device(x)
 \item{x}{An object to test.}
 }
 \value{
-(\code{logical(1)})
+(\code{logical(1)})\cr
+Whether \code{x} is a device of one of the backends.
 }
 \description{
 Test whether an object is a device

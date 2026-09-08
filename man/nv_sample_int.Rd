@@ -18,7 +18,8 @@ Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sampled integers. Can be any numeric data type; the drawn
-indices are converted to it.}
+indices are converted to it. Boolean is not one, and is rejected: it
+cannot hold an index.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

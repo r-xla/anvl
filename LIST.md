@@ -235,9 +235,12 @@ would otherwise be false; the items marked **Fixed here** are the exceptions.
   array where every other sampler returns `list(state, values)`, so a caller
   doing `out$values` broke on the degenerate interval. It now returns the pair,
   with the state unchanged since no draw is made.
-- `nv_rbinom(..., dtype = "bool")` returns `bool` for `size = 1` but `i32` for
-  `size > 1`, since counting the successes goes through `nv_reduce_sum()`. The
-  data type argument is silently ignored in one of the two cases.
+- **Fixed here.** `nv_rbinom(..., dtype = "bool")` returned `bool` for
+  `size = 1` but silently `i32` for `size > 1`, since counting the successes
+  goes through `nv_reduce_sum()`, and `nv_sample_int(..., dtype = "bool")`
+  collapsed every drawn index to `TRUE`. Both reject a boolean data type now,
+  through the new `assert_numeric_dtype()` -- which is what their docs already
+  claimed, since *numeric* excludes boolean.
 - `prim_dynamic_slice()` does not check the data type of its start indices at
   the anvl level. A float index reaches the backend and fails with a raw
   StableHLO message ("operand #1 must be variadic of 0D tensor of ... integer

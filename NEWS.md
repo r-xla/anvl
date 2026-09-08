@@ -22,6 +22,10 @@
   *named* lists -- `values` / `indices` for the first three, `state` /
   `values` for the rest -- as `prim_qr()` and `prim_svd()` already did.
   Positional indexing keeps working.
+* `nv_rbinom()` and `nv_sample_int()` now reject a boolean `dtype`. A boolean
+  cannot hold a count or an index: `nv_rbinom()` used to return `bool` for
+  `size = 1` and silently `i32` above it, and `nv_sample_int()` collapsed every
+  drawn index to `TRUE`.
 * Every data type of the float category now counts as a float, so `f16` and
   `bf16` pass the checks that used to accept only `f32` and `f64` (and the
   error message is now "must be a float data type"). The RNG, which assembles

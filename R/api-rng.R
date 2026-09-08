@@ -237,7 +237,8 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #'   Probability of success on each trial.
 #' @param dtype (`character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sample. Can be any numeric data type; the successes are
-#'   counted and converted to it.
+#'   counted and converted to it. Boolean is not one, and is rejected: it
+#'   cannot hold a count.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
@@ -250,7 +251,12 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
 nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32") {
-  dtype <- as_dtype(dtype)
+  # The sample counts successes, which `bool` cannot hold: it used to come back
+  # as `bool` for `size = 1` and silently as `i32` for anything above.
+  dtype <- assert_numeric_dtype(
+    dtype,
+    hint = "A boolean cannot hold a count; use {.code \"i32\"} and compare it."
+  )
   checkmate::assert_int(size, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
   shape <- assert_shapevec(shape)
@@ -289,7 +295,8 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`character(1)` | [`DataType`][tengen::DataType])\cr
 #'   Data type of the sampled integers. Can be any numeric data type; the drawn
-#'   indices are converted to it.
+#'   indices are converted to it. Boolean is not one, and is rejected: it
+#'   cannot hold an index.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
 #'   of shape `shape` and data type `dtype`.
@@ -303,7 +310,11 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = "i32"
 #' @export
 #' @jit static c(1L, 3L, 4L)
 nv_sample_int <- function(shape, initial_state, n, dtype = "i32") {
-  dtype <- as_dtype(dtype)
+  # An index is a count too: at `bool` every draw collapsed to `TRUE`.
+  dtype <- assert_numeric_dtype(
+    dtype,
+    hint = "A boolean cannot hold an index; use {.code \"i32\"}."
+  )
   assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)
 

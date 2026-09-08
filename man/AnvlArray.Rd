@@ -98,7 +98,9 @@ An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are 
 (the default) are taken from \code{like}.}
 }
 \value{
-(\code{\link{AnvlArray}})
+(\code{\link{AnvlArray}})\cr
+Has the given \code{dtype} (or the default for \code{data}'s R storage type) and the
+given \code{shape} (or the one inferred from \code{data}).
 }
 \description{
 The main array object.

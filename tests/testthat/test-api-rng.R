@@ -104,6 +104,29 @@ test_that("nv_rbinom", {
   expect_equal(shape(out3[[2]]), c(3L, 3L))
 })
 
+test_that("nv_rbinom and nv_sample_int reject a boolean data type", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  # A boolean cannot hold a count: `bool` used to survive for `size = 1` and
+  # silently turn into `i32` above it.
+  expect_error(
+    nv_rbinom(state, dtype = "bool", shape = 4L),
+    "must be a numeric data type"
+  )
+  expect_error(
+    nv_rbinom(state, dtype = "bool", shape = 4L, size = 3L),
+    "must be a numeric data type"
+  )
+  expect_error(
+    nv_sample_int(shape = 4L, initial_state = state, n = 5L, dtype = "bool"),
+    "must be a numeric data type"
+  )
+  # And the check holds inside a jitted function too.
+  expect_error(
+    jit(function(s) nv_rbinom(4L, s, dtype = "bool"))(state),
+    "must be a numeric data type"
+  )
+})
+
 test_that("nv_sample_int", {
   # statistical validity checks are in inst/random
   state <- nv_array(c(1, 2), dtype = "ui64")

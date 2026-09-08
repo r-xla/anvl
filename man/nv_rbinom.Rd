@@ -22,7 +22,8 @@ Probability of success on each trial.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the sample. Can be any numeric data type; the successes are
-counted and converted to it.}
+counted and converted to it. Boolean is not one, and is rejected: it
+cannot hold a count.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

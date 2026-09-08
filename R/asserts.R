@@ -124,6 +124,21 @@ assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt
 }
 
+# Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
+# sense `?dtypes` gives the word: integer or float, but not `bool`. Returns the
+# converted DataType.
+assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  if (is_dtype_bool(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a numeric data type.",
+      "x" = "Got {.val {as.character(dt)}}, which is boolean.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
 # Convert `x` to a DataType via `as_dtype()` and assert it belongs to the float
 # category. Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {

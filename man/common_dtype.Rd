@@ -14,7 +14,9 @@ The left-hand side type.}
 The right-hand side type.}
 }
 \value{
-(\code{\link[tengen:DataType]{tengen::DataType}})
+(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+The data type both inputs promote to, which is the wider of the two within
+a category and the higher category otherwise.
 }
 \description{
 Compute the common data type.

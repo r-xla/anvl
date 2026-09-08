@@ -15,7 +15,8 @@ Object to check.}
 Whether to accept \code{numeric(1)} and \code{logical(1)} and R arrays of type \code{numeric} and \code{logical}.}
 }
 \value{
-(\code{logical(1)})
+(\code{logical(1)})\cr
+Whether \code{x} is arrayish.
 }
 \description{
 A \code{arrayish} value is anything that represents an \code{\link{AnvlArray}}
