@@ -27,7 +27,8 @@ dtype_from_buffer <- function(x) {
 #'   Environment in which to look up and rebind functions. Defaults to
 #'   `parent.frame()`, which at top-level package source time is the package
 #'   namespace.
-#' @return Invisibly returns `envir`.
+#' @return (`environment`)\cr
+#'   Invisibly returns `envir`.
 #' @seealso [`jit_roclet()`], [`jit()`]
 #' @export
 apply_jit_registry <- function(registry, envir = parent.frame()) {

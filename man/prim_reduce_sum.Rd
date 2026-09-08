@@ -20,7 +20,7 @@ Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
 set to 1 if \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the input's data type. The shape is the input's with the reduced axes
 removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }

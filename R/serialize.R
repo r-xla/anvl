@@ -13,7 +13,8 @@
 #' @param path (`character(1)`)\cr
 #'   File path to write to.
 #'
-#' @returns `NULL` (invisibly).
+#' @returns (`NULL`)\cr
+#'   Invisibly.
 #' @seealso [nv_read()], [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
@@ -48,7 +49,7 @@ nv_save <- function(arrays, path) {
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
 #'
-#' @returns Named `list` of [`AnvlArray`] objects.
+#' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_save()], [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
@@ -77,7 +78,8 @@ nv_read <- function(path, device = NULL) {
 #'   An optional connection to write to.
 #'   If `NULL` (default), a raw vector is returned.
 #'
-#' @returns A [`raw`] vector if `con` is `NULL`, otherwise `NULL` (invisibly).
+#' @returns ([`raw`] | `NULL`)\cr
+#'   A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
 #' @seealso [nv_unserialize()], [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
@@ -121,7 +123,7 @@ nv_serialize <- function(arrays, con = NULL) {
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
 #'
-#' @returns Named `list` of [`AnvlArray`] objects.
+#' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_serialize()], [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")

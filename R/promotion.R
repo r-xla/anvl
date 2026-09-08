@@ -28,7 +28,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #'   `i32`, or an `f32` array at `i32`), and narrowing a value the target cannot
 #'   hold (an `f64` array at `f32`). The default is `FALSE`.
 #'
-#' @return `function(args) -> list()`
+#' @return (`function(args) -> list()`)
 #'   A function returning data types for those inputs to be converted and `NULL` for those
 #'   to be left unchanged.
 #' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
@@ -622,15 +622,11 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #'   `ui8`, `ui16`, `ui32`, `ui64`
 #' * **float** -- `f32`, `f64`
 #'
-#' Documentation names a group of them with a single word: *any* data type is
-#' all of them, *numeric* is integer and float, *integer* is signed and
-#' unsigned integer, *integerish* is boolean and integer, *signed numeric* is
-#' signed integer and float.
-#'
 #' These are the categories promotion works in, where signed and unsigned
 #' integers count as one. [`tengen::dtype_category()`] reports a finer split
 #' that names `int` and `uint` separately.
 #'
+#' @template section_dtype_words
 #' @section Default Data Types:
 #' An R value has no data type of its own. Where nothing in the program says
 #' which one it should take, it commits to the default of its R storage type: a

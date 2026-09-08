@@ -14,7 +14,7 @@ Input array.}
 Data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype} and the same shape as \code{x}.
 }
 \description{

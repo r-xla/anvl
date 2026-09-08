@@ -11,7 +11,8 @@ default_device(backend = NULL)
 Backend. Defaults to \code{\link[=active_backend]{active_backend()}} when \code{NULL}.}
 }
 \value{
-A backend-specific device object.
+(device object)\cr
+Backend-specific.
 }
 \description{
 Returns the default device of the active backend.

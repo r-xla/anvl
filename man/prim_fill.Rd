@@ -33,7 +33,7 @@ The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: 
 named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and \code{dtype}.
 }
 \description{

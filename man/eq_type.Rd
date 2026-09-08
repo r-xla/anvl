@@ -17,7 +17,8 @@ First array to compare.}
 Second array to compare.}
 }
 \value{
-\code{logical(1)} - \code{TRUE} if the arrays are equal, \code{FALSE} otherwise.
+(\code{logical(1)})\cr
+\code{TRUE} if the arrays are equal, \code{FALSE} otherwise.
 }
 \description{
 Compare two abstract arrays for type equality.

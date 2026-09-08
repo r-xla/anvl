@@ -38,7 +38,7 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_seq_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has \code{dtype} and shape \code{end - start + 1}.
 }
 \description{

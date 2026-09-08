@@ -16,7 +16,8 @@ Number of top elements. Must satisfy
 \verb{1 <= k <= shape(x)[naxes(x)]}.}
 }
 \value{
-Unnamed \code{list} of two \code{\link{arrayish}} values:\cr
+(\code{list} of two \code{\link{arrayish}})\cr
+Unnamed:
 The top-\code{k} values, at the input's data type, and their indices along the
 last axis, at \code{i32} (matching JAX). Both have the input's shape with the
 last axis replaced by \code{k}. Ties are broken by lower index first.

@@ -15,7 +15,7 @@ The array to clamp. Can be any data type.
 \code{min_val}, \code{x} and \code{max_val} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has \code{x}'s shape and the data type the operands agreed on.
 }
 \description{

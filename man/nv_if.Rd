@@ -18,6 +18,7 @@ Zero-argument function for the false branch.
 Must return outputs with the same shapes as the true branch.}
 }
 \value{
+(any)\cr
 Result of the executed branch.
 }
 \description{

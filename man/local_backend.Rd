@@ -13,7 +13,8 @@ Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 \item{envir}{The environment to scope the change to.}
 }
 \value{
-The previous value of the option (invisibly).
+(\code{character(1)})\cr
+The previous value of the option, invisibly.
 }
 \description{
 Sets the \code{anvl.backend} option for the duration of the calling scope. Every

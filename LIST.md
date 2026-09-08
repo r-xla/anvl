@@ -18,7 +18,11 @@ file in the same change that documents a function.
   `roxy_agree("x", "update")` is the inline helper for a primitive whose
   operands must reach one data type.
 - Return values say the resulting data type and shape, not "the same as the
-  input" where an input may be a bare R value.
+  input" where an input may be a bare R value, and state their type in
+  parentheses the way parameters do: `@return ([`arrayish`])\cr`.
+- The vocabulary itself is defined once, in `man-roxygen/section_dtype_words.R`,
+  and shown on both `?arrayish` (where every parameter's type links) and
+  `?dtypes`.
 - Examples show working calls only, each with a one-line comment, and never
   state what a default data type is.
 

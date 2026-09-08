@@ -12,9 +12,9 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 \link[=default_dtypes]{default data type}.}
 }
 \value{
-Named \code{list} with elements \code{d} (length \code{k}), \code{u} (shape
-\verb{(m, k)}), and \code{vt} (shape \verb{(k, n)}). All have the same dtype as
-the input.
+(named \code{list} of three \code{\link{arrayish}})\cr
+Elements \code{d} (length \code{k}), \code{u} (shape
+\verb{(m, k)}), and \code{vt} (shape \verb{(k, n)}). All have the input's data type.
 }
 \description{
 Computes the reduced ("economy") singular value decomposition of a

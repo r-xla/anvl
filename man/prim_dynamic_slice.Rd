@@ -21,7 +21,7 @@ Size of the slice in each axis. Must have length equal to
 per axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the input's data type and shape \code{slice_sizes}.
 }
 \description{

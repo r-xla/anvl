@@ -43,7 +43,8 @@ the program and its cache key agree. \code{NULL} (a caller with no dispatcher in
 front of it) falls back to \code{\link[=default_device]{default_device()}}.}
 }
 \value{
-A \code{list} with elements:
+(\code{list})\cr
+With elements:
 \itemize{
 \item \code{exec}: The compiled PJRT executable.
 \item \code{out_tree}: The output tree structure.

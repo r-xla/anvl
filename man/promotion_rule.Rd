@@ -55,7 +55,7 @@ The rule.}
 What the rule is, for printing: it shows as \verb{<promote_\{kind\}>}.}
 }
 \value{
-\verb{function(args) -> list()}
+(\verb{function(args) -> list()})
 A function returning data types for those inputs to be converted and \code{NULL} for those
 to be left unchanged.
 }

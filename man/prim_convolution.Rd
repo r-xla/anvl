@@ -59,7 +59,7 @@ Can be any data type. \code{x} and \code{kernel} must have the same data type. A
 \code{"default"}.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})
 }
 \description{
 General N-D windowed convolution, lowering to StableHLO's

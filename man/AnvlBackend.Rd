@@ -54,7 +54,7 @@ is ready. Called by \code{\link[=await]{await()}} for \code{AnvlArray}s; a no-op
 without async execution.}
 }
 \value{
-An \code{AnvlBackend} object.
+(\code{AnvlBackend})
 }
 \description{
 Create a backend

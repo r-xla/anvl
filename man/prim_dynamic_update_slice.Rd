@@ -20,7 +20,7 @@ Scalar start indices, one per axis of \code{x}.
 Each must be a scalar array.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type and shape as \code{x}.
 }
 \description{

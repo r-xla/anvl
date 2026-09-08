@@ -7,6 +7,7 @@
 jit_roclet()
 }
 \value{
+(\code{roclet})\cr
 A roxygen2 roclet object.
 }
 \description{

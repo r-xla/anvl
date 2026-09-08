@@ -16,7 +16,7 @@ Values to select from, of the same shape. Can be any data type.
 \code{true_value} and \code{false_value} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the shape of \code{true_value} and \code{false_value}, and the data type they
 agreed on. \code{pred} only selects between them and never widens the result.
 }

@@ -92,7 +92,8 @@ print.AnvlPrimitive <- function(x, ...) {
 #' @param register (`logical(1)`)\cr
 #'   If `TRUE` (default), register the result under `name` in the primitive
 #'   registry.
-#' @return A callable of class `c("JitPrimitive", "JitFunction")`.
+#' @return (`JitPrimitive`)\cr
+#'   A callable of class `c("JitPrimitive", "JitFunction")`.
 #' @export
 new_primitive <- function(
   name,

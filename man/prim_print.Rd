@@ -12,7 +12,7 @@ One input. Can be any data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Returns the input unchanged.
 }
 \description{

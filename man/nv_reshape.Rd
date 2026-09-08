@@ -16,7 +16,7 @@ At most one entry may be \code{-1}, in which case its extent is inferred from
 the remaining entries and the number of elements of \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{

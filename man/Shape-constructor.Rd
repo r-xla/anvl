@@ -11,7 +11,7 @@ Shape(dims = integer())
 whose size is only known at run time.}
 }
 \value{
-A \code{Shape} object.
+(\code{Shape})
 }
 \description{
 Constructs a \code{Shape}, the axis sizes of an array. A \code{Shape} \emph{is} its integer

@@ -21,7 +21,7 @@ Replacement values. Scalars are broadcast to the subset shape.
 Non-scalar values must match the subset shape.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 A new array with the same shape as \code{x} and the subset replaced.
 }
 \description{

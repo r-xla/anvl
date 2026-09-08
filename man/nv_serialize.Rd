@@ -15,7 +15,8 @@ An optional connection to write to.
 If \code{NULL} (default), a raw vector is returned.}
 }
 \value{
-A \code{\link{raw}} vector if \code{con} is \code{NULL}, otherwise \code{NULL} (invisibly).
+(\code{\link{raw}} | \code{NULL})\cr
+A raw vector if \code{con} is \code{NULL}, otherwise \code{NULL} invisibly.
 }
 \description{
 Serializes a named list of arrays into the

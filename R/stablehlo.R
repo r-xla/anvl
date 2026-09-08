@@ -97,7 +97,8 @@ env_get <- function(env, gval) {
 #'   [`current_platform()`]) can branch on it. `NULL` (the default)
 #'   leaves the current value untouched — recursive calls from higher-order
 #'   primitives inherit the platform of the enclosing call.
-#' @return A `list` of length 3:
+#' @return (`list`)\cr
+#'   Of length 3:
 #'   - the [`stablehlo::Func`]
 #'   - The list of [`GraphValue`]s holding [`ConcreteArray`]s.
 #'   - A list of phantom-output specs, one per phantom donated input
@@ -298,7 +299,8 @@ stablehlo <- function(
 #'   Target platform name (e.g. `"cpu"`, `"cuda"`), or `NULL` to clear it.
 #' @param envir (`environment`)\cr
 #'   Environment whose exit triggers restoration of the previous platform.
-#' @return `current_platform()` returns `NULL` or `character(1)`.
+#' @return (`NULL` | `character(1)`)\cr
+#'   The current platform.
 #'   `local_platform()` invisibly returns the previous platform.
 #' @seealso [`stablehlo()`]
 #' @export

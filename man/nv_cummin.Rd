@@ -31,8 +31,9 @@ op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min
 contributes nothing to the running value.}
 }
 \value{
-\code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
-arrays (when \code{with_indices = TRUE}).
+(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+One array when \code{with_indices = FALSE}, a named \code{list} when
+\code{with_indices = TRUE}.
 }
 \description{
 Running minimum, optionally along a single axis.

@@ -15,7 +15,7 @@ Environment where exit handler will be registered for cleaning up the
 \code{\link{GraphDescriptor}} if it was not returned yet.}
 }
 \value{
-A \code{\link{GraphDescriptor}} object.
+(\code{\link{GraphDescriptor}})
 }
 \description{
 Creates a new \code{\link{GraphDescriptor}} which is afterwards accessible via \code{\link[=.current_descriptor]{.current_descriptor()}}.

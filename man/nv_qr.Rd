@@ -17,9 +17,10 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 \item{...}{No additional arguments.}
 }
 \value{
-Named \code{list} with elements \code{Q} (shape \verb{(m, k)}) and \code{R}
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{Q} (shape \verb{(m, k)}) and \code{R}
 (shape \verb{(k, n)}), where \verb{(m, n) = shape(x)} and
-\code{k = min(m, n)}. Both have the same data type as \code{x}.
+\code{k = min(m, n)}. Both have the input's data type.
 }
 \description{
 Computes the reduced QR decomposition of a matrix \code{x}:

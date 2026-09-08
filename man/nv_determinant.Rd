@@ -19,7 +19,8 @@ of the absolute determinant.}
 \item{...}{No additional arguments.}
 }
 \value{
-Named \code{list} with elements \code{modulus} and \code{sign}, both scalar
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{modulus} and \code{sign}, both scalar
 \code{\link{arrayish}} with the same dtype as \code{x}. The full determinant
 is \code{sign * exp(modulus)} (with \code{logarithm = TRUE}) or
 \code{sign * modulus} (with \code{logarithm = FALSE}).

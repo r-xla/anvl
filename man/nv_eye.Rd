@@ -35,7 +35,7 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_eye_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 An \verb{n x n} identity matrix.
 }
 \description{

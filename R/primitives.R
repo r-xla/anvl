@@ -83,7 +83,7 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #'   Shape of the output array.
 #' @template param_dtype
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and `dtype`.
 #' @templateVar primitive_id fill
 #' @template section_rules
@@ -238,7 +238,7 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 #' @param broadcast_axes (`integer()`)\cr
 #'   Maps each axis of `x` to an axis of the output.
 #'   Must have length equal to the number of axes of `x`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as the input and the given `shape`.
 #' @importFrom stablehlo r_to_constant
 #' @templateVar primitive_id broadcast_in_axes
@@ -297,7 +297,7 @@ prim_broadcast_in_axes <- new_primitive(
 #'   Controls the trade-off between speed and numerical accuracy of the
 #'   operation. One of `"highest"` (default), `"high"` or `"default"`.
 #'   Only the StableHLO backend honors this; it is ignored by the quickr backend.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   The output shape is the batch axes followed by the remaining
 #'   (non-contracted, non-batched) axes of `lhs`, then `rhs`.
 #' @templateVar primitive_id dot_general
@@ -349,7 +349,7 @@ prim_dot_general <- new_primitive(
 #'   Specifies the new ordering of axes. Must be a permutation of
 #'   `seq_len(naxes(x))`, the axis indices of `x`.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the input's data type and shape `nv_shape(x)[permutation]`.
 #' @templateVar primitive_id transpose
 #' @template section_rules
@@ -394,7 +394,7 @@ prim_transpose <- new_primitive(
 #'   Target shape. Must have the same number of elements as `x`.
 #'   At most one entry may be `-1`, in which case its extent is inferred from
 #'   the remaining entries and the number of elements of `x`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as the input and the given `shape`.
 #' @templateVar primitive_id reshape
 #' @template section_rules
@@ -434,7 +434,7 @@ prim_reshape <- new_primitive(
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which to concatenate.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the data type the inputs agreed on.
 #'   The output shape matches the inputs in all axes except `axis`,
 #'   which is the sum of the input sizes along that axis.
@@ -497,7 +497,7 @@ prim_concatenate <- new_primitive(
 #' @param strides (`integer()`)\cr
 #'   Step sizes, one per axis. Must be `>= 1`. A stride of `1`
 #'   selects every element; a stride of `2` selects every other element, etc.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as the input and shape
 #'   `ceiling((limit_indices - start_indices + 1) / strides)`.
 #' @templateVar primitive_id static_slice
@@ -571,7 +571,7 @@ prim_static_slice <- new_primitive(
 #' `adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)`.
 #' This means that out-of-bounds indices will not cause an error, but
 #' the effective start position may differ from the requested one.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the input's data type and shape `slice_sizes`.
 #' @templateVar primitive_id dynamic_slice
 #' @template section_rules
@@ -633,7 +633,7 @@ prim_dynamic_slice <- new_primitive(
 #'   Scalar start indices, one per axis of `x`.
 #'   Each must be a scalar array.
 #' @inheritSection prim_dynamic_slice Out Of Bounds Behavior
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @templateVar primitive_id dynamic_update_slice
 #' @template section_rules
@@ -1019,7 +1019,7 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #'   Binary reducer producing a scalar of the same data type as `x`. Its two
 #'   arguments are passed by position, so they may carry any names.
 #'   Must be associative (see "Associativity Requirement").
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Same data type as `x`. Shape is `x` with `axes` removed
 #'   (or set to 1 if `drop = FALSE`).
 #' @templateVar primitive_id reduce
@@ -1169,7 +1169,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #' @param drop (`logical(1)`)\cr
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it is
 #'   kept with size 1.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has `i32` data type whatever the input's is, and the input's shape with
 #'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmax
@@ -1202,7 +1202,7 @@ prim_argmax <- new_primitive(
 #' are broken by returning the smallest index.
 #' @template param_prim_x_any
 #' @inheritParams prim_argmax
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has `i32` data type whatever the input's is, and the input's shape with
 #'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @templateVar primitive_id argmin
@@ -1639,7 +1639,7 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #'   same bit width as the input's leaves the shape unchanged; a narrower one
 #'   adds a trailing axis holding the pieces; a wider one consumes the last
 #'   axis, whose size must equal the ratio of the two widths.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `dtype`, and the shape described under `dtype`.
 #' @templateVar primitive_id bitcast_convert
 #' @template section_rules
@@ -2195,7 +2195,7 @@ prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
 #' Element-wise check if values are finite (not Inf, -Inf, or NaN).
 #' @templateVar dtypes any float data type
 #' @template param_unary_x
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same shape as the input and boolean data type.
 #' @templateVar primitive_id is_finite
 #' @template section_rules
@@ -2253,7 +2253,7 @@ prim_popcnt <- new_primitive(
 #' @param x ([`arrayish`])\cr
 #'   The array to clamp. Can be any data type.
 #'   `r roxy_agree("min_val", "x", "max_val")`
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has `x`'s shape and the data type the operands agreed on.
 #' @templateVar primitive_id clamp
 #' @template section_rules
@@ -2299,7 +2299,7 @@ prim_clamp <- new_primitive(
 #' @param axes (`integer()`)\cr
 #'   Axes to reverse.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the input's data type and shape.
 #' @templateVar primitive_id reverse
 #' @template section_rules
@@ -2340,7 +2340,7 @@ prim_reverse <- new_primitive(
 #' @param start (`integer(1)`)\cr
 #'   Starting value.
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and `shape`.
 #' @templateVar primitive_id iota
 #' @template section_rules
@@ -2394,7 +2394,7 @@ prim_iota <- new_primitive(
 #'   Amount of padding to add at the end of each axis.
 #' @param interior_padding (`integer()`)\cr
 #'   Amount of padding to add between elements in each axis.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the data type the operands agreed on. Each axis grows by
 #'   `edge_padding_low + edge_padding_high`, plus `interior_padding` between
 #'   every pair of elements; negative edge padding trims (see [hlo_pad()]).
@@ -2461,7 +2461,7 @@ prim_pad <- new_primitive(
 #' @param method (`character(1)`)\cr
 #'   Rounding method. `"nearest_even"` (default) rounds to the nearest even
 #'   integer on a tie, `"afz"` rounds away from zero on a tie.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same dtype and shape as `x`.
 #' @templateVar primitive_id round
 #' @template section_rules
@@ -2501,7 +2501,7 @@ prim_round <- new_primitive(
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Target data type. Can be any data type; the conversion is a value
 #'   conversion, so it may lose precision or wrap around.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and the input's shape.
 #' @templateVar primitive_id convert
 #' @template section_rules
@@ -2550,7 +2550,7 @@ prim_convert <- new_primitive(
 #' @param true_value,false_value ([`arrayish`])\cr
 #'   Values to select from, of the same shape. Can be any data type.
 #'   `r roxy_agree("true_value", "false_value")`
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the shape of `true_value` and `false_value`, and the data type they
 #'   agreed on. `pred` only selects between them and never widens the result.
 #' @templateVar primitive_id select
@@ -2601,8 +2601,9 @@ prim_ifelse <- new_primitive(
 #'   outputs of the same structure, data types and shapes. Unlike
 #'   [prim_ifelse()], which promotes its two values onto one data type, these
 #'   are only checked: branches that disagree are an error.
-#' @return Result of the executed branch, with the structure, data types and
-#'   shapes both branches share.\cr
+#' @return (any)\cr
+#'   Result of the executed branch, with the structure, data types and
+#'   shapes both branches share.
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2671,7 +2672,8 @@ prim_if <- new_primitive(
 #'   returns a named list with the same structure, data types and shapes
 #'   as `init`. Nothing is promoted: a loop-carried state is meant to be
 #'   heterogeneous, so each member keeps its own data type across iterations.
-#' @return Named list with the same structure, data types and shapes as
+#' @return (named `list`)\cr
+#'   Has the same structure, data types and shapes as
 #'   `init`, holding the final state after the loop terminates.
 #' @templateVar primitive_id while
 #' @template section_rules
@@ -2821,7 +2823,7 @@ prim_while <- new_primitive(
 #' @param is_stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: the relative order of equal *keys* is
 #'   preserved. Default `FALSE`.
-#' @return `list` of [`arrayish`]\cr
+#' @return (`list` of [`arrayish`])\cr
 #'   One sorted output per element of `xs`, in the same order, each with the
 #'   shape and data type of its input.
 #' @templateVar primitive_id sort
@@ -2899,7 +2901,8 @@ prim_sort <- new_primitive(
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
 #'   `1 <= k <= shape(x)[naxes(x)]`.
-#' @return Unnamed `list` of two [`arrayish`] values:\cr
+#' @return (`list` of two [`arrayish`])\cr
+#'   Unnamed:
 #'   The top-`k` values, at the input's data type, and their indices along the
 #'   last axis, at `i32` (matching JAX). Both have the input's shape with the
 #'   last axis replaced by `k`. Ties are broken by lower index first.
@@ -2945,7 +2948,7 @@ prim_top_k <- new_primitive(
 #' input unchanged. This is useful for debugging JIT-compiled code.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Returns the input unchanged.
 #' @templateVar primitive_id print
 #' @template section_rules
@@ -3011,7 +3014,7 @@ prim_print <- new_primitive(
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Data type of the generated random values.
 #' @template param_shape
-#' @return `list` of two [`arrayish`] values:\cr
+#' @return (`list` of two [`arrayish`])\cr
 #'   The first element is the updated RNG state with the same dtype and shape
 #'   as `initial_state`. The second element is an array of random values with
 #'   the given `dtype` and `shape`.
@@ -3094,7 +3097,7 @@ prim_rng_bit_generator <- new_primitive(
 #'   Binary function `f(old, new)` that combines the existing value in
 #'   `x` with the value from `update`. The default (`NULL`) uses
 #'   `function(old, new) new`, which replaces the old value.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type and shape as `x`.
 #' @section Out Of Bounds Behavior:
 #' If a computed result index falls outside the bounds of `x`, the
@@ -3310,8 +3313,8 @@ prim_scatter <- new_primitive(
 #'   Whether indices are guaranteed to be unique (no duplicates).
 #'   Setting to `TRUE` may improve performance but produces undefined
 #'   behavior if the indices are not actually unique. Default `FALSE`.
-#' @return [`arrayish`]\cr
-#'   Has the same data type as `x`. The output shape is composed
+#' @return ([`arrayish`])\cr
+#'   Has the input's data type. The output shape is composed
 #'   of the offset axes (from the slice) and the remaining
 #'   axes from `start_indices`. See the underluing stableHLO function
 #'   for more details.
@@ -3427,7 +3430,7 @@ prim_gather <- new_primitive(
 #'   upper triangular factor `U` such that `x = t(U) %*% U`. If
 #'   `TRUE`, compute the lower triangular factor `L` such that
 #'   `x = L %*% t(L)`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as the input.
 #'   The values in the triangle not specified by `lower` are implementation-defined.
 #' @templateVar primitive_id cholesky
@@ -3485,7 +3488,7 @@ prim_chol <- new_primitive(
 #'   If `TRUE`, assume diagonal elements of `a` are 1.
 #' @param transpose_a (`logical(1)`)\cr
 #'   If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as `b`.
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
@@ -3546,9 +3549,10 @@ prim_triangular_solve <- new_primitive(
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with exactly 2 axes
 #' @template param_unary_x
-#' @return Named `list` with elements `Q` (shape `(m, k)`) and `R`
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `Q` (shape `(m, k)`) and `R`
 #'   (shape `(k, n)`), where `(m, n) = shape(x)` and
-#'   `k = min(m, n)`. Both have the same data type as `x`.
+#'   `k = min(m, n)`. Both have the input's data type.
 #' @templateVar primitive_id qr
 #' @template section_rules
 #' @section StableHLO:
@@ -3597,11 +3601,11 @@ prim_qr <- new_primitive(
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with exactly 2 axes
 #' @template param_unary_x
-#' @return `list` of three [`arrayish`] values: `LU` `(m, n)` with the same
-#'   dtype as the input; `pivots` `(k,)` of dtype `i32` with
+#' @return (`list` of three [`arrayish`])\cr
+#'   `LU` `(m, n)` with the input's data type; `pivots` `(k,)` at `i32` with
 #'   `k = min(m, n)` (1-based row swaps such that row `i` was exchanged
 #'   with row `pivots[i]` during elimination step `i`); and `permutation`
-#'   `(m,)` of dtype `i32`, a 1-based permutation vector for \eqn{P} such
+#'   `(m,)` at `i32`, a 1-based permutation vector for \eqn{P} such
 #'   that `(P %*% A)[i, ]` equals `A[permutation[i], ]`.
 #' @templateVar primitive_id lu
 #' @template section_rules
@@ -3661,9 +3665,9 @@ prim_lu <- new_primitive(
 #' @templateVar dtypes any float data type
 #' @templateVar shapes with exactly 2 axes
 #' @template param_unary_x
-#' @return Named `list` with elements `d` (length `k`), `u` (shape
-#'   `(m, k)`), and `vt` (shape `(k, n)`). All have the same dtype as
-#'   the input.
+#' @return (named `list` of three [`arrayish`])\cr
+#'   Elements `d` (length `k`), `u` (shape
+#'   `(m, k)`), and `vt` (shape `(k, n)`). All have the input's data type.
 #' @templateVar primitive_id svd
 #' @template section_rules
 #' @section StableHLO:
@@ -3711,7 +3715,8 @@ prim_svd <- new_primitive(
 #' @templateVar dtypes any float data type
 #' @templateVar shapes a symmetric square matrix with exactly 2 axes
 #' @template param_unary_x
-#' @return Named `list` with elements `values` (length `n`) and `vectors`
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `values` (length `n`) and `vectors`
 #'   (shape `(n, n)`). Both have the same dtype as the input.
 #' @templateVar primitive_id eigh
 #' @template section_rules
@@ -3770,7 +3775,7 @@ prim_eigh <- new_primitive(
 #' @param feature_group_count,batch_group_count (`integer(1)`)\cr Grouping.
 #' @param precision (`character(1)`)\cr One of `"highest"`, `"high"`,
 #'   `"default"`.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])
 #' @export
 prim_convolution <- new_primitive(
   "convolution",

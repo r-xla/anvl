@@ -14,7 +14,7 @@ Object to convert.}
 Whether to convert to a pure \code{AbstractArray} and not e.g. \code{LiteralArray} or \code{ConcreteArray}.}
 }
 \value{
-\code{\link{AbstractArray}}
+(\code{\link{AbstractArray}})
 }
 \description{
 Convert an object to its abstract array representation (\code{\link{AbstractArray}}).

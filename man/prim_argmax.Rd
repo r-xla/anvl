@@ -20,7 +20,7 @@ If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
 kept with size 1.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has \code{i32} data type whatever the input's is, and the input's shape with
 \code{axis} removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }

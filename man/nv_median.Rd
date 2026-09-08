@@ -31,7 +31,7 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation fo
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has a float data type whatever the input's is, and the input's shape with
 \code{axis} removed.
 }

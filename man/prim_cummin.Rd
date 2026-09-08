@@ -16,9 +16,10 @@ Axis along which to accumulate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-Unnamed \code{list} of two \code{\link{arrayish}} values:\cr
-The running minimum, at the input's data type, and the
-running argmin, at \code{i32}. Both have the input's shape.
+(\code{list} of two \code{\link{arrayish}})\cr
+Unnamed. The running minimum, at the input's data type,
+and the running argmin, at \code{i32}. Both have the input's
+shape.
 }
 \description{
 Running minimum of array elements along a single axis along with

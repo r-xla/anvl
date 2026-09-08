@@ -16,7 +16,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.
 If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along axis 1.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the common data type and a shape matching the inputs in all
 axes except \code{axis}, which is the sum of input sizes.
 }

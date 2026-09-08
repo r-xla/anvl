@@ -18,7 +18,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 Scalar or 1D arrayish input (integer).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Same data type as \code{x}. \code{axis} is dropped if \code{index} was scalar.
 }
 \description{

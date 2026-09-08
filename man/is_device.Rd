@@ -10,7 +10,7 @@ is_device(x)
 \item{x}{An object to test.}
 }
 \value{
-\code{logical(1)}
+(\code{logical(1)})
 }
 \description{
 Test whether an object is a device

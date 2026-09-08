@@ -16,7 +16,7 @@ Axes to reverse.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the input's data type and shape.
 }
 \description{

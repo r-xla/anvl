@@ -76,7 +76,7 @@ Binary function \code{f(old, new)} that combines the existing value in
 \code{function(old, new) new}, which replaces the old value.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type and shape as \code{x}.
 }
 \description{

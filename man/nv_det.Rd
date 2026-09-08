@@ -11,7 +11,8 @@ nv_det(x)
 Square matrix of floating-point data type.}
 }
 \value{
-Scalar \code{\link{arrayish}} with the same dtype as \code{x}.
+(\code{\link{arrayish}})\cr
+A scalar with the input's data type.
 }
 \description{
 Computes the determinant of a square matrix via \code{\link[=nv_determinant]{nv_determinant()}}.

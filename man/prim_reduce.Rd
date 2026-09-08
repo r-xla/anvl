@@ -29,7 +29,7 @@ arguments are passed by position, so they may carry any names.
 Must be associative (see "Associativity Requirement").}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Same data type as \code{x}. Shape is \code{x} with \code{axes} removed
 (or set to 1 if \code{drop = FALSE}).
 }

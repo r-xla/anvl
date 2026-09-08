@@ -16,7 +16,7 @@ refers to the last axis.
 If \code{NULL} (default), all axes of size 1 are removed.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as \code{x} with the specified axes removed.
 }
 \description{

@@ -20,7 +20,7 @@ End indices (inclusive), one per axis.}
 Step sizes, one per axis. A stride of 1 selects every element.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as \code{x}.
 }
 \description{

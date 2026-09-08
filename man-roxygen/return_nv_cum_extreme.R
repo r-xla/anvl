@@ -1,2 +1,3 @@
-#' @return [`arrayish`] (when `with_indices = FALSE`) or named list of two
-#'   arrays (when `with_indices = TRUE`).
+#' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
+#'   One array when `with_indices = FALSE`, a named `list` when
+#'   `with_indices = TRUE`.

@@ -18,7 +18,7 @@ adds a trailing axis holding the pieces; a wider one consumes the last
 axis, whose size must equal the ratio of the two widths.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype}, and the shape described under \code{dtype}.
 }
 \description{

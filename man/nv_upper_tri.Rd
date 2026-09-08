@@ -37,7 +37,7 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_upper_tri_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and dtype \code{bool}.
 }
 \description{

@@ -31,7 +31,7 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has a float data type whatever the input's is. For scalar \code{probs} the
 shape is the input's with \code{axis} removed; for array \code{probs} a \strong{leading}
 axis of size \code{length(probs)} is prepended.

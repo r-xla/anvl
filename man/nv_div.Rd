@@ -15,7 +15,7 @@ otherwise falling back to their \link[=default_dtypes]{default data type} and
 being converted to the common data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the inputs' broadcast shape and common data type.
 }
 \description{

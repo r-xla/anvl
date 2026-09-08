@@ -132,7 +132,8 @@ static_start_indices <- function(starts, like = NULL) {
 #'   gather axes' indices are broadcast across the cartesian product.
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return An array of start indices
+#' @return ([`arrayish`])\cr
+#'   An array of start indices
 #' @noRd
 subset_specs_start_indices <- function(subsets, like = NULL) {
   starts <- subset_start_positions(subsets)
@@ -161,7 +162,8 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
 #' Convert subset specs to gather parameters
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return A list with all parameters needed for prim_gather:
+#' @return (`list`)\cr
+#'   All parameters needed for `prim_gather()`:
 #'   - start_indices: array of start indices (shape `(gather_shape..., rank)` or `(1, rank)`)
 #'   - slice_sizes: integer vector
 #'   - offset_axes: integer vector
@@ -235,7 +237,8 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #' Convert subset specs to scatter parameters
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return A list with all parameters needed for prim_scatter:
+#' @return (`list`)\cr
+#'   All parameters needed for `prim_scatter()`:
 #'   - scatter_indices: array of scatter indices
 #'   - update_window_axes: integer vector
 #'   - inserted_window_axes: integer vector
@@ -314,7 +317,7 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
 #' Parse subset specifications and fill unspecified axes
 #' @param quos List of quosures (from enquos)
 #' @param x_shape Shape of the input array
-#' @return List of SubsetSpec objects
+#' @return (`list` of `SubsetSpec`)
 #' @noRd
 parse_subset_specs <- function(quos, x_shape) {
   rank <- length(x_shape)
@@ -340,7 +343,8 @@ parse_subset_specs <- function(quos, x_shape) {
 #' Parse a single subset specification
 #' @param quo Quosure to parse
 #' @param axis_size Size of the axis being indexed
-#' @return A SubsetSpec object (SubsetFull, SubsetRange, or SubsetIndices)
+#' @return (`SubsetSpec`)\cr
+#'   One of `SubsetFull`, `SubsetRange` or `SubsetIndices`.
 #' @noRd
 parse_subset_spec <- function(quo, axis_size) {
   is_integerish <- function(x) {
@@ -446,7 +450,7 @@ parse_subset_spec <- function(quo, axis_size) {
 #' @template param_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
 #'   axes select all elements. See `vignette("subsetting")` for details.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])
 #' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -556,7 +560,7 @@ subset_scatter_core <- jit(
 #' @param value ([`arrayish`])\cr
 #'   Replacement values. Scalars are broadcast to the subset shape.
 #'   Non-scalar values must match the subset shape.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   A new array with the same shape as `x` and the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()

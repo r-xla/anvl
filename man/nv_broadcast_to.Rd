@@ -14,7 +14,7 @@ Input array.}
 Target shape. Each existing axis must either match or be 1.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{

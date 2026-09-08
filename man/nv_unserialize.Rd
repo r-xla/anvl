@@ -15,7 +15,7 @@ The device on which to place the loaded arrays (\code{"cpu"}, \code{"cuda"}, ...
 Default is to use the CPU.}
 }
 \value{
-Named \code{list} of \code{\link{AnvlArray}} objects.
+(named \code{list} of \code{\link{AnvlArray}})
 }
 \description{
 Deserializes arrays from the

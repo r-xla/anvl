@@ -16,7 +16,7 @@ Position at which to insert the new axis. Valid positions range from
 \emph{result}, i.e. \code{-1} appends the new axis at the end.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as \code{x} with an extra axis of size 1.
 }
 \description{

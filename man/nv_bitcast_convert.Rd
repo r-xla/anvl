@@ -14,7 +14,7 @@ Input array.}
 Target data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype}.
 }
 \description{

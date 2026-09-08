@@ -20,7 +20,7 @@ are batch axes.}
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Triangular matrix with the same shape and data type as the input.
 }
 \description{

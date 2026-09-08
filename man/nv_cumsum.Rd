@@ -24,7 +24,7 @@ op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min
 contributes nothing to the running value.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape as the input, and the same data type, except for a
 boolean input, which is accumulated at \code{i32}.
 }

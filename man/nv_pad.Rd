@@ -35,7 +35,7 @@ Amount of padding to add between elements in each axis.
 If \code{NULL} (default), no interior padding is applied.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as \code{x}.
 }
 \description{

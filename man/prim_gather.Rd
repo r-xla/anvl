@@ -72,8 +72,8 @@ Setting to \code{TRUE} may improve performance but produces undefined
 behavior if the indices are not actually unique. Default \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{x}. The output shape is composed
+(\code{\link{arrayish}})\cr
+Has the input's data type. The output shape is composed
 of the offset axes (from the slice) and the remaining
 axes from \code{start_indices}. See the underluing stableHLO function
 for more details.

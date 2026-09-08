@@ -16,9 +16,10 @@ Axis along which to accumulate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-Unnamed \code{list} of two \code{\link{arrayish}} values:\cr
-The running maximum, at the input's data type, and the
-running argmax, at \code{i32}. Both have the input's shape.
+(\code{list} of two \code{\link{arrayish}})\cr
+Unnamed. The running maximum, at the input's data type,
+and the running argmax, at \code{i32}. Both have the input's
+shape.
 }
 \description{
 Running maximum of array elements along a single axis along with

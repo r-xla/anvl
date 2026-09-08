@@ -18,7 +18,7 @@ upper triangular factor \code{U} such that \code{x = t(U) \%*\% U}. If
 \code{x = L \%*\% t(L)}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape and data type as the input.
 The values in the triangle not specified by \code{lower} are implementation-defined.
 }

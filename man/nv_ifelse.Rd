@@ -21,7 +21,7 @@ Scalars (including \code{pred}) are
 \link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the common data type of \code{true_value} and \code{false_value}, and their
 broadcast shape.
 }

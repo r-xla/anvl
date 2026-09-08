@@ -24,7 +24,7 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the input's data type, except a boolean input, which is accumulated at \code{i32}. The shape is the input's with the reduced axes
 removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }

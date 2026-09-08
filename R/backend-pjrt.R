@@ -117,7 +117,8 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
 #'   the program and its cache key agree. `NULL` (a caller with no dispatcher in
 #'   front of it) falls back to [`default_device()`].
-#' @return A `list` with elements:
+#' @return (`list`)\cr
+#'   With elements:
 #'   - `exec`: The compiled PJRT executable.
 #'   - `out_tree`: The output tree structure.
 #'   - `const_arrays`: Constants needed at execution time.
@@ -275,7 +276,8 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #'   caller after the call; this can reduce memory usage and copies for large
 #'   inputs. Must not overlap with `static`.
 #'
-#' @return An [`AnvlBackend`] object with subclass `"AnvlBackendPjrt"`.
+#' @return ([`AnvlBackend`])\cr
+#'   With subclass `"AnvlBackendPjrt"`.
 #' @seealso [`AnvlBackend()`], [`AnvlBackendQuickr()`], [`local_backend()`], [`jit()`].
 #' @export
 AnvlBackendPjrt <- function() {

@@ -22,7 +22,8 @@ as \code{init}. Nothing is promoted: a loop-carried state is meant to be
 heterogeneous, so each member keeps its own data type across iterations.}
 }
 \value{
-Named list with the same structure, data types and shapes as
+(named \code{list})\cr
+Has the same structure, data types and shapes as
 \code{init}, holding the final state after the loop terminates.
 }
 \description{

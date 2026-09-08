@@ -46,7 +46,7 @@ values on the diagonal are ignored). Defaults to \code{FALSE}.}
 If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 The solution \code{x}, with the same shape and dtype as \code{b}.
 }
 \description{

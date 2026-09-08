@@ -332,7 +332,9 @@ is_anvl_array <- function(x) {
 
 #' Get the underlying PJRT buffer from an AnvlArray or pass through other values
 #' @param x An AnvlArray or any other value
-#' @return The underlying PJRT buffer if x is an AnvlArray, otherwise x unchanged
+#' @return (`PJRTBuffer` | `any`)\cr
+#'   The underlying PJRT buffer if `x` is an `AnvlArray`, otherwise `x`
+#'   unchanged
 #' @keywords internal
 unwrap_if_array <- function(x) {
   if (is_anvl_array(x)) {
@@ -544,7 +546,8 @@ await.AnvlArray <- function(x, ...) {
 #' @param check (`logical(1)`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
-#' @return An R vector holding the array's values, of the type the method
+#' @return (`vector`)\cr
+#'   An R vector holding the array's values, of the type the method
 #'   names: `double`, `integer`, `logical`, or [`bit64::integer64`].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
@@ -636,7 +639,8 @@ device.AnvlArray <- function(x, ...) {
 #' @title Get Backend of an Array
 #' @param x An array object
 #' @param ... Additional arguments (unused)
-#' @return `character(1)` - the backend name
+#' @return (`character(1)`)\cr
+#'   The backend name.
 #' @export
 backend <- function(x, ...) {
   UseMethod("backend")
@@ -908,7 +912,8 @@ print.IotaArray <- function(x, ...) {
 #'   First array to compare.
 #' @param e2 ([`AbstractArray`])\cr
 #'   Second array to compare.
-#' @return `logical(1)` - `TRUE` if the arrays are equal, `FALSE` otherwise.
+#' @return (`logical(1)`)\cr
+#'   `TRUE` if the arrays are equal, `FALSE` otherwise.
 #' @examples
 #' a <- nv_aval("f32", c(2L, 3L))
 #' b <- nv_aval("f32", c(2L, 3L))
@@ -1020,7 +1025,7 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #'   Object to convert.
 #' @param pure (`logical(1)`)\cr
 #'   Whether to convert to a pure `AbstractArray` and not e.g. `LiteralArray` or `ConcreteArray`.
-#' @return [`AbstractArray`]
+#' @return ([`AbstractArray`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' # R literals become LiteralArrays
 #' to_abstract(1.5)
@@ -1086,11 +1091,12 @@ is_shape <- function(x) {
 #'
 #' Use [`is_arrayish()`] to check whether a value is arrayish.
 #'
+#' @template section_dtype_words
 #' @param x (`any`)\cr
 #'   Object to check.
 #' @param convert_ok (`logical(1)`)\cr
 #'   Whether to accept `numeric(1)` and `logical(1)` and R arrays of type `numeric` and `logical`.
-#' @return `logical(1)`
+#' @return (`logical(1)`)
 #' @name arrayish
 #' @seealso [AnvlArray], [GraphBox]
 #' @examplesIf pjrt::plugins_downloaded()

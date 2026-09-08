@@ -20,7 +20,7 @@ Maps each axis of \code{x} to an axis of the output.
 Must have length equal to the number of axes of \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as the input and the given \code{shape}.
 }
 \description{

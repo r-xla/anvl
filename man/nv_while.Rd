@@ -20,7 +20,9 @@ Body function returning the updated state as a named list
 with the same structure as \code{init}.}
 }
 \value{
-Final state after the loop terminates (same structure as \code{init}).
+(named \code{list})\cr
+Final state after the loop terminates, with \code{init}'s structure, data
+types and shapes.
 }
 \description{
 Executes a functional while loop.

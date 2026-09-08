@@ -19,7 +19,7 @@ integer or boolean array is converted rather than refused, where
 \link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the inputs' broadcast shape and common data type.
 }
 \description{

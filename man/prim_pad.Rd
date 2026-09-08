@@ -30,7 +30,7 @@ Amount of padding to add at the end of each axis.}
 Amount of padding to add between elements in each axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the data type the operands agreed on. Each axis grows by
 \code{edge_padding_low + edge_padding_high}, plus \code{interior_padding} between
 every pair of elements; negative edge padding trims (see \code{\link[stablehlo:hlo_pad]{hlo_pad()}}).

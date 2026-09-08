@@ -25,7 +25,8 @@ The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: 
 named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 }
 \value{
-\code{\link{nv_array}} of dtype \code{ui64} and shape \code{(2)}.
+(\code{\link{arrayish}})\cr
+Has \code{ui64} data type and shape \code{(2)}.
 }
 \description{
 Creates an initial RNG state from a seed. This state is required by all

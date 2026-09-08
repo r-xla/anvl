@@ -73,7 +73,8 @@
 #' See [`jit_roclet()`] for the one-time setup of the roclet in your
 #' package.
 #'
-#' @return A `JitFunction` (a `function` with the same formals as `f`).
+#' @return (`JitFunction`)\cr
+#'   A `function` with the same formals as `f`.
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
 #' @seealso

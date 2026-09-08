@@ -12,7 +12,7 @@ One input. Can be any float data type. An R value commits to its
 \link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape as the input and boolean data type.
 }
 \description{

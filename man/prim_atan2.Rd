@@ -14,7 +14,7 @@ values assume the other operand's data type when it is in their
 \link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the inputs' shape and data type.
 }
 \description{

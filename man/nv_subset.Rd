@@ -17,7 +17,7 @@ Input array.}
 axes select all elements. See \code{vignette("subsetting")} for details.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})
 }
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.

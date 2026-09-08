@@ -33,7 +33,7 @@ operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
 Only the StableHLO backend honors this; it is ignored by the quickr backend.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 The output shape is the batch axes followed by the remaining
 (non-contracted, non-batched) axes of \code{lhs}, then \code{rhs}.
 }

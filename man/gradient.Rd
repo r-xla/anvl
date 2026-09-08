@@ -19,7 +19,7 @@ If \code{NULL} (the default), the gradient is computed with respect to all
 arguments (which must all be arrayish in that case).}
 }
 \value{
-\code{function}
+(\code{function})
 }
 \description{
 Returns a new function that computes the gradient of \code{f} via reverse-mode automatic

@@ -55,7 +55,8 @@ leaves the current value untouched — recursive calls from higher-order
 primitives inherit the platform of the enclosing call.}
 }
 \value{
-A \code{list} of length 3:
+(\code{list})\cr
+Of length 3:
 \itemize{
 \item the \code{\link[stablehlo:Func]{stablehlo::Func}}
 \item The list of \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s.

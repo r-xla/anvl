@@ -18,8 +18,9 @@ outputs of the same structure, data types and shapes. Unlike
 are only checked: branches that disagree are an error.}
 }
 \value{
+(any)\cr
 Result of the executed branch, with the structure, data types and
-shapes both branches share.\cr
+shapes both branches share.
 }
 \description{
 Conditional execution of one of two branches based on a scalar boolean

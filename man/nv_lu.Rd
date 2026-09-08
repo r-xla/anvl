@@ -12,7 +12,7 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 \link[=default_dtypes]{default data type}.}
 }
 \value{
-Named \code{list}:
+(named \code{list} of \code{\link{arrayish}})\cr
 \itemize{
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.

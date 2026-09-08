@@ -16,7 +16,7 @@ Rounding method. \code{"nearest_even"} (default) rounds to the nearest even
 integer on a tie, \code{"afz"} rounds away from zero on a tie.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same dtype and shape as \code{x}.
 }
 \description{

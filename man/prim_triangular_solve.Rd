@@ -31,7 +31,7 @@ If \code{TRUE}, assume diagonal elements of \code{a} are 1.}
 If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape and data type as \code{b}.
 }
 \description{

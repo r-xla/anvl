@@ -8,7 +8,7 @@ NULL
 #'
 #' @param x (`character(1)`)\cr
 #'   Device type. Currently only supports `"cpu"`.
-#' @return A `QuickrDevice` object.
+#' @return (`QuickrDevice`)
 #' @seealso [`nv_device()`], [`AnvlBackendQuickr()`].
 #' @export
 quickr_device <- function(x = "cpu") {
@@ -148,7 +148,8 @@ compile_quickr <- function(f, args_flat, in_tree, arg_devices = list(), unwrap =
 #'   function's output is consumed by non-anvl R code and the extra wrapping
 #'   would only get stripped again.
 #'
-#' @return An [`AnvlBackend`] object with subclass `"AnvlBackendQuickr"`.
+#' @return ([`AnvlBackend`])\cr
+#'   With subclass `"AnvlBackendQuickr"`.
 #' @seealso [`AnvlBackend()`], [`AnvlBackendPjrt()`], [`local_backend()`], [`jit()`].
 #' @export
 AnvlBackendQuickr <- function() {

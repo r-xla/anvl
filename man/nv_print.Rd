@@ -11,7 +11,7 @@ nv_print(x)
 Input array.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Returns \code{x} unchanged.
 }
 \description{

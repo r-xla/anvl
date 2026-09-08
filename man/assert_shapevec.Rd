@@ -16,6 +16,7 @@ Minimum length of the shape vector. Default is 1.}
 Name of the variable to use in error messages.}
 }
 \value{
+(\code{any})\cr
 Invisibly returns \code{x} if the assertion passes.
 }
 \description{

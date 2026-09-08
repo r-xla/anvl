@@ -25,7 +25,8 @@ the full list. Defaults to \code{FALSE}. See the "Gotchas" vignette.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-An R \code{\link[base:array]{array}} or \code{vector} of length 1.
+(\code{\link[base:array]{array}} | \code{vector})\cr
+Of length 1.
 }
 \description{
 Transfers array data to R and returns it as an R \code{\link[base:array]{array}}.

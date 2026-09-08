@@ -30,7 +30,9 @@ nv_conv2d(
 \item{precision}{(\code{character(1)})\cr \code{"highest"}, \code{"high"} or \code{"default"}.}
 }
 \value{
-\code{\link{arrayish}} \verb{[N, C_out, out_H, out_W]}.
+(\code{\link{arrayish}})\cr
+Has the data type \code{x} and \code{kernel} agreed on, and shape
+\verb{[N, C_out, out_H, out_W]}.
 }
 \description{
 Torch-style 2D convolution in NCHW layout: \code{x} is

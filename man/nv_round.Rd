@@ -16,7 +16,7 @@ Rounding method.
 Either \code{"nearest_even"} (default) or \code{"afz"} (away from zero).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the input's shape and data type.
 }
 \description{

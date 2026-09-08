@@ -11,7 +11,7 @@ nv_outer(lhs, rhs)
 1-D arrays.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 A 2-D array of shape \verb{(length(lhs), length(rhs))}.
 }
 \description{

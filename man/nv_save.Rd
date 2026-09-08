@@ -14,7 +14,8 @@ Named list of arrays to save. Names must be unique.}
 File path to write to.}
 }
 \value{
-\code{NULL} (invisibly).
+(\code{NULL})\cr
+Invisibly.
 }
 \description{
 Saves a named list of arrays to a file in the

@@ -16,7 +16,7 @@ Target data type. Can be any data type; the conversion is a value
 conversion, so it may lose precision or wrap around.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype} and the input's shape.
 }
 \description{

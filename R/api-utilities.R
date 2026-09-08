@@ -6,7 +6,8 @@
 #' @param seed ([`arrayish`])\cr
 #'   Scalar `i32` seed value.
 #' @template param_device
-#' @return [`nv_array`] of dtype `ui64` and shape `(2)`.
+#' @return ([`arrayish`])\cr
+#'   Has `ui64` data type and shape `(2)`.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)

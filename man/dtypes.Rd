@@ -14,15 +14,29 @@ boolean < integer < float:
 \item \strong{float} -- \code{f32}, \code{f64}
 }
 
-Documentation names a group of them with a single word: \emph{any} data type is
-all of them, \emph{numeric} is integer and float, \emph{integer} is signed and
-unsigned integer, \emph{integerish} is boolean and integer, \emph{signed numeric} is
-signed integer and float.
-
 These are the categories promotion works in, where signed and unsigned
 integers count as one. \code{\link[tengen:dtype_category]{tengen::dtype_category()}} reports a finer split
 that names \code{int} and \code{uint} separately.
 }
+\section{Data Type Vocabulary}{
+
+Where a page says which data types an argument takes, it names a group of
+them with a single word:
+\itemize{
+\item \emph{any data type} -- all of them: \code{bool}, the signed and unsigned integers,
+and the floats.
+\item \emph{numeric} -- signed integer, unsigned integer and float.
+\item \emph{integer} -- signed and unsigned integer.
+\item \emph{integerish} -- boolean and integer, signed or unsigned.
+\item \emph{signed numeric} -- signed integer and float.
+\item \emph{float} -- \code{f32} and \code{f64}.
+\item \emph{boolean} -- \code{bool}, the only member of its category.
+}
+
+See \code{\link{dtypes}} for the categories these groups are built from and for the
+default data type an R value commits to.
+}
+
 \section{Default Data Types}{
 
 An R value has no data type of its own. Where nothing in the program says

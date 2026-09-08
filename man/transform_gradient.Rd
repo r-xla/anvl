@@ -14,7 +14,8 @@ The graph to transform. Must produce a single scalar float output.}
 Names of the graph inputs to differentiate with respect to.}
 }
 \value{
-An \code{\link{AnvlGraph}} whose outputs are the requested gradients.
+(\code{\link{AnvlGraph}})\cr
+Its outputs are the requested gradients.
 }
 \description{
 Low-level graph transformation that transforms a graph into its gradient.

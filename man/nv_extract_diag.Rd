@@ -11,7 +11,7 @@ nv_extract_diag(x)
 Input array.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 A 1-D array of length \code{min(nrow, ncol)} containing the diagonal elements.
 }
 \description{

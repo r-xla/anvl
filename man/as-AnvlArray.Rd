@@ -34,6 +34,7 @@ dtype. Only present because \code{\link[base:as.vector]{base::as.vector()}}'s si
 pick an R type with one of the other methods instead.}
 }
 \value{
+(\code{vector})\cr
 An R vector holding the array's values, of the type the method
 names: \code{double}, \code{integer}, \code{logical}, or \code{\link[bit64:integer64]{bit64::integer64}}.
 }

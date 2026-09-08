@@ -28,7 +28,7 @@ If \code{TRUE}, the sort is stable: the relative order of equal \emph{keys} is
 preserved. Default \code{FALSE}.}
 }
 \value{
-\code{list} of \code{\link{arrayish}}\cr
+(\code{list} of \code{\link{arrayish}})\cr
 One sorted output per element of \code{xs}, in the same order, each with the
 shape and data type of its input.
 }

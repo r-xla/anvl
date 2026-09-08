@@ -26,8 +26,9 @@ returns \code{list(values = ..., indices = ...)} where \code{indices} holds the
 1-based position of each top-\code{k} value along \code{axis}.}
 }
 \value{
-\code{\link{arrayish}} (when \code{with_indices = FALSE}) or a named \code{list} of two
-arrays (when \code{with_indices = TRUE}). The values have the input's data
+(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+One array when \code{with_indices = FALSE}, a named \code{list} when
+\code{with_indices = TRUE}. The values have the input's data
 type and the indices \code{i32}. Both have the input's shape with \code{axis}
 resized to \code{k}; values are sorted decreasing along \code{axis}.
 }

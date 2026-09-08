@@ -26,7 +26,9 @@ nv_conv3d(
 \item{precision}{(\code{character(1)})\cr \code{"highest"}, \code{"high"} or \code{"default"}.}
 }
 \value{
-\code{\link{arrayish}} \verb{[N, C_out, out_D, out_H, out_W]}.
+(\code{\link{arrayish}})\cr
+Has the data type \code{x} and \code{kernel} agreed on, and shape
+\verb{[N, C_out, out_D, out_H, out_W]}.
 }
 \description{
 Torch-style 3D convolution in NCDHW layout. \code{x} is

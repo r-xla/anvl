@@ -7,7 +7,7 @@
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `integer()`
+#' @returns (`integer()`)
 #' @name shape
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
@@ -28,7 +28,7 @@ tengen::shape
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns [`PJRTDevice`][pjrt::pjrt_device]
+#' @returns ([`PJRTDevice`][pjrt::pjrt_device])
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' device(x)
@@ -52,7 +52,8 @@ tengen::device
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns An R [`array`][base::array] or `vector` of length 1.
+#' @returns ([`array`][base::array] | `vector`)\cr
+#'   Of length 1.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' as_array(x)
@@ -78,7 +79,7 @@ tengen::as_array
 #' @param ... Additional arguments passed to method:
 #'   - `row_major` (`logical(1)`)\cr
 #'     Whether to write the bytes in row-major order.
-#' @returns A [`raw`] vector.
+#' @returns ([`raw`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, shape = c(2, 2), dtype = "f32")
 #' as_raw(x, row_major = TRUE)
@@ -101,7 +102,7 @@ tengen::as_raw
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns A [`DataType`][tengen::DataType].
+#' @returns ([`DataType`][tengen::DataType])
 #' @seealso [tengen::dtype()]
 #' @name dtype
 #' @examplesIf pjrt::plugins_downloaded()
@@ -121,7 +122,7 @@ tengen::dtype
 #'
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
-#' @returns `integer(1)`
+#' @returns (`integer(1)`)
 #' @seealso [tengen::naxes()]
 #' @name naxes
 #' @examplesIf pjrt::plugins_downloaded()
@@ -139,7 +140,7 @@ tengen::naxes
 #' @description Tests whether `x` is a `DataType` object.
 #'
 #' @param x An object to test.
-#' @returns `TRUE` or `FALSE`.
+#' @returns (`logical(1)`)
 #' @seealso [as_dtype()], [tengen::is_dtype()]
 #' @name is_dtype
 #' @examples
@@ -161,7 +162,7 @@ tengen::is_dtype
 #' This is implemented via the generic [`tengen::as_dtype()`].
 #'
 #' @param x A character string or `DataType` to convert.
-#' @returns A `DataType` object.
+#' @returns (`DataType`)
 #' @seealso [is_dtype()], [tengen::as_dtype()], [`tengen::DataType`]
 #' @name as_dtype
 #'
@@ -184,7 +185,7 @@ tengen::as_dtype
 #'
 #' @param dims An `integer()` vector of axis sizes (>= 0). `NA` marks an axis
 #'   whose size is only known at run time.
-#' @returns A `Shape` object.
+#' @returns (`Shape`)
 #' @seealso [shape()], [stablehlo::Shape()]
 #' @name Shape
 #' @rdname Shape-constructor
@@ -209,7 +210,7 @@ stablehlo::Shape
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `character(1)`
+#' @returns (`character(1)`)
 #' @seealso [pjrt::platform()]
 #' @name platform
 #' @examplesIf pjrt::plugins_downloaded()
@@ -236,7 +237,8 @@ pjrt::platform
 #' @param x ([`AnvlArray`] or other awaitable)\cr
 #'   An object with an [`await()`] method.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns `x`, invisibly.
+#' @returns (`any`)\cr
+#'   `x`, invisibly.
 #' @seealso [pjrt::await()], [map_tree()] (to await a tree of outputs)
 #' @name await
 #' @examplesIf pjrt::plugins_downloaded()

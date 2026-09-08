@@ -13,6 +13,7 @@ An object with an \code{\link[=await]{await()}} method.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
+(\code{any})\cr
 \code{x}, invisibly.
 }
 \description{

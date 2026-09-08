@@ -24,7 +24,7 @@ Step sizes, one per axis. Must be \verb{>= 1}. A stride of \code{1}
 selects every element; a stride of \code{2} selects every other element, etc.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as the input and shape
 \code{ceiling((limit_indices - start_indices + 1) / strides)}.
 }

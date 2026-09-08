@@ -17,7 +17,7 @@ Axis along which to concatenate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the data type the inputs agreed on.
 The output shape matches the inputs in all axes except \code{axis},
 which is the sum of the input sizes along that axis.

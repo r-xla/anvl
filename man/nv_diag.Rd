@@ -11,7 +11,7 @@ nv_diag(x)
 A 1-D array of length \code{n} whose elements become the diagonal entries.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 An \verb{n x n} matrix with \code{x} on the diagonal and zeros elsewhere.
 }
 \description{

@@ -13,7 +13,7 @@ An array-like object.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-\code{\link[pjrt:pjrt_device]{PJRTDevice}}
+(\code{\link[pjrt:pjrt_device]{PJRTDevice}})
 }
 \description{
 Returns the device on which an array is allocated.

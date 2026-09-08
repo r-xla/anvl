@@ -15,7 +15,7 @@ Diagonal offset. \code{0} (default) is the main diagonal, positive values
 include diagonals above, negative values exclude diagonals below.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape and data type as \code{x}.
 }
 \description{

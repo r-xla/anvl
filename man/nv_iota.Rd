@@ -43,7 +43,7 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_iota_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{dtype} and \code{shape}.
 }
 \description{

@@ -31,7 +31,7 @@ values the result is identical either way.}
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the input's shape and data type.
 }
 \description{

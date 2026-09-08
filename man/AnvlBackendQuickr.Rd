@@ -7,7 +7,8 @@
 AnvlBackendQuickr()
 }
 \value{
-An \code{\link{AnvlBackend}} object with subclass \code{"AnvlBackendQuickr"}.
+(\code{\link{AnvlBackend}})\cr
+With subclass \code{"AnvlBackendQuickr"}.
 }
 \description{
 Constructs the quickr backend, which stores array data as plain R arrays and

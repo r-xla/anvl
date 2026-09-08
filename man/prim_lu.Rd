@@ -12,11 +12,11 @@ One input, with exactly 2 axes. Can be any float data type. An R value commits t
 \link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{list} of three \code{\link{arrayish}} values: \code{LU} \verb{(m, n)} with the same
-dtype as the input; \code{pivots} \verb{(k,)} of dtype \code{i32} with
+(\code{list} of three \code{\link{arrayish}})\cr
+\code{LU} \verb{(m, n)} with the input's data type; \code{pivots} \verb{(k,)} at \code{i32} with
 \code{k = min(m, n)} (1-based row swaps such that row \code{i} was exchanged
 with row \code{pivots[i]} during elimination step \code{i}); and \code{permutation}
-\verb{(m,)} of dtype \code{i32}, a 1-based permutation vector for \eqn{P} such
+\verb{(m,)} at \code{i32}, a 1-based permutation vector for \eqn{P} such
 that \code{(P \%*\% A)[i, ]} equals \code{A[permutation[i], ]}.
 }
 \description{

@@ -17,7 +17,7 @@ operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
 See \code{\link[=prim_dot_general]{prim_dot_general()}} for details.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})
 }
 \description{
 Matrix multiplication of two arrays. You can also use the \code{\%*\%} operator.

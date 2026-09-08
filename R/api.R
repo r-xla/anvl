@@ -20,7 +20,7 @@
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_fill_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and `dtype`.
 #' @seealso [prim_fill()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -171,7 +171,7 @@ nv_broadcast_arrays <- function(...) {
 #' @template param_x
 #' @param shape (`integer()`)\cr
 #'   Target shape. Each existing axis must either match or be 1.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
 #'   [prim_broadcast_in_axes()] for the underlying primitive.
@@ -196,7 +196,7 @@ nv_broadcast_to <- function(x, shape) {
 #' Returns the input unchanged if it already has the target type.
 #' @template param_x
 #' @template param_dtype
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and the same shape as `x`.
 #' @seealso [prim_convert()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -234,7 +234,7 @@ nv_transpose <- function(x, permutation = NULL) {
 #'   Target shape. Must have the same number of elements as `x`.
 #'   At most one entry may be `-1`, in which case its extent is inferred from
 #'   the remaining entries and the number of elements of `x`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [prim_reshape()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -283,7 +283,7 @@ nv_flatten <- function(x) {
 #'   Axis along which to concatenate.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #'   If `NULL` (default), assumes all inputs are at most 1-D and concatenates along axis 1.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the common data type and a shape matching the inputs in all
 #'   axes except `axis`, which is the sum of input sizes.
 #' @seealso [prim_concatenate()] for the underlying primitive.
@@ -362,7 +362,7 @@ nv_concatenate <- function(..., axis = NULL) {
 #'
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to combine. Inputs are promoted to a common data type.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Vectors as rows / columns
@@ -462,7 +462,7 @@ nv_cbind <- function(...) {
 #'   End indices (inclusive), one per axis.
 #' @param strides (`integer()`)\cr
 #'   Step sizes, one per axis. A stride of 1 selects every element.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as `x`.
 #' @seealso [nv_subset()], [prim_static_slice()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -476,7 +476,7 @@ nv_static_slice <- prim_static_slice
 #' Prints an array value to the console during JIT execution and returns the
 #' input unchanged. Useful for debugging.
 #' @template param_x
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Returns `x` unchanged.
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -500,7 +500,7 @@ nv_print <- prim_print
 #'   [prim_ifelse()] would require them to agree already.
 #'   Scalars (including `pred`) are
 #'   [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar arguments.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the common data type of `true_value` and `false_value`, and their
 #'   broadcast shape.
 #' @seealso [prim_ifelse()] for the underlying primitive.
@@ -1037,7 +1037,7 @@ nv_atan2 <- make_do_binary(prim_atan2)
 #' @template param_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Target data type.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `dtype`.
 #' @seealso [prim_bitcast_convert()] for the underlying primitive, [nv_convert()]
 #'   for value-preserving type conversion.
@@ -1546,7 +1546,7 @@ nv_popcnt <- prim_popcnt
 #'   a silent narrowing.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has `x`'s shape and data type.
 #' @seealso [prim_clamp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1566,7 +1566,7 @@ nv_clamp <- function(min_val, x, max_val) {
 #' @param axes (`integer()`)\cr
 #'   Axes to reverse.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [prim_reverse()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1594,7 +1594,7 @@ nv_reverse <- prim_reverse
 #' @param start (`integer(1)`)\cr
 #'   Starting value (default 1).
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and `shape`.
 #' @seealso [nv_seq()] for a simpler 1-D sequence, [nv_linspace()] for evenly
 #'   spaced values, [prim_iota()] for the underlying primitive.
@@ -1623,7 +1623,7 @@ nv_iota <- prim_iota
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has `dtype` and shape `end - start + 1`.
 #' @seealso [nv_linspace()] for a given number of evenly spaced values,
 #'   [nv_iota()] for values increasing along an axis of any shape,
@@ -1679,7 +1679,7 @@ nv_seq <- function(start, end, dtype = NULL, device = NULL) {
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_linspace_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has `dtype` and shape `steps`.
 #' @seealso [nv_seq()] for consecutive integers, [nv_iota()] for values
 #'   increasing along an axis of any shape, [`dtypes`] for the data type
@@ -1735,7 +1735,7 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
 #' @param interior_padding (`integer()` | `NULL`)\cr
 #'   Amount of padding to add between elements in each axis.
 #'   If `NULL` (default), no interior padding is applied.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as `x`.
 #' @seealso [prim_pad()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1789,7 +1789,7 @@ nv_round <- prim_round
 #'   Controls the trade-off between speed and numerical accuracy of the
 #'   operation. One of `"highest"` (default), `"high"` or `"default"`.
 #'   See [prim_dot_general()] for details.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])
 #' @seealso [prim_dot_general()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
@@ -1830,7 +1830,7 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
 #'   upper triangular factor `U` such that `x = t(U) %*% U`. If
 #'   `TRUE`, compute the lower triangular factor `L` such that
 #'   `x = L %*% t(L)`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Triangular matrix with the same shape and data type as the input.
 #' @seealso [nv_solve()], [prim_chol()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1860,7 +1860,7 @@ nv_chol <- prim_chol
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side, vector of length `n` or matrix with `n` rows. Must
 #'   have the same data type as `a`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   The solution `x` such that `a %*% x = b`.
 #' @seealso [nv_chol()], [nv_triangular_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1938,7 +1938,7 @@ nv_solve <- function(a, b) {
 #'   values on the diagonal are ignored). Defaults to `FALSE`.
 #' @param transpose_a (`logical(1)`)\cr
 #'   If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   The solution `x`, with the same shape and dtype as `b`.
 #' @seealso [nv_solve()], [nv_chol()], [prim_triangular_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2023,7 +2023,8 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
 #' @param x ([`arrayish`])\cr
 #'   Square matrix of floating-point data type.
-#' @return Scalar [`arrayish`] with the same dtype as `x`.
+#' @return ([`arrayish`])\cr
+#'   A scalar with the input's data type.
 #' @seealso [nv_determinant()], [nv_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
@@ -2055,7 +2056,8 @@ nv_det <- function(x) {
 #' @param logarithm (`logical(1)`)\cr
 #'   If `TRUE` (default, matching base R), `modulus` is
 #'   `log(abs(det(x)))`. If `FALSE`, `modulus` is `abs(det(x))`.
-#' @return Named `list` with elements `modulus` and `sign`, both scalar
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `modulus` and `sign`, both scalar
 #'   [`arrayish`] with the same dtype as `x`. The full determinant
 #'   is `sign * exp(modulus)` (with `logarithm = TRUE`) or
 #'   `sign * modulus` (with `logarithm = FALSE`).
@@ -2115,7 +2117,7 @@ nv_determinant <- function(x, logarithm = TRUE) {
 #' a right-hand side.
 #' @param x ([`arrayish`])\cr
 #'   Square non-singular matrix.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   The inverse, same shape and dtype as `x`.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2158,7 +2160,7 @@ nv_qr <- prim_qr
 #' This function returns `L` and `U` as separate matrices.
 #' Use [`prim_lu()`] to get them in packed `LU` form.
 #' @inheritParams prim_lu
-#' @return Named `list`:
+#' @return (named `list` of [`arrayish`])\cr
 #'   * `L` -- unit lower-triangular factor of shape `(m, k)`, where
 #'     `(m, n) = shape(x)` and `k = min(m, n)`.
 #'   * `U` -- upper-triangular factor of shape `(k, n)`.
@@ -2229,7 +2231,7 @@ nv_eigh <- prim_eigh
 #' Creates a diagonal matrix from a 1-D array.
 #' @param x ([`arrayish`])\cr
 #'   A 1-D array of length `n` whose elements become the diagonal entries.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   An `n x n` matrix with `x` on the diagonal and zeros elsewhere.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_diag(nv_array(c(1, 2, 3)))
@@ -2274,7 +2276,7 @@ nv_diag <- function(x) {
 #'   (only for `nv_eye_like()`).
 #' @template param_dtype
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   An `n x n` identity matrix.
 #' @seealso [nv_diag()] for general diagonal matrices.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2704,7 +2706,8 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
 #' @param false (`function()`)\cr
 #'   Zero-argument function for the false branch.
 #'   Must return outputs with the same shapes as the true branch.
-#' @return Result of the executed branch.
+#' @return (any)\cr
+#'   Result of the executed branch.
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2722,7 +2725,9 @@ nv_if <- prim_if
 #' @param body (`function`)\cr
 #'   Body function returning the updated state as a named list
 #'   with the same structure as `init`.
-#' @return Final state after the loop terminates (same structure as `init`).
+#' @return (named `list`)\cr
+#'   Final state after the loop terminates, with `init`'s structure, data
+#'   types and shapes.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_while(
@@ -2898,7 +2903,7 @@ nv_sd <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) 
 #'   Axes to squeeze. Negative values count from the end, i.e. `-1`
 #'   refers to the last axis.
 #'   If `NULL` (default), all axes of size 1 are removed.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as `x` with the specified axes removed.
 #' @seealso [nv_unsqueeze()], [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2933,7 +2938,7 @@ nv_squeeze <- function(x, axes = NULL) {
 #'   Position at which to insert the new axis. Valid positions range from
 #'   1 to `naxes(x) + 1`. Negative values count from the end of the
 #'   *result*, i.e. `-1` appends the new axis at the end.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as `x` with an extra axis of size 1.
 #' @seealso [nv_squeeze()], [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2956,7 +2961,7 @@ nv_unsqueeze <- function(x, axis) {
 #' Computes the outer product of two 1-D arrays.
 #' @param lhs,rhs ([`arrayish`])\cr
 #'   1-D arrays.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   A 2-D array of shape `(length(lhs), length(rhs))`.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -2984,7 +2989,7 @@ nv_outer <- function(lhs, rhs) {
 #' @description
 #' Extracts the diagonal elements from a 2-D array.
 #' @template param_x
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   A 1-D array of length `min(nrow, ncol)` containing the diagonal elements.
 #' @seealso [nv_diag()] for creating a diagonal matrix, [nv_trace()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3018,7 +3023,7 @@ nv_extract_diag <- function(x) {
 #' @description
 #' Computes the trace (sum of diagonal elements) of a 2-D array.
 #' @template param_x
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   A scalar with the same data type as `x`.
 #' @seealso [nv_extract_diag()], [nv_diag()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3064,7 +3069,7 @@ assert_tri_args <- function(shape, diagonal) {
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_lower_tri_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and dtype `bool`.
 #' @seealso [nv_upper_tri()], [nv_tril()], [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3093,7 +3098,7 @@ nv_lower_tri <- function(shape, diagonal = -1L, device = NULL) {
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_upper_tri_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and dtype `bool`.
 #' @seealso [nv_lower_tri()], [nv_triu()], [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3116,7 +3121,7 @@ nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset. `0` (default) is the main diagonal, positive values
 #'   include diagonals above, negative values exclude diagonals below.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [nv_triu()], [nv_lower_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3140,7 +3145,7 @@ nv_tril <- function(x, diagonal = 0L) {
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset. `0` (default) is the main diagonal, positive values
 #'   exclude diagonals above, negative values include diagonals below.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [nv_tril()], [nv_upper_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3163,7 +3168,7 @@ nv_triu <- function(x, diagonal = 0L) {
 #'   An array with at least 2 axes.
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])
 #' @seealso [nv_tcrossprod()], [nv_matmul()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 3, dtype = "f32")
@@ -3189,7 +3194,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
 #'   An array with at least 2 axes.
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])
 #' @seealso [nv_crossprod()], [nv_matmul()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
@@ -3221,7 +3226,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param index ([`arrayish`])\cr
 #'   Scalar or 1D arrayish input (integer).
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Same data type as `x`. `axis` is dropped if `index` was scalar.
 #' @seealso [nv_subset()] for general subsetting, [prim_static_slice()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3298,7 +3303,7 @@ nv_select <- function(x, axis, index) {
 #'   observable for floats when `-0` / `+0` or `-NaN` / `+NaN` are mixed
 #'   (they compare equal under the total order used here); for distinct
 #'   values the result is identical either way.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the input's shape and data type.
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
@@ -3338,7 +3343,7 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @param stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: indices for equal values keep their
 #'   original relative order. Default `FALSE`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has `i32` data type whatever the input's is, and the input's shape. For a
 #'   size-0 axis, the output is an empty `i32` array of the same shape (a valid
 #'   empty permutation).
@@ -3378,8 +3383,9 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
 #'   returns `list(values = ..., indices = ...)` where `indices` holds the
 #'   1-based position of each top-`k` value along `axis`.
-#' @return [`arrayish`] (when `with_indices = FALSE`) or a named `list` of two
-#'   arrays (when `with_indices = TRUE`). The values have the input's data
+#' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
+#'   One array when `with_indices = FALSE`, a named `list` when
+#'   `with_indices = TRUE`. The values have the input's data
 #'   type and the indices `i32`. Both have the input's shape with `axis`
 #'   resized to `k`; values are sorted decreasing along `axis`.
 #' @section NaN handling:
@@ -3463,7 +3469,7 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #'   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
 #'   `"midpoint"`. See "Interpolation modes".
 #' @template param_nan_rm
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has a float data type whatever the input's is. For scalar `probs` the
 #'   shape is the input's with `axis` removed; for array `probs` a **leading**
 #'   axis of size `length(probs)` is prepended.
@@ -3578,7 +3584,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #'   `"higher"`, `"nearest"`, `"midpoint"`.
 #' @param nan_rm (`logical(1)`)\cr
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has a float data type whatever the input's is, and the input's shape with
 #'   `axis` removed.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
@@ -3612,8 +3618,9 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
 #'   is kept with size 1.
 #' @template param_nan_rm
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
+#' @return ([`arrayish`])\cr
+#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @section NaN handling:
 #' With `nan_rm = FALSE` (default), if any entry along the reduced axis is
 #' `NaN`, the returned index points at the first such `NaN`. With
@@ -3651,8 +3658,9 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
 #'   is kept with size 1.
 #' @template param_nan_rm
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
+#' @return ([`arrayish`])\cr
+#'   Has `i32` data type whatever the input's is, and the input's shape with
+#'   `axis` removed (`drop = TRUE`) or set to 1 (`drop = FALSE`).
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3729,7 +3737,9 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
-#' @return [`arrayish`] `[N, C_out, out_W]`.
+#' @return ([`arrayish`])\cr
+#'   Has the data type `x` and `kernel` agreed on, and shape
+#'   `[N, C_out, out_W]`.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
 #' @export
 nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
@@ -3749,7 +3759,9 @@ nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
-#' @return [`arrayish`] `[N, C_out, out_H, out_W]`.
+#' @return ([`arrayish`])\cr
+#'   Has the data type `x` and `kernel` agreed on, and shape
+#'   `[N, C_out, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
 #' @export
 nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
@@ -3765,7 +3777,9 @@ nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' [prim_convolution()].
 #' @inheritParams nv_conv2d
 #' @param stride,padding,dilation (`integer()`)\cr Length 1 or 3.
-#' @return [`arrayish`] `[N, C_out, out_D, out_H, out_W]`.
+#' @return ([`arrayish`])\cr
+#'   Has the data type `x` and `kernel` agreed on, and shape
+#'   `[N, C_out, out_D, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
 #' @export
 nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {

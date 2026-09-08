@@ -11,7 +11,7 @@ nv_inv(x)
 Square non-singular matrix.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 The inverse, same shape and dtype as \code{x}.
 }
 \description{

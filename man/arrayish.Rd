@@ -15,7 +15,7 @@ Object to check.}
 Whether to accept \code{numeric(1)} and \code{logical(1)} and R arrays of type \code{numeric} and \code{logical}.}
 }
 \value{
-\code{logical(1)}
+(\code{logical(1)})
 }
 \description{
 A \code{arrayish} value is anything that represents an \code{\link{AnvlArray}}
@@ -35,6 +35,25 @@ during \code{\link[=jit]{jit()}}.
 
 Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayish.
 }
+\section{Data Type Vocabulary}{
+
+Where a page says which data types an argument takes, it names a group of
+them with a single word:
+\itemize{
+\item \emph{any data type} -- all of them: \code{bool}, the signed and unsigned integers,
+and the floats.
+\item \emph{numeric} -- signed integer, unsigned integer and float.
+\item \emph{integer} -- signed and unsigned integer.
+\item \emph{integerish} -- boolean and integer, signed or unsigned.
+\item \emph{signed numeric} -- signed integer and float.
+\item \emph{float} -- \code{f32} and \code{f64}.
+\item \emph{boolean} -- \code{bool}, the only member of its category.
+}
+
+See \code{\link{dtypes}} for the categories these groups are built from and for the
+default data type an R value commits to.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # AnvlArrays are arrayish

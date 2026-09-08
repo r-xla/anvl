@@ -17,7 +17,7 @@ nv_solve(a, b)
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 The solution \code{x} such that \code{a \%*\% x = b}.
 }
 \description{

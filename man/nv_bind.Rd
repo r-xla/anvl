@@ -24,7 +24,7 @@ Arrays to combine. Inputs are promoted to a common data type.}
 and \code{\link[base:cbind]{base::cbind()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 }
 \description{
 Combine arrays along the row (\code{nv_rbind}) or column (\code{nv_cbind}) axis.

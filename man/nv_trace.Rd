@@ -11,7 +11,7 @@ nv_trace(x)
 Input array.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 A scalar with the same data type as \code{x}.
 }
 \description{

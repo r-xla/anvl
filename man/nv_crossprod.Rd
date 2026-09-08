@@ -21,7 +21,7 @@ Optional second array. If \code{NULL}, uses \code{lhs}.}
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})
 }
 \description{
 Computes \code{t(lhs) \%*\% rhs}. If \code{rhs} is missing, computes \code{t(lhs) \%*\% lhs}.

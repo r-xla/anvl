@@ -18,7 +18,7 @@ New ordering of axes. If \code{NULL} (default), reverses the axes.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as \code{x} and shape \code{nv_shape(x)[permutation]}.
 }
 \description{
