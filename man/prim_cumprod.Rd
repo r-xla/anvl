@@ -41,6 +41,7 @@ The reducer is \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the accumulation keeps the input's data type
 x <- nv_matrix(1:6, nrow = 2)
 prim_cumprod(x, axis = 1L)
 \dontshow{\}) # examplesIf}

@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_exponential_minus_one]{hlo_exponential_minus
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 0.001, 1))
 prim_expm1(x)
+
+# an R value commits to its default data type
+prim_expm1(0.001)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -20,8 +20,12 @@ Element-wise logistic sigmoid: \code{1 / (1 + exp(-x))}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-2, 0, 2))
 nv_logistic(x)
+
+# an R value commits to its default data type
+nv_logistic(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

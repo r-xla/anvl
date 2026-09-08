@@ -37,6 +37,14 @@ Torch-style 3D convolution in NCDHW layout. \code{x} is
 padding (e.g. causal temporal padding) is available via
 \code{\link[=prim_convolution]{prim_convolution()}}.
 }
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
+x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
+weight <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+shape(nv_conv3d(x, weight))
+\dontshow{\}) # examplesIf}
+}
 \seealso{
 \code{\link[=nv_conv1d]{nv_conv1d()}}, \code{\link[=nv_conv2d]{nv_conv2d()}}, \code{\link[=prim_convolution]{prim_convolution()}}.
 }

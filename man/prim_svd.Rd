@@ -48,6 +48,7 @@ Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} with target
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# all three outputs have the input's data type
 x <- nv_array(c(1, 0, 0, 1, 0, 1), shape = c(3, 2))
 prim_svd(x)
 \dontshow{\}) # examplesIf}

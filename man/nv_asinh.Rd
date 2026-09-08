@@ -20,8 +20,12 @@ Element-wise inverse hyperbolic sine. You can also use \code{asinh()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 asinh(x)
+
+# an R value commits to its default data type
+nv_asinh(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

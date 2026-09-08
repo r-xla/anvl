@@ -98,6 +98,18 @@ quickr_emit_known_empty <- function(out_sym, out_aval) {
   quickr_emit_full_like(out_sym, quickr_zero_literal_for(out_aval), shape_out, out_aval)
 }
 
+# The statements for a call all of whose outputs are empty, or `NULL` when at
+# least one of them holds elements and the call has to be lowered properly.
+quickr_emit_all_empty <- function(out_syms, out_avals) {
+  stmts <- lapply(seq_along(out_avals), function(i) {
+    quickr_emit_known_empty(out_syms[[i]], out_avals[[i]])
+  })
+  if (!length(stmts) || any(vapply(stmts, is.null, logical(1)))) {
+    return(NULL)
+  }
+  unlist(stmts, recursive = FALSE)
+}
+
 quickr_subscript <- function(expr, idxs, drop = NULL) {
   if (!length(idxs)) {
     return(expr)
@@ -1521,18 +1533,31 @@ quickr_lower_graph_calls <- function(graph, ctx) {
     if (is.null(lower)) {
       quickr_abort_unsupported_prims(call$primitive$name, quickr_supported_prims())
     }
-    stmts <- c(
-      stmts,
-      lower(
-        call$primitive$name,
-        input_exprs_call,
-        call$params,
-        out_syms_call,
-        call$inputs,
-        out_avals_call,
-        ctx = ctx
+    # A result with a zero-size axis holds no elements, so the empty array of
+    # that shape is the only value it can have and the operands need not be
+    # touched. Emitting it directly also keeps zero-extent arrays away from
+    # quickr's elementwise operators, which reject an empty operand even where
+    # both shapes agree. `prim_print` is excluded because it is there for its
+    # side effect, not for its value.
+    empty_stmts <- if (call$primitive$name != "print") {
+      quickr_emit_all_empty(out_syms_call, out_avals_call)
+    }
+    stmts <- if (!is.null(empty_stmts)) {
+      c(stmts, empty_stmts)
+    } else {
+      c(
+        stmts,
+        lower(
+          call$primitive$name,
+          input_exprs_call,
+          call$params,
+          out_syms_call,
+          call$inputs,
+          out_avals_call,
+          ctx = ctx
+        )
       )
-    )
+    }
   }
 
   out_exprs <- lapply(graph$outputs, quickr_expr_of_node, node_expr = node_expr)

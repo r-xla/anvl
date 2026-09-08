@@ -241,13 +241,32 @@ would otherwise be false; the items marked **Fixed here** are the exceptions.
   collapsed every drawn index to `TRUE`. Both reject a boolean data type now,
   through the new `assert_numeric_dtype()` -- which is what their docs already
   claimed, since *numeric* excludes boolean.
+- **Fixed here (partly).** The quickr lowering emitted an elementwise operation
+  for zero-extent arrays, which the development version of quickr -- the one CI
+  installs from `t-kalinowski.r-universe.dev` -- rejects even where both shapes
+  agree (`x + x` on a `2x0`: "elementwise matrix operations require matching
+  dimensions"). A call whose outputs are all empty now emits the empty arrays
+  directly, which is the only value they can have anyway.
 - `prim_dynamic_slice()` does not check the data type of its start indices at
   the anvl level. A float index reaches the backend and fails with a raw
   StableHLO message ("operand #1 must be variadic of 0D tensor of ... integer
   values"), where `prim_top_k()` and friends give a `cli` error.
-- `prim_fill()` with a negative value at an unsigned data type also fails in
-  the backend ("expected unsigned integer elements, but parsed negative
-  value") rather than in an anvl check.
+- **Fixed here.** `prim_fill()` did not look at its `value` at all, so a
+  negative value at an unsigned data type, a fractional one at an integer or a
+  number at `bool` failed in the backend with a raw MLIR message. It now checks
+  that the value is something the data type can hold (`assert_fill_value()`).
+  The range is still the backend's business: `prim_fill(300L, dtype = "i8")`
+  wraps. Internal callers that fill at a data type they do not know statically
+  (the gradient zeroing, `zeros()` / `ones()`, `nv_tril()`, `nv_triu()`,
+  `nv_diag()`, `nv_eye()`) go through the new `fill_literal()`, which writes
+  the literal in the data type's own category.
+- A fill whose value does not fit R's 32-bit integer fails in stablehlo's
+  constant builder (`r_to_constant.double()` coerces through `as.integer()`,
+  so `prim_fill(2^53, dtype = "i64")` warns "NAs introduced by coercion" and
+  then errors), and `hlo_tensor()` has no method for a
+  [`bit64::integer64`][bit64::integer64] at all. The check accepts an
+  `integer64` as a whole number; making it reach the backend needs a change in
+  stablehlo. Pre-existing, not touched here.
 - `nv_polygamma()`'s `n` used to be a static argument, so it rejected an
   `AnvlArray` while `prim_polygamma()`'s `n` accepted one. Nothing in the body
   needed the static value, and JAX treats `n` as a traced array too, so the

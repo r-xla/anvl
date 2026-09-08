@@ -20,8 +20,12 @@ Element-wise truncation (round toward zero). You can also use \code{trunc()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 trunc(x)
+
+# an R value commits to its default data type
+nv_trunc(1.2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

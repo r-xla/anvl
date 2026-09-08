@@ -365,7 +365,7 @@ run_backward_pass <- function(graph, desc, backwards, required_env, out) {
     output_grads <- lapply(call$outputs, \(output) {
       # Output grad may be NULL if there is dead code.
       grad_env[[output]] %||%
-        prim_fill(0L, dtype = dtype(output), shape = shape(output))
+        zeros(dtype(output), shape(output))
     })
 
     bwd <- backwards[[i]]

@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_negate]{hlo_negate()}}, specified under \hre
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, -2, 3))
 prim_negate(x)
+
+# an R value commits to its default data type
+prim_negate(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

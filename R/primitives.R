@@ -76,9 +76,12 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' efficiently represented in the compiled program, while the latter uses
 #' 100 * 100 * 4 bytes of memory.
 #' @param value (`numeric(1)` | `logical(1)`)\cr
-#'   Scalar value to fill the array with. It is built at `dtype`, so a value
-#'   that data type cannot hold exactly is converted to it -- `3.14` at `i32`
-#'   fills with `3`.
+#'   Scalar value to fill the array with, which has to be something `dtype` can
+#'   hold: a number for a float, a whole number for an integer, a non-negative
+#'   whole number for an unsigned integer and a logical for `bool`. A
+#'   [`bit64::integer64`] counts as a whole number, and `NA` is rejected, since
+#'   XLA has no missing value. Whether the value is *in range* is the backend's
+#'   business -- `prim_fill(300L, dtype = "i8")` still wraps.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | [`DataType`])\cr
@@ -99,6 +102,7 @@ infer_reduce_boolean <- function(x, axes, drop) {
 prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
+    assert_fill_value(value, dtype)
     infer_fill <- function(value, shape, dtype) {
       list(AbstractArray(dtype = as_dtype(dtype), shape = shape))
     }
@@ -185,8 +189,12 @@ prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract)
 #' `r roxy_spec("negate")`
 #' @seealso [nv_negate()], unary `-`
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, -2, 3))
 #' prim_negate(x)
+#'
+#' # an R value commits to its default data type
+#' prim_negate(1)
 #' @export
 prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
 
@@ -934,6 +942,7 @@ cum_extreme_op <- function(x, axis) {
 #' The reducer is [hlo_add()].
 #' @seealso [nv_cumsum()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the accumulation keeps the input's data type
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_cumsum(x, axis = 1L)
 #' @export
@@ -957,6 +966,7 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' The reducer is [hlo_multiply()].
 #' @seealso [nv_cumprod()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the accumulation keeps the input's data type
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_cumprod(x, axis = 1L)
 #' @export
@@ -1726,8 +1736,12 @@ prim_bitcast_convert <- new_primitive(
 #' `r roxy_spec("abs")`
 #' @seealso [nv_abs()], [abs()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 2, -3))
 #' prim_abs(x)
+#'
+#' # an R value commits to its default data type
+#' prim_abs(-1)
 #' @export
 prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
 
@@ -1743,8 +1757,12 @@ prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
 #' `r roxy_spec("sqrt")`
 #' @seealso [nv_sqrt()], [sqrt()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 4, 9))
 #' prim_sqrt(x)
+#'
+#' # an R value commits to its default data type
+#' prim_sqrt(4)
 #' @export
 prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
 
@@ -1760,8 +1778,12 @@ prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
 #' `r roxy_spec("rsqrt")`
 #' @seealso [nv_rsqrt()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 4, 9))
 #' prim_rsqrt(x)
+#'
+#' # an R value commits to its default data type
+#' prim_rsqrt(4)
 #' @export
 prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt))
 
@@ -1777,8 +1799,12 @@ prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt)
 #' `r roxy_spec("log")`
 #' @seealso [nv_log()], [log()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' prim_log(x)
+#'
+#' # an R value commits to its default data type
+#' prim_log(2)
 #' @export
 prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
 
@@ -1794,8 +1820,12 @@ prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
 #' `r roxy_spec("tanh")`
 #' @seealso [nv_tanh()], [tanh()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_tanh(x)
+#'
+#' # an R value commits to its default data type
+#' prim_tanh(1)
 #' @export
 prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
 
@@ -1811,8 +1841,12 @@ prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
 #' `r roxy_spec("tan")`
 #' @seealso [nv_tan()], [tan()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.5, 1))
 #' prim_tan(x)
+#'
+#' # an R value commits to its default data type
+#' prim_tan(0.5)
 #' @export
 prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
 
@@ -1828,8 +1862,12 @@ prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
 #' `r roxy_spec("sine")`
 #' @seealso [nv_sin()], [sin()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_sin(x)
+#'
+#' # an R value commits to its default data type
+#' prim_sin(0)
 #' @export
 prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
 
@@ -1845,8 +1883,12 @@ prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
 #' `r roxy_spec("cosine")`
 #' @seealso [nv_cos()], [cos()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_cos(x)
+#'
+#' # an R value commits to its default data type
+#' prim_cos(0)
 #' @export
 prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine))
 
@@ -1862,8 +1904,12 @@ prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine)
 #' `r roxy_spec("floor")`
 #' @seealso [nv_floor()], [floor()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' prim_floor(x)
+#'
+#' # an R value commits to its default data type
+#' prim_floor(1.2)
 #' @export
 prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor))
 
@@ -1879,8 +1925,12 @@ prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor)
 #' `r roxy_spec("ceil")`
 #' @seealso [nv_ceiling()], [ceiling()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' prim_ceil(x)
+#'
+#' # an R value commits to its default data type
+#' prim_ceil(1.2)
 #' @export
 prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
 
@@ -1896,8 +1946,12 @@ prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
 #' `r roxy_spec("sign")`
 #' @seealso [nv_sign()], [sign()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-3, 0, 5))
 #' prim_sign(x)
+#'
+#' # an R value commits to its default data type
+#' prim_sign(-3)
 #' @export
 prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
 
@@ -1913,8 +1967,12 @@ prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
 #' `r roxy_spec("exponential")`
 #' @seealso [nv_exp()], [exp()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 1, 2))
 #' prim_exp(x)
+#'
+#' # an R value commits to its default data type
+#' prim_exp(1)
 #' @export
 prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponential))
 
@@ -1930,8 +1988,12 @@ prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponentia
 #' `r roxy_spec("exponential_minus_one")`
 #' @seealso [nv_expm1()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.001, 1))
 #' prim_expm1(x)
+#'
+#' # an R value commits to its default data type
+#' prim_expm1(0.001)
 #' @export
 prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_exponential_minus_one))
 
@@ -1947,8 +2009,12 @@ prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_expone
 #' `r roxy_spec("log_plus_one")`
 #' @seealso [nv_log1p()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.001, 1))
 #' prim_log1p(x)
+#'
+#' # an R value commits to its default data type
+#' prim_log1p(0.001)
 #' @export
 prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_plus_one))
 
@@ -1964,8 +2030,12 @@ prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_pl
 #' `r roxy_spec("cbrt")`
 #' @seealso [nv_cbrt()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 8, 27))
 #' prim_cbrt(x)
+#'
+#' # an R value commits to its default data type
+#' prim_cbrt(8)
 #' @export
 prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
 
@@ -1981,8 +2051,12 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
 #' `r roxy_spec("logistic")`
 #' @seealso [nv_logistic()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-2, 0, 2))
 #' prim_logistic(x)
+#'
+#' # an R value commits to its default data type
+#' prim_logistic(2)
 #' @export
 prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_logistic))
 
@@ -1998,8 +2072,12 @@ prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_
 #' `r roxy_spec_chlo("acos")`
 #' @seealso [nv_acos()], [acos()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_acos(x)
+#'
+#' # an R value commits to its default data type
+#' prim_acos(0.5)
 #' @export
 prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
 
@@ -2015,8 +2093,12 @@ prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
 #' `r roxy_spec_chlo("acosh")`
 #' @seealso [nv_acosh()], [acosh()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2, 10))
 #' prim_acosh(x)
+#'
+#' # an R value commits to its default data type
+#' prim_acosh(2)
 #' @export
 prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh))
 
@@ -2032,8 +2114,12 @@ prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh)
 #' `r roxy_spec_chlo("asin")`
 #' @seealso [nv_asin()], [asin()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_asin(x)
+#'
+#' # an R value commits to its default data type
+#' prim_asin(0.5)
 #' @export
 prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
 
@@ -2049,8 +2135,12 @@ prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
 #' `r roxy_spec_chlo("asinh")`
 #' @seealso [nv_asinh()], [asinh()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_asinh(x)
+#'
+#' # an R value commits to its default data type
+#' prim_asinh(1)
 #' @export
 prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh))
 
@@ -2066,8 +2156,12 @@ prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh)
 #' `r roxy_spec_chlo("atan")`
 #' @seealso [nv_atan()], [atan()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_atan(x)
+#'
+#' # an R value commits to its default data type
+#' prim_atan(1)
 #' @export
 prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
 
@@ -2083,8 +2177,12 @@ prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
 #' `r roxy_spec_chlo("atanh")`
 #' @seealso [nv_atanh()], [atanh()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' prim_atanh(x)
+#'
+#' # an R value commits to its default data type
+#' prim_atanh(0.5)
 #' @export
 prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh))
 
@@ -2100,8 +2198,12 @@ prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh)
 #' `r roxy_spec_chlo("cosh")`
 #' @seealso [nv_cosh()], [cosh()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_cosh(x)
+#'
+#' # an R value commits to its default data type
+#' prim_cosh(1)
 #' @export
 prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
 
@@ -2117,8 +2219,12 @@ prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
 #' `r roxy_spec_chlo("sinh")`
 #' @seealso [nv_sinh()], [sinh()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_sinh(x)
+#'
+#' # an R value commits to its default data type
+#' prim_sinh(1)
 #' @export
 prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
 
@@ -2134,8 +2240,12 @@ prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
 #' `r roxy_spec_chlo("digamma")`
 #' @seealso [nv_digamma()], [digamma()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' prim_digamma(x)
+#'
+#' # an R value commits to its default data type
+#' prim_digamma(2)
 #' @export
 prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_digamma))
 
@@ -2151,8 +2261,12 @@ prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_di
 #' `r roxy_spec_chlo("lgamma")`
 #' @seealso [nv_lgamma()], [lgamma()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' prim_lgamma(x)
+#'
+#' # an R value commits to its default data type
+#' prim_lgamma(2)
 #' @export
 prim_lgamma <- new_primitive("lgamma", make_unary_op(stablehlo::infer_types_lgamma))
 
@@ -2201,8 +2315,12 @@ prim_polygamma <- new_primitive(
 #' `r roxy_spec_chlo("erf")`
 #' @seealso [nv_erf()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_erf(x)
+#'
+#' # an R value commits to its default data type
+#' prim_erf(1)
 #' @export
 prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
 
@@ -2218,8 +2336,12 @@ prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
 #' `r roxy_spec_chlo("erf_inv")`
 #' @seealso [nv_erf_inv()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' prim_erf_inv(x)
+#'
+#' # an R value commits to its default data type
+#' prim_erf_inv(0.5)
 #' @export
 prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_erf_inv))
 
@@ -2235,8 +2357,12 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_er
 #' `r roxy_spec_chlo("erfc")`
 #' @seealso [nv_erfc()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' prim_erfc(x)
+#'
+#' # an R value commits to its default data type
+#' prim_erfc(1)
 #' @export
 prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
 
@@ -2253,8 +2379,12 @@ prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
 #' `r roxy_spec("is_finite")`
 #' @seealso [nv_is_finite()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the result is boolean, whatever float data type the input has
 #' x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 #' prim_is_finite(x)
+#'
+#' # an R value commits to its default data type before the test
+#' prim_is_finite(1)
 #' @export
 prim_is_finite <- new_primitive(
   "is_finite",
@@ -2526,8 +2656,12 @@ prim_pad <- new_primitive(
 #' [round_nearest_afz](https://openxla.org/stablehlo/spec#round_nearest_afz).
 #' @seealso [nv_round()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.4, 2.5, 3.6))
 #' prim_round(x)
+#'
+#' # an R value commits to its default data type
+#' prim_round(2.5)
 #' @export
 prim_round <- new_primitive(
   "round",
@@ -3016,6 +3150,7 @@ prim_top_k <- new_primitive(
 #' Lowers to [hlo_custom_call()].
 #' @seealso [nv_print()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the value is printed and handed back unchanged
 #' x <- nv_array(c(1, 2, 3))
 #' prim_print(x)
 #' @export
@@ -3699,6 +3834,7 @@ prim_qr <- new_primitive(
 #' in-graph.
 #' @seealso [nv_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `LU` keeps the input's data type; `pivots` and `permutation` are `i32`
 #' x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' prim_lu(x)
 #' @export
@@ -3757,6 +3893,7 @@ prim_lu <- new_primitive(
 #' Lowers to [hlo_custom_call()] with target `"svd"`.
 #' @seealso [nv_svd()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # all three outputs have the input's data type
 #' x <- nv_array(c(1, 0, 0, 1, 0, 1), shape = c(3, 2))
 #' prim_svd(x)
 #' @export
@@ -3807,6 +3944,7 @@ prim_svd <- new_primitive(
 #' Lowers to [hlo_custom_call()] with target `"eigh"`.
 #' @seealso [nv_eigh()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `values` and `vectors` both have the input's data type
 #' x <- nv_array(c(2, 1, 1, 2), shape = c(2, 2), dtype = "f64")
 #' prim_eigh(x)
 #' @export

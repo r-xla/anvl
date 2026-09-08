@@ -20,8 +20,12 @@ Element-wise sign function. You can also use \code{sign()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-3, 0, 5))
 sign(x)
+
+# an R value commits to its default data type
+nv_sign(-3)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -134,12 +134,26 @@ shapes2string <- function(shapes) {
   paste0(sapply(shapes, shape2string), sep = ", ")
 }
 
+# `value` (0 or 1) written in the category `dtype` belongs to. A fill only
+# takes a literal its data type can hold, so a boolean data type needs a
+# logical and an integer one a whole number.
+fill_literal <- function(value, dtype) {
+  dt <- as_dtype(dtype)
+  if (is_dtype_bool(dt)) {
+    as.logical(value)
+  } else if (is_dtype_float(dt)) {
+    as.double(value)
+  } else {
+    as.integer(value)
+  }
+}
+
 zeros <- function(dtype, shape) {
-  prim_fill(0L, dtype = dtype, shape = shape)
+  prim_fill(fill_literal(0, dtype), dtype = dtype, shape = shape)
 }
 
 ones <- function(dtype, shape) {
-  prim_fill(1L, dtype = dtype, shape = shape)
+  prim_fill(fill_literal(1, dtype), dtype = dtype, shape = shape)
 }
 
 

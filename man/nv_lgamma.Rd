@@ -21,8 +21,12 @@ function. You can also use \code{lgamma()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0.5, 1, 2, 5))
 lgamma(x)
+
+# an R value commits to its default data type
+nv_lgamma(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

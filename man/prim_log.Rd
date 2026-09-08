@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_log]{hlo_log()}}, specified under \href{http
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 2.718, 7.389))
 prim_log(x)
+
+# an R value commits to its default data type
+prim_log(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

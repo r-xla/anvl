@@ -34,6 +34,7 @@ random sampling functions and is updated after each call.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the state is a 1-D `ui64` array the samplers thread through
 state <- nv_rng_state(42L)
 state
 \dontshow{\}) # examplesIf}

@@ -20,8 +20,12 @@ Element-wise floor (round toward negative infinity). You can also use \code{floo
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 floor(x)
+
+# an R value commits to its default data type
+nv_floor(1.2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

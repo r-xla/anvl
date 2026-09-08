@@ -20,8 +20,12 @@ Element-wise inverse error function (the inverse of \code{erf} on \verb{(-1, 1)}
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-0.5, 0, 0.5))
 nv_erf_inv(x)
+
+# an R value commits to its default data type
+nv_erf_inv(0.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

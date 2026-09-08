@@ -36,6 +36,18 @@ Torch-style 1D convolution in NCW layout: \code{x} is
 \verb{[out_channels, in_channels / groups, kW]}, output is
 \verb{[batch, out_channels, out_w]}. Symmetric zero padding.
 }
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# one batch, one channel, width 5, convolved with a width-3 kernel
+x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+weight <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+nv_conv1d(x, weight)
+
+# `padding = 1` keeps the width, `stride = 2` halves it
+nv_conv1d(x, weight, padding = 1L)
+nv_conv1d(x, weight, stride = 2L)
+\dontshow{\}) # examplesIf}
+}
 \seealso{
 \code{\link[=nv_conv2d]{nv_conv2d()}}, \code{\link[=nv_conv3d]{nv_conv3d()}}, \code{\link[=prim_convolution]{prim_convolution()}}.
 }

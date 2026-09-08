@@ -20,8 +20,12 @@ Element-wise inverse hyperbolic cosine. You can also use \code{acosh()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 2, 10))
 acosh(x)
+
+# an R value commits to its default data type
+nv_acosh(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

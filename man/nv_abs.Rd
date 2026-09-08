@@ -20,8 +20,12 @@ Element-wise absolute value. You can also use \code{abs()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 2, -3))
 abs(x)
+
+# an R value commits to its default data type
+nv_abs(-1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

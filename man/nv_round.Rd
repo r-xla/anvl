@@ -24,8 +24,12 @@ Element-wise rounding. You can also use the \code{round()} generic.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.4, 2.5, 3.6))
 round(x)
+
+# an R value commits to its default data type
+nv_round(2.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

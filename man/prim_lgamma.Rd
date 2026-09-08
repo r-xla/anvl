@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_lgamma]{hlo_lgamma()}}, an op of the CHLO di
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0.5, 1, 2, 5))
 prim_lgamma(x)
+
+# an R value commits to its default data type
+prim_lgamma(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -567,7 +567,7 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
   differentiable <- is_dtype_float(dtype(x)) && is_dtype_float(dtype(outputs[[1L]]))
   list(
     if (required[[1L]]) {
-      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else prim_fill(0L, dtype = dtype(x), shape = shape(x))
+      if (differentiable) prim_convert(grads[[1L]], dtype(x)) else zeros(dtype(x), shape(x))
     }
   )
 })
@@ -582,7 +582,7 @@ prim_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, param
 
 reverse_zero_bin <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
-  grad_in <- nv_fill(0L, dtype = dtype(x), shape = shape(x))
+  grad_in <- zeros(dtype(x), shape(x))
 
   list(
     if (required[[1L]]) grad_in,
@@ -602,7 +602,7 @@ prim_le[["reverse"]] <- reverse_zero_bin
 reverse_zero_uni <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   list(
-    if (required[[1L]]) prim_fill(0L, dtype = dtype(x), shape = shape(x))
+    if (required[[1L]]) zeros(dtype(x), shape(x))
   )
 })
 
@@ -744,7 +744,7 @@ prim_reduce_any[["reverse"]] <- prim_reduce_all[["reverse"]]
 prim_bitcast_convert[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
   x <- inputs[[1L]]
   list(
-    if (required[[1L]]) prim_fill(0L, dtype = dtype(x), shape = shape(x))
+    if (required[[1L]]) zeros(dtype(x), shape(x))
   )
 })
 

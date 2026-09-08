@@ -24,8 +24,12 @@ You can also use \code{is.infinite()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result is boolean, whatever float data type the input has
 x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 nv_is_infinite(x)
+
+# an R value commits to its default data type before the test
+nv_is_infinite(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

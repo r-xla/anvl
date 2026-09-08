@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_logistic]{hlo_logistic()}}, specified under 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-2, 0, 2))
 prim_logistic(x)
+
+# an R value commits to its default data type
+prim_logistic(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

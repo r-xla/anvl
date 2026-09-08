@@ -40,8 +40,12 @@ specified under
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.4, 2.5, 3.6))
 prim_round(x)
+
+# an R value commits to its default data type
+prim_round(2.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

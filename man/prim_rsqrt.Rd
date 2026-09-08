@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_rsqrt]{hlo_rsqrt()}}, specified under \href{
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 4, 9))
 prim_rsqrt(x)
+
+# an R value commits to its default data type
+prim_rsqrt(4)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -20,8 +20,12 @@ Element-wise inverse sine. You can also use \code{asin()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 asin(x)
+
+# an R value commits to its default data type
+nv_asin(0.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

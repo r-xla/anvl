@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_digamma]{hlo_digamma()}}, an op of the CHLO 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0.5, 1, 2, 5))
 prim_digamma(x)
+
+# an R value commits to its default data type
+prim_digamma(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

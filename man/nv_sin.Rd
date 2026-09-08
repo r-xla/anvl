@@ -20,8 +20,12 @@ Element-wise sine. You can also use \code{sin()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, pi / 2, pi))
 sin(x)
+
+# an R value commits to its default data type
+nv_sin(0)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

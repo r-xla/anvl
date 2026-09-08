@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_cbrt]{hlo_cbrt()}}, specified under \href{ht
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 8, 27))
 prim_cbrt(x)
+
+# an R value commits to its default data type
+prim_cbrt(8)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

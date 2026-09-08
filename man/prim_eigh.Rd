@@ -40,6 +40,7 @@ Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} with target
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` and `vectors` both have the input's data type
 x <- nv_array(c(2, 1, 1, 2), shape = c(2, 2), dtype = "f64")
 prim_eigh(x)
 \dontshow{\}) # examplesIf}

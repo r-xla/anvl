@@ -20,8 +20,12 @@ Element-wise base-2 logarithm. You can also use \code{log2()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 2, 4, 8))
 nv_log2(x)
+
+# an R value commits to its default data type
+nv_log2(8)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

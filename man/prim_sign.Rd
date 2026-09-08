@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_sign]{hlo_sign()}}, specified under \href{ht
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-3, 0, 5))
 prim_sign(x)
+
+# an R value commits to its default data type
+prim_sign(-3)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_acosh]{hlo_acosh()}}, an op of the CHLO dial
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 2, 10))
 prim_acosh(x)
+
+# an R value commits to its default data type
+prim_acosh(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

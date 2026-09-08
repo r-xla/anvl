@@ -20,8 +20,12 @@ Element-wise hyperbolic tangent. You can also use \code{tanh()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 tanh(x)
+
+# an R value commits to its default data type
+nv_tanh(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

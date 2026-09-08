@@ -20,8 +20,12 @@ Element-wise exponential. You can also use \code{exp()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 1, 2))
 exp(x)
+
+# an R value commits to its default data type
+nv_exp(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

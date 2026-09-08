@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_asin]{hlo_asin()}}, an op of the CHLO dialec
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 prim_asin(x)
+
+# an R value commits to its default data type
+prim_asin(0.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

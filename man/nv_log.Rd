@@ -20,8 +20,12 @@ Element-wise natural logarithm. You can also use \code{log()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 2.718, 7.389))
 log(x)
+
+# an R value commits to its default data type
+nv_log(2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

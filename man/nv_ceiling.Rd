@@ -20,8 +20,12 @@ Element-wise ceiling (round toward positive infinity). You can also use \code{ce
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 ceiling(x)
+
+# an R value commits to its default data type
+nv_ceiling(1.2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

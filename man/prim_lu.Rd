@@ -46,6 +46,7 @@ in-graph.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `LU` keeps the input's data type; `pivots` and `permutation` are `i32`
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 prim_lu(x)
 \dontshow{\}) # examplesIf}

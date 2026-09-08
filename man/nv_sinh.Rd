@@ -20,8 +20,12 @@ Element-wise hyperbolic sine. You can also use \code{sinh()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 sinh(x)
+
+# an R value commits to its default data type
+nv_sinh(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

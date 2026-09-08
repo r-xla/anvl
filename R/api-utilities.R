@@ -10,6 +10,7 @@
 #'   Has `ui64` data type and shape `(2)`.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the state is a 1-D `ui64` array the samplers thread through
 #' state <- nv_rng_state(42L)
 #' state
 #' @export

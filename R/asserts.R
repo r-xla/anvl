@@ -124,6 +124,56 @@ assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt
 }
 
+# The R value a `prim_fill()` / `nv_fill()` call builds at `dtype` has to be
+# something that data type can hold: a number for a float, a whole number for an
+# integer, a non-negative whole number for an unsigned one and a logical for
+# `bool`. This is a check on the *R value*, not on the range of the data type --
+# `prim_fill(300L, dtype = "i8")` is still the backend's business.
+assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
+  dt <- as_dtype(dtype)
+  is_int64 <- inherits(value, "integer64")
+  # `integer64` is a double under the hood, so it is counted in explicitly.
+  is_number <- (is.numeric(value) && !is.logical(value)) || is_int64
+  # `trunc()` on an `integer64` would drop the class, and it is whole anyway.
+  is_whole <- is_int64 || (is_number && is.finite(value) && value == trunc(value))
+
+  # XLA has no missing value, and an `NA` otherwise reaches the backend and
+  # fails there with a raw MLIR message.
+  if (length(value) == 1L && !is_int64 && is.na(value) && !is.nan(value)) {
+    cli_abort(c(
+      "{.arg {arg}} must not be {.val {NA}}.",
+      "i" = "There is no missing value at the XLA level; {.val {NaN}} is the closest a float comes."
+    ))
+  }
+
+  ok <- if (is_dtype_bool(dt)) {
+    is.logical(value)
+  } else if (is_dtype_uint(dt)) {
+    is_whole && value >= 0
+  } else if (is_dtype_int(dt)) {
+    is_whole
+  } else {
+    is_number
+  }
+  if (ok) {
+    return(invisible(value))
+  }
+
+  wanted <- if (is_dtype_bool(dt)) {
+    "a logical"
+  } else if (is_dtype_uint(dt)) {
+    "a non-negative whole number"
+  } else if (is_dtype_int(dt)) {
+    "a whole number"
+  } else {
+    "a number"
+  }
+  cli_abort(c(
+    "{.arg {arg}} must be {wanted} to be built at data type {.val {as.character(dt)}}.",
+    "x" = "Got {.obj_type_friendly {value}}{if (is_number) cli::format_inline(' {.val {value}}') else ''}."
+  ))
+}
+
 # Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
 # sense `?dtypes` gives the word: integer or float, but not `bool`. Returns the
 # converted DataType.

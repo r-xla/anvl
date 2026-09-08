@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_tan]{hlo_tan()}}, specified under \href{http
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 0.5, 1))
 prim_tan(x)
+
+# an R value commits to its default data type
+prim_tan(0.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

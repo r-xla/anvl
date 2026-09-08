@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_cosine]{hlo_cosine()}}, specified under \hre
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, pi / 2, pi))
 prim_cos(x)
+
+# an R value commits to its default data type
+prim_cos(0)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

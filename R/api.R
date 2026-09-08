@@ -11,8 +11,11 @@
 #' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)` | `logical(1)`)\cr
-#'   Scalar value to fill the array with. It is built at `dtype`, so a value
-#'   that data type cannot hold exactly is converted to it.
+#'   Scalar value to fill the array with, which has to be something `dtype` can
+#'   hold: a number for a float, a whole number for an integer, a non-negative
+#'   whole number for an unsigned integer and a logical for `bool`. A
+#'   [`bit64::integer64`] counts as a whole number, and `NA` is rejected, since
+#'   XLA has no missing value.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
@@ -1079,8 +1082,12 @@ nv_bitcast_convert <- prim_bitcast_convert
 #' @template return_unary
 #' @seealso [prim_negate()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, -2, 3))
 #' -x
+#'
+#' # an R value commits to its default data type
+#' nv_negate(1)
 #' @export
 nv_negate <- prim_negate
 
@@ -1111,8 +1118,12 @@ nv_not <- prim_not
 #' @template return_unary
 #' @seealso [prim_abs()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 2, -3))
 #' abs(x)
+#'
+#' # an R value commits to its default data type
+#' nv_abs(-1)
 #' @export
 nv_abs <- prim_abs
 
@@ -1124,8 +1135,12 @@ nv_abs <- prim_abs
 #' @template return_unary
 #' @seealso [prim_sqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 4, 9))
 #' sqrt(x)
+#'
+#' # an R value commits to its default data type
+#' nv_sqrt(4)
 #' @export
 nv_sqrt <- prim_sqrt
 
@@ -1137,8 +1152,12 @@ nv_sqrt <- prim_sqrt
 #' @template return_unary
 #' @seealso [prim_rsqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 4, 9))
 #' nv_rsqrt(x)
+#'
+#' # an R value commits to its default data type
+#' nv_rsqrt(4)
 #' @export
 nv_rsqrt <- prim_rsqrt
 
@@ -1150,8 +1169,12 @@ nv_rsqrt <- prim_rsqrt
 #' @template return_unary
 #' @seealso [prim_log()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' log(x)
+#'
+#' # an R value commits to its default data type
+#' nv_log(2)
 #' @export
 nv_log <- prim_log
 
@@ -1163,8 +1186,12 @@ nv_log <- prim_log
 #' @template return_unary
 #' @seealso [prim_tanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' tanh(x)
+#'
+#' # an R value commits to its default data type
+#' nv_tanh(1)
 #' @export
 nv_tanh <- prim_tanh
 
@@ -1176,8 +1203,12 @@ nv_tanh <- prim_tanh
 #' @template return_unary
 #' @seealso [prim_tan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.5, 1))
 #' tan(x)
+#'
+#' # an R value commits to its default data type
+#' nv_tan(0.5)
 #' @export
 nv_tan <- prim_tan
 
@@ -1189,8 +1220,12 @@ nv_tan <- prim_tan
 #' @template return_unary
 #' @seealso [prim_sin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, pi / 2, pi))
 #' sin(x)
+#'
+#' # an R value commits to its default data type
+#' nv_sin(0)
 #' @export
 nv_sin <- prim_sin
 
@@ -1202,8 +1237,12 @@ nv_sin <- prim_sin
 #' @template return_unary
 #' @seealso [prim_cos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, pi / 2, pi))
 #' cos(x)
+#'
+#' # an R value commits to its default data type
+#' nv_cos(0)
 #' @export
 nv_cos <- prim_cos
 
@@ -1215,8 +1254,12 @@ nv_cos <- prim_cos
 #' @template return_unary
 #' @seealso [prim_floor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' floor(x)
+#'
+#' # an R value commits to its default data type
+#' nv_floor(1.2)
 #' @export
 nv_floor <- prim_floor
 
@@ -1228,8 +1271,12 @@ nv_floor <- prim_floor
 #' @template return_unary
 #' @seealso [prim_ceil()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' ceiling(x)
+#'
+#' # an R value commits to its default data type
+#' nv_ceiling(1.2)
 #' @export
 nv_ceiling <- prim_ceil
 
@@ -1241,8 +1288,12 @@ nv_ceiling <- prim_ceil
 #' @template return_unary
 #' @seealso [nv_floor()], [nv_ceiling()], [nv_round()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' trunc(x)
+#'
+#' # an R value commits to its default data type
+#' nv_trunc(1.2)
 #' @export
 #' @jit
 nv_trunc <- function(x) {
@@ -1258,8 +1309,12 @@ nv_trunc <- function(x) {
 #' @template return_unary
 #' @seealso [prim_sign()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-3, 0, 5))
 #' sign(x)
+#'
+#' # an R value commits to its default data type
+#' nv_sign(-3)
 #' @export
 nv_sign <- prim_sign
 
@@ -1271,8 +1326,12 @@ nv_sign <- prim_sign
 #' @template return_unary
 #' @seealso [prim_exp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 1, 2))
 #' exp(x)
+#'
+#' # an R value commits to its default data type
+#' nv_exp(1)
 #' @export
 nv_exp <- prim_exp
 
@@ -1284,8 +1343,12 @@ nv_exp <- prim_exp
 #' @template return_unary
 #' @seealso [prim_expm1()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_expm1(x)
+#'
+#' # an R value commits to its default data type
+#' nv_expm1(0.001)
 #' @export
 nv_expm1 <- prim_expm1
 
@@ -1297,8 +1360,12 @@ nv_expm1 <- prim_expm1
 #' @template return_unary
 #' @seealso [prim_log1p()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_log1p(x)
+#'
+#' # an R value commits to its default data type
+#' nv_log1p(0.001)
 #' @export
 nv_log1p <- prim_log1p
 
@@ -1310,8 +1377,12 @@ nv_log1p <- prim_log1p
 #' @template return_unary
 #' @seealso [prim_cbrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 8, 27))
 #' nv_cbrt(x)
+#'
+#' # an R value commits to its default data type
+#' nv_cbrt(8)
 #' @export
 nv_cbrt <- prim_cbrt
 
@@ -1323,8 +1394,12 @@ nv_cbrt <- prim_cbrt
 #' @template return_unary
 #' @seealso [prim_logistic()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-2, 0, 2))
 #' nv_logistic(x)
+#'
+#' # an R value commits to its default data type
+#' nv_logistic(2)
 #' @export
 nv_logistic <- prim_logistic
 
@@ -1336,8 +1411,12 @@ nv_logistic <- prim_logistic
 #' @template return_unary
 #' @seealso [prim_acos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' acos(x)
+#'
+#' # an R value commits to its default data type
+#' nv_acos(0.5)
 #' @export
 nv_acos <- prim_acos
 
@@ -1349,8 +1428,12 @@ nv_acos <- prim_acos
 #' @template return_unary
 #' @seealso [prim_acosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2, 10))
 #' acosh(x)
+#'
+#' # an R value commits to its default data type
+#' nv_acosh(2)
 #' @export
 nv_acosh <- prim_acosh
 
@@ -1362,8 +1445,12 @@ nv_acosh <- prim_acosh
 #' @template return_unary
 #' @seealso [prim_asin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' asin(x)
+#'
+#' # an R value commits to its default data type
+#' nv_asin(0.5)
 #' @export
 nv_asin <- prim_asin
 
@@ -1375,8 +1462,12 @@ nv_asin <- prim_asin
 #' @template return_unary
 #' @seealso [prim_asinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' asinh(x)
+#'
+#' # an R value commits to its default data type
+#' nv_asinh(1)
 #' @export
 nv_asinh <- prim_asinh
 
@@ -1388,8 +1479,12 @@ nv_asinh <- prim_asinh
 #' @template return_unary
 #' @seealso [prim_atan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' atan(x)
+#'
+#' # an R value commits to its default data type
+#' nv_atan(1)
 #' @export
 nv_atan <- prim_atan
 
@@ -1401,8 +1496,12 @@ nv_atan <- prim_atan
 #' @template return_unary
 #' @seealso [prim_atanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' atanh(x)
+#'
+#' # an R value commits to its default data type
+#' nv_atanh(0.5)
 #' @export
 nv_atanh <- prim_atanh
 
@@ -1414,8 +1513,12 @@ nv_atanh <- prim_atanh
 #' @template return_unary
 #' @seealso [prim_cosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' cosh(x)
+#'
+#' # an R value commits to its default data type
+#' nv_cosh(1)
 #' @export
 nv_cosh <- prim_cosh
 
@@ -1427,8 +1530,12 @@ nv_cosh <- prim_cosh
 #' @template return_unary
 #' @seealso [prim_sinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' sinh(x)
+#'
+#' # an R value commits to its default data type
+#' nv_sinh(1)
 #' @export
 nv_sinh <- prim_sinh
 
@@ -1441,8 +1548,12 @@ nv_sinh <- prim_sinh
 #' @template return_unary
 #' @seealso [prim_digamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' digamma(x)
+#'
+#' # an R value commits to its default data type
+#' nv_digamma(2)
 #' @export
 nv_digamma <- prim_digamma
 
@@ -1455,8 +1566,12 @@ nv_digamma <- prim_digamma
 #' @template return_unary
 #' @seealso [prim_lgamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' lgamma(x)
+#'
+#' # an R value commits to its default data type
+#' nv_lgamma(2)
 #' @export
 nv_lgamma <- prim_lgamma
 
@@ -1496,8 +1611,12 @@ nv_polygamma <- function(n, x) {
 #' @template return_unary
 #' @seealso [prim_erf()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erf(x)
+#'
+#' # an R value commits to its default data type
+#' nv_erf(1)
 #' @export
 nv_erf <- prim_erf
 
@@ -1509,8 +1628,12 @@ nv_erf <- prim_erf
 #' @template return_unary
 #' @seealso [prim_erf_inv()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' nv_erf_inv(x)
+#'
+#' # an R value commits to its default data type
+#' nv_erf_inv(0.5)
 #' @export
 nv_erf_inv <- prim_erf_inv
 
@@ -1522,8 +1645,12 @@ nv_erf_inv <- prim_erf_inv
 #' @template return_unary
 #' @seealso [prim_erfc()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erfc(x)
+#'
+#' # an R value commits to its default data type
+#' nv_erfc(1)
 #' @export
 nv_erfc <- prim_erfc
 
@@ -1535,8 +1662,12 @@ nv_erfc <- prim_erfc
 #' @template return_unary_boolean
 #' @seealso [prim_is_finite()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the result is boolean, whatever float data type the input has
 #' x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 #' nv_is_finite(x)
+#'
+#' # an R value commits to its default data type before the test
+#' nv_is_finite(1)
 #' @export
 nv_is_finite <- prim_is_finite
 
@@ -1804,8 +1935,12 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @template return_unary
 #' @seealso [prim_round()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.4, 2.5, 3.6))
 #' round(x)
+#'
+#' # an R value commits to its default data type
+#' nv_round(2.5)
 #' @export
 nv_round <- prim_round
 
@@ -2306,7 +2441,7 @@ nv_diag <- function(x) {
     ))
   }
   n <- shape(x)[1L]
-  zeros <- nv_fill_like(x, 0, shape = c(n, n))
+  zeros <- nv_fill_like(x, fill_literal(0, dtype(x)), shape = c(n, n))
   idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
   indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
@@ -2352,7 +2487,7 @@ nv_diag <- function(x) {
 #' @export
 #' @jit static 1:3
 nv_eye <- function(n, dtype = "f32", device = NULL) {
-  nv_diag(nv_fill(1, n, dtype = dtype, device = device))
+  nv_diag(nv_fill(fill_literal(1, dtype), n, dtype = dtype, device = device))
 }
 
 # Expand `axes = NULL` to "all axes". Negative axes are resolved here
@@ -2826,8 +2961,12 @@ nv_while <- prim_while
 #' @template return_unary
 #' @seealso [nv_log()], [nv_log10()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2, 4, 8))
 #' nv_log2(x)
+#'
+#' # an R value commits to its default data type
+#' nv_log2(8)
 #' @export
 #' @jit
 nv_log2 <- function(x) {
@@ -2843,8 +2982,12 @@ nv_log2 <- function(x) {
 #' @template return_unary
 #' @seealso [nv_log()], [nv_log2()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 10, 100, 1000))
 #' nv_log10(x)
+#'
+#' # an R value commits to its default data type
+#' nv_log10(100)
 #' @export
 #' @jit
 nv_log10 <- function(x) {
@@ -2879,8 +3022,12 @@ nv_is_nan <- function(x) {
 #' @template return_unary_boolean
 #' @seealso [nv_is_finite()], [nv_is_nan()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the result is boolean, whatever float data type the input has
 #' x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 #' nv_is_infinite(x)
+#'
+#' # an R value commits to its default data type before the test
+#' nv_is_infinite(1)
 #' @export
 #' @jit
 nv_is_infinite <- function(x) {
@@ -3233,7 +3380,7 @@ nv_tril <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, fill_literal(0, dtype(x))))
 }
 
 #' @title Upper Triangular Matrix
@@ -3260,7 +3407,7 @@ nv_triu <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, fill_literal(0, dtype(x))))
 }
 
 #' @title Cross Product (Matrix)
@@ -3465,6 +3612,8 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @inheritSection nv_sort NaN handling
 #' @seealso [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the indices come out at `i32`, whatever the input is
+#' # the indices come out at `i32`, whatever the input is
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' nv_argsort(x)
 #' @export
@@ -3858,6 +4007,15 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #'   Has the data type `x` and `weight` agreed on, and shape
 #'   `[N, C_out, out_W]`.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
+#' @examplesIf pjrt::plugins_downloaded()
+#' # one batch, one channel, width 5, convolved with a width-3 kernel
+#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+#' weight <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' nv_conv1d(x, weight)
+#'
+#' # `padding = 1` keeps the width, `stride = 2` halves it
+#' nv_conv1d(x, weight, padding = 1L)
+#' nv_conv1d(x, weight, stride = 2L)
 #' @export
 nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, weight, 1L, stride, padding, dilation, groups, precision)
@@ -3880,6 +4038,15 @@ nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #'   Has the data type `x` and `weight` agreed on, and shape
 #'   `[N, C_out, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
+#' @examplesIf pjrt::plugins_downloaded()
+#' # one batch, one channel, 4x4, convolved with a 3x3 kernel
+#' x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
+#' weight <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+#' nv_conv2d(x, weight)
+#'
+#' # two output channels give a result with two channels
+#' weight2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
+#' shape(nv_conv2d(x, weight2))
 #' @export
 nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, weight, 2L, stride, padding, dilation, groups, precision)
@@ -3900,6 +4067,11 @@ nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #'   Has the data type `x` and `weight` agreed on, and shape
 #'   `[N, C_out, out_D, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
+#' @examplesIf pjrt::plugins_downloaded()
+#' # one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
+#' x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
+#' weight <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+#' shape(nv_conv3d(x, weight))
 #' @export
 nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, weight, 3L, stride, padding, dilation, groups, precision)

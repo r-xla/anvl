@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_log_plus_one]{hlo_log_plus_one()}}, specifie
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 0.001, 1))
 prim_log1p(x)
+
+# an R value commits to its default data type
+prim_log1p(0.001)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

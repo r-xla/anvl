@@ -20,8 +20,12 @@ Element-wise hyperbolic cosine. You can also use \code{cosh()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 cosh(x)
+
+# an R value commits to its default data type
+nv_cosh(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

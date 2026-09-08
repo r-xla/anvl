@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_is_finite]{hlo_is_finite()}}, specified unde
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result is boolean, whatever float data type the input has
 x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 prim_is_finite(x)
+
+# an R value commits to its default data type before the test
+prim_is_finite(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

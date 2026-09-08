@@ -33,8 +33,12 @@ Lowers to \code{\link[stablehlo:hlo_sinh]{hlo_sinh()}}, an op of the CHLO dialec
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 prim_sinh(x)
+
+# an R value commits to its default data type
+prim_sinh(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

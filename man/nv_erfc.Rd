@@ -20,8 +20,12 @@ Element-wise complementary error function \code{erfc(x) = 1 - erf(x)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 nv_erfc(x)
+
+# an R value commits to its default data type
+nv_erfc(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

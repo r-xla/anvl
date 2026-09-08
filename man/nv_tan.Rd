@@ -20,8 +20,12 @@ Element-wise tangent. You can also use \code{tan()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(0, 0.5, 1))
 tan(x)
+
+# an R value commits to its default data type
+nv_tan(0.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -20,8 +20,12 @@ Element-wise base-10 logarithm. You can also use \code{log10()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 10, 100, 1000))
 nv_log10(x)
+
+# an R value commits to its default data type
+nv_log10(100)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -23,8 +23,12 @@ Element-wise check if values are finite (not \code{Inf}, \code{-Inf}, or \code{N
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result is boolean, whatever float data type the input has
 x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 nv_is_finite(x)
+
+# an R value commits to its default data type before the test
+nv_is_finite(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

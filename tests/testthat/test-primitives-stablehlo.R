@@ -118,6 +118,39 @@ test_that("prim_fill", {
   )
 })
 
+test_that("prim_fill checks the value against the data type", {
+  # A number for a float, whole for an integer, non-negative for an unsigned
+  # one and a logical for `bool`; `integer64` counts as a whole number.
+  expect_equal(dtype(prim_fill(3.14, shape = 2L, dtype = "f32")), as_dtype("f32"))
+  expect_equal(dtype(prim_fill(1L, shape = 2L, dtype = "f64")), as_dtype("f64"))
+  expect_equal(dtype(prim_fill(3, shape = 2L, dtype = "i32")), as_dtype("i32"))
+  expect_equal(dtype(prim_fill(-3L, shape = 2L, dtype = "i32")), as_dtype("i32"))
+  expect_equal(dtype(prim_fill(0L, shape = 2L, dtype = "ui8")), as_dtype("ui8"))
+  expect_equal(dtype(prim_fill(TRUE, shape = 2L, dtype = "bool")), as_dtype("bool"))
+  # A float holds the infinities and `NaN`.
+  expect_equal(dtype(prim_fill(NaN, shape = 2L, dtype = "f32")), as_dtype("f32"))
+  expect_equal(dtype(prim_fill(Inf, shape = 2L, dtype = "f32")), as_dtype("f32"))
+
+  expect_error(prim_fill(TRUE, shape = 2L, dtype = "f32"), "must be a number")
+  expect_error(prim_fill("a", shape = 2L, dtype = "f32"), "must be a number")
+  expect_error(prim_fill(3.14, shape = 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(NaN, shape = 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(Inf, shape = 2L, dtype = "i64"), "must be a whole number")
+  expect_error(prim_fill(-1L, shape = 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(prim_fill(-1, shape = 2L, dtype = "ui32"), "must be a non-negative whole number")
+  expect_error(prim_fill(1L, shape = 2L, dtype = "bool"), "must be a logical")
+  expect_error(prim_fill(NA, shape = 2L, dtype = "bool"), "must not be")
+  expect_error(prim_fill(NA_real_, shape = 2L, dtype = "f32"), "must not be")
+
+  # `nv_fill()` and `nv_fill_like()` go through the same check, jitted or not.
+  expect_error(nv_fill(-1, shape = 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(nv_fill_like(nv_array(c(TRUE, FALSE)), 1L), "must be a logical")
+  expect_error(
+    jit(function() nv_fill(2.5, shape = 2L, dtype = "i32"))(),
+    "must be a whole number"
+  )
+})
+
 test_that("prim_shift_left", {
   x <- nv_array(as.integer(c(1L, 2L, 3L, 8L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")

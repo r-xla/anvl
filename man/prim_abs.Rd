@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_abs]{hlo_abs()}}, specified under \href{http
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 2, -3))
 prim_abs(x)
+
+# an R value commits to its default data type
+prim_abs(-1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

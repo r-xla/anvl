@@ -20,8 +20,12 @@ Element-wise reciprocal square root, i.e. \code{1 / sqrt(x)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 4, 9))
 nv_rsqrt(x)
+
+# an R value commits to its default data type
+nv_rsqrt(4)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -8,9 +8,12 @@ prim_fill(value, shape, dtype, device = NULL)
 }
 \arguments{
 \item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
-Scalar value to fill the array with. It is built at \code{dtype}, so a value
-that data type cannot hold exactly is converted to it -- \code{3.14} at \code{i32}
-fills with \code{3}.}
+Scalar value to fill the array with, which has to be something \code{dtype} can
+hold: a number for a float, a whole number for an integer, a non-negative
+whole number for an unsigned integer and a logical for \code{bool}. A
+\code{\link[bit64:integer64]{bit64::integer64}} counts as a whole number, and \code{NA} is rejected, since
+XLA has no missing value. Whether the value is \emph{in range} is the backend's
+business -- \code{prim_fill(300L, dtype = "i8")} still wraps.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}

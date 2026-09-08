@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_floor]{hlo_floor()}}, specified under \href{
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 prim_floor(x)
+
+# an R value commits to its default data type
+prim_floor(1.2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

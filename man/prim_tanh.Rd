@@ -34,8 +34,12 @@ Lowers to \code{\link[stablehlo:hlo_tanh]{hlo_tanh()}}, specified under \href{ht
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 prim_tanh(x)
+
+# an R value commits to its default data type
+prim_tanh(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -40,6 +40,18 @@ Torch-style 2D convolution in NCHW layout: \code{x} is
 \verb{[out_channels, in_channels / groups, kh, kw]}, output is
 \verb{[batch, out_channels, out_h, out_w]}. Symmetric zero padding.
 }
+\examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# one batch, one channel, 4x4, convolved with a 3x3 kernel
+x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
+weight <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+nv_conv2d(x, weight)
+
+# two output channels give a result with two channels
+weight2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
+shape(nv_conv2d(x, weight2))
+\dontshow{\}) # examplesIf}
+}
 \seealso{
 \code{\link[=nv_conv1d]{nv_conv1d()}}, \code{\link[=nv_conv3d]{nv_conv3d()}}, \code{\link[=prim_convolution]{prim_convolution()}}.
 }

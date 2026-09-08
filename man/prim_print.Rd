@@ -33,6 +33,7 @@ Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the value is printed and handed back unchanged
 x <- nv_array(c(1, 2, 3))
 prim_print(x)
 \dontshow{\}) # examplesIf}

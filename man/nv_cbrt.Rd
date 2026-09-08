@@ -20,8 +20,12 @@ Element-wise cube root.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1, 8, 27))
 nv_cbrt(x)
+
+# an R value commits to its default data type
+nv_cbrt(8)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -20,8 +20,12 @@ Element-wise error function \verb{erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 nv_erf(x)
+
+# an R value commits to its default data type
+nv_erf(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

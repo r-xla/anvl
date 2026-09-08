@@ -43,6 +43,8 @@ Returns the indices that would sort the array along an axis.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the indices come out at `i32`, whatever the input is
+# the indices come out at `i32`, whatever the input is
 x <- nv_array(c(3, 1, 4, 1, 5))
 nv_argsort(x)
 \dontshow{\}) # examplesIf}

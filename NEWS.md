@@ -22,6 +22,11 @@
   *named* lists -- `values` / `indices` for the first three, `state` /
   `values` for the rest -- as `prim_qr()` and `prim_svd()` already did.
   Positional indexing keeps working.
+* `prim_fill()` (and so `nv_fill()` / `nv_fill_like()`) now checks that
+  `value` is something `dtype` can hold: a number for a float, a whole number
+  for an integer, a non-negative whole number for an unsigned integer and a
+  logical for `bool`, with `NA` rejected. These used to reach the backend and
+  fail there with a raw MLIR message.
 * `nv_rbinom()` and `nv_sample_int()` now reject a boolean `dtype`. A boolean
   cannot hold a count or an index: `nv_rbinom()` used to return `bool` for
   `size = 1` and silently `i32` above it, and `nv_sample_int()` collapsed every
@@ -49,6 +54,9 @@
   `bit64::integer64`. It used to drop that class along with the shape,
   exposing the raw 64-bit pattern as a double.
 * Fixed the reverse rule of `prim_convert`.
+* The quickr lowering no longer emits an elementwise operation for a result
+  with a zero-size axis, which the development version of quickr rejects even
+  where both operand shapes agree. An empty result is emitted directly.
 * `prim_scatter()` now checks that `update_computation` returns one value of
   `x`'s data type, as `prim_reduce()` already did for its `reductor`.
 * `prim_reduce()` now passes the arguments to the reductor by position.

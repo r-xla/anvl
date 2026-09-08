@@ -20,8 +20,12 @@ Element-wise inverse cosine. You can also use \code{acos()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 acos(x)
+
+# an R value commits to its default data type
+nv_acos(0.5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
