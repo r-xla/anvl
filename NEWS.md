@@ -1,5 +1,5 @@
 # anvl (development version)
-
+  
 ## Breaking changes
 
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
@@ -55,6 +55,11 @@
   Type inference declared a `bool` output whatever the input was, so an
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.
+
+## Features
+
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
 
 ## Tests
 
