@@ -57,8 +57,8 @@
   `prim_sort()`'s `xs`, `prim_fill()`'s `shape`, `nv_eye()`'s `n`,
   `nv_quantile()`'s `probs`, the six variadic functions' empty `...` and the
   `_like` functions' `like` are now all checked in anvl, with a message naming
-  the argument. Several of these used to reach the backend and fail there with
-  a raw MLIR message, a base-R warning, or `NULL`.
+  the argument. Several of these used to reach the backend, or produced a
+  base-R warning or `NULL`.
 * A cumulative operation or a quantile over a zero-size axis is now refused
   with an anvl error; the reductions still define the empty case and keep it.
 * `nv_serialize()` now returns `NULL` invisibly when it writes to a connection,
@@ -66,8 +66,7 @@
 * `prim_fill()` (and so `nv_fill()` / `nv_fill_like()`) now checks that
   `value` is something `dtype` can hold: a number for a float, a whole number
   for an integer, a non-negative whole number for an unsigned integer and a
-  logical for `bool`, with `NA` rejected. These used to reach the backend and
-  fail there with a raw MLIR message.
+  logical for `bool`, with `NA` rejected. These used to reach the backend.
 * `nv_rbinom()` and `nv_sample_int()` now reject a boolean `dtype`. A boolean
   cannot hold a count or an index: `nv_rbinom()` used to return `bool` for
   `size = 1` and silently `i32` above it, and `nv_sample_int()` collapsed every
@@ -185,17 +184,22 @@
   of pinning `f32` for the data and the default for the learning rate, which did
   not agree under an `f64` default.
 * A number of error messages now speak anvl's vocabulary -- *scalar* rather than
-  "0-dimensional array", *axis size* rather than "dimension", the offending
-  shapes rather than "lhs and rhs are not broadcastable", and the argument's
-  name rather than a stablehlo operand name. Where a mistake used to be caught
-  by stablehlo's inference (or, for the dynamic slices and `prim_gather()`, by
-  the PJRT compiler as a raw MLIR dump), the operation checks first, so the
-  message names what the caller passed: `prim_clamp()`, `prim_ifelse()`,
-  `prim_polygamma()`, `prim_broadcast_in_axes()`, `prim_pad()`,
-  `prim_reduce()`, `prim_if()`, `prim_static_slice()`, `prim_dynamic_slice()`,
+  "0-dimensional array", *axis size* rather than "dimension", and the offending
+  shapes rather than "lhs and rhs are not broadcastable".
+* These operations now validate their arguments themselves, so the message
+  names the argument the caller passed and its shape or data type:
+  `prim_clamp()`, `prim_ifelse()`, `prim_polygamma()`,
+  `prim_broadcast_in_axes()`, `prim_pad()`, `prim_reduce()`, `prim_if()`,
+  `prim_static_slice()`, `prim_dynamic_slice()`,
   `prim_dynamic_update_slice()`, `prim_gather()`, `prim_reshape()`,
   `prim_concatenate()`, `prim_iota()`, `prim_dot_general()`, `nv_matmul()`,
   `nv_concatenate()`, `nv_quantile()` and `nv_conv1d()` / `2d` / `3d`.
+  `prim_dynamic_slice()` and `prim_dynamic_update_slice()` in particular now
+  check that each start index is an integer scalar and that there is one per
+  axis of `x`, and `prim_gather()` that `start_indices` is integral.
+* Shapes in error and warning messages are written `(2x3)`, via the new
+  `shape_repr()` / `shapes_repr()`. The repr spelling (`f32[2,3]`,
+  `RData(double, (2,3))`) is separate and unchanged.
 * `?nv_quantile`'s interpolation formula is stated in 1-based terms, so it
   gives the number the function returns.
 * `?nv_convert` says what happens to a value the target cannot hold: an

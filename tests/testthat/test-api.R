@@ -2104,10 +2104,10 @@ test_that("`%/%` is flooring integer division", {
 test_that("shape mismatches print the shapes once each", {
   a <- nv_array(matrix(1:6 / 1, 2), dtype = "f32")
   b <- nv_array(matrix(1:6 / 1, 3), dtype = "f32")
-  expect_error(nv_concatenate(a, b, axis = 1L), "\\(2,3\\), \\(3,2\\)")
+  expect_error(nv_concatenate(a, b, axis = 1L), "\\(2x3\\), \\(3x2\\)")
   expect_error(
     nv_rbind(a, nv_array(matrix(1:8 / 1, 2), dtype = "f32")),
-    "\\(2,3\\), \\(2,4\\)"
+    "\\(2x3\\), \\(2x4\\)"
   )
 })
 

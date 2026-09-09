@@ -547,7 +547,7 @@ subset_scatter_core <- jit(
       if (!identical(value_shape, update_shape)) {
         cli_abort(c(
           "Update shape does not match subset shape.",
-          x = "Got {shape2string(value_shape)} and {shape2string(update_shape)}"
+          x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
         ))
       }
     }

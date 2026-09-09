@@ -124,7 +124,9 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   if (known <= 0 || nelts %% known != 0) {
     cli_abort(c(
       "Cannot infer the size of axis {inferred} of {.arg {arg}}.",
-      x = "{nelts} element{?s} cannot be divided evenly into shape {.val {shape}}."
+      # The `-1` is the axis being asked for, so it is shown as `?` rather
+      # than as a size.
+      x = "{nelts} element{?s} cannot be divided evenly into shape {shape_repr(replace(shape, inferred, '?'))}." # nolint
     ))
   }
   shape[inferred] <- as.integer(nelts / known)
@@ -248,7 +250,7 @@ assert_start_indices <- function(x, indices, call = rlang::caller_env()) {
       cli_abort(
         c(
           "Every start index must be a scalar.",
-          x = "Index {i} has shape {xlamisc::shapevec_repr(shape(idx))}."
+          x = "Index {i} has shape {shape_repr(shape(idx))}."
         ),
         call = call
       )
@@ -276,7 +278,7 @@ assert_arrayish_scalar <- function(value, arg = rlang::caller_arg(value), call =
     cli_abort(
       c(
         "{.arg {arg}} must be a scalar.",
-        x = "Got shape {xlamisc::shapevec_repr(shape(value))}."
+        x = "Got shape {shape_repr(shape(value))}."
       ),
       call = call
     )
@@ -319,7 +321,7 @@ assert_shapes_agree <- function(..., scalar_ok = FALSE, call = rlang::caller_env
     "`",
     names(args),
     "` is ",
-    vapply(shapes, xlamisc::shapevec_repr, character(1L)),
+    vapply(shapes, shape_repr, character(1L)),
     collapse = ", "
   )
   all_of <- if (length(args) > 2L) "all " else ""
@@ -353,7 +355,7 @@ assert_nonempty_axis <- function(x, axis, arg = rlang::caller_arg(x), call = rla
     cli_abort(
       c(
         "{.arg {arg}} must have elements along the axis this reads.",
-        x = "{.arg {arg}} has shape {xlamisc::shapevec_repr(shp)}; axis {axis} has size 0."
+        x = "{.arg {arg}} has shape {shape_repr(shp)}; axis {axis} has size 0."
       ),
       call = call
     )
@@ -369,13 +371,13 @@ assert_matrix <- function(x, arg = rlang::caller_arg(x), square = FALSE) {
   if (length(shp) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a matrix with exactly 2 axes.",
-      x = "Got shape {xlamisc::shapevec_repr(shp)}."
+      x = "Got shape {shape_repr(shp)}."
     ))
   }
   if (square && shp[1L] != shp[2L]) {
     cli_abort(c(
       "{.arg {arg}} must be a square matrix.",
-      x = "Got shape {xlamisc::shapevec_repr(shp)}."
+      x = "Got shape {shape_repr(shp)}."
     ))
   }
   invisible(x)
@@ -390,26 +392,26 @@ assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
     if (length(s) < 2L) {
       cli_abort(c(
         "{.arg {arg}} must have at least 2 axes, the last two forming a matrix.",
-        "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+        "x" = "Got shape {shape_repr(s)}."
       ))
     }
   } else if (length(s) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a 2-D matrix.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (any(s == 0L)) {
     cli_abort(c(
       "{.arg {arg}} must not have any zero-sized axis.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   mat <- utils::tail(s, 2L)
   if (square && mat[[1L]] != mat[[2L]]) {
     cli_abort(c(
       "{.arg {arg}} must be square in its last two axes.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (!is_dtype_float(peek_dtype(x))) {

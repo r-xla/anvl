@@ -515,7 +515,7 @@ prim_reshape <- new_primitive(
     if (prod(shape) != prod(shape(x))) {
       cli_abort(c(
         "{.arg shape} must hold as many elements as {.arg x}.",
-        x = "{.arg x} is {xlamisc::shapevec_repr(shape(x))} with {prod(shape(x))} element{?s}, but {.arg shape} is {xlamisc::shapevec_repr(shape)} with {prod(shape)}." # nolint
+        x = "{.arg x} is {shape_repr(shape(x))} with {prod(shape(x))} element{?s}, but {.arg shape} is {shape_repr(shape)} with {prod(shape)}." # nolint
       ))
     }
     infer_fn <- function(x, shape) {
@@ -579,7 +579,7 @@ prim_concatenate <- new_primitive(
     if (!all(same)) {
       cli_abort(c(
         "All arrays must have the same shape apart from axis {axis}.",
-        x = "Got {paste0(vapply(shapes, xlamisc::shapevec_repr, character(1L)), collapse = ' and ')}."
+        x = "Got {paste0(vapply(shapes, shape_repr, character(1L)), collapse = ' and ')}."
       ))
     }
     infer_fn <- function(..., axis) {
@@ -762,7 +762,7 @@ prim_dynamic_slice <- new_primitive(
       for (i in seq_along(start_indices_avals)) {
         aval <- start_indices_avals[[i]]
         if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape(aval)}")
+          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
         }
       }
       out <- AbstractArray(dtype = x$dtype, shape = slice_sizes)
@@ -831,7 +831,7 @@ prim_dynamic_update_slice <- new_primitive(
       for (i in seq_along(start_indices_avals)) {
         aval <- start_indices_avals[[i]]
         if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape(aval)}")
+          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
         }
       }
       out <- AbstractArray(dtype = x$dtype, shape = shape(x))
@@ -1267,7 +1267,7 @@ prim_reduce <- new_primitive(
     if (naxes(init) != 0L) {
       cli_abort(c(
         "{.arg init} must be a scalar.",
-        x = "Got shape {xlamisc::shapevec_repr(shape(init))}."
+        x = "Got shape {shape_repr(shape(init))}."
       ))
     }
 
@@ -1301,7 +1301,7 @@ prim_reduce <- new_primitive(
     if (length(shape(out_aval))) {
       cli_abort(c(
         "{.arg reductor} must return a scalar.",
-        x = "Got shape {xlamisc::shapevec_repr(shape(out_aval))}."
+        x = "Got shape {shape_repr(shape(out_aval))}."
       ))
     }
 
@@ -1364,7 +1364,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
   if (shp[axis] == 0L) {
     cli_abort(c(
       "{.arg x} must have elements along the axis this reads.",
-      x = "{.arg x} has shape {xlamisc::shapevec_repr(shp)}; axis {axis} has size 0."
+      x = "{.arg x} has shape {shape_repr(shp)}; axis {axis} has size 0."
     ))
   }
   if (drop) {
@@ -2670,7 +2670,7 @@ prim_clamp <- new_primitive(
       if (naxes(b) != 0L && !identical(shape(b), shape(operands$x))) {
         cli_abort(c(
           "{.arg {bound}} must be a scalar or have {.arg x}'s shape.",
-          x = "{.arg x} is {xlamisc::shapevec_repr(shape(operands$x))} and {.arg {bound}} is {xlamisc::shapevec_repr(shape(b))}." # nolint
+          x = "{.arg x} is {shape_repr(shape(operands$x))} and {.arg {bound}} is {shape_repr(shape(b))}." # nolint
         ))
       }
     }
@@ -3072,7 +3072,7 @@ prim_if <- new_primitive(
             which_out,
             " the two disagree."
           ), # nolint
-          x = "{.arg true} gives {.val {as.character(a$dtype)}} {xlamisc::shapevec_repr(shape(a))} and {.arg false} gives {.val {as.character(b$dtype)}} {xlamisc::shapevec_repr(shape(b))}." # nolint
+          x = "{.arg true} gives {.val {as.character(a$dtype)}} {shape_repr(shape(a))} and {.arg false} gives {.val {as.character(b$dtype)}} {shape_repr(shape(b))}." # nolint
         ))
       }
     }
@@ -3319,7 +3319,7 @@ prim_sort <- new_primitive(
       if (!identical(shape(xs[[i]]), ref_shape)) {
         cli_abort(c(
           "All elements of {.arg xs} must have the same shape.",
-          x = "Element 1 has shape {xlamisc::shapevec_repr(ref_shape)}, element {i} has shape {xlamisc::shapevec_repr(shape(xs[[i]]))}."
+          x = "Element 1 has shape {shape_repr(ref_shape)}, element {i} has shape {shape_repr(shape(xs[[i]]))}."
         ))
       }
     }

@@ -347,12 +347,11 @@ Code:
   default integer narrower than `i32`, an R integer stages through `i32`
   whatever the target, and the hint's remedy (convert in its own category
   first) stages through `i32` too. It now fires only where the remedy exists.
-- Four elementwise primitives let stablehlo name *its* operands on a shape
-  mismatch (`on_true`/`on_false`, `min`/`max`, `lhs`/`rhs`,
-  `broadcast_dimensions`). A new `assert_shapes_agree()` checks first, so the
-  message names the argument the caller passed. Ten more messages now say
-  *scalar* rather than "0-dimensional array", or name the shapes rather than
-  "lhs and rhs are not broadcastable".
+- Four elementwise primitives did not check that their operands' shapes agree,
+  so the mismatch was reported without naming the argument the caller passed. A
+  new `assert_shapes_agree()` checks first. Ten more messages now say *scalar*
+  rather than "0-dimensional array", or name the shapes rather than "lhs and
+  rhs are not broadcastable".
 
 Documentation:
 
@@ -418,14 +417,12 @@ Bugs:
   chunks, which `knit()` tolerates and `R CMD build` does not. Round two
   deleted the chunk that defined it and missed these.
 
-Messages. Wherever a mistake was caught by stablehlo's inference -- or, for the
-dynamic slices and `prim_gather()`, by the PJRT compiler as a raw MLIR dump --
-the operation now checks first, so what the message names is what the caller
-passed. Two helpers carry the repeated shapes of this: `assert_arrayish_scalar()`
-and `assert_per_axis()`. Sixteen primitives and five API functions were touched;
-`?nv_quantile`'s formula is stated 1-based; and the words *dimension*,
-*tensor*, *0-dimensional* and *operand* are gone from anvl-authored messages
-and pages.
+Messages. Sixteen primitives and five API functions now validate their own
+arguments, so what a message names is the argument the caller passed and its
+shape or data type. Two helpers carry the repeated shapes of this:
+`assert_arrayish_scalar()` and `assert_per_axis()`. `?nv_quantile`'s formula is
+stated 1-based, and the words *dimension*, *tensor*, *0-dimensional* and
+*operand* are gone from anvl-authored messages and pages.
 
 Documentation corrected: `?LiteralArray` (a `nv_fill()` is a recorded operation,
 not a constant -- the page's own example printed an `AbstractArray` under a
@@ -451,10 +448,10 @@ Not changed, with reasons:
   gradient needs care around zeros, so it is not written here.
 - Batched `prim_chol()` / `prim_triangular_solve()` have no gradient. Both
   pages now say so; the rules are still worth writing.
-- Shape rendering still differs by path: `(2,3)` from
-  `xlamisc::shapevec_repr()`, `(2x3)` from stablehlo, `array<2x3xf32>` from
-  MLIR. Every anvl-authored message uses the first; settling the rest means
-  changing stablehlo.
+- Shape rendering: every anvl-authored *message* goes through `shape_repr()` /
+  `shapes_repr()` (`R/utils.R`), which writes `(2x3)`. The *repr* spelling is
+  separate and unchanged: `shape2string()` builds `f32[2,3]`,
+  `RData(double, (2,3))` and the graph printout.
 - `f16` / `bf16` are float data types anvl reasons about but no backend
   materializes. `dtype_materializable()` in `R/rdata.R` is the single place
   that encodes this, for the staging warning's hint.
@@ -518,13 +515,14 @@ would otherwise be false; the items marked **Fixed here** are the exceptions.
   agree (`x + x` on a `2x0`: "elementwise matrix operations require matching
   dimensions"). A call whose outputs are all empty now emits the empty arrays
   directly, which is the only value they can have anyway.
-- `prim_dynamic_slice()` does not check the data type of its start indices at
-  the anvl level. A float index reaches the backend and fails with a raw
-  StableHLO message ("operand #1 must be variadic of 0D tensor of ... integer
-  values"), where `prim_top_k()` and friends give a `cli` error.
+- **Fixed here.** `prim_dynamic_slice()` did not check the data type of its
+  start indices, so a float index reached the backend.
+  `assert_start_indices()` now checks the count, the shape and the data type
+  for `prim_dynamic_slice()` and `prim_dynamic_update_slice()` alike, and
+  `prim_gather()` checks its `start_indices` the same way.
 - **Fixed here.** `prim_fill()` did not look at its `value` at all, so a
   negative value at an unsigned data type, a fractional one at an integer or a
-  number at `bool` failed in the backend with a raw MLIR message. It now checks
+  number at `bool` failed in the backend. It now checks
   that the value is something the data type can hold (`assert_fill_value()`).
   The range is still the backend's business: `prim_fill(300L, dtype = "i8")`
   wraps. Internal callers that fill at a data type they do not know statically

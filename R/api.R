@@ -71,7 +71,7 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
     d_rhs <- shape_rhs[i]
     if (d_lhs != d_rhs && d_lhs != 1L && d_rhs != 1L) {
       cli_abort(c(
-        "Shapes {xlamisc::shapevec_repr(given_lhs)} and {xlamisc::shapevec_repr(given_rhs)} are not broadcastable.", # nolint
+        "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
         x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
       ))
     }
@@ -120,7 +120,7 @@ nv_broadcast_scalars <- function(...) {
 
   target_shape <- non_scalar_shapes[[1L]]
   if (!all(vapply(non_scalar_shapes, identical, logical(1L), target_shape))) {
-    shapes <- paste0(sapply(shapes, shape2string), collapse = ", ")
+    shapes <- shapes_repr(shapes)
     cli_abort(
       "All non-scalar arrays must have the same shape, but got {shapes}. Use {.fn nv_broadcast_arrays} for general broadcasting." # nolint
     )
@@ -364,7 +364,7 @@ nv_concatenate <- function(..., axis = NULL) {
   if (length(non_scalar_ranks) > 1L) {
     cli_abort(c(
       "All non-scalar arrays must have the same number of axes.",
-      x = "Got shapes {shapes2string(shapes)}."
+      x = "Got shapes {shapes_repr(shapes)}."
     ))
   }
   non_scalar_shapes_without_axis <- lapply(non_scalar_shapes, \(shape) {
@@ -373,7 +373,7 @@ nv_concatenate <- function(..., axis = NULL) {
   if (length(non_scalar_shapes) && length(unique(non_scalar_shapes_without_axis)) != 1L) {
     cli_abort(c(
       "All non-scalar arrays must have the same shape apart from axis {axis}, the one they are joined along.", # nolint
-      x = "Got shapes {shapes2string(shapes)}."
+      x = "Got shapes {shapes_repr(shapes)}."
     ))
   }
   size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
@@ -463,14 +463,14 @@ bind_target_shape <- function(args, stack_axis, fn_name) {
   if (length(unique(ranks)) != 1L) {
     cli_abort(c(
       "{.fn {fn_name}} inputs must all have the same rank (treating rank-1 inputs as a row or column)", # nolint
-      x = "Got shapes {shapes2string(shapes)}"
+      x = "Got shapes {shapes_repr(shapes)}"
     ))
   }
   non_stack <- lapply(reshaped, \(s) s[-stack_axis])
   if (length(unique(non_stack)) != 1L) {
     cli_abort(c(
       "{.fn {fn_name}} inputs must agree on every non-stacked axis",
-      x = "Got shapes {shapes2string(shapes)}"
+      x = "Got shapes {shapes_repr(shapes)}"
     ))
   }
   reshaped[[1L]]
@@ -2031,7 +2031,7 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   if (naxes(lhs) != naxes(rhs)) {
     cli_abort(c(
       "{.arg lhs} and {.arg rhs} must have the same number of axes.",
-      x = "{.arg lhs} is {xlamisc::shapevec_repr(shape(lhs))} and {.arg rhs} is {xlamisc::shapevec_repr(shape(rhs))}." # nolint
+      x = "{.arg lhs} is {shape_repr(shape(lhs))} and {.arg rhs} is {shape_repr(shape(rhs))}." # nolint
     ))
   }
   inner_lhs <- shape(lhs)[naxes(lhs)]
@@ -2048,7 +2048,7 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   if (!identical(batch_lhs, batch_rhs)) {
     cli_abort(c(
       "{.arg lhs} and {.arg rhs} must have the same batch axes -- the axes before the last two.",
-      x = "{.arg lhs} has {xlamisc::shapevec_repr(batch_lhs)} and {.arg rhs} has {xlamisc::shapevec_repr(batch_rhs)}." # nolint
+      x = "{.arg lhs} has {shape_repr(batch_lhs)} and {.arg rhs} has {shape_repr(batch_rhs)}." # nolint
     ))
   }
   prim_dot_general(
@@ -2536,7 +2536,7 @@ nv_diag <- function(x) {
   if (naxes(x) != 1L) {
     cli_abort(c(
       "{.arg x} must be a 1-D array.",
-      x = "Got shape {xlamisc::shapevec_repr(shape(x))}."
+      x = "Got shape {shape_repr(shape(x))}."
     ))
   }
   n <- shape(x)[1L]
@@ -4293,7 +4293,7 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
     if (naxes(value) != n + 2L) {
       cli_abort(c(
         "{.arg {nm}} must have {n + 2L} axes for a {n}-D convolution.",
-        x = "Got shape {xlamisc::shapevec_repr(shape(value))}."
+        x = "Got shape {shape_repr(shape(value))}."
       ))
     }
   }
@@ -4307,7 +4307,7 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
   if (shape(weight)[2L] != in_channels / groups) {
     cli_abort(c(
       "{.arg weight}'s second axis must be {.arg x}'s input channels divided by {.arg groups}.",
-      x = "Expected {in_channels / groups}, but {.arg weight} is {xlamisc::shapevec_repr(shape(weight))}."
+      x = "Expected {in_channels / groups}, but {.arg weight} is {shape_repr(shape(weight))}."
     ))
   }
   if (shape(weight)[1L] %% groups != 0L) {

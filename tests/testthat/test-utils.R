@@ -6,6 +6,17 @@ test_that("shape2string", {
   expect_equal(shape2string(Shape(c()), parenthesize = FALSE), "")
 })
 
+test_that("shape_repr", {
+  # The message spelling, which is `x`-separated where the repr spelling
+  # (`f32[2,2]`) is comma-separated.
+  expect_equal(shape_repr(c(2, 3)), "(2x3)")
+  expect_equal(shape_repr(Shape(c(2, 3))), "(2x3)")
+  expect_equal(shape_repr(3L), "(3)")
+  expect_equal(shape_repr(integer()), "()")
+  expect_equal(shape_repr(c(0L, 3L)), "(0x3)")
+  expect_equal(shapes_repr(list(c(2L, 3L), integer(), 4L)), "(2x3), (), (4)")
+})
+
 test_that("peek_dtype", {
   expect_equal(
     peek_dtype(1L),
