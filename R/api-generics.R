@@ -13,18 +13,24 @@
 #' `&`, `|` and `!` are supported and delegate to the corresponding `nv_*`
 #' function ([nv_add()], [nv_mod()], [nv_int_div()], ...).
 #'
-#' `&`, `|` and `!` are *logical* operators, like in base R: a non-boolean
-#' operand is compared against zero and the result is boolean.
+#' `&`, `|` and `!` are *logical* operators, like in base R, and therefore
+#' return a boolean array. Unlike base R they do not coerce a non-boolean
+#' operand: an integer or float array is an error rather than a comparison
+#' against zero, just like [sqrt()] does not promote an integer array. Write
+#' the comparison yourself (`x != 0`) if that is what you mean.
+#'
 #' The named functions [nv_and()], [nv_or()], [nv_xor()] and [nv_not()] are
-#' *bitwise* instead -- they operate on the bits of an integer array.
+#' *bitwise* instead -- they operate on the bits of an integer array, and
+#' coincide with the operators on a boolean array.
 #'
 #' ```
-#' nv_array(12L) & nv_array(10L)  # TRUE  (like 12L & 10L)
+#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))  # TRUE FALSE
+#' nv_array(12L) & nv_array(10L)  # error (12L & 10L is TRUE in base R)
 #' nv_and(nv_array(12L), nv_array(10L))  # 8 (bitwise)
 #' ```
 #'
 #' `xor()` is a plain function in base R, built on `|` and `&`, and therefore
-#' also logical.
+#' behaves the same way.
 #'
 #' @section Math group:
 #' All members of the `Math` group are supported: `abs`, `sign`, `sqrt`,
@@ -36,9 +42,12 @@
 #' `round(x, digits)`, `signif(x, digits)` and `log(x, base)` take their
 #' second argument like in base R; `digits` and `base` must be plain R values.
 #' `round(x, digits)` is computed by scaling with `10^digits`, so it can
-#' differ from base R's rounding in the last representable digit. Rounding an
-#' integer array (`round()`, `floor()`, `ceiling()`, `trunc()`) returns it
-#' unchanged, as it does in base R.
+#' differ from base R's rounding in the last representable digit.
+#'
+#' `round()`, `signif()`, `floor()`, `ceiling()` and `trunc()` require a
+#' float array. Base R leaves an integer alone, but on an anvl array, where
+#' an integer is never silently promoted, rounding one is a no-op and almost
+#' always a missing [nv_convert()].
 #'
 #' XLA has no gamma function, so `gamma()` is computed as `exp(lgamma())`
 #' (with Euler's reflection formula for a negative argument) and is therefore
@@ -52,9 +61,9 @@
 #' arguments are passed on, so `sum(x, axes = 1L)` reduces a single axis --
 #' but only when `x` is the only data argument.
 #'
-#' `any()` and `all()` coerce a non-boolean argument by comparing it against
-#' zero, like base R does; [nv_reduce_any()] and [nv_reduce_all()] require a
-#' boolean array.
+#' `any()` and `all()` require a boolean argument, like the `&` and `|`
+#' operators and unlike base R, which compares a non-boolean one against zero.
+#' [nv_reduce_any()] and [nv_reduce_all()] are the same in this respect.
 #'
 #' @section Other generics:
 #' `c()`, `dim()`, `length()`, `nrow()`, `ncol()`, `t()`, `rev()`, `sort()`,
@@ -69,14 +78,16 @@
 #'
 #' @section Deliberate differences from base R:
 #' * **No recycling.** Only scalars broadcast; see the "Gotchas" vignette.
-#' * **No `NA`.** XLA has no missing value, so `NaN` (which base R treats as
-#'   missing in logical contexts) counts as `TRUE` for `&`, `|`, `!`, `any()`
-#'   and `all()`.
+#' * **No `NA`.** XLA has no missing value, so a boolean array is always
+#'   `TRUE` or `FALSE` and `&`, `|`, `!`, `any()` and `all()` never see a
+#'   missing value.
 #' * **Data types do not follow R's coercions.** An integer array is not
-#'   promoted to a float array, so `sqrt()`, `log()`, `gamma()`, ... require a
-#'   float array -- convert with [nv_convert()]. Reductions that are
-#'   inherently fractional ([nv_mean()], [nv_median()], [nv_quantile()]) do
-#'   compute at the default float, like base R.
+#'   promoted to a float array, so `sqrt()`, `log()`, `gamma()`, `round()`,
+#'   ... require a float array -- convert with [nv_convert()]. Likewise, a
+#'   non-boolean array is not coerced to boolean, so `&`, `|`, `!`, `any()`
+#'   and `all()` require a boolean array. Reductions that are inherently
+#'   fractional ([nv_mean()], [nv_median()], [nv_quantile()]) do compute at
+#'   the default float, like base R.
 #' * **Row-major flattening.** `cumsum()`, `cumprod()`, `cummax()` and
 #'   `cummin()` flatten a multi-axis array in row-major order, whereas base R
 #'   uses column-major order (see the "Gotchas" vignette).
@@ -93,25 +104,35 @@
 #'   [nv_convert()] for data type conversion.
 NULL
 
-# Base R's `&`, `|` and `!` are logical operators: a non-boolean operand is
-# compared against zero and the result is boolean. anvl's `nv_and()` and
-# friends are bitwise, so the operators coerce their operands first.
-as_boolean_operand <- function(x, arg) {
+# Base R's `&`, `|` and `!` are logical operators, so anvl's are too: they
+# require a boolean operand rather than coercing a numeric one, the same way
+# `sqrt()` requires a float array instead of promoting an integer one. The
+# named functions `nv_and()` / `nv_or()` / `nv_not()` are bitwise, and on a
+# boolean array bitwise and logical coincide.
+assert_boolean_operand <- function(x, arg, what) {
   if (!is_arrayish(x, convert_ok = FALSE)) {
-    if (!is.numeric(x) && !is.logical(x)) {
+    if (!is.logical(x)) {
       cli_abort(c(
-        "Logical operations are only possible for arrayish, numeric or logical values.",
-        "x" = "{.arg {arg}} is {.cls {class(x)[1L]}}."
+        "{.code {what}} requires a boolean operand.",
+        "x" = "{.arg {arg}} is {.obj_type_friendly {x}}.",
+        "i" = "Compare it explicitly, e.g. {.code x != 0}."
       ))
     }
-    # An R value is coerced in R, exactly like base R's `&` would.
-    return(as.logical(x))
-  }
-  dt <- peek_dtype(x)
-  if (is_dtype_bool(dt)) {
     return(x)
   }
-  nv_ne(x, if (is_dtype_float(dt)) 0 else 0L)
+  if (!is_dtype_bool(peek_dtype(x))) {
+    # Only the operators have a bitwise counterpart to point at.
+    bitwise <- if (what %in% c("&", "|", "!")) {
+      "{.fn nv_and}, {.fn nv_or}, {.fn nv_xor} and {.fn nv_not} operate on the bits of an integer array."
+    }
+    cli_abort(c(
+      "{.code {what}} requires a boolean array.",
+      "x" = "{.arg {arg}} has data type {.val {as.character(peek_dtype(x))}}.",
+      "i" = "Compare it explicitly, e.g. {.code x != 0}, or convert it with {.fn nv_convert}.",
+      "i" = bitwise
+    ))
+  }
+  x
 }
 
 #' @export
@@ -137,11 +158,17 @@ Ops.AnvlArray <- function(e1, e2) {
     ">=" = nv_ge(e1, e2),
     "<" = nv_lt(e1, e2),
     "<=" = nv_le(e1, e2),
-    # `&`, `|` and `!` are logical, like in base R, while `nv_and()`,
-    # `nv_or()` and `nv_not()` are bitwise.
-    "!" = nv_not(as_boolean_operand(e1, "e1")),
-    "&" = nv_and(as_boolean_operand(e1, "e1"), as_boolean_operand(e2, "e2")),
-    "|" = nv_or(as_boolean_operand(e1, "e1"), as_boolean_operand(e2, "e2")),
+    # `&`, `|` and `!` are logical, like in base R, and therefore require a
+    # boolean operand, while `nv_and()`, `nv_or()` and `nv_not()` are bitwise.
+    "!" = nv_not(assert_boolean_operand(e1, "e1", "!")),
+    "&" = nv_and(
+      assert_boolean_operand(e1, "e1", "&"),
+      assert_boolean_operand(e2, "e2", "&")
+    ),
+    "|" = nv_or(
+      assert_boolean_operand(e1, "e1", "|"),
+      assert_boolean_operand(e2, "e2", "|")
+    ),
     cli_abort("invalid method: {(.Generic)}")
   )
 }
@@ -188,9 +215,9 @@ Math.AnvlArray <- function(x, ...) {
     "digamma" = nv_digamma(x, ...),
     "lgamma" = nv_lgamma(x, ...),
     "trigamma" = nv_polygamma(1, x, ...),
-    "floor" = math_whole(x, nv_floor, ...),
-    "ceiling" = math_whole(x, nv_ceiling, ...),
-    "trunc" = math_whole(x, nv_trunc, ...),
+    "floor" = math_whole(x, nv_floor, "floor", ...),
+    "ceiling" = math_whole(x, nv_ceiling, "ceiling", ...),
+    "trunc" = math_whole(x, nv_trunc, "trunc", ...),
     "sign" = nv_sign(x, ...),
     "expm1" = nv_expm1(x, ...),
     "log1p" = nv_log1p(x, ...),
@@ -225,28 +252,28 @@ math_log <- function(x, base) {
   nv_log(x) / log(base)
 }
 
-# Rounding an integer array is the identity, like it is in base R.
-math_whole <- function(x, nv_fn, ...) {
-  if (is_dtype_int(peek_dtype(x)) || is_dtype_uint(peek_dtype(x))) {
-    rlang::check_dots_empty()
-    return(x)
+# Base R leaves an integer alone here, but on an anvl array rounding to whole
+# numbers would then be a no-op the user did not mean to write -- almost
+# always a missing `nv_convert()` -- so ask for a float array instead.
+assert_float_array <- function(x, what) {
+  if (!is_dtype_float(peek_dtype(x))) {
+    cli_abort(c(
+      "{.fn {what}} requires a float array.",
+      "x" = "Got data type {.val {as.character(peek_dtype(x))}}.",
+      "i" = "Convert it with {.fn nv_convert}."
+    ))
   }
+  invisible(x)
+}
+
+math_whole <- function(x, nv_fn, what, ...) {
+  assert_float_array(x, what)
   nv_fn(x, ...)
 }
 
 math_round <- function(x, digits = 0, method = "nearest_even") {
   checkmate::assert_number(digits, finite = TRUE)
-  # Base R leaves an integer alone, whatever the (non-negative) `digits`.
-  if (is_dtype_int(peek_dtype(x)) || is_dtype_uint(peek_dtype(x))) {
-    if (digits >= 0) {
-      return(x)
-    }
-    cli_abort(c(
-      "{.fn round} with negative {.arg digits} requires a float array.",
-      "x" = "Got data type {.val {as.character(peek_dtype(x))}}.",
-      "i" = "Convert it with {.fn nv_convert}."
-    ))
-  }
+  assert_float_array(x, "round")
   if (digits == 0) {
     return(nv_round(x, method = method))
   }
@@ -258,13 +285,7 @@ math_signif <- function(x, digits = 6) {
   checkmate::assert_number(digits, finite = TRUE)
   # Like base R, which warns and uses 1 for a smaller value.
   digits <- max(digits, 1)
-  if (!is_dtype_float(peek_dtype(x))) {
-    cli_abort(c(
-      "{.fn signif} requires a float array.",
-      "x" = "Got data type {.val {as.character(peek_dtype(x))}}.",
-      "i" = "Convert it with {.fn nv_convert}."
-    ))
-  }
+  assert_float_array(x, "signif")
   x <- as_anvl_array(x)
   # Round the mantissa: shift the value so that `digits` significant digits
   # sit in front of the decimal point, round there, and shift back.
@@ -338,6 +359,7 @@ Summary.AnvlArray <- function(x, ..., na.rm = FALSE) {
 # Reduce each data argument over all its axes, then combine the results
 # element-wise, the way base R combines its arguments.
 summary_reduce <- function(op, data, opts, na.rm) {
+  what <- paste0(op, "()")
   parts <- lapply(data, function(z) {
     if (!is_arrayish(z, convert_ok = FALSE)) {
       # A plain R value is reduced in R, and enters as a literal afterwards.
@@ -347,8 +369,10 @@ summary_reduce <- function(op, data, opts, na.rm) {
         "min" = min(z, na.rm = na.rm),
         "prod" = prod(z, na.rm = na.rm),
         "sum" = sum(z, na.rm = na.rm),
-        "any" = any(z, na.rm = na.rm),
-        "all" = all(z, na.rm = na.rm)
+        # `any()` / `all()` are logical, so a non-logical value is rejected
+        # rather than coerced.
+        "any" = any(assert_boolean_operand(z, "x", what), na.rm = na.rm),
+        "all" = all(assert_boolean_operand(z, "x", what), na.rm = na.rm)
       ))
     }
     switch(
@@ -357,11 +381,10 @@ summary_reduce <- function(op, data, opts, na.rm) {
       "min" = do.call(nv_reduce_min, c(list(z), opts, list(nan_rm = na.rm))),
       "prod" = do.call(nv_reduce_prod, c(list(z), opts, list(nan_rm = na.rm))),
       "sum" = do.call(nv_reduce_sum, c(list(z), opts, list(nan_rm = na.rm))),
-      # `any()` / `all()` are logical, so a non-boolean array is compared
-      # against zero first, like base R does. There is no `nan_rm`: NaN is
-      # not zero and therefore counts as `TRUE`.
-      "any" = do.call(nv_reduce_any, c(list(as_boolean_operand(z, "x")), opts)),
-      "all" = do.call(nv_reduce_all, c(list(as_boolean_operand(z, "x")), opts))
+      # `any()` / `all()` are logical, so they require a boolean array and
+      # have no `nan_rm`.
+      "any" = do.call(nv_reduce_any, c(list(assert_boolean_operand(z, "x", what)), opts)),
+      "all" = do.call(nv_reduce_all, c(list(assert_boolean_operand(z, "x", what)), opts))
     )
   })
   combine <- switch(

@@ -163,14 +163,24 @@ as_array(big, check = TRUE)
 {anvl} arrays support most of base R's generic functions and aim to behave like their base R counterparts.
 `?"anvl-generics"` lists the semantics of the group generics (`Ops`, `Math`, `Summary`) and every place where {anvl} deliberately does something else.
 
-The most important thing to know is that the operators `&`, `|` and `!` are *logical*, exactly like in base R -- a non-boolean operand is compared against zero and the result is boolean:
+The most important thing to know is that the operators `&`, `|` and `!` are *logical*, like in base R, and therefore return a boolean array:
 
 ```{r}
-nv_array(12L) & nv_array(10L)
-12L & 10L
+nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))
 ```
 
-The similarly named functions `nv_and()`, `nv_or()`, `nv_xor()` and `nv_not()` are *bitwise* instead:
+Unlike base R, they do not coerce a non-boolean operand -- an integer or float array is an error, in the same way that `sqrt()` does not promote an integer array. Write the comparison yourself if that is what you mean:
+
+```{r, error = TRUE}
+nv_array(12L) & nv_array(10L)
+```
+
+```{r}
+(nv_array(12L) != 0L) & (nv_array(10L) != 0L)
+```
+
+The same holds for `any()` and `all()`.
+The similarly named functions `nv_and()`, `nv_or()`, `nv_xor()` and `nv_not()` are *bitwise* instead, and accept an integer array:
 
 ```{r}
 nv_and(nv_array(12L), nv_array(10L))

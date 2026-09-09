@@ -396,27 +396,24 @@ describe("determinant", {
 # R, so base R is the reference these tests compare against.
 
 describe("logical operators", {
-  it("are logical for a non-boolean array, like base R", {
+  it("reject a non-boolean array instead of coercing it", {
     x <- nv_array(12L)
     y <- nv_array(10L)
-    expect_equal(as.vector(x & y), 12L & 10L)
-    expect_equal(as.vector(x | y), 12L | 10L)
-    expect_equal(as.vector(!x), !12L)
-    expect_equal(as.vector(xor(x, y)), xor(12L, 10L))
-    expect_equal(dtype(x & y), as_dtype("bool"))
-  })
-
-  it("compare a float array against zero, like base R", {
+    expect_error(x & y, "`&` requires a boolean array")
+    expect_error(x | y, "`\\|` requires a boolean array")
+    expect_error(!x, "`!` requires a boolean array")
+    expect_error(xor(x, y), "requires a boolean array")
+    expect_error(nv_array(1.5) & nv_array(TRUE), "requires a boolean array")
+    expect_error(nv_array(TRUE) & nv_array(1.5), "requires a boolean array")
+    expect_error(nv_array(12L, dtype = "ui8") & nv_array(TRUE), "requires a boolean array")
+    # The explicit comparison is what base R's coercion would have done.
     vals <- c(1.5, 0, -2)
     other <- c(0, 0.5, 3)
-    x <- nv_array(vals)
-    y <- nv_array(other)
-    expect_equal(as.vector(x & y), vals & other)
-    expect_equal(as.vector(x | y), vals | other)
-    expect_equal(as.vector(!x), !vals)
+    out <- (nv_array(vals) != 0) & (nv_array(other) != 0)
+    expect_equal(as.vector(out), vals & other)
   })
 
-  it("leave a boolean array alone", {
+  it("work on a boolean array", {
     p <- c(TRUE, FALSE, TRUE)
     q <- c(TRUE, TRUE, FALSE)
     x <- nv_array(p)
@@ -425,24 +422,18 @@ describe("logical operators", {
     expect_equal(as.vector(x | y), p | q)
     expect_equal(as.vector(!x), !p)
     expect_equal(as.vector(xor(x, y)), xor(p, q))
+    expect_equal(dtype(x & y), as_dtype("bool"))
   })
 
-  it("coerce an R value on either side, like base R", {
+  it("take a logical R value on either side, but not a numeric one", {
     x <- nv_array(TRUE)
-    expect_equal(as.vector(x & 2), TRUE & 2)
-    expect_equal(as.vector(2 & x), 2 & TRUE)
-    expect_equal(as.vector(x & 0L), TRUE & 0L)
+    expect_equal(as.vector(x & TRUE), TRUE & TRUE)
+    expect_equal(as.vector(FALSE & x), FALSE & TRUE)
     expect_equal(as.vector(x | FALSE), TRUE | FALSE)
-  })
-
-  it("also work for unsigned integers", {
-    x <- nv_array(12L, dtype = "ui8")
-    expect_equal(as.vector(x & nv_array(0L, dtype = "ui8")), FALSE)
-    expect_equal(as.vector(!x), FALSE)
-  })
-
-  it("reject an operand that is neither arrayish nor numeric", {
-    expect_error(nv_array(TRUE) & "a", "numeric or logical")
+    expect_error(x & 2, "`&` requires a boolean operand")
+    expect_error(2 & x, "`&` requires a boolean operand")
+    expect_error(x & 0L, "requires a boolean operand")
+    expect_error(nv_array(TRUE) & "a", "requires a boolean operand")
   })
 
   it("keep nv_and() / nv_or() / nv_xor() / nv_not() bitwise", {
@@ -456,9 +447,12 @@ describe("logical operators", {
 
   it("mean the same thing under jit()", {
     f <- function(a, b) (a & b) | !a
-    args <- list(nv_array(c(3L, 0L)), nv_array(c(1L, 1L)))
+    args <- list(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE)))
     expect_equal(as.vector(do.call(f, args)), as.vector(do.call(jit(f), args)))
-    expect_equal(as.vector(do.call(f, args)), (c(3L, 0L) & c(1L, 1L)) | !c(3L, 0L))
+    expect_equal(
+      as.vector(do.call(f, args)),
+      (c(TRUE, FALSE) & c(TRUE, TRUE)) | !c(TRUE, FALSE)
+    )
   })
 })
 
@@ -540,19 +534,18 @@ describe("Math group generic completeness", {
     expect_equal(as.vector(log(x)), log(c(2, 4, 8)), tolerance = 1e-6)
   })
 
-  it("leaves an integer array alone when rounding, like base R", {
+  it("asks for a float array when rounding, unlike base R", {
     x <- nv_array(3L)
-    expect_equal(as.vector(round(x)), round(3L))
-    expect_equal(as.vector(round(x, 2)), round(3L, 2))
-    expect_equal(as.vector(floor(x)), floor(3L))
-    expect_equal(as.vector(ceiling(x)), ceiling(3L))
-    expect_equal(as.vector(trunc(x)), trunc(3L))
-    expect_equal(dtype(floor(x)), dtype(x))
-  })
-
-  it("asks for a float array where the operation needs one", {
-    expect_error(signif(nv_array(3L), 2), "requires a float array")
-    expect_error(round(nv_array(3L), -2), "requires a float array")
+    expect_error(round(x), "`round\\(\\)` requires a float array")
+    expect_error(round(x, 2), "requires a float array")
+    expect_error(round(x, -2), "requires a float array")
+    expect_error(floor(x), "`floor\\(\\)` requires a float array")
+    expect_error(ceiling(x), "`ceiling\\(\\)` requires a float array")
+    expect_error(trunc(x), "`trunc\\(\\)` requires a float array")
+    expect_error(signif(x, 2), "`signif\\(\\)` requires a float array")
+    expect_error(floor(nv_array(3L, dtype = "ui8")), "requires a float array")
+    expect_error(floor(nv_array(TRUE)), "requires a float array")
+    expect_equal(as.vector(floor(nv_convert(x, default_float()))), floor(3))
   })
 
   it("means the same thing under jit()", {
@@ -584,15 +577,16 @@ describe("Summary group generic data arguments", {
     expect_error(sum(x, x, axes = 1L), "cannot combine several data arguments")
   })
 
-  it("makes any() / all() logical, like base R", {
-    expect_equal(as.vector(any(nv_array(c(0L, 1L)))), any(c(0L, 1L)))
-    expect_equal(as.vector(any(nv_array(c(0L, 0L)))), any(c(0L, 0L)))
-    # base R warns when it coerces a double; anvl does not.
-    expect_equal(as.vector(all(nv_array(c(2, 3)))), suppressWarnings(all(c(2, 3))))
-    expect_equal(as.vector(all(nv_array(c(2, 0)))), suppressWarnings(all(c(2, 0))))
+  it("makes any() / all() logical and boolean-only", {
+    expect_equal(as.vector(any(nv_array(c(TRUE, FALSE)))), any(c(TRUE, FALSE)))
+    expect_equal(as.vector(all(nv_array(c(TRUE, FALSE)))), all(c(TRUE, FALSE)))
     expect_equal(as.vector(any(nv_array(c(TRUE, FALSE)), FALSE)), any(c(TRUE, FALSE), FALSE))
     expect_equal(as.vector(all(nv_array(c(TRUE, TRUE)), TRUE)), all(c(TRUE, TRUE), TRUE))
-    # The named functions keep requiring a boolean array.
+    # Unlike base R, a non-boolean argument is not compared against zero.
+    expect_error(any(nv_array(c(0L, 1L))), "`any\\(\\)` requires a boolean array")
+    expect_error(all(nv_array(c(2, 3))), "`all\\(\\)` requires a boolean array")
+    expect_error(any(nv_array(TRUE), 1L), "`any\\(\\)` requires a boolean operand")
+    # The named functions require a boolean array as well.
     expect_error(nv_reduce_any(nv_array(1L)), "boolean data type")
   })
 

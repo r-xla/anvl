@@ -21,14 +21,14 @@ Element-wise bitwise OR of two integer arrays, which for a boolean array
 is the logical OR.
 
 This is \emph{not} what the \code{|} operator does: like in base R, \code{|} is logical,
-i.e. it compares a non-boolean operand against zero and returns a boolean
-array. See \code{\link{anvl-generics}}.
+so it requires a boolean operand and returns a boolean array. See
+\code{\link{anvl-generics}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
-nv_array(12L) | nv_array(10L) # logical: TRUE
+nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
 \dontshow{\}) # examplesIf}
 }
 \seealso{

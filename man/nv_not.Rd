@@ -19,14 +19,14 @@ Element-wise bitwise NOT of an integer array, which for a boolean array is
 the logical NOT.
 
 This is \emph{not} what the \code{!} operator does: like in base R, \code{!} is logical,
-i.e. it compares a non-boolean operand against zero and returns a boolean
-array. See \code{\link{anvl-generics}}.
+so it requires a boolean operand and returns a boolean array. See
+\code{\link{anvl-generics}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_not(nv_array(c(TRUE, FALSE, TRUE)))
 nv_not(nv_array(12L)) # bitwise: -13
-!nv_array(12L) # logical: FALSE
+!nv_array(c(TRUE, FALSE)) # logical
 \dontshow{\}) # examplesIf}
 }
 \seealso{

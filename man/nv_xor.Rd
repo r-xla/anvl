@@ -21,14 +21,13 @@ Element-wise bitwise XOR of two integer arrays, which for a boolean array
 is the logical XOR.
 
 Base R's \code{xor()} is logical instead: it is built on \code{|} and \code{&} and
-therefore compares a non-boolean operand against zero. See
-\code{\link{anvl-generics}}.
+therefore requires a boolean operand. See \code{\link{anvl-generics}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
-xor(nv_array(12L), nv_array(10L)) # logical: FALSE
+xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
 \dontshow{\}) # examplesIf}
 }
 \seealso{

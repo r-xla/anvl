@@ -15,17 +15,23 @@ lists the places where anvl deliberately does something else.
 \code{&}, \code{|} and \code{!} are supported and delegate to the corresponding \verb{nv_*}
 function (\code{\link[=nv_add]{nv_add()}}, \code{\link[=nv_mod]{nv_mod()}}, \code{\link[=nv_int_div]{nv_int_div()}}, ...).
 
-\code{&}, \code{|} and \code{!} are \emph{logical} operators, like in base R: a non-boolean
-operand is compared against zero and the result is boolean.
-The named functions \code{\link[=nv_and]{nv_and()}}, \code{\link[=nv_or]{nv_or()}}, \code{\link[=nv_xor]{nv_xor()}} and \code{\link[=nv_not]{nv_not()}} are
-\emph{bitwise} instead -- they operate on the bits of an integer array.
+\code{&}, \code{|} and \code{!} are \emph{logical} operators, like in base R, and therefore
+return a boolean array. Unlike base R they do not coerce a non-boolean
+operand: an integer or float array is an error rather than a comparison
+against zero, just like \code{\link[=sqrt]{sqrt()}} does not promote an integer array. Write
+the comparison yourself (\code{x != 0}) if that is what you mean.
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{nv_array(12L) & nv_array(10L)  # TRUE  (like 12L & 10L)
+The named functions \code{\link[=nv_and]{nv_and()}}, \code{\link[=nv_or]{nv_or()}}, \code{\link[=nv_xor]{nv_xor()}} and \code{\link[=nv_not]{nv_not()}} are
+\emph{bitwise} instead -- they operate on the bits of an integer array, and
+coincide with the operators on a boolean array.
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))  # TRUE FALSE
+nv_array(12L) & nv_array(10L)  # error (12L & 10L is TRUE in base R)
 nv_and(nv_array(12L), nv_array(10L))  # 8 (bitwise)
 }\if{html}{\out{</div>}}
 
 \code{xor()} is a plain function in base R, built on \code{|} and \code{&}, and therefore
-also logical.
+behaves the same way.
 }
 
 \section{Math group}{
@@ -39,9 +45,12 @@ All members of the \code{Math} group are supported: \code{abs}, \code{sign}, \co
 \code{round(x, digits)}, \code{signif(x, digits)} and \code{log(x, base)} take their
 second argument like in base R; \code{digits} and \code{base} must be plain R values.
 \code{round(x, digits)} is computed by scaling with \code{10^digits}, so it can
-differ from base R's rounding in the last representable digit. Rounding an
-integer array (\code{round()}, \code{floor()}, \code{ceiling()}, \code{trunc()}) returns it
-unchanged, as it does in base R.
+differ from base R's rounding in the last representable digit.
+
+\code{round()}, \code{signif()}, \code{floor()}, \code{ceiling()} and \code{trunc()} require a
+float array. Base R leaves an integer alone, but on an anvl array, where
+an integer is never silently promoted, rounding one is a no-op and almost
+always a missing \code{\link[=nv_convert]{nv_convert()}}.
 
 XLA has no gamma function, so \code{gamma()} is computed as \code{exp(lgamma())}
 (with Euler's reflection formula for a negative argument) and is therefore
@@ -57,9 +66,9 @@ axes and, like in base R, accept several data arguments:
 arguments are passed on, so \code{sum(x, axes = 1L)} reduces a single axis --
 but only when \code{x} is the only data argument.
 
-\code{any()} and \code{all()} coerce a non-boolean argument by comparing it against
-zero, like base R does; \code{\link[=nv_reduce_any]{nv_reduce_any()}} and \code{\link[=nv_reduce_all]{nv_reduce_all()}} require a
-boolean array.
+\code{any()} and \code{all()} require a boolean argument, like the \code{&} and \code{|}
+operators and unlike base R, which compares a non-boolean one against zero.
+\code{\link[=nv_reduce_any]{nv_reduce_any()}} and \code{\link[=nv_reduce_all]{nv_reduce_all()}} are the same in this respect.
 }
 
 \section{Other generics}{
@@ -79,14 +88,16 @@ array, where base R would return \code{NULL}.
 
 \itemize{
 \item \strong{No recycling.} Only scalars broadcast; see the "Gotchas" vignette.
-\item \strong{No \code{NA}.} XLA has no missing value, so \code{NaN} (which base R treats as
-missing in logical contexts) counts as \code{TRUE} for \code{&}, \code{|}, \code{!}, \code{any()}
-and \code{all()}.
+\item \strong{No \code{NA}.} XLA has no missing value, so a boolean array is always
+\code{TRUE} or \code{FALSE} and \code{&}, \code{|}, \code{!}, \code{any()} and \code{all()} never see a
+missing value.
 \item \strong{Data types do not follow R's coercions.} An integer array is not
-promoted to a float array, so \code{sqrt()}, \code{log()}, \code{gamma()}, ... require a
-float array -- convert with \code{\link[=nv_convert]{nv_convert()}}. Reductions that are
-inherently fractional (\code{\link[=nv_mean]{nv_mean()}}, \code{\link[=nv_median]{nv_median()}}, \code{\link[=nv_quantile]{nv_quantile()}}) do
-compute at the default float, like base R.
+promoted to a float array, so \code{sqrt()}, \code{log()}, \code{gamma()}, \code{round()},
+... require a float array -- convert with \code{\link[=nv_convert]{nv_convert()}}. Likewise, a
+non-boolean array is not coerced to boolean, so \code{&}, \code{|}, \code{!}, \code{any()}
+and \code{all()} require a boolean array. Reductions that are inherently
+fractional (\code{\link[=nv_mean]{nv_mean()}}, \code{\link[=nv_median]{nv_median()}}, \code{\link[=nv_quantile]{nv_quantile()}}) do compute at
+the default float, like base R.
 \item \strong{Row-major flattening.} \code{cumsum()}, \code{cumprod()}, \code{cummax()} and
 \code{cummin()} flatten a multi-axis array in row-major order, whereas base R
 uses column-major order (see the "Gotchas" vignette).

@@ -798,15 +798,15 @@ nv_int_div <- function(lhs, rhs) {
 #' is the logical AND.
 #'
 #' This is *not* what the `&` operator does: like in base R, `&` is logical,
-#' i.e. it compares a non-boolean operand against zero and returns a boolean
-#' array. See [`anvl-generics`].
+#' so it requires a boolean operand and returns a boolean array. See
+#' [`anvl-generics`].
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_and()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
-#' nv_array(12L) & nv_array(10L) # logical: TRUE
+#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
 #' @export
 #' @jit
 nv_and <- make_do_binary(prim_and)
@@ -817,15 +817,15 @@ nv_and <- make_do_binary(prim_and)
 #' is the logical OR.
 #'
 #' This is *not* what the `|` operator does: like in base R, `|` is logical,
-#' i.e. it compares a non-boolean operand against zero and returns a boolean
-#' array. See [`anvl-generics`].
+#' so it requires a boolean operand and returns a boolean array. See
+#' [`anvl-generics`].
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_or()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
-#' nv_array(12L) | nv_array(10L) # logical: TRUE
+#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
 #' @export
 #' @jit
 nv_or <- make_do_binary(prim_or)
@@ -836,15 +836,14 @@ nv_or <- make_do_binary(prim_or)
 #' is the logical XOR.
 #'
 #' Base R's `xor()` is logical instead: it is built on `|` and `&` and
-#' therefore compares a non-boolean operand against zero. See
-#' [`anvl-generics`].
+#' therefore requires a boolean operand. See [`anvl-generics`].
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_xor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #' nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
-#' xor(nv_array(12L), nv_array(10L)) # logical: FALSE
+#' xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
 #' @export
 #' @jit
 nv_xor <- make_do_binary(prim_xor)
@@ -946,15 +945,15 @@ nv_negate <- prim_negate
 #' the logical NOT.
 #'
 #' This is *not* what the `!` operator does: like in base R, `!` is logical,
-#' i.e. it compares a non-boolean operand against zero and returns a boolean
-#' array. See [`anvl-generics`].
+#' so it requires a boolean operand and returns a boolean array. See
+#' [`anvl-generics`].
 #' @template param_x
 #' @template return_unary
 #' @seealso [prim_not()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_not(nv_array(c(TRUE, FALSE, TRUE)))
 #' nv_not(nv_array(12L)) # bitwise: -13
-#' !nv_array(12L) # logical: FALSE
+#' !nv_array(c(TRUE, FALSE)) # logical
 #' @export
 nv_not <- prim_not
 
