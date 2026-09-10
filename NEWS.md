@@ -27,8 +27,8 @@
   documentation now says so.
 * `any()` and `all()` on an `AnvlArray` require a boolean array, like the
   operators, and reject a non-logical extra argument.
-* The `Summary` group generics (`sum()`, `prod()`, `max()`, `min()`,
-  `range()`, `any()`, `all()`) now treat *unnamed* extra arguments as data,
+* The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
+  `all()`) now treat *unnamed* extra arguments as data,
   like base R: `sum(x, y)` is the sum of both arrays and `sum(x, 2)` adds 2.
   An unnamed extra argument used to be matched positionally against the
   underlying `nv_reduce_*()`'s `axes` argument, so `sum(x, 2)` silently
@@ -57,7 +57,11 @@
   With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
 * New `nv_int_div()` for flooring (integer) division, and the `%/%` operator
   now works on arrays.
-* The `Math` group generic is complete: `gamma()`, `sinpi()`, `cospi()`,
+* The base R generics are now implemented individually (`sqrt.AnvlArray()`,
+  `sum.AnvlArray()`, ...) instead of through the `Ops`, `Math`, `Summary` and
+  `matrixOps` group generics, so each method takes exactly the arguments its
+  base R generic does.
+* The mathematical generics are complete: `gamma()`, `sinpi()`, `cospi()`,
   `tanpi()` and `signif()` now work on arrays, and `round(x, digits)` and
   `log(x, base)` accept their second argument like in base R.
 * `c()` now works on an `AnvlArray` / `AnvlBox`: it flattens its arguments
@@ -69,14 +73,13 @@
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now errors saying that
   `drop` is not supported, instead of reporting too many subset
   specifications.
-* The new `?"anvl-generics"` help page documents the semantics of the group
-  generics and lists where anvl deliberately differs from base R.
+* The new `?"anvl-generics"` help page lists the generics where anvl
+  deliberately differs from base R.
 
 ## Bug fixes
 
 * The `%/%` operator returned `NULL` on an `AnvlArray` instead of dividing:
   `Ops.AnvlArray` had no branch for it and its `switch()` had no default.
-  Unhandled operators now error.
 * `nv_quantile()` (and with it `nv_median()`) returned wrong values for an
   integer array: the interpolation weights were built at the input's data
   type, so `probs = 0.5` became `0` and `median(nv_array(1:4))` was `1`

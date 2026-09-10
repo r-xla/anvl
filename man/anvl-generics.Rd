@@ -2,24 +2,102 @@
 % Please edit documentation in R/api-generics.R
 \name{anvl-generics}
 \alias{anvl-generics}
+\alias{&.AnvlArray}
+\alias{|.AnvlArray}
+\alias{!.AnvlArray}
+\alias{gamma.AnvlArray}
+\alias{floor.AnvlArray}
+\alias{ceiling.AnvlArray}
+\alias{trunc.AnvlArray}
+\alias{round.AnvlArray}
+\alias{signif.AnvlArray}
+\alias{cumsum.AnvlArray}
+\alias{cumprod.AnvlArray}
+\alias{cummax.AnvlArray}
+\alias{cummin.AnvlArray}
+\alias{sum.AnvlArray}
+\alias{prod.AnvlArray}
+\alias{max.AnvlArray}
+\alias{min.AnvlArray}
+\alias{range.AnvlArray}
+\alias{any.AnvlArray}
+\alias{all.AnvlArray}
 \title{Base R Generics for anvl Arrays}
-\description{
-\code{\link{AnvlArray}}s and \code{\link{AnvlBox}}es (the traced values inside \code{\link[=jit]{jit()}}) support
-most of base R's generic functions, and aim to behave like their base R
-counterparts. This page collects the semantics of the group generics and
-lists the places where anvl deliberately does something else.
+\usage{
+\method{&}{AnvlArray}(e1, e2)
+
+\method{|}{AnvlArray}(e1, e2)
+
+\method{!}{AnvlArray}(x)
+
+\method{gamma}{AnvlArray}(x)
+
+\method{floor}{AnvlArray}(x)
+
+\method{ceiling}{AnvlArray}(x)
+
+\method{trunc}{AnvlArray}(x, ...)
+
+\method{round}{AnvlArray}(x, digits = 0, ...)
+
+\method{signif}{AnvlArray}(x, digits = 6)
+
+\method{cumsum}{AnvlArray}(x)
+
+\method{cumprod}{AnvlArray}(x)
+
+\method{cummax}{AnvlArray}(x)
+
+\method{cummin}{AnvlArray}(x)
+
+\method{sum}{AnvlArray}(..., na.rm = FALSE)
+
+\method{prod}{AnvlArray}(..., na.rm = FALSE)
+
+\method{max}{AnvlArray}(..., na.rm = FALSE)
+
+\method{min}{AnvlArray}(..., na.rm = FALSE)
+
+\method{range}{AnvlArray}(..., na.rm = FALSE)
+
+\method{any}{AnvlArray}(..., na.rm = FALSE)
+
+\method{all}{AnvlArray}(..., na.rm = FALSE)
 }
-\section{Ops group}{
+\arguments{
+\item{x, e1, e2}{(\code{\link{arrayish}})\cr Operands.}
 
-\code{+}, \code{-}, \code{*}, \code{/}, \code{^}, \code{\%\%}, \code{\%/\%}, \code{==}, \code{!=}, \code{<}, \code{<=}, \code{>=}, \code{>},
-\code{&}, \code{|} and \code{!} are supported and delegate to the corresponding \verb{nv_*}
-function (\code{\link[=nv_add]{nv_add()}}, \code{\link[=nv_mod]{nv_mod()}}, \code{\link[=nv_int_div]{nv_int_div()}}, ...).
+\item{...}{For the reductions, further arrays to reduce, plus named arguments
+for the underlying \verb{nv_reduce_*()} function (e.g. \code{axes}). For \code{round()}
+and \code{trunc()}, further arguments of \code{\link[=nv_round]{nv_round()}} / \code{\link[=nv_trunc]{nv_trunc()}}.}
 
-\code{&}, \code{|} and \code{!} are \emph{logical} operators, like in base R, and therefore
-return a boolean array. Unlike base R they do not coerce a non-boolean
-operand: an integer or float array is an error rather than a comparison
-against zero, just like \code{\link[=sqrt]{sqrt()}} does not promote an integer array. Write
-the comparison yourself (\code{x != 0}) if that is what you mean.
+\item{digits}{(\code{numeric(1)})\cr Number of digits, as in \code{\link[base:round]{base::round()}} and
+\code{\link[base:signif]{base::signif()}}. Must be a plain R value.}
+
+\item{na.rm}{(\code{logical(1)})\cr Forwarded to the \code{nan_rm} argument of the
+underlying \verb{nv_reduce_*()} function.}
+}
+\value{
+\code{\link{arrayish}}
+}
+\description{
+\code{\link{AnvlArray}}s and \code{\link{AnvlBox}}es (the traced values inside \code{\link[=jit]{jit()}}) implement
+most of base R's generic functions -- the arithmetic and comparison
+operators, the mathematical functions, the reductions and the array generics
+such as \code{c()}, \code{dim()} or \code{t()} -- and mean what they mean in base R.
+
+This page documents the ones that deliberately do something else. Everything
+not listed here behaves like its base R counterpart, so base R's
+documentation applies; the \verb{nv_*} function a generic delegates to (e.g.
+\code{\link[=nv_add]{nv_add()}} for \code{+}, \code{\link[=nv_sqrt]{nv_sqrt()}} for \code{sqrt()}) describes the details.
+}
+\section{Logical operators and reductions}{
+
+\code{&}, \code{|}, \code{!}, \code{any()} and \code{all()} are \emph{logical}, like in base R, and
+therefore return a boolean array. Unlike base R they do not coerce a
+non-boolean operand: an integer or float array is an error rather than a
+comparison against zero, just like \code{\link[=sqrt]{sqrt()}} does not promote an integer
+array. Write the comparison yourself (\code{x != 0}) if that is what you mean.
 
 The named functions \code{\link[=nv_and]{nv_and()}}, \code{\link[=nv_or]{nv_or()}}, \code{\link[=nv_xor]{nv_xor()}} and \code{\link[=nv_not]{nv_not()}} are
 \emph{bitwise} instead -- they operate on the bits of an integer array, and
@@ -34,79 +112,58 @@ nv_and(nv_array(12L), nv_array(10L))  # 8 (bitwise)
 behaves the same way.
 }
 
-\section{Math group}{
+\section{Rounding}{
 
-All members of the \code{Math} group are supported: \code{abs}, \code{sign}, \code{sqrt},
-\code{floor}, \code{ceiling}, \code{trunc}, \code{round}, \code{signif}, \code{exp}, \code{log}, \code{expm1},
-\code{log1p}, \code{cos}, \code{sin}, \code{tan}, \code{cospi}, \code{sinpi}, \code{tanpi}, \code{acos}, \code{asin},
-\code{atan}, \code{cosh}, \code{sinh}, \code{tanh}, \code{acosh}, \code{asinh}, \code{atanh}, \code{lgamma},
-\code{gamma}, \code{digamma}, \code{trigamma}, \code{cumsum}, \code{cumprod}, \code{cummax} and \code{cummin}.
-
-\code{round(x, digits)}, \code{signif(x, digits)} and \code{log(x, base)} take their
-second argument like in base R; \code{digits} and \code{base} must be plain R values.
-\code{round(x, digits)} is computed by scaling with \code{10^digits}, so it can
-differ from base R's rounding in the last representable digit.
-
-\code{round()}, \code{signif()}, \code{floor()}, \code{ceiling()} and \code{trunc()} require a
-float array. Base R leaves an integer alone, but on an anvl array, where
-an integer is never silently promoted, rounding one is a no-op and almost
+\code{round()}, \code{signif()}, \code{floor()}, \code{ceiling()} and \code{trunc()} require a float
+array. Base R leaves an integer alone, but on an anvl array, where an
+integer is never silently promoted, rounding one is a no-op and almost
 always a missing \code{\link[=nv_convert]{nv_convert()}}.
 
-XLA has no gamma function, so \code{gamma()} is computed as \code{exp(lgamma())}
-(with Euler's reflection formula for a negative argument) and is therefore
-less accurate than base R's.
+\code{round(x, digits)} is computed by scaling with \code{10^digits}, so it can differ
+from base R's rounding in the last representable digit.
 }
 
-\section{Summary group}{
+\section{Reductions}{
 
-\code{sum}, \code{prod}, \code{max}, \code{min}, \code{range}, \code{any} and \code{all} reduce over \emph{all}
-axes and, like in base R, accept several data arguments:
-\code{sum(x, y)} is the sum of both arrays. \code{na.rm} is forwarded to the
-\code{nan_rm} argument of the underlying \verb{nv_reduce_*()} function. Named
-arguments are passed on, so \code{sum(x, axes = 1L)} reduces a single axis --
-but only when \code{x} is the only data argument.
+\code{sum()}, \code{prod()}, \code{max()}, \code{min()} and \code{range()} reduce over \emph{all} axes and,
+like in base R, accept several data arguments: \code{sum(x, y)} is the sum of both
+arrays. \code{na.rm} is forwarded to the \code{nan_rm} argument of the underlying
+\verb{nv_reduce_*()} function. Beyond base R, named arguments are passed on, so
+\code{sum(x, axes = 1L)} reduces a single axis -- but only when \code{x} is the only
+data argument.
 
-\code{any()} and \code{all()} require a boolean argument, like the \code{&} and \code{|}
-operators and unlike base R, which compares a non-boolean one against zero.
-\code{\link[=nv_reduce_any]{nv_reduce_any()}} and \code{\link[=nv_reduce_all]{nv_reduce_all()}} are the same in this respect.
+\code{cumsum()}, \code{cumprod()}, \code{cummax()} and \code{cummin()} flatten a multi-axis array
+in row-major order, whereas base R uses column-major order (see the "Gotchas"
+vignette).
 }
 
-\section{Other generics}{
+\section{Gamma}{
 
-\code{c()}, \code{dim()}, \code{length()}, \code{nrow()}, \code{ncol()}, \code{t()}, \code{rev()}, \code{sort()},
-\code{median()}, \code{mean()}, \code{[}, \verb{[<-}, \code{rbind()}, \code{cbind()}, \code{\%*\%},
-\code{crossprod()}, \code{tcrossprod()}, \code{solve()}, \code{chol()}, \code{qr()},
-\code{determinant()}, \code{is.finite()}, \code{is.nan()}, \code{is.infinite()}, \code{format()},
-\code{print()}, \code{as.array()}, \code{as.matrix()}, \code{as.vector()}, \code{as.double()},
-\code{as.integer()} and \code{as.logical()} all work on an anvl array; see their
-\verb{nv_*} counterparts for the details. Because \code{dim()} returns the shape,
-\code{nrow()} and \code{ncol()} report the size of axis 1 and 2 -- also for a 1-D
-array, where base R would return \code{NULL}.
+XLA has no gamma function, so \code{gamma()} is computed as \code{exp(lgamma())} (with
+Euler's reflection formula for a negative argument) and is therefore less
+accurate than base R's.
 }
 
-\section{Deliberate differences from base R}{
+\section{Other deliberate differences}{
 
 \itemize{
 \item \strong{No recycling.} Only scalars broadcast; see the "Gotchas" vignette.
-\item \strong{No \code{NA}.} XLA has no missing value, so a boolean array is always
-\code{TRUE} or \code{FALSE} and \code{&}, \code{|}, \code{!}, \code{any()} and \code{all()} never see a
-missing value.
+\item \strong{No \code{NA}.} XLA has no missing value, so a boolean array is always \code{TRUE}
+or \code{FALSE} and \code{&}, \code{|}, \code{!}, \code{any()} and \code{all()} never see a missing
+value.
 \item \strong{Data types do not follow R's coercions.} An integer array is not
-promoted to a float array, so \code{sqrt()}, \code{log()}, \code{gamma()}, \code{round()},
-... require a float array -- convert with \code{\link[=nv_convert]{nv_convert()}}. Likewise, a
-non-boolean array is not coerced to boolean, so \code{&}, \code{|}, \code{!}, \code{any()}
-and \code{all()} require a boolean array. Reductions that are inherently
-fractional (\code{\link[=nv_mean]{nv_mean()}}, \code{\link[=nv_median]{nv_median()}}, \code{\link[=nv_quantile]{nv_quantile()}}) do compute at
-the default float, like base R.
-\item \strong{Row-major flattening.} \code{cumsum()}, \code{cumprod()}, \code{cummax()} and
-\code{cummin()} flatten a multi-axis array in row-major order, whereas base R
-uses column-major order (see the "Gotchas" vignette).
-\item \strong{\code{median()} and \code{sort()} default to the last axis} rather than
-flattening the whole array, unlike base R.
-\item \strong{\code{t()} requires a matrix}, whereas base R also transposes a vector
-(into a 1-row matrix) and reverses the axes of a higher-rank array.
-\item \strong{\code{[} does not accept negative or out-of-bounds indices} and has no
-\code{drop} argument; see the "Subsetting" vignette.
+promoted to a float array, so \code{sqrt()}, \code{log()}, \code{gamma()}, ... require a
+float array -- convert with \code{\link[=nv_convert]{nv_convert()}}. Reductions that are inherently
+fractional (\code{\link[=nv_mean]{nv_mean()}}, \code{\link[=nv_median]{nv_median()}}, \code{\link[=nv_quantile]{nv_quantile()}}) do compute at the
+default float, like base R.
+\item \strong{\code{median()} and \code{sort()} default to the last axis} rather than flattening
+the whole array, unlike base R.
+\item \strong{\code{t()} requires a matrix}, whereas base R also transposes a vector (into
+a 1-row matrix) and reverses the axes of a higher-rank array.
+\item \strong{\code{dim()} returns the shape}, so \code{nrow()} and \code{ncol()} report the size of
+axis 1 and 2 -- also for a 1-D array, where base R would return \code{NULL}.
+\item \strong{\code{[} does not accept negative or out-of-bounds indices} and has no \code{drop}
+argument; see the "Subsetting" vignette.
 \item \strong{\code{as.vector()} only supports \code{mode = "any"}}, and \code{as.double()},
 \code{as.integer()} and \code{as.logical()} extract an R vector of a matching data
 type instead of converting -- use \code{\link[=nv_convert]{nv_convert()}} to change the data type.

@@ -160,40 +160,7 @@ as_array(big, check = TRUE)
 
 ## Base R generics
 
-{anvl} arrays support most of base R's generic functions and aim to behave like their base R counterparts.
-`?"anvl-generics"` lists the semantics of the group generics (`Ops`, `Math`, `Summary`) and every place where {anvl} deliberately does something else.
-
-The most important thing to know is that the operators `&`, `|` and `!` are *logical*, like in base R, and therefore return a boolean array:
-
-```{r}
-nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))
-```
-
-Unlike base R, they do not coerce a non-boolean operand -- an integer or float array is an error, in the same way that `sqrt()` does not promote an integer array. Write the comparison yourself if that is what you mean:
-
-```{r, error = TRUE}
-nv_array(12L) & nv_array(10L)
-```
-
-```{r}
-(nv_array(12L) != 0L) & (nv_array(10L) != 0L)
-```
-
-The same holds for `any()` and `all()`.
-The similarly named functions `nv_and()`, `nv_or()`, `nv_xor()` and `nv_not()` are *bitwise* instead, and accept an integer array:
-
-```{r}
-nv_and(nv_array(12L), nv_array(10L))
-```
-
-Two other differences are easy to miss:
-`median()` and `sort()` work along a single axis (the last one by default), whereas base R flattens the whole array, and the cumulative functions flatten in row-major order (see above).
-
-```{r}
-m <- matrix(1:6, nrow = 2)
-sort(m)
-sort(nv_array(m))
-```
+{anvl} arrays implement most of base R's generic functions individually (`sqrt()`, `sum()`, `&`, ...) and mean what they mean in base R; `?"anvl-generics"` lists the places where they deliberately do not.
 
 ## Differences between eager and jit-mode
 
