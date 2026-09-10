@@ -51,9 +51,12 @@
   `sum.AnvlArray()`, ...) instead of through the `Ops`, `Math`, `Summary` and
   `matrixOps` group generics, so each method takes exactly the arguments its
   base R generic does.
-* The mathematical generics are complete: `gamma()`, `sinpi()`, `cospi()`,
-  `tanpi()` and `signif()` now work on arrays, and `round(x, digits)` and
-  `log(x, base)` accept their second argument like in base R.
+* New `nv_gamma()`, `nv_sinpi()`, `nv_cospi()`, `nv_tanpi()` and `nv_signif()`
+  complete the mathematical functions, each with its base R generic on top;
+  `round(x, digits)` and `log(x, base)` accept their second argument like in
+  base R.
+* New `nv_range()` returns the minimum and the maximum of an array, stacked
+  along a new first axis, and is what the `range()` generic reduces with.
 * The `nv_*` functions that compute in floating point (`nv_sqrt()`,
   `nv_log()`, `nv_atan2()`, ...) now compute an integer array at the default
   float data type, the way base R's `sqrt(1L)` returns a double. A boolean

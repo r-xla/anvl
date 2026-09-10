@@ -4,8 +4,7 @@ NULL
 # Base R's generics on an `AnvlArray` mean what they mean in base R, so every
 # method here is a thin delegate to the `nv_*` function that does the work and
 # is documented on its help page. A method only carries its own documentation
-# where there is no such twin (`gamma()`, `signif()`, the `*pi()` trigonometry,
-# `range()`, `dim()` and `length()`).
+# where there is no such twin (`dim()` and `length()`).
 #
 # The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
 # functions, registered for the second class.
@@ -450,70 +449,36 @@ atanh.AnvlArray <- function(x) {
 #' @export
 atanh.AnvlBox <- atanh.AnvlArray
 
-#' @title Sine of a Multiple of Pi
-#' @description
-#' Element-wise `sin(pi * x)`, the generic [base::sinpi()] on an anvl array.
-#' Like base R's, it is exact for a whole or half-integer argument: the
-#' argument is first reduced to the interval `[-0.5, 0.5]` around the nearest
-#' whole number, which is where the sine of a multiple of pi is accurate.
-#' @template param_x_float
-#' @template return_unary_float
-#' @seealso [cospi()][cospi.AnvlArray], [tanpi()][tanpi.AnvlArray], [nv_sin()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' sinpi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @rdname nv_sinpi
+#' @usage NULL
 #' @method sinpi AnvlArray
 #' @export
-#' @jit
 sinpi.AnvlArray <- function(x) {
-  x <- as_anvl_array(promote_to_float(x))
-  n <- nv_round(x, method = "nearest_even")
-  reduced <- nv_sin((x - n) * pi)
-  # The sine of `pi * n` alternates in sign with the parity of `n`.
-  nv_ifelse(nv_mod(n, 2) == 0, reduced, -reduced)
+  nv_sinpi(x)
 }
 
 #' @method sinpi AnvlBox
 #' @export
 sinpi.AnvlBox <- sinpi.AnvlArray
 
-#' @title Cosine of a Multiple of Pi
-#' @description
-#' Element-wise `cos(pi * x)`, the generic [base::cospi()] on an anvl array.
-#' Like base R's, it is exact for a whole or half-integer argument.
-#' @template param_x_float
-#' @template return_unary_float
-#' @seealso [sinpi()][sinpi.AnvlArray], [tanpi()][tanpi.AnvlArray], [nv_cos()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' cospi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @rdname nv_cospi
+#' @usage NULL
 #' @method cospi AnvlArray
 #' @export
-#' @jit
 cospi.AnvlArray <- function(x) {
-  # cos(pi * x) == sin(pi * (x + 1/2))
-  sinpi(as_anvl_array(promote_to_float(x)) + 0.5)
+  nv_cospi(x)
 }
 
 #' @method cospi AnvlBox
 #' @export
 cospi.AnvlBox <- cospi.AnvlArray
 
-#' @title Tangent of a Multiple of Pi
-#' @description
-#' Element-wise `tan(pi * x)`, the generic [base::tanpi()] on an anvl array.
-#' Like base R's, it is exact for a whole argument and `NaN` at the half
-#' integers, where the tangent has its poles.
-#' @template param_x_float
-#' @template return_unary_float
-#' @seealso [sinpi()][sinpi.AnvlArray], [cospi()][cospi.AnvlArray], [nv_tan()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' tanpi(nv_array(c(0, 0.25, 0.5, 1)))
+#' @rdname nv_tanpi
+#' @usage NULL
 #' @method tanpi AnvlArray
 #' @export
-#' @jit
 tanpi.AnvlArray <- function(x) {
-  x <- as_anvl_array(promote_to_float(x))
-  denominator <- cospi(x)
-  nv_ifelse(denominator == 0, NaN, sinpi(x) / denominator)
+  nv_tanpi(x)
 }
 
 #' @method tanpi AnvlBox
@@ -552,31 +517,12 @@ trigamma.AnvlArray <- function(x) {
 #' @export
 trigamma.AnvlBox <- trigamma.AnvlArray
 
-#' @title Gamma Function
-#' @description
-#' Element-wise gamma function, the generic [base::gamma()] on an anvl array.
-#'
-#' XLA has only the log-gamma function, so `gamma()` is computed as
-#' `exp(lgamma(x))` -- via Euler's reflection formula for a negative argument
-#' -- and is therefore less accurate than base R's. It is `NaN` at the poles,
-#' i.e. at every whole number that is not positive.
-#' @template param_x_float
-#' @template return_unary_float
-#' @seealso [nv_lgamma()], which is what the hardware computes.
-#' @examplesIf pjrt::plugins_downloaded()
-#' gamma(nv_array(c(0.5, 1, 5, -1.5)))
+#' @rdname nv_gamma
+#' @usage NULL
 #' @method gamma AnvlArray
 #' @export
-#' @jit
 gamma.AnvlArray <- function(x) {
-  x <- as_anvl_array(promote_to_float(x))
-  positive <- nv_exp(nv_lgamma(x))
-  # lgamma() is the log of the *absolute* gamma, so for a negative argument use
-  # Euler's reflection formula gamma(x) * gamma(1 - x) = pi / sin(pi * x),
-  # whose right-hand side is evaluated at 1 - x > 1.
-  reflected <- pi / (sinpi(x) * nv_exp(nv_lgamma(1 - x)))
-  out <- nv_ifelse(x < 0, reflected, positive)
-  nv_ifelse((x <= 0) & (x == nv_floor(x)), NaN, out)
+  nv_gamma(x)
 }
 
 #' @method gamma AnvlBox
@@ -649,36 +595,12 @@ round.AnvlArray <- function(x, digits = 0, ...) {
 #' @export
 round.AnvlBox <- round.AnvlArray
 
-#' @title Round to Significant Digits
-#' @description
-#' Element-wise rounding to `digits` significant digits, the generic
-#' [base::signif()] on an anvl array. It is computed by rounding the mantissa,
-#' so it can differ from base R's in the last representable digit.
-#' @param x ([`arrayish`])\cr
-#'   Input array. Must be a float array: unlike base R, an integer array is not
-#'   rounded to a coarser magnitude, since that would have to turn it into a
-#'   float. Convert it with [nv_convert()] if that is what you mean.
-#' @param digits (`numeric(1)`)\cr
-#'   Number of significant digits, as in [base::signif()]. Must be a plain R
-#'   value; a value below 1 is raised to 1, like in base R.
-#' @template return_unary
-#' @seealso [nv_round()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' signif(nv_array(c(123.456, -0.001234)), 3)
+#' @rdname nv_signif
+#' @usage NULL
 #' @method signif AnvlArray
 #' @export
-#' @jit static "digits"
 signif.AnvlArray <- function(x, digits = 6) {
-  checkmate::assert_number(digits, finite = TRUE)
-  # Like base R, which warns and uses 1 for a smaller value.
-  digits <- max(digits, 1)
-  x <- as_anvl_array(assert_float_array(x))
-  # Shift the value so that `digits` significant digits sit in front of the
-  # decimal point, round there, and shift back.
-  scale <- nv_pow(10, digits - 1 - nv_floor(nv_log10(nv_abs(x))))
-  rounded <- nv_round(x * scale, method = "nearest_even") / scale
-  # 0 has no magnitude, and Inf / NaN must pass through unchanged.
-  nv_ifelse(nv_is_finite(x) & (x != 0), rounded, x)
+  nv_signif(x, digits = digits)
 }
 
 #' @method signif AnvlBox
@@ -841,11 +763,7 @@ min.AnvlArray <- function(..., na.rm = FALSE) {
 #' @export
 min.AnvlBox <- min.AnvlArray
 
-#' @title Range
-#' @description
-#' The smallest and the largest element, as a length-2 array -- the generic
-#' [base::range()] on an anvl array. Like [base::range()] it takes several data
-#' arguments and reduces all of them together.
+#' @rdname nv_range
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to reduce, plus named arguments for [nv_reduce_min()] and
 #'   [nv_reduce_max()] (e.g. `axes`), which are only accepted when there is a
@@ -853,16 +771,16 @@ min.AnvlBox <- min.AnvlArray
 #' @param na.rm (`logical(1)`)\cr
 #'   Forwarded to the `nan_rm` argument of [nv_reduce_min()] and
 #'   [nv_reduce_max()].
-#' @return [`arrayish`]
-#' @seealso [nv_reduce_min()], [nv_reduce_max()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' range(nv_array(c(3, 1, 4)))
+#' @section Relation to base R:
+#' `range()` reduces over all axes and, like [base::range()], takes several
+#' data arguments: `range(x, y)` is the range of both arrays. Beyond base R,
+#' named arguments are passed on, so `range(x, axes = 1L)` reduces a single
+#' axis -- but only when `x` is the only data argument.
 #' @method range AnvlArray
 #' @export
 range.AnvlArray <- function(..., na.rm = FALSE) {
   args <- list(...)
-  # Base R's range() is its min() and its max() next to each other.
-  nv_concatenate(
+  stack_min_max(
     do.call(min.AnvlArray, c(args, list(na.rm = na.rm))),
     do.call(max.AnvlArray, c(args, list(na.rm = na.rm)))
   )

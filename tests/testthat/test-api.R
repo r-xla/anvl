@@ -394,6 +394,111 @@ describe("nv_log10", {
   })
 })
 
+describe("nv_gamma", {
+  it("computes the gamma function like base R", {
+    vals <- c(-2.5, -0.5, 0.5, 1, 2, 5)
+    expect_equal(
+      as.vector(nv_gamma(nv_array(vals, dtype = "f64"))),
+      gamma(vals),
+      tolerance = 1e-6
+    )
+  })
+
+  it("is NaN at the poles, like base R", {
+    expect_true(all(is.nan(as.vector(nv_gamma(nv_array(c(0, -1, -2)))))))
+  })
+
+  it("computes an integer array at the default float", {
+    out <- nv_gamma(nv_array(1:5))
+    expect_equal(dtype(out), default_float())
+    expect_equal(as.vector(out), gamma(1:5), tolerance = 1e-5)
+  })
+
+  it("means the same thing under jit()", {
+    x <- nv_array(c(-2.5, 0.5, 4), dtype = "f64")
+    expect_equal(as.vector(jit(nv_gamma)(x)), as.vector(nv_gamma(x)))
+  })
+})
+
+describe("nv_sinpi", {
+  it("computes sin(pi * x) like base R", {
+    vals <- c(-2.5, -0.5, 0.25, 0.5, 1, 1.5, 2, 3.7)
+    expect_equal(
+      as.vector(nv_sinpi(nv_array(vals, dtype = "f64"))),
+      sinpi(vals),
+      tolerance = 1e-6
+    )
+  })
+
+  it("is exact at the whole numbers, like base R", {
+    expect_identical(as.vector(nv_sinpi(nv_array(c(0, 1, 2, -3)))), c(0, 0, 0, 0))
+  })
+
+  it("computes an integer array at the default float", {
+    out <- nv_sinpi(nv_array(c(0L, 1L, 2L)))
+    expect_equal(dtype(out), default_float())
+    expect_identical(as.vector(out), c(0, 0, 0))
+  })
+
+  it("means the same thing under jit()", {
+    x <- nv_array(c(0.25, 1.5), dtype = "f64")
+    expect_equal(as.vector(jit(nv_sinpi)(x)), as.vector(nv_sinpi(x)))
+  })
+})
+
+describe("nv_cospi", {
+  it("computes cos(pi * x) like base R", {
+    vals <- c(-2.5, -0.5, 0.25, 0.5, 1, 1.5, 2, 3.7)
+    expect_equal(
+      as.vector(nv_cospi(nv_array(vals, dtype = "f64"))),
+      cospi(vals),
+      tolerance = 1e-6
+    )
+  })
+
+  it("is exact at the half integers, like base R", {
+    expect_identical(as.vector(nv_cospi(nv_array(c(0.5, 1.5, -0.5)))), c(0, 0, 0))
+  })
+})
+
+describe("nv_tanpi", {
+  it("computes tan(pi * x) like base R", {
+    vals <- c(-2.5, -0.5, 0.25, 0.5, 1, 1.5, 2, 3.7)
+    expect_equal(
+      as.vector(nv_tanpi(nv_array(vals, dtype = "f64"))),
+      suppressWarnings(tanpi(vals)),
+      tolerance = 1e-6
+    )
+  })
+
+  it("is NaN at the poles, like base R", {
+    expect_true(all(is.nan(as.vector(nv_tanpi(nv_array(c(0.5, -0.5, 1.5)))))))
+  })
+})
+
+describe("nv_signif", {
+  it("rounds to significant digits like base R", {
+    vals <- c(1.2345, 123450, -0.00012345, 0, Inf, NaN)
+    x <- nv_array(vals, dtype = "f64")
+    expect_equal(as.vector(nv_signif(x, 3)), signif(vals, 3), tolerance = 1e-6)
+    expect_equal(as.vector(nv_signif(x)), signif(vals), tolerance = 1e-6)
+  })
+
+  it("asks for a float array, unlike base R", {
+    expect_error(nv_signif(nv_array(3L), 2), "must be a float array")
+    expect_equal(
+      as.vector(nv_signif(nv_convert(nv_array(123L), default_float()), 2)),
+      signif(123, 2)
+    )
+  })
+
+  it("means the same thing under jit()", {
+    f <- function(a) nv_signif(a, 2)
+    x <- nv_array(c(1.2345, -0.00012345), dtype = "f64")
+    expect_equal(as.vector(jit(f)(x)), as.vector(f(x)))
+  })
+})
+
 describe("promote_to_float", {
   # An `nv_*` function that computes in floating point computes an int-like
   # array at the default float, the way base R's `sqrt(1L)` returns a double.
@@ -786,6 +891,42 @@ describe("nv_var / nv_sd nan_rm", {
     expect_true(is.nan(as_array(nv_var(nv_array(1.0), axes = 1L))))
     # With correction = 0, population variance of a single value is 0.
     expect_equal(as.numeric(nv_var(nv_array(1.0), axes = 1L, correction = 0L)), 0)
+  })
+})
+
+describe("nv_range", {
+  it("returns the minimum and the maximum as a length-2 array", {
+    vals <- c(3, 1, 4, 1, 5, 9, 2, 6)
+    expect_equal(nv_range(nv_array(vals)), nv_array(range(vals)))
+  })
+
+  it("stacks the two along a new first axis when reducing a single axis", {
+    m <- nv_matrix(as.double(1:6), nrow = 2)
+    out <- nv_range(m, axes = 1L)
+    expect_equal(shape(out), c(2L, 3L))
+    expect_equal(as_array(out), rbind(c(1, 3, 5), c(2, 4, 6)))
+  })
+
+  it("accepts a negative axis", {
+    m <- nv_matrix(as.double(1:6), nrow = 2)
+    expect_equal(nv_range(m, axes = -1L), nv_range(m, axes = 2L))
+  })
+
+  it("keeps the data type of an integer array", {
+    out <- nv_range(nv_array(1:4))
+    expect_equal(dtype(out), default_int())
+    expect_equal(as.vector(out), c(1L, 4L))
+  })
+
+  it("forwards nan_rm", {
+    x <- nv_array(c(1, NaN, 3))
+    expect_equal(as.vector(nv_range(x, nan_rm = TRUE)), c(1, 3))
+    expect_true(all(is.nan(as.vector(nv_range(x)))))
+  })
+
+  it("works under jit()", {
+    x <- nv_array(c(3, 1, 4))
+    expect_equal(as.vector(jit(nv_range)(x)), c(1, 4))
   })
 })
 

@@ -1069,6 +1069,63 @@ nv_sin <- function(x) prim_sin(promote_to_float(x))
 #' @export
 nv_cos <- function(x) prim_cos(promote_to_float(x))
 
+#' @title Sine of a Multiple of Pi
+#' @description
+#' Element-wise `sin(pi * x)`. You can also use `sinpi()`.
+#' Like base R's [base::sinpi()], it is exact for a whole or half-integer
+#' argument: the argument is first reduced to the interval `[-0.5, 0.5]` around
+#' the nearest whole number, which is where the sine of a multiple of pi is
+#' accurate.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_cospi()], [nv_tanpi()], [nv_sin()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' sinpi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @export
+#' @jit
+nv_sinpi <- function(x) {
+  x <- as_anvl_array(promote_to_float(x))
+  n <- nv_round(x, method = "nearest_even")
+  reduced <- nv_sin((x - n) * pi)
+  # The sine of `pi * n` alternates in sign with the parity of `n`.
+  nv_ifelse(nv_mod(n, 2) == 0, reduced, -reduced)
+}
+
+#' @title Cosine of a Multiple of Pi
+#' @description
+#' Element-wise `cos(pi * x)`. You can also use `cospi()`.
+#' Like base R's [base::cospi()], it is exact for a whole or half-integer
+#' argument.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_sinpi()], [nv_tanpi()], [nv_cos()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' cospi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @export
+#' @jit
+nv_cospi <- function(x) {
+  # cos(pi * x) == sin(pi * (x + 1/2))
+  nv_sinpi(as_anvl_array(promote_to_float(x)) + 0.5)
+}
+
+#' @title Tangent of a Multiple of Pi
+#' @description
+#' Element-wise `tan(pi * x)`. You can also use `tanpi()`.
+#' Like base R's [base::tanpi()], it is exact for a whole argument and `NaN` at
+#' the half integers, where the tangent has its poles.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_sinpi()], [nv_cospi()], [nv_tan()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' tanpi(nv_array(c(0, 0.25, 0.5, 1)))
+#' @export
+#' @jit
+nv_tanpi <- function(x) {
+  x <- as_anvl_array(promote_to_float(x))
+  denominator <- nv_cospi(x)
+  nv_ifelse(denominator == 0, NaN, nv_sinpi(x) / denominator)
+}
+
 #' @title Floor
 #' @description
 #' Element-wise floor (round toward negative infinity). You can also use `floor()`.
@@ -1312,6 +1369,32 @@ nv_digamma <- function(x) prim_digamma(promote_to_float(x))
 #' lgamma(x)
 #' @export
 nv_lgamma <- function(x) prim_lgamma(promote_to_float(x))
+
+#' @title Gamma Function
+#' @description
+#' Element-wise gamma function. You can also use `gamma()`.
+#'
+#' XLA has only the log-gamma function, so this is computed as
+#' `exp(lgamma(x))` -- via Euler's reflection formula for a negative argument
+#' -- and is therefore less accurate than base R's [base::gamma()]. It is `NaN`
+#' at the poles, i.e. at every whole number that is not positive.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_lgamma()], which is what the hardware computes.
+#' @examplesIf pjrt::plugins_downloaded()
+#' gamma(nv_array(c(0.5, 1, 5, -1.5)))
+#' @export
+#' @jit
+nv_gamma <- function(x) {
+  x <- as_anvl_array(promote_to_float(x))
+  positive <- nv_exp(nv_lgamma(x))
+  # lgamma() is the log of the *absolute* gamma, so for a negative argument use
+  # Euler's reflection formula gamma(x) * gamma(1 - x) = pi / sin(pi * x),
+  # whose right-hand side is evaluated at 1 - x > 1.
+  reflected <- pi / (nv_sinpi(x) * nv_exp(nv_lgamma(1 - x)))
+  out <- nv_ifelse(x < 0, reflected, positive)
+  nv_ifelse((x <= 0) & (x == nv_floor(x)), NaN, out)
+}
 
 #' @title Polygamma
 #' @description
@@ -1616,6 +1699,37 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @export
 nv_round <- function(x, method = "nearest_even") {
   if (is_intlike(x)) as_anvl_array(x) else prim_round(x, method = method)
+}
+
+#' @title Round to Significant Digits
+#' @description
+#' Element-wise rounding to `digits` significant digits. You can also use the
+#' `signif()` generic. It is computed by rounding the mantissa, so it can
+#' differ from base R's [base::signif()] in the last representable digit.
+#' @param x ([`arrayish`])\cr
+#'   Input array. Must be a float array: unlike base R, an integer array is not
+#'   rounded to a coarser magnitude, since that would have to turn it into a
+#'   float. Convert it with [nv_convert()] if that is what you mean.
+#' @param digits (`numeric(1)`)\cr
+#'   Number of significant digits, as in [base::signif()]. Must be a plain R
+#'   value; a value below 1 is raised to 1, like in base R.
+#' @template return_unary
+#' @seealso [nv_round()], [round()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' signif(nv_array(c(123.456, -0.001234)), 3)
+#' @export
+#' @jit static "digits"
+nv_signif <- function(x, digits = 6) {
+  checkmate::assert_number(digits, finite = TRUE)
+  # Like base R, which warns and uses 1 for a smaller value.
+  digits <- max(digits, 1)
+  x <- as_anvl_array(assert_float_array(x))
+  # Shift the value so that `digits` significant digits sit in front of the
+  # decimal point, round there, and shift back.
+  scale <- nv_pow(10, digits - 1 - nv_floor(nv_log10(nv_abs(x))))
+  rounded <- nv_round(x * scale, method = "nearest_even") / scale
+  # 0 has no magnitude, and Inf / NaN must pass through unchanged.
+  nv_ifelse(nv_is_finite(x) & (x != 0), rounded, x)
 }
 
 ## Other operations -----------------------------------------------------------
@@ -2295,6 +2409,40 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   any_nan <- prim_reduce_any(is_nan, axes = axes, drop = drop)
   result <- prim_reduce(x, axes = axes, drop = drop)
   nv_ifelse(any_nan, NaN, result)
+}
+
+#' @title Range Reduction
+#' @description
+#' The smallest and the largest element along the specified axes, stacked along
+#' a new first axis. You can also use the `range()` generic.
+#' @template param_x
+#' @param axes (`integer()` | `NULL`)\cr
+#'   Axes to reduce over. `NULL` (default) reduces over all of them, which
+#'   makes the result a length-2 array like [base::range()]. Negative values
+#'   count from the end.
+#' @template param_nan_rm
+#' @return [`arrayish`]\cr
+#'   Has the same data type as `x` and the shape of the reduced array with a
+#'   leading axis of size 2 added: element 1 is the minimum, element 2 the
+#'   maximum.
+#' @seealso [nv_reduce_min()], [nv_reduce_max()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_range(nv_array(c(3, 1, 4)))
+#' nv_range(nv_matrix(1:6, nrow = 2), axes = 1L)
+#' @export
+#' @jit static 2:3
+nv_range <- function(x, axes = NULL, nan_rm = FALSE) {
+  stack_min_max(
+    nv_reduce_min(x, axes = axes, nan_rm = nan_rm),
+    nv_reduce_max(x, axes = axes, nan_rm = nan_rm)
+  )
+}
+
+# The minimum and the maximum next to each other, which is what base R's
+# range() returns. A new leading axis keeps the reduced axes intact, so a
+# scalar minimum and maximum become a length-2 array.
+stack_min_max <- function(lo, hi) {
+  nv_concatenate(nv_unsqueeze(lo, 1L), nv_unsqueeze(hi, 1L), axis = 1L)
 }
 
 #' @title Any Reduction

@@ -121,12 +121,6 @@ reference:
       Methods for base R generics that have no `nv_*` twin. Every other
       generic is documented together with the `nv_*` function it delegates to.
     contents:
-      - gamma.AnvlArray
-      - signif.AnvlArray
-      - sinpi.AnvlArray
-      - cospi.AnvlArray
-      - tanpi.AnvlArray
-      - range.AnvlArray
       - dim.AnvlArray
       - length.AnvlArray
 
@@ -208,6 +202,9 @@ reference:
       - nv_sin
       - nv_cos
       - nv_tan
+      - nv_sinpi
+      - nv_cospi
+      - nv_tanpi
       - nv_asin
       - nv_acos
       - nv_atan
@@ -223,10 +220,12 @@ reference:
       - nv_ceiling
       - nv_trunc
       - nv_round
+      - nv_signif
       - nv_logistic
       - nv_erf
       - nv_erfc
       - nv_erf_inv
+      - nv_gamma
       - nv_digamma
       - nv_lgamma
       - nv_polygamma
@@ -241,6 +240,7 @@ reference:
       - nv_reduce_prod
       - nv_reduce_max
       - nv_reduce_min
+      - nv_range
       - nv_reduce_any
       - nv_reduce_all
 
