@@ -6,8 +6,6 @@
 \title{Concatenate}
 \usage{
 nv_concatenate(..., axis = NULL)
-
-\method{c}{AnvlArray}(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
@@ -31,11 +29,11 @@ You can also use \code{c()}, which flattens its arguments first, like base R.
 }
 \section{Relation to base R}{
 
-\code{c()} flattens every argument to 1-D and concatenates the results, like
-\code{\link[base:c]{base::c()}} does. An anvl array is flattened in row-major order, so for an
-input with more than one axis the elements come out in a different order
-than base R's column-major flatten would produce (see the "Gotchas"
-vignette). Use \code{nv_concatenate()} with an explicit \code{axis} to keep the axes.
+\code{c()} concatenates scalars and 1-D arrays into a 1-D array, like
+\code{\link[base:c]{base::c()}} does for vectors. An array with more than one axis is an error:
+base R would flatten it in column-major order, whereas an anvl array
+flattens in row-major order (see the "Gotchas" vignette), so concatenate
+those along an explicit \code{axis} instead.
 }
 
 \examples{

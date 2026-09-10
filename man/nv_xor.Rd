@@ -21,7 +21,8 @@ Element-wise bitwise XOR of two integer arrays, which for a boolean array
 is the logical XOR.
 
 Base R's \code{xor()} is logical instead: it is built on \code{|} and \code{&} and
-therefore requires a boolean operand. See \code{\link{anvl-generics}}.
+therefore requires boolean operands, which \code{nv_or()} and \code{nv_and()}
+document.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

@@ -8,11 +8,14 @@ nv_erf_inv(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+Input array. An integer array is computed at the default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}), the way \code{\link[base:sqrt]{base::sqrt()}} returns a double for an
+integer vector. A boolean array is not accepted.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the same shape as the input, and its data type -- or the default float
+data type if the input was an integer array.
 }
 \description{
 Element-wise inverse error function (the inverse of \code{erf} on \verb{(-1, 1)}).

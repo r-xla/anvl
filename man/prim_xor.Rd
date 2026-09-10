@@ -17,7 +17,7 @@ Has the same shape and data type as the inputs.
 }
 \description{
 Element-wise bitwise XOR, which for a boolean array is the logical XOR.
-Note that base R's \code{xor()} is logical instead (see \code{\link{anvl-generics}}).
+Note that base R's \code{xor()} is logical instead (see \code{\link[=nv_xor]{nv_xor()}}).
 }
 \section{Implemented Rules}{
 

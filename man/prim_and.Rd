@@ -18,7 +18,7 @@ Has the same shape and data type as the inputs.
 \description{
 Element-wise bitwise AND, which for a boolean array is the logical AND.
 Note that the \code{&} operator is logical instead, like in base R
-(see \code{\link{anvl-generics}}).
+(see \code{\link[=nv_and]{nv_and()}}).
 }
 \section{Implemented Rules}{
 

@@ -1372,7 +1372,7 @@ prim_remainder <- new_primitive(
 #' @description
 #' Element-wise bitwise AND, which for a boolean array is the logical AND.
 #' Note that the `&` operator is logical instead, like in base R
-#' (see [`anvl-generics`]).
+#' (see [nv_and()]).
 #' @template params_prim_lhs_rhs_intlike
 #' @template return_prim_binary
 #' @templateVar primitive_id and
@@ -1391,7 +1391,7 @@ prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 #' @description
 #' Element-wise bitwise NOT, which for a boolean array is the logical NOT.
 #' Note that the `!` operator is logical instead, like in base R
-#' (see [`anvl-generics`]).
+#' (see [nv_not()]).
 #' @param x ([`arrayish`])\cr
 #'   Arrayish value of data type boolean, integer, or unsigned integer.
 #' @template return_prim_unary
@@ -1410,7 +1410,7 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @description
 #' Element-wise bitwise OR, which for a boolean array is the logical OR.
 #' Note that the `|` operator is logical instead, like in base R
-#' (see [`anvl-generics`]).
+#' (see [nv_or()]).
 #' @template params_prim_lhs_rhs_intlike
 #' @template return_prim_binary
 #' @templateVar primitive_id or
@@ -1428,7 +1428,7 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 #' @title Primitive Xor
 #' @description
 #' Element-wise bitwise XOR, which for a boolean array is the logical XOR.
-#' Note that base R's `xor()` is logical instead (see [`anvl-generics`]).
+#' Note that base R's `xor()` is logical instead (see [nv_xor()]).
 #' @template params_prim_lhs_rhs_intlike
 #' @template return_prim_binary
 #' @templateVar primitive_id xor

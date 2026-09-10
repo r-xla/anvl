@@ -116,11 +116,19 @@ reference:
       - nv_serialize
       - nv_unserialize
 
-  # REVIEW: Every generic documents this itself. not one common man page. Then we have no good overview
   - subtitle: Base R Generics
-    desc: How base R's generic functions behave on anvl arrays
+    desc: >
+      Methods for base R generics that have no `nv_*` twin. Every other
+      generic is documented together with the `nv_*` function it delegates to.
     contents:
-      - anvl-generics
+      - gamma.AnvlArray
+      - signif.AnvlArray
+      - sinpi.AnvlArray
+      - cospi.AnvlArray
+      - tanpi.AnvlArray
+      - range.AnvlArray
+      - dim.AnvlArray
+      - length.AnvlArray
 
   - title: API Functions
     desc: User-facing `nv_*` functions for array operations
@@ -172,7 +180,7 @@ reference:
       - nv_negate
       - nv_remainder
       - nv_mod
-      - nv_int_div
+      - nv_floor_div
 
   - subtitle: Comparison Operations
     desc: Element-wise comparison operations

@@ -394,6 +394,172 @@ describe("nv_log10", {
   })
 })
 
+describe("promote_to_float", {
+  # An `nv_*` function that computes in floating point computes an int-like
+  # array at the default float, the way base R's `sqrt(1L)` returns a double.
+  float_fns <- list(
+    nv_sqrt = sqrt,
+    nv_exp = exp,
+    nv_expm1 = expm1,
+    nv_log = log,
+    nv_log1p = log1p,
+    nv_log2 = log2,
+    nv_log10 = log10,
+    nv_cos = cos,
+    nv_sin = sin,
+    nv_tan = tan,
+    nv_acos = acos,
+    nv_asin = asin,
+    nv_atan = atan,
+    nv_cosh = cosh,
+    nv_sinh = sinh,
+    nv_tanh = tanh,
+    nv_acosh = acosh,
+    nv_asinh = asinh,
+    nv_lgamma = lgamma,
+    nv_digamma = digamma
+  )
+  float_only <- c("nv_rsqrt", "nv_cbrt", "nv_logistic", "nv_erf", "nv_erfc", "nv_erf_inv", "nv_atanh")
+
+  it("computes an integer array at the default float, like base R", {
+    for (nm in names(float_fns)) {
+      out <- get(nm)(nv_array(1L))
+      expect_equal(dtype(out), default_float(), info = nm)
+      expect_equal(as.vector(out), float_fns[[nm]](1), tolerance = 1e-6, info = nm)
+    }
+    for (nm in float_only) {
+      expect_equal(dtype(get(nm)(nv_array(1L))), default_float(), info = nm)
+    }
+  })
+
+  it("promotes an unsigned array and a plain R integer as well", {
+    expect_equal(as.vector(nv_sqrt(nv_array(4L, dtype = "ui8"))), 2)
+    expect_equal(dtype(nv_sqrt(nv_array(4L, dtype = "i64"))), default_float())
+    expect_equal(as.vector(nv_sqrt(4L)), 2)
+  })
+
+  it("keeps a float array's data type", {
+    expect_equal(dtype(nv_sqrt(nv_array(4, dtype = "f64"))), as_dtype("f64"))
+    expect_equal(as.vector(nv_sqrt(nv_array(4, dtype = "f64"))), 2)
+  })
+
+  it("honours the default data types", {
+    with_default_dtypes(c(float = "f64", int = "i64"), {
+      expect_equal(dtype(nv_sqrt(nv_array(4L))), as_dtype("f64"))
+    })
+  })
+
+  it("does not promote a boolean array", {
+    expect_error(nv_sqrt(nv_array(TRUE)))
+    expect_error(nv_lgamma(nv_array(TRUE)))
+  })
+
+  it("promotes both operands of nv_atan2()", {
+    out <- nv_atan2(nv_array(1L), nv_array(2L))
+    expect_equal(dtype(out), default_float())
+    expect_equal(as.vector(out), atan2(1, 2), tolerance = 1e-6)
+  })
+})
+
+describe("nv_floor", {
+  it("rounds toward negative infinity", {
+    expect_equal(nv_floor(nv_array(c(1.2, 2.7, -1.5))), nv_array(c(1, 2, -2)))
+  })
+
+  it("returns an integer array unchanged", {
+    expect_equal(nv_floor(nv_array(1:3)), nv_array(1:3))
+    expect_equal(nv_floor(nv_array(3L, dtype = "ui8")), nv_array(3L, dtype = "ui8"))
+  })
+
+  it("does not accept a boolean array", {
+    expect_error(nv_floor(nv_array(TRUE)))
+  })
+})
+
+describe("nv_ceiling", {
+  it("rounds toward positive infinity", {
+    expect_equal(nv_ceiling(nv_array(c(1.2, 2.7, -1.5))), nv_array(c(2, 3, -1)))
+  })
+
+  it("returns an integer array unchanged", {
+    expect_equal(nv_ceiling(nv_array(1:3)), nv_array(1:3))
+  })
+})
+
+describe("nv_trunc", {
+  it("rounds toward zero", {
+    expect_equal(
+      nv_trunc(nv_array(c(1.2, 2.7, -1.5, -0.3, 0))),
+      nv_array(c(1, 2, -1, 0, 0))
+    )
+  })
+
+  it("returns an integer array unchanged", {
+    expect_equal(nv_trunc(nv_array(c(1L, -3L))), nv_array(c(1L, -3L)))
+  })
+})
+
+describe("nv_round", {
+  it("rounds half to even by default and away from zero on request", {
+    expect_equal(as.vector(nv_round(nv_array(c(0.5, 1.5)))), round(c(0.5, 1.5)))
+    expect_equal(as.vector(nv_round(nv_array(c(0.5, 1.5)), method = "afz")), c(1, 2))
+  })
+
+  it("returns an integer array unchanged", {
+    expect_equal(nv_round(nv_array(1:3)), nv_array(1:3))
+  })
+})
+
+describe("nv_floor_div", {
+  it("floors like base R, at both signs and both categories", {
+    for (lhs in c(7L, -7L)) {
+      for (rhs in c(2L, -2L)) {
+        expect_equal(
+          as.vector(nv_floor_div(nv_array(lhs), nv_array(rhs))),
+          lhs %/% rhs,
+          info = sprintf("%d %%/%% %d", lhs, rhs)
+        )
+        expect_equal(
+          as.vector(nv_floor_div(nv_array(as.double(lhs)), nv_array(as.double(rhs)))),
+          as.double(lhs) %/% as.double(rhs),
+          info = sprintf("%g %%/%% %g", lhs, rhs)
+        )
+      }
+    }
+    expect_equal(as.vector(nv_floor_div(nv_array(7.5), nv_array(2.5))), 7.5 %/% 2.5)
+  })
+
+  it("works for unsigned integers", {
+    expect_equal(
+      as.vector(nv_floor_div(nv_array(7L, dtype = "ui8"), nv_array(2L, dtype = "ui8"))),
+      7L %/% 2L
+    )
+  })
+
+  it("agrees with nv_mod(), i.e. (x %/% y) * y + x %% y == x", {
+    x <- nv_array(c(7L, -7L, 8L, -8L))
+    y <- nv_array(c(3L, 3L, -3L, -3L))
+    expect_equal(as.vector(nv_floor_div(x, y) * y + nv_mod(x, y)), as.vector(x))
+  })
+})
+
+describe("nv_polygamma", {
+  it("broadcasts a scalar n", {
+    vals <- c(0.5, 1, 2, 5)
+    expect_equal(
+      nv_polygamma(2, nv_array(vals)),
+      nv_array(psigamma(vals, 2)),
+      tolerance = 1e-5
+    )
+  })
+
+  it("computes an integer array at the default float", {
+    out <- nv_polygamma(1, nv_array(1:3))
+    expect_equal(dtype(out), default_float())
+    expect_equal(as.vector(out), trigamma(1:3), tolerance = 1e-5)
+  })
+})
+
 describe("nv_is_finite", {
   it("detects finite values", {
     expect_equal(
@@ -1573,6 +1739,26 @@ describe("nv_median", {
   it("accepts a negative dim", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expect_equal(nv_median(m, axis = -1L), nv_median(m, axis = 2L))
+  })
+
+  it("computes a non-float array at the default float, like base R", {
+    expect_equal(as.vector(nv_median(nv_array(1:4))), median(1:4))
+    expect_equal(as.vector(nv_median(nv_array(c(TRUE, FALSE)))), median(c(TRUE, FALSE)))
+    expect_equal(dtype(nv_median(nv_array(1:4))), default_float())
+  })
+
+  it("honours the default data types", {
+    with_default_dtypes(c(float = "f64", int = "i64"), {
+      out <- nv_median(nv_array(1:4))
+      expect_equal(dtype(out), as_dtype("f64"))
+      expect_equal(as.vector(out), median(1:4))
+    })
+  })
+
+  it("keeps a float array's data type", {
+    x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
+    expect_equal(dtype(nv_median(x)), as_dtype("f64"))
+    expect_equal(as.vector(nv_median(x)), median(c(1, 2, 3, 4)))
   })
 })
 

@@ -676,3 +676,19 @@ promotable_to <- function(from, to) {
   }
   common_dtype(from, to) == to
 }
+
+# Whether `x` is (or would commit to) an int-like array, i.e. a signed or
+# unsigned integer one.
+is_intlike <- function(x) {
+  dt <- peek_dtype(x)
+  is_dtype_int(dt) || is_dtype_uint(dt)
+}
+
+# What an `nv_*` function that computes in floating point does with its input:
+# an int-like array is computed at the default float, the way base R's
+# `sqrt(1L)` returns a double. A boolean array is left untouched for the
+# primitive to reject -- `sqrt()` of a boolean array is a mistake, not a
+# coercion the user asked for.
+promote_to_float <- function(x) {
+  if (is_intlike(x)) nv_convert(x, default_float()) else x
+}

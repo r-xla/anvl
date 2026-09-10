@@ -5,8 +5,6 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
-\method{[}{AnvlArray}(x, ...) <- value
-
 nv_subset_assign(x, ..., value)
 }
 \arguments{
