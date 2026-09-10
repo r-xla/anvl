@@ -116,6 +116,7 @@ reference:
       - nv_serialize
       - nv_unserialize
 
+  # REVIEW: Every generic documents this itself. not one common man page. Then we have no good overview
   - subtitle: Base R Generics
     desc: How base R's generic functions behave on anvl arrays
     contents:

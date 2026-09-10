@@ -16,6 +16,9 @@
 * There is now exactly one backend used at a time and it is configured via the
   `anvl.backend` option.
 * A `Shape` is now represented as an integer vector.
+REVIEW: Add to claude-config/AGENTS.md to keep NEWS entries short and in-line with the existing style in other NEWS.md entries.
+
+REVIEW: Also shorten this considerably and ensure that it's in-sync with the code changes
 * The `&`, `|` and `!` operators are now *logical*, like in base R, and
   require a boolean array. They used to be bitwise, so
   `nv_array(12L) & nv_array(10L)` was `8` where `12L & 10L` is `TRUE`.

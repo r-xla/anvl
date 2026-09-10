@@ -1,4 +1,9 @@
+REVIEW: claude-config/AGENTS.md to keep NEWS entries short and in-line with the existing style in other NEWS.md entries.
 #' @include api.R
+
+# REVIEW: I want ONE doc page per generic.
+# Use templates when (parts of) documentation are duplicated.
+
 
 #' @title Base R Generics for anvl Arrays
 #' @name anvl-generics
@@ -93,6 +98,8 @@
 #'   [nv_convert()] for data type conversion.
 NULL
 
+## Move asserts into asserts.R, keep then more generic without this over-specialized error message.
+
 # Base R's `&`, `|` and `!` are logical operators, so anvl's are too: they
 # require a boolean operand rather than coercing a numeric one, the same way
 # `sqrt()` requires a float array instead of promoting an integer one. The
@@ -140,6 +147,13 @@ assert_float_array <- function(x, what) {
 
 # Arithmetic operators ---------------------------------------------------------
 
+#
+
+# REVIEW: Generics that are also available via a nv_ function should all share the help page via "@rdname" and @usage NULL
+# Those where the R generic / API function differs from base R's implementation should document the difference.
+
+#' @rdname nv_add
+#' @usage NULL
 #' @export
 `+.AnvlArray` <- function(e1, e2) {
   # Base R's unary `+` is the identity.
@@ -191,6 +205,7 @@ assert_float_array <- function(x, what) {
 
 #' @export
 `%/%.AnvlArray` <- function(e1, e2) {
+  # Rename to nv_floor_div
   nv_int_div(e1, e2)
 }
 
@@ -472,6 +487,10 @@ atanh.AnvlBox <- atanh.AnvlArray
 # the sign from that integer's parity.
 #' @export
 sinpi.AnvlArray <- function(x) {
+  # REVIEW:
+  # - Jit this.
+  # - Also add to AGENTS.md that functions with multiple ops should be jitted
+  # - Ensure that this works with ints (will happen when nv_round accepts ints)
   x <- as_anvl_array(x)
   n <- nv_round(x, method = "nearest_even")
   reduced <- nv_sin((x - n) * pi)
@@ -482,6 +501,8 @@ sinpi.AnvlArray <- function(x) {
 sinpi.AnvlBox <- sinpi.AnvlArray
 
 #' @export
+#'
+# REVIEW: Jit
 cospi.AnvlArray <- function(x) {
   # cos(pi * x) == sin(pi * (x + 1/2))
   sinpi(as_anvl_array(x) + 0.5)
@@ -492,6 +513,7 @@ cospi.AnvlBox <- cospi.AnvlArray
 
 #' @export
 tanpi.AnvlArray <- function(x) {
+  # REVIEW: Jit
   x <- as_anvl_array(x)
   denominator <- cospi(x)
   # Base R returns NaN at the half-integers, where the tangent has its poles.
@@ -528,6 +550,8 @@ trigamma.AnvlBox <- trigamma.AnvlArray
 #' @rdname anvl-generics
 #' @export
 gamma.AnvlArray <- function(x) {
+  # REVIEW: promote ints to float
+  # REVIEW: Is this formula really correct? ensure good tests in test-api-generics.R
   x <- as_anvl_array(x)
   # XLA has no gamma, only lgamma. For a negative argument, where lgamma is the
   # log of the *absolute* value, use Euler's reflection formula
@@ -545,6 +569,7 @@ gamma.AnvlBox <- gamma.AnvlArray
 #' @rdname anvl-generics
 #' @export
 floor.AnvlArray <- function(x) {
+  # REVIEW: Actually, let ints through as well
   assert_float_array(x, "floor")
   nv_floor(x)
 }
@@ -555,6 +580,7 @@ floor.AnvlBox <- floor.AnvlArray
 #' @rdname anvl-generics
 #' @export
 ceiling.AnvlArray <- function(x) {
+  # REVIEW: Actually, let ints through as well
   assert_float_array(x, "ceiling")
   nv_ceiling(x)
 }
@@ -565,6 +591,7 @@ ceiling.AnvlBox <- ceiling.AnvlArray
 #' @rdname anvl-generics
 #' @export
 trunc.AnvlArray <- function(x, ...) {
+  # REVIEW: Actually, let ints through as well
   assert_float_array(x, "trunc")
   nv_trunc(x, ...)
 }
@@ -575,6 +602,7 @@ trunc.AnvlBox <- trunc.AnvlArray
 #' @rdname anvl-generics
 #' @export
 round.AnvlArray <- function(x, digits = 0, ...) {
+  # REVIEW: Actually, let ints through as well
   checkmate::assert_number(digits, finite = TRUE)
   assert_float_array(x, "round")
   if (digits == 0) {
@@ -647,6 +675,7 @@ cummin.AnvlBox <- cummin.AnvlArray
 # Like base R, every unnamed argument is data: `sum(x, y)` sums both. Named
 # arguments are options of the underlying nv_reduce_* (e.g. `axes = 1L`), and
 # `na.rm` becomes its `nan_rm`; unsupported ones error there as unused args.
+# REVIEW: Not all the logic in one function.
 summary_generic <- function(op, args, na.rm) {
   named <- nzchar(names(args) %||% rep("", length(args)))
   data <- args[!named]
@@ -657,6 +686,7 @@ summary_generic <- function(op, args, na.rm) {
       "i" = "Reduce the arrays one at a time, e.g. {.code {op}(x, axes = 1L)}."
     ))
   }
+  # REVIEW: THis logic should be in range.AnvlArray, not here.
   if (op == "range") {
     return(nv_concatenate(
       summary_reduce("min", data, opts, na.rm),
@@ -668,6 +698,10 @@ summary_generic <- function(op, args, na.rm) {
 
 # Reduce each data argument over all its axes, then combine the results
 # element-wise, the way base R combines its arguments.
+
+# REVIEW: THis is a weird implementation. Instead use a helper function that can be re-used
+# in the different summary generics, but don't hard-code all options into one common helper
+# the op-specific logic should be in the specific generic impl
 summary_reduce <- function(op, data, opts, na.rm) {
   what <- paste0(op, "()")
   parts <- lapply(data, function(z) {
@@ -882,6 +916,9 @@ rev.AnvlBox <- rev.AnvlArray
 #' @method c AnvlArray
 #' @export
 c.AnvlArray <- function(...) {
+  # REVIEW:
+  # - DO NOT FLATTEN ANYTHING. Only accept scalars and 1d vectors.
+  # - Also, jit the function
   args <- lapply(list(...), function(x) {
     if (is_arrayish(x, convert_ok = FALSE)) {
       if (naxes(x) > 1L) nv_flatten(x) else x

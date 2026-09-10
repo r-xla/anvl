@@ -1211,6 +1211,7 @@ nv_asin <- prim_asin
 #' x <- nv_array(c(-1, 0, 1))
 #' asinh(x)
 #' @export
+# REVIEW: Promote inputs to float. Do this for all similar API functions that expect floats as well.
 nv_asinh <- prim_asinh
 
 #' @title Arc Tangent
@@ -1587,6 +1588,8 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' x <- nv_array(c(1.4, 2.5, 3.6))
 #' round(x)
 #' @export
+# REVIEW: We should also accept ints and just return them as-is. THis is useful for functions
+# that operate on numerics but round their input (such as sinpi)
 nv_round <- prim_round
 
 ## Other operations -----------------------------------------------------------

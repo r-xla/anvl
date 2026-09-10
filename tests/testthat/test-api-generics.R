@@ -395,6 +395,9 @@ describe("determinant", {
 # The operators and group generics are supposed to mean what they mean in base
 # R, so base R is the reference these tests compare against.
 
+# REVIEW: I want one describe() block per generic/ function
+# Nothing needed if the function is completely identical to API function (like nv_add)
+
 describe("logical operators", {
   it("reject a non-boolean array instead of coercing it", {
     x <- nv_array(12L)
