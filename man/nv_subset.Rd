@@ -5,8 +5,6 @@
 \alias{nv_subset}
 \title{Subset an Array}
 \usage{
-\method{[}{AnvlArray}(x, ...)
-
 nv_subset(x, ...)
 }
 \arguments{

@@ -116,6 +116,14 @@ reference:
       - nv_serialize
       - nv_unserialize
 
+  - subtitle: Base R Generics
+    desc: >
+      Methods for base R generics that have no `nv_*` twin. Every other
+      generic is documented together with the `nv_*` function it delegates to.
+    contents:
+      - dim.AnvlArray
+      - length.AnvlArray
+
   - title: API Functions
     desc: User-facing `nv_*` functions for array operations
 
@@ -166,6 +174,7 @@ reference:
       - nv_negate
       - nv_remainder
       - nv_mod
+      - nv_floor_div
 
   - subtitle: Comparison Operations
     desc: Element-wise comparison operations
@@ -193,6 +202,9 @@ reference:
       - nv_sin
       - nv_cos
       - nv_tan
+      - nv_sinpi
+      - nv_cospi
+      - nv_tanpi
       - nv_asin
       - nv_acos
       - nv_atan
@@ -208,10 +220,12 @@ reference:
       - nv_ceiling
       - nv_trunc
       - nv_round
+      - nv_signif
       - nv_logistic
       - nv_erf
       - nv_erfc
       - nv_erf_inv
+      - nv_gamma
       - nv_digamma
       - nv_lgamma
       - nv_polygamma
@@ -226,6 +240,7 @@ reference:
       - nv_reduce_prod
       - nv_reduce_max
       - nv_reduce_min
+      - nv_range
       - nv_reduce_any
       - nv_reduce_all
 

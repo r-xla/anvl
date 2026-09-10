@@ -6,8 +6,6 @@
 \title{Transpose}
 \usage{
 nv_transpose(x, permutation = NULL)
-
-\method{t}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -19,11 +17,17 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{x} and shape \code{nv_shape(x)[permutation]}.
+Has the same data type as \code{x} and shape \code{shape(x)[permutation]}.
 }
 \description{
 Permutes the axes of an array. You can also use \code{t()} for matrices.
 }
+\section{Relation to base R}{
+
+\code{t()} requires a matrix, whereas \code{\link[base:t]{base::t()}} also transposes a vector (into
+a one-row matrix) and reverses the axes of a higher-rank array.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)

@@ -1,117 +1,842 @@
 #' @include api.R
+NULL
+
+# Base R's generics on an `AnvlArray` mean what they mean in base R, so every
+# method here is a thin delegate to the `nv_*` function that does the work and
+# is documented on its help page. A method only carries its own documentation
+# where there is no such twin (`dim()` and `length()`).
+#
+# The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
+# functions, registered for the second class.
+
+# Arithmetic operators ---------------------------------------------------------
+
+#' @rdname nv_add
+#' @usage NULL
+#' @export
+`+.AnvlArray` <- function(e1, e2) {
+  # Base R's unary `+` is the identity.
+  if (missing(e2)) e1 else nv_add(e1, e2)
+}
 
 #' @export
-Ops.AnvlArray <- function(e1, e2) {
-  switch(
-    .Generic, # nolint
-    "+" = nv_add(e1, e2),
-    "-" = {
-      if (missing(e2)) {
-        nv_negate(e1)
-      } else {
-        nv_sub(e1, e2)
-      }
-    },
-    "*" = nv_mul(e1, e2),
-    "/" = nv_div(e1, e2),
-    "^" = nv_pow(e1, e2),
-    "%%" = nv_mod(e1, e2),
-    "==" = nv_eq(e1, e2),
-    "!=" = nv_ne(e1, e2),
-    ">" = nv_gt(e1, e2),
-    ">=" = nv_ge(e1, e2),
-    "<" = nv_lt(e1, e2),
-    "<=" = nv_le(e1, e2),
-    "!" = nv_not(e1),
-    "&" = nv_and(e1, e2),
-    "|" = nv_or(e1, e2)
+`+.AnvlBox` <- `+.AnvlArray`
+
+#' @rdname nv_sub
+#' @usage NULL
+#' @section Relation to base R:
+#' The unary `-x` is [nv_negate()].
+#' @export
+`-.AnvlArray` <- function(e1, e2) {
+  if (missing(e2)) nv_negate(e1) else nv_sub(e1, e2)
+}
+
+#' @export
+`-.AnvlBox` <- `-.AnvlArray`
+
+#' @rdname nv_mul
+#' @usage NULL
+#' @export
+`*.AnvlArray` <- function(e1, e2) {
+  nv_mul(e1, e2)
+}
+
+#' @export
+`*.AnvlBox` <- `*.AnvlArray`
+
+#' @rdname nv_div
+#' @usage NULL
+#' @export
+`/.AnvlArray` <- function(e1, e2) {
+  nv_div(e1, e2)
+}
+
+#' @export
+`/.AnvlBox` <- `/.AnvlArray`
+
+#' @rdname nv_pow
+#' @usage NULL
+#' @export
+`^.AnvlArray` <- function(e1, e2) {
+  nv_pow(e1, e2)
+}
+
+#' @export
+`^.AnvlBox` <- `^.AnvlArray`
+
+#' @rdname nv_mod
+#' @usage NULL
+#' @export
+`%%.AnvlArray` <- function(e1, e2) {
+  nv_mod(e1, e2)
+}
+
+#' @export
+`%%.AnvlBox` <- `%%.AnvlArray`
+
+#' @rdname nv_floor_div
+#' @usage NULL
+#' @export
+`%/%.AnvlArray` <- function(e1, e2) {
+  nv_floor_div(e1, e2)
+}
+
+#' @export
+`%/%.AnvlBox` <- `%/%.AnvlArray`
+
+#' @rdname nv_matmul
+#' @usage NULL
+#' @export
+`%*%.AnvlArray` <- function(x, y) {
+  nv_matmul(x, y)
+}
+
+#' @export
+`%*%.AnvlBox` <- `%*%.AnvlArray`
+
+# Comparison operators ---------------------------------------------------------
+
+#' @rdname nv_eq
+#' @usage NULL
+#' @export
+`==.AnvlArray` <- function(e1, e2) {
+  nv_eq(e1, e2)
+}
+
+#' @export
+`==.AnvlBox` <- `==.AnvlArray`
+
+#' @rdname nv_ne
+#' @usage NULL
+#' @export
+`!=.AnvlArray` <- function(e1, e2) {
+  nv_ne(e1, e2)
+}
+
+#' @export
+`!=.AnvlBox` <- `!=.AnvlArray`
+
+#' @rdname nv_lt
+#' @usage NULL
+#' @export
+`<.AnvlArray` <- function(e1, e2) {
+  nv_lt(e1, e2)
+}
+
+#' @export
+`<.AnvlBox` <- `<.AnvlArray`
+
+#' @rdname nv_le
+#' @usage NULL
+#' @export
+`<=.AnvlArray` <- function(e1, e2) {
+  nv_le(e1, e2)
+}
+
+#' @export
+`<=.AnvlBox` <- `<=.AnvlArray`
+
+#' @rdname nv_gt
+#' @usage NULL
+#' @export
+`>.AnvlArray` <- function(e1, e2) {
+  nv_gt(e1, e2)
+}
+
+#' @export
+`>.AnvlBox` <- `>.AnvlArray`
+
+#' @rdname nv_ge
+#' @usage NULL
+#' @export
+`>=.AnvlArray` <- function(e1, e2) {
+  nv_ge(e1, e2)
+}
+
+#' @export
+`>=.AnvlBox` <- `>=.AnvlArray`
+
+# Logical operators ------------------------------------------------------------
+
+# Base R's `&`, `|` and `!` are logical operators, so anvl's are too: they
+# require a boolean operand rather than coercing a numeric one, the same way
+# `sqrt()` requires a float array instead of promoting an integer one. On a
+# boolean array bitwise and logical coincide, so they delegate to the bitwise
+# `nv_and()` / `nv_or()` / `nv_not()`.
+bitwise_hint <- function() {
+  c(
+    "Compare it explicitly, e.g. {.code x != 0}, or convert it with {.fn nv_convert}.",
+    "{.fn nv_and}, {.fn nv_or}, {.fn nv_xor} and {.fn nv_not} operate on the bits of an integer array."
+  )
+}
+
+#' @rdname nv_and
+#' @usage NULL
+#' @section The `&` operator:
+#' `&` is *logical*, like in base R: it requires boolean operands and returns a
+#' boolean array, which is what `nv_and()` computes for them. Unlike base R it
+#' does not coerce a non-boolean operand by comparing it against zero -- write
+#' `x != 0` yourself -- because {anvl} does not apply R's data type coercions
+#' anywhere else either.
+#' @export
+`&.AnvlArray` <- function(e1, e2) {
+  nv_and(
+    assert_boolean_array(e1, hint = bitwise_hint()),
+    assert_boolean_array(e2, hint = bitwise_hint())
   )
 }
 
 #' @export
-Ops.AnvlBox <- Ops.AnvlArray
+`&.AnvlBox` <- `&.AnvlArray`
 
+#' @rdname nv_or
+#' @usage NULL
+#' @section The `|` operator:
+#' `|` is *logical*, like in base R: it requires boolean operands and returns a
+#' boolean array, which is what `nv_or()` computes for them. Unlike base R it
+#' does not coerce a non-boolean operand by comparing it against zero -- write
+#' `x != 0` yourself -- because {anvl} does not apply R's data type coercions
+#' anywhere else either.
+#'
+#' `xor()` is a plain function in base R, built on `|` and `&`, and therefore
+#' behaves the same way.
 #' @export
-matrixOps.AnvlArray <- function(x, y) {
-  switch(
-    .Generic, # nolint
-    "%*%" = nv_matmul(x, y)
+`|.AnvlArray` <- function(e1, e2) {
+  nv_or(
+    assert_boolean_array(e1, hint = bitwise_hint()),
+    assert_boolean_array(e2, hint = bitwise_hint())
   )
 }
 
 #' @export
-matrixOps.AnvlBox <- matrixOps.AnvlArray
+`|.AnvlBox` <- `|.AnvlArray`
+
+#' @rdname nv_not
+#' @usage NULL
+#' @section The `!` operator:
+#' `!` is *logical*, like in base R: it requires a boolean array and returns a
+#' boolean array, which is what `nv_not()` computes for one. Unlike base R it
+#' does not coerce a non-boolean operand by comparing it against zero -- write
+#' `x == 0` yourself -- because {anvl} does not apply R's data type coercions
+#' anywhere else either.
+#' @export
+`!.AnvlArray` <- function(x) {
+  nv_not(assert_boolean_array(x, hint = bitwise_hint()))
+}
 
 #' @export
-Math.AnvlArray <- function(x, ...) {
-  # Forward `...` so extras like `log(x, base = 2)` surface as
-  # "unused argument" errors from the underlying nv_* function.
-  switch(
-    .Generic, # nolint
-    "abs" = nv_abs(x, ...),
-    "exp" = nv_exp(x, ...),
-    "sqrt" = nv_sqrt(x, ...),
-    "log" = nv_log(x, ...),
-    "log2" = nv_log2(x, ...),
-    "log10" = nv_log10(x, ...),
-    "tanh" = nv_tanh(x, ...),
-    "tan" = nv_tan(x, ...),
-    "cos" = nv_cos(x, ...),
-    "sin" = nv_sin(x, ...),
-    "acos" = nv_acos(x, ...),
-    "acosh" = nv_acosh(x, ...),
-    "asin" = nv_asin(x, ...),
-    "asinh" = nv_asinh(x, ...),
-    "atan" = nv_atan(x, ...),
-    "atanh" = nv_atanh(x, ...),
-    "cosh" = nv_cosh(x, ...),
-    "sinh" = nv_sinh(x, ...),
-    "digamma" = nv_digamma(x, ...),
-    "lgamma" = nv_lgamma(x, ...),
-    "trigamma" = nv_polygamma(1, x, ...),
-    "floor" = nv_floor(x, ...),
-    "ceiling" = nv_ceiling(x, ...),
-    "trunc" = nv_trunc(x, ...),
-    "sign" = nv_sign(x, ...),
-    "expm1" = nv_expm1(x, ...),
-    "log1p" = nv_log1p(x, ...),
-    "round" = nv_round(x, method = "nearest_even", ...),
-    "cumsum" = nv_cumsum(x, ...),
-    "cumprod" = nv_cumprod(x, ...),
-    "cummax" = nv_cummax(x, ...),
-    "cummin" = nv_cummin(x, ...),
-    cli_abort("invalid method: {(.Generic)}")
+`!.AnvlBox` <- `!.AnvlArray`
+
+# Math generics ----------------------------------------------------------------
+
+#' @rdname nv_abs
+#' @usage NULL
+#' @export
+abs.AnvlArray <- function(x) {
+  nv_abs(x)
+}
+
+#' @export
+abs.AnvlBox <- abs.AnvlArray
+
+#' @rdname nv_sign
+#' @usage NULL
+#' @export
+sign.AnvlArray <- function(x) {
+  nv_sign(x)
+}
+
+#' @export
+sign.AnvlBox <- sign.AnvlArray
+
+#' @rdname nv_sqrt
+#' @usage NULL
+#' @export
+sqrt.AnvlArray <- function(x) {
+  nv_sqrt(x)
+}
+
+#' @export
+sqrt.AnvlBox <- sqrt.AnvlArray
+
+#' @rdname nv_exp
+#' @usage NULL
+#' @export
+exp.AnvlArray <- function(x) {
+  nv_exp(x)
+}
+
+#' @export
+exp.AnvlBox <- exp.AnvlArray
+
+#' @rdname nv_expm1
+#' @usage NULL
+#' @export
+expm1.AnvlArray <- function(x) {
+  nv_expm1(x)
+}
+
+#' @export
+expm1.AnvlBox <- expm1.AnvlArray
+
+#' @rdname nv_log
+#' @usage NULL
+#' @section Relation to base R:
+#' `log(x, base)` takes a second argument like [base::log()] does and computes
+#' `log(x) / log(base)`.
+#' @export
+log.AnvlArray <- function(x, base = exp(1)) {
+  if (missing(base)) {
+    return(nv_log(x))
+  }
+  if (is_arrayish(base, convert_ok = FALSE)) {
+    return(nv_log(x) / nv_log(base))
+  }
+  checkmate::assert_number(base, lower = 0)
+  nv_log(x) / log(base)
+}
+
+#' @export
+log.AnvlBox <- log.AnvlArray
+
+#' @rdname nv_log2
+#' @usage NULL
+#' @export
+log2.AnvlArray <- function(x) {
+  nv_log2(x)
+}
+
+#' @export
+log2.AnvlBox <- log2.AnvlArray
+
+#' @rdname nv_log10
+#' @usage NULL
+#' @export
+log10.AnvlArray <- function(x) {
+  nv_log10(x)
+}
+
+#' @export
+log10.AnvlBox <- log10.AnvlArray
+
+#' @rdname nv_log1p
+#' @usage NULL
+#' @export
+log1p.AnvlArray <- function(x) {
+  nv_log1p(x)
+}
+
+#' @export
+log1p.AnvlBox <- log1p.AnvlArray
+
+#' @rdname nv_cos
+#' @usage NULL
+#' @export
+cos.AnvlArray <- function(x) {
+  nv_cos(x)
+}
+
+#' @export
+cos.AnvlBox <- cos.AnvlArray
+
+#' @rdname nv_sin
+#' @usage NULL
+#' @export
+sin.AnvlArray <- function(x) {
+  nv_sin(x)
+}
+
+#' @export
+sin.AnvlBox <- sin.AnvlArray
+
+#' @rdname nv_tan
+#' @usage NULL
+#' @export
+tan.AnvlArray <- function(x) {
+  nv_tan(x)
+}
+
+#' @export
+tan.AnvlBox <- tan.AnvlArray
+
+#' @rdname nv_acos
+#' @usage NULL
+#' @export
+acos.AnvlArray <- function(x) {
+  nv_acos(x)
+}
+
+#' @export
+acos.AnvlBox <- acos.AnvlArray
+
+#' @rdname nv_asin
+#' @usage NULL
+#' @export
+asin.AnvlArray <- function(x) {
+  nv_asin(x)
+}
+
+#' @export
+asin.AnvlBox <- asin.AnvlArray
+
+#' @rdname nv_atan
+#' @usage NULL
+#' @export
+atan.AnvlArray <- function(x) {
+  nv_atan(x)
+}
+
+#' @export
+atan.AnvlBox <- atan.AnvlArray
+
+#' @rdname nv_cosh
+#' @usage NULL
+#' @export
+cosh.AnvlArray <- function(x) {
+  nv_cosh(x)
+}
+
+#' @export
+cosh.AnvlBox <- cosh.AnvlArray
+
+#' @rdname nv_sinh
+#' @usage NULL
+#' @export
+sinh.AnvlArray <- function(x) {
+  nv_sinh(x)
+}
+
+#' @export
+sinh.AnvlBox <- sinh.AnvlArray
+
+#' @rdname nv_tanh
+#' @usage NULL
+#' @export
+tanh.AnvlArray <- function(x) {
+  nv_tanh(x)
+}
+
+#' @export
+tanh.AnvlBox <- tanh.AnvlArray
+
+#' @rdname nv_acosh
+#' @usage NULL
+#' @export
+acosh.AnvlArray <- function(x) {
+  nv_acosh(x)
+}
+
+#' @export
+acosh.AnvlBox <- acosh.AnvlArray
+
+#' @rdname nv_asinh
+#' @usage NULL
+#' @export
+asinh.AnvlArray <- function(x) {
+  nv_asinh(x)
+}
+
+#' @export
+asinh.AnvlBox <- asinh.AnvlArray
+
+#' @rdname nv_atanh
+#' @usage NULL
+#' @export
+atanh.AnvlArray <- function(x) {
+  nv_atanh(x)
+}
+
+#' @export
+atanh.AnvlBox <- atanh.AnvlArray
+
+#' @rdname nv_sinpi
+#' @usage NULL
+#' @method sinpi AnvlArray
+#' @export
+sinpi.AnvlArray <- function(x) {
+  nv_sinpi(x)
+}
+
+#' @method sinpi AnvlBox
+#' @export
+sinpi.AnvlBox <- sinpi.AnvlArray
+
+#' @rdname nv_cospi
+#' @usage NULL
+#' @method cospi AnvlArray
+#' @export
+cospi.AnvlArray <- function(x) {
+  nv_cospi(x)
+}
+
+#' @method cospi AnvlBox
+#' @export
+cospi.AnvlBox <- cospi.AnvlArray
+
+#' @rdname nv_tanpi
+#' @usage NULL
+#' @method tanpi AnvlArray
+#' @export
+tanpi.AnvlArray <- function(x) {
+  nv_tanpi(x)
+}
+
+#' @method tanpi AnvlBox
+#' @export
+tanpi.AnvlBox <- tanpi.AnvlArray
+
+#' @rdname nv_lgamma
+#' @usage NULL
+#' @export
+lgamma.AnvlArray <- function(x) {
+  nv_lgamma(x)
+}
+
+#' @export
+lgamma.AnvlBox <- lgamma.AnvlArray
+
+#' @rdname nv_digamma
+#' @usage NULL
+#' @export
+digamma.AnvlArray <- function(x) {
+  nv_digamma(x)
+}
+
+#' @export
+digamma.AnvlBox <- digamma.AnvlArray
+
+#' @rdname nv_polygamma
+#' @usage NULL
+#' @section Relation to base R:
+#' `trigamma(x)` is `nv_polygamma(1, x)`.
+#' @export
+trigamma.AnvlArray <- function(x) {
+  nv_polygamma(1, x)
+}
+
+#' @export
+trigamma.AnvlBox <- trigamma.AnvlArray
+
+#' @rdname nv_gamma
+#' @usage NULL
+#' @method gamma AnvlArray
+#' @export
+gamma.AnvlArray <- function(x) {
+  nv_gamma(x)
+}
+
+#' @method gamma AnvlBox
+#' @export
+gamma.AnvlBox <- gamma.AnvlArray
+
+# Rounding ---------------------------------------------------------------------
+
+#' @rdname nv_floor
+#' @usage NULL
+#' @export
+floor.AnvlArray <- function(x) {
+  nv_floor(x)
+}
+
+#' @export
+floor.AnvlBox <- floor.AnvlArray
+
+#' @rdname nv_ceiling
+#' @usage NULL
+#' @export
+ceiling.AnvlArray <- function(x) {
+  nv_ceiling(x)
+}
+
+#' @export
+ceiling.AnvlBox <- ceiling.AnvlArray
+
+#' @rdname nv_trunc
+#' @param ... Further arguments of [nv_trunc()].
+#' @export
+trunc.AnvlArray <- function(x, ...) {
+  nv_trunc(x, ...)
+}
+
+#' @export
+trunc.AnvlBox <- trunc.AnvlArray
+
+#' @rdname nv_round
+#' @param digits (`numeric(1)`)\cr
+#'   Number of digits to round to, as in [base::round()]. Must be a plain R
+#'   value.
+#' @param ... Further arguments of [nv_round()].
+#' @section Relation to base R:
+#' `round(x, digits)` is computed by scaling with `10^digits`, so it can differ
+#' from [base::round()] in the last representable digit. A negative `digits`
+#' rounds an integer array to a multiple of ten in base R; on an anvl array,
+#' where an integer never turns into a float on its own, that is an error
+#' instead.
+#' @export
+round.AnvlArray <- function(x, digits = 0, ...) {
+  checkmate::assert_number(digits, finite = TRUE)
+  if (is_intlike(x)) {
+    if (digits < 0) {
+      cli_abort(c(
+        "{.fn round} cannot round an integer array to {digits} digits.",
+        "i" = "Convert it with {.fn nv_convert} first."
+      ))
+    }
+    # An integer array is already whole, whatever the number of digits.
+    return(nv_round(x, ...))
+  }
+  if (digits == 0) {
+    return(nv_round(x, ...))
+  }
+  scale <- 10^digits
+  nv_round(x * scale, ...) / scale
+}
+
+#' @export
+round.AnvlBox <- round.AnvlArray
+
+#' @rdname nv_signif
+#' @usage NULL
+#' @method signif AnvlArray
+#' @export
+signif.AnvlArray <- function(x, digits = 6) {
+  nv_signif(x, digits = digits)
+}
+
+#' @method signif AnvlBox
+#' @export
+signif.AnvlBox <- signif.AnvlArray
+
+# Cumulative generics ----------------------------------------------------------
+
+#' @rdname nv_cumsum
+#' @usage NULL
+#' @export
+cumsum.AnvlArray <- function(x) {
+  nv_cumsum(x)
+}
+
+#' @export
+cumsum.AnvlBox <- cumsum.AnvlArray
+
+#' @rdname nv_cumprod
+#' @usage NULL
+#' @export
+cumprod.AnvlArray <- function(x) {
+  nv_cumprod(x)
+}
+
+#' @export
+cumprod.AnvlBox <- cumprod.AnvlArray
+
+#' @rdname nv_cummax
+#' @usage NULL
+#' @export
+cummax.AnvlArray <- function(x) {
+  nv_cummax(x)
+}
+
+#' @export
+cummax.AnvlBox <- cummax.AnvlArray
+
+#' @rdname nv_cummin
+#' @usage NULL
+#' @export
+cummin.AnvlArray <- function(x) {
+  nv_cummin(x)
+}
+
+#' @export
+cummin.AnvlBox <- cummin.AnvlArray
+
+# Summary generics -------------------------------------------------------------
+
+# The shared part of base R's Summary generics: every unnamed argument is data,
+# so `sum(x, y)` sums both, and each one is reduced over all its axes before the
+# results are combined element-wise. Named arguments are options of the
+# underlying `nv_reduce_*()` (e.g. `axes = 1L`); an unsupported one errors there
+# as an unused argument.
+#
+# `reduce` reduces one array with those options, `r_reduce` reduces a plain R
+# value in R -- so that it enters as a literal and does not commit to a data
+# type of its own -- and `combine` joins two reduced arguments.
+summary_generic <- function(op, args, reduce, r_reduce, combine) {
+  named <- nzchar(names(args) %||% rep("", length(args)))
+  data <- args[!named]
+  opts <- args[named]
+  if (length(data) > 1L && length(opts) > 0L) {
+    cli_abort(c(
+      "{.fn {op}} cannot combine several data arguments with {.arg {names(opts)[1L]}}.",
+      "i" = "Reduce the arrays one at a time, e.g. {.code {op}(x, axes = 1L)}."
+    ))
+  }
+  parts <- lapply(data, function(z) {
+    if (is_arrayish(z, convert_ok = FALSE)) reduce(z, opts) else r_reduce(z)
+  })
+  Reduce(combine, parts)
+}
+
+#' @rdname nv_reduce_sum
+#' @usage NULL
+#' @section Relation to base R:
+#' `sum()` reduces over all axes and, like [base::sum()], takes several data
+#' arguments: `sum(x, y)` is the sum of both arrays. `na.rm` becomes `nan_rm`.
+#' Beyond base R, named arguments are passed on, so `sum(x, axes = 1L)` reduces
+#' a single axis -- but only when `x` is the only data argument.
+#' @export
+sum.AnvlArray <- function(..., na.rm = FALSE) {
+  summary_generic(
+    "sum",
+    list(...),
+    function(z, opts) do.call(nv_reduce_sum, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z) sum(z, na.rm = na.rm),
+    nv_add
   )
 }
 
 #' @export
-Math.AnvlBox <- Math.AnvlArray
+sum.AnvlBox <- sum.AnvlArray
 
-
+#' @rdname nv_reduce_prod
+#' @usage NULL
+#' @section Relation to base R:
+#' `prod()` reduces over all axes and, like [base::prod()], takes several data
+#' arguments: `prod(x, y)` is the product of both arrays. `na.rm` becomes
+#' `nan_rm`. Beyond base R, named arguments are passed on, so
+#' `prod(x, axes = 1L)` reduces a single axis -- but only when `x` is the only
+#' data argument.
 #' @export
-Summary.AnvlArray <- function(x, ..., na.rm = FALSE) {
-  # Forward `na.rm` to the underlying nv_reduce_*'s `nan_rm` arg and `...`
-  # for supported extras (e.g. `sum(x, axes = 1L)`); unsupported extras error
-  # there as unused args.
-  switch(
-    .Generic, # nolint
-    "max" = nv_reduce_max(x, ..., nan_rm = na.rm),
-    "min" = nv_reduce_min(x, ..., nan_rm = na.rm),
-    "range" = nv_concatenate(
-      nv_reduce_min(x, ..., nan_rm = na.rm),
-      nv_reduce_max(x, ..., nan_rm = na.rm)
-    ),
-    "prod" = nv_reduce_prod(x, ..., nan_rm = na.rm),
-    "sum" = nv_reduce_sum(x, ..., nan_rm = na.rm),
-    # no na.rm because we only support booleans which can't have NaNs
-    "any" = nv_reduce_any(x, ...),
-    "all" = nv_reduce_all(x, ...),
-    cli_abort("invalid method: {(.Generic)}")
+prod.AnvlArray <- function(..., na.rm = FALSE) {
+  summary_generic(
+    "prod",
+    list(...),
+    function(z, opts) do.call(nv_reduce_prod, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z) prod(z, na.rm = na.rm),
+    nv_mul
   )
 }
 
 #' @export
-Summary.AnvlBox <- Summary.AnvlArray
+prod.AnvlBox <- prod.AnvlArray
+
+#' @rdname nv_reduce_max
+#' @usage NULL
+#' @section Relation to base R:
+#' `max()` reduces over all axes and, like [base::max()], takes several data
+#' arguments: `max(x, y)` is the largest element of both arrays. `na.rm`
+#' becomes `nan_rm`. Beyond base R, named arguments are passed on, so
+#' `max(x, axes = 1L)` reduces a single axis -- but only when `x` is the only
+#' data argument.
+#' @export
+max.AnvlArray <- function(..., na.rm = FALSE) {
+  summary_generic(
+    "max",
+    list(...),
+    function(z, opts) do.call(nv_reduce_max, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z) max(z, na.rm = na.rm),
+    nv_max
+  )
+}
+
+#' @export
+max.AnvlBox <- max.AnvlArray
+
+#' @rdname nv_reduce_min
+#' @usage NULL
+#' @section Relation to base R:
+#' `min()` reduces over all axes and, like [base::min()], takes several data
+#' arguments: `min(x, y)` is the smallest element of both arrays. `na.rm`
+#' becomes `nan_rm`. Beyond base R, named arguments are passed on, so
+#' `min(x, axes = 1L)` reduces a single axis -- but only when `x` is the only
+#' data argument.
+#' @export
+min.AnvlArray <- function(..., na.rm = FALSE) {
+  summary_generic(
+    "min",
+    list(...),
+    function(z, opts) do.call(nv_reduce_min, c(list(z), opts, list(nan_rm = na.rm))),
+    function(z) min(z, na.rm = na.rm),
+    nv_min
+  )
+}
+
+#' @export
+min.AnvlBox <- min.AnvlArray
+
+#' @rdname nv_range
+#' @param ... ([`arrayish`])\cr
+#'   Arrays to reduce, plus named arguments for [nv_reduce_min()] and
+#'   [nv_reduce_max()] (e.g. `axes`), which are only accepted when there is a
+#'   single array to reduce.
+#' @param na.rm (`logical(1)`)\cr
+#'   Forwarded to the `nan_rm` argument of [nv_reduce_min()] and
+#'   [nv_reduce_max()].
+#' @section Relation to base R:
+#' `range()` reduces over all axes and, like [base::range()], takes several
+#' data arguments: `range(x, y)` is the range of both arrays. Beyond base R,
+#' named arguments are passed on, so `range(x, axes = 1L)` reduces a single
+#' axis -- but only when `x` is the only data argument.
+#' @method range AnvlArray
+#' @export
+range.AnvlArray <- function(..., na.rm = FALSE) {
+  args <- list(...)
+  stack_min_max(
+    do.call(min.AnvlArray, c(args, list(na.rm = na.rm))),
+    do.call(max.AnvlArray, c(args, list(na.rm = na.rm)))
+  )
+}
+
+#' @method range AnvlBox
+#' @export
+range.AnvlBox <- range.AnvlArray
+
+#' @rdname nv_reduce_any
+#' @usage NULL
+#' @section Relation to base R:
+#' `any()` reduces over all axes and, like [base::any()], takes several data
+#' arguments: `any(x, y)` asks about both arrays. It is *logical*, so -- unlike
+#' base R -- a non-boolean argument is an error rather than a comparison
+#' against zero. Beyond base R, named arguments are passed on, so
+#' `any(x, axes = 1L)` reduces a single axis -- but only when `x` is the only
+#' data argument.
+#' @export
+any.AnvlArray <- function(..., na.rm = FALSE) {
+  summary_generic(
+    "any",
+    list(...),
+    function(z, opts) do.call(nv_reduce_any, c(list(assert_boolean_array(z, arg = "...")), opts)),
+    function(z) any(assert_boolean_array(z, arg = "..."), na.rm = na.rm),
+    nv_or
+  )
+}
+
+#' @export
+any.AnvlBox <- any.AnvlArray
+
+#' @rdname nv_reduce_all
+#' @usage NULL
+#' @section Relation to base R:
+#' `all()` reduces over all axes and, like [base::all()], takes several data
+#' arguments: `all(x, y)` asks about both arrays. It is *logical*, so -- unlike
+#' base R -- a non-boolean argument is an error rather than a comparison
+#' against zero. Beyond base R, named arguments are passed on, so
+#' `all(x, axes = 1L)` reduces a single axis -- but only when `x` is the only
+#' data argument.
+#' @export
+all.AnvlArray <- function(..., na.rm = FALSE) {
+  summary_generic(
+    "all",
+    list(...),
+    function(z, opts) do.call(nv_reduce_all, c(list(assert_boolean_array(z, arg = "...")), opts)),
+    function(z) all(assert_boolean_array(z, arg = "..."), na.rm = na.rm),
+    nv_and
+  )
+}
+
+#' @export
+all.AnvlBox <- all.AnvlArray
+
+# Other generics ---------------------------------------------------------------
 
 #' @rdname nv_mean
 #' @param trim Currently not supported.
@@ -131,6 +856,7 @@ mean.AnvlArray <- function(x, trim = 0, na.rm = FALSE, ..., axes = NULL, drop = 
 mean.AnvlBox <- mean.AnvlArray
 
 #' @rdname nv_is_nan
+#' @usage NULL
 #' @method is.nan AnvlArray
 #' @export
 is.nan.AnvlArray <- function(x) {
@@ -142,6 +868,7 @@ is.nan.AnvlArray <- function(x) {
 is.nan.AnvlBox <- is.nan.AnvlArray
 
 #' @rdname nv_is_infinite
+#' @usage NULL
 #' @method is.infinite AnvlArray
 #' @export
 is.infinite.AnvlArray <- function(x) {
@@ -153,6 +880,7 @@ is.infinite.AnvlArray <- function(x) {
 is.infinite.AnvlBox <- is.infinite.AnvlArray
 
 #' @rdname nv_is_finite
+#' @usage NULL
 #' @method is.finite AnvlArray
 #' @export
 is.finite.AnvlArray <- function(x) {
@@ -163,21 +891,11 @@ is.finite.AnvlArray <- function(x) {
 #' @export
 is.finite.AnvlBox <- is.finite.AnvlArray
 
-# if we don't give it the name nv_transpose, pkgdown thinks t.anvl is a package
-
-#' @title Transpose
-#' @name nv_transpose
-#' @description
-#' Permutes the axes of an array. You can also use `t()` for matrices.
-#' @param permutation (`integer()` | `NULL`)\cr
-#'   New ordering of axes. If `NULL` (default), reverses the axes.
-#'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#' @return [`arrayish`]\cr
-#'   Has the same data type as `x` and shape `nv_shape(x)[permutation]`.
-#' @seealso [prim_transpose()] for the underlying primitive.
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_matrix(1:6, nrow = 2)
-#' t(x)
+#' @rdname nv_transpose
+#' @usage NULL
+#' @section Relation to base R:
+#' `t()` requires a matrix, whereas [base::t()] also transposes a vector (into
+#' a one-row matrix) and reverses the axes of a higher-rank array.
 #' @method t AnvlArray
 #' @export
 t.AnvlArray <- function(x) {
@@ -191,6 +909,58 @@ t.AnvlArray <- function(x) {
 #' @method t AnvlBox
 #' @export
 t.AnvlBox <- t.AnvlArray
+
+#' @rdname nv_reverse
+#' @usage NULL
+#' @section Relation to base R:
+#' `rev()` reverses along every axis, which puts the elements in the same
+#' order as [base::rev()] does (base R flattens the array to a vector first,
+#' whereas `rev()` on an anvl array keeps the shape).
+#' @method rev AnvlArray
+#' @export
+rev.AnvlArray <- function(x) {
+  if (naxes(x) == 0L) {
+    # A scalar array has nothing to reverse.
+    return(x)
+  }
+  nv_reverse(x, axes = seq_len(naxes(x)))
+}
+
+#' @method rev AnvlBox
+#' @export
+rev.AnvlBox <- rev.AnvlArray
+
+#' @rdname nv_concatenate
+#' @usage NULL
+#' @section Relation to base R:
+#' `c()` concatenates scalars and 1-D arrays into a 1-D array, like
+#' [base::c()] does for vectors. An array with more than one axis is an error:
+#' base R would flatten it in column-major order, whereas an anvl array
+#' flattens in row-major order (see the "Gotchas" vignette), so concatenate
+#' those along an explicit `axis` instead.
+#' @method c AnvlArray
+#' @export
+c.AnvlArray <- function(...) {
+  args <- list(...)
+  # `dim()` is the shape for an anvl array and R's own for anything else.
+  ranks <- lengths(lapply(args, dim))
+  if (any(ranks > 1L)) {
+    cli_abort(c(
+      "{.fn c} accepts only scalars and 1-D arrays.",
+      "x" = "Got an array with {max(ranks)} axes.",
+      "i" = "Use {.fn nv_concatenate} with an explicit {.arg axis}."
+    ))
+  }
+  args <- lapply(args, function(x) {
+    # A plain R vector has to become a 1-D R array to be arrayish at all.
+    if (is.atomic(x) && is.null(dim(x)) && length(x) != 1L) array(x) else x
+  })
+  do.call(nv_concatenate, c(args, list(axis = 1L)))
+}
+
+#' @method c AnvlBox
+#' @export
+c.AnvlBox <- c.AnvlArray
 
 #' @rdname nv_median
 #' @param na.rm Forwarded to [nv_median()]'s `nan_rm` argument.
@@ -220,6 +990,7 @@ sort.AnvlArray <- function(x, decreasing = FALSE, ..., axis = NULL) {
 sort.AnvlBox <- sort.AnvlArray
 
 #' @rdname nv_subset
+#' @usage NULL
 #' @method [ AnvlArray
 #' @export
 `[.AnvlArray` <- function(x, ...) {
@@ -227,10 +998,17 @@ sort.AnvlBox <- sort.AnvlArray
   # that rlang::enquos() silently drops.
   n_args <- nargs() - 1L
   rank <- naxes(x)
+  quos <- rlang::enquos(...)
+  if ("drop" %in% names(quos)) {
+    cli_abort(c(
+      "{.arg drop} is not supported when subsetting an array.",
+      "i" = "An axis selected with a scalar index is always dropped; use \
+             {.fn nv_unsqueeze} to add it back."
+    ))
+  }
   if (n_args > rank) {
     cli_abort("Too many subset specifications: got {n_args}, expected at most {rank}")
   }
-  quos <- rlang::enquos(...)
   rlang::inject(nv_subset(x, !!!quos))
 }
 
@@ -239,6 +1017,7 @@ sort.AnvlBox <- sort.AnvlArray
 `[.AnvlBox` <- `[.AnvlArray`
 
 #' @rdname nv_subset_assign
+#' @usage NULL
 #' @method [<- AnvlArray
 #' @export
 `[<-.AnvlArray` <- function(x, ..., value) {
@@ -285,6 +1064,21 @@ tcrossprod.AnvlArray <- function(x, y = NULL, ...) {
 #' @export
 tcrossprod.AnvlBox <- tcrossprod.AnvlArray
 
+#' @title Shape of an Array
+#' @description
+#' The shape of an array, i.e. its axis sizes -- the generic [base::dim()] on an
+#' anvl array, and the same thing as [shape()][tengen::shape].
+#'
+#' Unlike base R, it also has a value for an array with a single axis, where
+#' `dim()` on an R vector is `NULL`. This is what makes [base::nrow()] and
+#' [base::ncol()] report the size of axis 1 and 2 of a 1-D array.
+#' @param x ([`arrayish`])\cr
+#'   Input array.
+#' @return (`integer()`)
+#' @seealso [length()][length.AnvlArray], [shape()][tengen::shape]
+#' @examplesIf pjrt::plugins_downloaded()
+#' dim(nv_matrix(1:6, nrow = 2))
+#' dim(nv_array(1:3))
 #' @method dim AnvlArray
 #' @export
 dim.AnvlArray <- function(x) {
@@ -295,6 +1089,16 @@ dim.AnvlArray <- function(x) {
 #' @export
 dim.AnvlBox <- dim.AnvlArray
 
+#' @title Number of Elements
+#' @description
+#' The number of elements of an array -- the generic [base::length()] on an
+#' anvl array, i.e. the product of its axis sizes.
+#' @param x ([`arrayish`])\cr
+#'   Input array.
+#' @return (`integer(1)`)
+#' @seealso [dim()][dim.AnvlArray], [nelts()][tengen::nelts]
+#' @examplesIf pjrt::plugins_downloaded()
+#' length(nv_matrix(1:6, nrow = 2))
 #' @method length AnvlArray
 #' @export
 length.AnvlArray <- function(x) {

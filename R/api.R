@@ -213,8 +213,19 @@ nv_convert <- function(x, dtype) {
   realize_at(x, as_dtype(dtype))
 }
 
-#' @rdname nv_transpose
+#' @title Transpose
+#' @description
+#' Permutes the axes of an array. You can also use `t()` for matrices.
 #' @template param_x
+#' @param permutation (`integer()` | `NULL`)\cr
+#'   New ordering of axes. If `NULL` (default), reverses the axes.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
+#' @return [`arrayish`]\cr
+#'   Has the same data type as `x` and shape `shape(x)[permutation]`.
+#' @seealso [prim_transpose()] for the underlying primitive.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_matrix(1:6, nrow = 2)
+#' t(x)
 #' @export
 nv_transpose <- function(x, permutation = NULL) {
   x <- as_anvl_array(x)
@@ -277,6 +288,8 @@ nv_flatten <- function(x) {
 #' @description
 #' Concatenates arrays along an axis. Operands are promoted to a common
 #' data type and scalars are broadcast before concatenation.
+#'
+#' You can also use `c()`, which flattens its arguments first, like base R.
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to concatenate. Must have the same shape except along `axis`.
 #' @param axis (`integer(1)` | `NULL`)\cr
@@ -738,8 +751,8 @@ nv_remainder <- make_do_binary(prim_remainder)
 #'
 #' @template params_lhs_rhs
 #' @template return_binary
-#' @seealso [nv_remainder()] for truncating remainder, [prim_remainder()] for
-#'   the underlying primitive.
+#' @seealso [nv_remainder()] for truncating remainder, [nv_floor_div()] for the
+#'   matching division, [prim_remainder()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1L, -1L))
 #' y <- nv_array(c(-3L, 3L))
@@ -755,44 +768,94 @@ nv_mod <- function(lhs, rhs) {
   nv_remainder(nv_remainder(lhs, rhs) + rhs, rhs)
 }
 
-#' @title Logical And
+#' @title Flooring Division
 #' @description
-#' Element-wise logical AND. You can also use the `&` operator.
+#' Element-wise flooring division, matching base R's `%/%` operator: the
+#' result is the largest whole number that does not exceed `lhs / rhs`.
+#' You can also use the `%/%` operator.
+#'
+#' @template params_lhs_rhs
+#' @template return_binary
+#' @seealso [nv_mod()] for the matching remainder, [nv_div()] for the
+#'   division itself.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(7L, -7L))
+#' y <- nv_array(c(2L, 2L))
+#' nv_floor_div(x, y)
+#' as.vector(x) %/% as.vector(y)
+#' @export
+#' @jit
+nv_floor_div <- function(lhs, rhs) {
+  args <- nv_promote_to_common(lhs, rhs)
+  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  lhs <- args[[1L]]
+  rhs <- args[[2L]]
+  dt <- peek_dtype(lhs)
+  if (is_dtype_float(dt)) {
+    return(nv_floor(nv_div(lhs, rhs)))
+  }
+  if (is_dtype_uint(dt)) {
+    # Unsigned division cannot be negative, so there is nothing to floor.
+    return(nv_div(lhs, rhs))
+  }
+  # Integer division truncates towards zero, so subtract the flooring
+  # remainder first to make the division exact.
+  nv_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs)
+}
+
+#' @title Bitwise And
+#' @description
+#' Element-wise bitwise AND of two integer arrays, which for a boolean array
+#' is the logical AND.
+#'
+#' This is *not* what the `&` operator does: like in base R, `&` is logical,
+#' so it requires a boolean operand and returns a boolean array (see the
+#' section below).
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_and()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' x & y
+#' nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
+#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
 #' @export
 #' @jit
 nv_and <- make_do_binary(prim_and)
 
-#' @title Logical Or
+#' @title Bitwise Or
 #' @description
-#' Element-wise logical OR. You can also use the `|` operator.
+#' Element-wise bitwise OR of two integer arrays, which for a boolean array
+#' is the logical OR.
+#'
+#' This is *not* what the `|` operator does: like in base R, `|` is logical,
+#' so it requires a boolean operand and returns a boolean array (see the
+#' section below).
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_or()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' x | y
+#' nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
+#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
 #' @export
 #' @jit
 nv_or <- make_do_binary(prim_or)
 
-#' @title Logical Xor
+#' @title Bitwise Xor
 #' @description
-#' Element-wise logical XOR.
+#' Element-wise bitwise XOR of two integer arrays, which for a boolean array
+#' is the logical XOR.
+#'
+#' Base R's `xor()` is logical instead: it is built on `|` and `&` and
+#' therefore requires boolean operands, which `nv_or()` and `nv_and()`
+#' document.
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_xor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' nv_xor(x, y)
+#' nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
+#' xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
 #' @export
 #' @jit
 nv_xor <- make_do_binary(prim_xor)
@@ -843,7 +906,7 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' @description
 #' Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive
 #' x-axis and the point `(rhs, lhs)`.
-#' @template params_lhs_rhs
+#' @template params_lhs_rhs_float
 #' @template return_binary
 #' @seealso [prim_atan2()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -852,7 +915,11 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' nv_atan2(y, x)
 #' @export
 #' @jit
-nv_atan2 <- make_do_binary(prim_atan2)
+nv_atan2 <- function(lhs, rhs) {
+  args <- nv_promote_to_common(promote_to_float(lhs), promote_to_float(rhs))
+  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  prim_atan2(args[[1L]], args[[2L]])
+}
 
 
 #' @title Bitcast Conversion
@@ -888,15 +955,21 @@ nv_bitcast_convert <- prim_bitcast_convert
 #' @export
 nv_negate <- prim_negate
 
-#' @title Logical Not
+#' @title Bitwise Not
 #' @description
-#' Element-wise logical NOT. You can also use the `!` operator.
+#' Element-wise bitwise NOT of an integer array, which for a boolean array is
+#' the logical NOT.
+#'
+#' This is *not* what the `!` operator does: like in base R, `!` is logical,
+#' so it requires a boolean operand and returns a boolean array (see the
+#' section below).
 #' @template param_x
 #' @template return_unary
 #' @seealso [prim_not()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' !x
+#' nv_not(nv_array(c(TRUE, FALSE, TRUE)))
+#' nv_not(nv_array(12L)) # bitwise: -13
+#' !nv_array(c(TRUE, FALSE)) # logical
 #' @export
 nv_not <- prim_not
 
@@ -915,124 +988,191 @@ nv_abs <- prim_abs
 #' @title Square Root
 #' @description
 #' Element-wise square root. You can also use `sqrt()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_sqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 4, 9))
 #' sqrt(x)
 #' @export
-nv_sqrt <- prim_sqrt
+nv_sqrt <- function(x) prim_sqrt(promote_to_float(x))
 
 #' @title Reciprocal Square Root
 #' @description
 #' Element-wise reciprocal square root, i.e. `1 / sqrt(x)`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_rsqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 4, 9))
 #' nv_rsqrt(x)
 #' @export
-nv_rsqrt <- prim_rsqrt
+nv_rsqrt <- function(x) prim_rsqrt(promote_to_float(x))
 
 #' @title Natural Logarithm
 #' @description
 #' Element-wise natural logarithm. You can also use `log()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_log()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' log(x)
 #' @export
-nv_log <- prim_log
+nv_log <- function(x) prim_log(promote_to_float(x))
 
 #' @title Hyperbolic Tangent
 #' @description
 #' Element-wise hyperbolic tangent. You can also use `tanh()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_tanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' tanh(x)
 #' @export
-nv_tanh <- prim_tanh
+nv_tanh <- function(x) prim_tanh(promote_to_float(x))
 
 #' @title Tangent
 #' @description
 #' Element-wise tangent. You can also use `tan()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_tan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.5, 1))
 #' tan(x)
 #' @export
-nv_tan <- prim_tan
+nv_tan <- function(x) prim_tan(promote_to_float(x))
 
 #' @title Sine
 #' @description
 #' Element-wise sine. You can also use `sin()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_sin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, pi / 2, pi))
 #' sin(x)
 #' @export
-nv_sin <- prim_sin
+nv_sin <- function(x) prim_sin(promote_to_float(x))
 
 #' @title Cosine
 #' @description
 #' Element-wise cosine. You can also use `cos()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_cos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, pi / 2, pi))
 #' cos(x)
 #' @export
-nv_cos <- prim_cos
+nv_cos <- function(x) prim_cos(promote_to_float(x))
+
+#' @title Sine of a Multiple of Pi
+#' @description
+#' Element-wise `sin(pi * x)`. You can also use `sinpi()`.
+#' Like base R's [base::sinpi()], it is exact for a whole or half-integer
+#' argument: the argument is first reduced to the interval `[-0.5, 0.5]` around
+#' the nearest whole number, which is where the sine of a multiple of pi is
+#' accurate.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_cospi()], [nv_tanpi()], [nv_sin()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' sinpi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @export
+#' @jit
+nv_sinpi <- function(x) {
+  x <- as_anvl_array(promote_to_float(x))
+  n <- nv_round(x, method = "nearest_even")
+  reduced <- nv_sin((x - n) * pi)
+  # The sine of `pi * n` alternates in sign with the parity of `n`.
+  nv_ifelse(nv_mod(n, 2) == 0, reduced, -reduced)
+}
+
+#' @title Cosine of a Multiple of Pi
+#' @description
+#' Element-wise `cos(pi * x)`. You can also use `cospi()`.
+#' Like base R's [base::cospi()], it is exact for a whole or half-integer
+#' argument.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_sinpi()], [nv_tanpi()], [nv_cos()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' cospi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @export
+#' @jit
+nv_cospi <- function(x) {
+  # cos(pi * x) == sin(pi * (x + 1/2))
+  nv_sinpi(as_anvl_array(promote_to_float(x)) + 0.5)
+}
+
+#' @title Tangent of a Multiple of Pi
+#' @description
+#' Element-wise `tan(pi * x)`. You can also use `tanpi()`.
+#' Like base R's [base::tanpi()], it is exact for a whole argument and `NaN` at
+#' the half integers, where the tangent has its poles.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_sinpi()], [nv_cospi()], [nv_tan()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' tanpi(nv_array(c(0, 0.25, 0.5, 1)))
+#' @export
+#' @jit
+nv_tanpi <- function(x) {
+  x <- as_anvl_array(promote_to_float(x))
+  denominator <- nv_cospi(x)
+  nv_ifelse(denominator == 0, NaN, nv_sinpi(x) / denominator)
+}
 
 #' @title Floor
 #' @description
 #' Element-wise floor (round toward negative infinity). You can also use `floor()`.
-#' @template param_x
+#' @template param_x_round
 #' @template return_unary
 #' @seealso [prim_floor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' floor(x)
+#' floor(nv_array(1:3)) # an integer array is already whole
 #' @export
-nv_floor <- prim_floor
+nv_floor <- function(x) {
+  if (is_intlike(x)) as_anvl_array(x) else prim_floor(x)
+}
 
 #' @title Ceiling
 #' @description
 #' Element-wise ceiling (round toward positive infinity). You can also use `ceiling()`.
-#' @template param_x
+#' @template param_x_round
 #' @template return_unary
 #' @seealso [prim_ceil()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' ceiling(x)
+#' ceiling(nv_array(1:3)) # an integer array is already whole
 #' @export
-nv_ceiling <- prim_ceil
+nv_ceiling <- function(x) {
+  if (is_intlike(x)) as_anvl_array(x) else prim_ceil(x)
+}
 
 #' @title Truncate
 #' @description
 #' Element-wise truncation (round toward zero). You can also use `trunc()`.
-#' @template param_x
+#' @template param_x_round
 #' @template return_unary
 #' @seealso [nv_floor()], [nv_ceiling()], [nv_round()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' trunc(x)
+#' trunc(nv_array(1:3)) # an integer array is already whole
 #' @export
 #' @jit
 nv_trunc <- function(x) {
   x <- as_anvl_array(x)
+  if (is_intlike(x)) {
+    return(x)
+  }
   nv_mul(nv_sign(x), nv_floor(nv_abs(x)))
 }
 
@@ -1051,184 +1191,210 @@ nv_sign <- prim_sign
 #' @title Exponential
 #' @description
 #' Element-wise exponential. You can also use `exp()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_exp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 1, 2))
 #' exp(x)
 #' @export
-nv_exp <- prim_exp
+nv_exp <- function(x) prim_exp(promote_to_float(x))
 
 #' @title Exponential Minus One
 #' @description
 #' Element-wise `exp(x) - 1`, more accurate for small `x`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_expm1()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_expm1(x)
 #' @export
-nv_expm1 <- prim_expm1
+nv_expm1 <- function(x) prim_expm1(promote_to_float(x))
 
 #' @title Log Plus One
 #' @description
 #' Element-wise `log(1 + x)`, more accurate for small `x`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_log1p()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_log1p(x)
 #' @export
-nv_log1p <- prim_log1p
+nv_log1p <- function(x) prim_log1p(promote_to_float(x))
 
 #' @title Cube Root
 #' @description
 #' Element-wise cube root.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_cbrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 8, 27))
 #' nv_cbrt(x)
 #' @export
-nv_cbrt <- prim_cbrt
+nv_cbrt <- function(x) prim_cbrt(promote_to_float(x))
 
 #' @title Logistic (Sigmoid)
 #' @description
 #' Element-wise logistic sigmoid: `1 / (1 + exp(-x))`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_logistic()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-2, 0, 2))
 #' nv_logistic(x)
 #' @export
-nv_logistic <- prim_logistic
+nv_logistic <- function(x) prim_logistic(promote_to_float(x))
 
 #' @title Arc Cosine
 #' @description
 #' Element-wise inverse cosine. You can also use `acos()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_acos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' acos(x)
 #' @export
-nv_acos <- prim_acos
+nv_acos <- function(x) prim_acos(promote_to_float(x))
 
 #' @title Inverse Hyperbolic Cosine
 #' @description
 #' Element-wise inverse hyperbolic cosine. You can also use `acosh()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_acosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 10))
 #' acosh(x)
 #' @export
-nv_acosh <- prim_acosh
+nv_acosh <- function(x) prim_acosh(promote_to_float(x))
 
 #' @title Arc Sine
 #' @description
 #' Element-wise inverse sine. You can also use `asin()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_asin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' asin(x)
 #' @export
-nv_asin <- prim_asin
+nv_asin <- function(x) prim_asin(promote_to_float(x))
 
 #' @title Inverse Hyperbolic Sine
 #' @description
 #' Element-wise inverse hyperbolic sine. You can also use `asinh()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_asinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' asinh(x)
 #' @export
-nv_asinh <- prim_asinh
+nv_asinh <- function(x) prim_asinh(promote_to_float(x))
 
 #' @title Arc Tangent
 #' @description
 #' Element-wise inverse tangent. You can also use `atan()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_atan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' atan(x)
 #' @export
-nv_atan <- prim_atan
+nv_atan <- function(x) prim_atan(promote_to_float(x))
 
 #' @title Inverse Hyperbolic Tangent
 #' @description
 #' Element-wise inverse hyperbolic tangent. You can also use `atanh()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_atanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' atanh(x)
 #' @export
-nv_atanh <- prim_atanh
+nv_atanh <- function(x) prim_atanh(promote_to_float(x))
 
 #' @title Hyperbolic Cosine
 #' @description
 #' Element-wise hyperbolic cosine. You can also use `cosh()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_cosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' cosh(x)
 #' @export
-nv_cosh <- prim_cosh
+nv_cosh <- function(x) prim_cosh(promote_to_float(x))
 
 #' @title Hyperbolic Sine
 #' @description
 #' Element-wise hyperbolic sine. You can also use `sinh()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_sinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' sinh(x)
 #' @export
-nv_sinh <- prim_sinh
+nv_sinh <- function(x) prim_sinh(promote_to_float(x))
 
 #' @title Digamma
 #' @description
 #' Element-wise digamma function (logarithmic derivative of the gamma
 #' function). You can also use `digamma()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_digamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' digamma(x)
 #' @export
-nv_digamma <- prim_digamma
+nv_digamma <- function(x) prim_digamma(promote_to_float(x))
 
 #' @title Log-Gamma
 #' @description
 #' Element-wise natural logarithm of the absolute value of the gamma
 #' function. You can also use `lgamma()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_lgamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' lgamma(x)
 #' @export
-nv_lgamma <- prim_lgamma
+nv_lgamma <- function(x) prim_lgamma(promote_to_float(x))
+
+#' @title Gamma Function
+#' @description
+#' Element-wise gamma function. You can also use `gamma()`.
+#'
+#' XLA has only the log-gamma function, so this is computed as
+#' `exp(lgamma(x))` -- via Euler's reflection formula for a negative argument
+#' -- and is therefore less accurate than base R's [base::gamma()]. It is `NaN`
+#' at the poles, i.e. at every whole number that is not positive.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_lgamma()], which is what the hardware computes.
+#' @examplesIf pjrt::plugins_downloaded()
+#' gamma(nv_array(c(0.5, 1, 5, -1.5)))
+#' @export
+#' @jit
+nv_gamma <- function(x) {
+  x <- as_anvl_array(promote_to_float(x))
+  positive <- nv_exp(nv_lgamma(x))
+  # lgamma() is the log of the *absolute* gamma, so for a negative argument use
+  # Euler's reflection formula gamma(x) * gamma(1 - x) = pi / sin(pi * x),
+  # whose right-hand side is evaluated at 1 - x > 1.
+  reflected <- pi / (nv_sinpi(x) * nv_exp(nv_lgamma(1 - x)))
+  out <- nv_ifelse(x < 0, reflected, positive)
+  nv_ifelse((x <= 0) & (x == nv_floor(x)), NaN, out)
+}
 
 #' @title Polygamma
 #' @description
@@ -1243,9 +1409,9 @@ nv_lgamma <- prim_lgamma
 #' [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar
 #' arguments.
 #' @param n,x ([`arrayish`])\cr
-#'   Floating-point arrayish values. After promotion and broadcasting,
-#'   `n` and `x` must have the same shape; `n` typically holds
-#'   non-negative integer values.
+#'   Floating-point arrayish values; an integer `x` is computed at the default
+#'   float data type. After promotion and broadcasting, `n` and `x` must have
+#'   the same shape; `n` typically holds non-negative integer values.
 #' @template return_binary
 #' @seealso [prim_polygamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1254,7 +1420,7 @@ nv_lgamma <- prim_lgamma
 #' @export
 #' @jit static 1L
 nv_polygamma <- function(n, x) {
-  args <- nv_promote_to_common(n, x)
+  args <- nv_promote_to_common(n, promote_to_float(x))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   do.call(prim_polygamma, args)
 }
@@ -1262,38 +1428,38 @@ nv_polygamma <- function(n, x) {
 #' @title Error Function
 #' @description
 #' Element-wise error function `erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^2) dt`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_erf()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erf(x)
 #' @export
-nv_erf <- prim_erf
+nv_erf <- function(x) prim_erf(promote_to_float(x))
 
 #' @title Inverse Error Function
 #' @description
 #' Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_erf_inv()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' nv_erf_inv(x)
 #' @export
-nv_erf_inv <- prim_erf_inv
+nv_erf_inv <- function(x) prim_erf_inv(promote_to_float(x))
 
 #' @title Complementary Error Function
 #' @description
 #' Element-wise complementary error function `erfc(x) = 1 - erf(x)`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_erfc()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erfc(x)
 #' @export
-nv_erfc <- prim_erfc
+nv_erfc <- function(x) prim_erfc(promote_to_float(x))
 
 #' @title Is Finite
 #' @description
@@ -1343,6 +1509,7 @@ nv_clamp <- function(min_val, x, max_val) {
 #' @title Reverse
 #' @description
 #' Reverses the order of elements along specified axes.
+#' You can also use `rev()`, which reverses along every axis.
 #' @template param_x
 #' @param axes (`integer()`)\cr
 #'   Axes to reverse.
@@ -1519,7 +1686,7 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @title Round
 #' @description
 #' Element-wise rounding. You can also use the `round()` generic.
-#' @template param_x
+#' @template param_x_round
 #' @param method (`character(1)`)\cr
 #'   Rounding method.
 #'   Either `"nearest_even"` (default) or `"afz"` (away from zero).
@@ -1528,8 +1695,42 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.4, 2.5, 3.6))
 #' round(x)
+#' round(nv_array(1:3)) # an integer array is already whole
 #' @export
-nv_round <- prim_round
+nv_round <- function(x, method = "nearest_even") {
+  if (is_intlike(x)) as_anvl_array(x) else prim_round(x, method = method)
+}
+
+#' @title Round to Significant Digits
+#' @description
+#' Element-wise rounding to `digits` significant digits. You can also use the
+#' `signif()` generic. It is computed by rounding the mantissa, so it can
+#' differ from base R's [base::signif()] in the last representable digit.
+#' @param x ([`arrayish`])\cr
+#'   Input array. Must be a float array: unlike base R, an integer array is not
+#'   rounded to a coarser magnitude, since that would have to turn it into a
+#'   float. Convert it with [nv_convert()] if that is what you mean.
+#' @param digits (`numeric(1)`)\cr
+#'   Number of significant digits, as in [base::signif()]. Must be a plain R
+#'   value; a value below 1 is raised to 1, like in base R.
+#' @template return_unary
+#' @seealso [nv_round()], [round()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' signif(nv_array(c(123.456, -0.001234)), 3)
+#' @export
+#' @jit static "digits"
+nv_signif <- function(x, digits = 6) {
+  checkmate::assert_number(digits, finite = TRUE)
+  # Like base R, which warns and uses 1 for a smaller value.
+  digits <- max(digits, 1)
+  x <- as_anvl_array(assert_float_array(x))
+  # Shift the value so that `digits` significant digits sit in front of the
+  # decimal point, round there, and shift back.
+  scale <- nv_pow(10, digits - 1 - nv_floor(nv_log10(nv_abs(x))))
+  rounded <- nv_round(x * scale, method = "nearest_even") / scale
+  # 0 has no magnitude, and Inf / NaN must pass through unchanged.
+  nv_ifelse(nv_is_finite(x) & (x != 0), rounded, x)
+}
 
 ## Other operations -----------------------------------------------------------
 
@@ -2210,6 +2411,40 @@ nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   nv_ifelse(any_nan, NaN, result)
 }
 
+#' @title Range Reduction
+#' @description
+#' The smallest and the largest element along the specified axes, stacked along
+#' a new first axis. You can also use the `range()` generic.
+#' @template param_x
+#' @param axes (`integer()` | `NULL`)\cr
+#'   Axes to reduce over. `NULL` (default) reduces over all of them, which
+#'   makes the result a length-2 array like [base::range()]. Negative values
+#'   count from the end.
+#' @template param_nan_rm
+#' @return [`arrayish`]\cr
+#'   Has the same data type as `x` and the shape of the reduced array with a
+#'   leading axis of size 2 added: element 1 is the minimum, element 2 the
+#'   maximum.
+#' @seealso [nv_reduce_min()], [nv_reduce_max()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_range(nv_array(c(3, 1, 4)))
+#' nv_range(nv_matrix(1:6, nrow = 2), axes = 1L)
+#' @export
+#' @jit static 2:3
+nv_range <- function(x, axes = NULL, nan_rm = FALSE) {
+  stack_min_max(
+    nv_reduce_min(x, axes = axes, nan_rm = nan_rm),
+    nv_reduce_max(x, axes = axes, nan_rm = nan_rm)
+  )
+}
+
+# The minimum and the maximum next to each other, which is what base R's
+# range() returns. A new leading axis keeps the reduced axes intact, so a
+# scalar minimum and maximum become a length-2 array.
+stack_min_max <- function(lo, hi) {
+  nv_concatenate(nv_unsqueeze(lo, 1L), nv_unsqueeze(hi, 1L), axis = 1L)
+}
+
 #' @title Any Reduction
 #' @description
 #' Performs logical OR along the specified axes.
@@ -2429,8 +2664,8 @@ nv_while <- prim_while
 #' @title Base-2 Logarithm
 #' @description
 #' Element-wise base-2 logarithm. You can also use `log2()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [nv_log()], [nv_log10()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 4, 8))
@@ -2445,8 +2680,8 @@ nv_log2 <- function(x) {
 #' @title Base-10 Logarithm
 #' @description
 #' Element-wise base-10 logarithm. You can also use `log10()`.
-#' @template param_x
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [nv_log()], [nv_log2()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 10, 100, 1000))
@@ -2977,6 +3212,11 @@ nv_select <- function(x, axis, index) {
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
+#' @section Relation to base R:
+#' [base::sort()] flattens a multi-axis array into a vector, while
+#' `nv_sort()` (and `sort()` on an anvl array) sorts along a single axis, the
+#' last one by default, and keeps the shape. Flatten with [nv_flatten()]
+#' first if you want a single sorted sequence.
 #' @seealso [prim_sort()] for the underlying primitive,
 #'   [nv_argsort()], [nv_top_k()], [nv_median()],
 #'   [nv_argmax()], [nv_argmin()].
@@ -3109,6 +3349,11 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #'
 #' Plain length-K (K > 1) vectors are rejected; wrap with `array()` to
 #' make the array intent explicit.
+#'
+#' A quantile generally falls between two elements, so a non-float `x` is
+#' computed (and returned) at the default float data type, like
+#' [stats::quantile()] returns a double for an integer vector. See
+#' [`default_dtypes()`].
 #' @section Interpolation modes:
 #' Let `h = (n - 1) * q` be the 0-based fractional index for an axis of
 #' length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
@@ -3136,7 +3381,8 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' @return [`arrayish`]\cr
 #'   For scalar `probs`: same shape as `x` with `axis` removed. For
 #'   array `probs`: a **leading** axis of size `length(probs)` is
-#'   prepended.
+#'   prepended. The data type is that of `x`, or the default float for a
+#'   non-float `x`.
 #' @seealso [nv_median()], [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -3149,6 +3395,12 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' @jit static 2:5
 nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
   x <- as_anvl_array(x)
+  # A quantile lies between two elements, so -- like base R's quantile() --
+  # a non-float array is computed at the default float instead of rounding the
+  # interpolation weights down to whole numbers.
+  if (!is_dtype_float(peek_dtype(x))) {
+    x <- nv_convert(x, default_float())
+  }
   rank <- naxes(x)
   if (rank == 0L) {
     cli_abort("Cannot compute quantile of a 0-dimensional array")
@@ -3240,6 +3492,12 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #'
 #' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
 #' extra arguments (e.g. `interpolation`) are forwarded via `...`.
+#' @section Relation to base R:
+#' [stats::median()] flattens a multi-axis array, while `nv_median()` (and
+#' `median()` on an anvl array) reduces a single axis, the last one by
+#' default. Pass `axis` explicitly, or flatten first with [nv_flatten()], to
+#' say which you mean. A non-float `x` is computed at the default float, like
+#' base R returns a double.
 #' @template param_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to compute the median. Negative values count from
@@ -3251,7 +3509,8 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #' @param nan_rm (`logical(1)`)\cr
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
-#'   Same shape as `x` with `axis` removed.
+#'   Same shape as `x` with `axis` removed. The data type is that of `x`, or
+#'   the default float for a non-float `x`.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))

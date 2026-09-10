@@ -9,6 +9,9 @@ nv_atan2(lhs, rhs)
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
 Left and right operand.
+An integer operand is computed at the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}), the way \code{\link[base:atan2]{base::atan2()}} returns a double for integer
+vectors; a boolean operand is not accepted.
 Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
 Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
 }

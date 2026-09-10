@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_xor}
 \alias{nv_xor}
-\title{Logical Xor}
+\title{Bitwise Xor}
 \usage{
 nv_xor(lhs, rhs)
 }
@@ -17,13 +17,18 @@ Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other op
 Has the same shape and the promoted common data type of the inputs.
 }
 \description{
-Element-wise logical XOR.
+Element-wise bitwise XOR of two integer arrays, which for a boolean array
+is the logical XOR.
+
+Base R's \code{xor()} is logical instead: it is built on \code{|} and \code{&} and
+therefore requires boolean operands, which \code{nv_or()} and \code{nv_and()}
+document.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-nv_xor(x, y)
+nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
+xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
 \dontshow{\}) # examplesIf}
 }
 \seealso{

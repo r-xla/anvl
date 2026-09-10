@@ -95,6 +95,13 @@ to the registry, and `R/zzz.R` rebinds those functions to their jitted versions 
 edit `R/jit-registry.R` by hand; because the roclet lives in anvl itself, documenting requires an
 installed anvl that already exports it.
 
+Tag every function whose body issues **more than one operation** with `@jit`, so eager calls run
+as one compiled program instead of one per operation. A function that is a single `prim_*` call
+(possibly after an R-level check) needs no tag -- the primitive is jitted already. Only tag a
+function whose non-static arguments are all arrayish: `jit()` turns each of them into a program
+input, so a `character()` option has to be listed in `static`, and an R vector that is not a
+1-element or `array()`-shaped value cannot be an argument at all.
+
 ## Broadcasting
 
 Anvl's elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises `nv_broadcast_scalars()` errors like *"All non-scalar arrays must have the same shape, ... Use `nv_broadcast_arrays()` for general broadcasting."*

@@ -16,6 +16,21 @@
 * There is now exactly one backend used at a time and it is configured via the
   `anvl.backend` option.
 * A `Shape` is now represented as an integer vector.
+* The `&`, `|` and `!` operators (and `xor()`, which base R builds on them)
+  are now *logical*, like in base R: they require a boolean array instead of
+  operating on the bits of an integer one, and do not coerce a non-boolean
+  operand -- write `x != 0` yourself. `nv_and()`, `nv_or()`, `nv_xor()` and
+  `nv_not()` remain bitwise.
+* `any()` and `all()` require a boolean array as well.
+* The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
+  `all()`) now treat *unnamed* extra arguments as data, like base R:
+  `sum(x, 2)` adds 2 where it used to reduce axis 2. Pass `axes` by name.
+* `nv_quantile()` and `nv_median()` now compute at the default float data
+  type for a non-float input, like base R's `quantile()` / `median()` do.
+* `signif()` requires a float array: unlike base R it does not round an
+  integer array to a coarser magnitude, which would turn it into a float.
+  `round(x, digits)` errors for a negative `digits` on an integer array for
+  the same reason.
 
 ## Features
 
@@ -27,12 +42,50 @@
   `with_dtypes()`.
 * New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with
   a provided `steps` argument.
-* `as.vector` now and returns `bit64::integer64`
-  for integer types that don't fit into R's 32 bit integers.
-  With this chane the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* `as.vector()` now returns a `bit64::integer64` for integer data types that
+  do not fit into R's 32 bit integers.
+  With this change the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* New `nv_floor_div()` for flooring (integer) division, and the `%/%` operator
+  now works on arrays.
+* The base R generics are now implemented individually (`sqrt.AnvlArray()`,
+  `sum.AnvlArray()`, ...) instead of through the `Ops`, `Math`, `Summary` and
+  `matrixOps` group generics, so each method takes exactly the arguments its
+  base R generic does.
+* New `nv_gamma()`, `nv_sinpi()`, `nv_cospi()`, `nv_tanpi()` and `nv_signif()`
+  complete the mathematical functions, each with its base R generic on top;
+  `round(x, digits)` and `log(x, base)` accept their second argument like in
+  base R.
+* New `nv_range()` returns the minimum and the maximum of an array, stacked
+  along a new first axis, and is what the `range()` generic reduces with.
+* The `nv_*` functions that compute in floating point (`nv_sqrt()`,
+  `nv_log()`, `nv_atan2()`, ...) now compute an integer array at the default
+  float data type, the way base R's `sqrt(1L)` returns a double. A boolean
+  array is still rejected.
+* `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
+  integer array unchanged, like base R does.
+* `c()` now works on an `AnvlArray` / `AnvlBox`: it concatenates scalars and
+  1-D arrays, like `base::c()`. It used to fall through to base R's default
+  method and return a list of the array's internals.
+* `rev()` now works on an `AnvlArray` / `AnvlBox`. It reverses along every
+  axis, which puts the elements in the same order as `base::rev()` while
+  keeping the shape.
+* Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now errors saying that
+  `drop` is not supported, instead of reporting too many subset
+  specifications.
+* Each base R generic is now documented with the `nv_*` function it delegates
+  to, which is also where a deliberate difference to base R is described.
 
 ## Bug fixes
 
+* The `%/%` operator returned `NULL` on an `AnvlArray` instead of dividing:
+  `Ops.AnvlArray` had no branch for it and its `switch()` had no default.
+* `nv_quantile()` (and with it `nv_median()`) returned wrong values for an
+  integer array: the interpolation weights were built at the input's data
+  type, so `probs = 0.5` became `0` and `median(nv_array(1:4))` was `1`
+  instead of `2.5`.
+* `rev()` on an `AnvlArray` failed with an internal error about
+  `slice_sizes`, because `rev.default()` subset the array with a decreasing
+  index vector.
 * `as.vector()` now works correctly for `AnvlArray`s that are converted
   to `bit64::integer64`. It used to drop that class along with the shape,
   exposing the raw 64-bit pattern as a double.

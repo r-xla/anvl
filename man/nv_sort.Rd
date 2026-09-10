@@ -44,6 +44,14 @@ You can also use \code{sort()} directly.
 (descending), regardless of sign. \code{+0} and \code{-0} compare equal.
 }
 
+\section{Relation to base R}{
+
+\code{\link[base:sort]{base::sort()}} flattens a multi-axis array into a vector, while
+\code{nv_sort()} (and \code{sort()} on an anvl array) sorts along a single axis, the
+last one by default, and keeps the shape. Flatten with \code{\link[=nv_flatten]{nv_flatten()}}
+first if you want a single sorted sequence.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))

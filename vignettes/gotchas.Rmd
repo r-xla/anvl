@@ -158,6 +158,21 @@ as_array(big)
 as_array(big, check = TRUE)
 ```
 
+## Base R generics
+
+{anvl} arrays implement most of base R's generic functions individually (`sqrt()`, `sum()`, `&`, ...) and mean what they mean in base R.
+Each generic is documented together with the `nv_*` function it delegates to (`?nv_sqrt` for `sqrt()`, `?nv_and` for `&`), which is also where a deliberate difference is described.
+Beyond the ones listed above, these differ:
+
+* **Data types do not follow R's coercions.**
+  An integer array is not turned into a float array where the result would be one anyway, so `round()` returns it unchanged and `signif()` rejects it.
+  The functions that can only produce a float (`sqrt()`, `log()`, `gamma()`, ...) do compute an integer array at the default float, like base R does, but a boolean array is an error rather than zeroes and ones.
+* **`median()` and `sort()` default to the last axis** rather than flattening the whole array.
+* **`t()` requires a matrix**, whereas base R also transposes a vector (into a one-row matrix) and reverses the axes of a higher-rank array.
+* **`dim()` returns the shape**, so `nrow()` and `ncol()` report the size of axis 1 and 2 -- also for a 1-D array, where base R would return `NULL`.
+* **`[` does not accept negative or out-of-bounds indices** and has no `drop` argument; see `vignette("subsetting")`.
+* **`as.vector()` only supports `mode = "any"`**, and `as.double()`, `as.integer()` and `as.logical()` extract an R vector of a matching data type instead of converting -- use `nv_convert()` to change the data type.
+
 ## Differences between eager and jit-mode
 
 We try to keep the semantics of eager and jit-mode as close as possible.
