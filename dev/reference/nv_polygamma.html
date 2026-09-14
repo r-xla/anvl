@@ -87,7 +87,7 @@ arguments."><meta property="og:image" content="https://r-xla.github.io/anvl/logo
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Polygamma</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_polygamma.Rd</code></div>
     </div>
 
@@ -114,15 +114,21 @@ arguments.</p>
 
 <dl><dt id="arg-n-x">n, x<a class="anchor" aria-label="anchor" href="#arg-n-x"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
-Floating-point arrayish values. After promotion and broadcasting,
-<code>n</code> and <code>x</code> must have the same shape; <code>n</code> typically holds
-non-negative integer values.</p></dd>
+Floating-point arrayish values; an integer <code>x</code> is computed at the default
+float data type. After promotion and broadcasting, <code>n</code> and <code>x</code> must have
+the same shape; <code>n</code> typically holds non-negative integer values.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code><a href="arrayish.html">arrayish</a></code><br>
 Has the same shape and the promoted common data type of the inputs.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-trigamma-generic">The <code><a href="https://rdrr.io/r/base/Special.html" class="external-link">trigamma()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-trigamma-generic"></a></h2>
+
+
+<p><code>trigamma(x)</code> is <code>nv_polygamma(1, x)</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -1,6 +1,6 @@
 # Primitive And
 
-Element-wise logical AND.
+Element-wise bitwise AND, which for a boolean array is the logical AND.
 
 ## Usage
 
@@ -36,7 +36,7 @@ Lowers to
 
 ## See also
 
-[`nv_and()`](https://r-xla.github.io/anvl/dev/reference/nv_and.md), `&`
+[`nv_and()`](https://r-xla.github.io/anvl/dev/reference/nv_and.md)
 
 ## Examples
 

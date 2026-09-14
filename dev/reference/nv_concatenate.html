@@ -6,8 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Concatenate — nv_concatenate"><meta name="description" content="Concatenates arrays along an axis. Operands are promoted to a common
-data type and scalars are broadcast before concatenation."><meta property="og:description" content="Concatenates arrays along an axis. Operands are promoted to a common
-data type and scalars are broadcast before concatenation."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+data type and scalars are broadcast before concatenation.
+You can also use c(), which flattens its arguments first, like base R."><meta property="og:description" content="Concatenates arrays along an axis. Operands are promoted to a common
+data type and scalars are broadcast before concatenation.
+You can also use c(), which flattens its arguments first, like base R."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -73,13 +75,14 @@ data type and scalars are broadcast before concatenation."><meta property="og:im
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Concatenate</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_concatenate.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
     <p>Concatenates arrays along an axis. Operands are promoted to a common
 data type and scalars are broadcast before concatenation.</p>
+<p>You can also use <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code>, which flattens its arguments first, like base R.</p>
     </div>
 
     <div class="section level2">
@@ -108,6 +111,16 @@ If <code>NULL</code> (default), assumes all inputs are at most 1-D and concatena
     <p><code><a href="arrayish.html">arrayish</a></code><br>
 Has the common data type and a shape matching the inputs in all
 axes except <code>axis</code>, which is the sum of input sizes.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-c-generic">The <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-c-generic"></a></h2>
+
+
+<p><code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code> concatenates scalars and 1-D arrays into a 1-D array, like
+<code><a href="https://rdrr.io/r/base/c.html" class="external-link">base::c()</a></code> does for vectors. An array with more than one axis is an error:
+base R would flatten it in column-major order, whereas an anvl array
+flattens in row-major order (see the "Gotchas" vignette), so concatenate
+those along an explicit <code>axis</code> instead.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

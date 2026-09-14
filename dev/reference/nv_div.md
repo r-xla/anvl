@@ -34,6 +34,12 @@ for the underlying primitive.
 ``` r
 x <- nv_array(c(10, 20, 30))
 y <- nv_array(c(2, 5, 10))
+nv_div(x, y)
+#> AnvlArray
+#>  5
+#>  4
+#>  3
+#> [ CPUf32{3} ] 
 x / y
 #> AnvlArray
 #>  5

@@ -14,7 +14,7 @@ nv_ceiling(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  Input array. An integer array is returned unchanged.
 
 ## Value
 
@@ -36,4 +36,10 @@ ceiling(x)
 #>   3
 #>  -1
 #> [ CPUf32{3} ] 
+ceiling(nv_array(1:3)) # an integer array is already whole
+#> AnvlArray
+#>  1
+#>  2
+#>  3
+#> [ CPUi32{3} ] 
 ```

@@ -35,7 +35,13 @@ for the underlying primitive.
 ``` r
 x <- nv_array(c(2, 3, 4))
 y <- nv_array(c(3, 2, 1))
-x ^ y
+nv_pow(x, y)
+#> AnvlArray
+#>  8
+#>  9
+#>  4
+#> [ CPUf32{3} ] 
+x^y
 #> AnvlArray
 #>  8
 #>  9

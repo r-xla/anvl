@@ -6,9 +6,6 @@ Element-wise check if values are finite (not `Inf`, `-Inf`, or `NaN`).
 
 ``` r
 nv_is_finite(x)
-
-# S3 method for class 'AnvlArray'
-is.finite(x)
 ```
 
 ## Arguments

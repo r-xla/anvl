@@ -39,6 +39,15 @@ nv_reduce_min(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 Has the same data type as the input. When `drop = TRUE`, the reduced
 axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
 
+## The [`min()`](https://rdrr.io/r/base/Extremes.html) generic
+
+[`min()`](https://rdrr.io/r/base/Extremes.html) reduces over all axes
+and, like [`base::min()`](https://rdrr.io/r/base/Extremes.html), takes
+several data arguments: `min(x, y)` is the smallest element of both
+arrays. `na.rm` becomes `nan_rm`. Beyond base R, named arguments are
+passed on, so `min(x, axes = 1L)` reduces a single axis – but only when
+`x` is the only data argument.
+
 ## See also
 
 [`prim_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_min.md)

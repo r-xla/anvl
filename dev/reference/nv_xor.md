@@ -1,6 +1,7 @@
-# Logical Xor
+# Bitwise XOR
 
-Element-wise logical XOR.
+Element-wise bitwise XOR of two integer arrays, which for a boolean
+array is the logical XOR. For *logical* inputs, you can also use `xor`.
 
 ## Usage
 
@@ -32,12 +33,19 @@ for the underlying primitive.
 ## Examples
 
 ``` r
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-nv_xor(x, y)
+nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #> AnvlArray
 #>  0
 #>  1
 #>  1
 #> [ CPUbool{3} ] 
+nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
+#> AnvlArray
+#>  6
+#> [ CPUi32{1} ] 
+xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
+#> AnvlArray
+#>  0
+#>  1
+#> [ CPUbool{2} ] 
 ```

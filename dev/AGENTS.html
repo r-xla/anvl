@@ -143,6 +143,7 @@
 <h2 id="jit-roclet">
 <code>@jit</code> Roclet<a class="anchor" aria-label="anchor" href="#jit-roclet"></a></h2>
 <p><code>R/jit-registry.R</code> is <strong>generated</strong> by <code><a href="reference/jit_roclet.html">anvl::jit_roclet</a></code> (activated in the <code>Roxygen</code> field of <code>DESCRIPTION</code>): tagging a function with <code>#' @jit [static = ...]</code> makes <code>devtools::document()</code> add it to the registry, and <code>R/zzz.R</code> rebinds those functions to their jitted versions at build time. Never edit <code>R/jit-registry.R</code> by hand; because the roclet lives in anvl itself, documenting requires an installed anvl that already exports it.</p>
+<p>Tag every function whose body issues <strong>more than one operation</strong> with <code>@jit</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>

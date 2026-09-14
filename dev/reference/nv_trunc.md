@@ -7,6 +7,9 @@ Element-wise truncation (round toward zero). You can also use
 
 ``` r
 nv_trunc(x)
+
+# S3 method for class 'AnvlArray'
+trunc(x, ...)
 ```
 
 ## Arguments
@@ -14,7 +17,11 @@ nv_trunc(x)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  Input array. An integer array is returned unchanged.
+
+- ...:
+
+  Further arguments of `nv_trunc()`.
 
 ## Value
 
@@ -37,4 +44,10 @@ trunc(x)
 #>   2
 #>  -1
 #> [ CPUf32{3} ] 
+trunc(nv_array(1:3)) # an integer array is already whole
+#> AnvlArray
+#>  1
+#>  2
+#>  3
+#> [ CPUi32{3} ] 
 ```

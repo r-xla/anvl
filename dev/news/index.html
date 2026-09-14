@@ -88,25 +88,48 @@
 <li>The <code>steps</code> argument of <code><a href="../reference/nv_seq.html">nv_seq()</a></code> / <code><a href="../reference/nv_seq.html">nv_seq_like()</a></code> was removed.</li>
 <li>
 <code>default_backend()</code> is now called <code><a href="../reference/active_backend.html">active_backend()</a></code>.</li>
-<li>There is now exactly one backend used at a time and it is configured via the <code>anvl.backend</code> option.</li>
+<li>There is now exactly one backend used at a time and it is configured via the <code>anvl.backend</code> option. With this change the <code>device_arg</code> parameter was removed from <code><a href="../reference/jit.html">jit()</a></code> as it is no longer needed.</li>
 <li>A <code>Shape</code> is now represented as an integer vector.</li>
+<li>The operators <code>&amp;</code>, <code>|</code>, <code>!</code>, as well as the generics <code><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum()</a></code> and <code><a href="https://rdrr.io/r/base/all.html" class="external-link">all()</a></code> now require a boolean input array, improving consistency with base R.</li>
+<li>The method for <code>round</code> was removed, as <code>digits</code> is currently not supported.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
-<ul><li>The default data types for floating point numbers and integers can now be configured via the <code>anvl.default_dtypes</code> field. You can configure this for a specific scope via <code><a href="../reference/local_default_dtypes.html">local_default_dtypes()</a></code> and <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code>. To convert a function to one running at a specified precision, use <code><a href="../reference/with_dtypes.html">with_dtypes()</a></code>.</li>
+<ul><li>The reductions (<code><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum()</a></code>, <code><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod()</a></code>, <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max()</a></code>, <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min()</a></code>, <code><a href="https://rdrr.io/r/base/range.html" class="external-link">range()</a></code>, <code><a href="https://rdrr.io/r/base/any.html" class="external-link">any()</a></code>, <code><a href="https://rdrr.io/r/base/all.html" class="external-link">all()</a></code>) now work with multiple data inputs.</li>
+<li>The default data types for floating point numbers and integers can now be configured via the <code>anvl.default_dtypes</code> field. You can configure this for a specific scope via <code><a href="../reference/local_default_dtypes.html">local_default_dtypes()</a></code> and <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code>. To convert a function to one running at a specified precision, use <code><a href="../reference/with_dtypes.html">with_dtypes()</a></code>.</li>
 <li>New <code><a href="../reference/nv_linspace.html">nv_linspace()</a></code> and <code><a href="../reference/nv_linspace.html">nv_linspace_like()</a></code>, replacing <code><a href="../reference/nv_seq.html">nv_seq()</a></code> with a provided <code>steps</code> argument.</li>
 <li>
-<code>as.vector</code> now and returns <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> for integer types that don’t fit into R’s 32 bit integers. With this chane the <code>device_arg</code> parameter was removed from <code><a href="../reference/jit.html">jit()</a></code> as it is no longer needed.</li>
+<code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> now returns a <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> for integer data types that do not fit into R’s 32 bit integers.</li>
+<li>New <code><a href="../reference/nv_floor_div.html">nv_floor_div()</a></code> for flooring (integer) division, and the <code>%/%</code> operator now works on arrays.</li>
+<li>Added support for more generics:
+<ul><li>Reversing an array via <code>rev</code>.</li>
+<li>Concatenating vectors via <code><a href="https://rdrr.io/r/base/c.html" class="external-link">c()</a></code>.</li>
+<li>Floor division via <code>nv_floor_div</code>/<code>%/%</code>.</li>
+<li>Trigonometric functions <code>sinpi</code>, <code>cospi</code> and <code>tanpi</code> and their corresponding <code>nv_*</code> functions.</li>
+<li>The <code>gamma</code> generic.</li>
+</ul></li>
+<li>
+<code>log(x, base)</code> now accepts its second argument like in base R.</li>
+<li>New <code><a href="../reference/nv_range.html">nv_range()</a></code> returns the minimum and the maximum of an array, stacked along a new first axis, and is what the <code><a href="https://rdrr.io/r/base/range.html" class="external-link">range()</a></code> uses.</li>
+<li>The <code>nv_*</code> functions that compute in floating point (<code><a href="../reference/nv_sqrt.html">nv_sqrt()</a></code>, <code><a href="../reference/nv_log.html">nv_log()</a></code>, <code><a href="../reference/nv_atan2.html">nv_atan2()</a></code>, …) now compute an integer array at the default float data type.</li>
+<li>
+<code><a href="../reference/nv_floor.html">nv_floor()</a></code>, <code><a href="../reference/nv_ceiling.html">nv_ceiling()</a></code>, <code><a href="../reference/nv_trunc.html">nv_trunc()</a></code> and <code><a href="../reference/nv_round.html">nv_round()</a></code> return an integer array unchanged, like base R does.</li>
+<li>Improved documentation of API functions and primitives.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
+<ul><li>Subsetting with <code>drop</code> (e.g. <code>x[1, , drop = FALSE]</code>) now gives a better error message, as <code>drop</code> is not supported.</li>
+<li>
+<code><a href="../reference/nv_quantile.html">nv_quantile()</a></code> and <code><a href="../reference/nv_median.html">nv_median()</a></code> now compute at the default float data type for a non-float input.</li>
+<li>
 <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code> now works correctly for <code>AnvlArray</code>s that are converted to <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. It used to drop that class along with the shape, exposing the raw 64-bit pattern as a double.</li>
 <li>The gradient of a conversion into a non-float data type is now zero instead of one. <code><a href="../reference/prim_convert.html">prim_convert()</a></code> / <code><a href="../reference/nv_convert.html">nv_convert()</a></code> passed the cotangent through whatever the data types were, so <code>nv_convert(nv_convert(x, "i32"), "f64")</code> reported a gradient of 1 where <code><a href="../reference/nv_floor.html">nv_floor()</a></code> – the same function on the reals – correctly reported 0. Conversions between floats still pass the gradient through.</li>
 <li>
 <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> now checks that <code>update_computation</code> returns one value of <code>x</code>’s data type, as <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code> already did for its <code>reductor</code>. A combiner returning something else made type inference declare a data type the call could not produce, and failed in the backend.</li>
 <li>
 <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>’s <code>reductor</code> no longer has to name its arguments <code>lhs</code> and <code>rhs</code>. They were passed by name, so <code>function(a, b)</code> failed with <code>unused arguments (lhs = ..., rhs = ...)</code>; they are now matched positionally, as <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> already matched its <code>update_computation</code>.</li>
+<li>Improved the numerics for <code><a href="../reference/nv_mod.html">nv_mod()</a></code>.</li>
+<li>The gradient of <code><a href="../reference/nv_gamma.html">nv_gamma()</a></code> is now correct for positive whole numbers.</li>
 <li>
 <code><a href="../reference/prim_reduce_any.html">prim_reduce_any()</a></code> / <code><a href="../reference/prim_reduce_all.html">prim_reduce_all()</a></code> (and <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code> / <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code>) now reject a non-boolean input when the call is traced. Type inference declared a <code>bool</code> output whatever the input was, so an integer operand reached the lowering and failed with <code>Data types of inputs and init_values must match</code>.</li>
 </ul></div>

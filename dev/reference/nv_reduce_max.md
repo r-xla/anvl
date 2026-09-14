@@ -39,6 +39,15 @@ nv_reduce_max(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 Has the same data type as the input. When `drop = TRUE`, the reduced
 axes are removed. When `drop = FALSE`, the reduced axes are set to 1.
 
+## The [`max()`](https://rdrr.io/r/base/Extremes.html) generic
+
+[`max()`](https://rdrr.io/r/base/Extremes.html) reduces over all axes
+and, like [`base::max()`](https://rdrr.io/r/base/Extremes.html), takes
+several data arguments: `max(x, y)` is the largest element of both
+arrays. `na.rm` becomes `nan_rm`. Beyond base R, named arguments are
+passed on, so `max(x, axes = 1L)` reduces a single axis – but only when
+`x` is the only data argument.
+
 ## See also
 
 [`prim_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_max.md)

@@ -35,6 +35,12 @@ the underlying primitive.
 ``` r
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(3, 2, 1))
+nv_le(x, y)
+#> AnvlArray
+#>  1
+#>  1
+#>  0
+#> [ CPUbool{3} ] 
 x <= y
 #> AnvlArray
 #>  1

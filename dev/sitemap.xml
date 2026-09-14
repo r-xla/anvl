@@ -65,6 +65,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/default_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/default_dtypes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/device.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/dim.AnvlArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/dot-current_descriptor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/eq_type.html</loc></url>
@@ -78,6 +79,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/is_dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit_roclet.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/length.AnvlArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_descriptor.html</loc></url>
@@ -112,6 +114,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_convert.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cos.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cosh.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cospi.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_crossprod.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cummax.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_cummin.html</loc></url>
@@ -135,6 +138,8 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_fill.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_flatten.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_floor.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_floor_div.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_gamma.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_ge.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_gt.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_if.html</loc></url>
@@ -176,6 +181,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_qr.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_quantile.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_range.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_rbinom.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_read.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_reduce_all.html</loc></url>
@@ -204,6 +210,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sign.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sin.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sinh.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sinpi.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_solve.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sort.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sqrt.html</loc></url>
@@ -215,6 +222,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_svd.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_tan.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_tanh.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_tanpi.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_tcrossprod.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_top_k.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_trace.html</loc></url>

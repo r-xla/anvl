@@ -71,7 +71,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Max Reduction</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_reduce_max.Rd</code></div>
     </div>
 
@@ -117,6 +117,16 @@ How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</
 Has the same data type as the input.
 When <code>drop = TRUE</code>, the reduced axes are removed.
 When <code>drop = FALSE</code>, the reduced axes are set to 1.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-max-generic">The <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-max-generic"></a></h2>
+
+
+<p><code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max()</a></code> reduces over all axes and, like <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">base::max()</a></code>, takes several data
+arguments: <code>max(x, y)</code> is the largest element of both arrays. <code>na.rm</code>
+becomes <code>nan_rm</code>. Beyond base R, named arguments are passed on, so
+<code>max(x, axes = 1L)</code> reduces a single axis – but only when <code>x</code> is the only
+data argument.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -1,6 +1,6 @@
 # Primitive Not
 
-Element-wise logical NOT.
+Element-wise bitwise NOT, which for a boolean array is the logical NOT.
 
 ## Usage
 

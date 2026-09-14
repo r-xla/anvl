@@ -1,9 +1,9 @@
 # Primitive Remainder
 
-Element-wise remainder. Result has sign of the divident, which differs
-from base R's `%%`, which is available via
-[`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md) and
-has sign of divisor.
+Element-wise remainder. The result has the sign of the dividend, which
+is what StableHLO's `remainder` does. Base R's `%%` takes the sign of
+the divisor instead and is available via
+[`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md).
 
 ## Usage
 

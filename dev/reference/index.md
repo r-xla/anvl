@@ -88,6 +88,16 @@ Functions for serializing and deserializing arrays
 - [`nv_unserialize()`](https://r-xla.github.io/anvl/dev/reference/nv_unserialize.md)
   : Deserialize arrays from raw bytes
 
+### Base R Generics
+
+Methods for base R generics that have no `nv_*` twin. Every other
+generic is documented together with the `nv_*` function it delegates to.
+
+- [`dim(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/dim.AnvlArray.md)
+  : Shape of an Array
+- [`length(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/length.AnvlArray.md)
+  : Number of Elements
+
 ## API Functions
 
 User-facing `nv_*` functions for array operations
@@ -129,7 +139,6 @@ Functions for reshaping and rearranging arrays
 - [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
   : Flatte
 - [`nv_transpose()`](https://r-xla.github.io/anvl/dev/reference/nv_transpose.md)
-  [`t(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_transpose.md)
   : Transpose
 - [`nv_concatenate()`](https://r-xla.github.io/anvl/dev/reference/nv_concatenate.md)
   : Concatenate
@@ -150,11 +159,9 @@ Functions for reshaping and rearranging arrays
   : Squeeze
 - [`nv_unsqueeze()`](https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.md)
   : Unsqueeze
-- [`` `[`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md)
-  [`nv_subset()`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md)
+- [`nv_subset()`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md)
   : Subset an Array
-- [`` `[<-`( ``*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
-  [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
+- [`nv_subset_assign()`](https://r-xla.github.io/anvl/dev/reference/nv_subset_assign.md)
   : Update Subset
 
 ### Arithmetic Operations
@@ -177,6 +184,8 @@ Basic arithmetic operations on arrays
   : Remainder (Truncating)
 - [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md) :
   Modulo (Flooring Remainder)
+- [`nv_floor_div()`](https://r-xla.github.io/anvl/dev/reference/nv_floor_div.md)
+  : Flooring Division
 
 ### Comparison Operations
 
@@ -225,6 +234,12 @@ Mathematical and trigonometric functions
   Cosine
 - [`nv_tan()`](https://r-xla.github.io/anvl/dev/reference/nv_tan.md) :
   Tangent
+- [`nv_sinpi()`](https://r-xla.github.io/anvl/dev/reference/nv_sinpi.md)
+  : Sine of a Multiple of Pi
+- [`nv_cospi()`](https://r-xla.github.io/anvl/dev/reference/nv_cospi.md)
+  : Cosine of a Multiple of Pi
+- [`nv_tanpi()`](https://r-xla.github.io/anvl/dev/reference/nv_tanpi.md)
+  : Tangent of a Multiple of Pi
 - [`nv_asin()`](https://r-xla.github.io/anvl/dev/reference/nv_asin.md) :
   Arc Sine
 - [`nv_acos()`](https://r-xla.github.io/anvl/dev/reference/nv_acos.md) :
@@ -252,6 +267,7 @@ Mathematical and trigonometric functions
 - [`nv_ceiling()`](https://r-xla.github.io/anvl/dev/reference/nv_ceiling.md)
   : Ceiling
 - [`nv_trunc()`](https://r-xla.github.io/anvl/dev/reference/nv_trunc.md)
+  [`trunc(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_trunc.md)
   : Truncate
 - [`nv_round()`](https://r-xla.github.io/anvl/dev/reference/nv_round.md)
   : Round
@@ -263,6 +279,8 @@ Mathematical and trigonometric functions
   Complementary Error Function
 - [`nv_erf_inv()`](https://r-xla.github.io/anvl/dev/reference/nv_erf_inv.md)
   : Inverse Error Function
+- [`nv_gamma()`](https://r-xla.github.io/anvl/dev/reference/nv_gamma.md)
+  : Gamma Function
 - [`nv_digamma()`](https://r-xla.github.io/anvl/dev/reference/nv_digamma.md)
   : Digamma
 - [`nv_lgamma()`](https://r-xla.github.io/anvl/dev/reference/nv_lgamma.md)
@@ -270,13 +288,10 @@ Mathematical and trigonometric functions
 - [`nv_polygamma()`](https://r-xla.github.io/anvl/dev/reference/nv_polygamma.md)
   : Polygamma
 - [`nv_is_finite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_finite.md)
-  [`is.finite(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_is_finite.md)
   : Is Finite
 - [`nv_is_nan()`](https://r-xla.github.io/anvl/dev/reference/nv_is_nan.md)
-  [`is.nan(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_is_nan.md)
   : Is NaN
 - [`nv_is_infinite()`](https://r-xla.github.io/anvl/dev/reference/nv_is_infinite.md)
-  [`is.infinite(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_is_infinite.md)
   : Is Infinite
 
 ### Reduction Operations
@@ -291,6 +306,9 @@ Operations that reduce array axes
   : Max Reduction
 - [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md)
   : Min Reduction
+- [`nv_range()`](https://r-xla.github.io/anvl/dev/reference/nv_range.md)
+  [`range(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_range.md)
+  : Range Reduction
 - [`nv_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_any.md)
   : Any Reduction
 - [`nv_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_all.md)
@@ -395,13 +413,13 @@ N-dimensional convolution operations
 Logical and bitwise operations on arrays
 
 - [`nv_and()`](https://r-xla.github.io/anvl/dev/reference/nv_and.md) :
-  Logical And
+  Bitwise AND
 - [`nv_or()`](https://r-xla.github.io/anvl/dev/reference/nv_or.md) :
-  Logical Or
+  Bitwise OR
 - [`nv_xor()`](https://r-xla.github.io/anvl/dev/reference/nv_xor.md) :
-  Logical Xor
+  Bitwise XOR
 - [`nv_not()`](https://r-xla.github.io/anvl/dev/reference/nv_not.md) :
-  Logical Not
+  Bitwise Not
 - [`nv_shift_left()`](https://r-xla.github.io/anvl/dev/reference/nv_shift_left.md)
   : Shift Left
 - [`nv_shift_right_logical()`](https://r-xla.github.io/anvl/dev/reference/nv_shift_right_logical.md)

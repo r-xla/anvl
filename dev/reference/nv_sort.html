@@ -136,6 +136,15 @@ Same shape and data type as <code>x</code>.</p>
 (descending), regardless of sign. <code>+0</code> and <code>-0</code> compare equal.</p>
     </div>
     <div class="section level2">
+    <h2 id="the-sort-generic">The <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-sort-generic"></a></h2>
+
+
+<p><code><a href="https://rdrr.io/r/base/sort.html" class="external-link">base::sort()</a></code> flattens a multi-axis array into a vector, while
+<code>nv_sort()</code> (and <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> on an anvl array) sorts along a single axis, the
+last one by default, and keeps the shape. Flatten with <code><a href="nv_flatten.html">nv_flatten()</a></code>
+first if you want a single sorted sequence.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="prim_sort.html">prim_sort()</a></code> for the underlying primitive,
 <code><a href="nv_argsort.html">nv_argsort()</a></code>, <code><a href="nv_top_k.html">nv_top_k()</a></code>, <code><a href="nv_median.html">nv_median()</a></code>,

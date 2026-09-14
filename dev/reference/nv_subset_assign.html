@@ -84,10 +84,7 @@ You can also use the <code>[&lt;-</code> operator.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
-<span><span class="va">x</span><span class="op">[</span><span class="va">...</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">value</span></span>
-<span></span>
-<span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">value</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span>, <span class="va">value</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -124,6 +121,12 @@ A new array with the same shape as <code>x</code> and the subset replaced.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">12</span>, nrow <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="co"># Set row 1 to zeros</span></span></span>
+<span class="r-in"><span><span class="fu">nv_subset_assign</span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span>, value <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   0  0  0  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  8 11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">0L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">x</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>

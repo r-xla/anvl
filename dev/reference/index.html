@@ -283,6 +283,29 @@
         </dt>
         <dd>Deserialize arrays from raw bytes</dd>
       </dl></div><div class="section level2">
+
+      <h3 id="base-r-generics">Base R Generics<a class="anchor" aria-label="anchor" href="#base-r-generics"></a></h3>
+      <div class="section-desc"><p>Methods for base R generics that have no <code>nv_*</code> twin. Every other generic is documented together with the <code>nv_*</code> function it delegates to.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="dim.AnvlArray.html">dim(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Shape of an Array</dd>
+
+        <dt>
+
+          <code><a href="length.AnvlArray.html">length(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Number of Elements</dd>
+      </dl></div><div class="section level2">
       <h2 id="api-functions">API Functions<a class="anchor" aria-label="anchor" href="#api-functions"></a></h2>
 
       <div class="section-desc"><p>User-facing <code>nv_*</code> functions for array operations</p></div>
@@ -385,7 +408,7 @@
 
         <dt>
 
-          <code><a href="nv_transpose.html">nv_transpose()</a></code> <code><a href="nv_transpose.html">t(<i>&lt;AnvlArray&gt;</i>)</a></code>
+          <code><a href="nv_transpose.html">nv_transpose()</a></code>
 
         </dt>
         <dd>Transpose</dd>
@@ -448,14 +471,14 @@
 
         <dt>
 
-          <code><a href="nv_subset.html">`[`(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="nv_subset.html">nv_subset()</a></code>
+          <code><a href="nv_subset.html">nv_subset()</a></code>
 
         </dt>
         <dd>Subset an Array</dd>
 
         <dt>
 
-          <code><a href="nv_subset_assign.html">`[&lt;-`(<i>&lt;AnvlArray&gt;</i>)</a></code> <code><a href="nv_subset_assign.html">nv_subset_assign()</a></code>
+          <code><a href="nv_subset_assign.html">nv_subset_assign()</a></code>
 
         </dt>
         <dd>Update Subset</dd>
@@ -524,6 +547,13 @@
 
         </dt>
         <dd>Modulo (Flooring Remainder)</dd>
+
+        <dt>
+
+          <code><a href="nv_floor_div.html">nv_floor_div()</a></code>
+
+        </dt>
+        <dd>Flooring Division</dd>
       </dl></div><div class="section level2">
 
       <h3 id="comparison-operations">Comparison Operations<a class="anchor" aria-label="anchor" href="#comparison-operations"></a></h3>
@@ -678,6 +708,27 @@
 
         <dt>
 
+          <code><a href="nv_sinpi.html">nv_sinpi()</a></code>
+
+        </dt>
+        <dd>Sine of a Multiple of Pi</dd>
+
+        <dt>
+
+          <code><a href="nv_cospi.html">nv_cospi()</a></code>
+
+        </dt>
+        <dd>Cosine of a Multiple of Pi</dd>
+
+        <dt>
+
+          <code><a href="nv_tanpi.html">nv_tanpi()</a></code>
+
+        </dt>
+        <dd>Tangent of a Multiple of Pi</dd>
+
+        <dt>
+
           <code><a href="nv_asin.html">nv_asin()</a></code>
 
         </dt>
@@ -769,7 +820,7 @@
 
         <dt>
 
-          <code><a href="nv_trunc.html">nv_trunc()</a></code>
+          <code><a href="nv_trunc.html">nv_trunc()</a></code> <code><a href="nv_trunc.html">trunc(<i>&lt;AnvlArray&gt;</i>)</a></code>
 
         </dt>
         <dd>Truncate</dd>
@@ -811,6 +862,13 @@
 
         <dt>
 
+          <code><a href="nv_gamma.html">nv_gamma()</a></code>
+
+        </dt>
+        <dd>Gamma Function</dd>
+
+        <dt>
+
           <code><a href="nv_digamma.html">nv_digamma()</a></code>
 
         </dt>
@@ -832,21 +890,21 @@
 
         <dt>
 
-          <code><a href="nv_is_finite.html">nv_is_finite()</a></code> <code><a href="nv_is_finite.html">is.finite(<i>&lt;AnvlArray&gt;</i>)</a></code>
+          <code><a href="nv_is_finite.html">nv_is_finite()</a></code>
 
         </dt>
         <dd>Is Finite</dd>
 
         <dt>
 
-          <code><a href="nv_is_nan.html">nv_is_nan()</a></code> <code><a href="nv_is_nan.html">is.nan(<i>&lt;AnvlArray&gt;</i>)</a></code>
+          <code><a href="nv_is_nan.html">nv_is_nan()</a></code>
 
         </dt>
         <dd>Is NaN</dd>
 
         <dt>
 
-          <code><a href="nv_is_infinite.html">nv_is_infinite()</a></code> <code><a href="nv_is_infinite.html">is.infinite(<i>&lt;AnvlArray&gt;</i>)</a></code>
+          <code><a href="nv_is_infinite.html">nv_is_infinite()</a></code>
 
         </dt>
         <dd>Is Infinite</dd>
@@ -887,6 +945,13 @@
 
         </dt>
         <dd>Min Reduction</dd>
+
+        <dt>
+
+          <code><a href="nv_range.html">nv_range()</a></code> <code><a href="nv_range.html">range(<i>&lt;AnvlArray&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Range Reduction</dd>
 
         <dt>
 
@@ -1176,28 +1241,28 @@
           <code><a href="nv_and.html">nv_and()</a></code>
 
         </dt>
-        <dd>Logical And</dd>
+        <dd>Bitwise AND</dd>
 
         <dt>
 
           <code><a href="nv_or.html">nv_or()</a></code>
 
         </dt>
-        <dd>Logical Or</dd>
+        <dd>Bitwise OR</dd>
 
         <dt>
 
           <code><a href="nv_xor.html">nv_xor()</a></code>
 
         </dt>
-        <dd>Logical Xor</dd>
+        <dd>Bitwise XOR</dd>
 
         <dt>
 
           <code><a href="nv_not.html">nv_not()</a></code>
 
         </dt>
-        <dd>Logical Not</dd>
+        <dd>Bitwise Not</dd>
 
         <dt>
 

@@ -1,7 +1,6 @@
 # Round
 
-Element-wise rounding. You can also use the
-[`round()`](https://rdrr.io/r/base/Round.html) generic.
+Element-wise rounding to a whole number.
 
 ## Usage
 
@@ -14,7 +13,7 @@ nv_round(x, method = "nearest_even")
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input array.
+  Input array. An integer array is returned unchanged.
 
 - method:
 
@@ -36,10 +35,16 @@ for the underlying primitive.
 
 ``` r
 x <- nv_array(c(1.4, 2.5, 3.6))
-round(x)
+nv_round(x)
 #> AnvlArray
 #>  1
 #>  2
 #>  4
 #> [ CPUf32{3} ] 
+nv_round(nv_array(1:3)) # an integer array is already whole
+#> AnvlArray
+#>  1
+#>  2
+#>  3
+#> [ CPUi32{3} ] 
 ```

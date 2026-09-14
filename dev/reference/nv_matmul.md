@@ -48,6 +48,11 @@ for the underlying primitive.
 ``` r
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
+nv_matmul(x, y)
+#> AnvlArray
+#>  22 49
+#>  28 64
+#> [ CPUi32{2,2} ] 
 x %*% y
 #> AnvlArray
 #>  22 49

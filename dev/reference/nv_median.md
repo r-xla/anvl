@@ -61,7 +61,19 @@ median(x, na.rm = FALSE, ..., axis = NULL, interpolation = "linear")
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Same shape as `x` with `axis` removed.
+Same shape as `x` with `axis` removed. The data type is that of `x`, or
+the default float for a non-float `x`.
+
+## The [`median()`](https://rdrr.io/r/stats/median.html) generic
+
+[`stats::median()`](https://rdrr.io/r/stats/median.html) flattens a
+multi-axis array, while `nv_median()` (and
+[`median()`](https://rdrr.io/r/stats/median.html) on an anvl array)
+reduces a single axis, the last one by default. Pass `axis` explicitly,
+or flatten first with
+[`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md),
+to say which you mean. A non-float `x` is computed at the default float,
+like base R returns a double.
 
 ## See also
 

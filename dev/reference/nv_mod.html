@@ -73,7 +73,7 @@ the sign of rhs, matching base R's %% operator."><meta property="og:image" conte
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Modulo (Flooring Remainder)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_mod.Rd</code></div>
     </div>
 
@@ -105,8 +105,8 @@ Has the same shape and the promoted common data type of the inputs.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="nv_remainder.html">nv_remainder()</a></code> for truncating remainder, <code><a href="prim_remainder.html">prim_remainder()</a></code> for
-the underlying primitive.</p></div>
+    <div class="dont-index"><p><code><a href="nv_remainder.html">nv_remainder()</a></code> for truncating remainder, <code><a href="nv_floor_div.html">nv_floor_div()</a></code> for the
+matching division, <code><a href="prim_remainder.html">prim_remainder()</a></code> for the underlying primitive.</p></div>
     </div>
 
     <div class="section level2">
@@ -117,8 +117,13 @@ the underlying primitive.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  -2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2} ] </span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2} ] </span>
+<span class="r-in"><span><span class="va">x</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="va">y</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2} ] </span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/Arithmetic.html" class="external-link">%%</a></span> <span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="co"># the same in base R</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] -2  2</span>
 </code></pre></div>
     </div>

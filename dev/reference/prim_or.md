@@ -1,6 +1,6 @@
 # Primitive Or
 
-Element-wise logical OR.
+Element-wise bitwise OR, which for a boolean array is the logical OR.
 
 ## Usage
 
@@ -36,7 +36,7 @@ Lowers to
 
 ## See also
 
-[`nv_or()`](https://r-xla.github.io/anvl/dev/reference/nv_or.md), `|`
+[`nv_or()`](https://r-xla.github.io/anvl/dev/reference/nv_or.md)
 
 ## Examples
 

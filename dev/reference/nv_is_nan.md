@@ -7,9 +7,6 @@ Element-wise check if values are NaN. You can also use
 
 ``` r
 nv_is_nan(x)
-
-# S3 method for class 'AnvlArray'
-is.nan(x)
 ```
 
 ## Arguments

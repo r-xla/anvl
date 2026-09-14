@@ -16,6 +16,9 @@ Plain length-K (K \> 1) vectors are rejected; wrap with
 [`array()`](https://rdrr.io/r/base/array.html) to make the array intent
 explicit.
 
+A quantile generally falls between two elements, so a non-float `x` is
+computed (and returned) at the default float data type.
+
 ## Usage
 
 ``` r
@@ -60,7 +63,8 @@ nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 For scalar `probs`: same shape as `x` with `axis` removed. For array
-`probs`: a **leading** axis of size `length(probs)` is prepended.
+`probs`: a **leading** axis of size `length(probs)` is prepended. The
+data type is that of `x`, or the default float for a non-float `x`.
 
 ## Interpolation modes
 

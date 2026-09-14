@@ -6,9 +6,6 @@ array. You can also use the `[<-` operator.
 ## Usage
 
 ``` r
-# S3 method for class 'AnvlArray'
-x[...] <- value
-
 nv_subset_assign(x, ..., value)
 ```
 
@@ -47,6 +44,12 @@ for a comprehensive guide.
 ``` r
 x <- nv_matrix(1:12, nrow = 3)
 # Set row 1 to zeros
+nv_subset_assign(x, 1, value = nv_scalar(0L))
+#> AnvlArray
+#>   0  0  0  0
+#>   2  5  8 11
+#>   3  6  9 12
+#> [ CPUi32{3,4} ] 
 x[1, ] <- nv_scalar(0L)
 x
 #> AnvlArray

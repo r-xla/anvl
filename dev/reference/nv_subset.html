@@ -90,10 +90,7 @@ axis.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
-<span><span class="va">x</span><span class="op">[</span><span class="va">...</span><span class="op">]</span></span>
-<span></span>
-<span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -130,6 +127,13 @@ for a comprehensive guide.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   3  6  9 12</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{3,4} ] </span>
 <span class="r-in"><span><span class="co"># Select row 2</span></span></span>
+<span class="r-in"><span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{4} ] </span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">2</span>, <span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   2</span>
@@ -139,6 +143,11 @@ for a comprehensive guide.</p></div>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{4} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Select rows 1 to 2, all columns</span></span></span>
+<span class="r-in"><span><span class="fu">nv_subset</span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   1  4  7 10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   2  5  8 11</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUi32{2,4} ] </span>
 <span class="r-in"><span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, <span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   1  4  7 10</span>

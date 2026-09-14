@@ -15,7 +15,9 @@ axis of size length(probs).
 
 
 Plain length-K (K &amp;gt; 1) vectors are rejected; wrap with array() to
-make the array intent explicit."><meta property="og:description" content="Computes the probs quantile(s) of an array along an axis.
+make the array intent explicit.
+A quantile generally falls between two elements, so a non-float x is
+computed (and returned) at the default float data type."><meta property="og:description" content="Computes the probs quantile(s) of an array along an axis.
 probs follows the same scalar-vs-array convention as nv_select()'s
 index:
 a length-1 numeric (e.g. 0.5) treats probs as scalar — the output
@@ -25,7 +27,9 @@ axis of size length(probs).
 
 
 Plain length-K (K &amp;gt; 1) vectors are rejected; wrap with array() to
-make the array intent explicit."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+make the array intent explicit.
+A quantile generally falls between two elements, so a non-float x is
+computed (and returned) at the default float data type."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -104,6 +108,8 @@ has <code>axis</code> removed, like a reduction;</p></li>
 axis of size <code>length(probs)</code>.</p></li>
 </ul><p>Plain length-K (K &gt; 1) vectors are rejected; wrap with <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code> to
 make the array intent explicit.</p>
+<p>A quantile generally falls between two elements, so a non-float <code>x</code> is
+computed (and returned) at the default float data type.</p>
     </div>
 
     <div class="section level2">
@@ -152,7 +158,8 @@ How to handle <code>NaN</code> values in floating-point inputs. If <code>FALSE</
     <p><code><a href="arrayish.html">arrayish</a></code><br>
 For scalar <code>probs</code>: same shape as <code>x</code> with <code>axis</code> removed. For
 array <code>probs</code>: a <strong>leading</strong> axis of size <code>length(probs)</code> is
-prepended.</p>
+prepended. The data type is that of <code>x</code>, or the default float for a
+non-float <code>x</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="interpolation-modes">Interpolation modes<a class="anchor" aria-label="anchor" href="#interpolation-modes"></a></h2>

@@ -94,6 +94,8 @@ x-axis and the point <code>(rhs, lhs)</code>.</p>
 <dl><dt id="arg-lhs-rhs">lhs, rhs<a class="anchor" aria-label="anchor" href="#arg-lhs-rhs"></a></dt>
 <dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br>
 Left and right operand.
+An integer operand is converted to the default float data type (see
+<code><a href="default_dtypes.html">default_dtypes()</a></code>).
 Operands are <a href="nv_promote_to_common.html">promoted to a common data type</a>.
 Scalars are <a href="nv_broadcast_scalars.html">broadcast</a> to the shape of the other operand.</p></dd>
 

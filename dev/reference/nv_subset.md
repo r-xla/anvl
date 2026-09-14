@@ -8,9 +8,6 @@ along a axis.
 ## Usage
 
 ``` r
-# S3 method for class 'AnvlArray'
-x[...]
-
 nv_subset(x, ...)
 ```
 
@@ -50,6 +47,13 @@ x
 #>   3  6  9 12
 #> [ CPUi32{3,4} ] 
 # Select row 2
+nv_subset(x, 2)
+#> AnvlArray
+#>   2
+#>   5
+#>   8
+#>  11
+#> [ CPUi32{4} ] 
 x[2, ]
 #> AnvlArray
 #>   2
@@ -59,6 +63,11 @@ x[2, ]
 #> [ CPUi32{4} ] 
 
 # Select rows 1 to 2, all columns
+nv_subset(x, 1:2)
+#> AnvlArray
+#>   1  4  7 10
+#>   2  5  8 11
+#> [ CPUi32{2,4} ] 
 x[1:2, ]
 #> AnvlArray
 #>   1  4  7 10

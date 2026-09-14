@@ -7,9 +7,6 @@ Permutes the axes of an array. You can also use
 
 ``` r
 nv_transpose(x, permutation = NULL)
-
-# S3 method for class 'AnvlArray'
-t(x)
 ```
 
 ## Arguments
@@ -28,7 +25,13 @@ t(x)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as `x` and shape `nv_shape(x)[permutation]`.
+Has the same data type as `x` and shape `shape(x)[permutation]`.
+
+## The [`t()`](https://rdrr.io/r/base/t.html) generic
+
+[`t()`](https://rdrr.io/r/base/t.html) requires a matrix, whereas
+[`base::t()`](https://rdrr.io/r/base/t.html) also transposes a vector
+(into a one-row matrix) and reverses the axes of a higher-rank array.
 
 ## See also
 

@@ -29,6 +29,8 @@ Has the same shape and the promoted common data type of the inputs.
 
 [`nv_remainder()`](https://r-xla.github.io/anvl/dev/reference/nv_remainder.md)
 for truncating remainder,
+[`nv_floor_div()`](https://r-xla.github.io/anvl/dev/reference/nv_floor_div.md)
+for the matching division,
 [`prim_remainder()`](https://r-xla.github.io/anvl/dev/reference/prim_remainder.md)
 for the underlying primitive.
 
@@ -41,7 +43,12 @@ nv_mod(x, y)
 #> AnvlArray
 #>  -2
 #>   2
-#> [ CPUi32{2} ] 
-as.vector(x) %% as.vector(y)
+#> [ CPUf32{2} ] 
+x %% y
+#> AnvlArray
+#>  -2
+#>   2
+#> [ CPUf32{2} ] 
+as.vector(x) %% as.vector(y) # the same in base R
 #> [1] -2  2
 ```

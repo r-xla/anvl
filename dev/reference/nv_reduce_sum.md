@@ -43,6 +43,15 @@ is accumulated at the default integer data type (see
 When `drop = TRUE`, the reduced axes are removed. When `drop = FALSE`,
 the reduced axes are set to 1.
 
+## The [`sum()`](https://rdrr.io/r/base/sum.html) generic
+
+[`sum()`](https://rdrr.io/r/base/sum.html) reduces over all axes and,
+like [`base::sum()`](https://rdrr.io/r/base/sum.html), takes several
+data arguments: `sum(x, y)` is the sum of both arrays. `na.rm` becomes
+`nan_rm`. Beyond base R, named arguments are passed on, so
+`sum(x, axes = 1L)` reduces a single axis – but only when `x` is the
+only data argument.
+
 ## See also
 
 [`prim_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_sum.md)

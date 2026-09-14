@@ -7,9 +7,6 @@ also use [`is.infinite()`](https://rdrr.io/r/base/is.finite.html).
 
 ``` r
 nv_is_infinite(x)
-
-# S3 method for class 'AnvlArray'
-is.infinite(x)
 ```
 
 ## Arguments

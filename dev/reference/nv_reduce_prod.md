@@ -44,6 +44,15 @@ is accumulated at the default integer data type (see
 When `drop = TRUE`, the reduced axes are removed. When `drop = FALSE`,
 the reduced axes are set to 1.
 
+## The [`prod()`](https://rdrr.io/r/base/prod.html) generic
+
+[`prod()`](https://rdrr.io/r/base/prod.html) reduces over all axes and,
+like [`base::prod()`](https://rdrr.io/r/base/prod.html), takes several
+data arguments: `prod(x, y)` is the product of both arrays. `na.rm`
+becomes `nan_rm`. Beyond base R, named arguments are passed on, so
+`prod(x, axes = 1L)` reduces a single axis – but only when `x` is the
+only data argument.
+
 ## See also
 
 [`prim_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_prod.md)

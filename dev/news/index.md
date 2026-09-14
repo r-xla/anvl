@@ -28,11 +28,28 @@
 - `default_backend()` is now called
   [`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md).
 - There is now exactly one backend used at a time and it is configured
-  via the `anvl.backend` option.
+  via the `anvl.backend` option. With this change the `device_arg`
+  parameter was removed from
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) as it is
+  no longer needed.
 - A `Shape` is now represented as an integer vector.
+- The operators `&`, `|`, `!`, as well as the generics
+  [`sum()`](https://rdrr.io/r/base/sum.html) and
+  [`all()`](https://rdrr.io/r/base/all.html) now require a boolean input
+  array, improving consistency with base R.
+- The method for `round` was removed, as `digits` is currently not
+  supported.
 
 ### Features
 
+- The reductions ([`sum()`](https://rdrr.io/r/base/sum.html),
+  [`prod()`](https://rdrr.io/r/base/prod.html),
+  [`max()`](https://rdrr.io/r/base/Extremes.html),
+  [`min()`](https://rdrr.io/r/base/Extremes.html),
+  [`range()`](https://rdrr.io/r/base/range.html),
+  [`any()`](https://rdrr.io/r/base/any.html),
+  [`all()`](https://rdrr.io/r/base/all.html)) now work with multiple
+  data inputs.
 - The default data types for floating point numbers and integers can now
   be configured via the `anvl.default_dtypes` field. You can configure
   this for a specific scope via
@@ -48,15 +65,47 @@
   replacing
   [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
   with a provided `steps` argument.
-- `as.vector` now and returns
+- [`as.vector()`](https://rdrr.io/r/base/vector.html) now returns a
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html)
-  for integer types that don’t fit into R’s 32 bit integers. With this
-  chane the `device_arg` parameter was removed from
-  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) as it is
-  no longer needed.
+  for integer data types that do not fit into R’s 32 bit integers.
+- New
+  [`nv_floor_div()`](https://r-xla.github.io/anvl/dev/reference/nv_floor_div.md)
+  for flooring (integer) division, and the `%/%` operator now works on
+  arrays.
+- Added support for more generics:
+  - Reversing an array via `rev`.
+  - Concatenating vectors via [`c()`](https://rdrr.io/r/base/c.html).
+  - Floor division via `nv_floor_div`/`%/%`.
+  - Trigonometric functions `sinpi`, `cospi` and `tanpi` and their
+    corresponding `nv_*` functions.
+  - The `gamma` generic.
+- `log(x, base)` now accepts its second argument like in base R.
+- New
+  [`nv_range()`](https://r-xla.github.io/anvl/dev/reference/nv_range.md)
+  returns the minimum and the maximum of an array, stacked along a new
+  first axis, and is what the
+  [`range()`](https://rdrr.io/r/base/range.html) uses.
+- The `nv_*` functions that compute in floating point
+  ([`nv_sqrt()`](https://r-xla.github.io/anvl/dev/reference/nv_sqrt.md),
+  [`nv_log()`](https://r-xla.github.io/anvl/dev/reference/nv_log.md),
+  [`nv_atan2()`](https://r-xla.github.io/anvl/dev/reference/nv_atan2.md),
+  …) now compute an integer array at the default float data type.
+- [`nv_floor()`](https://r-xla.github.io/anvl/dev/reference/nv_floor.md),
+  [`nv_ceiling()`](https://r-xla.github.io/anvl/dev/reference/nv_ceiling.md),
+  [`nv_trunc()`](https://r-xla.github.io/anvl/dev/reference/nv_trunc.md)
+  and
+  [`nv_round()`](https://r-xla.github.io/anvl/dev/reference/nv_round.md)
+  return an integer array unchanged, like base R does.
+- Improved documentation of API functions and primitives.
 
 ### Bug fixes
 
+- Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a
+  better error message, as `drop` is not supported.
+- [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md)
+  and
+  [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
+  now compute at the default float data type for a non-float input.
 - [`as.vector()`](https://rdrr.io/r/base/vector.html) now works
   correctly for `AnvlArray`s that are converted to
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
@@ -87,6 +136,11 @@
   positionally, as
   [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)
   already matched its `update_computation`.
+- Improved the numerics for
+  [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md).
+- The gradient of
+  [`nv_gamma()`](https://r-xla.github.io/anvl/dev/reference/nv_gamma.md)
+  is now correct for positive whole numbers.
 - [`prim_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_any.md)
   /
   [`prim_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/prim_reduce_all.md)

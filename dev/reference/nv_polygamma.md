@@ -23,14 +23,19 @@ nv_polygamma(n, x)
 - n, x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Floating-point arrayish values. After promotion and broadcasting, `n`
-  and `x` must have the same shape; `n` typically holds non-negative
-  integer values.
+  Floating-point arrayish values; an integer `x` is computed at the
+  default float data type. After promotion and broadcasting, `n` and `x`
+  must have the same shape; `n` typically holds non-negative integer
+  values.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same shape and the promoted common data type of the inputs.
+
+## The [`trigamma()`](https://rdrr.io/r/base/Special.html) generic
+
+`trigamma(x)` is `nv_polygamma(1, x)`.
 
 ## See also
 

@@ -73,7 +73,7 @@ A boolean array is multiplied as zeroes and ones, like base::prod() does."><meta
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Product Reduction</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_reduce_prod.Rd</code></div>
     </div>
 
@@ -121,6 +121,16 @@ Has the same data type as the input, except for a boolean input, which is
 accumulated at the default integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).
 When <code>drop = TRUE</code>, the reduced axes are removed.
 When <code>drop = FALSE</code>, the reduced axes are set to 1.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-prod-generic">The <code><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-prod-generic"></a></h2>
+
+
+<p><code><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod()</a></code> reduces over all axes and, like <code><a href="https://rdrr.io/r/base/prod.html" class="external-link">base::prod()</a></code>, takes several data
+arguments: <code>prod(x, y)</code> is the product of both arrays. <code>na.rm</code> becomes
+<code>nan_rm</code>. Beyond base R, named arguments are passed on, so
+<code>prod(x, axes = 1L)</code> reduces a single axis – but only when <code>x</code> is the only
+data argument.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

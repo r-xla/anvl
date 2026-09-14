@@ -140,7 +140,18 @@ Forwarded to <code><a href="nv_quantile.html">nv_quantile()</a></code>. See its 
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code><a href="arrayish.html">arrayish</a></code><br>
-Same shape as <code>x</code> with <code>axis</code> removed.</p>
+Same shape as <code>x</code> with <code>axis</code> removed. The data type is that of <code>x</code>, or
+the default float for a non-float <code>x</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-median-generic">The <code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-median-generic"></a></h2>
+
+
+<p><code><a href="https://rdrr.io/r/stats/median.html" class="external-link">stats::median()</a></code> flattens a multi-axis array, while <code>nv_median()</code> (and
+<code><a href="https://rdrr.io/r/stats/median.html" class="external-link">median()</a></code> on an anvl array) reduces a single axis, the last one by
+default. Pass <code>axis</code> explicitly, or flatten first with <code><a href="nv_flatten.html">nv_flatten()</a></code>, to
+say which you mean. A non-float <code>x</code> is computed at the default float, like
+base R returns a double.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

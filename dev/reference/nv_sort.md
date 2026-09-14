@@ -54,6 +54,16 @@ Same shape and data type as `x`.
 `NaN` values sort to the **end** (ascending) or **beginning**
 (descending), regardless of sign. `+0` and `-0` compare equal.
 
+## The [`sort()`](https://rdrr.io/r/base/sort.html) generic
+
+[`base::sort()`](https://rdrr.io/r/base/sort.html) flattens a multi-axis
+array into a vector, while `nv_sort()` (and
+[`sort()`](https://rdrr.io/r/base/sort.html) on an anvl array) sorts
+along a single axis, the last one by default, and keeps the shape.
+Flatten with
+[`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
+first if you want a single sorted sequence.
+
 ## See also
 
 [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md)

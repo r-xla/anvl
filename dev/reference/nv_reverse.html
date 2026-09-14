@@ -5,7 +5,9 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Reverse — nv_reverse"><meta name="description" content="Reverses the order of elements along specified axes."><meta property="og:description" content="Reverses the order of elements along specified axes."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Reverse — nv_reverse"><meta name="description" content="Reverses the order of elements along specified axes.
+You can also use rev(), which reverses along every axis."><meta property="og:description" content="Reverses the order of elements along specified axes.
+You can also use rev(), which reverses along every axis."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -71,12 +73,13 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
       <img src="../logo.svg" class="logo" alt=""><h1>Reverse</h1>
-      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/r-xla/anvl/blob/main/R/api.R" class="external-link"><code>R/api.R</code></a>, <a href="https://github.com/r-xla/anvl/blob/main/R/api-generics.R" class="external-link"><code>R/api-generics.R</code></a></small>
       <div class="d-none name"><code>nv_reverse.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
-    <p>Reverses the order of elements along specified axes.</p>
+    <p>Reverses the order of elements along specified axes.
+You can also use <code><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev()</a></code>, which reverses along every axis.</p>
     </div>
 
     <div class="section level2">
@@ -103,6 +106,14 @@ Negative values count from the end, i.e. <code>-1</code> refers to the last axis
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p><code><a href="arrayish.html">arrayish</a></code><br>
 Has the same shape and data type as <code>x</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="the-rev-generic">The <code><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-rev-generic"></a></h2>
+
+
+<p><code><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev()</a></code> reverses along every axis, which puts the elements in the same
+order as <code><a href="https://rdrr.io/r/base/rev.html" class="external-link">base::rev()</a></code> does (base R flattens the array to a vector first,
+whereas <code><a href="https://rdrr.io/r/base/rev.html" class="external-link">rev()</a></code> on an anvl array keeps the shape).</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

@@ -1,6 +1,6 @@
 # Primitive Xor
 
-Element-wise logical XOR.
+Element-wise bitwise XOR, which for a boolean array is the logical XOR.
 
 ## Usage
 

@@ -1,6 +1,8 @@
 # Reverse
 
-Reverses the order of elements along specified axes.
+Reverses the order of elements along specified axes. You can also use
+[`rev()`](https://rdrr.io/r/base/rev.html), which reverses along every
+axis.
 
 ## Usage
 
@@ -25,6 +27,15 @@ nv_reverse(x, axes)
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same shape and data type as `x`.
+
+## The [`rev()`](https://rdrr.io/r/base/rev.html) generic
+
+[`rev()`](https://rdrr.io/r/base/rev.html) reverses along every axis,
+which puts the elements in the same order as
+[`base::rev()`](https://rdrr.io/r/base/rev.html) does (base R flattens
+the array to a vector first, whereas
+[`rev()`](https://rdrr.io/r/base/rev.html) on an anvl array keeps the
+shape).
 
 ## See also
 

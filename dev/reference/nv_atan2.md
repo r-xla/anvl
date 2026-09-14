@@ -14,7 +14,10 @@ nv_atan2(lhs, rhs)
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Left and right operand. Operands are [promoted to a common data
+  Left and right operand. An integer operand is converted to the default
+  float data type (see
+  [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
+  Operands are [promoted to a common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
   Scalars are
   [broadcast](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)

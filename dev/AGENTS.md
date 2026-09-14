@@ -197,6 +197,9 @@ at build time. Never edit `R/jit-registry.R` by hand; because the roclet
 lives in anvl itself, documenting requires an installed anvl that
 already exports it.
 
+Tag every function whose body issues **more than one operation** with
+`@jit`.
+
 ## Broadcasting
 
 Anvl’s elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`,
