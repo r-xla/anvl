@@ -15,7 +15,7 @@ test_that("an R value that meets nothing materializes at the default dtype", {
   expect_equal(jit(function() 1L * 2L)(), nv_scalar(2L, dtype = default_int()))
 })
 
-test_that("a value that has committed keeps its dtype", {
+test_that("a value that has materialized keeps its dtype", {
   # `x * 1L` materializes at i32 -- the R value cannot stay a bool -- and the i16
   # then promotes against a real i32, which wins.
   f <- function(x, y) (x * 1L) + y
@@ -51,7 +51,7 @@ test_that("prim_while carries the dtype of its state", {
   )
 })
 
-test_that("a logical R value is a bool, not an uncommitted value", {
+test_that("a logical R value is a bool, not an unmaterialized value", {
   f <- function(x) x * TRUE
   graph <- trace_fn(f, list(x = nv_scalar(1L)))
   # The logical is built at `bool` -- the only dtype that holds it faithfully --

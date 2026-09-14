@@ -855,7 +855,7 @@ test_that("prim_print shows the R type where a value has no data type yet", {
   # registered pair rather than whatever the run configured.
   local_registered_default_dtypes()
   # A print is not a use site that settles an R value: reporting the data type
-  # this call commits it to would name one nothing else in the program has --
+  # this call materializes it at would name one nothing else in the program has --
   # here `x` is uploaded at f64 for the addition. Rendering the value does need
   # a data type, so the footer says which one it used.
   g <- jit(function(x) {
@@ -870,8 +870,8 @@ test_that("prim_print shows the R type where a value has no data type yet", {
 
 test_that("prim_print hands its argument back untouched", {
   # A print is an observation: it must not change what the program computes.
-  # `x` stays uncommitted, so the multiplication still sees a value with no data
-  # type and settles it at f64 -- committing it to its default first would have
+  # `x` stays unmaterialized, so the multiplication still sees a value with no data
+  # type and settles it at f64 -- materializing it at its default first would have
   # rounded it through f32.
   with_print <- jit(function(x) prim_print(x) * nv_scalar(1, dtype = "f64"))
   without <- jit(function(x) x * nv_scalar(1, dtype = "f64"))

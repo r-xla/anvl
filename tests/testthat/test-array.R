@@ -633,7 +633,7 @@ describe("as_anvl_arrays", {
     expect_identical(as.numeric(out$y), sqrt(2))
   })
 
-  it("commits an R value anchor to its default dtype", {
+  it("materializes an R value anchor at its default dtype", {
     out <- as_anvl_arrays(x = 1L, y = nv_array(2L), .promote = promotion_like("x"))
     expect_equal(dtype(out$x), default_int())
     expect_equal(dtype(out$y), default_int())

@@ -282,7 +282,7 @@ test_that("a promotion rule is a function of the call's arguments", {
   out <- as_anvl_arrays(nv_array(1L), nv_array(1L, dtype = "i8"), .promote = keeps_second)
   expect_equal(lapply(out, dtype), list(as_dtype("f64"), as_dtype("i8")))
 
-  # It sees the arguments as the caller passed them, R values uncommitted.
+  # It sees the arguments as the caller passed them, R values unmaterialized.
   seen <- NULL
   spy <- function(args) {
     seen <<- args

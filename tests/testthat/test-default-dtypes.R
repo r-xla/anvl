@@ -67,7 +67,7 @@ describe("local_default_dtypes()", {
 
   it("takes what it is given as it is", {
     # A data type of the other category, or one no backend supports, is taken
-    # as given: it commits wherever the default is read and fails there.
+    # as given: it materializes wherever the default is read and fails there.
     local_default_dtypes(c(float = "i32"))
     expect_equal(default_float(), as_dtype("i32"))
     expect_error(local_default_dtypes(c(float = "nope")), "Unsupported dtype")

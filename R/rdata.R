@@ -319,7 +319,7 @@ peek_dtype <- function(x) {
 
 # A traced box, with any R value in it materialized at its default dtype. Anything
 # that already has a dtype is returned unchanged.
-commit_rdata_box <- function(x) {
+materialize_rdata_box <- function(x) {
   if (is_rdata_box(x)) {
     materialize_rdata(x, peek_dtype(x))
   } else {

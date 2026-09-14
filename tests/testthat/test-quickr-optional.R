@@ -30,7 +30,7 @@ describe("the quickr backend", {
     expect_error(jit(function(x) nv_convert(x, "f32"))(nv_array(1, dtype = "f64")), "quickr")
   })
 
-  it("commits an R double to f64 everywhere", {
+  it("materializes an R double at f64 everywhere", {
     skip_if_no_quickr()
     local_backend("quickr")
     expect_equal(dtype(nv_array(1.5)), as_dtype("f64"))

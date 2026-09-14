@@ -210,7 +210,7 @@ NULL
 #' @export
 as_anvl_array <- function(x, device = NULL) {
   if (is_box(x)) {
-    return(commit_rdata_box(x))
+    return(materialize_rdata_box(x))
   }
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
@@ -228,7 +228,7 @@ as_anvl_array <- function(x, device = NULL) {
   # A bare R value: it has no dtype of its own, and nothing here says what it
   # should be, so it takes its default.
   if (currently_tracing()) {
-    return(commit_rdata_box(maybe_box_arrayish(x)))
+    return(materialize_rdata_box(maybe_box_arrayish(x)))
   }
   if (is_valid_r_lit(x)) {
     return(nv_scalar(x, device = device))

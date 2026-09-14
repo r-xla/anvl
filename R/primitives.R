@@ -2804,7 +2804,7 @@ prim_print <- new_primitive(
     # prints it.
     # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
     #
-    # The footer is read off the operand *before* it is committed, because a
+    # The footer is read off the operand *before* it is materialized, because a
     # print is not a use site that should get to name a data type. An R value
     # arrives here with none decided -- printing it is not what settles it, and
     # whatever the program goes on to do with the value usually settles it
@@ -2813,7 +2813,7 @@ prim_print <- new_primitive(
     #   jit(\(x) {prim_print(x); x + nv_scalar(0.3, "f64")})(1)
     #
     # uploads `x` at `f64` for the addition. Reporting the `f32` this call
-    # commits it to on the way in would name a data type nothing else in the
+    # materializes it at on the way in would name a data type nothing else in the
     # program has. So the footer shows the R storage type in the data type's
     # place -- `double`, `integer` and `logical` are never data type names, so
     # there is nothing to confuse them with -- and names the data type the
@@ -2829,8 +2829,8 @@ prim_print <- new_primitive(
     # `x` is printed, not consumed: the call takes a rendering of it and the
     # original is handed straight back. Inserting a print therefore cannot
     # change what the program computes -- an R value in particular stays
-    # uncommitted, so `prim_print(x) * nv_scalar(1, "f64")` is still exact where
-    # committing `x` to its default first would have rounded it through `f32`.
+    # unmaterialized, so `prim_print(x) * nv_scalar(1, "f64")` is still exact where
+    # materializing `x` at its default first would have rounded it through `f32`.
     # The stablehlo rule threads the operand through the same way, and marks the
     # custom call `has_side_effect` so it survives with its result unused.
     graph_desc_add(self, list(x = as_anvl_array(x)), list(footer = footer), infer_fn = function(x, ...) {

@@ -446,7 +446,7 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @jit
 nv_rbind <- function(...) {
   # Promoted here rather than in `nv_concatenate()` below: an R value has to be
-  # built at the common dtype directly, where committing it first would round
+  # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
   args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
@@ -3397,7 +3397,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
     to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
     n_valid_kd <- if (nan_rm) {
       # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
-      # rather than crossing categories out of an integer count and committing
+      # rather than crossing categories out of an integer count and materializing
       # `h` -- and with it `lo_f`, `frac` and `out` -- at the default float.
       prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
     } else {

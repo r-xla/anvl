@@ -102,7 +102,7 @@ If the underlying primitive requires all its inputs to share a dtype (e.g. `prim
 args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
 ```
 
-`promotion_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have committed the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
+`promotion_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have materialized the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
 
 ### Static arguments
 

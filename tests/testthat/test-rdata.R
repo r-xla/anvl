@@ -10,7 +10,7 @@ describe("RData", {
   })
 
   it("answers the extractors the same way for a bare R value", {
-    # Eagerly the R value *is* the uncommitted value, so it has to answer the way
+    # Eagerly the R value *is* the unmaterialized value, so it has to answer the way
     # the boxed one does under jit().
     expect_equal(shape(1.5), integer())
     expect_equal(naxes(1.5), 0L)
@@ -276,8 +276,8 @@ describe("an R value at its use site", {
   it("takes the default when it only ever meets other literals", {
     # This only happens when the default float is narrower than an R double.
     local_registered_default_dtypes()
-    # The f64 arrives on `y`, one step after `x` has already committed. This is
-    # the documented limit of committing per operation.
+    # The f64 arrives on `y`, one step after `x` has already materialized. This is
+    # the documented limit of materializing per operation.
     f <- jit(function(x) {
       y <- x * 2
       y + nv_scalar(1, dtype = "f64")
@@ -542,7 +542,7 @@ describe("an R value in an nv_* function", {
 
   it("is built at the common data type by binding and cross products", {
     # These combine their arguments downstream (`nv_concatenate()`, `nv_matmul()`),
-    # so they have to decide the dtype up front: committing an R value first would
+    # so they have to decide the dtype up front: materializing an R value first would
     # round it through `f32` on its way to the `f64` it is combined with.
     x <- nv_matrix(c(1, 1), nrow = 1L, dtype = "f64")
     r <- matrix(c(0.1, sqrt(2)), nrow = 1L)
