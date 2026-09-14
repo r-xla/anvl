@@ -20,6 +20,8 @@
 * The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
   now require a boolean input array, improving consistency with base R.
 * The method for `round` was removed, as `digits` is currently not supported.
+* The `tensor_to_gval` argument of `GraphDescriptor()` is now called
+  `array_to_gval`.
 
 ## Features
 
