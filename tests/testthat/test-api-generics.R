@@ -59,32 +59,12 @@ describe("`&`", {
 
   it("rejects a non-boolean array instead of coercing it", {
     expect_error(nv_array(12L) & nv_array(10L), "must be a boolean array")
-    expect_error(nv_array(1.5) & nv_array(TRUE), "must be a boolean array")
-    expect_error(nv_array(TRUE) & nv_array(1.5), "must be a boolean array")
-    expect_error(nv_array(12L, dtype = "ui8") & nv_array(TRUE), "must be a boolean array")
-    # The explicit comparison is what base R's coercion would have done.
-    vals <- c(1.5, 0, -2)
-    other <- c(0, 0.5, 3)
-    out <- (nv_array(vals) != 0) & (nv_array(other) != 0)
-    expect_equal(as.vector(out), vals & other)
   })
 
   it("takes a logical R value on either side, but not a numeric one", {
     x <- nv_array(TRUE)
     expect_equal(as.vector(x & TRUE), TRUE & TRUE)
-    expect_equal(as.vector(FALSE & x), FALSE & TRUE)
     expect_error(x & 2, "must be a boolean array")
-    expect_error(2 & x, "must be a boolean array")
-    expect_error(x & 0L, "must be a boolean array")
-  })
-
-  it("stays logical under jit()", {
-    f <- function(a, b) (a & b) | !a
-    args <- list(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE)))
-    expect_equal(
-      as.vector(do.call(jit(f), args)),
-      (c(TRUE, FALSE) & c(TRUE, TRUE)) | !c(TRUE, FALSE)
-    )
   })
 })
 

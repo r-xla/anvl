@@ -53,19 +53,12 @@
   integer array unchanged, like base R does.
 * Improved documentation of API functions and primitives.
 
-## Documentation
-
-* The example for an operator (`+`, `%%`, `[`, ...) is now on the operator
-  itself rather than on the `nv_*` function it delegates to.
-
 ## Bug fixes
 
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
   error message, as `drop` is not supported.
 * `nv_quantile()` and `nv_median()` now compute at the default float data
   type for a non-float input.
-* `nv_quantile()` (and with it `nv_median()`) returned wrong values for
-  integer inputs.
 * `as.vector()` now works correctly for `AnvlArray`s that are converted
   to `bit64::integer64`. It used to drop that class along with the shape,
   exposing the raw 64-bit pattern as a double.
@@ -84,9 +77,7 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
-* The gradient of `nv_gamma()` was `NaN` at every positive whole number: the
-  reflection formula it uses for a negative argument is `0 * Inf` there, and
-  the `NaN` reached the gradient through the branch `nv_ifelse()` discards.
+* The gradient of `nv_gamma()` is now correct for positive whole numbers.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
   `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
   Type inference declared a `bool` output whatever the input was, so an

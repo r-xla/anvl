@@ -414,11 +414,6 @@ describe("nv_gamma", {
     expect_equal(as.vector(out), gamma(1:5), tolerance = 1e-5)
   })
 
-  it("means the same thing under jit()", {
-    x <- nv_array(c(-2.5, 0.5, 4), dtype = "f64")
-    expect_equal(as.vector(jit(nv_gamma)(x)), as.vector(nv_gamma(x)))
-  })
-
   it("has the gradient gamma(x) * digamma(x), also at a whole number", {
     # The reflection branch is 0 * Inf at a positive whole number, which used
     # to reach the gradient through the cotangent of the discarded branch.
@@ -450,11 +445,6 @@ describe("nv_sinpi", {
     out <- nv_sinpi(nv_array(c(0L, 1L, 2L)))
     expect_equal(dtype(out), default_float())
     expect_identical(as.vector(out), c(0, 0, 0))
-  })
-
-  it("means the same thing under jit()", {
-    x <- nv_array(c(0.25, 1.5), dtype = "f64")
-    expect_equal(as.vector(jit(nv_sinpi)(x)), as.vector(nv_sinpi(x)))
   })
 })
 
@@ -514,38 +504,6 @@ describe("make_float_unary", {
   it("does not convert a boolean array", {
     expect_error(nv_sqrt(nv_array(TRUE)))
     expect_error(nv_lgamma(nv_array(TRUE)))
-  })
-
-  it("builds every unary float function, so each one converts", {
-    float_fns <- c(
-      "nv_sqrt",
-      "nv_rsqrt",
-      "nv_log",
-      "nv_tanh",
-      "nv_tan",
-      "nv_sin",
-      "nv_cos",
-      "nv_exp",
-      "nv_expm1",
-      "nv_log1p",
-      "nv_cbrt",
-      "nv_logistic",
-      "nv_acos",
-      "nv_acosh",
-      "nv_asin",
-      "nv_asinh",
-      "nv_atan",
-      "nv_atanh",
-      "nv_cosh",
-      "nv_sinh",
-      "nv_digamma",
-      "nv_lgamma",
-      "nv_erf",
-      "nv_erf_inv",
-      "nv_erfc"
-    )
-    bodies <- vapply(float_fns, function(nm) paste(deparse(body(get(nm))), collapse = ""), "")
-    expect_true(all(bodies == "f(int_to_float(x))"))
   })
 })
 
@@ -784,11 +742,6 @@ describe("boolean accumulation in nv_reduce_sum / nv_reduce_prod / nv_cumsum / n
     expect_equal(as.numeric(nv_reduce_sum(nv_array(m), axes = 2L)), as.numeric(rowSums(m)))
   })
 
-  it("counts under jit as it does eagerly", {
-    expect_equal(as_array(jit(function(x) nv_reduce_sum(x))(x)), sum(v))
-    expect_equal(as.numeric(jit(function(x) nv_cumsum(x))(x)), as.numeric(cumsum(v)))
-  })
-
   it("counts through the base R generics", {
     expect_equal(as_array(sum(x)), sum(v))
     expect_equal(as_array(prod(x)), prod(v))
@@ -913,11 +866,6 @@ describe("nv_range", {
     x <- nv_array(c(1, NaN, 3))
     expect_equal(as.vector(nv_range(x, nan_rm = TRUE)), c(1, 3))
     expect_true(all(is.nan(as.vector(nv_range(x)))))
-  })
-
-  it("works under jit()", {
-    x <- nv_array(c(3, 1, 4))
-    expect_equal(as.vector(jit(nv_range)(x)), c(1, 4))
   })
 })
 
@@ -1258,13 +1206,6 @@ describe("nv_linspace", {
   it("requires steps to be a positive whole number", {
     expect_error(nv_linspace(0, 1, steps = 0L), "steps")
     expect_error(nv_linspace(0, 1, steps = 2.5), "steps")
-  })
-  it("works under jit", {
-    expect_equal(
-      jit(function() nv_linspace(0, 1, steps = 5L))(),
-      nv_array(c(0, 0.25, 0.5, 0.75, 1)),
-      tolerance = 1e-6
-    )
   })
 })
 

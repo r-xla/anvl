@@ -19,11 +19,6 @@ data type if the input was an integer array.
 }
 \description{
 Element-wise gamma function. You can also use \code{gamma()}.
-
-XLA has only the log-gamma function, so this is computed as
-\code{exp(lgamma(x))} -- via Euler's reflection formula for a negative argument
--- and is therefore less accurate than base R's \code{\link[base:gamma]{base::gamma()}}. It is \code{NaN}
-at the poles, i.e. at every whole number that is not positive.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

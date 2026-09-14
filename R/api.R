@@ -1376,11 +1376,6 @@ nv_lgamma <- make_float_unary(prim_lgamma)
 #' @title Gamma Function
 #' @description
 #' Element-wise gamma function. You can also use `gamma()`.
-#'
-#' XLA has only the log-gamma function, so this is computed as
-#' `exp(lgamma(x))` -- via Euler's reflection formula for a negative argument
-#' -- and is therefore less accurate than base R's [base::gamma()]. It is `NaN`
-#' at the poles, i.e. at every whole number that is not positive.
 #' @template param_x_float
 #' @template return_unary_float
 #' @seealso [nv_lgamma()], which is what the hardware computes.
