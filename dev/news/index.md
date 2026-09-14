@@ -39,6 +39,9 @@
   array, improving consistency with base R.
 - The method for `round` was removed, as `digits` is currently not
   supported.
+- The `tensor_to_gval` argument of
+  [`GraphDescriptor()`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
+  is now called `array_to_gval`.
 
 ### Features
 

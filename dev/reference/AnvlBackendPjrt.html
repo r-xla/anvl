@@ -102,7 +102,7 @@ backend.</p>
 
 
 <p>An <code><a href="AnvlArray.html">AnvlArray</a></code> with <code>backend = "pjrt"</code> wraps a <code><a href="https://r-xla.github.io/pjrt/reference/pjrt_buffer.html" class="external-link">pjrt::pjrt_buffer()</a></code>
-stored in the <code>$data</code> field. The buffer owns the memory holding the tensor
+stored in the <code>$data</code> field. The buffer owns the memory holding the array
 values and may live on any device supported by PJRT (CPU, CUDA, Metal,
 ...). Calling <code><a href="as_array.html">as_array()</a></code> transfers the buffer contents back to an R
 array; calling <code><a href="AnvlArray.html">nv_array()</a></code> on an R object uploads it to the requested

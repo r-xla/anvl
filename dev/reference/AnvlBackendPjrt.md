@@ -28,7 +28,7 @@ An
 with `backend = "pjrt"` wraps a
 [`pjrt::pjrt_buffer()`](https://r-xla.github.io/pjrt/reference/pjrt_buffer.html)
 stored in the `$data` field. The buffer owns the memory holding the
-tensor values and may live on any device supported by PJRT (CPU, CUDA,
+array values and may live on any device supported by PJRT (CPU, CUDA,
 Metal, ...). Calling
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
 transfers the buffer contents back to an R array; calling

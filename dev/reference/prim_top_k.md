@@ -19,7 +19,7 @@ prim_top_k(x, k)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Tensor of integer, unsigned integer, or floating-point dtype with rank
+  Array of integer, unsigned integer, or floating-point dtype with rank
   \>= 1.
 
 - k:

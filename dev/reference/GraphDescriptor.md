@@ -9,7 +9,7 @@ This is a mutable class.
 ``` r
 GraphDescriptor(
   calls = list(),
-  tensor_to_gval = NULL,
+  array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -31,7 +31,7 @@ GraphDescriptor(
   (`list(PrimitiveCall)`)  
   The primitive calls that make up the graph.
 
-- tensor_to_gval:
+- array_to_gval:
 
   (`hashtab`)  
   Mapping: `AnvlArray` -\> `GraphValue`
