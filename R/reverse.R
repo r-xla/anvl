@@ -11,7 +11,9 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          x = "Got {as.character(peek_dtype(args_flat[[i]]))}"
+          # `repr()` on a data type gives stablehlo's spelling (`i1` for a
+          # boolean); the pages speak anvl's, which `as.character()` gives.
+          x = "Got {.val {as.character(peek_dtype(args_flat[[i]]))}}."
         ))
       }
 
@@ -24,7 +26,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
         cli_abort(c(
           "Cannot compute gradient with respect to a value that has no data type.",
           x = "It is an R {peek_r_type(args_flat[[i]])}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-          i = "Give it one first, e.g. {.code nv_array(x, \"f32\")} or {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
+          i = "Give it one first, e.g. {.code nv_array(x, default_float())} or an explicit {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
         ))
       }
     }
@@ -364,7 +366,7 @@ run_backward_pass <- function(graph, desc, backwards, required_env, out) {
     output_grads <- lapply(call$outputs, \(output) {
       # Output grad may be NULL if there is dead code.
       grad_env[[output]] %||%
-        prim_fill(0L, dtype = dtype(output), shape = shape(output))
+        zeros(dtype(output), shape(output))
     })
 
     bwd <- backwards[[i]]

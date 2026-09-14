@@ -327,7 +327,7 @@ test_that("prim_reshape infers a -1 dimension", {
   expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
   expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
   expect_error(prim_reshape(x, c(-1, -1)), "at most one")
-  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer dimension")
+  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
   expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
 })
 
@@ -620,7 +620,7 @@ describe("prim_qr", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_qr(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_qr(int_mat), "floating-point")
+    expect_error(prim_qr(int_mat), "float data type")
   })
 })
 
@@ -657,7 +657,7 @@ describe("prim_lu", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_lu(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_lu(int_mat), "floating-point")
+    expect_error(prim_lu(int_mat), "float data type")
   })
 })
 
@@ -701,7 +701,7 @@ describe("prim_svd", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_svd(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_svd(int_mat), "floating-point")
+    expect_error(prim_svd(int_mat), "float data type")
   })
 })
 
@@ -731,7 +731,7 @@ describe("prim_eigh", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f32")
     expect_error(prim_eigh(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_eigh(int_mat), "floating-point")
+    expect_error(prim_eigh(int_mat), "float data type")
     rect <- nv_matrix(1:6, nrow = 2, dtype = "f32")
     expect_error(prim_eigh(rect), "square")
   })
@@ -1032,16 +1032,16 @@ describe("prim_argmax", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmax(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     expect_error(
       prim_argmax(nv_matrix(numeric(0), nrow = 3, ncol = 0), axis = 2L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     # Inside jit too.
     expect_error(
       jit(function(x) prim_argmax(x, axis = 1L))(nv_array(numeric(0), shape = 0L)),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 
@@ -1078,7 +1078,7 @@ describe("prim_argmin", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmin(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 

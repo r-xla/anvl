@@ -19,7 +19,7 @@ Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other op
 Has the same shape and the promoted common data type of the inputs.
 }
 \description{
-Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive
+Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive x-axis
 x-axis and the point \verb{(rhs, lhs)}.
 }
 \examples{

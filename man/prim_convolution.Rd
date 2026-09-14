@@ -33,18 +33,18 @@ prim_convolution(
 \item{input_batch_axis, input_feature_axis}{(\code{integer(1)})\cr
 batch/feature axis of \code{x}.}
 
-\item{input_spatial_axes}{(\code{integer()})\cr spatial axes of \code{x}.}
+\item{input_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{x}.}
 
 \item{kernel_input_feature_axis, kernel_output_feature_axis}{(\code{integer(1)})\cr
-input/output feature axis of \code{kernel}.}
+Input and output feature axis of \code{kernel}.}
 
-\item{kernel_spatial_axes}{(\code{integer()})\cr spatial axes of \code{kernel}.}
+\item{kernel_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{kernel}.}
 
 \item{output_batch_axis, output_feature_axis}{(\code{integer(1)})\cr
 batch/feature axis of the output.}
 
 \item{output_spatial_axes}{(\code{integer()})\cr
-spatial axes of the output.}
+Spatial axes of the output.}
 
 \item{window_strides}{(\code{integer()})\cr Stride per spatial axis.}
 

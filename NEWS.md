@@ -87,6 +87,23 @@
   and init_values must match`.
 * Printed graphs, arrays and error messages now spell a data type the way anvl
   does, so `bool` no longer shows up as its MLIR spelling `i1`.
+* A number of error messages now speak anvl's vocabulary -- *scalar* rather
+  than "0-dimensional array", *axis size* rather than "dimension", *bool*
+  rather than the quickr lowering's "pred", and the offending shapes rather
+  than "lhs and rhs are not broadcastable".
+* Shapes in error and warning messages are written `(2x3)`, via the new
+  internal `shape_repr()` / `shapes_repr()`. The repr spelling (`f32[2,3]`,
+  `RData(double, (2,3))`) is separate and unchanged.
+* `prim_while()`'s message for an `init` that does not match what `body`
+  returns no longer errors itself when more than one element disagrees.
+* `prim_if()` no longer advertises a `reverse` rule on its help page. The
+  registered rule only said "Not yet implemented"; differentiating through it
+  now gives the same "no reverse rule for this primitive" message every other
+  primitive without one gives.
+* Documentation typos: `?nv_flatten`'s title, `?nv_floor_div`'s "opertor",
+  `?nv_atan2`'s truncated first sentence, seven references to a `nv_shape()`
+  that does not exist, and `?prim_triangular_solve`'s example matrix, which
+  was not lower triangular.
 
 ## Tests
 

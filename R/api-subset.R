@@ -398,13 +398,16 @@ parse_subset_spec <- function(quo, axis_size) {
   # Atomic numeric array - static indices (preserves axis)
   if (is.array(e) && is.numeric(e)) {
     if (length(dim(e)) != 1L) {
-      cli_abort("Array indices must be 1D, but got {length(dim(e))}D")
+      cli_abort(c(
+        "An array of indices must have exactly one axis.",
+        x = "Got {length(dim(e))} axes."
+      ))
     }
     indices <- as.integer(e)
     oob <- indices < 1L | indices > axis_size
     if (any(oob)) {
       bad <- indices[oob][1L] # nolint
-      cli_abort("Index {bad} is out of bounds for axis of size {axis_size}")
+      cli_abort("Index {bad} is out of bounds for an axis of size {axis_size}.")
     }
     return(SubsetIndices(indices))
   }
@@ -412,7 +415,10 @@ parse_subset_spec <- function(quo, axis_size) {
   # AnvlRange (dynamic range) - not supported
   if (inherits(e, "IotaArray")) {
     if (length(shape) != 1L) {
-      cli_abort("IotaArray must be 1D, but got {length(shape)}D")
+      cli_abort(c(
+        "A range index must have exactly one axis.",
+        x = "Got {length(shape)} axes."
+      ))
     }
     return(SubsetRange(e$start, e$end))
   }
@@ -421,11 +427,18 @@ parse_subset_spec <- function(quo, axis_size) {
   if (is_arrayish(e) && !is.atomic(e)) {
     dt <- peek_dtype(e)
     if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
-      cli_abort("Dynamic indices must be integers, but got {.val {as.character(dt)}}")
+      cli_abort(c(
+        "An array of indices must have an integer data type.",
+        x = "Got {.val {as.character(dt)}}.",
+        i = "Convert it with {.fn nv_convert}."
+      ))
     }
     nd <- naxes(e)
     if (nd > 1L) {
-      cli_abort("Dynamic indices must be at most 1D, but got {nd}D array")
+      cli_abort(c(
+        "An array of indices must have at most one axis.",
+        x = "Got {nd} axes."
+      ))
     }
     # Scalar array drops axis, 1D array preserves
     if (nd == 0L) {
@@ -434,7 +447,15 @@ parse_subset_spec <- function(quo, axis_size) {
     return(SubsetIndices(e))
   }
 
-  cli_abort("Invalid subset expression")
+  detail <- if (is.numeric(e) && length(e) == 1L && is.finite(e)) {
+    "Got {.val {e}}, which is not whole."
+  } else {
+    "Got {.obj_type_friendly {e}}."
+  }
+  cli_abort(c(
+    "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
+    x = detail
+  ))
 }
 
 #' @title Subset an Array
@@ -463,8 +484,8 @@ parse_subset_spec <- function(quo, axis_size) {
 nv_subset <- function(x, ...) {
   if (!is_arrayish(x)) {
     cli_abort(c(
-      "Argument {.arg x} must be arrayish",
-      "x" = "Got {.cls {class(x)[1]}}"
+      "{.arg x} must be arrayish.",
+      "x" = "Got {.cls {class(x)[1]}}."
     ))
   }
   x_shape <- shape(x)
@@ -518,7 +539,7 @@ subset_scatter_core <- jit(
       if (!identical(value_shape, update_shape)) {
         cli_abort(c(
           "Update shape does not match subset shape.",
-          x = "Got {shape2string(value_shape)} and {shape2string(update_shape)}"
+          x = "Got {shape_repr(value_shape)} and {shape_repr(update_shape)}"
         ))
       }
     }

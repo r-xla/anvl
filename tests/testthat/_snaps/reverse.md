@@ -26,7 +26,7 @@
     Condition
       Error in `check_wrt_arrayish()`:
       ! Can only compute gradient with respect to float arrays.
-      x Got i32
+      x Got "i32".
 
 # wrt for nested non-array input: value_and_gradient
 
@@ -36,7 +36,7 @@
     Condition
       Error in `check_wrt_arrayish()`:
       ! Can only compute gradient with respect to float arrays.
-      x Got i32
+      x Got "i32".
 
 # can only compute gradient w.r.t. float arrays
 
@@ -45,7 +45,7 @@
     Condition
       Error in `check_wrt_arrayish()`:
       ! Can only compute gradient with respect to float arrays.
-      x Got i32
+      x Got "i32".
 
 # wrt arg passed as plain R literal errors clearly
 
@@ -55,7 +55,7 @@
       Error in `check_wrt_arrayish()`:
       ! Cannot compute gradient with respect to a value that has no data type.
       x It is an R double, which takes its data type from the way the function body uses it (see `?RData`).
-      i Give it one first, e.g. `nv_array(x, "f32")` or `nv_array(x, "f64")`, so the gradient's data type is the caller's choice.
+      i Give it one first, e.g. `nv_array(x, default_float())` or an explicit `nv_array(x, "f64")`, so the gradient's data type is the caller's choice.
 
 ---
 
@@ -65,5 +65,5 @@
       Error in `check_wrt_arrayish()`:
       ! Cannot compute gradient with respect to a value that has no data type.
       x It is an R double, which takes its data type from the way the function body uses it (see `?RData`).
-      i Give it one first, e.g. `nv_array(x, "f32")` or `nv_array(x, "f64")`, so the gradient's data type is the caller's choice.
+      i Give it one first, e.g. `nv_array(x, default_float())` or an explicit `nv_array(x, "f64")`, so the gradient's data type is the caller's choice.
 

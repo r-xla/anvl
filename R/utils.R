@@ -129,8 +129,16 @@ shape2string <- function(x, parenthesize = TRUE) {
   }
 }
 
-shapes2string <- function(shapes) {
-  paste0(sapply(shapes, shape2string), sep = ", ")
+# The shape spelling for user-facing messages: `(2x3)`, and `()` for a scalar.
+# `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
+# `RData(double, (2,3))` are built from and stays as it is -- so everything a
+# caller reads in an error or warning goes through these two instead.
+shape_repr <- function(shape) {
+  sprintf("(%s)", paste0(shape, collapse = "x"))
+}
+
+shapes_repr <- function(shapes) {
+  paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
 zeros <- function(dtype, shape) {
