@@ -283,10 +283,10 @@ format.PromotionRule <- function(x, ...) {
   spec <- attr(x, "spec")
   detail <- switch(
     kind,
-    common = if (is.null(spec$fallback)) "" else sprintf("(fallback %s)", repr(spec$fallback)),
+    common = if (is.null(spec$fallback)) "" else sprintf("(fallback %s)", as.character(spec$fallback)),
     rdata_common = "",
     like = sprintf("(%s%s)", format_arg_ref(spec$arg), if (isTRUE(spec$coerce)) ", coerce" else ""),
-    dtype = sprintf("(%s%s)", repr(spec$dtype), if (isTRUE(spec$coerce)) ", coerce" else ""),
+    dtype = sprintf("(%s%s)", as.character(spec$dtype), if (isTRUE(spec$coerce)) ", coerce" else ""),
     grouped = sprintf("(%s)", paste(vapply(spec$rules, format_rule, character(1L)), collapse = ", ")),
     ""
   )

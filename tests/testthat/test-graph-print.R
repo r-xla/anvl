@@ -61,3 +61,10 @@ test_that("an input the caller supplies as bare R data names its R type", {
   graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("integer", 2L)))
   expect_snapshot(graph)
 })
+
+test_that("a data type prints under its anvl name, not its MLIR spelling", {
+  f <- function(x) x
+  graph <- trace_fn(f, list(x = nv_aval("bool", 2L)))
+  expect_match(format(graph), "bool[2]", fixed = TRUE)
+  expect_no_match(format(graph), "i1", fixed = TRUE)
+})

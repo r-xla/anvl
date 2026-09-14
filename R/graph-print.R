@@ -16,7 +16,7 @@ format_literal <- function(node) {
   if (is_anvl_array(val)) {
     val <- as_array(val)
   }
-  dt <- repr(dtype(node$aval))
+  dt <- as.character(dtype(node$aval))
   shp <- shape(node$aval)
   sprintf("%s:%s%s", val, dt, if (length(shp)) sprintf("[%s]", shape2string(shp)) else "")
 }
@@ -27,7 +27,7 @@ format_literal <- function(node) {
 # fact about the input. An output that happens to *be* an input
 # (`jit(identity)`) is still just a value of its data type.
 format_aval_short <- function(aval, r_type = NA_character_) {
-  out <- sprintf("%s[%s]", repr(dtype(aval)), paste(shape(aval), collapse = ", "))
+  out <- sprintf("%s[%s]", as.character(dtype(aval)), paste(shape(aval), collapse = ", "))
   if (!is.na(r_type)) {
     # An input the caller supplies as bare R data, which the program uploads at
     # the dtype shown -- worth seeing, since nothing else in the graph says so.
@@ -66,7 +66,7 @@ format_param <- function(param) {
   } else if (is_graph(param)) {
     sprintf("graph[%s -> %s]", length(param$inputs), length(param$outputs))
   } else if (is_dtype(param)) {
-    repr(param)
+    as.character(param)
   } else if (is.list(param)) {
     if (!is.null(names(param))) {
       sprintf("[%s]", paste(names(param), "=", sapply(param, format_param), collapse = ", "))

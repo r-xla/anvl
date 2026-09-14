@@ -137,7 +137,12 @@
 * Improved the numerics for `nv_mod()`.
 * The gradient of `nv_gamma()` is now correct for positive whole numbers.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
-  `nv_reduce_all()`) now reject a non-boolean input.
+  `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
+  Type inference declared a `bool` output whatever the input was, so an
+  integer operand reached the lowering and failed with `Data types of inputs
+  and init_values must match`.
+* Printed graphs, arrays and error messages now spell a data type the way anvl
+  does, so `bool` no longer shows up as its MLIR spelling `i1`.
 * `nv_runif()` with `min == max` now returns the `state` / `values` list every
   other sampler returns, instead of the filled array on its own.
 * `nv_qnorm()` now returns `p`'s data type whatever the default float is. Its

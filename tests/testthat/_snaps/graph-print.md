@@ -46,7 +46,7 @@
     Output
       <AnvlGraph>
         Inputs:
-          %x1: i1[]
+          %x1: bool[]
         Constants:
           %c1: f32[]
           %c2: f32[]
