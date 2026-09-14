@@ -103,6 +103,8 @@ to the registry, and `R/zzz.R` rebinds those functions to their jitted versions 
 edit `R/jit-registry.R` by hand; because the roclet lives in anvl itself, documenting requires an
 installed anvl that already exports it.
 
+Tag every function whose body issues **more than one operation** with `@jit`.
+
 ## Broadcasting
 
 Anvl's elementwise binary operators (`+`, `-`, `*`, `/`, `nv_add`, `nv_mul`, …) only **auto-broadcast scalars** — i.e. operands with `shape = integer()`. They do **not** do general numpy-style broadcasting; mixing two non-scalar arrays of different (but broadcastable) shapes raises `nv_broadcast_scalars()` errors like *"All non-scalar arrays must have the same shape, ... Use `nv_broadcast_arrays()` for general broadcasting."*

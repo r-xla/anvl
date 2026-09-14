@@ -9,7 +9,9 @@ prim_polygamma(n, x)
 \arguments{
 \item{n, x}{(\code{\link{arrayish}})\cr
 Two inputs of the same shape. Can be any float data type.
-\code{n} and \code{x} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+\code{n} and \code{x} must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -30,7 +32,9 @@ typically holds non-negative integer values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlopolygamma_chlopolygammaop}{chlo.polygamma}.
+Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chlopolygamma_chlopolygammaop}{chlo.polygamma}.
 }
 
 \examples{

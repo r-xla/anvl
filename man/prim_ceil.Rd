@@ -29,7 +29,8 @@ Element-wise ceiling.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_ceil]{hlo_ceil()}}, specified under \href{https://openxla.org/stablehlo/spec#ceil}{ceil}.
+Lowers to \code{\link[stablehlo:hlo_ceil]{hlo_ceil()}}, specified under
+\href{https://openxla.org/stablehlo/spec#ceil}{ceil}.
 }
 
 \examples{

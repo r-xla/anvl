@@ -6,8 +6,6 @@
 \title{Is NaN}
 \usage{
 nv_is_nan(x)
-
-\method{is.nan}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

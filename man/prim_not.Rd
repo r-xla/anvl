@@ -30,7 +30,8 @@ bit-by-bit one on an integer.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_not]{hlo_not()}}, specified under \href{https://openxla.org/stablehlo/spec#not}{not}.
+Lowers to \code{\link[stablehlo:hlo_not]{hlo_not()}}, specified under
+\href{https://openxla.org/stablehlo/spec#not}{not}.
 }
 
 \examples{

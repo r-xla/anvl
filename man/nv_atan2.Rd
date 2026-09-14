@@ -8,11 +8,13 @@ nv_atan2(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Two inputs with a \link[=common_dtype]{common data type}. Can be
-any float data type. Scalars are broadcast, and R values assume the other
-operand's data type within their \link[=dtypes]{data type category},
-otherwise falling back to their \link[=default_dtypes]{default data type} and
-being converted to the common data type.}
+Two inputs. Can be any numeric data type: an integer operand is converted
+to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) before the two
+are brought to a \link[=common_dtype]{common data type}, so that common data
+type is always a float. Scalars are broadcast. An R double assumes the
+other operand's data type, falling back to its
+\link[=default_dtypes]{default data type}; an R integer commits to its default
+and is converted like any other integer.}
 }
 \value{
 (\code{\link{arrayish}})\cr

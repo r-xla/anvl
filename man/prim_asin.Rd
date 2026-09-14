@@ -28,7 +28,9 @@ Element-wise inverse sine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_asin]{hlo_asin()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloasin_chloasinop}{chlo.asin}.
+Lowers to \code{\link[stablehlo:hlo_asin]{hlo_asin()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chloasin_chloasinop}{chlo.asin}.
 }
 
 \examples{

@@ -31,7 +31,8 @@ Multiplies two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}}, specified under \href{https://openxla.org/stablehlo/spec#multiply}{multiply}.
+Lowers to \code{\link[stablehlo:hlo_multiply]{hlo_multiply()}}, specified under
+\href{https://openxla.org/stablehlo/spec#multiply}{multiply}.
 }
 
 \examples{

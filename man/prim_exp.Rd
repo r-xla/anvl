@@ -29,7 +29,8 @@ Element-wise exponential.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_exponential]{hlo_exponential()}}, specified under \href{https://openxla.org/stablehlo/spec#exponential}{exponential}.
+Lowers to \code{\link[stablehlo:hlo_exponential]{hlo_exponential()}}, specified under
+\href{https://openxla.org/stablehlo/spec#exponential}{exponential}.
 }
 
 \examples{

@@ -29,7 +29,8 @@ Element-wise hyperbolic tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tanh]{hlo_tanh()}}, specified under \href{https://openxla.org/stablehlo/spec#tanh}{tanh}.
+Lowers to \code{\link[stablehlo:hlo_tanh]{hlo_tanh()}}, specified under
+\href{https://openxla.org/stablehlo/spec#tanh}{tanh}.
 }
 
 \examples{

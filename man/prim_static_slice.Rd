@@ -46,7 +46,8 @@ computed at runtime (e.g. depends on array values).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}, specified under \href{https://openxla.org/stablehlo/spec#slice}{slice}.
+Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}, specified under
+\href{https://openxla.org/stablehlo/spec#slice}{slice}.
 }
 
 \examples{

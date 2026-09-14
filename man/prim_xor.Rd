@@ -32,7 +32,8 @@ bit-by-bit one on an integer.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}, specified under \href{https://openxla.org/stablehlo/spec#xor}{xor}.
+Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}, specified under
+\href{https://openxla.org/stablehlo/spec#xor}{xor}.
 }
 
 \examples{

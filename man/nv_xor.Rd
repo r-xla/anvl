@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_xor}
 \alias{nv_xor}
-\title{Bitwise Xor}
+\title{Bitwise XOR}
 \usage{
 nv_xor(lhs, rhs)
 }
@@ -21,6 +21,7 @@ Has the inputs' broadcast shape and common data type.
 \description{
 Element-wise bitwise XOR -- a logical XOR on a boolean input, and a
 bit-by-bit one on an integer.
+For \emph{logical} inputs, you can also use \code{xor}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

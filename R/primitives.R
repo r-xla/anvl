@@ -730,7 +730,8 @@ prim_static_slice <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("dynamic_slice")`
-#' @seealso [prim_static_slice()], [prim_dynamic_update_slice()], [prim_scatter()], [prim_gather()], [nv_subset()], `[`
+#' @seealso [prim_static_slice()], [prim_dynamic_update_slice()],
+#'   [prim_scatter()], [prim_gather()], [nv_subset()], `[`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # 1-D: extract 3 elements starting at position 3
 #' x <- nv_array(1:10)
@@ -807,7 +808,8 @@ prim_dynamic_slice <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' `r roxy_spec("dynamic_update_slice")`
-#' @seealso [prim_dynamic_slice()], [prim_scatter()], [prim_gather()], [nv_subset_assign()], `[<-`
+#' @seealso [prim_dynamic_slice()], [prim_scatter()], [prim_gather()],
+#'   [nv_subset_assign()], `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # 1-D: overwrite two elements starting at position 2
 #' x <- nv_array(1:5)
@@ -1658,9 +1660,9 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 
 #' @title Primitive Remainder
 #' @description
-#' Element-wise remainder.
-#' Result has sign of the dividend, which differs from base R's `%%`, which is available
-#' via [`nv_mod()`] and has sign of divisor.
+#' Element-wise remainder. The result has the sign of the dividend, which is
+#' what StableHLO's `remainder` does. Base R's `%%` takes the sign of the
+#' divisor instead and is available via [`nv_mod()`].
 #' @templateVar dtypes any numeric data type
 #' @template params_prim_lhs_rhs
 #' @template return_prim_binary
@@ -3992,6 +3994,7 @@ prim_chol <- new_primitive(
 #'   matching leading batch axes. The size of `a`'s last two (square)
 #'   axes must equal `b`'s second-to-last axis when
 #'   `left_side = TRUE`, or `b`'s last axis when `left_side = FALSE`.
+#'   Shares `a`'s data type -- see `a`.
 #' @param left_side (`logical(1)`)\cr
 #'   If `TRUE`, solve `op(a) %*% x = b`. If `FALSE`, solve `x %*% op(a) = b`.
 #' @param lower (`logical(1)`)\cr

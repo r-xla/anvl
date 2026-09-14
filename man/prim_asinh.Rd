@@ -28,7 +28,9 @@ Element-wise inverse hyperbolic sine.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_asinh]{hlo_asinh()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloasinh_chloasinhop}{chlo.asinh}.
+Lowers to \code{\link[stablehlo:hlo_asinh]{hlo_asinh()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chloasinh_chloasinhop}{chlo.asinh}.
 }
 
 \examples{

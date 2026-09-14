@@ -6,8 +6,6 @@
 \title{Is Infinite}
 \usage{
 nv_is_infinite(x)
-
-\method{is.infinite}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr

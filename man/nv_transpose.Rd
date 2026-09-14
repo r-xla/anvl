@@ -6,8 +6,6 @@
 \title{Transpose}
 \usage{
 nv_transpose(x, permutation = NULL)
-
-\method{t}{AnvlArray}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -26,6 +24,12 @@ when \code{permutation} is \code{NULL}.
 \description{
 Permutes the axes of an array. You can also use \code{t()} for matrices.
 }
+\section{The \code{t()} generic}{
+
+\code{t()} requires a matrix, whereas \code{\link[base:t]{base::t()}} also transposes a vector (into
+a one-row matrix) and reverses the axes of a higher-rank array.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the 2x3 becomes a 3x2, keeping its data type

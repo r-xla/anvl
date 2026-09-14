@@ -109,20 +109,20 @@ return, a rules section and a worked example.
 
 Elementwise binary: `nv_add` `nv_sub` `nv_mul` `nv_div` `nv_pow`
 `nv_remainder` `nv_mod` `nv_max` `nv_min` `nv_atan2` `nv_and` `nv_or` `nv_xor`
-`nv_shift_left` `nv_shift_right_logical` `nv_shift_right_arithmetic` `nv_eq`
-`nv_ne` `nv_gt` `nv_ge` `nv_lt` `nv_le`
+`nv_floor_div` `nv_shift_left` `nv_shift_right_logical`
+`nv_shift_right_arithmetic` `nv_eq` `nv_ne` `nv_gt` `nv_ge` `nv_lt` `nv_le`
 
 Elementwise unary: `nv_abs` `nv_sign` `nv_negate` `nv_not` `nv_popcnt`
 `nv_sqrt` `nv_rsqrt` `nv_cbrt` `nv_exp` `nv_expm1` `nv_log` `nv_log1p`
 `nv_log2` `nv_log10` `nv_logistic` `nv_sin` `nv_cos` `nv_tan` `nv_sinh`
 `nv_cosh` `nv_tanh` `nv_asin` `nv_acos` `nv_atan` `nv_asinh` `nv_acosh`
 `nv_atanh` `nv_floor` `nv_ceiling` `nv_trunc` `nv_round` `nv_erf` `nv_erfc`
-`nv_erf_inv` `nv_digamma` `nv_lgamma` `nv_is_finite` `nv_is_nan`
-`nv_is_infinite`
+`nv_erf_inv` `nv_digamma` `nv_lgamma` `nv_gamma` `nv_sinpi` `nv_cospi`
+`nv_tanpi` `nv_is_finite` `nv_is_nan` `nv_is_infinite`
 
 Reductions and scans: `nv_reduce_sum` `nv_reduce_prod` `nv_reduce_max`
 `nv_reduce_min` `nv_reduce_any` `nv_reduce_all` `nv_mean` `nv_var` `nv_sd`
-`nv_cumsum` `nv_cumprod` `nv_cummax` `nv_cummin`
+`nv_range` `nv_cumsum` `nv_cumprod` `nv_cummax` `nv_cummin`
 
 Sequences: `nv_seq` `nv_seq_like` `nv_linspace` `nv_linspace_like`
 
@@ -160,8 +160,13 @@ IO: `nv_save` `nv_read` `nv_serialize` `nv_unserialize` `nv_print`
 
 ### To do
 
-None. `nv_device` has no array data type to state, so it was left alone, and
-the distribution and RNG pages are the maintainer's (see Out of scope).
+`nv_device`, `dim()` and `length()` have no array data type to state, so they
+are left alone, and the distribution and RNG pages are the maintainer's (see
+Out of scope).
+
+What remains is the four rounding pages (`nv_floor()`, `nv_ceiling()`,
+`nv_trunc()`, `nv_round()`), which carry main's accurate text outside the
+template system -- see below.
 
 ## Review
 
@@ -202,6 +207,17 @@ Two of its observations were deliberately left alone: the `try()` on
 `?promotion_rule` demonstrates the narrowing error that page is about, and
 "NumPy-style broadcasting" / "Torch-style NCW layout" name a layout convention
 rather than claiming a framework match.
+
+The last two open findings are closed as well. `prim_triangular_solve`'s `b`
+now points at `a` for its data type, which was the only agreeing operand still
+silent -- the other pages the report named document their operands in a single
+combined `@param`, so they have no sibling to point. And `roxy_wrap()` in
+`R/roxygen.R` wraps what `roxy_agree()` / `roxy_spec()` / `roxy_spec_chlo()`
+return, with `return_reduce` wrapping the sentence it builds around
+`dtype_out`, so a substituted sentence no longer lands as one 200-plus-character
+line in the `.Rd`. Both were checked to change nothing but whitespace: with the
+wrapping in place every page re-generates byte-identical once whitespace is
+normalised, apart from `prim_triangular_solve` itself.
 
 ## After merging main
 
@@ -256,7 +272,10 @@ Bugs, all with tests:
   *every* axis, so an input above rank 2 contracted the wrong pair. They now
   require a matrix, as `base::crossprod()` does.
 - `Ops.AnvlArray` had no default arm, so `x %/% y` -- an `Arith` member it did
-  not list -- returned `NULL`. It now divides, and an unlisted generic errors.
+  not list -- returned `NULL`. It now divides. (Superseded by main's API
+  surface: there is no `Ops.AnvlArray` any more, `%/%` is `%/%.AnvlArray` and
+  goes through `nv_floor_div()`, and an unlisted generic no longer reaches an
+  anvl message -- see "After merging main's API surface".)
 - `shapes2string()` used `paste0(..., sep = ", ")`, which appends the separator
   to every element and returns a vector; three shape-mismatch messages printed
   trailing commas and a spurious "and".
@@ -460,6 +479,58 @@ Not changed, with reasons:
   diverges from base R for the S3-dispatched `median()` and `sort()`.
 - A fill above R's 32-bit integer range, and a `bit64::integer64` value, both
   fail in stablehlo's constant builder rather than in anvl.
+
+## After merging main's API surface
+
+main's `f7746ad2` replaced the group generics (`Ops.AnvlArray`,
+`Math.AnvlArray`, `Summary.AnvlArray`) with one S3 method per generic
+(`==.AnvlArray`, `&.AnvlArray`, `abs.AnvlArray`, ...), and added
+`nv_gamma()`, `nv_range()`, `nv_sinpi()` / `nv_cospi()` / `nv_tanpi()` and
+`nv_floor_div()`. Merging it into this branch meant:
+
+- taking main's structure wherever the two touched the same code, since this
+  branch had changed only eight lines of `R/api-generics.R` since the previous
+  merge, while keeping this branch's wording for `nv_transpose()`'s return and
+  its removal of the duplicate `@param a` / `@param b` on `solve()` -- which
+  `?nv_solve` already documents in full;
+- adding the six new pages above to the coverage lists. Four of them arrived
+  on main's `param_x_float` / `return_unary_float`, which open with a bare
+  "Input array.", name no data types from the vocabulary, say nothing about
+  what an R value does, and leave the return type unparenthesized. They now use
+  `param_unary_x_tofloat` / `return_unary_tofloat`, which say the same thing in
+  this branch's words, and main's two templates are gone. `params_lhs_rhs_float`
+  came in with no call site at all and went the same way;
+- `dim()` and `length()` are new pages with no array data type to state, so
+  they are left alone like `nv_device()`.
+
+Two more things this merge changed. The first is fixed here, the second
+is **open**:
+
+- main gave the float-only `nv_*` functions an `int_to_float()` step
+  (`make_float_unary()`), so an integer array is now accepted and converted to
+  the default float where it used to be refused, and twenty-eight pages went on
+  saying *any float data type*. The twenty-five built by `make_float_unary()`,
+  plus `nv_log2()` and `nv_log10()`, now use `param_unary_x_tofloat` /
+  `return_unary_tofloat`; `nv_atan2()` converts each operand before promoting
+  them, so it has its own `params_lhs_rhs_tofloat`, which says that the common
+  data type is therefore always a float. The five pages that keep *any float
+  data type* do refuse an integer: `nv_inv()` asserts it, `nv_det()` /
+  `nv_determinant()` go through `prim_lu()`, and `nv_is_finite()` /
+  `nv_is_infinite()` reach `prim_is_finite()` unconverted.
+- `nv_floor()` / `nv_ceiling()` / `nv_trunc()` / `nv_round()` return an integer
+  input unchanged, which is main's behavior and main's text
+  (`param_x_round`). The text is accurate and was kept for that reason, but it
+  sits outside the template system, on the same bare "Input array." the sweep
+  set out to remove.
+
+Neither could be checked against a running package here: anvl on main needs a
+`pjrt` with the dispatcher `context` argument (only on `feat-dispatcher-context`)
+and a `stablehlo` newer than main, and with the newest available combination
+`nv_convert()` still fails. Both claims above are read off the implementation
+(`R/promotion.R`'s `int_to_float()` and `is_intlike()`, which converts signed and
+unsigned integers and leaves `bool` and the floats alone, and the `is_intlike()`
+guard in each rounding function), not off a session. The new templates' wording
+needs that check before this branch is merged.
 
 ## Noticed while documenting
 

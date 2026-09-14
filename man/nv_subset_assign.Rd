@@ -5,8 +5,6 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
-\method{[}{AnvlArray}(x, ...) <- value
-
 nv_subset_assign(x, ..., value)
 }
 \arguments{
@@ -36,7 +34,8 @@ You can also use the \verb{[<-} operator.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:12, nrow = 3)
-# set row 1 to zeros
+# Set row 1 to zeros
+nv_subset_assign(x, 1, value = nv_scalar(0L))
 x[1, ] <- nv_scalar(0L)
 x
 \dontshow{\}) # examplesIf}

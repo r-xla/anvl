@@ -32,7 +32,8 @@ bit-by-bit one on an integer.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_and]{hlo_and()}}, specified under \href{https://openxla.org/stablehlo/spec#and}{and}.
+Lowers to \code{\link[stablehlo:hlo_and]{hlo_and()}}, specified under
+\href{https://openxla.org/stablehlo/spec#and}{and}.
 }
 
 \examples{

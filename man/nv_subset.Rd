@@ -5,8 +5,6 @@
 \alias{nv_subset}
 \title{Subset an Array}
 \usage{
-\method{[}{AnvlArray}(x, ...)
-
 nv_subset(x, ...)
 }
 \arguments{
@@ -32,10 +30,12 @@ axis.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:12, nrow = 3)
 x
-# select row 2
+# Select row 2
+nv_subset(x, 2)
 x[2, ]
 
-# select rows 1 to 2, all columns
+# Select rows 1 to 2, all columns
+nv_subset(x, 1:2)
 x[1:2, ]
 \dontshow{\}) # examplesIf}
 }

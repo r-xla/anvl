@@ -10,7 +10,9 @@ prim_concatenate(..., axis)
 \item{...}{(\code{\link{arrayish}})\cr
 Arrays to concatenate. Can be of any data type. Must all have the same
 number of axes, and the same shape except along \code{axis}.
-All inputs must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+All inputs must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to concatenate.
@@ -36,7 +38,8 @@ Concatenates arrays along an axis.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}, specified under \href{https://openxla.org/stablehlo/spec#concatenate}{concatenate}.
+Lowers to \code{\link[stablehlo:hlo_concatenate]{hlo_concatenate()}}, specified under
+\href{https://openxla.org/stablehlo/spec#concatenate}{concatenate}.
 }
 
 \examples{

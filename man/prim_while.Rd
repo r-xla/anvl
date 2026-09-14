@@ -44,7 +44,8 @@ each iteration; it is the only thing carried from one iteration to the next.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_while]{hlo_while()}}, specified under \href{https://openxla.org/stablehlo/spec#while}{while}.
+Lowers to \code{\link[stablehlo:hlo_while]{hlo_while()}}, specified under
+\href{https://openxla.org/stablehlo/spec#while}{while}.
 }
 
 \examples{

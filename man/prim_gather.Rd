@@ -108,7 +108,8 @@ the effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}, specified under \href{https://openxla.org/stablehlo/spec#gather}{gather}.
+Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}, specified under
+\href{https://openxla.org/stablehlo/spec#gather}{gather}.
 The axis and index arguments are intricate; anvl states them in its own
 terms and converts on the way down.
 }

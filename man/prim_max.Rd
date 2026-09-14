@@ -31,7 +31,8 @@ Element-wise maximum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}}, specified under \href{https://openxla.org/stablehlo/spec#maximum}{maximum}.
+Lowers to \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}}, specified under
+\href{https://openxla.org/stablehlo/spec#maximum}{maximum}.
 }
 
 \examples{

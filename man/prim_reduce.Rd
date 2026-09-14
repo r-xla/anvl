@@ -9,7 +9,9 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 The array to reduce. Can be any data type.
-\code{x} and \code{init} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+\code{x} and \code{init} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{init}{(\code{\link{arrayish}})\cr
 Scalar initial value, with no axes. Must be the neutral element
@@ -58,7 +60,8 @@ function (like \code{+}) is associative.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
 The body is \code{reductor}.
 }
 

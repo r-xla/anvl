@@ -27,7 +27,9 @@ prim_convolution(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.
-Can be any data type. \code{x} and \code{kernel} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+Can be any data type. \code{x} and \code{kernel} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.
 Shares \code{x}'s data type -- see \code{x}.}
@@ -80,7 +82,8 @@ Most users want \code{\link[=nv_conv1d]{nv_conv1d()}} / \code{\link[=nv_conv2d]{
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_convolution]{hlo_convolution()}}, specified under \href{https://openxla.org/stablehlo/spec#convolution}{convolution}.
+Lowers to \code{\link[stablehlo:hlo_convolution]{hlo_convolution()}}, specified under
+\href{https://openxla.org/stablehlo/spec#convolution}{convolution}.
 The axis numbers are converted on the way down.
 }
 

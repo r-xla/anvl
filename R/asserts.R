@@ -422,3 +422,28 @@ assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   }
   invisible(NULL)
 }
+
+# Assert that `x` is a boolean array, or an R value that would become one.
+# `hint` is a character vector, each element shown as its own bullet.
+assert_boolean_array <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- peek_dtype(x)
+  if (!is_dtype_bool(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a boolean array.",
+      "x" = "Got data type {.val {as.character(dt)}}.",
+      info_bullets(hint)
+    ))
+  }
+  x
+}
+
+# Name each element "i" so cli shows it as its own info bullet. Naming a
+# multi-element vector as a whole would renumber the names to "i1", "i2", ...
+# and lose the bullets.
+info_bullets <- function(x) {
+  if (!length(x)) {
+    return(NULL)
+  }
+  names(x) <- rep("i", length(x))
+  x
+}

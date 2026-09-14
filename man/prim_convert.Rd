@@ -33,7 +33,8 @@ Converts the elements of an array to a different data type.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_convert]{hlo_convert()}}, specified under \href{https://openxla.org/stablehlo/spec#convert}{convert}.
+Lowers to \code{\link[stablehlo:hlo_convert]{hlo_convert()}}, specified under
+\href{https://openxla.org/stablehlo/spec#convert}{convert}.
 }
 
 \examples{

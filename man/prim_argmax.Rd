@@ -39,7 +39,8 @@ are broken by returning the smallest index.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
 The reduction is variadic over \verb{(values, indices)}, with a
 (value > value | (value == value & idx < idx)) selector.
 }

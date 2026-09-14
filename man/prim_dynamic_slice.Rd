@@ -51,7 +51,8 @@ the effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dynamic_slice]{hlo_dynamic_slice()}}, specified under \href{https://openxla.org/stablehlo/spec#dynamic_slice}{dynamic_slice}.
+Lowers to \code{\link[stablehlo:hlo_dynamic_slice]{hlo_dynamic_slice()}}, specified under
+\href{https://openxla.org/stablehlo/spec#dynamic_slice}{dynamic_slice}.
 }
 
 \examples{
@@ -69,5 +70,6 @@ prim_dynamic_slice(x, row_start, col_start, slice_sizes = c(2L, 2L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_static_slice]{prim_static_slice()}}, \code{\link[=prim_dynamic_update_slice]{prim_dynamic_update_slice()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=nv_subset]{nv_subset()}}, \code{[}
+\code{\link[=prim_static_slice]{prim_static_slice()}}, \code{\link[=prim_dynamic_update_slice]{prim_dynamic_update_slice()}},
+\code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=nv_subset]{nv_subset()}}, \code{[}
 }

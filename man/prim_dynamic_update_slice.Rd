@@ -9,7 +9,9 @@ prim_dynamic_update_slice(x, update, ...)
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 The array to write into. Can be any data type.
-\code{x} and \code{update} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+\code{x} and \code{update} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
@@ -49,7 +51,8 @@ effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}, specified under \href{https://openxla.org/stablehlo/spec#dynamic_update_slice}{dynamic_update_slice}.
+Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}, specified under
+\href{https://openxla.org/stablehlo/spec#dynamic_update_slice}{dynamic_update_slice}.
 }
 
 \examples{
@@ -69,5 +72,6 @@ prim_dynamic_update_slice(x, update, row_start, col_start)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=nv_subset_assign]{nv_subset_assign()}}, \verb{[<-}
+\code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}},
+\code{\link[=nv_subset_assign]{nv_subset_assign()}}, \verb{[<-}
 }

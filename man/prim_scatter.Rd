@@ -22,7 +22,9 @@ prim_scatter(
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 The base array to scatter into. Can be any data type.
-\code{x} and \code{update} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+\code{x} and \code{update} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{scatter_indices}{(\code{\link{arrayish}})\cr
 Array of indices, of an integer data type, which it keeps -- the indices
@@ -115,7 +117,8 @@ implementation-defined and may vary between plugins ("cpu", "cuda").
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}, specified under \href{https://openxla.org/stablehlo/spec#scatter}{scatter}.
+Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}, specified under
+\href{https://openxla.org/stablehlo/spec#scatter}{scatter}.
 The axis and index arguments are intricate; anvl states them in its own
 terms and converts on the way down.
 }

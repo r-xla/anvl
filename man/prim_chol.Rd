@@ -40,7 +40,8 @@ errors on a batched input (an input with more than 2 axes).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}, specified under \href{https://openxla.org/stablehlo/spec#cholesky}{cholesky}.
+Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}, specified under
+\href{https://openxla.org/stablehlo/spec#cholesky}{cholesky}.
 }
 
 \examples{

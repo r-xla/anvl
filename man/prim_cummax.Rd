@@ -38,7 +38,8 @@ indices output is the largest \code{i} in \code{1:j} with
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}}, specified under \href{https://openxla.org/stablehlo/spec#reduce_window}{reduce_window}.
+Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce_window}{reduce_window}.
 The window is variadic over \verb{(values, iota)}, so the index of the running
 extremum is carried alongside it.
 }

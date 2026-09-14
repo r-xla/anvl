@@ -28,7 +28,8 @@ Element-wise reciprocal square root.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_rsqrt]{hlo_rsqrt()}}, specified under \href{https://openxla.org/stablehlo/spec#rsqrt}{rsqrt}.
+Lowers to \code{\link[stablehlo:hlo_rsqrt]{hlo_rsqrt()}}, specified under
+\href{https://openxla.org/stablehlo/spec#rsqrt}{rsqrt}.
 }
 
 \examples{

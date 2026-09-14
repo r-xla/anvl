@@ -13,7 +13,9 @@ shares its data type -- see \code{x}.}
 
 \item{x}{(\code{\link{arrayish}})\cr
 The array to clamp. Can be any data type.
-\code{min_val}, \code{x} and \code{max_val} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+\code{min_val}, \code{x} and \code{max_val} must have the same data type. An R value
+among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when
+none of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -33,7 +35,8 @@ i.e. \code{min(max(min_val, x), max_val)}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}, specified under \href{https://openxla.org/stablehlo/spec#clamp}{clamp}.
+Lowers to \code{\link[stablehlo:hlo_clamp]{hlo_clamp()}}, specified under
+\href{https://openxla.org/stablehlo/spec#clamp}{clamp}.
 }
 
 \examples{

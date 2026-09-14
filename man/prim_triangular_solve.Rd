@@ -10,13 +10,16 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 \item{a}{(\code{\link{arrayish}})\cr
 Triangular coefficient matrix with at least 2 axes. The last two axes must
 be equal (square matrix); any leading axes are batch axes. Can be any
-float data type. \code{a} and \code{b} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+float data type. \code{a} and \code{b} must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side. Same rank as \code{a} (rank >= 2), with
 matching leading batch axes. The size of \code{a}'s last two (square)
 axes must equal \code{b}'s second-to-last axis when
-\code{left_side = TRUE}, or \code{b}'s last axis when \code{left_side = FALSE}.}
+\code{left_side = TRUE}, or \code{b}'s last axis when \code{left_side = FALSE}.
+Shares \code{a}'s data type -- see \code{a}.}
 
 \item{left_side}{(\code{logical(1)})\cr
 If \code{TRUE}, solve \code{op(a) \%*\% x = b}. If \code{FALSE}, solve \code{x \%*\% op(a) = b}.}
@@ -56,7 +59,8 @@ errors on batched operands (operands with more than 2 axes).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}, specified under \href{https://openxla.org/stablehlo/spec#triangular_solve}{triangular_solve}.
+Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}, specified under
+\href{https://openxla.org/stablehlo/spec#triangular_solve}{triangular_solve}.
 }
 
 \examples{

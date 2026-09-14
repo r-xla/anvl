@@ -28,7 +28,9 @@ Element-wise natural logarithm of the absolute value of the gamma function.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_lgamma]{hlo_lgamma()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chlolgamma_chlolgammaop}{chlo.lgamma}.
+Lowers to \code{\link[stablehlo:hlo_lgamma]{hlo_lgamma()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chlolgamma_chlolgammaop}{chlo.lgamma}.
 }
 
 \examples{

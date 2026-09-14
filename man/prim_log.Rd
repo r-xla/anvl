@@ -29,7 +29,8 @@ Element-wise natural logarithm.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_log]{hlo_log()}}, specified under \href{https://openxla.org/stablehlo/spec#log}{log}.
+Lowers to \code{\link[stablehlo:hlo_log]{hlo_log()}}, specified under
+\href{https://openxla.org/stablehlo/spec#log}{log}.
 }
 
 \examples{

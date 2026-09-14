@@ -18,9 +18,9 @@ values assume the other operand's data type when it is in their
 Has the inputs' shape and data type.
 }
 \description{
-Element-wise remainder.
-Result has sign of the dividend, which differs from base R's \code{\%\%}, which is available
-via \code{\link[=nv_mod]{nv_mod()}} and has sign of divisor.
+Element-wise remainder. The result has the sign of the dividend, which is
+what StableHLO's \code{remainder} does. Base R's \code{\%\%} takes the sign of the
+divisor instead and is available via \code{\link[=nv_mod]{nv_mod()}}.
 }
 \section{Implemented Rules}{
 
@@ -32,7 +32,8 @@ via \code{\link[=nv_mod]{nv_mod()}} and has sign of divisor.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}, specified under \href{https://openxla.org/stablehlo/spec#remainder}{remainder}.
+Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}, specified under
+\href{https://openxla.org/stablehlo/spec#remainder}{remainder}.
 }
 
 \examples{

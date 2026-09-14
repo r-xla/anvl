@@ -13,7 +13,9 @@ shape as \code{true_value}.}
 
 \item{true_value, false_value}{(\code{\link{arrayish}})\cr
 Values to select from, of the same shape. Can be any data type.
-\code{true_value} and \code{false_value} must have the same data type. An R value among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none of them has one.}
+\code{true_value} and \code{false_value} must have the same data type. An R value
+among them assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when
+none of them has one.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -36,7 +38,8 @@ For each element, returns the corresponding element from \code{true_value} where
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}, specified under \href{https://openxla.org/stablehlo/spec#select}{select}.
+Lowers to \code{\link[stablehlo:hlo_select]{hlo_select()}}, specified under
+\href{https://openxla.org/stablehlo/spec#select}{select}.
 }
 
 \examples{

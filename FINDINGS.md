@@ -13,6 +13,12 @@ states `i32`, the page now says "the default integer data type"; `LIST.md`'s "Re
 observations that were deliberately left alone. The report is kept as the record
 of what was checked.
 
+All thirty findings are closed and listed under **Done** at the bottom, keeping
+their original numbers; each carries a note on how it was closed. Two are closed
+by decision rather than by a change (**16**, and the `try()` on
+`?promotion_rule` inside **30**), and **23** turned out to apply to fewer pages
+than the report assumed -- see its note.
+
 ## Summary
 
 The pass is impressively consistent where it is templated. All 174 template call
@@ -39,6 +45,75 @@ comment) and "the other parameters point at the primary operand" (1 of 5
 `roxy_agree()` pages).
 
 ## Findings
+
+None open. Every finding is in **Done** at the bottom, with its original
+number and a note on how it was closed.
+
+## Checked and found clean
+
+- **Vocabulary**: all 174 `@templateVar dtypes`/`dtype_out` values are from the
+  seven words (`any` 66, `float` 70, `integerish` 14, `numeric` 13, `signed
+  numeric` 4, `integer` 2, plus 4 "a boolean or an R logical"). No
+  "real"/"double"/ad-hoc group word; the only "floating-point" hits are findings
+  14/30.
+- **"Can be *of* any data type" (11 pages) is not a defect** — used consistently
+  for plural/`...` parameters.
+- **Parenthesized returns**: all 100 `prim_*` and every `nv_*` page except
+  `man/nv_normal.Rd` (maintainer-owned). Two lack the `\cr` (`promotion_rule`,
+  `prim_convolution`).
+- **Never naming the default** holds across the whole primitive layer; every
+  `f32`/`i32`/`bool` there is a fixed choice. Exceptions are the `nv_*`
+  constructors (findings 9, 21).
+- **Data-type claims vs the running package**: verified for ~35 primitives and 15
+  wrappers — every group and every stated output data type matched, including
+  primitives keeping `bool` in `reduce_sum`/`cumsum` while the wrappers count at
+  `i32`.
+- **`roxy_agree()` operand lists** match `apply_promotion()` in all ten
+  primitives and both `nv_*` users.
+- **All 91 `hlo_*` names** named by `roxy_spec()` exist and are exported by
+  stablehlo.
+- **`\usage` vs `\item`**: no undocumented argument and no orphan `\item` across
+  all 275 pages.
+- **"tensor"** in anvl-facing text: none (only stablehlo's own names and
+  `safetensors`).
+- **Serialization**: "Any data type … round-trip unchanged" verified for all
+  eleven data types.
+- **`nv_static_slice`'s "(inclusive)"** is correct; only `prim_static_slice`'s
+  comments are wrong.
+- **`nv_qr`/`nv_svd`/`nv_eigh`** use `@inherit prim_*`, so they cannot drift.
+
+*Out of scope, noted only:* the maintainer-owned RNG/distribution pages deviate
+similarly (`nv_normal` is the one page whose `\value` lacks a parenthesized type
+and a `nv_qnorm()` clause, names `"f32"` as a default, says "real array", cites
+Cephes "as used by JAX"; `nv_runif`/`nv_rbinom` render a bare "Data type." and
+state no result data type or shape).
+
+## Digest
+
+30 findings. The three most important:
+
+1. Six outright false statements introduced or left in place —
+   `prim_static_slice`'s "limit is exclusive" example comments (the limit is
+   inclusive; the calls return four elements and a 3x3 block), `prim_argmin`'s
+   `axis` describing the *maximum*, `nv_conv1d/2d/3d` returns naming a `kernel`
+   argument that does not exist (it is `weight`), `nv_polygamma` claiming integer
+   inputs are converted rather than refused (they error), `nv_trace` claiming the
+   input's data type for a boolean input (it is `i32`), and
+   `prim_dynamic_update_slice` inheriting a clamp formula with a `slice_sizes`
+   argument it does not have.
+2. Sixteen `roxy_spec()` StableHLO links point at spec anchors that do not exist
+   — the fifteen CHLO ops (`acos`, `erf`, `top_k`, …) plus `prim_fill`'s
+   `spec#tensor` — and seven doc references call a nonexistent `nv_shape()`.
+3. `nv_array`'s `dtype` spells out the concrete defaults (`f32`/`f64`/`i32`/
+   `bool`), the one thing the conventions forbid, and in a backend-dependent form
+   that contradicts `?dtypes`.
+
+
+## Done
+
+The findings below are closed. Their numbers are kept as they were, since other entries and `LIST.md` refer to them; what changed for each is recorded in `LIST.md`'s "Review" section. Two are closed by decision rather than by a change: **16** ("NumPy-style broadcasting" / "Torch-style NCW layout" name a layout convention, not a framework match) and the `try()` on `?promotion_rule` inside **30**, which demonstrates the narrowing error that page is about.
+
+Re-checked against the branch after merging main's API surface: the wording items (**14**, **15**, **19**, **22**, **24**, **25**, **30**) survive only in code comments, not in any rendered page; **26** now stands at 260 of 290 pages with examples carrying a comment, up from 98 of 275; **27**'s twenty-two missing `nv_*` pages are all in the ledger; and **28**'s leftover templates are gone, with the template set now closed (nothing referenced that is missing, nothing present that is unused).
 
 **1. `prim_static_slice`'s example comments contradict its own parameters and
 the code.** `R/primitives.R` examples → `man/prim_static_slice.Rd`:
@@ -194,6 +269,14 @@ opposite of the vocabulary.
 `prim_scatter`, `prim_dynamic_update_slice`, `prim_convolution` siblings say
 nothing about data types.
 
+*Closed.* The count was stale, and the rule turned out to apply to fewer pages
+than the report assumed. Of the 10 pages calling `roxy_agree()`, four document
+their agreeing operands in a single combined `@param` (`prim_concatenate`'s
+`...`, `prim_polygamma`'s `n,x`, `prim_ifelse`'s `true_value,false_value`,
+`prim_clamp`'s bounds), so there is no sibling to point anywhere. Of the six
+with a separate sibling, five already pointed; `prim_triangular_solve`'s `b`
+was the last one silent and now says "Shares `a`'s data type -- see `a`."
+
 **24. Three phrasings for "must be boolean", two in the type slot.** "Must be a
 boolean or an R logical." (reduce_any/all, 4 pages) vs `prim_if` "Must be a
 scalar of the boolean data type, or an R logical." vs `nv_if` `(arrayish of
@@ -233,6 +316,20 @@ wraps, so 13 `.Rd` files carry one 208–268-character unwrapped line
 `prim_dynamic_update_slice`, `prim_triangular_solve`, `nv_solve`,
 `nv_triangular_solve`; plus `nv_reduce_sum`/`nv_reduce_prod`).
 
+*Closed.* `roxy_wrap()` (`R/roxygen.R`) now wraps what `roxy_agree()`,
+`roxy_spec()` and `roxy_spec_chlo()` return, and `return_reduce` wraps the
+sentence it builds around `dtype_out`. Breaking only at spaces leaves links,
+code spans and URLs whole, and Rd treats the newline as ordinary whitespace, so
+no rendered page changes: re-generating with the wrapping in place leaves every
+`.Rd` byte-identical once whitespace is normalised, except the one page finding
+**23** changed. The longest line in the fifteen pages named above went from
+208-275 characters to 100-155; what is left is Rd markup expansion
+(`\code{\link[=x]{x()}}`), not an unwrapped substitution. The two `@seealso`
+lines over 200 characters (`prim_dynamic_slice`, `prim_dynamic_update_slice`)
+were plain long source lines rather than substitutions, and are wrapped too.
+Only roxygen's own generated boilerplate (`anvl-package.Rd`, `reexports.Rd`)
+still exceeds 200.
+
 **30. Small wording inconsistencies for one pass:** `return_reduce` renders "Has
 **boolean** data type." vs "Has **a float** data type."; `param_while_init` is
 the only default-data-type sentence not linking `[default_dtypes]`; "dimension"
@@ -244,62 +341,3 @@ example on `man/promotion_rule.Rd`; `nv_conv3d` inherits `nv_conv2d`'s 4-axis
 `x`/`weight` shapes while its own description and new return describe five axes;
 `nv_select`'s `index` "Scalar or 1D arrayish input (integer)."; `prim_reduce`'s
 "floating point math".
-
-## Checked and found clean
-
-- **Vocabulary**: all 174 `@templateVar dtypes`/`dtype_out` values are from the
-  seven words (`any` 66, `float` 70, `integerish` 14, `numeric` 13, `signed
-  numeric` 4, `integer` 2, plus 4 "a boolean or an R logical"). No
-  "real"/"double"/ad-hoc group word; the only "floating-point" hits are findings
-  14/30.
-- **"Can be *of* any data type" (11 pages) is not a defect** — used consistently
-  for plural/`...` parameters.
-- **Parenthesized returns**: all 100 `prim_*` and every `nv_*` page except
-  `man/nv_normal.Rd` (maintainer-owned). Two lack the `\cr` (`promotion_rule`,
-  `prim_convolution`).
-- **Never naming the default** holds across the whole primitive layer; every
-  `f32`/`i32`/`bool` there is a fixed choice. Exceptions are the `nv_*`
-  constructors (findings 9, 21).
-- **Data-type claims vs the running package**: verified for ~35 primitives and 15
-  wrappers — every group and every stated output data type matched, including
-  primitives keeping `bool` in `reduce_sum`/`cumsum` while the wrappers count at
-  `i32`.
-- **`roxy_agree()` operand lists** match `apply_promotion()` in all ten
-  primitives and both `nv_*` users.
-- **All 91 `hlo_*` names** named by `roxy_spec()` exist and are exported by
-  stablehlo.
-- **`\usage` vs `\item`**: no undocumented argument and no orphan `\item` across
-  all 275 pages.
-- **"tensor"** in anvl-facing text: none (only stablehlo's own names and
-  `safetensors`).
-- **Serialization**: "Any data type … round-trip unchanged" verified for all
-  eleven data types.
-- **`nv_static_slice`'s "(inclusive)"** is correct; only `prim_static_slice`'s
-  comments are wrong.
-- **`nv_qr`/`nv_svd`/`nv_eigh`** use `@inherit prim_*`, so they cannot drift.
-
-*Out of scope, noted only:* the maintainer-owned RNG/distribution pages deviate
-similarly (`nv_normal` is the one page whose `\value` lacks a parenthesized type
-and a `nv_qnorm()` clause, names `"f32"` as a default, says "real array", cites
-Cephes "as used by JAX"; `nv_runif`/`nv_rbinom` render a bare "Data type." and
-state no result data type or shape).
-
-## Digest
-
-30 findings. The three most important:
-
-1. Six outright false statements introduced or left in place —
-   `prim_static_slice`'s "limit is exclusive" example comments (the limit is
-   inclusive; the calls return four elements and a 3x3 block), `prim_argmin`'s
-   `axis` describing the *maximum*, `nv_conv1d/2d/3d` returns naming a `kernel`
-   argument that does not exist (it is `weight`), `nv_polygamma` claiming integer
-   inputs are converted rather than refused (they error), `nv_trace` claiming the
-   input's data type for a boolean input (it is `i32`), and
-   `prim_dynamic_update_slice` inheriting a clamp formula with a `slice_sizes`
-   argument it does not have.
-2. Sixteen `roxy_spec()` StableHLO links point at spec anchors that do not exist
-   — the fifteen CHLO ops (`acos`, `erf`, `top_k`, …) plus `prim_fill`'s
-   `spec#tensor` — and seven doc references call a nonexistent `nv_shape()`.
-3. `nv_array`'s `dtype` spells out the concrete defaults (`f32`/`f64`/`i32`/
-   `bool`), the one thing the conventions forbid, and in a backend-dependent form
-   that contradicts `?dtypes`.

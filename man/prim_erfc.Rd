@@ -28,7 +28,9 @@ Element-wise complementary error function \code{erfc(x) = 1 - erf(x)}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_erfc]{hlo_erfc()}}, an op of the CHLO dialect, a higher-level companion to StableHLO that is lowered to it during compilation. See \href{https://openxla.org/stablehlo/generated/chlo#chloerfc_chloerfcop}{chlo.erfc}.
+Lowers to \code{\link[stablehlo:hlo_erfc]{hlo_erfc()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chloerfc_chloerfcop}{chlo.erfc}.
 }
 
 \examples{

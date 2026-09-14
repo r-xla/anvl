@@ -737,3 +737,18 @@ promotable_to <- function(from, to) {
   }
   common_dtype(from, to) == to
 }
+
+# Whether `x` is (or would commit to) an int-like array, i.e. a signed or
+# unsigned integer one.
+is_intlike <- function(x) {
+  dt <- peek_dtype(x)
+  is_dtype_int(dt) || is_dtype_uint(dt)
+}
+
+# Convert an int-like array to the default float and leave everything else
+# alone: this is the step a floating-point `nv_*` function takes before it
+# reaches its primitive. A boolean array passes through untouched, so the
+# primitive rejects it rather than computing on it.
+int_to_float <- function(x) {
+  if (is_intlike(x)) nv_convert(x, default_float()) else x
+}

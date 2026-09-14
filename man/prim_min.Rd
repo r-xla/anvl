@@ -31,7 +31,8 @@ Element-wise minimum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_minimum]{hlo_minimum()}}, specified under \href{https://openxla.org/stablehlo/spec#minimum}{minimum}.
+Lowers to \code{\link[stablehlo:hlo_minimum]{hlo_minimum()}}, specified under
+\href{https://openxla.org/stablehlo/spec#minimum}{minimum}.
 }
 
 \examples{

@@ -8,12 +8,15 @@ nv_logistic(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any float data type. An R value commits to its
-\link[=default_dtypes]{default data type}.}
+One input. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value commits to its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the input's shape and data type.
+Has the input's shape, and its data type -- or the default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
 }
 \description{
 Element-wise logistic sigmoid: \code{1 / (1 + exp(-x))}.

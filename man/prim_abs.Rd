@@ -29,7 +29,8 @@ Element-wise absolute value.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_abs]{hlo_abs()}}, specified under \href{https://openxla.org/stablehlo/spec#abs}{abs}.
+Lowers to \code{\link[stablehlo:hlo_abs]{hlo_abs()}}, specified under
+\href{https://openxla.org/stablehlo/spec#abs}{abs}.
 }
 
 \examples{

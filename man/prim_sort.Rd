@@ -54,7 +54,8 @@ axes are preserved.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sort]{hlo_sort()}}, specified under \href{https://openxla.org/stablehlo/spec#sort}{sort}.
+Lowers to \code{\link[stablehlo:hlo_sort]{hlo_sort()}}, specified under
+\href{https://openxla.org/stablehlo/spec#sort}{sort}.
 The comparator uses \code{\link[stablehlo:hlo_compare]{hlo_compare()}} (\code{LT} for ascending, \code{GT} for
 descending) on the first array. For float keys it uses \code{compare_type = "TOTALORDER"} and canonicalizes \code{-0}/\code{+0} and \code{-NaN}/\code{+NaN} to their
 positive form before comparing, so all \code{NaN} values land at one end of the
