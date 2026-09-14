@@ -242,7 +242,7 @@ test_that("to_abstract", {
   x <- GraphBox(aval, local_descriptor())
   expect_equal(to_abstract(x), aval$aval)
 
-  # pure -- an R value contributes the dtype it would commit to
+  # pure -- an R value contributes the dtype it would materialize at
   x <- nv_scalar(1)
   expect_equal(to_abstract(x, pure = TRUE), AbstractArray(default_float(), c()))
   expect_equal(to_abstract(1L, pure = TRUE), AbstractArray(default_int(), c()))

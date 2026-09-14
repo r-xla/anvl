@@ -423,7 +423,7 @@ describe("jit: backend and device handling", {
 
   # a constructor declares the device it was asked for (graph_desc_add(device = ))
   it("reads a constructor's device from a static argument", {
-    # No `dtype`: the fill takes the default float of the backend in force, so
+    # No `dtype`: the fill takes the default float of the active backend, so
     # this also runs on quickr (which has no `f32`).
     f <- jit(function(val, dev) nv_fill(val, 2L, device = dev), static = c("val", "dev"))
     expect_equal(device(f(1, "cpu:0")), nv_device("cpu:0"))
@@ -555,15 +555,15 @@ describe("a scoped override inside a jitted body", {
   })
 
   it("does not reach a bare R value handed out of the scope", {
-    # The value has committed to nothing inside the scope, so it takes the
+    # The value has materialized at nothing inside the scope, so it takes the
     # default where it is used -- the per-operation rule, not a special case.
     expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), default_float())
   })
 
-  it("takes the trace's baseline, not the backend in force", {
+  it("takes the trace's baseline, not the active backend", {
     skip_if_no_quickr()
     # A program is compiled for one backend, so switching inside the body
-    # cannot change what its R values commit to.
+    # cannot change what its R values materialize at.
     expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), default_float())
   })
 

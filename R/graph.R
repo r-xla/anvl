@@ -189,7 +189,7 @@ AnvlGraph <- function(
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
-#'   The data types every R value in this trace commits to when nothing else
+#'   The data types every R value in this trace materializes at when nothing else
 #'   decides one (see [`default_dtypes()`]).
 #' @param backend (`character(1)`)\cr
 #'   The backend this trace is compiled for. Required: it decides which entry

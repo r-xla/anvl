@@ -56,10 +56,10 @@ is the reference for how this works and for the `.promote` rules (`promotion_com
 `as_anvl_arrays()`. Two rules that bite while writing code:
 
 - Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
-  `peek_dtype()` to ask what it *would* commit to.
+  `peek_dtype()` to ask what it *would* materialize at.
 - A primitive promotes nothing unless its body says so: one whose operands must agree calls
   `apply_promotion()` on them before anything else reads them.
-- A trace output that met nothing commits at the default float / integer of the backend in force,
+- A trace output that met nothing materializes at the default float / integer of the active backend,
   which `default_dtypes()` reports (`default_float()` / `default_int()` for one category) and the
   option `anvl.default_dtypes` overrides. A trace is pinned to the pair the dispatcher keyed its
   program on (`GraphDescriptor$default_dtypes`); name a category with `default_float()` /

@@ -41,7 +41,7 @@
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
-#'   The default (`NULL`) uses the data type the R value commits to (see
+#'   The default (`NULL`) uses the data type the R value materializes at (see
 #'   [`default_dtypes()`]). This depends on the backend.
 #'   For the default `"pjrt"` backend, `double`s become `f32`, `integer`
 #'   `i32` and `logical`s `bool`.
@@ -168,7 +168,7 @@ nv_array <- function(
   }
   if (currently_tracing() && is.null(device)) {
     # A constant of the trace: it belongs to the backend being traced for, and
-    # commits to the defaults the trace is pinned to.
+    # materializes at the defaults the trace is pinned to.
     dtype <- resolve_default_dtype(data, dtype)
     return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
   }
@@ -934,7 +934,7 @@ eq_type <- function(e1, e2) {
   if (!inherits(e1, "AbstractArray") || !inherits(e2, "AbstractArray")) {
     cli_abort("e1 and e2 must be AbstractArrays")
   }
-  # An `RData` compares as the dtype it would commit to; it has no other.
+  # An `RData` compares as the dtype it would materialize at; it has no other.
   if (peek_dtype(e1) != peek_dtype(e2) || !identical(e1$shape, e2$shape)) {
     return(FALSE)
   }

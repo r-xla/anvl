@@ -2573,7 +2573,7 @@ prim_while <- new_primitive(
       outs_body <- lapply(body_graph$outputs, \(out) out$aval)
       inputs_body <- lapply(body_graph$inputs, \(inp) inp$aval)
       # Names the state member that disagrees, since the usual cause is an R
-      # value in `init` that committed to its default: the loop is built before
+      # value in `init` that materialized at its default: the loop is built before
       # its body runs, so the state cannot take a data type from it.
       labels <- if (length(state_names) == length(outs)) {
         state_names
@@ -2593,7 +2593,7 @@ prim_while <- new_primitive(
           c(
             "{.arg init} and what {.arg body} returns must have the same type.",
             x = "{described}.",
-            i = "An R value in {.arg init} commits to its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
+            i = "An R value in {.arg init} materializes at its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
           ),
           call = NULL
         )

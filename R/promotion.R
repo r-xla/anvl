@@ -41,7 +41,7 @@ NULL
 #' contribute their default data type.
 #' @param fallback (`NULL` | [`tengen::DataType`] | `character(1)`)\cr
 #'   The data type to settle on when *every* input is a bare R value, in place
-#'   of the default those would commit to on their own. `NULL` (default) leaves
+#'   of the default those would materialize at on their own. `NULL` (default) leaves
 #'   them their default.
 #' @rdname promotion_rule
 #' @export
@@ -337,7 +337,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #' inside the primitive's own body.
 #'
 #' A primitive promotes nothing on its own: an R value among its operands would
-#' commit to its own default, so whether a call worked would depend on whether
+#' materialize at its own default, so whether a call worked would depend on whether
 #' the array it met happened to be at that default. A primitive whose operands
 #' must *agree* says so with this, on the same list it goes on to hand
 #' [`graph_desc_add()`]:
@@ -569,7 +569,7 @@ rule_positions <- function(ref, args, what) {
 
 # The common dtype of several arrayish values, the one every operand of an
 # operation is brought to. An R value yields: it takes the dtype of the values
-# it meets, and contributes only the dtype it would commit to when it meets
+# it meets, and contributes only the dtype it would materialize at when it meets
 # nothing but other R values.
 # For internal use.
 common_dtype_of <- function(..., .fallback = NULL) {
@@ -599,7 +599,7 @@ common_dtype_of <- function(..., .fallback = NULL) {
       cdt <- promote_dt_known(cdt, dt)
     }
   }
-  # `.fallback` is the data type the R values commit to when nothing in the call
+  # `.fallback` is the data type the R values materialize at when nothing in the call
   # has one of its own to give them -- it replaces the default they would
   # otherwise take, and is ignored the moment any argument brings a real data
   # type. They yield to it as they would to any data type, within their own
@@ -678,7 +678,7 @@ promotable_to <- function(from, to) {
   common_dtype(from, to) == to
 }
 
-# Whether `x` is (or would commit to) an int-like array, i.e. a signed or
+# Whether `x` is (or would materialize as) an int-like array, i.e. a signed or
 # unsigned integer one.
 is_intlike <- function(x) {
   dt <- peek_dtype(x)

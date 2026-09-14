@@ -59,7 +59,7 @@ Devices encountered during tracing: the device of every concrete array
 registered in the graph, plus the ones declared by \code{\link[=graph_desc_add]{graph_desc_add()}}.}
 
 \item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
-The data types every R value in this trace commits to when nothing else
+The data types every R value in this trace materializes at when nothing else
 decides one (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 
 \item{backend}{(\code{character(1)})\cr

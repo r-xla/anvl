@@ -232,7 +232,7 @@ describe("a compiled program", {
     expect_equal(dtype(g()), as_dtype("f32"))
   })
 
-  it("runs on, and is pinned to, the backend in force when it is called", {
+  it("runs on, and is pinned to, the active backend when it is called", {
     skip_if_no_quickr()
     local_registered_default_dtypes()
     f <- jit(function() 1.5)

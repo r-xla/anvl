@@ -16,8 +16,8 @@ The value to ask about.}
 \description{
 The data type \code{x} would use if it was converted to an \code{AnvlArray}.
 Relevant for R objects and their \code{\link{RData}} trace-time analogon: for those it
-is the default of the backend in force (see \code{\link[=default_dtypes]{default_dtypes()}}), which the
-value has not committed to yet.
+is the default of the active backend (see \code{\link[=default_dtypes]{default_dtypes()}}), which the
+value has not materialized at yet.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

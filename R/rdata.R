@@ -100,7 +100,7 @@ abort_no_dtype <- function(default_dtype) {
   cli_abort(
     c(
       "An R value has no data type of its own until it is used.",
-      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it commits to the default ({.val {as.character(default_dtype)}}).", # nolint
+      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it materializes at the default ({.val {as.character(default_dtype)}}).", # nolint
       i = "Give it one explicitly with {.fn nv_convert}."
     ),
     call = NULL
@@ -148,7 +148,7 @@ rdata_natural_dtype <- function(r_type) {
 # The dtype an R value is built at on its way to `dtype`, for a `dtype` it
 # cannot be built at directly. Building it where it is exact is what keeps the
 # conversion the program's rather than R's -- but where that is wider than the
-# dtype the value would commit to on its own, the program acquires one nothing
+# dtype the value would materialize at on its own, the program acquires one nothing
 # asked for. An R double reaches `i32` through `f64`, so a program with no `f64`
 # in it gets one, and a backend without `f64` (Metal) cannot run it at all.
 #
@@ -300,8 +300,8 @@ r_const_at <- function(x, dtype, desc) {
 #' @description
 #' The data type `x` would use if it was converted to an `AnvlArray`.
 #' Relevant for R objects and their [`RData`] trace-time analogon: for those it
-#' is the default of the backend in force (see [`default_dtypes()`]), which the
-#' value has not committed to yet.
+#' is the default of the active backend (see [`default_dtypes()`]), which the
+#' value has not materialized at yet.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
@@ -317,7 +317,7 @@ peek_dtype <- function(x) {
   if (is_rdata(aval)) default_dtype_r(aval$r_type) else aval$dtype
 }
 
-# A traced box, with any R value in it committed to its default dtype. Anything
+# A traced box, with any R value in it materialized at its default dtype. Anything
 # that already has a dtype is returned unchanged.
 commit_rdata_box <- function(x) {
   if (is_rdata_box(x)) {

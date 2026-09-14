@@ -22,7 +22,7 @@ Applies a \link[=promotion_rule]{promotion rule} to the operands of a primitive,
 inside the primitive's own body.
 
 A primitive promotes nothing on its own: an R value among its operands would
-commit to its own default, so whether a call worked would depend on whether
+materialize at its own default, so whether a call worked would depend on whether
 the array it met happened to be at that default. A primitive whose operands
 must \emph{agree} says so with this, on the same list it goes on to hand
 \code{\link[=graph_desc_add]{graph_desc_add()}}:

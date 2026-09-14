@@ -115,7 +115,7 @@ test_that("promote_dt_rdata", {
       as_dtype(z)
     )
   }
-  # An R value commits to i32, f32 or bool, and yields from there.
+  # An R value materializes at i32, f32 or bool, and yields from there.
   check("i32", "i32", "i32")
   check("bool", "bool", "bool")
   check("f32", "f32", "f32")
@@ -153,7 +153,7 @@ test_that("a rule that cannot place an argument says which one", {
   expect_equal(dtype(coerced$v), as_dtype("i32"))
 })
 
-test_that("common_dtype_of: a fallback settles what R values alone commit to", {
+test_that("common_dtype_of: a fallback settles what R values alone materialize at", {
   rint <- RData(integer(), "integer")
   rdbl <- RData(integer(), "double")
   rlgl <- RData(integer(), "logical")
