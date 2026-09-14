@@ -23,13 +23,13 @@ The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always name
 - Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
 - Two symmetric operands of a binary op: `lhs` / `rhs`.
 - Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
-- Dimension-number arguments derived from `x` follow it: `x_batching_dims`, `scatter_dims_to_x_dims`.
+- Axis arguments derived from `x` follow it, and are spelled *axes*, never *dims*: `x_batching_axes`, `scatter_axes_to_x_axes`, `offset_axes`, `index_vector_axis`.
 
 When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.
 
 ```r
 stablehlo::GatherDimensionNumbers(
-  operand_batching_dims = x_batching_dims - 1L,  # spec name on the left
+  operand_batching_dims = x_batching_axes - 1L,  # spec name on the left
   ...
 )
 ```
@@ -38,11 +38,34 @@ stablehlo::GatherDimensionNumbers(
 
 Use templates from `man-roxygen/` where applicable:
 
-- **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
-- **Binary ops:** `@template params_prim_lhs_rhs_any` (or `_numeric`, `_float`)
-- **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
+- **Unary ops:** `@templateVar dtypes <phrase>` + `@template param_unary_x`, for a primitive whose
+  only arrayish operand is `x`. The phrase completes "Can be ..." and comes from `?dtypes`
+  (`any data type`, `any numeric data type`, `any integer data type`, `any integerish data type`,
+  `any signed numeric data type`, `any float data type`). The same template serves the `nv_*`
+  wrapper, which behaves identically -- a unary function promotes nothing.
+  A primitive whose `x` is promoted with a sibling (`prim_clamp()`, `prim_pad()`) writes `x`
+  inline instead: it names the accepted data types and then `` `r roxy_agree("x", "<sibling>")` ``,
+  which states the agreement and what an R value among them does.
+- **Binary ops:** `@templateVar dtypes <phrase>` + `@template params_prim_lhs_rhs`. The phrase
+  completes "Can be ..." and comes from the vocabulary defined in `?dtypes`: `any data type`,
+  `any numeric data type`, `any integerish data type`, `any float data type`. The template also
+  states how R values take a data type, so a primitive that calls `apply_promotion()` on `lhs`
+  and `rhs` needs nothing further.
+- **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`; for a reduction,
+  `@templateVar dtype_out <phrase>` + `@template return_reduce` (shared with the `nv_*` layer),
+  alongside `@template params_reduce` for `axes` / `drop`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
-- **StableHLO link:** `@section StableHLO:\n Lowers to [stablehlo::hlo_<name>()].`
+- **Examples:** written out per primitive, not templated. For one whose operands must agree on a
+  data type, follow `?prim_add`: two R values, then an R value meeting an array, each with a
+  one-line comment naming the data type that comes out. Show working calls only -- no `try()`
+  around a rejected one. Pick operand values that also show what the primitive computes (`-32L`
+  for an arithmetic shift), and write literals in the primitive's own category.
+- **StableHLO link:** `@section StableHLO:` followed by `` `r roxy_spec("<op>")` `` for a
+  StableHLO op, or `` `r roxy_spec_chlo("<op>")` `` for a CHLO one (`prim_erf()`, `prim_acos()`,
+  `prim_top_k()`, ...). Both name the `hlo_*` function and link the op's specification; anything
+  the primitive adds on top -- a reducer, a comparison direction, a comparator -- follows as its
+  own sentence. A primitive backed by a custom call (`prim_qr()`, `prim_lu()`) writes the section
+  by hand, since no spec op describes it.
 - Do NOT mention "1-based indexing" — it's the R default.
 - Add `@export` to the roxygen block.
 
@@ -67,7 +90,7 @@ Beyond what the vignette covers:
 
 ## Optional: Quickr Rule
 
-If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend — the quickr meta test simply excludes it from coverage.
+If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend; only the quickr one refuses it.
 
 ## API Wrapper (`nv_*`)
 

@@ -49,7 +49,8 @@ The data types the traced R values commit to when nothing else decides one
 the cache key it is filed under. \code{NULL} uses the pair in force.}
 }
 \value{
-A \code{list} with elements:
+(\code{list})\cr
+With elements:
 \itemize{
 \item \code{exec}: The compiled PJRT executable.
 \item \code{out_tree}: The output tree structure.

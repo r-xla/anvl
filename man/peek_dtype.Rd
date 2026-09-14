@@ -11,12 +11,14 @@ peek_dtype(x)
 The value to ask about.}
 }
 \value{
-(\code{\link[tengen:DataType]{tengen::DataType}})
+(\code{\link[tengen:DataType]{tengen::DataType}})\cr
+The data type \code{x} has, or the \link[=default_dtypes]{default data type} it would
+commit to if it is still a bare R value.
 }
 \description{
 The data type \code{x} would use if it was converted to an \code{AnvlArray}.
 Relevant for R objects and their \code{\link{RData}} trace-time analogon: for those it
-is the default of the backend in force (see \code{\link[=default_dtypes]{default_dtypes()}}), which the
+is the default in force (see \code{\link[=default_dtypes]{default_dtypes()}}), which the
 value has not committed to yet.
 }
 \examples{

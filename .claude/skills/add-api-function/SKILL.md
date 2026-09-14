@@ -106,9 +106,24 @@ args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = p
 
 ### Static arguments
 
-Any argument the function body *inspects* -- branches on, validates with `assert_*`, uses to compute shape/axes -- must be declared `static =` on the outer `jit()` call.
+An API function is not wrapped in `jit()` by hand -- it is tagged with the
+`@jit` roclet, and `R/zzz.R` rebinds it to `jit(f, static = <static>)` at build
+time (see `?jit_roclet`):
+
+```r
+#' @export
+#' @jit static "axis"        # or: @jit static 2:4, or a bare @jit for none
+nv_foo <- function(x, axis) { ... }
+```
+
+Any argument the function body *inspects* -- branches on, validates with
+`assert_*`, uses to compute shape/axes -- must be named (or positioned) in that
+`static` list.
 Typical candidates: `axes`, `shape`, `axis`, flags, mode strings, dtype specifiers.
 Arrayish inputs (the actual data) should never be static.
+
+After adding or changing a `@jit` tag, run `devtools::document()` so
+`R/jit-registry.R` is regenerated. Never edit that file by hand.
 
 ## Roxygen2 Documentation
 
@@ -121,7 +136,8 @@ If no proper template for a parameter or the return value exist, write the docum
 #' @title <Short Title>
 #' @description
 #' <One-sentence description.> You can also use `<R operator or generic>()`.
-#' @template param_x                    # or @template params_lhs_rhs, etc.
+#' @templateVar dtypes any data type    # the phrase the operand accepts
+#' @template param_unary_x              # or @template params_lhs_rhs, etc.
 #' @param <custom_param> (<type>)\cr    # for params not covered by templates
 #'   <Description.>
 #' @template return_unary               # or return_binary, return_reduce, etc.
@@ -136,10 +152,21 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@title`**: short, e.g. "Absolute Value", "Addition", "Transpose"
 - **`@description`**: one sentence describing what the function does. If an R operator or generic dispatches to this function, mention it: "You can also use `abs()`.", "You can also use the `+` operator."
 - **`@template`**: use templates for common parameter/return patterns:
-  - `param_x` — single input array
-  - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
-  - `param_dtype`, `param_shape`, `param_device` — common params
-  - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
+  - `param_unary_x` — the input of an elementwise unary function: states the accepted data types
+    and that an R value commits to its default. Needs `@templateVar dtypes <phrase>` above it,
+    from the same vocabulary as below. Shared with the `prim_*` layer, which behaves identically.
+  - A function whose `x` is promoted with a sibling (`nv_clamp()`, `nv_pad()`,
+    `nv_subset_assign()`) writes `x` inline: it names the accepted data types and points at the
+    sibling, whose own `@param` carries the promotion sentence
+  - `params_lhs_rhs` — binary operands: states the promotion, the scalar broadcasting and how R
+    values take a data type. Needs `@templateVar dtypes <phrase>` above it, from the vocabulary
+    defined in `?dtypes` (`any data type`, `any numeric data type`, `any integerish data type`,
+    `any float data type`). Its stricter `prim_*` counterpart is `params_prim_lhs_rhs`.
+  - `param_shape`, `param_device` — common params. A `dtype` parameter is written inline,
+    since what it accepts and what it does with the other arguments differs per function
+  - `return_unary`, `return_binary`; for a reduction `@templateVar dtype_out <phrase>` +
+    `@template return_reduce`, plus `@templateVar axes_all` + `@template params_reduce` so `axes`
+    documents its `NULL` default
   - `params_reduce` — axes + drop params for reductions
 - **`@param`**: write inline for parameters not covered by templates
 - **`@seealso`**: always link to the underlying `prim_*` primitive. Optionally link to related `nv_*` functions.
@@ -206,7 +233,7 @@ devtools::test()
 - [ ] No-op shortcuts return the input unchanged (e.g. identity reshape / convert / broadcast)
 - [ ] Constants created inside the function use `nv_<op>_like()` so they live on the right backend/device
 - [ ] If the function is an array creator, a matching `nv_<name>_like()` variant is provided
-- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are declared `static =` on every `jit()` call
+- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are listed in the function's `#' @jit static ...` tag, and `devtools::document()` has regenerated `R/jit-registry.R`
 - [ ] `_pkgdown.yml`: added to appropriate semantic section
 - [ ] Forward-pass test in `tests/testthat/test-api.R` covers the wrapper's convenience behavior
 - [ ] `devtools::document()` run

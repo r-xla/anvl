@@ -226,7 +226,7 @@ GraphDescriptor <- function(
   if (length(calls)) {
     env$calls$madd(.list = calls)
   }
-  env$data_to_gval <- array_to_gval %||% hashtab()
+  env$array_to_gval <- array_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
   env$constants <- constants
   env$in_tree <- in_tree
@@ -531,12 +531,12 @@ get_box_or_register_const <- function(desc, x) {
     if (backend(x) != "plain") {
       desc$devices <- c(desc$devices, device(x))
     }
-    gval <- desc$data_to_gval[[x]]
+    gval <- desc$array_to_gval[[x]]
     if (!is.null(gval)) {
       return(desc$gval_to_box[[gval]])
     }
     gval <- GraphValue(aval = ConcreteArray(x))
-    desc$data_to_gval[[x]] <- gval
+    desc$array_to_gval[[x]] <- gval
     desc$constants <- c(desc$constants, list(gval))
     box <- GraphBox(gval, desc)
     desc$gval_to_box[[gval]] <- box
@@ -568,7 +568,7 @@ get_box_or_register_const <- function(desc, x) {
   new_box <- GraphBox(x, desc)
 
   if (is_concrete_array(x$aval)) {
-    desc$data_to_gval[[x$aval$data]] <- x
+    desc$array_to_gval[[x$aval$data]] <- x
   }
   desc$gval_to_box[[x]] <- new_box
   desc$constants <- c(desc$constants, list(x))
@@ -622,7 +622,8 @@ match_args_to_formals <- function(f, args) {
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
-#' @return An [`AnvlGraph`] containing the traced operations.
+#' @return ([`AnvlGraph`])\cr
+#'   Contains the traced operations.
 #' @seealso [`stablehlo()`] to lower the graph, [`jit()`] for end-to-end
 #'   compilation.
 #' @export
@@ -754,7 +755,7 @@ maybe_restore_previous_desc <- function(desc = NULL) {
 #' Get the current graph being built (via [`local_descriptor`]).
 #' @param silent (`logical(1)`)\cr
 #'   Whether to return `NULL` if no graph is currently being built (as opposed to aborting).
-#' @return A [`GraphDescriptor`] object.
+#' @return ([`GraphDescriptor`])
 #' @export
 .current_descriptor <- function(silent = FALSE) {
   maybe_desc <- globals[["CURRENT_DESCRIPTOR"]]
@@ -793,7 +794,7 @@ maybe_previous_descriptor <- function() {
 #'   [`GraphDescriptor`] if it was not returned yet.
 #' @param ... (`any`)\cr
 #'   Additional arguments to pass to the [`GraphDescriptor`] constructor.
-#' @return A [`GraphDescriptor`] object.
+#' @return ([`GraphDescriptor`])
 #' @export
 local_descriptor <- function(..., envir = parent.frame()) {
   if (identical(envir, globalenv())) {

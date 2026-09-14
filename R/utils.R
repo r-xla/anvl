@@ -27,7 +27,8 @@ dtype_from_buffer <- function(x) {
 #'   Environment in which to look up and rebind functions. Defaults to
 #'   `parent.frame()`, which at top-level package source time is the package
 #'   namespace.
-#' @return Invisibly returns `envir`.
+#' @return (`environment`)\cr
+#'   Invisibly returns `envir`.
 #' @seealso [`jit_roclet()`], [`jit()`]
 #' @export
 apply_jit_registry <- function(registry, envir = parent.frame()) {
@@ -79,7 +80,7 @@ minmax_raw <- function(bits, signed = TRUE) {
 }
 
 
-nv_minval <- function(dtype, device) {
+nv_minval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(-Inf, dtype = dtype, device = device)
@@ -96,7 +97,7 @@ nv_minval <- function(dtype, device) {
   }
 }
 
-nv_maxval <- function(dtype, device) {
+nv_maxval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(Inf, dtype = dtype, device = device)
@@ -129,16 +130,38 @@ shape2string <- function(x, parenthesize = TRUE) {
   }
 }
 
-shapes2string <- function(shapes) {
-  paste0(sapply(shapes, shape2string), sep = ", ")
+# The shape spelling for user-facing messages: `(2x3)`, and `()` for a scalar.
+# `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
+# `RData(double, (2,3))` are built from and stays as it is -- so everything a
+# caller reads in an error or warning goes through these two instead.
+shape_repr <- function(shape) {
+  sprintf("(%s)", paste0(shape, collapse = "x"))
+}
+
+shapes_repr <- function(shapes) {
+  paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
+}
+
+# `value` (0 or 1) written in the category `dtype` belongs to. A fill only
+# takes a literal its data type can hold, so a boolean data type needs a
+# logical and an integer one a whole number.
+fill_literal <- function(value, dtype) {
+  dt <- as_dtype(dtype)
+  if (is_dtype_bool(dt)) {
+    as.logical(value)
+  } else if (is_dtype_float(dt)) {
+    as.double(value)
+  } else {
+    as.integer(value)
+  }
 }
 
 zeros <- function(dtype, shape) {
-  prim_fill(0L, dtype = dtype, shape = shape)
+  prim_fill(fill_literal(0, dtype), dtype = dtype, shape = shape)
 }
 
 ones <- function(dtype, shape) {
-  prim_fill(1L, dtype = dtype, shape = shape)
+  prim_fill(fill_literal(1, dtype), dtype = dtype, shape = shape)
 }
 
 

@@ -4,11 +4,14 @@
 \alias{nv_rng_state}
 \title{Generate RNG State}
 \usage{
-nv_rng_state(seed, device = default_device())
+nv_rng_state(seed, device = NULL)
 }
 \arguments{
 \item{seed}{(\code{\link{arrayish}})\cr
-Scalar \code{i32} seed value.}
+Scalar seed, either a plain R value or an \code{i32} array. It is built at
+\code{i32} whatever the default integer data type is, so a given seed names the
+same stream in every configuration -- which is also why an array of
+another data type is refused rather than converted.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -25,7 +28,9 @@ The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: 
 named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 }
 \value{
-\code{\link{nv_array}} of dtype \code{ui64} and shape \code{(2)}.
+(\code{\link{arrayish}})\cr
+Has the \code{ui64} data type and shape \code{(2)}, the layout the generator
+requires -- fixed, not taken from the default data types.
 }
 \description{
 Creates an initial RNG state from a seed. This state is required by all
@@ -33,6 +38,7 @@ random sampling functions and is updated after each call.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the state is a 1-D `ui64` array the samplers thread through
 state <- nv_rng_state(42L)
 state
 \dontshow{\}) # examplesIf}

@@ -11,7 +11,8 @@ nv_median(x, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to compute the median. Negative values count from
@@ -30,7 +31,7 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation fo
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Same shape as \code{x} with \code{axis} removed. The data type is that of \code{x}, or
 the default float for a non-float \code{x}.
 }

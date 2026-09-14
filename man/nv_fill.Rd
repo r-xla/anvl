@@ -10,14 +10,20 @@ nv_fill(value, shape, dtype = NULL, device = NULL)
 nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+\item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
+Scalar value to fill the array with, which has to be something \code{dtype} can
+hold: a number for a float, a whole number for an integer, a non-negative
+whole number for an unsigned integer and a logical for \code{bool}. \code{NA} is
+rejected, since XLA has no missing value. Whether the value fits the data
+type's range is left to the backend.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{character(1)} | \code{NULL})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result. Can be any data type the backend supports. The
+default (\code{NULL}) is the \link[=default_dtypes]{default data type} of \code{value}'s R
+storage type, and \code{dtype(like)} for \code{nv_fill_like()}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -38,7 +44,7 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_fill_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and \code{dtype}.
 }
 \description{
@@ -50,7 +56,10 @@ Creates an array filled with a scalar value. More memory-efficient than
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R double settles the data type, the shape is given
 nv_fill(0, shape = c(2, 3))
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_matrix(1:6, nrow = 2)
 nv_fill_like(x, 0)
 \dontshow{\}) # examplesIf}

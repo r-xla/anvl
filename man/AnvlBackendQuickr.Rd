@@ -7,7 +7,8 @@
 AnvlBackendQuickr()
 }
 \value{
-An \code{\link{AnvlBackend}} object with subclass \code{"AnvlBackendQuickr"}.
+(\code{\link{AnvlBackend}})\cr
+With subclass \code{"AnvlBackendQuickr"}.
 }
 \description{
 Constructs the quickr backend, which stores array data as plain R arrays and
@@ -49,6 +50,13 @@ lowered to quickr code. See \code{vignette("primitives")} for an overview.
 \section{Supported data types}{
 
 \code{f64}, \code{i32} and \code{bool} -- the three R storage types.
+
+One family is narrower still: the bitwise primitives (\code{prim_and()},
+\code{prim_or()}, \code{prim_xor()}, \code{prim_not()}) lower only for \code{bool} here, so
+their integer forms -- which the pjrt backend runs -- are refused with a
+\code{cli} error rather than silently mis-lowered. (\code{prim_reduce_any()} and
+\code{prim_reduce_all()} take a boolean operand on every backend, so they lose
+nothing here.)
 }
 
 \section{Quickr JIT arguments}{

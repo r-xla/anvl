@@ -9,17 +9,19 @@ nv_is_nan(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the input and boolean data type.
+(\code{\link{arrayish}})\cr
+Has the input's shape and boolean data type.
 }
 \description{
 Element-wise check if values are NaN. You can also use \code{is.nan()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a boolean result, whatever the input's data type
 x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 nv_is_nan(x)
 \dontshow{\}) # examplesIf}

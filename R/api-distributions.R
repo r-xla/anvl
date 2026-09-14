@@ -9,15 +9,24 @@
 #' standard deviation `sd`.
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
-#'   function (`q`).
+#'   function (`q`). `x` can be any float data type; `q` must be `f32` or `f64`
+#'   (see "Details"). `mean` and `sd` are brought to it. An R value commits to
+#'   its [default data type][default_dtypes].
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
-#'   \eqn{[0, 1]} give `NaN`.
+#'   \eqn{[0, 1]} give `NaN`. Must be `f32` or `f64` (see "Details"); `mean`
+#'   and `sd` are brought to it. An R value commits to its
+#'   [default data type][default_dtypes].
 #' @param mean ([`arrayish`])\cr
-#'   Mean of the distribution (scalar or same shape as `x`/`q`/`p`).
+#'   Mean of the distribution, scalar or the same shape as `x`/`q`/`p`; a scalar
+#'   is broadcast. Brought to that argument's data type: an R value is built at
+#'   it, and a value that already has a data type is converted unless that would
+#'   narrow it -- an `f64` mean for an `f32` `x` is an error rather than a silent
+#'   narrowing.
 #' @param sd ([`arrayish`])\cr
-#'   Standard deviation of the distribution (scalar or same shape as
-#'   `x`/`q`/`p`). Must be positive, otherwise results are invalid.
+#'   Standard deviation of the distribution, scalar or the same shape as
+#'   `x`/`q`/`p`; a scalar is broadcast, and it is brought to that argument's
+#'   data type like `mean`. Must be positive, otherwise results are invalid.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms. For
 #'   `nv_qnorm` this describes the input `p`.
@@ -29,7 +38,6 @@
 #' \deqn{f(x) = \frac{1}{\sigma\sqrt{2\pi}}
 #'   \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)}
 #' where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
-#' The `mean` and `sd` are converted to the data type of `x`/`q`/`p`.
 #'
 #' `nv_pnorm` uses the asymptotic expansion from
 #' `r xlamisc::cite_bib("abramowitz1964handbook")`, equation 26.2.12, in the
@@ -41,16 +49,19 @@
 #' rational approximation on the same intervals for `f32`.
 #'
 #' The thresholds and coefficients of `nv_pnorm()` and `nv_qnorm()` are written
-#' for `f32` and `f64`, so those two are the only data types they accept.
+#' for `f32` and `f64`, one set per width, so those two are the only data types
+#' they accept: a narrower float (`f16`, `bf16`) is refused rather than served
+#' by the wrong set. `nv_dnorm()` has no coefficients and takes any float.
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.
-#' @return
-#' `nv_dnorm()` and `nv_pnorm()` return an [`arrayish`] with the same shape and
-#' data type as `x`/`q`.
+#' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
+#' `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` return an [`arrayish`] with the
+#' shape and data type of `x`/`q`/`p`.
 #'
-#' `nv_rnorm()` returns a `list()` of two [`arrayish`] elements: the updated
-#' RNG state and the sampled values.
+#' `nv_rnorm()` returns a named `list` of two [`arrayish`]: `state`, the updated
+#' RNG state with `initial_state`'s data type and shape, and `values`, the
+#' sample of shape `shape` and the data type described under `dtype`.
 #'
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
@@ -75,6 +86,7 @@ NULL
 #' @jit static "log"
 nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
   assert_flag(log)
+  assert_float_dtype(peek_dtype(x), arg = "x", hint = "Convert it with `nv_convert()`.")
   args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promotion_like("x"))
   x <- args$x
   mean <- args$mean
@@ -95,12 +107,15 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
 nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
+  assert_float_dtype(peek_dtype(q), arg = "q", hint = "Convert it with `nv_convert()`.")
   args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promotion_like("q"))
   q <- args$q
   mean <- args$mean
   sd <- args$sd
   # The thresholds below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(q), arg = "q")
+  # One coefficient set per width, so a narrower float has none: it would
+  # silently take the `f64` set.
+  op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
 
   # Standardise, flipping sign if computing upper tail
   d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
@@ -290,12 +305,14 @@ qnorm_f32_coefs <- list(
 nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
+  assert_float_dtype(peek_dtype(p), arg = "p", hint = "Convert it with `nv_convert()`.")
   args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promotion_like("p"))
   p <- args$p
   mean <- args$mean
   sd <- args$sd
   # The coefficients below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(p), arg = "p")
+  # One coefficient set per width -- see `nv_pnorm()`.
+  op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
 
   is_f32 <- op_dtype == "f32"
 
@@ -348,7 +365,14 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   use_far_tail <- z >= 8
   # See important "NOTE" preceding coefficients above regarding this helper func
   select_far <- function(far, near) {
-    Map(function(x, y) nv_ifelse(use_far_tail, x, y), far, near)
+    # The coefficients are plain R numbers, so a bare `nv_ifelse(pred, x, y)`
+    # would have nothing to yield to and commit at the default float, dragging
+    # the whole result up with it. They are built at `p`'s data type instead.
+    Map(
+      function(x, y) nv_ifelse(use_far_tail, nv_scalar_like(p, x), nv_scalar_like(p, y)),
+      far,
+      near
+    )
   }
   ratio <- horner(inv_z, select_far(cf$p_far_tail, cf$p_tail)) /
     horner(inv_z, select_far(cf$q_far_tail, cf$q_tail))
@@ -368,7 +392,14 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
     res_central,
     nv_ifelse(use_upper, res_tail, -res_tail)
   )
-  res_std <- nv_ifelse(is_boundary, nv_ifelse(use_upper, Inf, -Inf), res_std)
+  # The infinities are built at `p`'s data type: two bare R doubles here would
+  # have nothing to yield to, commit at the default float, and drag the result
+  # up with them.
+  res_std <- nv_ifelse(
+    is_boundary,
+    nv_ifelse(use_upper, nv_scalar_like(p, Inf), nv_scalar_like(p, -Inf)),
+    res_std
+  )
   # Handle tail switch
   if (!lower_tail) {
     res_std <- -res_std

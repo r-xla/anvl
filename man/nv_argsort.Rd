@@ -8,7 +8,8 @@ nv_argsort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to compute the sort permutation. Negative values
@@ -24,10 +25,10 @@ If \code{TRUE}, the sort is stable: indices for equal values keep their
 original relative order. Default \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}} of the default integer data type (see
-\code{\link[=default_dtypes]{default_dtypes()}})\cr
-Same shape as \code{x}. For a size-0 axis, the output is an empty
-array of the same shape (a valid empty permutation).
+(\code{\link{arrayish}})\cr
+Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
+the input's, and the input's shape. For a size-0 axis, the output is an
+empty array of the same shape (a valid empty permutation).
 \code{as_array(x)[as_array(nv_argsort(x))]} reproduces the sorted
 array (for 1-D inputs).
 }
@@ -42,6 +43,8 @@ Returns the indices that would sort the array along an axis.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the indices come out at the default integer data type
+# the indices come out at the default integer data type
 x <- nv_array(c(3, 1, 4, 1, 5))
 nv_argsort(x)
 \dontshow{\}) # examplesIf}

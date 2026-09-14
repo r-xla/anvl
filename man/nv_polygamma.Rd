@@ -9,25 +9,24 @@ nv_polygamma(n, x)
 }
 \arguments{
 \item{n, x}{(\code{\link{arrayish}})\cr
-Floating-point arrayish values; an integer \code{x} is computed at the default
-float data type. After promotion and broadcasting, \code{n} and \code{x} must have
-the same shape; \code{n} typically holds non-negative integer values.}
+Order of the polygamma function and the value to evaluate it at. \code{n}
+typically holds non-negative whole numbers. The two are
+\link[=nv_promote_to_common]{promoted to a common data type}, which must come
+out a float, since that is all \code{\link[=prim_polygamma]{prim_polygamma()}} takes: an integer or
+boolean operand is converted where the other side is a float (or an R
+double, which becomes one), and a call in which neither side is a float
+is refused.
+Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other,
+so \code{nv_polygamma(1, x)} works for any float \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise polygamma function: the \code{(n+1)}-th derivative of the
-log-gamma function. The order \code{n} is broadcast against \code{x} (so
-\code{nv_polygamma(1, x)} works for any \code{x}). For \code{n = 0} this is the
-digamma function; for \code{n = 1}, \code{trigamma()} dispatches here.
-
-Inputs are
-\link[=nv_promote_to_common]{promoted to a common floating data type} and
-scalar arguments are
-\link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar
-arguments.
+log-gamma function. For \code{n = 0} this is the digamma function; for \code{n = 1},
+\code{trigamma()} dispatches here.
 }
 \section{The \code{trigamma()} generic}{
 
@@ -36,6 +35,7 @@ arguments.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R `1` is built at `x`'s float data type and broadcast
 x <- nv_array(c(0.5, 1, 2, 5))
 nv_polygamma(1, x) # trigamma
 \dontshow{\}) # examplesIf}

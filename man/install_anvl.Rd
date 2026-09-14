@@ -15,7 +15,8 @@ backend has nothing to install and is not accepted.}
 \code{"pjrt"}, \code{\link[utils:install.packages]{utils::install.packages()}} for \code{"quickr"}.}
 }
 \value{
-\code{NULL}, invisibly. Called for its side effect.
+(\code{NULL})\cr
+Invisibly. Called for its side effect.
 }
 \description{
 A backend needs more than the packages anvl declares as dependencies: the

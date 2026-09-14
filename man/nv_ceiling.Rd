@@ -12,14 +12,15 @@ nv_ceiling(x)
 Input array. An integer array is returned unchanged.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise ceiling (round toward positive infinity). You can also use \code{ceiling()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 ceiling(x)
 ceiling(nv_array(1:3)) # an integer array is already whole

@@ -17,7 +17,8 @@ First array to compare.}
 Second array to compare.}
 }
 \value{
-\code{logical(1)} - \code{TRUE} if the arrays are equal, \code{FALSE} otherwise.
+(\code{logical(1)})\cr
+\code{TRUE} if the arrays are equal, \code{FALSE} otherwise.
 }
 \description{
 Compare two abstract arrays for type equality.
@@ -26,13 +27,13 @@ Compare two abstract arrays for type equality.
 a <- nv_aval("f32", c(2L, 3L))
 b <- nv_aval("f32", c(2L, 3L))
 
-# Same dtype and shape
+# same dtype and shape
 eq_type(a, b)
 
-# Different dtype
+# different dtype
 eq_type(a, nv_aval("i32", c(2L, 3L)))
 
-# Different shape
+# different shape
 eq_type(a, nv_aval("f32", c(3L, 2L)))
 
 # neq_type is the negation of eq_type

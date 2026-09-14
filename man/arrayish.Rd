@@ -15,7 +15,8 @@ Object to check.}
 Whether to accept \code{numeric(1)} and \code{logical(1)} and R arrays of type \code{numeric} and \code{logical}.}
 }
 \value{
-\code{logical(1)}
+(\code{logical(1)})\cr
+Whether \code{x} is arrayish.
 }
 \description{
 A \code{arrayish} value is anything that represents an \code{\link{AnvlArray}}
@@ -34,13 +35,34 @@ during \code{\link[=jit]{jit()}}.
 }
 
 Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayish.
+
+The group words the parameter descriptions use are listed below;
+\code{\link{dtypes}} gives the categories they are built from, and
+\code{\link[=default_dtypes]{default_dtypes()}} the default an R value commits to.
 }
+\section{Data Type Vocabulary}{
+
+Where a page says which data types an argument takes, it names a group of
+them with a single word:
+\itemize{
+\item \emph{any data type} -- all of them: \code{bool}, the signed and unsigned integers,
+and the floats.
+\item \emph{numeric} -- signed integer, unsigned integer and float.
+\item \emph{integer} -- signed and unsigned integer.
+\item \emph{integerish} -- boolean and integer, signed or unsigned.
+\item \emph{signed numeric} -- signed integer and float.
+\item \emph{float} -- the whole float category: \code{f32}, \code{f64} and any narrower float
+a backend supports.
+\item \emph{boolean} -- \code{bool}, the only member of its category.
+}
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# AnvlArrays are arrayish
+# anvlArrays are arrayish
 is_arrayish(nv_array(1:4))
 
-# Scalar R literals are arrayish by default
+# scalar R literals are arrayish by default
 is_arrayish(1.5)
 # R arrays are arrayish by default
 is_arrayish(array(1.5))
@@ -49,7 +71,7 @@ is_arrayish(array(1.5))
 is_arrayish(array(1:4), convert_ok = TRUE)
 is_arrayish(array(1:4), convert_ok = FALSE)
 
-# Length 1 vectors
+# length 1 vectors
 is_arrayish(1.5, convert_ok = FALSE)
 is_arrayish(1.5, convert_ok = TRUE)
 \dontshow{\}) # examplesIf}

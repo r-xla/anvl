@@ -6,7 +6,8 @@
 #' only support CPU.
 #' @param backend (`NULL` | `character(1)`)\cr
 #'   Backend. Defaults to [`active_backend()`] when `NULL`.
-#' @return A backend-specific device object.
+#' @return (device object)\cr
+#'   Backend-specific.
 #' @seealso [`nv_device()`], [`active_backend()`]
 #' @export
 default_device <- function(backend = NULL) {
@@ -28,15 +29,16 @@ default_device <- function(backend = NULL) {
 #' @param x (`character(1)` | device object)\cr
 #'   Identifier for the device (e.g. `"cpu"`, `"cuda"`, `"cuda:<n>"`),
 #'   or an existing device object of the active backend (returned as-is).
-#' @return A backend-specific device object (e.g. `PJRTDevice` for `"pjrt"`,
+#' @return (device object)\cr
+#'   Backend-specific (e.g. `PJRTDevice` for `"pjrt"`,
 #'   [`quickr_device`] for `"quickr"`).
 #' @seealso [`backend()`], [`AnvlBackend()`], [`active_backend()`].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Create CPU device for the active backend
+#' # create CPU device for the active backend
 #' nv_device("cpu")
-#' # Create CPU device for the quickr backend:
+#' # create CPU device for the quickr backend:
 #' with_backend("quickr", nv_device("cpu"))
-#' # Pass through an existing device:
+#' # pass through an existing device:
 #' dev <- nv_device("cpu")
 #' identical(nv_device(dev), dev)
 #' @export
@@ -70,7 +72,8 @@ check_device_backend <- function(device, backend) {
 #' Test whether an object is a device
 #'
 #' @param x An object to test.
-#' @return `logical(1)`
+#' @return (`logical(1)`)\cr
+#'   Whether `x` is a device of one of the backends.
 #' @export
 is_device <- function(x) {
   # TODO: device objects should share a common base class (like AnvlArray)

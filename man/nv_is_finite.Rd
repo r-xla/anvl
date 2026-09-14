@@ -9,19 +9,24 @@ nv_is_finite(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any float data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the input and boolean data type.
+(\code{\link{arrayish}})\cr
+Has the input's shape and boolean data type.
 }
 \description{
 Element-wise check if values are finite (not \code{Inf}, \code{-Inf}, or \code{NaN}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result is boolean, whatever float data type the input has
 x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 nv_is_finite(x)
+
+# an R value commits to its default data type before the test
+nv_is_finite(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

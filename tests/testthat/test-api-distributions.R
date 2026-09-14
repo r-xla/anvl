@@ -346,8 +346,17 @@ describe("nv_qnorm", {
   })
 
   it("converts mean/sd to the dtype of p", {
+    # `p`'s own data type, not the default float: the R integers yield to it and
+    # so do the coefficients inside.
     out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), default_float())
+    expect_equal(dtype(out), as_dtype("f32"))
+    with_default_dtypes(
+      c(float = "f64"),
+      expect_equal(
+        dtype(nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)),
+        as_dtype("f32")
+      )
+    )
   })
 })
 
@@ -360,4 +369,19 @@ describe("eager/jit equivalence", {
       qnorm = function(x, v) nv_qnorm(f64(), mean = v)
     ))
   })
+})
+
+test_that("nv_pnorm() and nv_qnorm() refuse a float width they have no coefficients for", {
+  # One coefficient set per width, so a narrower float would silently take the
+  # `f64` set -- which the page said was refused.
+  expect_error(
+    trace_fn(function(p) nv_qnorm(p), list(nv_aval("f16", 3L))),
+    "must be a 32- or 64-bit float"
+  )
+  expect_error(
+    trace_fn(function(q) nv_pnorm(q), list(nv_aval("bf16", 3L))),
+    "must be a 32- or 64-bit float"
+  )
+  # `nv_dnorm()` has no coefficients and takes any float.
+  expect_s3_class(trace_fn(function(x) nv_dnorm(x), list(nv_aval("f16", 3L))), "AnvlGraph")
 })

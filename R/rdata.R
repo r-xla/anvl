@@ -30,19 +30,19 @@ NULL
 #' RData(c(2, 3), "double")
 #' # is equivalent to
 #' nv_aval("double", c(2, 3))
-#' # Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
+#' # below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
 #' # dtype becomes f64.
-#' # By NOT converting RData to their default data type we prevent loss of precision
-#' # (double -> f32 -> f64 roundrips)
+#' # by NOT converting RData to their default data type we prevent loss of precision
+#' # (avoiding a double -> default data type -> f64 round trip)
 #' graph <- trace_fn(function(x) {
 #'     print(x)
 #'     list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))
 #'   }, list(x = nv_aval("double", c()))
 #' )
 #' print(graph)
-#' # The actual inputs to the compiled program
+#' # the actual inputs to the compiled program
 #' graph$inputs
-#' # The data types of the R values; AnvlArrays get NA here
+#' # the data types of the R values; AnvlArrays get NA here
 #' graph$rdata_types
 #' @export
 RData <- function(shape, r_type) {
@@ -174,20 +174,34 @@ rdata_natural_dtype <- function(r_type) {
 rdata_staging_dtype <- function(r_type, dtype) {
   staged <- rdata_natural_dtype(r_type)
   # Only worth saying when staging *widens* past the data type the value would
-  # have taken anyway. An R integer stages through `i32`, so under an `i64`
-  # default it stages through something narrower than its default and the
-  # program acquires nothing it could have avoided.
-  if (!dtype_holds(default_dtype_r(r_type), staged)) {
+  # have taken anyway, and only when the caller could have avoided it. An R
+  # integer stages through `i32`, so under an `i64` default it stages through
+  # something narrower than its default and the program acquires nothing it
+  # could have avoided; under a default *narrower* than `i32` the staging is
+  # unavoidable, because converting in its own category first would stage
+  # through `i32` too. Warning there would offer a remedy that does not exist.
+  own_default <- default_dtype_r(r_type)
+  remedy_works <- rdata_builds_directly(r_type, own_default) && dtype_materializable(own_default)
+  if (!dtype_holds(own_default, staged) && remedy_works) {
     cli_warn(
       c(
         "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
         x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts.", # nolint
-        i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(default_dtype_r(r_type))}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
+        i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(own_default)}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
       ),
       class = "anvl_staging_widens_warning"
     )
   }
   staged
+}
+
+# Whether a backend can hold an array of this data type at all. `f16` and
+# `bf16` are float data types everywhere anvl reasons about data types, but no
+# backend materializes them yet -- see `?dtypes`. The one caller is the staging
+# warning, whose hint must not recommend a conversion that cannot be built;
+# this is the single place to update when a backend gains them.
+dtype_materializable <- function(dtype) {
+  !is_dtype_float(dtype) || dtype_width(dtype) >= 32L
 }
 
 rdata_in_category <- function(r_type, dtype) {
@@ -300,12 +314,14 @@ r_const_at <- function(x, dtype, desc) {
 #' @description
 #' The data type `x` would use if it was converted to an `AnvlArray`.
 #' Relevant for R objects and their [`RData`] trace-time analogon: for those it
-#' is the default of the backend in force (see [`default_dtypes()`]), which the
+#' is the default in force (see [`default_dtypes()`]), which the
 #' value has not committed to yet.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
-#' @return ([`tengen::DataType`])
+#' @return ([`tengen::DataType`])\cr
+#'   The data type `x` has, or the [default data type][default_dtypes] it would
+#'   commit to if it is still a bare R value.
 #' @seealso [as_anvl_arrays()], [RData], [shape()][tengen::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)

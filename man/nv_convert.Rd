@@ -8,14 +8,21 @@ nv_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Target data type. Can be any data type. The values are converted, and what
+happens to one the target cannot hold depends on the pair: a narrowing
+between integer data types wraps (\code{nv_convert(nv_array(300L), "i8")} is
+44); a float converted to an integer truncates toward zero and saturates
+at the target's range (\code{300} reaches \code{i8} as 127, \code{-1} reaches \code{ui8} as 0,
+and \code{NaN} becomes 0); a narrowing between floats rounds, and may become
+\code{Inf}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{dtype} and the same shape as \code{x}.
+(\code{\link{arrayish}})\cr
+Has the given \code{dtype} and the input's shape.
 }
 \description{
 Converts the elements of an array to a different data type.
@@ -23,6 +30,7 @@ Returns the input unchanged if it already has the target type.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the values are preserved, the data type changes
 x <- nv_array(c(1L, 2L, 3L))
 nv_convert(x, dtype = "f32")
 \dontshow{\}) # examplesIf}

@@ -118,6 +118,39 @@ test_that("prim_fill", {
   )
 })
 
+test_that("prim_fill checks the value against the data type", {
+  # A number for a float, whole for an integer, non-negative for an unsigned
+  # one and a logical for `bool`; `integer64` counts as a whole number.
+  expect_equal(dtype(prim_fill(3.14, shape = 2L, dtype = "f32")), as_dtype("f32"))
+  expect_equal(dtype(prim_fill(1L, shape = 2L, dtype = "f64")), as_dtype("f64"))
+  expect_equal(dtype(prim_fill(3, shape = 2L, dtype = "i32")), as_dtype("i32"))
+  expect_equal(dtype(prim_fill(-3L, shape = 2L, dtype = "i32")), as_dtype("i32"))
+  expect_equal(dtype(prim_fill(0L, shape = 2L, dtype = "ui8")), as_dtype("ui8"))
+  expect_equal(dtype(prim_fill(TRUE, shape = 2L, dtype = "bool")), as_dtype("bool"))
+  # A float holds the infinities and `NaN`.
+  expect_equal(dtype(prim_fill(NaN, shape = 2L, dtype = "f32")), as_dtype("f32"))
+  expect_equal(dtype(prim_fill(Inf, shape = 2L, dtype = "f32")), as_dtype("f32"))
+
+  expect_error(prim_fill(TRUE, shape = 2L, dtype = "f32"), "must be a number")
+  expect_error(prim_fill("a", shape = 2L, dtype = "f32"), "must be a number")
+  expect_error(prim_fill(3.14, shape = 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(NaN, shape = 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(Inf, shape = 2L, dtype = "i64"), "must be a whole number")
+  expect_error(prim_fill(-1L, shape = 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(prim_fill(-1, shape = 2L, dtype = "ui32"), "must be a non-negative whole number")
+  expect_error(prim_fill(1L, shape = 2L, dtype = "bool"), "must be a logical")
+  expect_error(prim_fill(NA, shape = 2L, dtype = "bool"), "must not be")
+  expect_error(prim_fill(NA_real_, shape = 2L, dtype = "f32"), "must not be")
+
+  # `nv_fill()` and `nv_fill_like()` go through the same check, jitted or not.
+  expect_error(nv_fill(-1, shape = 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(nv_fill_like(nv_array(c(TRUE, FALSE)), 1L), "must be a logical")
+  expect_error(
+    jit(function() nv_fill(2.5, shape = 2L, dtype = "i32"))(),
+    "must be a whole number"
+  )
+})
+
 test_that("prim_shift_left", {
   x <- nv_array(as.integer(c(1L, 2L, 3L, 8L)), dtype = "i32")
   y <- nv_array(as.integer(c(0L, 1L, 2L, 3L)), dtype = "i32")
@@ -312,6 +345,51 @@ test_that("prim_broadcast_in_axes", {
   )
 })
 
+test_that("prim_broadcast_in_axes names its own arguments when they do not fit", {
+  # stablehlo reports both of these as `broadcast_dimensions`, in 0-based
+  # half-open notation, which is not what the caller wrote.
+  x <- nv_array(c(1, 2, 3))
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = 3L),
+    "`broadcast_axes` must be axes of the result, between 1 and 2"
+  )
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = c(1L, 2L)),
+    "one axis of the result per axis of `x`"
+  )
+})
+
+test_that("the elementwise primitives name their own operands on a shape mismatch", {
+  # `prim_ifelse` is stablehlo's `select` (`on_true` / `on_false`),
+  # `prim_polygamma` a CHLO binary op (`lhs` / `rhs`), and `prim_clamp`'s
+  # bounds are its `min` / `max`.
+  expect_error(
+    prim_ifelse(nv_array(c(TRUE, FALSE)), nv_array(c(1, 2)), nv_array(c(1, 2, 3))),
+    "`true_value` and `false_value` must have the same shape"
+  )
+  expect_error(
+    prim_ifelse(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(1, 2)), nv_array(c(3, 4))),
+    "`pred` and `true_value` must have the same shape"
+  )
+  expect_error(
+    prim_polygamma(nv_array(c(1, 2)), nv_array(c(1, 2, 3))),
+    "`n` and `x` must have the same shape"
+  )
+  expect_error(
+    prim_clamp(nv_array(c(0, 0)), nv_array(c(1, 2, 3)), nv_array(c(1, 1))),
+    "`min_val` must be a scalar or have `x`'s shape"
+  )
+  # A scalar bound is still fine, and so is a scalar `pred`.
+  expect_equal(
+    as.vector(as_array(prim_clamp(nv_scalar(0), nv_array(c(-1, 2)), nv_scalar(1)))),
+    c(0, 1)
+  )
+  expect_equal(
+    as.vector(as_array(prim_ifelse(nv_scalar(TRUE), nv_array(c(1, 2)), nv_array(c(3, 4))))),
+    c(1, 2)
+  )
+})
+
 test_that("prim_reshape", {
   f <- jit(prim_reshape, static = "shape")
   x <- array(1:6, c(3, 2))
@@ -327,7 +405,7 @@ test_that("prim_reshape infers a -1 dimension", {
   expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
   expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
   expect_error(prim_reshape(x, c(-1, -1)), "at most one")
-  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer dimension")
+  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
   expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
 })
 
@@ -620,7 +698,7 @@ describe("prim_qr", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_qr(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_qr(int_mat), "floating-point")
+    expect_error(prim_qr(int_mat), "float data type")
   })
 })
 
@@ -657,7 +735,7 @@ describe("prim_lu", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_lu(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_lu(int_mat), "floating-point")
+    expect_error(prim_lu(int_mat), "float data type")
   })
 })
 
@@ -701,7 +779,7 @@ describe("prim_svd", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_svd(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_svd(int_mat), "floating-point")
+    expect_error(prim_svd(int_mat), "float data type")
   })
 })
 
@@ -731,7 +809,7 @@ describe("prim_eigh", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f32")
     expect_error(prim_eigh(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_eigh(int_mat), "floating-point")
+    expect_error(prim_eigh(int_mat), "float data type")
     rect <- nv_matrix(1:6, nrow = 2, dtype = "f32")
     expect_error(prim_eigh(rect), "square")
   })
@@ -1032,16 +1110,16 @@ describe("prim_argmax", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmax(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     expect_error(
       prim_argmax(nv_matrix(numeric(0), nrow = 3, ncol = 0), axis = 2L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     # Inside jit too.
     expect_error(
       jit(function(x) prim_argmax(x, axis = 1L))(nv_array(numeric(0), shape = 0L)),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 
@@ -1078,7 +1156,7 @@ describe("prim_argmin", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmin(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 
@@ -1195,7 +1273,7 @@ test_that("prim_dot_general precision", {
       batching_axes = list(integer(), integer()),
       precision = "bogus"
     ),
-    "should be one of"
+    "`precision` must be one of"
   )
 })
 
@@ -1302,4 +1380,186 @@ describe("prim_reduce_any / prim_reduce_all input data type", {
       paste0("Got \"", as.character(default_float()), "\"")
     )
   })
+})
+
+test_that("prim_static_slice requires a stride of at least 1", {
+  x <- nv_array(1:10)
+  expect_error(
+    prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 0L),
+    "strides"
+  )
+  expect_equal(
+    as.integer(prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 2L)),
+    c(1L, 3L, 5L)
+  )
+})
+
+test_that("prim_sort takes a list of arrays, not an array", {
+  expect_error(prim_sort(nv_array(c(3, 1, 2)), axis = 1L), "non-empty list")
+  expect_equal(
+    as.vector(as_array(prim_sort(list(nv_array(c(3, 1, 2))), axis = 1L)[[1L]])),
+    c(1, 2, 3)
+  )
+})
+
+test_that("prim_fill names `shape` in its own error", {
+  expect_error(prim_fill(0, shape = -1L, dtype = "f32"), "negative axis size")
+  expect_equal(shape(prim_fill(0, shape = c(), dtype = "f32")), integer())
+  expect_equal(shape(prim_fill(0, shape = 0L, dtype = "f32")), 0L)
+})
+
+test_that("the primitives name their own arguments instead of stablehlo's", {
+  f23 <- nv_array(matrix(1:6, 2, 3) + 0)
+  f22 <- nv_array(matrix(1:4, 2, 2) + 0)
+
+  # `prim_clamp`: stablehlo's `min` / `max`. A bound is a scalar *or* exactly
+  # `x`'s shape, so a non-scalar bound against a scalar `x` is an error too.
+  expect_error(
+    prim_clamp(nv_array(c(1, 2, 3)), nv_scalar(0), nv_scalar(2)),
+    "`min_val` must be a scalar or have `x`'s shape"
+  )
+  # `prim_broadcast_in_axes`: `broadcast_dimensions` and `result`.
+  expect_error(
+    prim_broadcast_in_axes(f22, shape = c(2L, 2L), broadcast_axes = c(1L, 1L)),
+    "must not name the same axis twice"
+  )
+  expect_error(
+    nv_broadcast_to(f23, c(2L, 4L)),
+    "can only broadcast into an axis whose size it already matches"
+  )
+  expect_error(
+    prim_broadcast_in_axes(f23, shape = c(2L, 3L), broadcast_axes = 1L),
+    "one axis of the result per axis of `x`"
+  )
+  expect_error(
+    prim_broadcast_in_axes(f23, shape = c(2L, 3L), broadcast_axes = 3L),
+    "must be axes of the result, between 1 and 2"
+  )
+
+  # `prim_reduce`: stablehlo's `body`, plus an internal aval for a reductor of
+  # the wrong arity.
+  expect_error(
+    prim_reduce(nv_array(c(1, 2, 3)), init = 0, axes = 1L, reductor = function(a, b) nv_array(c(1, 2))),
+    "`reductor` must return a scalar"
+  )
+  expect_error(
+    prim_reduce(nv_array(c(1, 2, 3)), init = 0, axes = 1L, reductor = function(a) a),
+    "`reductor` must take exactly two arguments"
+  )
+
+  # `prim_polygamma`: stablehlo's `lhs`.
+  expect_error(
+    prim_polygamma(nv_array(1:2, dtype = "i32"), nv_array(1:2, dtype = "i32")),
+    "`x` must be a float data type"
+  )
+
+  # `prim_if`: `output_types(true_branch)[0]` and MLIR types.
+  expect_error(
+    prim_if(nv_scalar(TRUE), function() f23, function() f22),
+    "`true` and `false` must return the same data type and shape"
+  )
+  expect_error(
+    nv_if(nv_scalar(TRUE), function() nv_scalar(1), function() nv_scalar(1L)),
+    "`true` and `false` must return the same data type and shape"
+  )
+
+  # `prim_pad`: `operand_rank`, and "0-dimensional array" for the value.
+  expect_error(
+    prim_pad(f23, 0, 1L, c(0L, 0L), c(0L, 0L)),
+    "one entry per axis of `x`"
+  )
+  expect_error(
+    prim_pad(f23, nv_array(c(1, 2, 3)), c(0L, 0L), c(0L, 0L), c(0L, 0L)),
+    "`padding_value` must be a scalar"
+  )
+
+  # `prim_static_slice`: stablehlo re-adds 1 when it formats a violation, so
+  # its numbers are not the ones the caller typed.
+  expect_error(
+    prim_static_slice(f23, c(1L, 1L), c(3L, 3L), c(1L, 1L)),
+    "`limit_indices` must be at most the size of each axis"
+  )
+  expect_error(
+    prim_static_slice(f23, c(2L, 3L), c(1L, 1L), c(1L, 1L)),
+    "must not be past `limit_indices`"
+  )
+
+  # `prim_dynamic_slice` and `prim_dynamic_update_slice` build their output
+  # aval themselves, so a mistake used to reach the PJRT compiler as raw MLIR.
+  expect_error(
+    prim_dynamic_slice(f23, nv_scalar(1L), nv_scalar(1L), slice_sizes = c(9L, 1L)),
+    "`slice_sizes` must fit within `x`"
+  )
+  expect_error(
+    prim_dynamic_slice(f23, nv_scalar(1), nv_scalar(1), slice_sizes = c(1L, 1L)),
+    "must have an integer data type"
+  )
+  expect_error(
+    prim_dynamic_slice(f23, nv_scalar(1L), slice_sizes = c(1L, 1L)),
+    "One start index per axis"
+  )
+  expect_error(
+    prim_dynamic_update_slice(f23, nv_array(matrix(0, 3, 3)), nv_scalar(1L), nv_scalar(1L)),
+    "`update` must fit within `x`"
+  )
+
+  # `prim_dot_general`: `contracting_dims` with 0-based numbers.
+  expect_error(
+    prim_dot_general(f23, f23, contracting_axes = list(2L, 1L), batching_axes = list(integer(0), integer(0))),
+    "must have the same sizes"
+  )
+  expect_error(
+    prim_dot_general(f23, f23, contracting_axes = list(1L, 1L), batching_axes = list(1L, 1L)),
+    "cannot be both contracted and batched"
+  )
+
+  # `prim_iota`: "must have a int, uint, or float dtype".
+  expect_error(prim_iota(1L, "bool", 3L), "`dtype` must be a numeric data type")
+
+  # `prim_reshape`: "Size of output must equal to size of `x`".
+  expect_error(nv_reshape(f23, c(4L, 4L)), "must hold as many elements as `x`")
+
+  # `precision` reached `match.arg()`, which names its own formal, `arg`.
+  expect_error(
+    prim_dot_general(f22, f22, list(2L, 1L), list(integer(0), integer(0)), precision = "nope"),
+    "`precision` must be one of"
+  )
+})
+
+test_that("prim_scatter's update_computation may close over an array", {
+  # The inference stub used `constants_as_inputs = FALSE`, which requires every
+  # closed-over constant to already have a `GraphValue` -- it does not at
+  # inference time, so this failed with "GraphValue not found in environment".
+  w <- nv_scalar(10)
+  scatter_with <- function(update_computation) {
+    prim_scatter(
+      x = nv_array(c(1, 2, 3, 4, 5, 6)),
+      scatter_indices = nv_array(matrix(c(1L, 3L), ncol = 1L)),
+      update = nv_array(c(100, 300)),
+      update_window_axes = integer(0),
+      inserted_window_axes = 1L,
+      x_batching_axes = integer(0),
+      scatter_indices_batching_axes = integer(0),
+      scatter_axes_to_x_axes = 1L,
+      index_vector_axis = 2L,
+      update_computation = update_computation
+    )
+  }
+  expected <- c(1 + 100 * 10, 2, 3 + 300 * 10, 4, 5, 6)
+  expect_equal(as.vector(as_array(scatter_with(function(a, b) a + b * w))), expected)
+  # An R literal already worked, and still does.
+  expect_equal(as.vector(as_array(scatter_with(function(a, b) a + b * 10))), expected)
+})
+
+test_that("prim_while rejects an init it cannot name", {
+  # `names()` of a fully unnamed list is `NULL`, so the check never fired and
+  # the call died blaming `body`.
+  expect_error(
+    prim_while(list(nv_scalar(0L)), function(a) a < 3L, function(a) list(a + 1L)),
+    "`init` must have only named arguments"
+  )
+  expect_error(
+    prim_while(nv_scalar(0L), function(a) a < 3L, function(a) list(a = a)),
+    "`init` must be a non-empty named list"
+  )
 })

@@ -7,14 +7,20 @@
 prim_fill(value, shape, dtype, device = NULL)
 }
 \arguments{
-\item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+\item{value}{(\code{numeric(1)} | \code{logical(1)})\cr
+Scalar value to fill the array with, which has to be something \code{dtype} can
+hold: a number for a float, a whole number for an integer, a non-negative
+whole number for an unsigned integer and a logical for \code{bool}. A
+\code{NA} is rejected, since XLA has no missing value. Whether the value fits
+the data type's \emph{range} is left to the backend, which refuses a literal it
+cannot parse -- unlike \code{\link[=nv_array]{nv_array()}}, which wraps. A
+\code{\link[bit64:integer64]{bit64::integer64}} passes this check but has no lowering yet.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+Data type of the result. Can be any data type.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -31,7 +37,7 @@ The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: 
 named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and \code{dtype}.
 }
 \description{
@@ -51,11 +57,13 @@ efficiently represented in the compiled program, while the latter uses
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
+Lowers to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}, stablehlo's constant builder, specified under
+\href{https://openxla.org/stablehlo/spec#constant}{constant}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R double is built at the requested data type
 prim_fill(3.14, shape = c(2, 3), dtype = "f32")
 \dontshow{\}) # examplesIf}
 }

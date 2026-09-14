@@ -1,5 +1,12 @@
 like_defaults <- function(like, ...) {
   args <- list(...)
+  if (is_rdata(to_abstract(like))) {
+    cli_abort(c(
+      "{.arg like} must be an array to take defaults from.",
+      x = "Got an R {typeof(like)}, which has no data type of its own.",
+      i = "Pass {.arg dtype} and {.arg shape} directly, or build an array with {.fn nv_array}."
+    ))
+  }
   getters <- list(
     dtype = dtype,
     shape = shape,

@@ -5,7 +5,19 @@
 #'   The left-hand side type.
 #' @param rhs_dtype ([`tengen::DataType`])\cr
 #'   The right-hand side type.
-#' @return ([`tengen::DataType`])
+#' @return ([`tengen::DataType`])\cr
+#'   The narrowest common data type: the wider of the two among the signed
+#'   integers or among the floats, the higher category where the categories
+#'   differ, and a wider *signed* integer where a signed and an unsigned
+#'   integer meet (`ui8` and `i8` give `i16`). That last rule saturates at
+#'   `i64`, which cannot hold the upper half of `ui64` -- `common_dtype("ui64",
+#'   "i8")` is `i64`, so convert explicitly where those values matter.
+#'
+#'   Floats are ordered by width alone, which leaves `f16` and `bf16` -- the
+#'   same width, but neither one's range and precision covering the other's --
+#'   without a true common type. They give `f16`, which loses `bf16`'s exponent
+#'   range, so bring them together explicitly (at `f32`, say) where that
+#'   matters.
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
@@ -28,7 +40,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #'   `i32`, or an `f32` array at `i32`), and narrowing a value the target cannot
 #'   hold (an `f64` array at `f32`). The default is `FALSE`.
 #'
-#' @return `function(args) -> list()`
+#' @return (`function(args) -> list()`)
 #'   A function returning data types for those inputs to be converted and `NULL` for those
 #'   to be left unchanged.
 #' @seealso [as_anvl_arrays()], [nv_promote_to_common()], [common_dtype()]
@@ -78,7 +90,7 @@ promotion_common <- function(on = NULL, fallback = NULL) {
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
-#' # Without `coerce`, a target the input cannot hold is refused.
+#' # without `coerce`, a target the input cannot hold is refused
 #' try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 promotion_like <- function(arg, on = NULL, coerce = FALSE) {
   assert_arg_ref(arg, "arg", len = 1L)
@@ -118,8 +130,9 @@ promotion_dtype <- function(dtype, on = NULL, coerce = FALSE) {
 }
 
 #' @description
-#' `promotion_rdata_common()` brings the *R values* to the common data type, as long
-#' it is within their category (a `double` can e.g. *not* become a float).
+#' `promotion_rdata_common()` brings the *R values* to the common data type, as
+#' long as it is within their category (a `double` can e.g. *not* become an
+#' integer).
 #' `AnvlArray` inputs are left as they are and the function throws an error
 #' if not all of them have exactly the same data type.
 #' This rule is commonly used in primitives expecting homogenous inputs
@@ -213,7 +226,7 @@ assert_disjoint_rules <- function(rules) {
 #'   What the rule is, for printing: it shows as `<{kind}>`, so give it the
 #'   name of the function that builds it.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Every input at the widest float in the call, and never below f32.
+#' # every input at the widest float in the call, and never below f32.
 #' widest_float <- promotion_rule(
 #'   function(args) {
 #'     widths <- vapply(args, function(a) {
@@ -379,7 +392,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   `operands`, each realized at the data type the rule named for it.
 #' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # An R value takes the data type of the operand it meets.
+#' # an R value takes the data type of the operand it meets
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 #' dtype(operands$rhs)
 #' @export
@@ -610,6 +623,54 @@ common_dtype_of <- function(..., .fallback = NULL) {
   cdt
 }
 
+
+#' @title Data Type Categories
+#' @name dtypes
+#' @description
+#' For promotion, every data type belongs to one of three categories, ordered
+#' boolean < integer < float:
+#'
+#' * **boolean** -- `bool`
+#' * **integer** -- `i8`, `i16`, `i32`, `i64` and their unsigned counterparts
+#'   `ui8`, `ui16`, `ui32`, `ui64`
+#' * **float** -- `f32`, `f64`, and the narrower floats `f16` and `bf16`
+#'
+#' These are the categories promotion works in, where signed and unsigned
+#' integers count as one. [`tengen::dtype_category()`] reports a finer split
+#' that names `int` and `uint` separately.
+#'
+#' Being in a category is not the same as being runnable: `f16` and `bf16` are
+#' float data types everywhere anvl reasons about data types -- wherever a page
+#' says *any float data type*, they are included, and promotion treats them as
+#' floats -- but no backend materializes them today, so an array at one of them
+#' fails when it reaches the backend (`Unsupported type: f16`) rather than at
+#' the anvl call. There is no support for complex data types at all.
+#'
+#' @template section_dtype_words
+#' @section Where a Data Type Comes From:
+#' An R value has no data type of its own. Where nothing in the program says
+#' which one it should take, it commits to the default of its category, which
+#' [`default_dtypes()`] reports and the `anvl.default_dtypes` option
+#' configures. [`peek_dtype()`] reports the default a given R value would
+#' commit to.
+#'
+#' The same defaults settle the data type of a result anvl chooses on its own,
+#' where no R value is involved at all: an index (`nv_argmax()`,
+#' `nv_argsort()`, `nv_top_k()`, the cumulative extrema, `nv_lu()`'s pivots),
+#' the accumulator a boolean input is counted at (`nv_reduce_sum()`,
+#' `nv_reduce_prod()`, `nv_cumsum()`, `nv_cumprod()`, `nv_trace()`), and the
+#' float a non-float input is averaged or interpolated at (`nv_mean()`,
+#' `nv_var()`, `nv_sd()`, `nv_median()`, `nv_quantile()`).
+#'
+#' Within its own category an R value assumes the data type it meets instead,
+#' and is built at it directly rather than converted to it, which is what keeps
+#' `nv_scalar(1, "f64") / sqrt(2)` exact. The primitives require operands that
+#' have a data type to agree on it; the `nv_*` functions promote them to a
+#' common one.
+#' @seealso [`default_dtypes()`], [`common_dtype()`],
+#'   [`nv_promote_to_common()`], [`nv_convert()`],
+#'   `vignette("type-promotion")`
+NULL
 
 dtype_category <- function(dtype) {
   if (is_dtype_bool(dtype)) {

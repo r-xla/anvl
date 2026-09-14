@@ -55,13 +55,14 @@ test_that("nv_rnorm accepts arrayish mean and sd", {
 
 test_that("rng rejects non-f32/f64 dtypes", {
   key <- nv_array(c(1, 2), dtype = "ui64")
+  # A float, but not one the bit manipulation can build.
   expect_error(
     nv_rnorm(key, dtype = "bf16", shape = 2L),
-    "must be a floating-point dtype \\(f32 or f64\\)"
+    "must be a 32- or 64-bit float data type"
   )
   expect_error(
     nv_rnorm(key, dtype = "i32", shape = 2L),
-    "must be a floating-point dtype \\(f32 or f64\\)"
+    "must be a float data type"
   )
 })
 
@@ -101,6 +102,29 @@ test_that("nv_rbinom", {
   # Test with non-multiple-of-8 shape (tests slicing)
   out3 <- nv_rbinom(nv_array(c(1, 2), dtype = "ui64"), dtype = "i32", shape = c(3, 3))
   expect_equal(shape(out3[[2]]), c(3L, 3L))
+})
+
+test_that("nv_rbinom and nv_sample_int reject a boolean data type", {
+  state <- nv_array(c(1, 2), dtype = "ui64")
+  # A boolean cannot hold a count: `bool` used to survive for `size = 1` and
+  # silently turn into `i32` above it.
+  expect_error(
+    nv_rbinom(state, dtype = "bool", shape = 4L),
+    "must be a numeric data type"
+  )
+  expect_error(
+    nv_rbinom(state, dtype = "bool", shape = 4L, size = 3L),
+    "must be a numeric data type"
+  )
+  expect_error(
+    nv_sample_int(shape = 4L, initial_state = state, n = 5L, dtype = "bool"),
+    "must be a numeric data type"
+  )
+  # And the check holds inside a jitted function too.
+  expect_error(
+    jit(function(s) nv_rbinom(4L, s, dtype = "bool"))(state),
+    "must be a numeric data type"
+  )
 })
 
 test_that("nv_sample_int", {
@@ -213,7 +237,7 @@ test_that("nv_rnorm takes the sample's dtype from mean and sd", {
   # Arguments that agree on a data type the generator cannot draw at say so.
   expect_error(
     draw(mean = nv_scalar(1L), sd = nv_scalar(2L)),
-    "must be a floating-point dtype"
+    "must be a float data type"
   )
   expect_error(draw(mean = nv_scalar(1L), sd = nv_scalar(2L)), "Pass `dtype`")
 })

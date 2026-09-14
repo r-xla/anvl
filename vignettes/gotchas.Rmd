@@ -93,22 +93,23 @@ nv_array(NA_real_)
 nv_array(c(1, NA, 3))
 ```
 
-Round-tripping back to R is not guaranteed to produce `NA`, but can also yield `NaN`:
+Round-tripping back to R is not guaranteed to produce `NA`, but can also yield `NaN`.
+What comes back depends on the data type the value was built at, so it is pinned here:
 
 ```{r}
-as_array(nv_array(c(1, NA, 3)))
+as_array(nv_array(c(1, NA, 3), dtype = "f32"))
 ```
 
 For other data types, the situation is even worse, especially for integers, where R uses the smallest possible value to represent missingness:
 
 ```{r}
-nv_scalar(NA_integer_)
+nv_scalar(NA_integer_, dtype = "i32")
 ```
 
 However, when you convert it back, you get a missing value again:
 
 ```{r}
-as.integer(nv_scalar(NA_integer_))
+as.integer(nv_scalar(NA_integer_, dtype = "i32"))
 ```
 
 When creating logicals, `NA` will be interpreted as `TRUE`:
@@ -122,13 +123,13 @@ In order to avoid these pitfals, array creators such as `nv_array()` have a `che
 It is `FALSE` by default, because it needs to scan the complete data.
 
 ```{r, error = TRUE}
-nv_array(c(1, NA, 3), check = TRUE)
+nv_array(c(1, NA, 3), dtype = "f32", check = TRUE)
 ```
 
 The same flag is available for converters like `as_array()`:
 
 ```{r, error = TRUE}
-as_array(nv_scalar(NA_integer_), check = TRUE)
+as_array(nv_scalar(NA_integer_, dtype = "i32"), check = TRUE)
 ```
 
 ## No unsigned integers
@@ -169,8 +170,11 @@ One difference arises when eager functions do not canonicalize their inputs.
 Here, canoicalizing refers to the conversion or dynamic R inputs to `AnvlArray`s.
 This can be done via `as_anvl_array` for single arguments and `as_anvl_arrays` for multiple arguments.
 
-E.g., the following function does not behave eagerly between jit-mode and eager mode.
-For example, the following is not equivalent:
+E.g., the following function does not behave the same in jit-mode and in eager mode.
+The untyped `1` commits to the default float, so under the default `f32` the
+jitted result is rounded where the eager one is not (at an `f64` default the two
+would agree, which is exactly the point: the answer depends on a default rather
+than on the code):
 
 ```{r}
 add_pi <- function(x) {

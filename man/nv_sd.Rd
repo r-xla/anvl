@@ -8,28 +8,28 @@ nv_sd(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value commits to its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. Negative values count from the end, i.e. \code{-1}
-refers to the last axis. If \code{NULL} (default), reduces over all
-axes, returning a scalar.}
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced axes.}
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 
 \item{correction}{(\code{integer(1)})\cr
 Degrees of freedom correction. Default is \code{1} (Bessel's correction).}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as the input.
-When \code{drop = TRUE}, the reduced axes are removed.
-When \code{drop = FALSE}, the reduced axes are set to 1.
+(\code{\link{arrayish}})\cr
+Has a float data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Computes the standard deviation along the specified axes.
@@ -40,9 +40,12 @@ Set \code{correction = 0} for population standard deviation.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3, 4, 5))
-nv_sd(x)              # all axes -> scalar
-nv_sd(x, axes = 1L)
+x <- nv_array(1:5)
+# the result is a float, even though the input is an integer
+nv_sd(x)
+
+# bessel's correction by default, correction = 0 for the population value
+nv_sd(x, correction = 0L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
