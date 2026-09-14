@@ -160,6 +160,13 @@
   already matched its `update_computation`.
 - Improved the numerics for
   [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md).
+- Every data type of the float category counts as a float, so `f16` and
+  `bf16` pass the checks that used to accept only `f32` and `f64`.
+  [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  and
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  keep the narrower requirement, as they carry one coefficient set per
+  width.
 - The gradient of
   [`nv_gamma()`](https://r-xla.github.io/anvl/dev/reference/nv_gamma.md)
   is now correct for positive whole numbers.
