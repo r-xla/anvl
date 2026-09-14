@@ -146,7 +146,7 @@ number of axes and
 [`shape()`](https://r-xla.github.io/tengen/reference/shape.html) for the
 axis sizes. We speak of the *size of an axis* rather than an array's
 "dimensions", as the latter is generally overloaded as it is used to
-refer to both the axis and it's size.
+refer to both the axis and its size.
 
 ## Extractors
 
@@ -239,8 +239,8 @@ nv_scalar(3.14)
 # An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  -1.8909e+03  3.0667e-41 -2.5035e+03
-#>   3.0667e-41 -2.4997e+03  3.0667e-41
+#>  -2.0402e-38  3.0879e-41 -2.6130e-38
+#>   3.0879e-41 -2.6085e-38  3.0879e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

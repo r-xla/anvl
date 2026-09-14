@@ -265,7 +265,7 @@ Functions for reshaping and rearranging arrays
 - [`nv_reshape()`](https://r-xla.github.io/anvl/dev/reference/nv_reshape.md)
   : Reshape
 - [`nv_flatten()`](https://r-xla.github.io/anvl/dev/reference/nv_flatten.md)
-  : Flatte
+  : Flatten
 - [`nv_transpose()`](https://r-xla.github.io/anvl/dev/reference/nv_transpose.md)
   : Transpose
 - [`nv_concatenate()`](https://r-xla.github.io/anvl/dev/reference/nv_concatenate.md)
@@ -835,7 +835,7 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_atanh()`](https://r-xla.github.io/anvl/dev/reference/prim_atanh.md)
   : Primitive Inverse Hyperbolic Tangent
 - [`prim_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_bitcast_convert.md)
-  : Primitive Bitcast Convert
+  : Primitive Bitcast Conversion
 - [`prim_broadcast_in_axes()`](https://r-xla.github.io/anvl/dev/reference/prim_broadcast_in_axes.md)
   : Primitive Broadcast
 - [`prim_cbrt()`](https://r-xla.github.io/anvl/dev/reference/prim_cbrt.md)

@@ -109,12 +109,12 @@ prim_gather(
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as `x`. The output shape is composed of the
 offset axes (from the slice) and the remaining axes from
-`start_indices`. See the underluing stableHLO function for more details.
+`start_indices`. See the underlying StableHLO function for more details.
 
-## Out Of Bounds Behavior
+## Out of Bounds Behavior
 
 Start indices are clamped before the slice is extracted:
-`clamp(1, start_index, nv_shape(x) - slice_sizes + 1)`. This means that
+`clamp(1, start_index, shape(x) - slice_sizes + 1)`. This means that
 out-of-bounds indices will not cause an error, but the effective start
 position may differ from the requested one.
 

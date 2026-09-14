@@ -1,4 +1,4 @@
-# Primitive Bitcast Convert
+# Primitive Bitcast Conversion
 
 Reinterprets the bits of an array as a different data type without
 modifying the underlying data.

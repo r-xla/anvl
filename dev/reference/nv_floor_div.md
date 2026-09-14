@@ -1,7 +1,7 @@
 # Flooring Division
 
 Element-wise flooring division. You can also call this via the `%/%`
-opertor. The result is the largest whole number that does not exceed
+operator. The result is the largest whole number that does not exceed
 `lhs / rhs`.
 
 ## Usage

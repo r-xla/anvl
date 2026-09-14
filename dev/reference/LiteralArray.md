@@ -35,7 +35,7 @@ LiteralArray(data, shape, dtype = default_dtype(data))
 
 ## Lowering
 
-`LiteralArray`s become constants inlined into the stableHLO program.
+`LiteralArray`s become constants inlined into the StableHLO program.
 I.e., they lower to
 [`hlo_tensor()`](https://r-xla.github.io/stablehlo/reference/hlo_constant.html).
 

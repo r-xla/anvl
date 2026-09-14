@@ -31,7 +31,7 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   End indices (inclusive), one per axis. Must satisfy
-  `limit_indices <= nv_shape(x)` per axis.
+  `limit_indices <= shape(x)` per axis.
 
 - strides:
 

@@ -25,8 +25,7 @@ prim_transpose(x, permutation)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-Has the same data type as the input and shape
-`nv_shape(x)[permutation]`.
+Has the same data type as the input and shape `shape(x)[permutation]`.
 
 ## Implemented Rules
 

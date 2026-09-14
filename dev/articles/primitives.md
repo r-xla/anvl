@@ -50,7 +50,7 @@ because it does not apply for a specific primitive.
 | gather                 |     ✓     |   ✓    |    ✓    |
 | greater                |     ✓     |   ✓    |    ✓    |
 | greater_equal          |     ✓     |   ✓    |    ✓    |
-| if                     |     ✓     |   ✓    |    ✓    |
+| if                     |     ✓     |   ✓    |    ✗    |
 | iota                   |     ✓     |   ✓    |    ✗    |
 | is_finite              |     ✓     |   ✗    |    ✓    |
 | less                   |     ✓     |   ✓    |    ✓    |

@@ -151,9 +151,16 @@ Two rules that bite while writing code:
   [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
   [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)).
   Every jitted function runs on it, reading it at call time; nothing
-  infers a backend from an argument, no function takes a `backend`
-  argument, and an array or device of another backend is an error. This
-  is what makes the default dtypes unambiguous in eager code.
+  infers a backend from an argument, no array operation or
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) takes a
+  `backend` argument, and an array or device of another backend is an
+  error. This is what makes the default dtypes unambiguous in eager
+  code. (A handful of helpers about the backend itself do name one:
+  [`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md),
+  [`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md),
+  [`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+  /
+  [`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md).)
 
 ## One Backend at a Time
 
@@ -162,8 +169,15 @@ The backend is the option `anvl.backend`
 [`local_backend()`](https://r-xla.github.io/anvl/dev/reference/local_backend.md),
 [`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)).
 Every jitted function runs on it, reading it at call time; nothing
-infers a backend from an argument, no function takes a `backend`
-argument, and an array or device of another backend is an error.
+infers a backend from an argument, no array operation or
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) takes a
+`backend` argument, and an array or device of another backend is an
+error. Only helpers *about* the backend name one
+([`install_anvl()`](https://r-xla.github.io/anvl/dev/reference/install_anvl.md),
+[`default_device()`](https://r-xla.github.io/anvl/dev/reference/default_device.md),
+[`local_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)
+/
+[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md)).
 
 ## Primitive System
 

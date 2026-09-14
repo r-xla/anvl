@@ -28,7 +28,7 @@ Has the same shape and data type as the input.
 
 ## Details
 
-The underlying stableHLO function already broadcasts scalars, so no need
+The underlying StableHLO function already broadcasts scalars, so no need
 to broadcast manually.
 
 ## See also

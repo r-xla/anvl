@@ -48,17 +48,17 @@ prim_convolution(
 - input_spatial_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  spatial axes of `x`.
+  Spatial axes of `x`.
 
 - kernel_input_feature_axis, kernel_output_feature_axis:
 
   (`integer(1)`)  
-  input/output feature axis of `kernel`.
+  Input and output feature axis of `kernel`.
 
 - kernel_spatial_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  spatial axes of `kernel`.
+  Spatial axes of `kernel`.
 
 - output_batch_axis, output_feature_axis:
 
@@ -68,7 +68,7 @@ prim_convolution(
 - output_spatial_axes:
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
-  spatial axes of the output.
+  Spatial axes of the output.
 
 - window_strides:
 

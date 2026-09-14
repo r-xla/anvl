@@ -342,8 +342,8 @@ inputs. Here, canoicalizing refers to the conversion or dynamic R inputs
 to <code>AnvlArray</code>s. This can be done via
 <code>as_anvl_array</code> for single arguments and
 <code>as_anvl_arrays</code> for multiple arguments.</p>
-<p>E.g., the following function does not behave eagerly between jit-mode
-and eager mode. For example, the following is not equivalent:</p>
+<p>E.g., the following function does not behave the same in jit-mode and
+in eager mode.</p>
 <div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add_pi</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>

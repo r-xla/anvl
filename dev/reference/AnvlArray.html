@@ -204,7 +204,7 @@ is <code>2</code> and the size of axis <code>2</code> is <code>3</code>, so its 
 <code><a href="https://r-xla.github.io/tengen/reference/naxes.html" class="external-link">naxes()</a></code> for the number of axes and
 <code><a href="https://r-xla.github.io/tengen/reference/shape.html" class="external-link">shape()</a></code> for the axis sizes. We speak of the <em>size of an
 axis</em> rather than an array's "dimensions", as the latter is generally
-overloaded as it is used to refer to both the axis and it's size.</p>
+overloaded as it is used to refer to both the axis and its size.</p>
     </div>
     <div class="section level2">
     <h2 id="extractors">Extractors<a class="anchor" aria-label="anchor" href="#extractors"></a></h2>
@@ -280,8 +280,8 @@ The supported data types and devices differ between backends.</p>
 <span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -1.8909e+03  3.0667e-41 -2.5035e+03</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0667e-41 -2.4997e+03  3.0667e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -2.0402e-38  3.0879e-41 -2.6130e-38</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0879e-41 -2.6085e-38  3.0879e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

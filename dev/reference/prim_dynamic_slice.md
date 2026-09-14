@@ -33,17 +33,17 @@ prim_dynamic_slice(x, ..., slice_sizes)
 
   ([`integer()`](https://rdrr.io/r/base/integer.html))  
   Size of the slice in each axis. Must have length equal to `naxes(x)`
-  and satisfy `1 <= slice_sizes <= nv_shape(x)` per axis.
+  and satisfy `1 <= slice_sizes <= shape(x)` per axis.
 
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type as the input and shape `slice_sizes`.
 
-## Out Of Bounds Behavior
+## Out of Bounds Behavior
 
 Start indices are clamped before the slice is extracted:
-`adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)`.
+`adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)`.
 This means that out-of-bounds indices will not cause an error, but the
 effective start position may differ from the requested one.
 

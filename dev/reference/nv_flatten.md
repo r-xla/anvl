@@ -1,4 +1,4 @@
-# Flatte
+# Flatten
 
 Flattens an N-dimensional array into a 1-dimensional array. Fails with
 scalar inputs.

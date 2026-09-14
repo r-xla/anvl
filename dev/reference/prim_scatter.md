@@ -115,7 +115,7 @@ prim_scatter(
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
 Has the same data type and shape as `x`.
 
-## Out Of Bounds Behavior
+## Out of Bounds Behavior
 
 If a computed result index falls outside the bounds of `x`, the update
 for that index is silently ignored.

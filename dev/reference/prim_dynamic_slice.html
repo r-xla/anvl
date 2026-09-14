@@ -114,7 +114,7 @@ scalar array. Pass one scalar per axis of <code>x</code>.</p></dd>
 <dt id="arg-slice-sizes">slice_sizes<a class="anchor" aria-label="anchor" href="#arg-slice-sizes"></a></dt>
 <dd><p>(<code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>)<br>
 Size of the slice in each axis. Must have length equal to
-<code>naxes(x)</code> and satisfy <code>1 &lt;= slice_sizes &lt;= nv_shape(x)</code>
+<code>naxes(x)</code> and satisfy <code>1 &lt;= slice_sizes &lt;= shape(x)</code>
 per axis.</p></dd>
 
 </dl></div>
@@ -124,11 +124,11 @@ per axis.</p></dd>
 Has the same data type as the input and shape <code>slice_sizes</code>.</p>
     </div>
     <div class="section level2">
-    <h2 id="out-of-bounds-behavior">Out Of Bounds Behavior<a class="anchor" aria-label="anchor" href="#out-of-bounds-behavior"></a></h2>
+    <h2 id="out-of-bounds-behavior">Out of Bounds Behavior<a class="anchor" aria-label="anchor" href="#out-of-bounds-behavior"></a></h2>
 
 
 <p>Start indices are clamped before the slice is extracted:
-<code>adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)</code>.
+<code>adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)</code>.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.</p>
     </div>

@@ -34,8 +34,6 @@ Result of the executed branch.
 
 - `quickr`
 
-- `reverse`
-
 ## StableHLO
 
 Lowers to

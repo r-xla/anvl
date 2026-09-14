@@ -108,9 +108,9 @@ nv_add(1, 2)
     ##  3
     ## [ CPUf32{} ]
 
-It is therefore important to understand to understand the rules that
-govern the materialization of R objects as `AnvlArray`s. Generally,
-there are two routes:
+It is therefore important to understand the rules that govern the
+materialization of R objects as `AnvlArray`s. Generally, there are two
+routes:
 
 1.  An R value is committed at its default data type (`double` and
     `integer` take the defaults of the backend in force, `f32` and `i32`
