@@ -88,9 +88,7 @@
   `rhs`. They were passed by name, so `function(a, b)` failed with
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
-* `nv_mod()` (and `%%`) returned 0 for a remainder much smaller than the
-  divisor, e.g. `nv_mod(1e-20, 1)`: it shifted by the divisor even where the
-  truncating remainder already had the right sign.
+* Improved the numerics for `nv_mod()`.
 * The gradient of `nv_gamma()` was `NaN` at every positive whole number: the
   reflection formula it uses for a negative argument is `0 * Inf` there, and
   the `NaN` reached the gradient through the branch `nv_ifelse()` discards.

@@ -764,15 +764,9 @@ nv_mod <- function(lhs, rhs) {
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
-  # `nv_remainder()` truncates, so its result carries the sign of `lhs`; base
-  # R's `%%` carries the sign of `rhs`. Shift by `rhs` only where the two
-  # disagree -- a remainder much smaller than `rhs` is rounded away by the
-  # shift, so `nv_mod(1e-20, 1)` has to reach the answer without one.
   rest <- nv_remainder(lhs, rhs)
+  # Avoid rounding errors when we can rest is already correct
   shifted <- nv_ifelse((rest != 0) & ((rest < 0) != (rhs < 0)), rest + rhs, rest)
-  # `rest + rhs` can round all the way up to `rhs` when `rest` is tiny next to
-  # it. The result has to stay strictly inside `rhs`, so fold that back to
-  # zero, as base R's second reduction does.
   nv_ifelse(nv_abs(shifted) >= nv_abs(rhs), 0, shifted)
 }
 
