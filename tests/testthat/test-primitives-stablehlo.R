@@ -12,9 +12,10 @@ test_that("prim_cos", {
 
 test_that("prim_rng_bit_generator", {
   out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
-  expect_equal(dtype(out[[1]]), as_dtype("ui64"))
-  expect_equal(shape(out[[1]]), 2L)
-  expect_equal(shape(out[[2]]), c(2L, 2L))
+  expect_named(out, c("state", "values"))
+  expect_equal(dtype(out$state), as_dtype("ui64"))
+  expect_equal(shape(out$state), 2L)
+  expect_equal(shape(out$values), c(2L, 2L))
 })
 
 test_that("prim_bitcast_convert", {
@@ -191,10 +192,10 @@ test_that("reductions over a zero-size axis return the identity", {
   expect_equal(as_array(prim_reduce_any(empty1_bool, axes = 1L, drop = TRUE)), FALSE)
   expect_equal(as_array(prim_reduce_all(empty1_bool, axes = 1L, drop = TRUE)), TRUE)
 
-  # Reducing along an empty axis of a higher-rank tensor keeps the other axes.
+  # Reducing along an empty axis of a higher-rank array keeps the other axes.
   empty2 <- nv_array(numeric(0), shape = c(2L, 0L), dtype = "f32")
   expect_equal(as_array(prim_reduce_sum(empty2, axes = 2L, drop = TRUE)), array(c(0, 0), 2L))
-  # Reducing a non-empty axis of a tensor with a separate empty axis is fine too.
+  # Reducing a non-empty axis of an array with a separate empty axis is fine too.
   out <- as_array(prim_reduce_max(empty2, axes = 1L, drop = TRUE))
   expect_equal(dim(out), 0L)
 })
@@ -281,13 +282,15 @@ describe("cumulative ops", {
   it("prim_cummax returns running argmax indices", {
     x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6), dtype = "f32")
     out <- prim_cummax(x, axis = 1L)
-    expect_equal(c(as_array(out[[2L]])), c(1L, 1L, 3L, 3L, 5L, 6L, 6L, 6L))
+    expect_named(out, c("values", "indices"))
+    expect_equal(c(as_array(out$indices)), c(1L, 1L, 3L, 3L, 5L, 6L, 6L, 6L))
   })
   it("prim_cummin returns running argmin indices with last-occurrence tiebreak", {
     # Tie at j=4 (x_4 == y_3 == 1): last-occurrence picks 4, then carries forward.
     x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6), dtype = "f32")
     out <- prim_cummin(x, axis = 1L)
-    expect_equal(c(as_array(out[[2L]])), c(1L, 2L, 2L, 4L, 4L, 4L, 4L, 4L))
+    expect_named(out, c("values", "indices"))
+    expect_equal(c(as_array(out$indices)), c(1L, 2L, 2L, 4L, 4L, 4L, 4L, 4L))
   })
   it("prim_cummax plateau breaks ties to last occurrence", {
     x <- nv_array(c(1, 3, 3, 2), dtype = "f32")
@@ -327,7 +330,7 @@ test_that("prim_reshape infers a -1 dimension", {
   expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
   expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
   expect_error(prim_reshape(x, c(-1, -1)), "at most one")
-  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer dimension")
+  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
   expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
 })
 
@@ -620,7 +623,7 @@ describe("prim_qr", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_qr(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_qr(int_mat), "floating-point")
+    expect_error(prim_qr(int_mat), "float data type")
   })
 })
 
@@ -657,7 +660,7 @@ describe("prim_lu", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_lu(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_lu(int_mat), "floating-point")
+    expect_error(prim_lu(int_mat), "float data type")
   })
 })
 
@@ -701,7 +704,7 @@ describe("prim_svd", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_svd(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_svd(int_mat), "floating-point")
+    expect_error(prim_svd(int_mat), "float data type")
   })
 })
 
@@ -731,7 +734,7 @@ describe("prim_eigh", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f32")
     expect_error(prim_eigh(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_eigh(int_mat), "floating-point")
+    expect_error(prim_eigh(int_mat), "float data type")
     rect <- nv_matrix(1:6, nrow = 2, dtype = "f32")
     expect_error(prim_eigh(rect), "square")
   })
@@ -969,9 +972,10 @@ describe("prim_top_k", {
   it("returns values and 1-based indices along the last axis", {
     out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L)
     expect_length(out, 2L)
-    expect_equal(as.vector(out[[1L]]), c(9, 6, 5))
-    expect_equal(as.vector(out[[2L]]), c(6L, 8L, 5L))
-    expect_equal(dtype(out[[2L]]), default_int())
+    expect_named(out, c("values", "indices"))
+    expect_equal(as.vector(out$values), c(9, 6, 5))
+    expect_equal(as.vector(out$indices), c(6L, 8L, 5L))
+    expect_equal(dtype(out$indices), default_int())
   })
 
   it("operates per-row on a matrix", {
@@ -1032,16 +1036,16 @@ describe("prim_argmax", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmax(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     expect_error(
       prim_argmax(nv_matrix(numeric(0), nrow = 3, ncol = 0), axis = 2L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     # Inside jit too.
     expect_error(
       jit(function(x) prim_argmax(x, axis = 1L))(nv_array(numeric(0), shape = 0L)),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 
@@ -1078,7 +1082,7 @@ describe("prim_argmin", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmin(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 

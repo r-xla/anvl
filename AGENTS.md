@@ -62,8 +62,8 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 An R value entering a program is not converted at the boundary -- it is built into the program at the
 dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
-is the reference for how this works and for the `.promote` rules (`promote_common()`,
-`promote_like()`, `promote_dtype()`, `promote_rdata_common()`) that `nv_*` functions pass to
+is the reference for how this works and for the `.promote` rules (`promotion_common()`,
+`promotion_like()`, `promotion_dtype()`, `promotion_rdata_common()`) that `nv_*` functions pass to
 `as_anvl_arrays()`. Two rules that bite while writing code:
 
 - Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
@@ -79,16 +79,18 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
   the whole pair.
 - **One backend at a time.** The backend is the option `anvl.backend` (`active_backend()`,
   `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
-  nothing infers a backend from an argument, no function takes a `backend` argument, and an array
-  or device of another backend is an error. This is what makes the default dtypes unambiguous in
-  eager code.
+  nothing infers a backend from an argument, no array operation or `jit()` takes a `backend`
+  argument, and an array or device of another backend is an error. This is what makes the default
+  dtypes unambiguous in eager code. (A handful of helpers about the backend itself do name one:
+  `install_anvl()`, `default_device()`, `local_default_dtypes()` / `with_default_dtypes()`.)
 
 ## One Backend at a Time
 
 The backend is the option `anvl.backend` (`active_backend()`, `local_backend()`, `with_backend()`).
 Every jitted function runs on it, reading it at call time; nothing infers a backend from an
-argument, no function takes a `backend` argument, and an array or device of another backend is an
-error.
+argument, no array operation or `jit()` takes a `backend` argument, and an array or device of
+another backend is an error. Only helpers *about* the backend name one (`install_anvl()`,
+`default_device()`, `local_default_dtypes()` / `with_default_dtypes()`).
 
 ## Primitive System
 

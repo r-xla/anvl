@@ -1199,9 +1199,9 @@ describe("nv_linspace", {
     expect_equal(dtype(nv_linspace(0, 1, steps = 1L, dtype = "f64")), as_dtype("f64"))
   })
   it("rejects an integer dtype", {
-    expect_error(nv_linspace(0, 1, steps = 5L, dtype = "i32"), "floating-point dtype")
-    expect_error(nv_linspace(0, 10, steps = 6L, dtype = "i32"), "floating-point dtype")
-    expect_error(nv_linspace(0, 1, steps = 1L, dtype = "i32"), "floating-point dtype")
+    expect_error(nv_linspace(0, 1, steps = 5L, dtype = "i32"), "must be a float data type")
+    expect_error(nv_linspace(0, 10, steps = 6L, dtype = "i32"), "must be a float data type")
+    expect_error(nv_linspace(0, 1, steps = 1L, dtype = "i32"), "must be a float data type")
   })
   it("requires steps to be a positive whole number", {
     expect_error(nv_linspace(0, 1, steps = 0L), "steps")
@@ -1553,7 +1553,7 @@ describe("nv_linspace_like", {
 
   it("rejects an integer like", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
-    expect_error(nv_linspace_like(like, 0, 1, steps = 5L), "floating-point dtype")
+    expect_error(nv_linspace_like(like, 0, 1, steps = 5L), "must be a float data type")
   })
 })
 
@@ -1591,7 +1591,7 @@ describe("nv_select", {
   })
 
   it("errors on a 0-dimensional input", {
-    expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "0-dimensional")
+    expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "at least one axis")
   })
 
   it("accepts a negative dim", {
@@ -1623,7 +1623,7 @@ describe("nv_sort", {
   })
 
   it("errors on a 0-dimensional input", {
-    expect_error(nv_sort(nv_scalar(1)), "0-dimensional")
+    expect_error(nv_sort(nv_scalar(1)), "at least one axis")
   })
 
   it("dispatches via the sort() generic", {
@@ -1917,7 +1917,7 @@ describe("nv_quantile", {
   })
 
   it("errors on a 0-dimensional input", {
-    expect_error(nv_quantile(nv_scalar(1), 0.5), "0-dimensional")
+    expect_error(nv_quantile(nv_scalar(1), 0.5), "at least one axis")
   })
 
   it("accepts a negative dim", {
@@ -2219,7 +2219,7 @@ describe("nv_reshape", {
     expect_error(nv_reshape(nv_array(1:6), c(-1, -1)), "at most one")
   })
   it("rejects a shape that does not divide evenly", {
-    expect_error(nv_reshape(nv_array(1:6), c(4, -1)), "Cannot infer dimension")
+    expect_error(nv_reshape(nv_array(1:6), c(4, -1)), "Cannot infer the size of axis")
   })
   it("rejects negative values other than -1", {
     expect_error(nv_reshape(nv_array(1:6), c(2, -2)), "must contain only non-negative")
@@ -2273,6 +2273,24 @@ describe("nv_mod", {
       as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
       lhs %% rhs
     )
+  })
+
+  it("keeps the operands' data type, rather than floating an integer", {
+    # The shift literals used to be bare R doubles, which promoted an integer
+    # remainder to a float -- and `nv_floor_div()`, which subtracts the
+    # remainder, floated with it.
+    x <- nv_array(c(7L, -7L, 8L, -8L))
+    y <- nv_array(c(3L, 3L, -3L, -3L))
+    expect_equal(dtype(nv_mod(x, y)), default_int())
+    expect_equal(dtype(nv_floor_div(x, y)), default_int())
+    expect_equal(as.integer(nv_mod(x, y)), as.vector(x) %% as.vector(y))
+    expect_equal(as.integer(nv_floor_div(x, y)), as.vector(x) %/% as.vector(y))
+
+    # Unsigned stays unsigned, and a float stays that float.
+    u <- nv_array(7L, dtype = "ui8")
+    expect_equal(dtype(nv_mod(u, nv_array(2L, dtype = "ui8"))), as_dtype("ui8"))
+    f <- nv_array(c(7, -7), dtype = "f64")
+    expect_equal(dtype(nv_mod(f, nv_array(c(3, 3), dtype = "f64"))), as_dtype("f64"))
   })
 
   it("is NaN for a zero divisor and passes NaN through, like base R", {

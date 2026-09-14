@@ -16,7 +16,7 @@ scalar array. Pass one scalar per axis of \code{x}.}
 
 \item{slice_sizes}{(\code{integer()})\cr
 Size of the slice in each axis. Must have length equal to
-\code{naxes(x)} and satisfy \verb{1 <= slice_sizes <= nv_shape(x)}
+\code{naxes(x)} and satisfy \verb{1 <= slice_sizes <= shape(x)}
 per axis.}
 }
 \value{
@@ -31,10 +31,10 @@ a fixed R integer vector.
 Use \code{\link[=prim_static_slice]{prim_static_slice()}} instead when all indices are known at compile
 time and you need stride support.
 }
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
-\code{adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)}.
+\code{adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)}.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.
 }

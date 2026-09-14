@@ -540,3 +540,20 @@ describe("a scoped override inside a differentiated body", {
     expect_equal(as_array(scoped[[1L]]), as_array(outside[[1L]]))
   })
 })
+
+describe("the float category", {
+  it("differentiates a function returning a narrower float", {
+    # The check on the output used to name `f32` and `f64` explicitly, so a
+    # function returning any other float was refused even though the gradient
+    # itself is well defined.
+    g <- jit(gradient(function(x) nv_convert(nv_reduce_sum(x), "bf16")))
+    out <- g(nv_array(c(1, 2), dtype = "f32"))
+    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_equal(as.vector(out[[1L]]), c(1, 1))
+  })
+
+  it("still refuses a non-float return", {
+    g <- jit(gradient(function(x) nv_convert(nv_reduce_sum(x), "i32")))
+    expect_error(g(nv_array(c(1, 2), dtype = "f32")), "return float scalar")
+  })
+})

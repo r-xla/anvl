@@ -22,7 +22,7 @@ Function to compile.}
 \item{args_flat}{(\code{list})\cr
 Flat list of abstract input values.}
 
-\item{in_tree}{(\code{Node})\cr
+\item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure of the inputs.}
 
 \item{donate}{(\code{character()})\cr

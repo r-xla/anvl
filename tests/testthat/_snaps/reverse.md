@@ -26,7 +26,7 @@
     Condition
       Error in `check_wrt_arrayish()`:
       ! Can only compute gradient with respect to float arrays.
-      x Got i32
+      x Got "i32".
 
 # wrt for nested non-array input: value_and_gradient
 
@@ -36,7 +36,7 @@
     Condition
       Error in `check_wrt_arrayish()`:
       ! Can only compute gradient with respect to float arrays.
-      x Got i32
+      x Got "i32".
 
 # can only compute gradient w.r.t. float arrays
 
@@ -45,7 +45,7 @@
     Condition
       Error in `check_wrt_arrayish()`:
       ! Can only compute gradient with respect to float arrays.
-      x Got i32
+      x Got "i32".
 
 # wrt arg passed as plain R literal errors clearly
 

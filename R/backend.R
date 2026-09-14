@@ -93,7 +93,7 @@ eq_device <- function(x, y) {
 check_single_backend <- function(graph, arg_devices, expected) {
   const_backends <- vapply(
     graph$constants,
-    function(const) if (is_concrete_tensor(const$aval)) backend(const$aval$data) else NA_character_,
+    function(const) if (is_concrete_array(const$aval)) backend(const$aval$data) else NA_character_,
     character(1)
   )
   arg_backends <- vapply(arg_devices, backend, character(1))

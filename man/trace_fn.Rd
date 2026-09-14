@@ -38,7 +38,7 @@ into the parent graph.
 \item{args_flat}{(\code{list})\cr
 Flattened arguments. Must be accompanied by \code{in_tree}.}
 
-\item{in_tree}{(\code{Node})\cr
+\item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure describing how \code{args_flat} maps back to \code{f}'s arguments.}
 
 \item{optimize}{(\code{logical(1)} | \code{character()})\cr

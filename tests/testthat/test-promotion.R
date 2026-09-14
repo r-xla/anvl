@@ -62,14 +62,14 @@ test_that("a logical R value is a bool, not an unmaterialized value", {
 })
 
 describe("eager/jit equivalence", {
-  it("agrees for promote_like() and promote_common()", {
+  it("agrees for promotion_like() and promotion_common()", {
     expect_eager_jit_equal_grid(list(
       "anchored promotion" = function(x, v) {
-        args <- as_anvl_arrays(x = x, v = v, .promote = promote_like("x"))
+        args <- as_anvl_arrays(x = x, v = v, .promote = promotion_like("x"))
         args$x * args$v
       },
       "promotion to the common dtype" = function(x, v) {
-        args <- as_anvl_arrays(x, v, .promote = promote_common())
+        args <- as_anvl_arrays(x, v, .promote = promotion_common())
         args[[1L]] * args[[2L]]
       }
     ))
@@ -101,7 +101,7 @@ describe("eager code", {
     # A plain R helper decides a promotion eagerly, between dispatches. The
     # default it reads is the one of the active backend, which is also the
     # backend the operation then runs on.
-    promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promote_common())[[2L]]
+    promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promotion_common())[[2L]]
     expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), default_float())
     with_backend("quickr", {
       expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), as_dtype("f64"))

@@ -13,6 +13,12 @@ knitr::opts_chunk$set(
 )
 ```
 
+```{r, include = FALSE}
+# The CUDA toolkit version the CUDA plugin links against is owned by {pjrt},
+# so the badge below reads it from there instead of hardcoding it.
+cuda_version <- getFromNamespace("cuda_version", "pjrt")()
+```
+
 # anvl <img src="man/figures/logo.png" align="right" width = "120" />
 
 Package website: [release](https://r-xla.github.io/anvl/) |
@@ -23,7 +29,7 @@ Package website: [release](https://r-xla.github.io/anvl/) |
 [![CRAN status](https://www.r-pkg.org/badges/version/anvl)](https://CRAN.R-project.org/package=anvl)
 [![codecov](https://codecov.io/gh/r-xla/anvl/branch/main/graph/badge.svg)](https://codecov.io/gh/r-xla/anvl)
 [![r-universe](https://r-xla.r-universe.dev/badges/anvl)](https://r-xla.r-universe.dev/anvl)
-![CUDA 13.3](https://img.shields.io/badge/CUDA-13.3-green.svg)
+![CUDA `r cuda_version`](https://img.shields.io/badge/CUDA-`r cuda_version`-green.svg)
 <!-- badges: end -->
 
 Accelerated array computing and code transformations for R, allowing you to run numerical programs at the speed of light.

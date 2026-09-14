@@ -83,7 +83,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   invalid <- shape < -1L
   if (any(invalid)) {
     cli_abort(c(
-      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer a dimension.",
+      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
       x = "Got {.val {shape[invalid]}}."
     ))
   }
@@ -100,23 +100,64 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   known <- prod(shape[-inferred])
   if (known <= 0 || nelts %% known != 0) {
     cli_abort(c(
-      "Cannot infer dimension {inferred} of {.arg {arg}}.",
-      x = "{nelts} element{?s} cannot be divided evenly into shape {.val {shape}}."
+      "Cannot infer the size of axis {inferred} of {.arg {arg}}.",
+      # The `-1` is the axis being asked for, so it is shown as `?` rather
+      # than as a size.
+      x = "{nelts} element{?s} cannot be divided evenly into shape {shape_repr(replace(shape, inferred, '?'))}." # nolint
     ))
   }
   shape[inferred] <- as.integer(nelts / known)
   shape
 }
 
-# Convert `x` to a DataType via `as_dtype()` and assert it is a floating-point
-# dtype (f32 or f64). Returns the converted DataType.
+# Like `assert_float_dtype()`, but only the two widths the RNG is written for:
+# it assembles floats out of random bits, so it needs a 32- or 64-bit layout
+# and cannot serve `bf16` or `f16` even though those are float data types.
+# Returns the converted DataType.
+assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  if (!is_dtype_float(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
+    ))
+  }
+  if (!dtype_width(dt) %in% c(32L, 64L)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a 32- or 64-bit float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
+# Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
+# sense the documentation gives the word: integer or float, but not `bool`.
+# Returns the converted DataType.
+assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  if (is_dtype_bool(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a numeric data type.",
+      "x" = "Got {.val {as.character(dt)}}, which is boolean.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
+# Convert `x` to a DataType via `as_dtype()` and assert it belongs to the float
+# category. Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
-  # Deliberately narrower than is_dtype_float(): the callers (rng, sampling)
-  # assume 32/64-bit float layouts.
-  if (dt != "f32" && dt != "f64") {
+  # The float category, so that this and `is_dtype_float()` agree on what
+  # counts as a float. A caller that needs a particular layout says so itself:
+  # `assert_rng_float_dtype()` is the 32/64-bit one.
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
-      "{.arg {arg}} must be a floating-point dtype (f32 or f64).",
+      "{.arg {arg}} must be a float data type.",
       "x" = "Got {.val {as.character(dt)}}.",
       "i" = hint
     ))
@@ -129,24 +170,24 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
   if (length(s) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a 2-D matrix.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (any(s == 0L)) {
     cli_abort(c(
       "{.arg {arg}} must not have any zero-sized axis.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (square && s[[1L]] != s[[2L]]) {
     cli_abort(c(
       "{.arg {arg}} must be a square matrix.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (!is_dtype_float(peek_dtype(x))) {
     cli_abort(c(
-      "{.arg {arg}} must have a floating-point dtype.",
+      "{.arg {arg}} must have a float data type.",
       "x" = "Got dtype {.val {as.character(peek_dtype(x))}}."
     ))
   }

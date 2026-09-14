@@ -8,7 +8,7 @@ prim_top_k(x, k)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.}
+Array of integer, unsigned integer, or floating-point dtype with rank >= 1.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements. Must satisfy

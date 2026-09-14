@@ -13,7 +13,7 @@ Arrayish value of any data type.}
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
 data type and number of axes as \code{x}, with
-\code{nv_shape(update) <= nv_shape(x)} per axis.}
+\code{shape(update) <= shape(x)} per axis.}
 
 \item{...}{(\code{\link{arrayish}} of integer type)\cr
 Scalar start indices, one per axis of \code{x}.
@@ -43,10 +43,10 @@ while dynamic update slice writes a block into an array.
 Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}.
 }
 
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
-\code{adjusted_start_indices = clamp(1, start_indices, nv_shape(x) - slice_sizes + 1)}.
+\code{adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)}.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.
 }

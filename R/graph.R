@@ -110,11 +110,11 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -167,17 +167,17 @@ AnvlGraph <- function(
 #' Descriptor of an [`AnvlGraph`]. This is a mutable class.
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param tensor_to_gval (`hashtab`)\cr
+#' @param array_to_gval (`hashtab`)\cr
 #'   Mapping: `AnvlArray` -> `GraphValue`
 #' @param gval_to_box (`hashtab`)\cr
 #'   Mapping: `GraphValue` -> `GraphBox`
 #' @param constants (`list(GraphValue)`)\cr
 #'   The constants of the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -204,7 +204,7 @@ AnvlGraph <- function(
 #' @export
 GraphDescriptor <- function(
   calls = list(),
-  tensor_to_gval = NULL,
+  array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -226,7 +226,7 @@ GraphDescriptor <- function(
   if (length(calls)) {
     env$calls$madd(.list = calls)
   }
-  env$data_to_gval <- tensor_to_gval %||% hashtab()
+  env$array_to_gval <- array_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
   env$constants <- constants
   env$in_tree <- in_tree
@@ -490,7 +490,7 @@ maybe_box_input <- function(x, desc, mode) {
 # Strip data from a (possibly concrete) array aval, returning a pure
 # AbstractArray with the same dtype and shape.
 abstract_aval <- function(aval) {
-  if (is_concrete_tensor(aval)) {
+  if (is_concrete_array(aval)) {
     AbstractArray(dtype = aval$dtype, shape = aval$shape)
   } else {
     aval
@@ -531,12 +531,12 @@ get_box_or_register_const <- function(desc, x) {
     if (backend(x) != "plain") {
       desc$devices <- c(desc$devices, device(x))
     }
-    gval <- desc$data_to_gval[[x]]
+    gval <- desc$array_to_gval[[x]]
     if (!is.null(gval)) {
       return(desc$gval_to_box[[gval]])
     }
     gval <- GraphValue(aval = ConcreteArray(x))
-    desc$data_to_gval[[x]] <- gval
+    desc$array_to_gval[[x]] <- gval
     desc$constants <- c(desc$constants, list(gval))
     box <- GraphBox(gval, desc)
     desc$gval_to_box[[gval]] <- box
@@ -567,8 +567,8 @@ get_box_or_register_const <- function(desc, x) {
   # Now, we create the new box and register it, so if we see it again, we can return it immediately.
   new_box <- GraphBox(x, desc)
 
-  if (is_concrete_tensor(x$aval)) {
-    desc$data_to_gval[[x$aval$data]] <- x
+  if (is_concrete_array(x$aval)) {
+    desc$array_to_gval[[x$aval$data]] <- x
   }
   desc$gval_to_box[[x]] <- new_box
   desc$constants <- c(desc$constants, list(x))
@@ -619,7 +619,7 @@ match_args_to_formals <- function(f, args) {
 #'     into the parent graph.
 #' @param args_flat (`list`)\cr
 #'   Flattened arguments. Must be accompanied by `in_tree`.
-#' @param in_tree (`Node`)\cr
+#' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
 #' @return An [`AnvlGraph`] containing the traced operations.

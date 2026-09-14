@@ -361,3 +361,24 @@ describe("eager/jit equivalence", {
     ))
   })
 })
+
+describe("the float category", {
+  it("nv_pnorm() and nv_qnorm() still need a 32- or 64-bit float", {
+    # `f16` / `bf16` are float data types, so the general float check accepts
+    # them -- but these two carry one coefficient set per width, and a narrower
+    # float would silently take the `f64` set.
+    #
+    # The `jit()` is needed: eagerly, `nv_convert()` runs at once and has to
+    # materialise a `bf16` buffer, which no backend does, so the call dies with
+    # "Unsupported type: bf16" before it reaches the check. Under tracing the
+    # array stays abstract and the check runs.
+    expect_error(
+      jit(function(x) nv_pnorm(nv_convert(x, "bf16")))(nv_array(c(0.5, 0.5))),
+      "must be a 32- or 64-bit float data type"
+    )
+    expect_error(
+      jit(function(x) nv_qnorm(nv_convert(x, "bf16")))(nv_array(c(0.5, 0.5))),
+      "must be a 32- or 64-bit float data type"
+    )
+  })
+})

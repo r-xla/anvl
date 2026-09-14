@@ -115,7 +115,7 @@ is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2
 \code{\link[tengen:naxes]{naxes()}} for the number of axes and
 \code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
 axis} rather than an array's "dimensions", as the latter is generally
-overloaded as it is used to refer to both the axis and it's size.
+overloaded as it is used to refer to both the axis and its size.
 }
 
 \section{Extractors}{
