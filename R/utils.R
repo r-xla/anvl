@@ -1,3 +1,10 @@
+# How anvl spells a data type in printed output and messages. Not
+# `stablehlo::repr()`, which renders the MLIR spelling -- `bool` comes out of it
+# as `i1`, a name anvl never uses.
+dtype_name <- function(dtype) {
+  as.character(dtype)
+}
+
 dtype_from_buffer <- function(x) {
   d <- as.character(dtype(x))
   as_dtype(d)

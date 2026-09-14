@@ -11,7 +11,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          x = "Got {repr(peek_dtype(args_flat[[i]]))}"
+          x = "Got {dtype_name(peek_dtype(args_flat[[i]]))}"
         ))
       }
 
@@ -170,7 +170,7 @@ validate_gradient_output <- function(out_gvals) {
   if (!(dt == as_dtype("f32") || dt == as_dtype("f64"))) {
     cli_abort(c(
       x = "gradient can only be computed for functions that return float scalar",
-      i = "Got dtype={.field {repr(dt)}}"
+      i = "Got dtype={.field {dtype_name(dt)}}"
     ))
   }
   out
