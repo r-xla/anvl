@@ -202,7 +202,7 @@ nv_array <- function(
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_array(1L)
 #' as_anvl_arrays(nv_array(1:3), 1L)
-#' as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
+#' as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promotion_common())
 #' @name as_anvl_array
 NULL
 

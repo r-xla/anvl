@@ -218,7 +218,7 @@ test_that("error handling: stablehlo errors use anvl's terminology", {
   local_registered_default_dtypes()
   # `cli_abort()` errors from stablehlo store an already formatted message in
   # the condition's fields. Shapes rather than data types, since operands whose
-  # data types disagree are refused by `promote_rdata_common()` before inference
+  # data types disagree are refused by `promotion_rdata_common()` before inference
   # ever sees them.
   expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)

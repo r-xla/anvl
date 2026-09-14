@@ -134,8 +134,8 @@ nv_promote_to_common <- function(...) {
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
   # converting an f32 `sqrt(2)` would only widen a number that had already lost
   # its digits. So the values are aligned first and built afterwards, once the
-  # common dtype is known. `promote_common()` is that sequence.
-  as_anvl_arrays(..., .promote = promote_common())
+  # common dtype is known. `promotion_common()` is that sequence.
+  as_anvl_arrays(..., .promote = promotion_common())
 }
 
 #' @title Broadcast Arrays to a Common Shape
@@ -448,7 +448,7 @@ nv_rbind <- function(...) {
   # Promoted here rather than in `nv_concatenate()` below: an R value has to be
   # built at the common dtype directly, where committing it first would round
   # it through its default on the way there.
-  args <- as_anvl_arrays(..., .promote = promote_common())
+  args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
   args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 1L)
@@ -458,7 +458,7 @@ nv_rbind <- function(...) {
 #' @export
 #' @jit
 nv_cbind <- function(...) {
-  args <- as_anvl_arrays(..., .promote = promote_common())
+  args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
   args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 2L)
@@ -530,7 +530,7 @@ nv_ifelse <- function(pred, true_value, false_value) {
     pred = pred,
     true_value = true_value,
     false_value = false_value,
-    .promote = promote_common(on = c("true_value", "false_value"))
+    .promote = promotion_common(on = c("true_value", "false_value"))
   )
   args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
@@ -1805,7 +1805,7 @@ nv_solve <- function(a, b) {
   # `a` and `b` must agree, and neither is widened to meet the other: an R
   # matrix yields to `a`'s data type, two typed arrays that disagree are
   # rejected.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
   a <- args$a
   b <- args$b
   a_shape <- shape(a)
@@ -1888,7 +1888,7 @@ nv_triangular_solve <- function(
   transpose_a = FALSE
 ) {
   # As in `nv_solve()`: the two must agree, and neither is widened.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
   a <- args$a
   b <- args$b
 
@@ -3057,7 +3057,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
+    args <- as_anvl_arrays(lhs, rhs, .promote = promotion_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -3083,7 +3083,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
+    args <- as_anvl_arrays(lhs, rhs, .promote = promotion_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }

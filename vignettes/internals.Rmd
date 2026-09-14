@@ -331,7 +331,7 @@ Generally, there are two situations:
 1. An `RData` object is combined with an object that has a concrete data type
 2. None of the inputs to a primitive has a concrete data type.
 
-In the first case, the `RData` object yields (`promote_rdata_common()`) to the concrete data type.
+In the first case, the `RData` object yields (`promotion_rdata_common()`) to the concrete data type.
 Below, `nv_aval("integer", c())` is equivalent to `RData(c(), "integer")`.
 In the resulting graph, the `%x1` input has the data type it yielded to, and the `<- integer` records that the caller supplies it as an R integer, which the runtime uploads at that data type.
 

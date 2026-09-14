@@ -35,7 +35,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 NULL
 
 #' @description
-#' `promote_common()` brings every input to their common data type
+#' `promotion_common()` brings every input to their common data type
 #' ([`common_dtype()`]).
 #' R values always yield within the type category (such as float) and otherwise
 #' contribute their default data type.
@@ -46,10 +46,10 @@ NULL
 #' @rdname promotion_rule
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
-#' promote_common()(list(pi, nv_scalar(2L, "i64")))
-#' promote_common(fallback = "f64")(list(1, 2))
-#' promote_common(c(1, 2))(list(-3, 4, 1))
-promote_common <- function(on = NULL, fallback = NULL) {
+#' promotion_common()(list(pi, nv_scalar(2L, "i64")))
+#' promotion_common(fallback = "f64")(list(1, 2))
+#' promotion_common(c(1, 2))(list(-3, 4, 1))
+promotion_common <- function(on = NULL, fallback = NULL) {
   assert_on(on)
   fallback <- if (!is.null(fallback)) as_dtype(fallback)
   promotion_rule(
@@ -61,7 +61,7 @@ promote_common <- function(on = NULL, fallback = NULL) {
       dtype <- do.call(common_dtype_of, c(args[positions], list(.fallback = fallback)))
       dtypes_at(args, positions, dtype)
     },
-    "promote_common",
+    "promotion_common",
     on = on,
     fallback = fallback
   )
@@ -97,12 +97,12 @@ promotion_like <- function(arg, on = NULL, coerce = FALSE) {
 }
 
 #' @description
-#' `promote_dtype()` brings the inputs to the specified data type.
+#' `promotion_dtype()` brings the inputs to the specified data type.
 #' @param dtype ([`tengen::DataType`] | `character(1)`)\cr
 #'   The data type to bring the inputs to.
 #' @rdname promotion_rule
 #' @export
-promote_dtype <- function(dtype, on = NULL, coerce = FALSE) {
+promotion_dtype <- function(dtype, on = NULL, coerce = FALSE) {
   assert_on(on)
   assert_flag(coerce)
   dtype <- as_dtype(dtype)
@@ -110,7 +110,7 @@ promote_dtype <- function(dtype, on = NULL, coerce = FALSE) {
     function(args) {
       dtypes_named(args, rule_positions(on, args, "on"), dtype, coerce)
     },
-    "promote_dtype",
+    "promotion_dtype",
     on = on,
     dtype = dtype,
     coerce = coerce
@@ -118,7 +118,7 @@ promote_dtype <- function(dtype, on = NULL, coerce = FALSE) {
 }
 
 #' @description
-#' `promote_rdata_common()` brings the *R values* to the common data type, as long
+#' `promotion_rdata_common()` brings the *R values* to the common data type, as long
 #' it is within their category (a `double` can e.g. *not* become a float).
 #' `AnvlArray` inputs are left as they are and the function throws an error
 #' if not all of them have exactly the same data type.
@@ -126,27 +126,27 @@ promote_dtype <- function(dtype, on = NULL, coerce = FALSE) {
 #' for one or more argument subsets.
 #' @rdname promotion_rule
 #' @export
-promote_rdata_common <- function(on = NULL) {
+promotion_rdata_common <- function(on = NULL) {
   assert_on(on)
   promotion_rule(
     function(args) resolve_rdata_common(args, rule_positions(on, args, "on")),
-    "promote_rdata_common",
+    "promotion_rdata_common",
     on = on
   )
 }
 
 #' @description
-#' `promote_grouped()` applies several rules to disjoint subsets.
+#' `promotion_grouped()` applies several rules to disjoint subsets.
 #' @param ... ([`PromotionRule`][promotion_rule])\cr
 #'   The rules to apply to disjoint argument subsets.
 #' @rdname promotion_rule
 #' @export
-promote_grouped <- function(...) {
+promotion_grouped <- function(...) {
   rules <- list(...)
   if (!length(rules) || !all(vapply(rules, is_promotion_rule, logical(1L)))) {
     cli_abort(c(
-      "{.fn promote_grouped} takes promotion rules, one per group of arguments.",
-      i = "Build them with {.fn promote_common}, {.fn promotion_like}, {.fn promote_dtype} or {.fn promote_rdata_common}, or wrap a rule of your own with {.fn promotion_rule}.", # nolint
+      "{.fn promotion_grouped} takes promotion rules, one per group of arguments.",
+      i = "Build them with {.fn promotion_common}, {.fn promotion_like}, {.fn promotion_dtype} or {.fn promotion_rdata_common}, or wrap a rule of your own with {.fn promotion_rule}.", # nolint
       i = "A bare function will not do here: a group has to know which arguments each rule covers before it calls any of them, and only a {.cls PromotionRule} says." # nolint
     ))
   }
@@ -157,7 +157,7 @@ promote_grouped <- function(...) {
       # target never depends on another's having been applied first.
       dtypes_merged(lapply(rules, resolve_promote, args = args), args)
     },
-    "promote_grouped",
+    "promotion_grouped",
     # A group covers what its rules cover together, so a group nested in another
     # answers for its coverage the way any other rule does.
     on = rules_coverage(rules),
@@ -181,7 +181,7 @@ assert_disjoint_rules <- function(rules) {
   undeclared <- vapply(covered, is.null, logical(1L))
   if (any(undeclared) && length(rules) > 1L) {
     cli_abort(c(
-      "Every rule in a {.fn promote_grouped} must say which arguments it covers.",
+      "Every rule in a {.fn promotion_grouped} must say which arguments it covers.",
       x = "{cli::qty(sum(undeclared))}Rule{?s} {.val {which(undeclared)}} {?does/do} not name {.arg on}, so {?it covers/they cover} any argument and cannot be shown disjoint from the others.", # nolint
       i = "Name each group with {.arg on}, or use the rule on its own rather than in a group."
     ))
@@ -194,7 +194,7 @@ assert_disjoint_rules <- function(rules) {
     clashing <- unique(refs[duplicated(refs)])
     if (length(clashing)) {
       cli_abort(c(
-        "More than one rule in this {.fn promote_grouped} covers the same argument.",
+        "More than one rule in this {.fn promotion_grouped} covers the same argument.",
         x = "{cli::qty(length(clashing))}Argument{?s} {.val {clashing}} {?is/are} named by more than one rule.",
         i = "An argument can only be brought to one data type, so the groups must be disjoint."
       ))
@@ -271,11 +271,11 @@ format.PromotionRule <- function(x, ...) {
   spec <- attr(x, "spec")
   detail <- switch(
     kind,
-    promote_common = if (is.null(spec$fallback)) "" else sprintf("(fallback %s)", as.character(spec$fallback)),
-    promote_rdata_common = "",
+    promotion_common = if (is.null(spec$fallback)) "" else sprintf("(fallback %s)", as.character(spec$fallback)),
+    promotion_rdata_common = "",
     promotion_like = sprintf("(%s%s)", format_arg_ref(spec$arg), if (isTRUE(spec$coerce)) ", coerce" else ""),
-    promote_dtype = sprintf("(%s%s)", as.character(spec$dtype), if (isTRUE(spec$coerce)) ", coerce" else ""),
-    promote_grouped = sprintf("(%s)", paste(vapply(spec$rules, format_rule, character(1L)), collapse = ", ")),
+    promotion_dtype = sprintf("(%s%s)", as.character(spec$dtype), if (isTRUE(spec$coerce)) ", coerce" else ""),
+    promotion_grouped = sprintf("(%s)", paste(vapply(spec$rules, format_rule, character(1L)), collapse = ", ")),
     ""
   )
   on <- if (is.null(spec$on)) "" else sprintf(" on %s", format_arg_ref(spec$on))
@@ -307,7 +307,7 @@ resolve_promote <- function(promote, args) {
     cli_abort(c(
       "{.arg .promote} must be a promotion rule, not {.cls {class(promote)}}.",
       i = "A rule is a function of the call's arguments returning the data type each one is brought to.", # nolint
-      i = "Build one with {.fn promote_common}, {.fn promotion_like}, {.fn promote_dtype} or {.fn promote_rdata_common}, and combine several with {.fn promote_grouped}." # nolint
+      i = "Build one with {.fn promotion_common}, {.fn promotion_like}, {.fn promotion_dtype} or {.fn promotion_rdata_common}, and combine several with {.fn promotion_grouped}." # nolint
     ))
   }
   dtypes <- promote(args)
@@ -344,12 +344,12 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'
 #' ```r
 #' function(lhs, rhs) {
-#'   operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+#'   operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
 #'   graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
 #' }
 #' ```
 #'
-#' [`promote_rdata_common()`] is the rule for it: an operand that has a data type
+#' [`promotion_rdata_common()`] is the rule for it: an operand that has a data type
 #' keeps it, and an R value takes the one the others have, within its own category.
 #' That is what makes `prim_mul(x_f64, 2)` work whatever `x`'s data type is,
 #' while keeping a primitive from widening the array it was handed -- promotion
@@ -380,7 +380,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # An R value takes the data type of the operand it meets.
-#' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promote_rdata_common())
+#' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 #' dtype(operands$rhs)
 #' @export
 apply_promotion <- function(operands, promote) {
@@ -485,7 +485,7 @@ assert_promotes_to <- function(x, dtype, args, i) {
   )
 }
 
-# `promote_rdata_common()`: the common data type of inputs that may not be
+# `promotion_rdata_common()`: the common data type of inputs that may not be
 # converted is the one data type they already share, and the R values take it --
 # within their own category.
 resolve_rdata_common <- function(args, positions) {

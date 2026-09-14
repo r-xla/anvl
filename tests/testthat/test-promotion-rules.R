@@ -143,13 +143,13 @@ test_that("a rule that cannot place an argument says which one", {
   x <- nv_array(c(1L, 2L), dtype = "i32")
   expect_error(nv_pad(x, 0, 1L, 1L), "Cannot bring `padding_value`")
   expect_error(prim_pad(1.5, 1L, 0L, 0L, 0L), "`x` is an R double and `padding_value` is an R integer")
-  expect_error(as_anvl_arrays(1.5, 1L, .promote = promote_rdata_common()), "argument 1 is an R double")
-  expect_error(as_anvl_arrays(v = 1.5, .promote = promote_dtype("i32")), "Cannot bring `v`")
+  expect_error(as_anvl_arrays(1.5, 1L, .promote = promotion_rdata_common()), "argument 1 is an R double")
+  expect_error(as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32")), "Cannot bring `v`")
   # `coerce` is an argument of the rule, not of the function the user called, so
   # it is not offered as a way out here.
-  err <- tryCatch(as_anvl_arrays(v = 1.5, .promote = promote_dtype("i32")), error = identity)
+  err <- tryCatch(as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32")), error = identity)
   expect_false(any(grepl("coerce", conditionMessage(err), fixed = TRUE)))
-  coerced <- suppressWarnings(as_anvl_arrays(v = 1.5, .promote = promote_dtype("i32", coerce = TRUE)))
+  coerced <- suppressWarnings(as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32", coerce = TRUE)))
   expect_equal(dtype(coerced$v), as_dtype("i32"))
 })
 
@@ -183,14 +183,14 @@ test_that("common_dtype_of: a fallback settles what R values alone commit to", {
   )
 })
 
-test_that("promote_common(fallback = ) realizes R values at the fallback", {
+test_that("promotion_common(fallback = ) realizes R values at the fallback", {
   # Nothing brings a dtype: every argument is built at the fallback.
-  args <- as_anvl_arrays(1, 2L, .promote = promote_common(fallback = "f64"))
+  args <- as_anvl_arrays(1, 2L, .promote = promotion_common(fallback = "f64"))
   expect_equal(dtype(args[[1L]]), as_dtype("f64"))
   expect_equal(dtype(args[[2L]]), as_dtype("f64"))
 
   # An argument that has one wins over the fallback.
-  args <- as_anvl_arrays(nv_array(1L), 2L, .promote = promote_common(fallback = "f64"))
+  args <- as_anvl_arrays(nv_array(1L), 2L, .promote = promotion_common(fallback = "f64"))
   expect_equal(dtype(args[[1L]]), default_int())
   expect_equal(dtype(args[[2L]]), default_int())
 
@@ -198,19 +198,19 @@ test_that("promote_common(fallback = ) realizes R values at the fallback", {
   args <- as_anvl_arrays(
     x = 1,
     y = 2,
-    .promote = promote_common(on = "x", fallback = "f64")
+    .promote = promotion_common(on = "x", fallback = "f64")
   )
   expect_equal(dtype(args$x), as_dtype("f64"))
   expect_equal(dtype(args$y), default_float())
 
-  expect_equal(format(promote_common(fallback = "f64")), "<promote_common(fallback f64)>")
-  expect_equal(format(promote_common()), "<promote_common>")
+  expect_equal(format(promotion_common(fallback = "f64")), "<promotion_common(fallback f64)>")
+  expect_equal(format(promotion_common()), "<promotion_common>")
 })
 
-test_that("promote_rdata_common() moves the R values and nothing else", {
+test_that("promotion_rdata_common() moves the R values and nothing else", {
   # The common data type of inputs that may not be converted is the one they
   # already share, and the R values are realized at it.
-  args <- as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promote_rdata_common())
+  args <- as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promotion_rdata_common())
   expect_equal(dtype(args[[1L]]), as_dtype("f64"))
   expect_equal(dtype(args[[2L]]), as_dtype("f64"))
 
@@ -219,7 +219,7 @@ test_that("promote_rdata_common() moves the R values and nothing else", {
     x = nv_array(1L, dtype = "i8"),
     y = 1L,
     z = 2,
-    .promote = promote_rdata_common(on = c("x", "y"))
+    .promote = promotion_rdata_common(on = c("x", "y"))
   )
   expect_equal(dtype(args$y), as_dtype("i8"))
   expect_equal(dtype(args$z), default_float())
@@ -230,7 +230,7 @@ test_that("promote_rdata_common() moves the R values and nothing else", {
     as_anvl_arrays(
       a = nv_array(1, dtype = "f32"),
       b = nv_array(1, dtype = "f64"),
-      .promote = promote_rdata_common()
+      .promote = promotion_rdata_common()
     ),
     "no common data type"
   )
@@ -240,7 +240,7 @@ test_that("promote_rdata_common() moves the R values and nothing else", {
     as_anvl_arrays(
       a = nv_array(1, dtype = "f32"),
       b = nv_array(1, dtype = "f64"),
-      .promote = promote_rdata_common()
+      .promote = promotion_rdata_common()
     ),
     error = identity
   )
@@ -250,11 +250,11 @@ test_that("promote_rdata_common() moves the R values and nothing else", {
   args <- as_anvl_arrays(
     x = nv_array(1, dtype = "f32"),
     y = nv_array(1, dtype = "f64"),
-    .promote = promote_rdata_common(on = "x")
+    .promote = promotion_rdata_common(on = "x")
   )
   expect_equal(dtype(args$y), as_dtype("f64"))
 
-  expect_equal(format(promote_rdata_common()), "<promote_rdata_common>")
+  expect_equal(format(promotion_rdata_common()), "<promotion_rdata_common>")
 })
 
 test_that("a promotion rule is a function of the call's arguments", {
@@ -292,11 +292,11 @@ test_that("a promotion rule is a function of the call's arguments", {
   expect_true(is_anvl_array(seen[[1L]]))
   expect_identical(seen[[2L]], 2.5)
 
-  # ... and composes with anvl's own through promote_grouped(), once it says
+  # ... and composes with anvl's own through promotion_grouped(), once it says
   # which arguments it covers. A bare function cannot be grouped: the group has
   # to know that before it calls anything.
   expect_error(
-    promote_grouped(spy, promote_common(on = c("a", "b"))),
+    promotion_grouped(spy, promotion_common(on = c("a", "b"))),
     "takes promotion rules"
   )
   mine <- promotion_rule(
@@ -309,7 +309,7 @@ test_that("a promotion rule is a function of the call's arguments", {
     y = 2.5,
     a = nv_array(1L, dtype = "i8"),
     b = 2L,
-    .promote = promote_grouped(mine, promote_common(on = c("a", "b")))
+    .promote = promotion_grouped(mine, promotion_common(on = c("a", "b")))
   )
   expect_equal(
     lapply(out, dtype),
@@ -332,37 +332,37 @@ test_that("a rule that does not answer per argument is reported against the rule
   )
 })
 
-test_that("promote_grouped() refuses groups that could overlap", {
+test_that("promotion_grouped() refuses groups that could overlap", {
   # Checked where the group is built, against what the rules say they cover,
   # rather than on the first call that reaches it.
   expect_error(
-    promote_grouped(promote_common(on = c("x", "y")), promote_common(on = c("y", "z"))),
+    promotion_grouped(promotion_common(on = c("x", "y")), promotion_common(on = c("y", "z"))),
     "covers the same argument"
   )
   expect_error(
-    promote_grouped(promote_common(on = 1:2), promote_common(on = 2:3)),
+    promotion_grouped(promotion_common(on = 1:2), promotion_common(on = 2:3)),
     "covers the same argument"
   )
   # A rule that names no `on` covers any argument, so it can only stand alone.
   expect_error(
-    promote_grouped(promote_common(), promote_common(on = "x")),
+    promotion_grouped(promotion_common(), promotion_common(on = "x")),
     "must say which arguments it covers"
   )
-  expect_s3_class(promote_grouped(promote_common()), "PromotionRule")
+  expect_s3_class(promotion_grouped(promotion_common()), "PromotionRule")
 
   # A group is a rule, so groups nest -- and the check sees through them.
   expect_s3_class(
-    promote_grouped(promote_grouped(promote_common(on = "x")), promote_common(on = "y")),
+    promotion_grouped(promotion_grouped(promotion_common(on = "x")), promotion_common(on = "y")),
     "PromotionRule"
   )
   expect_error(
-    promote_grouped(promote_grouped(promote_common(on = "x")), promote_common(on = "x")),
+    promotion_grouped(promotion_grouped(promotion_common(on = "x")), promotion_common(on = "x")),
     "covers the same argument"
   )
 
   # Only a PromotionRule can be grouped; a bare function has nothing to declare.
-  expect_error(promote_grouped(function(args) list()), "takes promotion rules")
-  expect_error(promote_grouped(), "takes promotion rules")
+  expect_error(promotion_grouped(function(args) list()), "takes promotion rules")
+  expect_error(promotion_grouped(), "takes promotion rules")
 })
 
 test_that("promotion_rule() builds a rule that prints and groups like the built-in ones", {
@@ -377,7 +377,7 @@ test_that("promotion_rule() builds a rule that prints and groups like the built-
 
   # It groups with anvl's own, and a group declares what its rules cover
   # together -- which is what lets groups nest.
-  grouped <- promote_grouped(mine, promote_common(on = "z"))
+  grouped <- promotion_grouped(mine, promotion_common(on = "z"))
   expect_equal(attr(grouped, "spec")$on, c("x", "y", "z"))
   out <- as_anvl_arrays(x = 1L, y = 2L, z = 3.5, .promote = grouped)
   expect_equal(lapply(out, dtype), list(x = as_dtype("f64"), y = as_dtype("f64"), z = default_float()))
@@ -386,7 +386,7 @@ test_that("promotion_rule() builds a rule that prints and groups like the built-
   # it is still caught when the rules actually answer.
   bad <- promotion_rule(function(args) rep(list(as_dtype("f64")), length(args)), "bad", on = "x")
   expect_error(
-    as_anvl_arrays(x = 1L, z = 2L, .promote = promote_grouped(bad, promote_common(on = "z"))),
+    as_anvl_arrays(x = 1L, z = 2L, .promote = promotion_grouped(bad, promotion_common(on = "z"))),
     "covers the same argument"
   )
 })

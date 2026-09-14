@@ -2,22 +2,22 @@
 % Please edit documentation in R/promotion.R
 \name{promotion_rule}
 \alias{promotion_rule}
-\alias{promote_common}
+\alias{promotion_common}
 \alias{promotion_like}
-\alias{promote_dtype}
-\alias{promote_rdata_common}
-\alias{promote_grouped}
+\alias{promotion_dtype}
+\alias{promotion_rdata_common}
+\alias{promotion_grouped}
 \title{Promotion Rules}
 \usage{
-promote_common(on = NULL, fallback = NULL)
+promotion_common(on = NULL, fallback = NULL)
 
 promotion_like(arg, on = NULL, coerce = FALSE)
 
-promote_dtype(dtype, on = NULL, coerce = FALSE)
+promotion_dtype(dtype, on = NULL, coerce = FALSE)
 
-promote_rdata_common(on = NULL)
+promotion_rdata_common(on = NULL)
 
-promote_grouped(...)
+promotion_grouped(...)
 
 promotion_rule(fn, kind, on = NULL, ...)
 }
@@ -64,7 +64,7 @@ to be left unchanged.
 Functions for materializing R values to arrays and promoting inputs.
 Most commonly used via the \code{.promote} argument of \code{\link[=as_anvl_arrays]{as_anvl_arrays()}}.
 
-\code{promote_common()} brings every input to their common data type
+\code{promotion_common()} brings every input to their common data type
 (\code{\link[=common_dtype]{common_dtype()}}).
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
@@ -72,16 +72,16 @@ contribute their default data type.
 \code{promotion_like()} brings the inputs to the data type of a selected input.
 If the selected data type is an R value, it's default data type is used.
 
-\code{promote_dtype()} brings the inputs to the specified data type.
+\code{promotion_dtype()} brings the inputs to the specified data type.
 
-\code{promote_rdata_common()} brings the \emph{R values} to the common data type, as long
+\code{promotion_rdata_common()} brings the \emph{R values} to the common data type, as long
 it is within their category (a \code{double} can e.g. \emph{not} become a float).
 \code{AnvlArray} inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
 for one or more argument subsets.
 
-\code{promote_grouped()} applies several rules to disjoint subsets.
+\code{promotion_grouped()} applies several rules to disjoint subsets.
 
 \code{promotion_rule()} creates a new promotion rule.
 It takes in \code{\link{arrayish}} values and outputs a list of data types, with \code{NULL} indicating
@@ -89,9 +89,9 @@ no conversion.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-promote_common()(list(pi, nv_scalar(2L, "i64")))
-promote_common(fallback = "f64")(list(1, 2))
-promote_common(c(1, 2))(list(-3, 4, 1))
+promotion_common()(list(pi, nv_scalar(2L, "i64")))
+promotion_common(fallback = "f64")(list(1, 2))
+promotion_common(c(1, 2))(list(-3, 4, 1))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))

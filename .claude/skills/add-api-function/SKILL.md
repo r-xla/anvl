@@ -38,7 +38,7 @@ API functions shipped with {anvl} must work with **both** the pjrt and quickr ba
 
 The exact convenience a wrapper should add varies by operation. **Propose a wrapper to the user but ask them to confirm** the semantic differences before implementing. Common patterns include:
 
-- **Type promotion:** bring the inputs to one dtype with a rule, `as_anvl_arrays(..., .promote = promote_common())`
+- **Type promotion:** bring the inputs to one dtype with a rule, `as_anvl_arrays(..., .promote = promotion_common())`
 - **Broadcasting:** broadcast scalars to match array shapes via `nv_broadcast_scalars()`
 - **Default arguments:** infer `dtype` from the input when not provided
 - **Idempotency:** skip no-op cases (return the input unchanged if already correct dtype/shape)
@@ -69,7 +69,7 @@ For ops needing custom logic, write a function that normalizes its array inputs 
 - `as_anvl_array(x)` for a single array input.
 - `as_anvl_arrays(...)` for multiple array inputs (infers a common device, errors on mismatched backends/devices).
 
-A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promote_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value commits to its default (the float default in force, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
+A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value commits to its default (the float default in force, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
 
 After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` what it *would* commit to.
 

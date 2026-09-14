@@ -661,7 +661,7 @@ describe("staging an R value out of its own category", {
     # which is the one route into the staging that does not name a data type at
     # the call site.
     expect_warning(
-      as_anvl_arrays(v = 1.9, .promote = promote_dtype("i32", coerce = TRUE)),
+      as_anvl_arrays(v = 1.9, .promote = promotion_dtype("i32", coerce = TRUE)),
       class = "anvl_staging_widens_warning"
     )
   })

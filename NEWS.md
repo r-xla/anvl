@@ -20,9 +20,11 @@
 * The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
   now require a boolean input array, improving consistency with base R.
 * The method for `round` was removed, as `digits` is currently not supported.
-* `promote_like()` is now called `promotion_like()`, reserving the `promote_`
-  verb for functions that actually apply a promotion; the other rule builders
-  keep their names for now.
+* The promotion rule builders are now called `promotion_common()`,
+  `promotion_like()`, `promotion_dtype()`, `promotion_rdata_common()` and
+  `promotion_grouped()` (previously `promote_*()`). They build a rule rather
+  than apply one, so the `promote_` verb is left to the functions that actually
+  promote.
 * `promotion_rule()`'s `kind` is now the full name the rule prints under, so a
   rule of your own shows as `<{kind}>` instead of `<promote_{kind}>`.
 

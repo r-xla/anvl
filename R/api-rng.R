@@ -145,9 +145,9 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   shape <- assert_shapevec(shape)
 
   rule <- if (is.null(dtype)) {
-    promote_common(fallback = default_float())
+    promotion_common(fallback = default_float())
   } else {
-    promote_dtype(assert_float_dtype(dtype))
+    promotion_dtype(assert_float_dtype(dtype))
   }
   args <- as_anvl_arrays(mean = mean, sd = sd, .promote = rule)
   mean <- args$mean

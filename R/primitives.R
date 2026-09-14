@@ -10,7 +10,7 @@ make_binary_op <- function(stablehlo_infer) {
     list(vt2at(stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]))
   }
   function(lhs, rhs) {
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
@@ -305,7 +305,7 @@ prim_dot_general <- new_primitive(
       out <- stablehlo::infer_types_dot_general(at2vt(lhs), at2vt(rhs), dot_dimension_numbers = ddn)[[1L]]
       list(vt2at(out))
     }
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -448,7 +448,7 @@ prim_concatenate <- new_primitive(
     }
     graph_desc_add(
       self,
-      args = apply_promotion(dots, promote_rdata_common()),
+      args = apply_promotion(dots, promotion_rdata_common()),
       params = list(axis = axis),
       infer_fn = infer_fn
     )[[1L]]
@@ -643,7 +643,7 @@ prim_dynamic_update_slice <- new_primitive(
       out <- AbstractArray(dtype = x$dtype, shape = shape(x))
       list(out)
     }
-    operands <- apply_promotion(list(x = x, update = update), promote_rdata_common())
+    operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     graph_desc_add(
       self,
       args = c(operands, start_indices),
@@ -993,7 +993,7 @@ prim_reduce <- new_primitive(
     force(init)
     force(reductor)
     # Settled before the reductor is traced below, which reads `dtype(init)`.
-    operands <- apply_promotion(list(x = x, init = init), promote_rdata_common())
+    operands <- apply_promotion(list(x = x, init = init), promotion_rdata_common())
     x <- operands$x
     init <- operands$init
 
@@ -1204,7 +1204,7 @@ make_compare_op <- function(direction) {
   force(direction)
   infer_fn <- function(lhs, rhs) infer_compare(lhs, rhs, direction)
   function(lhs, rhs) {
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
@@ -1461,7 +1461,7 @@ prim_shift_left <- new_primitive(
   "shift_left",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_left)
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -1485,7 +1485,7 @@ prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_logical)
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -1509,7 +1509,7 @@ prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_arithmetic)
-    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -2009,7 +2009,7 @@ prim_polygamma <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
-    operands <- apply_promotion(list(n = n, x = x), promote_rdata_common())
+    operands <- apply_promotion(list(n = n, x = x), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -2143,7 +2143,7 @@ prim_clamp <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
-    operands <- apply_promotion(list(min_val = min_val, x = x, max_val = max_val), promote_rdata_common())
+    operands <- apply_promotion(list(min_val = min_val, x = x, max_val = max_val), promotion_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -2286,7 +2286,7 @@ prim_pad <- new_primitive(
       list(out)
     }
 
-    operands <- apply_promotion(list(x = x, padding_value = padding_value), promote_rdata_common())
+    operands <- apply_promotion(list(x = x, padding_value = padding_value), promotion_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -2418,7 +2418,7 @@ prim_ifelse <- new_primitive(
       list(out)
     }
     # `pred` is a bool and keeps out of it; the two branches must agree.
-    operands <- apply_promotion(list(true_value = true_value, false_value = false_value), promote_rdata_common())
+    operands <- apply_promotion(list(true_value = true_value, false_value = false_value), promotion_rdata_common())
     graph_desc_add(
       self,
       c(list(pred = pred), operands),
@@ -2985,7 +2985,7 @@ prim_scatter <- new_primitive(
     # Settled before `peek_dtype(x)` below builds the update computation's
     # parameter slots. `scatter_indices` keeps out of it: it is an index array,
     # not an operand `x` and `update` have to agree with.
-    operands <- apply_promotion(list(x = x, update = update), promote_rdata_common())
+    operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     x <- operands$x
     update <- operands$update
     if (is.null(update_computation)) {
@@ -3357,7 +3357,7 @@ prim_triangular_solve <- new_primitive(
       out <- vt2at(out)
       list(out)
     }
-    operands <- apply_promotion(list(a = a, b = b), promote_rdata_common())
+    operands <- apply_promotion(list(a = a, b = b), promotion_rdata_common())
     graph_desc_add(
       self,
       operands,
@@ -3676,7 +3676,7 @@ prim_convolution <- new_primitive(
       )[[1L]]
       list(vt2at(out))
     }
-    operands <- apply_promotion(list(x = x, kernel = kernel), promote_rdata_common())
+    operands <- apply_promotion(list(x = x, kernel = kernel), promotion_rdata_common())
     graph_desc_add(
       self,
       operands,

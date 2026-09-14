@@ -51,8 +51,8 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 An R value entering a program is not converted at the boundary -- it is built into the program at the
 dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
-is the reference for how this works and for the `.promote` rules (`promote_common()`,
-`promotion_like()`, `promote_dtype()`, `promote_rdata_common()`) that `nv_*` functions pass to
+is the reference for how this works and for the `.promote` rules (`promotion_common()`,
+`promotion_like()`, `promotion_dtype()`, `promotion_rdata_common()`) that `nv_*` functions pass to
 `as_anvl_arrays()`. Two rules that bite while writing code:
 
 - Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use

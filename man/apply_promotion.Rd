@@ -28,12 +28,12 @@ must \emph{agree} says so with this, on the same list it goes on to hand
 \code{\link[=graph_desc_add]{graph_desc_add()}}:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{function(lhs, rhs) \{
-  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
   graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
 \}
 }\if{html}{\out{</div>}}
 
-\code{\link[=promote_rdata_common]{promote_rdata_common()}} is the rule for it: an operand that has a data type
+\code{\link[=promotion_rdata_common]{promotion_rdata_common()}} is the rule for it: an operand that has a data type
 keeps it, and an R value takes the one the others have, within its own category.
 That is what makes \code{prim_mul(x_f64, 2)} work whatever \code{x}'s data type is,
 while keeping a primitive from widening the array it was handed -- promotion
@@ -58,7 +58,7 @@ realizing them again changes nothing.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # An R value takes the data type of the operand it meets.
-operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promote_rdata_common())
+operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 dtype(operands$rhs)
 \dontshow{\}) # examplesIf}
 }
