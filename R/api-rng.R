@@ -3,7 +3,7 @@ nv_unif_rand <- function(
   initial_state,
   dtype
 ) {
-  dtype <- assert_float_dtype(dtype)
+  dtype <- assert_rng_float_dtype(dtype)
   shape <- assert_shapevec(shape)
 
   # 1. Generate random bits (64)
@@ -25,7 +25,7 @@ nv_unif_rand <- function(
   shift <- if (dtype == "f32") 9L else 11L
 
   # shift to the right, s.t. exponent bits are all 0
-  mantissa <- nv_shift_right_logical(rbits[[2]], shift)
+  mantissa <- nv_shift_right_logical(rbits$values, shift)
 
   one_bits <- nv_bitcast_convert(
     nv_fill_like(initial_state, 1.0, shape = integer(), dtype = dtype),
@@ -43,7 +43,7 @@ nv_unif_rand <- function(
   U <- U - 1
 
   # return state and RVs
-  list(rbits[[1]], U)
+  list(state = rbits$state, values = U)
 }
 
 # Random Number Generation API
@@ -55,17 +55,18 @@ nv_unif_rand <- function(
 #' @template param_shape
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled values. `NULL` (default) uses the backend's
-#'   default float data type (see [`default_dtypes()`]).
+#'   Data type of the sampled values: a 32- or 64-bit float, as the sample is
+#'   assembled from random bits. `NULL` (default) uses the backend's default
+#'   float data type (see [`default_dtypes()`]).
 #' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound.
-#' @return (`list()` of [`arrayish`])\cr
-#'   List of two elements: the updated RNG state and the sampled values.
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `state`, the updated RNG state, and `values`, the sampled values.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
 #' result <- nv_runif(c(2, 3), state)
-#' result[[2]]
+#' result$values
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
 nv_runif <- function(
@@ -75,20 +76,25 @@ nv_runif <- function(
   min = 0,
   max = 1
 ) {
-  dtype <- assert_float_dtype(dtype %||% default_float())
+  dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
   checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
   checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
   shape <- assert_shapevec(shape)
 
   if (max == min) {
-    return(nv_fill_like(initial_state, max, shape = shape, dtype = dtype))
+    # A degenerate interval draws nothing, so the state comes back unchanged --
+    # but in the same shape as every other sampler's return.
+    return(list(
+      state = initial_state,
+      values = nv_fill_like(initial_state, max, shape = shape, dtype = dtype)
+    ))
   }
 
   .range <- max - min
 
   # generate samples in [0, 1)
   Unif <- nv_unif_rand(initial_state = initial_state, shape = shape, dtype = dtype)
-  U <- Unif[[2]]
+  U <- Unif$values
 
   # check if some values are <= 0
   le_zero <- nv_le(U, 0)
@@ -112,14 +118,15 @@ nv_runif <- function(
   # shift to interval
   Y <- U + min
 
-  return(list(Unif[[1]], Y))
+  return(list(state = Unif$state, values = Y))
 }
 
 #' @rdname nv_normal
 #' @template param_shape
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the sample, `"f32"` or `"f64"`. `NULL` (default) takes it from
+#'   Data type of the sample: a 32- or 64-bit float, as the sample is assembled
+#'   from random bits. `NULL` (default) takes it from
 #'   `mean` and `sd` where either is a real array, and falls back to the default
 #'   float data type (see [`default_dtypes()`]) where both are bare R values,
 #'   which have none.
@@ -134,11 +141,11 @@ nv_runif <- function(
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
 #' result <- nv_rnorm(c(2, 3), state)
-#' result[[2]]
+#' result$values
 #'
 #' # `sd` may also be an array of the same shape as the sample
 #' sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
-#' nv_rnorm(c(2, 3), state, sd = sds)[[2]]
+#' nv_rnorm(c(2, 3), state, sd = sds)$values
 #' @export
 #' @jit static c(1L, 3L)
 nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
@@ -147,12 +154,12 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   rule <- if (is.null(dtype)) {
     promotion_common(fallback = default_float())
   } else {
-    promotion_dtype(assert_float_dtype(dtype))
+    promotion_dtype(assert_rng_float_dtype(dtype))
   }
   args <- as_anvl_arrays(mean = mean, sd = sd, .promote = rule)
   mean <- args$mean
   sd <- args$sd
-  dtype <- assert_float_dtype(
+  dtype <- assert_rng_float_dtype(
     dtype(mean),
     arg = "mean/sd",
     hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
@@ -175,16 +182,16 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   )
 
   # compute the radius R = sqrt(-2 * log(u1))
-  R <- nv_mul(nv_log(U[[2]]), -2)
+  R <- nv_mul(nv_log(U$values), -2)
   sqrt_R <- nv_sqrt(R)
 
   # generate second batch of ceil(n/2) random uniform variables
-  Theta <- nv_unif_rand(initial_state = U[[1]], dtype = dtype, shape = as.integer(ceiling(n / 2)))
+  Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2)))
 
   # compute cos(2 * pi * u2) / sin(2 * pi * u2)
-  Theta[[2]] <- nv_mul(Theta[[2]], 2 * pi)
-  sin_Theta <- nv_sin(Theta[[2]])
-  cos_Theta <- nv_cos(Theta[[2]])
+  Theta$values <- nv_mul(Theta$values, 2 * pi)
+  sin_Theta <- nv_sin(Theta$values)
+  cos_Theta <- nv_cos(Theta$values)
 
   # compute z1, z2
   Z1 <- nv_mul(sqrt_R, sin_Theta)
@@ -209,7 +216,7 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   N <- Z * sd + mean
 
   # return state and Normals N
-  list(Theta[[1]], N)
+  list(state = Theta$state, values = N)
 }
 
 #' @title Sample from a Binomial Distribution
@@ -223,20 +230,27 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled values. `NULL` (default) uses the backend's
+#'   Data type of the sampled values. Must be numeric -- the successes are
+#'   counted, which a boolean cannot hold. `NULL` (default) uses the backend's
 #'   default integer data type (see [`default_dtypes()`]).
-#' @return (`list()` of [`arrayish`])\cr
-#'   List of two elements: the updated RNG state and the sampled values.
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `state`, the updated RNG state, and `values`, the sampled values.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
 #' # Bernoulli samples
 #' result <- nv_rbinom(c(2, 3), state)
-#' result[[2]]
+#' result$values
 #' @export
 #' @jit static c(1L, 3L, 4L, 5L)
 nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
-  dtype <- as_dtype(dtype %||% default_int())
+  # The sample counts successes, which `bool` cannot hold: it used to come back
+  # as `bool` for `size = 1` and silently as an integer for anything above.
+  dtype <- assert_numeric_dtype(
+    dtype %||% default_int(),
+    arg = "dtype",
+    hint = "A boolean cannot hold a count; use an integer data type and compare it."
+  )
   checkmate::assert_int(size, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
   shape <- assert_shapevec(shape)
@@ -248,7 +262,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
   # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
   # so we don't benefit from using runif w.r.t. unbiasedness
   res <- nv_unif_rand(initial_state, shape = n_trials, dtype = "f64")
-  U <- res[[2]]
+  U <- res$values
 
   # Success if U < prob
   successes <- nv_convert(nv_lt(U, prob), dtype = dtype)
@@ -260,7 +274,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
     nv_reduce_sum(successes, axes = 1L, drop = TRUE)
   }
 
-  list(res[[1]], result)
+  list(state = res$state, values = result)
 }
 
 #' @title Sample Integers
@@ -274,28 +288,34 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled integers. `NULL` (default) uses the backend's
-#'   default integer data type (see [`default_dtypes()`]).
-#' @return (`list()` of [`arrayish`])\cr
-#'   List of two elements: the updated RNG state and the sampled integers,
-#'   of shape `shape`.
+#'   Data type of the sampled integers. Must be numeric -- an index is a count,
+#'   which a boolean cannot hold. `NULL` (default) uses the backend's default
+#'   integer data type (see [`default_dtypes()`]).
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `state`, the updated RNG state, and `values`, the sampled
+#'   integers of shape `shape`.
 #' @family rng
 #' @seealso [nv_sample()] to sample from an arbitrary population.
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
 #' # Roll 6 dice
 #' result <- nv_sample_int(6, state, 6L)
-#' result[[2]]
+#' result$values
 #' @export
 #' @jit static c(1L, 3L, 4L)
 nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
-  dtype <- as_dtype(dtype %||% default_int())
+  # An index is a count too: at `bool` every draw collapsed to `TRUE`.
+  dtype <- assert_numeric_dtype(
+    dtype %||% default_int(),
+    arg = "dtype",
+    hint = "A boolean cannot hold an index; use an integer data type."
+  )
   assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)
 
   out <- sample_indices(initial_state, as.integer(n), prod(shape))
 
-  list(out[[1L]], nv_reshape(nv_convert(out[[2L]], dtype), shape))
+  list(state = out$state, values = nv_reshape(nv_convert(out$values, dtype), shape))
 }
 
 #' @title Sample from a Population
@@ -309,16 +329,16 @@ nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
 #' @template param_initial_state
 #' @param x ([`arrayish`])\cr
 #'   The population to sample from, a 1-D array.
-#' @return (`list()` of [`arrayish`])\cr
-#'   List of two elements: the updated RNG state and the sampled values, of
-#'   shape `shape` and with the data type of `x`.
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `state`, the updated RNG state, and `values`, the sampled values
+#'   of shape `shape` and with the data type of `x`.
 #' @family rng
 #' @seealso [nv_sample_int()] to sample the integers `1` to `n`.
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
 #' pop <- nv_array(c(10, 20, 30))
 #' result <- nv_sample(5, state, pop)
-#' result[[2]]
+#' result$values
 #' @export
 #' @jit static 1L
 nv_sample <- function(shape, initial_state, x) {
@@ -332,7 +352,7 @@ nv_sample <- function(shape, initial_state, x) {
 
   out <- sample_indices(initial_state, n, prod(shape))
 
-  list(out[[1L]], nv_reshape(nv_subset(x, out[[2L]]), shape))
+  list(state = out$state, values = nv_reshape(nv_subset(x, out$values), shape))
 }
 
 # Draw `n_sample` uniformly distributed 1-based indices into a population of
@@ -342,6 +362,6 @@ sample_indices <- function(initial_state, n, n_sample) {
   res <- nv_unif_rand(initial_state, shape = n_sample, dtype = "f64")
   # u is in [0, 1), so floor(u * n) is in 0, ..., n - 1. The minimum guards
   # against the product rounding up to n for the largest representable u.
-  idx <- nv_convert(nv_floor(nv_mul(res[[2L]], n)), dtype = "i32")
-  list(res[[1L]], nv_min(nv_add(idx, 1L), as.integer(n)))
+  idx <- nv_convert(nv_floor(nv_mul(res$values, n)), dtype = "i32")
+  list(state = res$state, values = nv_min(nv_add(idx, 1L), as.integer(n)))
 }

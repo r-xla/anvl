@@ -47,7 +47,8 @@ Shape.}
 RNG state (\code{ui64[2]}).}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sample, \code{"f32"} or \code{"f64"}. \code{NULL} (default) takes it from
+Data type of the sample: a 32- or 64-bit float, as the sample is assembled
+from random bits. \code{NULL} (default) takes it from
 \code{mean} and \code{sd} where either is a real array, and falls back to the default
 float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where both are bare R values,
 which have none.}
@@ -115,11 +116,11 @@ nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 state <- nv_rng_state(42L)
 result <- nv_rnorm(c(2, 3), state)
-result[[2]]
+result$values
 
 # `sd` may also be an array of the same shape as the sample
 sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
-nv_rnorm(c(2, 3), state, sd = sds)[[2]]
+nv_rnorm(c(2, 3), state, sd = sds)$values
 \dontshow{\}) # examplesIf}
 }
 \references{

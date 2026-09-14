@@ -843,11 +843,11 @@ infer_cum_extreme <- function(x, axis) {
     cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
   }
   list(
-    AbstractArray(
+    values = AbstractArray(
       dtype = dtype(x),
       shape = Shape(shape(x))
     ),
-    AbstractArray(
+    indices = AbstractArray(
       dtype = default_int(),
       shape = Shape(shape(x))
     )
@@ -2778,8 +2778,8 @@ prim_top_k <- new_primitive(
       # the default integer, which is what the caller sees.
       indices <- vt2at(vts[[2L]])
       list(
-        vt2at(vts[[1L]]),
-        AbstractArray(dtype = default_int(), shape = Shape(shape(indices)))
+        values = vt2at(vts[[1L]]),
+        indices = AbstractArray(dtype = default_int(), shape = Shape(shape(indices)))
       )
     }
 
@@ -2865,9 +2865,9 @@ prim_print <- new_primitive(
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Data type of the generated random values.
 #' @template param_shape
-#' @return `list` of two [`arrayish`] values:\cr
-#'   The first element is the updated RNG state with the same dtype and shape
-#'   as `initial_state`. The second element is an array of random values with
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Element `state` is the updated RNG state with the same dtype and shape
+#'   as `initial_state`. Element `values` is an array of random values with
 #'   the given `dtype` and `shape`.
 #' @templateVar primitive_id rng_bit_generator
 #' @template section_rules
@@ -2882,7 +2882,8 @@ prim_rng_bit_generator <- new_primitive(
   "rng_bit_generator",
   function(initial_state, rng_algorithm = "THREE_FRY", dtype, shape) {
     infer_fn <- function(initial_state, rng_algorithm, dtype, shape) {
-      lapply(stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape), vt2at)
+      out <- stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape)
+      list(state = vt2at(out[[1L]]), values = vt2at(out[[2L]]))
     }
     graph_desc_add(
       self,

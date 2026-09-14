@@ -2594,7 +2594,7 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
-  if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
+  if (with_indices) out else out$values
 }
 
 # Higher order primitives
@@ -3306,16 +3306,16 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
     perm <- seq_len(rank)
     perm[c(axis, rank)] <- c(rank, axis)
     out <- prim_top_k(prim_transpose(x, permutation = perm), k = k)
-    values <- prim_transpose(out[[1L]], permutation = perm)
+    values <- prim_transpose(out$values, permutation = perm)
     if (with_indices) {
-      indices <- prim_transpose(out[[2L]], permutation = perm)
+      indices <- prim_transpose(out$indices, permutation = perm)
       list(values = values, indices = indices)
     } else {
       values
     }
   } else {
     out <- prim_top_k(x, k = k)
-    if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
+    if (with_indices) out else out$values
   }
 }
 

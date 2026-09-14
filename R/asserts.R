@@ -110,6 +110,44 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   shape
 }
 
+# Like `assert_float_dtype()`, but only the two widths the RNG is written for:
+# it assembles floats out of random bits, so it needs a 32- or 64-bit layout
+# and cannot serve `bf16` or `f16` even though those are float data types.
+# Returns the converted DataType.
+assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  if (!is_dtype_float(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
+    ))
+  }
+  if (!dtype_width(dt) %in% c(32L, 64L)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a 32- or 64-bit float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
+# Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
+# sense the documentation gives the word: integer or float, but not `bool`.
+# Returns the converted DataType.
+assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  if (is_dtype_bool(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a numeric data type.",
+      "x" = "Got {.val {as.character(dt)}}, which is boolean.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
 # Convert `x` to a DataType via `as_dtype()` and assert it is a floating-point
 # dtype (f32 or f64). Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {

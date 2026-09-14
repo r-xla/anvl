@@ -12,9 +12,10 @@ test_that("prim_cos", {
 
 test_that("prim_rng_bit_generator", {
   out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
-  expect_equal(dtype(out[[1]]), as_dtype("ui64"))
-  expect_equal(shape(out[[1]]), 2L)
-  expect_equal(shape(out[[2]]), c(2L, 2L))
+  expect_named(out, c("state", "values"))
+  expect_equal(dtype(out$state), as_dtype("ui64"))
+  expect_equal(shape(out$state), 2L)
+  expect_equal(shape(out$values), c(2L, 2L))
 })
 
 test_that("prim_bitcast_convert", {
@@ -281,13 +282,15 @@ describe("cumulative ops", {
   it("prim_cummax returns running argmax indices", {
     x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6), dtype = "f32")
     out <- prim_cummax(x, axis = 1L)
-    expect_equal(c(as_array(out[[2L]])), c(1L, 1L, 3L, 3L, 5L, 6L, 6L, 6L))
+    expect_named(out, c("values", "indices"))
+    expect_equal(c(as_array(out$indices)), c(1L, 1L, 3L, 3L, 5L, 6L, 6L, 6L))
   })
   it("prim_cummin returns running argmin indices with last-occurrence tiebreak", {
     # Tie at j=4 (x_4 == y_3 == 1): last-occurrence picks 4, then carries forward.
     x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6), dtype = "f32")
     out <- prim_cummin(x, axis = 1L)
-    expect_equal(c(as_array(out[[2L]])), c(1L, 2L, 2L, 4L, 4L, 4L, 4L, 4L))
+    expect_named(out, c("values", "indices"))
+    expect_equal(c(as_array(out$indices)), c(1L, 2L, 2L, 4L, 4L, 4L, 4L, 4L))
   })
   it("prim_cummax plateau breaks ties to last occurrence", {
     x <- nv_array(c(1, 3, 3, 2), dtype = "f32")
@@ -969,9 +972,10 @@ describe("prim_top_k", {
   it("returns values and 1-based indices along the last axis", {
     out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L)
     expect_length(out, 2L)
-    expect_equal(as.vector(out[[1L]]), c(9, 6, 5))
-    expect_equal(as.vector(out[[2L]]), c(6L, 8L, 5L))
-    expect_equal(dtype(out[[2L]]), default_int())
+    expect_named(out, c("values", "indices"))
+    expect_equal(as.vector(out$values), c(9, 6, 5))
+    expect_equal(as.vector(out$indices), c(6L, 8L, 5L))
+    expect_equal(dtype(out$indices), default_int())
   })
 
   it("operates per-row on a matrix", {
