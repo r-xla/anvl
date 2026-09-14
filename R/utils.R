@@ -226,28 +226,28 @@ gather_clamp_indices <- function(
     bounds_shape <- rep(1L, length(indices_shape))
     bounds_shape[index_vector_axis] <- n_index_coords
 
-    min_tensor <- prim_broadcast_in_axes(
+    min_bound <- prim_broadcast_in_axes(
       prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
       indices_shape,
       integer()
     )
 
     # The max bound is the same for a given slice along the index_vector_axis
-    max_tensor_vals <- prim_reshape(
+    max_bound_vals <- prim_reshape(
       prim_convert(
         nv_array(max_bounds, dtype = default_int()),
         dtype = dtype(start_indices)
       ),
       bounds_shape
     )
-    max_tensor <- nv_broadcast_to(max_tensor_vals, indices_shape)
+    max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    prim_clamp(min_bound, start_indices, max_bound)
   } else {
     # Implicit index vector (single coordinate)
-    min_tensor <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
-    max_tensor <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
+    max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
+    prim_clamp(min_bound, start_indices, max_bound)
   }
 }
 

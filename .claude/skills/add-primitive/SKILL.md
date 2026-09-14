@@ -137,13 +137,13 @@ describe("prim_foo", {
     verify_grad_uni(prim_foo, torch::torch_foo, gen = gen_foo)
   })
 
-  it("tensor gradient", {
-    verify_grad_uni_tensor(prim_foo, torch::torch_foo, shape = c(3, 4), gen = gen_foo)
+  it("array gradient", {
+    verify_grad_uni_array(prim_foo, torch::torch_foo, shape = c(3, 4), gen = gen_foo)
   })
 })
 ```
 
-For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_tensor` with `gen_lhs` / `gen_rhs`.
+For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_array` with `gen_lhs` / `gen_rhs`.
 
 ### Key testing helpers
 
@@ -151,10 +151,10 @@ For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_tensor` with 
 |--------|------|---------|
 | `expect_jit_torch_unary` | `inst/extra-tests/torch-helpers.R` | Compare unary forward with torch |
 | `expect_jit_torch_binary` | `inst/extra-tests/torch-helpers.R` | Compare binary forward with torch |
-| `verify_grad_uni` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + tensor) |
-| `verify_grad_uni_tensor` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (tensor only) |
-| `verify_grad_biv` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + tensor) |
-| `verify_grad_biv_tensor` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (tensor only) |
+| `verify_grad_uni` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + array) |
+| `verify_grad_uni_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (array only) |
+| `verify_grad_biv` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + array) |
+| `verify_grad_biv_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (array only) |
 | `generate_test_data` | `inst/extra-tests/torch-helpers.R` | Random input sampling by dtype |
 
 Custom generators (`gen`, `gen_x`, `gen_y`, `gen_lhs`, `gen_rhs`) have signature `function(shp, dtype)` and return an R array (or scalar for `integer()` shape).

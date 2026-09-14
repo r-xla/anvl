@@ -92,7 +92,7 @@ For element-wise binary primitives, use the `make_do_binary()` factory -- it alr
 nv_<name> <- make_do_binary(prim_<name>)
 ```
 
-For full NumPy-style broadcasting (not just scalar-against-tensor), use `nv_broadcast_arrays()` after promotion (see `nv_outer()` for an example).
+For full NumPy-style broadcasting (not just scalar-against-array), use `nv_broadcast_arrays()` after promotion (see `nv_outer()` for an example).
 
 ### Bringing auxiliary arguments to the input's dtype
 

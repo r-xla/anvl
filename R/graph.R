@@ -490,7 +490,7 @@ maybe_box_input <- function(x, desc, mode) {
 # Strip data from a (possibly concrete) array aval, returning a pure
 # AbstractArray with the same dtype and shape.
 abstract_aval <- function(aval) {
-  if (is_concrete_tensor(aval)) {
+  if (is_concrete_array(aval)) {
     AbstractArray(dtype = aval$dtype, shape = aval$shape)
   } else {
     aval
@@ -567,7 +567,7 @@ get_box_or_register_const <- function(desc, x) {
   # Now, we create the new box and register it, so if we see it again, we can return it immediately.
   new_box <- GraphBox(x, desc)
 
-  if (is_concrete_tensor(x$aval)) {
+  if (is_concrete_array(x$aval)) {
     desc$data_to_gval[[x$aval$data]] <- x
   }
   desc$gval_to_box[[x]] <- new_box

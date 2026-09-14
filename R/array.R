@@ -723,7 +723,7 @@ is_abstract_array <- function(x) {
   inherits(x, "AbstractArray")
 }
 
-is_concrete_tensor <- function(x) {
+is_concrete_array <- function(x) {
   inherits(x, "ConcreteArray")
 }
 

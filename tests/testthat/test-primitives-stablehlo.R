@@ -191,10 +191,10 @@ test_that("reductions over a zero-size axis return the identity", {
   expect_equal(as_array(prim_reduce_any(empty1_bool, axes = 1L, drop = TRUE)), FALSE)
   expect_equal(as_array(prim_reduce_all(empty1_bool, axes = 1L, drop = TRUE)), TRUE)
 
-  # Reducing along an empty axis of a higher-rank tensor keeps the other axes.
+  # Reducing along an empty axis of a higher-rank array keeps the other axes.
   empty2 <- nv_array(numeric(0), shape = c(2L, 0L), dtype = "f32")
   expect_equal(as_array(prim_reduce_sum(empty2, axes = 2L, drop = TRUE)), array(c(0, 0), 2L))
-  # Reducing a non-empty axis of a tensor with a separate empty axis is fine too.
+  # Reducing a non-empty axis of an array with a separate empty axis is fine too.
   out <- as_array(prim_reduce_max(empty2, axes = 1L, drop = TRUE))
   expect_equal(dim(out), 0L)
 })

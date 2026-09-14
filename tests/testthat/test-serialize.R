@@ -46,12 +46,12 @@ test_that("nv_save and nv_read work for quickr backend", {
 })
 
 test_that("serialization round-trips scalars and typed arrays", {
-  scalar_tensor <- nv_scalar(1.0)
-  typed_tensor <- nv_array(1.0, dtype = "f32")
+  scalar_arr <- nv_scalar(1.0)
+  typed_arr <- nv_array(1.0, dtype = "f32")
 
   lst <- list(
-    scalar = scalar_tensor,
-    typed = typed_tensor
+    scalar = scalar_arr,
+    typed = typed_arr
   )
 
   # Test with nv_serialize/nv_unserialize

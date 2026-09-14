@@ -2383,7 +2383,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
     if (!is_graph_value(const_node)) {
       cli_abort("quickr lowering: graph constants must be GraphValue nodes") # nocov
     }
-    if (!is_concrete_tensor(const_node$aval)) {
+    if (!is_concrete_array(const_node$aval)) {
       cli_abort("quickr lowering: graph constants must be concrete arrays")
     }
     node_expr[[const_node]] <- as.name(const_arg_names[[i]])

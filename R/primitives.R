@@ -2729,7 +2729,7 @@ prim_sort <- new_primitive(
 #' For other axes, transpose so the target axis is last, call
 #' `prim_top_k()`, then transpose back. [nv_top_k()] does this.
 #' @param x ([`arrayish`])\cr
-#'   Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.
+#'   Array of integer, unsigned integer, or floating-point dtype with rank >= 1.
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
 #'   `1 <= k <= shape(x)[naxes(x)]`.
