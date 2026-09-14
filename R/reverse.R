@@ -169,7 +169,7 @@ validate_gradient_output <- function(out_gvals) {
     cli_abort("gradient can only be computed for functions that return a scalar")
   }
   dt <- out$aval$dtype
-  if (!(dt == as_dtype("f32") || dt == as_dtype("f64"))) {
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
       x = "gradient can only be computed for functions that return float scalar",
       i = "Got dtype={.field {as.character(dt)}}"

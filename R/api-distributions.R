@@ -99,8 +99,9 @@ nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   q <- args$q
   mean <- args$mean
   sd <- args$sd
-  # The thresholds below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(q), arg = "q")
+  # One threshold set per width, so a narrower float has none: it would
+  # silently take the `f64` set.
+  op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
 
   # Standardise, flipping sign if computing upper tail
   d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
@@ -294,8 +295,8 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   p <- args$p
   mean <- args$mean
   sd <- args$sd
-  # The coefficients below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(p), arg = "p")
+  # One coefficient set per width -- see `nv_pnorm()`.
+  op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
 
   is_f32 <- op_dtype == "f32"
 

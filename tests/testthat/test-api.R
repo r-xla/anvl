@@ -1199,9 +1199,9 @@ describe("nv_linspace", {
     expect_equal(dtype(nv_linspace(0, 1, steps = 1L, dtype = "f64")), as_dtype("f64"))
   })
   it("rejects an integer dtype", {
-    expect_error(nv_linspace(0, 1, steps = 5L, dtype = "i32"), "floating-point dtype")
-    expect_error(nv_linspace(0, 10, steps = 6L, dtype = "i32"), "floating-point dtype")
-    expect_error(nv_linspace(0, 1, steps = 1L, dtype = "i32"), "floating-point dtype")
+    expect_error(nv_linspace(0, 1, steps = 5L, dtype = "i32"), "must be a float data type")
+    expect_error(nv_linspace(0, 10, steps = 6L, dtype = "i32"), "must be a float data type")
+    expect_error(nv_linspace(0, 1, steps = 1L, dtype = "i32"), "must be a float data type")
   })
   it("requires steps to be a positive whole number", {
     expect_error(nv_linspace(0, 1, steps = 0L), "steps")
@@ -1553,7 +1553,7 @@ describe("nv_linspace_like", {
 
   it("rejects an integer like", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
-    expect_error(nv_linspace_like(like, 0, 1, steps = 5L), "floating-point dtype")
+    expect_error(nv_linspace_like(like, 0, 1, steps = 5L), "must be a float data type")
   })
 })
 

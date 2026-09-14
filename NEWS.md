@@ -86,6 +86,10 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
+* Every data type of the float category counts as a float, so `f16` and `bf16`
+  pass the checks that used to accept only `f32` and `f64`. `nv_pnorm()` and
+  `nv_qnorm()` keep the narrower requirement, as they carry one coefficient
+  set per width.
 * The gradient of `nv_gamma()` is now correct for positive whole numbers.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
   `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
