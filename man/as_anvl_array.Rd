@@ -11,7 +11,7 @@ as_anvl_arrays(..., .promote = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input to standardize.}
+Input to canonicalize.}
 
 \item{device}{(\code{NULL} | \code{\link{device}})\cr
 Target device. If \code{x} is an \code{AnvlArray} on a different device, an error

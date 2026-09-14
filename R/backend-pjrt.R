@@ -117,9 +117,9 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   converting to abstract values. Used together with traced devices for
 #'   device inference when `device` is `NULL`.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
-#'   The data types the traced R values commit to when nothing else decides one
-#'   (see [`default_dtypes()`]), read off `info$context` so the program matches
-#'   the cache key it is filed under. `NULL` uses the pair in force.
+#'   The data types the traced R values materialize at when nothing else decides
+#'   one (see [`default_dtypes()`]), read off `info$context` so the program
+#'   matches the cache key it is filed under. `NULL` uses the active pair.
 #' @param fallback_device (`NULL` | device)\cr
 #'   The device to compile for when `device` is `NULL` and nothing in the graph
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
@@ -280,7 +280,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' @section Supported data types:
 #' `bool`; the signed integers `i8`, `i16`, `i32` and `i64`; the unsigned
 #' integers `ui8`, `ui16`, `ui32` and `ui64`; and the floats `f32` and `f64`.
-#' An R double commits to `f32` on this backend and an R integer to `i32`
+#' An R double materializes at `f32` on this backend and an R integer at `i32`
 #' unless the defaults say otherwise (see [`default_dtypes()`]).
 #'
 #' @section PJRT JIT arguments:

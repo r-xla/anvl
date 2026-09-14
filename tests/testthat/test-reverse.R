@@ -434,7 +434,7 @@ describe("rdata", {
 
   it("keeps a bare R value outside wrt exact through the inline trace", {
     # `k` is an R double used at f64. sqrt(2) is not representable at f32, so a
-    # commit at the default would show up in the gradient.
+    # materialize at the default would show up in the gradient.
     f <- jit(gradient(function(v, k) v * k, wrt = "v"))
     r <- f(nv_scalar(1, dtype = "f64"), sqrt(2))
     expect_equal(dtype(r$v), as_dtype("f64"))
@@ -498,9 +498,9 @@ describe("rdata", {
 
 describe("a scoped override inside a differentiated body", {
   # `gradient()` traces the reverse pass into its own descriptor, which inherits
-  # the defaults in force where it is opened. A cotangent belongs to the primal
+  # the active defaults where it is opened. A cotangent belongs to the primal
   # it is with respect to, so it takes *that* array's data type whatever the
-  # literals inside the body committed to. Upstream JAX does not support a
+  # literals inside the body materialized at. Upstream JAX does not support a
   # scoped dtype override inside a traced body at all (jax-ml/jax#5982), so
   # this is worth pinning rather than assuming.
   x32 <- nv_array(c(1, 2, 3), dtype = "f32")

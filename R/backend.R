@@ -215,7 +215,7 @@ assert_backend <- function(backend) {
 #'
 #' Sets the `anvl.backend` option for the duration of the calling scope. Every
 #' array built and every operation run in that scope uses the backend, and R
-#' values commit to its default data types (see [`default_dtypes()`]).
+#' values materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
@@ -231,7 +231,7 @@ local_backend <- function(backend, envir = parent.frame()) {
 #'
 #' Sets the `anvl.backend` option for the duration of the expression. Every
 #' array built and every operation run in `code` uses the backend, and R values
-#' commit to its default data types (see [`default_dtypes()`]).
+#' materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).

@@ -189,8 +189,8 @@ AnvlGraph <- function(
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
-#'   The data types every R value in this trace commits to when nothing else
-#'   decides one (see [`default_dtypes()`]).
+#'   The data types every R value in this trace materializes at when nothing
+#'   else decides one (see [`default_dtypes()`]).
 #' @param backend (`character(1)`)\cr
 #'   The backend this trace is compiled for. Required: it decides which entry
 #'   of the `anvl.default_dtypes` option applies to the trace, so switching the
@@ -369,7 +369,7 @@ format.GraphBox <- function(x, ...) {
 maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
     # An R value belongs to the graph it was written in, so one reaching
-    # another graph has to commit before it can be captured there.
+    # another graph has to materialize before it can be captured there.
     if (is_rdata_box(x) && !identical(x$desc, desc)) {
       materialize_rdata(x, peek_dtype(x))
     }
@@ -422,8 +422,8 @@ maybe_box_input <- function(x, desc, mode) {
     # e.g.: \(x) prim_while(list(i = x), ...)
     if (is_graph_box(x)) {
       # A subgraph parameter needs a dtype, and the subgraph is traced before
-      # its operands meet anything, so an R value commits here.
-      x <- commit_rdata_box(x)
+      # its operands meet anything, so an R value materializes here.
+      x <- materialize_rdata_box(x)
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
@@ -477,7 +477,7 @@ maybe_box_input <- function(x, desc, mode) {
     return(register_rdata_input(desc, x))
   }
   if (is_graph_box(x)) {
-    x <- commit_rdata_box(x)
+    x <- materialize_rdata_box(x)
     return(register_input(desc, x$gnode))
   }
   if (is_abstract_array(x)) {
@@ -699,7 +699,7 @@ trace_fn <- function(
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
-  outputs_flat <- lapply(output[[2L]], function(x) commit_rdata_box(maybe_box_arrayish(x)))
+  outputs_flat <- lapply(output[[2L]], function(x) materialize_rdata_box(maybe_box_arrayish(x)))
 
   desc$out_tree <- out_tree
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
@@ -709,7 +709,8 @@ trace_fn <- function(
   # the enclosing trace and stay open there, so the input is handed back up to
   # it and only the converts between dtypes stay here, where
   # transform_gradient() differentiates them. A sub-graph has none to settle:
-  # its R values commit when `maybe_box_input()` builds the parameter slots.
+  # its R values materialize when `maybe_box_input()` builds the parameter
+  # slots.
   # We might
   if (mode == "toplevel") {
     # Standard case:
@@ -875,9 +876,9 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    # Commit R values to their default dtype, which happens when no promotion rule
-    # materialized them (default behavior)
-    gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
+    # Materialize R values at their default dtype, which happens when no
+    # promotion rule materialized them (default behavior)
+    gnode <- materialize_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval
   }

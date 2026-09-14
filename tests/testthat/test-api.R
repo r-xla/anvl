@@ -812,9 +812,9 @@ describe("nv_var / nv_sd nan_rm", {
   })
   it("does not let nan_rm change the data type", {
     # The valid-value count is built at the operand's data type, not at an
-    # integer one: counting into an integer makes the R double `0` in
-    # `nv_max(0, count - correction)` cross categories and commit the divisor
-    # at the default float, so `nan_rm` alone would widen the result.
+    # integer one: counting into an integer makes the R double `0` in `nv_max(0,
+    # count - correction)` cross categories and materialize the divisor at the
+    # default float, so `nan_rm` alone would widen the result.
     x <- nv_array(c(1, 2, NaN, 4), dtype = "f32")
     with_default_dtypes(c(float = "f64", int = "i64"), {
       expect_equal(dtype(nv_var(x, nan_rm = TRUE)), dtype(nv_var(x)))
@@ -1711,10 +1711,10 @@ describe("nv_median / nv_quantile NaN handling", {
     expect_true(all(is.nan(out)))
   })
   it("does not let nan_rm change the data type", {
-    # Both branches of the valid-value count are built at `dtype(x)`, so the
-    # `- 1` in `(n_valid - 1) * probs` yields to it. An integer count there
-    # would cross categories and commit `h` -- and with it `lo_f`, `frac` and
-    # the result -- at the default float.
+    # Both branches of the valid-value count are built at `dtype(x)`, so the `-
+    # 1` in `(n_valid - 1) * probs` yields to it. An integer count there would
+    # cross categories and materialize `h` -- and with it `lo_f`, `frac` and the
+    # result -- at the default float.
     x <- nv_array(c(1, 2, NaN, 4), dtype = "f32")
     with_default_dtypes(c(float = "f64", int = "i64"), {
       expect_equal(dtype(nv_quantile(x, 0.5, nan_rm = TRUE)), dtype(nv_quantile(x, 0.5)))

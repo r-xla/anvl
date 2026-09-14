@@ -293,7 +293,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
 }
 
 # The index outputs follow the default integer data type, which the trace has
-# already committed to: it is read off the inferred output types rather than
+# already materialized at: it is read off the inferred output types rather than
 # from `default_int()`, which lowering runs too late to consult.
 prim_cummax[["stablehlo"]] <- function(x, axis, output_types) {
   .stablehlo_apply_cum_extreme(x, axis, is_max = TRUE, index_dtype = index_dtype_of(output_types, 2L))
