@@ -39,11 +39,10 @@ prim_rng_bit_generator(
 
 ## Value
 
-`list` of two
-[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-values:  
-The first element is the updated RNG state with the same dtype and shape
-as `initial_state`. The second element is an array of random values with
+(named `list` of two
+[`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
+Element `state` is the updated RNG state with the same dtype and shape
+as `initial_state`. Element `values` is an array of random values with
 the given `dtype` and `shape`.
 
 ## Implemented Rules
@@ -65,13 +64,13 @@ Lowers to
 ``` r
 state <- nv_array(c(0L, 0L), dtype = "ui64")
 prim_rng_bit_generator(state, dtype = "f32", shape = c(3, 2))
-#> [[1]]
+#> $state
 #> AnvlArray
 #>  0
 #>  3
 #> [ CPUui64{2} ] 
 #> 
-#> [[2]]
+#> $values
 #> AnvlArray
 #>  1.7973e+09 2.5791e+09
 #>  1.3515e+09 3.2358e+09

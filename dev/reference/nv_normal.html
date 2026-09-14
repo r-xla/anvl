@@ -150,10 +150,10 @@ RNG state (<code>ui64[2]</code>).</p></dd>
 
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
-Data type of the sample, <code>"f32"</code> or <code>"f64"</code>. <code>NULL</code> (default) takes it from
-<code>mean</code> and <code>sd</code> where either is a real array, and falls back to the default
-float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>) where both are bare R values,
-which have none.</p></dd>
+Data type of the sample: a 32- or 64-bit float.
+<code>NULL</code> (default) takes it from <code>mean</code> and <code>sd</code> where either is a
+real array, and falls back to the default float data type (see <code><a href="default_dtypes.html">default_dtypes()</a></code>)
+where both are bare R values, which have none.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -286,7 +286,7 @@ ISBN 0-7458-0289-3.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf64{3} ] </span>
 <span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_rnorm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  -0.0675  0.9489  1.9457</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  -0.5255  1.2002  0.0008</span>
@@ -294,7 +294,7 @@ ISBN 0-7458-0289-3.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># `sd` may also be an array of the same shape as the sample</span></span></span>
 <span class="r-in"><span><span class="va">sds</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.01</span>, <span class="fl">0.1</span>, <span class="fl">1</span>, <span class="fl">10</span>, <span class="fl">100</span>, <span class="fl">1000</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span>, sd <span class="op">=</span> <span class="va">sds</span><span class="op">)</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="fu">nv_rnorm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, <span class="va">state</span>, sd <span class="op">=</span> <span class="va">sds</span><span class="op">)</span><span class="op">$</span><span class="va">values</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   -0.0007   0.9489 194.5720</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   -0.0526  12.0017   0.7665</span>

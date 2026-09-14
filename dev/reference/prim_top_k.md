@@ -59,14 +59,14 @@ Lowers to
 ``` r
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 prim_top_k(x, k = 3L)
-#> [[1]]
+#> $values
 #> AnvlArray
 #>  9
 #>  6
 #>  5
 #> [ CPUf32{3} ] 
 #> 
-#> [[2]]
+#> $indices
 #> AnvlArray
 #>  6
 #>  8

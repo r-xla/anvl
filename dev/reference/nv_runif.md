@@ -24,8 +24,8 @@ nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sampled values. `NULL` (default) uses the backend's
-  default float data type (see
+  Data type of the sampled values: a 32- or 64-bit float. `NULL`
+  (default) uses the backend's default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 - min, max:
@@ -35,9 +35,10 @@ nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 
 ## Value
 
-([`list()`](https://rdrr.io/r/base/list.html) of
+(named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-List of two elements: the updated RNG state and the sampled values.
+Elements `state`, the updated RNG state, and `values`, the sampled
+values.
 
 ## See also
 
@@ -53,7 +54,7 @@ Other rng:
 ``` r
 state <- nv_rng_state(42L)
 result <- nv_runif(c(2, 3), state)
-result[[2]]
+result$values
 #> AnvlArray
 #>  0.8690 0.1506 0.5203
 #>  0.3103 0.9928 0.1065

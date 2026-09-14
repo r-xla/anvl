@@ -34,10 +34,10 @@ nv_sample(shape, initial_state, x)
 
 ## Value
 
-([`list()`](https://rdrr.io/r/base/list.html) of
+(named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-List of two elements: the updated RNG state and the sampled values, of
-shape `shape` and with the data type of `x`.
+Elements `state`, the updated RNG state, and `values`, the sampled
+values of shape `shape` and with the data type of `x`.
 
 ## See also
 
@@ -57,7 +57,7 @@ Other rng:
 state <- nv_rng_state(42L)
 pop <- nv_array(c(10, 20, 30))
 result <- nv_sample(5, state, pop)
-result[[2]]
+result$values
 #> AnvlArray
 #>  20
 #>  30

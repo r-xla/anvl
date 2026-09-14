@@ -114,9 +114,9 @@ The population to sample from, a 1-D array.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code> of <code><a href="arrayish.html">arrayish</a></code>)<br>
-List of two elements: the updated RNG state and the sampled values, of
-shape <code>shape</code> and with the data type of <code>x</code>.</p>
+    <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
+Elements <code>state</code>, the updated RNG state, and <code>values</code>, the sampled values
+of shape <code>shape</code> and with the data type of <code>x</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -134,7 +134,7 @@ shape <code>shape</code> and with the data type of <code>x</code>.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_rng_state.html">nv_rng_state</a></span><span class="op">(</span><span class="fl">42L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">nv_sample</span><span class="op">(</span><span class="fl">5</span>, <span class="va">state</span>, <span class="va">pop</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">result</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">result</span><span class="op">$</span><span class="va">values</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  20</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  30</span>

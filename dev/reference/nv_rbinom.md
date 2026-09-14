@@ -36,15 +36,16 @@ nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sampled values. `NULL` (default) uses the backend's
-  default integer data type (see
+  Data type of the sampled values. Must be numeric. `NULL` (default)
+  uses the backend's default integer data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Value
 
-([`list()`](https://rdrr.io/r/base/list.html) of
+(named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-List of two elements: the updated RNG state and the sampled values.
+Elements `state`, the updated RNG state, and `values`, the sampled
+values.
 
 ## See also
 
@@ -61,7 +62,7 @@ Other rng:
 state <- nv_rng_state(42L)
 # Bernoulli samples
 result <- nv_rbinom(c(2, 3), state)
-result[[2]]
+result$values
 #> AnvlArray
 #>  0 0 1
 #>  0 1 1

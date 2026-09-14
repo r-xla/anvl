@@ -118,9 +118,9 @@ Shape.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>list</code> of two <code><a href="arrayish.html">arrayish</a></code> values:<br>
-The first element is the updated RNG state with the same dtype and shape
-as <code>initial_state</code>. The second element is an array of random values with
+    <p>(named <code>list</code> of two <code><a href="arrayish.html">arrayish</a></code>)<br>
+Element <code>state</code> is the updated RNG state with the same dtype and shape
+as <code>initial_state</code>. Element <code>values</code> is an array of random values with
 the given <code>dtype</code> and <code>shape</code>.</p>
     </div>
     <div class="section level2">
@@ -144,13 +144,13 @@ the given <code>dtype</code> and <code>shape</code>.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">0L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"ui64"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">prim_rng_bit_generator</span><span class="op">(</span><span class="va">state</span>, dtype <span class="op">=</span> <span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $state</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUui64{2} ] </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $values</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.7973e+09 2.5791e+09</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1.3515e+09 3.2358e+09</span>

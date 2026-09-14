@@ -34,16 +34,16 @@ nv_sample_int(shape, initial_state, n, dtype = NULL)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sampled integers. `NULL` (default) uses the backend's
-  default integer data type (see
+  Data type of the sampled integers. Must be numeric. `NULL` (default)
+  uses the backend's default integer data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Value
 
-([`list()`](https://rdrr.io/r/base/list.html) of
+(named `list` of two
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-List of two elements: the updated RNG state and the sampled integers, of
-shape `shape`.
+Elements `state`, the updated RNG state, and `values`, the sampled
+integers of shape `shape`.
 
 ## See also
 
@@ -63,7 +63,7 @@ Other rng:
 state <- nv_rng_state(42L)
 # Roll 6 dice
 result <- nv_sample_int(6, state, 6L)
-result[[2]]
+result$values
 #> AnvlArray
 #>  4
 #>  6

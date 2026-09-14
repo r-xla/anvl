@@ -67,9 +67,9 @@ nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
 
   (`NULL` \| `character(1)` \|
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
-  Data type of the sample, `"f32"` or `"f64"`. `NULL` (default) takes it
-  from `mean` and `sd` where either is a real array, and falls back to
-  the default float data type (see
+  Data type of the sample: a 32- or 64-bit float. `NULL` (default) takes
+  it from `mean` and `sd` where either is a real array, and falls back
+  to the default float data type (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
   where both are bare R values, which have none.
 
@@ -210,7 +210,7 @@ nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 #> [ CPUf64{3} ] 
 state <- nv_rng_state(42L)
 result <- nv_rnorm(c(2, 3), state)
-result[[2]]
+result$values
 #> AnvlArray
 #>  -0.0675  0.9489  1.9457
 #>  -0.5255  1.2002  0.0008
@@ -218,7 +218,7 @@ result[[2]]
 
 # `sd` may also be an array of the same shape as the sample
 sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
-nv_rnorm(c(2, 3), state, sd = sds)[[2]]
+nv_rnorm(c(2, 3), state, sd = sds)$values
 #> AnvlArray
 #>   -0.0007   0.9489 194.5720
 #>   -0.0526  12.0017   0.7665

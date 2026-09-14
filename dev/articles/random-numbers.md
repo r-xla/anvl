@@ -51,23 +51,23 @@ The main functions for generating random numbers are
 [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
 and
 [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md).
-All those functions return a list with two elements:
+All those functions return a named list of two elements:
 
-1.  The **new** RNG state (to be used for subsequent random number
-    generation).
-2.  The generated random numbers.
+1.  `state` – the **new** RNG state, to be used for subsequent random
+    number generation.
+2.  `values` – the generated random numbers.
 
 Let’s generate some uniform random numbers:
 
 ``` r
 
 result <- nv_runif(state, dtype = "f32", shape = c(2, 3))
-result[[1]]  # new state
+result$state
 #> AnvlArray
 #>  42
 #>   3
 #> [ CPUui64{2} ]
-result[[2]]  # random numbers
+result$values
 #> AnvlArray
 #>  0.8690 0.1506 0.5203
 #>  0.3103 0.9928 0.1065
@@ -79,7 +79,7 @@ For normally distributed random numbers:
 ``` r
 
 result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mean = 0, sd = 1)
-result[[2]]
+result$values
 #> AnvlArray
 #>  -0.0675  0.9489  1.9457
 #>  -0.5255  1.2002  0.0008
@@ -92,7 +92,7 @@ long as they have the same shape as it:
 ``` r
 
 sds <- nv_matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2)
-nv_rnorm(state, dtype = "f32", shape = c(2, 3), sd = sds)[[2]]
+nv_rnorm(state, dtype = "f32", shape = c(2, 3), sd = sds)$values
 #> AnvlArray
 #>   -0.0007   0.9489 194.5720
 #>   -0.0526  12.0017   0.7665
@@ -107,7 +107,7 @@ the counterpart to R’s
 ``` r
 
 # roll six dice
-nv_sample_int(6L, state, 6L)[[2]]
+nv_sample_int(6L, state, 6L)$values
 #> AnvlArray
 #>  4
 #>  6
@@ -128,7 +128,7 @@ rather than from `1:6`:
 ``` r
 
 population <- nv_array(c(10, 20, 30))
-nv_sample(8L, state, population)[[2]]
+nv_sample(8L, state, population)$values
 #> AnvlArray
 #>  20
 #>  30
@@ -148,7 +148,7 @@ in the example below:
 
 result1 <- nv_runif(state, dtype = "f32", shape = 3L)
 result2 <- nv_runif(state, dtype = "f32", shape = 3L)
-list(first = result1[[2]], second = result2[[2]])
+list(first = result1$values, second = result2$values)
 #> $first
 #> AnvlArray
 #>  0.8690
@@ -172,9 +172,9 @@ previous call:
 ``` r
 
 result1 <- nv_runif(state, dtype = "f32", shape = 3L)
-new_state <- result1[[1]]
+new_state <- result1$state
 result2 <- nv_runif(new_state, dtype = "f32", shape = 3L)
-list(first = result1[[2]], second = result2[[2]])
+list(first = result1$values, second = result2$values)
 #> $first
 #> AnvlArray
 #>  0.8690

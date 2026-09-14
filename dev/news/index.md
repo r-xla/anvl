@@ -45,6 +45,21 @@
 
 ### Features
 
+- The random number generators
+  ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
+  [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
+  [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md),
+  [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md),
+  [`nv_sample()`](https://r-xla.github.io/anvl/dev/reference/nv_sample.md))
+  and
+  [`prim_rng_bit_generator()`](https://r-xla.github.io/anvl/dev/reference/prim_rng_bit_generator.md)
+  return a named list with elements `state` and `values` instead of an
+  unnamed pair, and
+  [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md),
+  [`prim_cummax()`](https://r-xla.github.io/anvl/dev/reference/prim_cummax.md)
+  and
+  [`prim_cummin()`](https://r-xla.github.io/anvl/dev/reference/prim_cummin.md)
+  name theirs `values` and `indices`.
 - The reductions ([`sum()`](https://rdrr.io/r/base/sum.html),
   [`prod()`](https://rdrr.io/r/base/prod.html),
   [`max()`](https://rdrr.io/r/base/Extremes.html),
@@ -103,6 +118,10 @@
 
 ### Bug fixes
 
+- [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)
+  and
+  [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
+  reject a boolean `dtype`, which cannot hold a count or an index.
 - Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a
   better error message, as `drop` is not supported.
 - [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md)
@@ -158,6 +177,9 @@
 - Printed graphs, arrays and error messages now spell a data type the
   way anvl does, so `bool` no longer shows up as its MLIR spelling `i1`.
 - Improved the documentation and various error messages.
+- [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
+  with `min == max` returns the `state` / `values` pair every other
+  sampler returns, instead of the filled array on its own.
 
 ### Tests
 

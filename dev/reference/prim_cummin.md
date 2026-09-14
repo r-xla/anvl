@@ -56,13 +56,13 @@ over `(values, iota)`.
 ``` r
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 prim_cummin(x, axis = 1L)
-#> [[1]]
+#> $values
 #> AnvlArray
 #>  3 4 5
 #>  1 1 5
 #> [ CPUf32{2,3} ] 
 #> 
-#> [[2]]
+#> $indices
 #> AnvlArray
 #>  1 1 1
 #>  2 2 1

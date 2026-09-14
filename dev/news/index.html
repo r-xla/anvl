@@ -96,7 +96,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="features-development-version">Features<a class="anchor" aria-label="anchor" href="#features-development-version"></a></h3>
-<ul><li>The reductions (<code><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum()</a></code>, <code><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod()</a></code>, <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max()</a></code>, <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min()</a></code>, <code><a href="https://rdrr.io/r/base/range.html" class="external-link">range()</a></code>, <code><a href="https://rdrr.io/r/base/any.html" class="external-link">any()</a></code>, <code><a href="https://rdrr.io/r/base/all.html" class="external-link">all()</a></code>) now work with multiple data inputs.</li>
+<ul><li>The random number generators (<code><a href="../reference/nv_runif.html">nv_runif()</a></code>, <code><a href="../reference/nv_normal.html">nv_rnorm()</a></code>, <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code>, <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code>, <code><a href="../reference/nv_sample.html">nv_sample()</a></code>) and <code><a href="../reference/prim_rng_bit_generator.html">prim_rng_bit_generator()</a></code> return a named list with elements <code>state</code> and <code>values</code> instead of an unnamed pair, and <code><a href="../reference/prim_top_k.html">prim_top_k()</a></code>, <code><a href="../reference/prim_cummax.html">prim_cummax()</a></code> and <code><a href="../reference/prim_cummin.html">prim_cummin()</a></code> name theirs <code>values</code> and <code>indices</code>.</li>
+<li>The reductions (<code><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum()</a></code>, <code><a href="https://rdrr.io/r/base/prod.html" class="external-link">prod()</a></code>, <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max()</a></code>, <code><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min()</a></code>, <code><a href="https://rdrr.io/r/base/range.html" class="external-link">range()</a></code>, <code><a href="https://rdrr.io/r/base/any.html" class="external-link">any()</a></code>, <code><a href="https://rdrr.io/r/base/all.html" class="external-link">all()</a></code>) now work with multiple data inputs.</li>
 <li>The default data types for floating point numbers and integers can now be configured via the <code>anvl.default_dtypes</code> field. You can configure this for a specific scope via <code><a href="../reference/local_default_dtypes.html">local_default_dtypes()</a></code> and <code><a href="../reference/local_default_dtypes.html">with_default_dtypes()</a></code>. To convert a function to one running at a specified precision, use <code><a href="../reference/with_dtypes.html">with_dtypes()</a></code>.</li>
 <li>New <code><a href="../reference/nv_linspace.html">nv_linspace()</a></code> and <code><a href="../reference/nv_linspace.html">nv_linspace_like()</a></code>, replacing <code><a href="../reference/nv_seq.html">nv_seq()</a></code> with a provided <code>steps</code> argument.</li>
 <li>
@@ -119,7 +120,9 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>Subsetting with <code>drop</code> (e.g. <code>x[1, , drop = FALSE]</code>) now gives a better error message, as <code>drop</code> is not supported.</li>
+<ul><li>
+<code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code> and <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> reject a boolean <code>dtype</code>, which cannot hold a count or an index.</li>
+<li>Subsetting with <code>drop</code> (e.g. <code>x[1, , drop = FALSE]</code>) now gives a better error message, as <code>drop</code> is not supported.</li>
 <li>
 <code><a href="../reference/nv_quantile.html">nv_quantile()</a></code> and <code><a href="../reference/nv_median.html">nv_median()</a></code> now compute at the default float data type for a non-float input.</li>
 <li>
@@ -135,6 +138,8 @@
 <code><a href="../reference/prim_reduce_any.html">prim_reduce_any()</a></code> / <code><a href="../reference/prim_reduce_all.html">prim_reduce_all()</a></code> (and <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code> / <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code>) now reject a non-boolean input when the call is traced. Type inference declared a <code>bool</code> output whatever the input was, so an integer operand reached the lowering and failed with <code>Data types of inputs and init_values must match</code>.</li>
 <li>Printed graphs, arrays and error messages now spell a data type the way anvl does, so <code>bool</code> no longer shows up as its MLIR spelling <code>i1</code>.</li>
 <li>Improved the documentation and various error messages.</li>
+<li>
+<code><a href="../reference/nv_runif.html">nv_runif()</a></code> with <code>min == max</code> returns the <code>state</code> / <code>values</code> pair every other sampler returns, instead of the filled array on its own.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="tests-development-version">Tests<a class="anchor" aria-label="anchor" href="#tests-development-version"></a></h3>
