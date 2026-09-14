@@ -86,6 +86,15 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
+* `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold,
+  written in its own category -- `0L` for an integer or a boolean, `0` only for
+  a float, as `promotion_like()` already required. A fractional value used to
+  be silently truncated at an integer data type, and a negative one at an
+  unsigned data type or an `NA` anywhere reached the backend as a raw MLIR
+  error.
+* `shape` arguments reject a fractional axis size instead of truncating it, and
+  one above `.Machine$integer.max` instead of turning it into `NA`. A zero-size
+  axis is accepted, which `nv_runif()` and the other samplers used to refuse.
 * Every data type of the float category counts as a float, so `f16` and `bf16`
   pass the checks that used to accept only `f32` and `f64`. `nv_pnorm()` and
   `nv_qnorm()` keep the narrower requirement, as they carry one coefficient

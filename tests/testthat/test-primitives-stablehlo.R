@@ -1307,3 +1307,40 @@ describe("prim_reduce_any / prim_reduce_all input data type", {
     )
   })
 })
+
+test_that("prim_fill names `shape` in its own error", {
+  expect_error(prim_fill(0, shape = -1L, dtype = "f32"), "negative axis size")
+  expect_equal(shape(prim_fill(0, shape = c(), dtype = "f32")), integer())
+  expect_equal(shape(prim_fill(0, shape = 0L, dtype = "f32")), 0L)
+})
+
+test_that("prim_fill() checks that `value` is something `dtype` can hold", {
+  # A literal has to be written in the target's category, as `promotion_like()`
+  # already requires: an R double is only ever built at a float. These used to
+  # reach the backend -- a fractional value was silently truncated at an
+  # integer data type, and a negative one at an unsigned data type or an `NA`
+  # anywhere came back as a raw MLIR parse error.
+  expect_error(prim_fill(1.5, 2L, dtype = "i32"), "must be an R integer")
+  expect_error(prim_fill(0, 2L, dtype = "i32"), "must be an R integer")
+  expect_error(prim_fill(-1L, 2L, dtype = "ui8"), "must be a non-negative R integer")
+  expect_error(prim_fill(3L, 2L, dtype = "bool"), "must be a logical")
+  expect_error(prim_fill(0, 2L, dtype = "bool"), "must be a logical")
+  expect_error(prim_fill(NA, 2L, dtype = "f32"), "must not be")
+  expect_error(prim_fill(NA_integer_, 2L, dtype = "i32"), "must not be")
+  # The slip is writing a double where an integer is meant, so name the remedy.
+  expect_error(prim_fill(0, 2L, dtype = "i32"), "Write it with an `L`")
+
+  # What each category does accept. `0L` / `1L` serve everywhere, which is what
+  # the fills that do not know their data type statically write.
+  expect_equal(as.vector(prim_fill(TRUE, 2L, dtype = "bool")), c(TRUE, TRUE))
+  expect_equal(as.vector(prim_fill(0L, 2L, dtype = "bool")), c(FALSE, FALSE))
+  expect_equal(as.integer(prim_fill(2L, 2L, dtype = "i8")), c(2L, 2L))
+  expect_equal(as.integer(prim_fill(0L, 2L, dtype = "ui8")), c(0L, 0L))
+  expect_equal(as.vector(prim_fill(0L, 2L, dtype = "f32")), c(0, 0))
+  expect_equal(as.vector(prim_fill(1.5, 2L, dtype = "f32")), c(1.5, 1.5))
+  # `NaN` is a float value, not a missing one, so it is allowed through.
+  expect_true(all(is.nan(as.vector(prim_fill(NaN, 2L, dtype = "f32")))))
+  # The range is the backend's business, not this check's: the value gets
+  # through here and is refused there.
+  expect_error(prim_fill(300L, 2L, dtype = "i8"), "out of range")
+})
