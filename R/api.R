@@ -555,7 +555,7 @@ make_do_binary <- function(f) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
-#' x + y
+#' nv_add(x, y)
 #' @export
 #' @jit
 nv_add <- make_do_binary(prim_add)
@@ -569,7 +569,7 @@ nv_add <- make_do_binary(prim_add)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
-#' x * y
+#' nv_mul(x, y)
 #' @export
 #' @jit
 nv_mul <- make_do_binary(prim_mul)
@@ -583,7 +583,7 @@ nv_mul <- make_do_binary(prim_mul)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(4, 5, 6))
 #' y <- nv_array(c(1, 2, 3))
-#' x - y
+#' nv_sub(x, y)
 #' @export
 #' @jit
 nv_sub <- make_do_binary(prim_sub)
@@ -597,7 +597,7 @@ nv_sub <- make_do_binary(prim_sub)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(10, 20, 30))
 #' y <- nv_array(c(2, 5, 10))
-#' x / y
+#' nv_div(x, y)
 #' @export
 #' @jit
 nv_div <- make_do_binary(prim_div)
@@ -611,7 +611,7 @@ nv_div <- make_do_binary(prim_div)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(2, 3, 4))
 #' y <- nv_array(c(3, 2, 1))
-#' x ^ y
+#' nv_pow(x, y)
 #' @export
 #' @jit
 nv_pow <- make_do_binary(prim_pow)
@@ -625,7 +625,7 @@ nv_pow <- make_do_binary(prim_pow)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(1, 3, 2))
-#' x == y
+#' nv_eq(x, y)
 #' @export
 #' @jit
 nv_eq <- make_do_binary(prim_eq)
@@ -639,7 +639,7 @@ nv_eq <- make_do_binary(prim_eq)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(1, 3, 2))
-#' x != y
+#' nv_ne(x, y)
 #' @export
 #' @jit
 nv_ne <- make_do_binary(prim_ne)
@@ -653,7 +653,7 @@ nv_ne <- make_do_binary(prim_ne)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
-#' x > y
+#' nv_gt(x, y)
 #' @export
 #' @jit
 nv_gt <- make_do_binary(prim_gt)
@@ -667,7 +667,7 @@ nv_gt <- make_do_binary(prim_gt)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
-#' x >= y
+#' nv_ge(x, y)
 #' @export
 #' @jit
 nv_ge <- make_do_binary(prim_ge)
@@ -681,7 +681,7 @@ nv_ge <- make_do_binary(prim_ge)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
-#' x < y
+#' nv_lt(x, y)
 #' @export
 #' @jit
 nv_lt <- make_do_binary(prim_lt)
@@ -695,7 +695,7 @@ nv_lt <- make_do_binary(prim_lt)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
-#' x <= y
+#' nv_le(x, y)
 #' @export
 #' @jit
 nv_le <- make_do_binary(prim_le)
@@ -757,7 +757,6 @@ nv_remainder <- make_do_binary(prim_remainder)
 #' x <- nv_array(c(1L, -1L))
 #' y <- nv_array(c(-3L, 3L))
 #' nv_mod(x, y)
-#' as.vector(x) %% as.vector(y)
 #' @export
 #' @jit
 nv_mod <- function(lhs, rhs) {
@@ -765,14 +764,23 @@ nv_mod <- function(lhs, rhs) {
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
-  nv_remainder(nv_remainder(lhs, rhs) + rhs, rhs)
+  # `nv_remainder()` truncates, so its result carries the sign of `lhs`; base
+  # R's `%%` carries the sign of `rhs`. Shift by `rhs` only where the two
+  # disagree -- a remainder much smaller than `rhs` is rounded away by the
+  # shift, so `nv_mod(1e-20, 1)` has to reach the answer without one.
+  rest <- nv_remainder(lhs, rhs)
+  shifted <- nv_ifelse((rest != 0) & ((rest < 0) != (rhs < 0)), rest + rhs, rest)
+  # `rest + rhs` can round all the way up to `rhs` when `rest` is tiny next to
+  # it. The result has to stay strictly inside `rhs`, so fold that back to
+  # zero, as base R's second reduction does.
+  nv_ifelse(nv_abs(shifted) >= nv_abs(rhs), 0, shifted)
 }
 
 #' @title Flooring Division
 #' @description
-#' Element-wise flooring division, matching base R's `%/%` operator: the
-#' result is the largest whole number that does not exceed `lhs / rhs`.
-#' You can also use the `%/%` operator.
+#' Element-wise flooring division.
+#' You can also call this via the `%/%` opertor.
+#' The result is the largest whole number that does not exceed `lhs / rhs`.
 #'
 #' @template params_lhs_rhs
 #' @template return_binary
@@ -782,7 +790,6 @@ nv_mod <- function(lhs, rhs) {
 #' x <- nv_array(c(7L, -7L))
 #' y <- nv_array(c(2L, 2L))
 #' nv_floor_div(x, y)
-#' as.vector(x) %/% as.vector(y)
 #' @export
 #' @jit
 nv_floor_div <- function(lhs, rhs) {
@@ -803,52 +810,39 @@ nv_floor_div <- function(lhs, rhs) {
   nv_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs)
 }
 
-#' @title Bitwise And
+#' @title Bitwise AND
 #' @description
 #' Element-wise bitwise AND of two integer arrays, which for a boolean array
 #' is the logical AND.
-#'
-#' This is *not* what the `&` operator does: like in base R, `&` is logical,
-#' so it requires a boolean operand and returns a boolean array (see the
-#' section below).
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_and()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
-#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
 #' @export
 #' @jit
 nv_and <- make_do_binary(prim_and)
 
-#' @title Bitwise Or
+#' @title Bitwise OR
 #' @description
 #' Element-wise bitwise OR of two integer arrays, which for a boolean array
 #' is the logical OR.
-#'
-#' This is *not* what the `|` operator does: like in base R, `|` is logical,
-#' so it requires a boolean operand and returns a boolean array (see the
-#' section below).
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_or()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
-#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
 #' @export
 #' @jit
 nv_or <- make_do_binary(prim_or)
 
-#' @title Bitwise Xor
+#' @title Bitwise XOR
 #' @description
 #' Element-wise bitwise XOR of two integer arrays, which for a boolean array
 #' is the logical XOR.
-#'
-#' Base R's `xor()` is logical instead: it is built on `|` and `&` and
-#' therefore requires boolean operands, which `nv_or()` and `nv_and()`
-#' document.
+#' For *logical* inputs, you can also use `xor`.
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_xor()] for the underlying primitive.
@@ -916,7 +910,7 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' @export
 #' @jit
 nv_atan2 <- function(lhs, rhs) {
-  args <- nv_promote_to_common(promote_to_float(lhs), promote_to_float(rhs))
+  args <- nv_promote_to_common(int_to_float(lhs), int_to_float(rhs))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   prim_atan2(args[[1L]], args[[2L]])
 }
@@ -943,6 +937,14 @@ nv_bitcast_convert <- prim_bitcast_convert
 
 ## Unary ops ------------------------------------------------------------------
 
+# A unary `nv_*` function that computes in floating point: an int-like array is
+# converted to the default float first, the way base R's `sqrt(1L)` returns a
+# double. Everything else reaches the primitive unchanged, so a boolean array
+# is rejected there rather than silently computed on.
+make_float_unary <- function(f) {
+  function(x) f(int_to_float(x))
+}
+
 #' @title Negation
 #' @description
 #' Negates an array element-wise. You can also use the unary `-` operator.
@@ -959,17 +961,12 @@ nv_negate <- prim_negate
 #' @description
 #' Element-wise bitwise NOT of an integer array, which for a boolean array is
 #' the logical NOT.
-#'
-#' This is *not* what the `!` operator does: like in base R, `!` is logical,
-#' so it requires a boolean operand and returns a boolean array (see the
-#' section below).
 #' @template param_x
 #' @template return_unary
 #' @seealso [prim_not()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_not(nv_array(c(TRUE, FALSE, TRUE)))
 #' nv_not(nv_array(12L)) # bitwise: -13
-#' !nv_array(c(TRUE, FALSE)) # logical
 #' @export
 nv_not <- prim_not
 
@@ -995,7 +992,7 @@ nv_abs <- prim_abs
 #' x <- nv_array(c(1, 4, 9))
 #' sqrt(x)
 #' @export
-nv_sqrt <- function(x) prim_sqrt(promote_to_float(x))
+nv_sqrt <- make_float_unary(prim_sqrt)
 
 #' @title Reciprocal Square Root
 #' @description
@@ -1007,7 +1004,7 @@ nv_sqrt <- function(x) prim_sqrt(promote_to_float(x))
 #' x <- nv_array(c(1, 4, 9))
 #' nv_rsqrt(x)
 #' @export
-nv_rsqrt <- function(x) prim_rsqrt(promote_to_float(x))
+nv_rsqrt <- make_float_unary(prim_rsqrt)
 
 #' @title Natural Logarithm
 #' @description
@@ -1019,7 +1016,7 @@ nv_rsqrt <- function(x) prim_rsqrt(promote_to_float(x))
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' log(x)
 #' @export
-nv_log <- function(x) prim_log(promote_to_float(x))
+nv_log <- make_float_unary(prim_log)
 
 #' @title Hyperbolic Tangent
 #' @description
@@ -1031,7 +1028,7 @@ nv_log <- function(x) prim_log(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' tanh(x)
 #' @export
-nv_tanh <- function(x) prim_tanh(promote_to_float(x))
+nv_tanh <- make_float_unary(prim_tanh)
 
 #' @title Tangent
 #' @description
@@ -1043,7 +1040,7 @@ nv_tanh <- function(x) prim_tanh(promote_to_float(x))
 #' x <- nv_array(c(0, 0.5, 1))
 #' tan(x)
 #' @export
-nv_tan <- function(x) prim_tan(promote_to_float(x))
+nv_tan <- make_float_unary(prim_tan)
 
 #' @title Sine
 #' @description
@@ -1055,7 +1052,7 @@ nv_tan <- function(x) prim_tan(promote_to_float(x))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' sin(x)
 #' @export
-nv_sin <- function(x) prim_sin(promote_to_float(x))
+nv_sin <- make_float_unary(prim_sin)
 
 #' @title Cosine
 #' @description
@@ -1067,15 +1064,11 @@ nv_sin <- function(x) prim_sin(promote_to_float(x))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' cos(x)
 #' @export
-nv_cos <- function(x) prim_cos(promote_to_float(x))
+nv_cos <- make_float_unary(prim_cos)
 
 #' @title Sine of a Multiple of Pi
 #' @description
 #' Element-wise `sin(pi * x)`. You can also use `sinpi()`.
-#' Like base R's [base::sinpi()], it is exact for a whole or half-integer
-#' argument: the argument is first reduced to the interval `[-0.5, 0.5]` around
-#' the nearest whole number, which is where the sine of a multiple of pi is
-#' accurate.
 #' @template param_x_float
 #' @template return_unary_float
 #' @seealso [nv_cospi()], [nv_tanpi()], [nv_sin()]
@@ -1084,7 +1077,7 @@ nv_cos <- function(x) prim_cos(promote_to_float(x))
 #' @export
 #' @jit
 nv_sinpi <- function(x) {
-  x <- as_anvl_array(promote_to_float(x))
+  x <- as_anvl_array(int_to_float(x))
   n <- nv_round(x, method = "nearest_even")
   reduced <- nv_sin((x - n) * pi)
   # The sine of `pi * n` alternates in sign with the parity of `n`.
@@ -1094,8 +1087,6 @@ nv_sinpi <- function(x) {
 #' @title Cosine of a Multiple of Pi
 #' @description
 #' Element-wise `cos(pi * x)`. You can also use `cospi()`.
-#' Like base R's [base::cospi()], it is exact for a whole or half-integer
-#' argument.
 #' @template param_x_float
 #' @template return_unary_float
 #' @seealso [nv_sinpi()], [nv_tanpi()], [nv_cos()]
@@ -1105,7 +1096,7 @@ nv_sinpi <- function(x) {
 #' @jit
 nv_cospi <- function(x) {
   # cos(pi * x) == sin(pi * (x + 1/2))
-  nv_sinpi(as_anvl_array(promote_to_float(x)) + 0.5)
+  nv_sinpi(as_anvl_array(int_to_float(x)) + 0.5)
 }
 
 #' @title Tangent of a Multiple of Pi
@@ -1121,8 +1112,9 @@ nv_cospi <- function(x) {
 #' @export
 #' @jit
 nv_tanpi <- function(x) {
-  x <- as_anvl_array(promote_to_float(x))
+  x <- as_anvl_array(int_to_float(x))
   denominator <- nv_cospi(x)
+  # Otherwise we get (+-)inf depending on which side we land, which is bad
   nv_ifelse(denominator == 0, NaN, nv_sinpi(x) / denominator)
 }
 
@@ -1198,7 +1190,7 @@ nv_sign <- prim_sign
 #' x <- nv_array(c(0, 1, 2))
 #' exp(x)
 #' @export
-nv_exp <- function(x) prim_exp(promote_to_float(x))
+nv_exp <- make_float_unary(prim_exp)
 
 #' @title Exponential Minus One
 #' @description
@@ -1210,7 +1202,7 @@ nv_exp <- function(x) prim_exp(promote_to_float(x))
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_expm1(x)
 #' @export
-nv_expm1 <- function(x) prim_expm1(promote_to_float(x))
+nv_expm1 <- make_float_unary(prim_expm1)
 
 #' @title Log Plus One
 #' @description
@@ -1222,7 +1214,7 @@ nv_expm1 <- function(x) prim_expm1(promote_to_float(x))
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_log1p(x)
 #' @export
-nv_log1p <- function(x) prim_log1p(promote_to_float(x))
+nv_log1p <- make_float_unary(prim_log1p)
 
 #' @title Cube Root
 #' @description
@@ -1234,7 +1226,7 @@ nv_log1p <- function(x) prim_log1p(promote_to_float(x))
 #' x <- nv_array(c(1, 8, 27))
 #' nv_cbrt(x)
 #' @export
-nv_cbrt <- function(x) prim_cbrt(promote_to_float(x))
+nv_cbrt <- make_float_unary(prim_cbrt)
 
 #' @title Logistic (Sigmoid)
 #' @description
@@ -1246,7 +1238,7 @@ nv_cbrt <- function(x) prim_cbrt(promote_to_float(x))
 #' x <- nv_array(c(-2, 0, 2))
 #' nv_logistic(x)
 #' @export
-nv_logistic <- function(x) prim_logistic(promote_to_float(x))
+nv_logistic <- make_float_unary(prim_logistic)
 
 #' @title Arc Cosine
 #' @description
@@ -1258,7 +1250,7 @@ nv_logistic <- function(x) prim_logistic(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' acos(x)
 #' @export
-nv_acos <- function(x) prim_acos(promote_to_float(x))
+nv_acos <- make_float_unary(prim_acos)
 
 #' @title Inverse Hyperbolic Cosine
 #' @description
@@ -1270,7 +1262,7 @@ nv_acos <- function(x) prim_acos(promote_to_float(x))
 #' x <- nv_array(c(1, 2, 10))
 #' acosh(x)
 #' @export
-nv_acosh <- function(x) prim_acosh(promote_to_float(x))
+nv_acosh <- make_float_unary(prim_acosh)
 
 #' @title Arc Sine
 #' @description
@@ -1282,7 +1274,7 @@ nv_acosh <- function(x) prim_acosh(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' asin(x)
 #' @export
-nv_asin <- function(x) prim_asin(promote_to_float(x))
+nv_asin <- make_float_unary(prim_asin)
 
 #' @title Inverse Hyperbolic Sine
 #' @description
@@ -1294,7 +1286,7 @@ nv_asin <- function(x) prim_asin(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' asinh(x)
 #' @export
-nv_asinh <- function(x) prim_asinh(promote_to_float(x))
+nv_asinh <- make_float_unary(prim_asinh)
 
 #' @title Arc Tangent
 #' @description
@@ -1306,7 +1298,7 @@ nv_asinh <- function(x) prim_asinh(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' atan(x)
 #' @export
-nv_atan <- function(x) prim_atan(promote_to_float(x))
+nv_atan <- make_float_unary(prim_atan)
 
 #' @title Inverse Hyperbolic Tangent
 #' @description
@@ -1318,7 +1310,7 @@ nv_atan <- function(x) prim_atan(promote_to_float(x))
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' atanh(x)
 #' @export
-nv_atanh <- function(x) prim_atanh(promote_to_float(x))
+nv_atanh <- make_float_unary(prim_atanh)
 
 #' @title Hyperbolic Cosine
 #' @description
@@ -1330,7 +1322,7 @@ nv_atanh <- function(x) prim_atanh(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' cosh(x)
 #' @export
-nv_cosh <- function(x) prim_cosh(promote_to_float(x))
+nv_cosh <- make_float_unary(prim_cosh)
 
 #' @title Hyperbolic Sine
 #' @description
@@ -1342,7 +1334,7 @@ nv_cosh <- function(x) prim_cosh(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' sinh(x)
 #' @export
-nv_sinh <- function(x) prim_sinh(promote_to_float(x))
+nv_sinh <- make_float_unary(prim_sinh)
 
 #' @title Digamma
 #' @description
@@ -1355,7 +1347,7 @@ nv_sinh <- function(x) prim_sinh(promote_to_float(x))
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' digamma(x)
 #' @export
-nv_digamma <- function(x) prim_digamma(promote_to_float(x))
+nv_digamma <- make_float_unary(prim_digamma)
 
 #' @title Log-Gamma
 #' @description
@@ -1368,7 +1360,7 @@ nv_digamma <- function(x) prim_digamma(promote_to_float(x))
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' lgamma(x)
 #' @export
-nv_lgamma <- function(x) prim_lgamma(promote_to_float(x))
+nv_lgamma <- make_float_unary(prim_lgamma)
 
 #' @title Gamma Function
 #' @description
@@ -1386,12 +1378,16 @@ nv_lgamma <- function(x) prim_lgamma(promote_to_float(x))
 #' @export
 #' @jit
 nv_gamma <- function(x) {
-  x <- as_anvl_array(promote_to_float(x))
+  x <- as_anvl_array(int_to_float(x))
   positive <- nv_exp(nv_lgamma(x))
   # lgamma() is the log of the *absolute* gamma, so for a negative argument use
   # Euler's reflection formula gamma(x) * gamma(1 - x) = pi / sin(pi * x),
-  # whose right-hand side is evaluated at 1 - x > 1.
-  reflected <- pi / (nv_sinpi(x) * nv_exp(nv_lgamma(1 - x)))
+  # whose right-hand side is evaluated at 1 - x > 1. Where the reflection is
+  # not selected it is evaluated at a regular point: at a positive whole
+  # number sin(pi * x) * gamma(1 - x) is 0 * Inf, and the cotangent that
+  # nv_ifelse() sends into the discarded branch would pick the NaN up.
+  x_reflect <- nv_ifelse(x < 0, x, -0.5)
+  reflected <- pi / (nv_sinpi(x_reflect) * nv_exp(nv_lgamma(1 - x_reflect)))
   out <- nv_ifelse(x < 0, reflected, positive)
   nv_ifelse((x <= 0) & (x == nv_floor(x)), NaN, out)
 }
@@ -1420,7 +1416,7 @@ nv_gamma <- function(x) {
 #' @export
 #' @jit static 1L
 nv_polygamma <- function(n, x) {
-  args <- nv_promote_to_common(n, promote_to_float(x))
+  args <- nv_promote_to_common(n, int_to_float(x))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   do.call(prim_polygamma, args)
 }
@@ -1435,7 +1431,7 @@ nv_polygamma <- function(n, x) {
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erf(x)
 #' @export
-nv_erf <- function(x) prim_erf(promote_to_float(x))
+nv_erf <- make_float_unary(prim_erf)
 
 #' @title Inverse Error Function
 #' @description
@@ -1447,7 +1443,7 @@ nv_erf <- function(x) prim_erf(promote_to_float(x))
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' nv_erf_inv(x)
 #' @export
-nv_erf_inv <- function(x) prim_erf_inv(promote_to_float(x))
+nv_erf_inv <- make_float_unary(prim_erf_inv)
 
 #' @title Complementary Error Function
 #' @description
@@ -1459,7 +1455,7 @@ nv_erf_inv <- function(x) prim_erf_inv(promote_to_float(x))
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erfc(x)
 #' @export
-nv_erfc <- function(x) prim_erfc(promote_to_float(x))
+nv_erfc <- make_float_unary(prim_erfc)
 
 #' @title Is Finite
 #' @description
@@ -1725,7 +1721,12 @@ nv_signif <- function(x, digits = 6) {
   digits <- max(digits, 1)
   x <- as_anvl_array(assert_float_array(x))
   # Shift the value so that `digits` significant digits sit in front of the
-  # decimal point, round there, and shift back.
+  # decimal point, round there, and shift back. A power of ten is not a float,
+  # so both the shift and the shift back round to the nearest one, and the
+  # result can land one unit in the last place away from the float closest to
+  # the intended decimal: `signif(1.15, 2)` is 1.2000000000000002 here and
+  # 1.2000000000000000 in base R, which shifts in long double. The digits that
+  # are kept are the same either way.
   scale <- nv_pow(10, digits - 1 - nv_floor(nv_log10(nv_abs(x))))
   rounded <- nv_round(x * scale, method = "nearest_even") / scale
   # 0 has no magnitude, and Inf / NaN must pass through unchanged.
@@ -1754,7 +1755,7 @@ nv_signif <- function(x, digits = 6) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
-#' x %*% y
+#' nv_matmul(x, y)
 #' @export
 #' @jit static "precision"
 nv_matmul <- function(lhs, rhs, precision = "highest") {
@@ -3212,7 +3213,7 @@ nv_select <- function(x, axis, index) {
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
-#' @section Relation to base R:
+#' @section The `sort()` generic:
 #' [base::sort()] flattens a multi-axis array into a vector, while
 #' `nv_sort()` (and `sort()` on an anvl array) sorts along a single axis, the
 #' last one by default, and keeps the shape. Flatten with [nv_flatten()]
@@ -3351,9 +3352,7 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' make the array intent explicit.
 #'
 #' A quantile generally falls between two elements, so a non-float `x` is
-#' computed (and returned) at the default float data type, like
-#' [stats::quantile()] returns a double for an integer vector. See
-#' [`default_dtypes()`].
+#' computed (and returned) at the default float data type.
 #' @section Interpolation modes:
 #' Let `h = (n - 1) * q` be the 0-based fractional index for an axis of
 #' length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
@@ -3492,7 +3491,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #'
 #' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
 #' extra arguments (e.g. `interpolation`) are forwarded via `...`.
-#' @section Relation to base R:
+#' @section The `median()` generic:
 #' [stats::median()] flattens a multi-axis array, while `nv_median()` (and
 #' `median()` on an anvl array) reduces a single axis, the last one by
 #' default. Pass `axis` explicitly, or flatten first with [nv_flatten()], to

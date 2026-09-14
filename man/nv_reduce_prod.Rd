@@ -34,7 +34,7 @@ When \code{drop = FALSE}, the reduced axes are set to 1.
 Multiplies array elements along the specified axes.
 A boolean array is multiplied as zeroes and ones, like \code{\link[base:prod]{base::prod()}} does.
 }
-\section{Relation to base R}{
+\section{The \code{prod()} generic}{
 
 \code{prod()} reduces over all axes and, like \code{\link[base:prod]{base::prod()}}, takes several data
 arguments: \code{prod(x, y)} is the product of both arrays. \code{na.rm} becomes

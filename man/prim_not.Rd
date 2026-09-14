@@ -16,8 +16,6 @@ Has the same shape and data type as the input.
 }
 \description{
 Element-wise bitwise NOT, which for a boolean array is the logical NOT.
-Note that the \code{!} operator is logical instead, like in base R
-(see \code{\link[=nv_not]{nv_not()}}).
 }
 \section{Implemented Rules}{
 

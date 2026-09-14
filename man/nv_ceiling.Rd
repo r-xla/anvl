@@ -9,8 +9,7 @@ nv_ceiling(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is returned unchanged, like in base R; a
-boolean array is not accepted.}
+Input array. An integer array is returned unchanged.}
 }
 \value{
 \code{\link{arrayish}}\cr

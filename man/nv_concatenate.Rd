@@ -27,7 +27,7 @@ data type and scalars are broadcast before concatenation.
 
 You can also use \code{c()}, which flattens its arguments first, like base R.
 }
-\section{Relation to base R}{
+\section{The \code{c()} generic}{
 
 \code{c()} concatenates scalars and 1-D arrays into a 1-D array, like
 \code{\link[base:c]{base::c()}} does for vectors. An array with more than one axis is an error:

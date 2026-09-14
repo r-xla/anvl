@@ -8,11 +8,23 @@ NULL
 #
 # The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
 # functions, registered for the second class.
+#
+# A delegate *calls* its twin instead of being assigned it
+# (`floor.AnvlArray <- nv_floor`), even where the arguments line up exactly.
+# An assignment captures the function, and R/zzz.R rebinds every `@jit`-tagged
+# `nv_*` name to its jitted wrapper after this file is sourced, so the alias
+# would hold the version from before that and quietly skip `jit()`. Calling by
+# name looks the binding up when the method runs, whatever the collation order.
 
 # Arithmetic operators ---------------------------------------------------------
 
 #' @rdname nv_add
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(4, 5, 6))
+#' x + y
+#' +x # unary plus is the identity
 #' @export
 `+.AnvlArray` <- function(e1, e2) {
   # Base R's unary `+` is the identity.
@@ -24,8 +36,11 @@ NULL
 
 #' @rdname nv_sub
 #' @usage NULL
-#' @section Relation to base R:
-#' The unary `-x` is [nv_negate()].
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(4, 5, 6))
+#' y <- nv_array(c(1, 2, 3))
+#' x - y
+#' -x # unary minus negates
 #' @export
 `-.AnvlArray` <- function(e1, e2) {
   if (missing(e2)) nv_negate(e1) else nv_sub(e1, e2)
@@ -36,6 +51,10 @@ NULL
 
 #' @rdname nv_mul
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(4, 5, 6))
+#' x * y
 #' @export
 `*.AnvlArray` <- function(e1, e2) {
   nv_mul(e1, e2)
@@ -46,6 +65,10 @@ NULL
 
 #' @rdname nv_div
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(10, 20, 30))
+#' y <- nv_array(c(2, 5, 10))
+#' x / y
 #' @export
 `/.AnvlArray` <- function(e1, e2) {
   nv_div(e1, e2)
@@ -56,6 +79,10 @@ NULL
 
 #' @rdname nv_pow
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(2, 3, 4))
+#' y <- nv_array(c(3, 2, 1))
+#' x^y
 #' @export
 `^.AnvlArray` <- function(e1, e2) {
   nv_pow(e1, e2)
@@ -66,6 +93,11 @@ NULL
 
 #' @rdname nv_mod
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1L, -1L))
+#' y <- nv_array(c(-3L, 3L))
+#' x %% y
+#' as.vector(x) %% as.vector(y) # the same in base R
 #' @export
 `%%.AnvlArray` <- function(e1, e2) {
   nv_mod(e1, e2)
@@ -76,6 +108,11 @@ NULL
 
 #' @rdname nv_floor_div
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(7L, -7L))
+#' y <- nv_array(c(2L, 2L))
+#' x %/% y
+#' as.vector(x) %/% as.vector(y) # the same in base R
 #' @export
 `%/%.AnvlArray` <- function(e1, e2) {
   nv_floor_div(e1, e2)
@@ -86,6 +123,10 @@ NULL
 
 #' @rdname nv_matmul
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_matrix(1:6, nrow = 2)
+#' y <- nv_matrix(1:6, nrow = 3)
+#' x %*% y
 #' @export
 `%*%.AnvlArray` <- function(x, y) {
   nv_matmul(x, y)
@@ -98,6 +139,10 @@ NULL
 
 #' @rdname nv_eq
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(1, 3, 2))
+#' x == y
 #' @export
 `==.AnvlArray` <- function(e1, e2) {
   nv_eq(e1, e2)
@@ -108,6 +153,10 @@ NULL
 
 #' @rdname nv_ne
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(1, 3, 2))
+#' x != y
 #' @export
 `!=.AnvlArray` <- function(e1, e2) {
   nv_ne(e1, e2)
@@ -118,6 +167,10 @@ NULL
 
 #' @rdname nv_lt
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(1, 3, 2))
+#' x < y
 #' @export
 `<.AnvlArray` <- function(e1, e2) {
   nv_lt(e1, e2)
@@ -128,6 +181,10 @@ NULL
 
 #' @rdname nv_le
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(1, 3, 2))
+#' x <= y
 #' @export
 `<=.AnvlArray` <- function(e1, e2) {
   nv_le(e1, e2)
@@ -138,6 +195,10 @@ NULL
 
 #' @rdname nv_gt
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(1, 3, 2))
+#' x > y
 #' @export
 `>.AnvlArray` <- function(e1, e2) {
   nv_gt(e1, e2)
@@ -148,6 +209,10 @@ NULL
 
 #' @rdname nv_ge
 #' @usage NULL
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(c(1, 3, 2))
+#' x >= y
 #' @export
 `>=.AnvlArray` <- function(e1, e2) {
   nv_ge(e1, e2)
@@ -163,26 +228,28 @@ NULL
 # `sqrt()` requires a float array instead of promoting an integer one. On a
 # boolean array bitwise and logical coincide, so they delegate to the bitwise
 # `nv_and()` / `nv_or()` / `nv_not()`.
-bitwise_hint <- function() {
+# `fn` is the bitwise twin of the operator that rejected its operand. The name
+# is pasted in rather than interpolated, because the hint is styled later, in
+# the environment of the assertion that raises it.
+bitwise_hint <- function(fn) {
   c(
     "Compare it explicitly, e.g. {.code x != 0}, or convert it with {.fn nv_convert}.",
-    "{.fn nv_and}, {.fn nv_or}, {.fn nv_xor} and {.fn nv_not} operate on the bits of an integer array."
+    paste0("{.fn ", fn, "} operates on the bits of an integer array.")
   )
 }
 
 #' @rdname nv_and
 #' @usage NULL
 #' @section The `&` operator:
-#' `&` is *logical*, like in base R: it requires boolean operands and returns a
-#' boolean array, which is what `nv_and()` computes for them. Unlike base R it
-#' does not coerce a non-boolean operand by comparing it against zero -- write
-#' `x != 0` yourself -- because {anvl} does not apply R's data type coercions
-#' anywhere else either.
+#' `&` is *logical*, like in base R.
+#' Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))
 #' @export
 `&.AnvlArray` <- function(e1, e2) {
   nv_and(
-    assert_boolean_array(e1, hint = bitwise_hint()),
-    assert_boolean_array(e2, hint = bitwise_hint())
+    assert_boolean_array(e1, hint = bitwise_hint("nv_and")),
+    assert_boolean_array(e2, hint = bitwise_hint("nv_and"))
   )
 }
 
@@ -192,19 +259,15 @@ bitwise_hint <- function() {
 #' @rdname nv_or
 #' @usage NULL
 #' @section The `|` operator:
-#' `|` is *logical*, like in base R: it requires boolean operands and returns a
-#' boolean array, which is what `nv_or()` computes for them. Unlike base R it
-#' does not coerce a non-boolean operand by comparing it against zero -- write
-#' `x != 0` yourself -- because {anvl} does not apply R's data type coercions
-#' anywhere else either.
-#'
-#' `xor()` is a plain function in base R, built on `|` and `&`, and therefore
-#' behaves the same way.
+#' `|` is *logical*, like in base R.
+#' Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE))
 #' @export
 `|.AnvlArray` <- function(e1, e2) {
   nv_or(
-    assert_boolean_array(e1, hint = bitwise_hint()),
-    assert_boolean_array(e2, hint = bitwise_hint())
+    assert_boolean_array(e1, hint = bitwise_hint("nv_or")),
+    assert_boolean_array(e2, hint = bitwise_hint("nv_or"))
   )
 }
 
@@ -214,14 +277,13 @@ bitwise_hint <- function() {
 #' @rdname nv_not
 #' @usage NULL
 #' @section The `!` operator:
-#' `!` is *logical*, like in base R: it requires a boolean array and returns a
-#' boolean array, which is what `nv_not()` computes for one. Unlike base R it
-#' does not coerce a non-boolean operand by comparing it against zero -- write
-#' `x == 0` yourself -- because {anvl} does not apply R's data type coercions
-#' anywhere else either.
+#' `!` is *logical*, like in base R.
+#' Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
+#' @examplesIf pjrt::plugins_downloaded()
+#' !nv_array(c(TRUE, FALSE))
 #' @export
 `!.AnvlArray` <- function(x) {
-  nv_not(assert_boolean_array(x, hint = bitwise_hint()))
+  nv_not(assert_boolean_array(x, hint = bitwise_hint("nv_not")))
 }
 
 #' @export
@@ -281,9 +343,6 @@ expm1.AnvlBox <- expm1.AnvlArray
 
 #' @rdname nv_log
 #' @usage NULL
-#' @section Relation to base R:
-#' `log(x, base)` takes a second argument like [base::log()] does and computes
-#' `log(x) / log(base)`.
 #' @export
 log.AnvlArray <- function(x, base = exp(1)) {
   if (missing(base)) {
@@ -507,7 +566,7 @@ digamma.AnvlBox <- digamma.AnvlArray
 
 #' @rdname nv_polygamma
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `trigamma()` generic:
 #' `trigamma(x)` is `nv_polygamma(1, x)`.
 #' @export
 trigamma.AnvlArray <- function(x) {
@@ -566,7 +625,7 @@ trunc.AnvlBox <- trunc.AnvlArray
 #'   Number of digits to round to, as in [base::round()]. Must be a plain R
 #'   value.
 #' @param ... Further arguments of [nv_round()].
-#' @section Relation to base R:
+#' @section The `round()` generic:
 #' `round(x, digits)` is computed by scaling with `10^digits`, so it can differ
 #' from [base::round()] in the last representable digit. A negative `digits`
 #' rounds an integer array to a multiple of ten in base R; on an anvl array,
@@ -588,6 +647,16 @@ round.AnvlArray <- function(x, digits = 0, ...) {
   if (digits == 0) {
     return(nv_round(x, ...))
   }
+  # Scaling is the only way to reach a digit that the hardware's round does not
+  # see, but `10^digits` is not a float, so `x * scale` is the nearest float to
+  # the true product rather than the product itself. Two things follow.
+  # Normally the result is off by at most one unit in the last place --
+  # round(145.70672, 1) is 145.70000000000002 here and 145.69999999999999 in
+  # base R -- which is invisible in the digits that were kept. But where the
+  # scaling lands exactly on a tie, the tie is an artefact of the scaling and
+  # the rounded digit itself can differ: round(2.675, 2) is 2.68 here because
+  # `2.675 * 100` is exactly 267.5, and 2.67 in base R, which sees that the
+  # double behind 2.675 is just below the tie.
   scale <- 10^digits
   nv_round(x * scale, ...) / scale
 }
@@ -678,7 +747,7 @@ summary_generic <- function(op, args, reduce, r_reduce, combine) {
 
 #' @rdname nv_reduce_sum
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `sum()` generic:
 #' `sum()` reduces over all axes and, like [base::sum()], takes several data
 #' arguments: `sum(x, y)` is the sum of both arrays. `na.rm` becomes `nan_rm`.
 #' Beyond base R, named arguments are passed on, so `sum(x, axes = 1L)` reduces
@@ -699,7 +768,7 @@ sum.AnvlBox <- sum.AnvlArray
 
 #' @rdname nv_reduce_prod
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `prod()` generic:
 #' `prod()` reduces over all axes and, like [base::prod()], takes several data
 #' arguments: `prod(x, y)` is the product of both arrays. `na.rm` becomes
 #' `nan_rm`. Beyond base R, named arguments are passed on, so
@@ -721,7 +790,7 @@ prod.AnvlBox <- prod.AnvlArray
 
 #' @rdname nv_reduce_max
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `max()` generic:
 #' `max()` reduces over all axes and, like [base::max()], takes several data
 #' arguments: `max(x, y)` is the largest element of both arrays. `na.rm`
 #' becomes `nan_rm`. Beyond base R, named arguments are passed on, so
@@ -743,7 +812,7 @@ max.AnvlBox <- max.AnvlArray
 
 #' @rdname nv_reduce_min
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `min()` generic:
 #' `min()` reduces over all axes and, like [base::min()], takes several data
 #' arguments: `min(x, y)` is the smallest element of both arrays. `na.rm`
 #' becomes `nan_rm`. Beyond base R, named arguments are passed on, so
@@ -771,7 +840,7 @@ min.AnvlBox <- min.AnvlArray
 #' @param na.rm (`logical(1)`)\cr
 #'   Forwarded to the `nan_rm` argument of [nv_reduce_min()] and
 #'   [nv_reduce_max()].
-#' @section Relation to base R:
+#' @section The `range()` generic:
 #' `range()` reduces over all axes and, like [base::range()], takes several
 #' data arguments: `range(x, y)` is the range of both arrays. Beyond base R,
 #' named arguments are passed on, so `range(x, axes = 1L)` reduces a single
@@ -779,6 +848,10 @@ min.AnvlBox <- min.AnvlArray
 #' @method range AnvlArray
 #' @export
 range.AnvlArray <- function(..., na.rm = FALSE) {
+  # Not `nv_range()`: that reduces a single array, whereas the generic also
+  # takes several data arguments and forwards named ones. `min()` and `max()`
+  # already handle both through `summary_generic()`, so this combines them the
+  # way `nv_range()` combines the two reductions.
   args <- list(...)
   stack_min_max(
     do.call(min.AnvlArray, c(args, list(na.rm = na.rm))),
@@ -792,7 +865,7 @@ range.AnvlBox <- range.AnvlArray
 
 #' @rdname nv_reduce_any
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `any()` generic:
 #' `any()` reduces over all axes and, like [base::any()], takes several data
 #' arguments: `any(x, y)` asks about both arrays. It is *logical*, so -- unlike
 #' base R -- a non-boolean argument is an error rather than a comparison
@@ -815,7 +888,7 @@ any.AnvlBox <- any.AnvlArray
 
 #' @rdname nv_reduce_all
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `all()` generic:
 #' `all()` reduces over all axes and, like [base::all()], takes several data
 #' arguments: `all(x, y)` asks about both arrays. It is *logical*, so -- unlike
 #' base R -- a non-boolean argument is an error rather than a comparison
@@ -893,7 +966,7 @@ is.finite.AnvlBox <- is.finite.AnvlArray
 
 #' @rdname nv_transpose
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `t()` generic:
 #' `t()` requires a matrix, whereas [base::t()] also transposes a vector (into
 #' a one-row matrix) and reverses the axes of a higher-rank array.
 #' @method t AnvlArray
@@ -912,7 +985,7 @@ t.AnvlBox <- t.AnvlArray
 
 #' @rdname nv_reverse
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `rev()` generic:
 #' `rev()` reverses along every axis, which puts the elements in the same
 #' order as [base::rev()] does (base R flattens the array to a vector first,
 #' whereas `rev()` on an anvl array keeps the shape).
@@ -932,7 +1005,7 @@ rev.AnvlBox <- rev.AnvlArray
 
 #' @rdname nv_concatenate
 #' @usage NULL
-#' @section Relation to base R:
+#' @section The `c()` generic:
 #' `c()` concatenates scalars and 1-D arrays into a 1-D array, like
 #' [base::c()] does for vectors. An array with more than one axis is an error:
 #' base R would flatten it in column-major order, whereas an anvl array
@@ -992,6 +1065,10 @@ sort.AnvlBox <- sort.AnvlArray
 #' @rdname nv_subset
 #' @usage NULL
 #' @method [ AnvlArray
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_matrix(1:12, nrow = 3)
+#' x[2, ] # row 2
+#' x[1:2, ] # rows 1 to 2, all columns
 #' @export
 `[.AnvlArray` <- function(x, ...) {
   # nargs() sees trailing missing args (e.g. the last `,` in x[1:5, , ])
@@ -1019,6 +1096,10 @@ sort.AnvlBox <- sort.AnvlArray
 #' @rdname nv_subset_assign
 #' @usage NULL
 #' @method [<- AnvlArray
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_matrix(1:12, nrow = 3)
+#' x[1, ] <- nv_scalar(0L)
+#' x
 #' @export
 `[<-.AnvlArray` <- function(x, ..., value) {
   n_args <- nargs() - 2L
@@ -1070,8 +1151,7 @@ tcrossprod.AnvlBox <- tcrossprod.AnvlArray
 #' anvl array, and the same thing as [shape()][tengen::shape].
 #'
 #' Unlike base R, it also has a value for an array with a single axis, where
-#' `dim()` on an R vector is `NULL`. This is what makes [base::nrow()] and
-#' [base::ncol()] report the size of axis 1 and 2 of a 1-D array.
+#' `dim()` on an R vector is `NULL`.
 #' @param x ([`arrayish`])\cr
 #'   Input array.
 #' @return (`integer()`)

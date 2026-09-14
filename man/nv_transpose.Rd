@@ -22,7 +22,7 @@ Has the same data type as \code{x} and shape \code{shape(x)[permutation]}.
 \description{
 Permutes the axes of an array. You can also use \code{t()} for matrices.
 }
-\section{Relation to base R}{
+\section{The \code{t()} generic}{
 
 \code{t()} requires a matrix, whereas \code{\link[base:t]{base::t()}} also transposes a vector (into
 a one-row matrix) and reverses the axes of a higher-rank array.

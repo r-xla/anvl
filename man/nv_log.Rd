@@ -9,9 +9,8 @@ nv_log(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is computed at the default float data type
-(see \code{\link[=default_dtypes]{default_dtypes()}}), the way \code{\link[base:sqrt]{base::sqrt()}} returns a double for an
-integer vector. A boolean array is not accepted.}
+Input array. An integer array is converted to the default floating point type
+(see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -21,12 +20,6 @@ data type if the input was an integer array.
 \description{
 Element-wise natural logarithm. You can also use \code{log()}.
 }
-\section{Relation to base R}{
-
-\code{log(x, base)} takes a second argument like \code{\link[base:log]{base::log()}} does and computes
-\code{log(x) / log(base)}.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2.718, 7.389))

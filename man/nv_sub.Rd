@@ -20,16 +20,17 @@ Has the same shape and the promoted common data type of the inputs.
 \description{
 Subtracts two arrays element-wise. You can also use the \code{-} operator.
 }
-\section{Relation to base R}{
-
-The unary \code{-x} is \code{\link[=nv_negate]{nv_negate()}}.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(4, 5, 6))
 y <- nv_array(c(1, 2, 3))
+nv_sub(x, y)
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+x <- nv_array(c(4, 5, 6))
+y <- nv_array(c(1, 2, 3))
 x - y
+-x # unary minus negates
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -18,16 +18,21 @@ Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other op
 Has the same shape and the promoted common data type of the inputs.
 }
 \description{
-Element-wise flooring division, matching base R's \code{\%/\%} operator: the
-result is the largest whole number that does not exceed \code{lhs / rhs}.
-You can also use the \code{\%/\%} operator.
+Element-wise flooring division.
+You can also call this via the \code{\%/\%} opertor.
+The result is the largest whole number that does not exceed \code{lhs / rhs}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(7L, -7L))
 y <- nv_array(c(2L, 2L))
 nv_floor_div(x, y)
-as.vector(x) \%/\% as.vector(y)
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+x <- nv_array(c(7L, -7L))
+y <- nv_array(c(2L, 2L))
+x \%/\% y
+as.vector(x) \%/\% as.vector(y) # the same in base R
 \dontshow{\}) # examplesIf}
 }
 \seealso{

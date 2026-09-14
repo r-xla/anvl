@@ -24,6 +24,11 @@ Element-wise inequality comparison. You can also use the \code{!=} operator.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(1, 3, 2))
+nv_ne(x, y)
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+x <- nv_array(c(1, 2, 3))
+y <- nv_array(c(1, 3, 2))
 x != y
 \dontshow{\}) # examplesIf}
 }

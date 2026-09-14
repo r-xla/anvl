@@ -26,12 +26,17 @@ axis.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:12, nrow = 3)
+x[2, ] # row 2
+x[1:2, ] # rows 1 to 2, all columns
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+x <- nv_matrix(1:12, nrow = 3)
 x
 # Select row 2
-x[2, ]
+nv_subset(x, 2)
 
 # Select rows 1 to 2, all columns
-x[1:2, ]
+nv_subset(x, 1:2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

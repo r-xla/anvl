@@ -29,7 +29,7 @@ When \code{drop = FALSE}, the reduced axes are set to 1.
 Performs logical OR along the specified axes.
 Returns \code{TRUE} if any element is \code{TRUE}.
 }
-\section{Relation to base R}{
+\section{The \code{any()} generic}{
 
 \code{any()} reduces over all axes and, like \code{\link[base:any]{base::any()}}, takes several data
 arguments: \code{any(x, y)} asks about both arrays. It is \emph{logical}, so -- unlike

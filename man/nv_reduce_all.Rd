@@ -29,7 +29,7 @@ When \code{drop = FALSE}, the reduced axes are set to 1.
 Performs logical AND along the specified axes.
 Returns \code{TRUE} only if all elements are \code{TRUE}.
 }
-\section{Relation to base R}{
+\section{The \code{all()} generic}{
 
 \code{all()} reduces over all axes and, like \code{\link[base:all]{base::all()}}, takes several data
 arguments: \code{all(x, y)} asks about both arrays. It is \emph{logical}, so -- unlike

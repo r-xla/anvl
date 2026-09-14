@@ -52,9 +52,7 @@ Plain length-K (K > 1) vectors are rejected; wrap with \code{array()} to
 make the array intent explicit.
 
 A quantile generally falls between two elements, so a non-float \code{x} is
-computed (and returned) at the default float data type, like
-\code{\link[stats:quantile]{stats::quantile()}} returns a double for an integer vector. See
-\code{\link[=default_dtypes]{default_dtypes()}}.
+computed (and returned) at the default float data type.
 }
 \section{Interpolation modes}{
 

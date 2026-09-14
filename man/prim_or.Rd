@@ -17,8 +17,6 @@ Has the same shape and data type as the inputs.
 }
 \description{
 Element-wise bitwise OR, which for a boolean array is the logical OR.
-Note that the \code{|} operator is logical instead, like in base R
-(see \code{\link[=nv_or]{nv_or()}}).
 }
 \section{Implemented Rules}{
 

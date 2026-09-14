@@ -11,8 +11,7 @@ nv_round(x, method = "nearest_even")
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is returned unchanged, like in base R; a
-boolean array is not accepted.}
+Input array. An integer array is returned unchanged.}
 
 \item{method}{(\code{character(1)})\cr
 Rounding method.
@@ -31,7 +30,7 @@ Has the same shape and data type as the input.
 \description{
 Element-wise rounding. You can also use the \code{round()} generic.
 }
-\section{Relation to base R}{
+\section{The \code{round()} generic}{
 
 \code{round(x, digits)} is computed by scaling with \code{10^digits}, so it can differ
 from \code{\link[base:round]{base::round()}} in the last representable digit. A negative \code{digits}

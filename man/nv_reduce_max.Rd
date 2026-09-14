@@ -32,7 +32,7 @@ When \code{drop = FALSE}, the reduced axes are set to 1.
 \description{
 Finds the maximum of array elements along the specified axes.
 }
-\section{Relation to base R}{
+\section{The \code{max()} generic}{
 
 \code{max()} reduces over all axes and, like \code{\link[base:max]{base::max()}}, takes several data
 arguments: \code{max(x, y)} is the largest element of both arrays. \code{na.rm}

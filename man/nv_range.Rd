@@ -41,7 +41,7 @@ maximum.
 The smallest and the largest element along the specified axes, stacked along
 a new first axis. You can also use the \code{range()} generic.
 }
-\section{Relation to base R}{
+\section{The \code{range()} generic}{
 
 \code{range()} reduces over all axes and, like \code{\link[base:range]{base::range()}}, takes several
 data arguments: \code{range(x, y)} is the range of both arrays. Beyond base R,

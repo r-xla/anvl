@@ -37,6 +37,11 @@ Supports batched matrix multiplication when inputs have more than 2 axes.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
+nv_matmul(x, y)
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+x <- nv_matrix(1:6, nrow = 2)
+y <- nv_matrix(1:6, nrow = 3)
 x \%*\% y
 \dontshow{\}) # examplesIf}
 }

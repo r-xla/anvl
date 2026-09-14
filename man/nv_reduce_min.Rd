@@ -32,7 +32,7 @@ When \code{drop = FALSE}, the reduced axes are set to 1.
 \description{
 Finds the minimum of array elements along the specified axes.
 }
-\section{Relation to base R}{
+\section{The \code{min()} generic}{
 
 \code{min()} reduces over all axes and, like \code{\link[base:min]{base::min()}}, takes several data
 arguments: \code{min(x, y)} is the smallest element of both arrays. \code{na.rm}

@@ -24,6 +24,11 @@ Multiplies two arrays element-wise. You can also use the \code{*} operator.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
+nv_mul(x, y)
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+x <- nv_array(c(1, 2, 3))
+y <- nv_array(c(4, 5, 6))
 x * y
 \dontshow{\}) # examplesIf}
 }

@@ -34,7 +34,7 @@ When \code{drop = FALSE}, the reduced axes are set to 1.
 Sums array elements along the specified axes.
 A boolean array is counted, like \code{\link[base:sum]{base::sum()}} does.
 }
-\section{Relation to base R}{
+\section{The \code{sum()} generic}{
 
 \code{sum()} reduces over all axes and, like \code{\link[base:sum]{base::sum()}}, takes several data
 arguments: \code{sum(x, y)} is the sum of both arrays. \code{na.rm} becomes \code{nan_rm}.

@@ -44,7 +44,7 @@ You can also use \code{sort()} directly.
 (descending), regardless of sign. \code{+0} and \code{-0} compare equal.
 }
 
-\section{Relation to base R}{
+\section{The \code{sort()} generic}{
 
 \code{\link[base:sort]{base::sort()}} flattens a multi-axis array into a vector, while
 \code{nv_sort()} (and \code{sort()} on an anvl array) sorts along a single axis, the

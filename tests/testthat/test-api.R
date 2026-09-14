@@ -418,6 +418,18 @@ describe("nv_gamma", {
     x <- nv_array(c(-2.5, 0.5, 4), dtype = "f64")
     expect_equal(as.vector(jit(nv_gamma)(x)), as.vector(nv_gamma(x)))
   })
+
+  it("has the gradient gamma(x) * digamma(x), also at a whole number", {
+    # The reflection branch is 0 * Inf at a positive whole number, which used
+    # to reach the gradient through the cotangent of the discarded branch.
+    vals <- c(-2.25, -1.5, -0.5, 0.5, 1, 2, 4, 7.25, 20)
+    f <- function(x) nv_reduce_sum(nv_gamma(x))
+    expect_equal(
+      as.vector(jit(gradient(f, wrt = "x"))(nv_array(vals, dtype = "f64"))[[1L]]),
+      gamma(vals) * digamma(vals),
+      tolerance = 1e-6
+    )
+  })
 })
 
 describe("nv_sinpi", {
@@ -499,45 +511,13 @@ describe("nv_signif", {
   })
 })
 
-describe("promote_to_float", {
-  # An `nv_*` function that computes in floating point computes an int-like
-  # array at the default float, the way base R's `sqrt(1L)` returns a double.
-  float_fns <- list(
-    nv_sqrt = sqrt,
-    nv_exp = exp,
-    nv_expm1 = expm1,
-    nv_log = log,
-    nv_log1p = log1p,
-    nv_log2 = log2,
-    nv_log10 = log10,
-    nv_cos = cos,
-    nv_sin = sin,
-    nv_tan = tan,
-    nv_acos = acos,
-    nv_asin = asin,
-    nv_atan = atan,
-    nv_cosh = cosh,
-    nv_sinh = sinh,
-    nv_tanh = tanh,
-    nv_acosh = acosh,
-    nv_asinh = asinh,
-    nv_lgamma = lgamma,
-    nv_digamma = digamma
-  )
-  float_only <- c("nv_rsqrt", "nv_cbrt", "nv_logistic", "nv_erf", "nv_erfc", "nv_erf_inv", "nv_atanh")
-
-  it("computes an integer array at the default float, like base R", {
-    for (nm in names(float_fns)) {
-      out <- get(nm)(nv_array(1L))
-      expect_equal(dtype(out), default_float(), info = nm)
-      expect_equal(as.vector(out), float_fns[[nm]](1), tolerance = 1e-6, info = nm)
-    }
-    for (nm in float_only) {
-      expect_equal(dtype(get(nm)(nv_array(1L))), default_float(), info = nm)
-    }
-  })
-
-  it("promotes an unsigned array and a plain R integer as well", {
+describe("make_float_unary", {
+  # Every unary `nv_*` function that computes in floating point is built by
+  # this factory, so one representative is enough to cover all of them.
+  it("computes an int-like array at the default float, like base R", {
+    out <- nv_sqrt(nv_array(1L))
+    expect_equal(dtype(out), default_float())
+    expect_equal(as.vector(out), 1)
     expect_equal(as.vector(nv_sqrt(nv_array(4L, dtype = "ui8"))), 2)
     expect_equal(dtype(nv_sqrt(nv_array(4L, dtype = "i64"))), default_float())
     expect_equal(as.vector(nv_sqrt(4L)), 2)
@@ -554,12 +534,46 @@ describe("promote_to_float", {
     })
   })
 
-  it("does not promote a boolean array", {
+  it("does not convert a boolean array", {
     expect_error(nv_sqrt(nv_array(TRUE)))
     expect_error(nv_lgamma(nv_array(TRUE)))
   })
 
-  it("promotes both operands of nv_atan2()", {
+  it("builds every unary float function, so each one converts", {
+    float_fns <- c(
+      "nv_sqrt",
+      "nv_rsqrt",
+      "nv_log",
+      "nv_tanh",
+      "nv_tan",
+      "nv_sin",
+      "nv_cos",
+      "nv_exp",
+      "nv_expm1",
+      "nv_log1p",
+      "nv_cbrt",
+      "nv_logistic",
+      "nv_acos",
+      "nv_acosh",
+      "nv_asin",
+      "nv_asinh",
+      "nv_atan",
+      "nv_atanh",
+      "nv_cosh",
+      "nv_sinh",
+      "nv_digamma",
+      "nv_lgamma",
+      "nv_erf",
+      "nv_erf_inv",
+      "nv_erfc"
+    )
+    bodies <- vapply(float_fns, function(nm) paste(deparse(body(get(nm))), collapse = ""), "")
+    expect_true(all(bodies == "f(int_to_float(x))"))
+  })
+})
+
+describe("nv_atan2", {
+  it("converts both operands", {
     out <- nv_atan2(nv_array(1L), nv_array(2L))
     expect_equal(dtype(out), default_float())
     expect_equal(as.vector(out), atan2(1, 2), tolerance = 1e-6)
@@ -2320,20 +2334,37 @@ describe("nv_flatten", {
   })
 })
 
-test_that("nv_mod and `%%` follow base R flooring semantics across sign combos", {
-  expect_equal(
-    as.vector(nv_mod(1, -3)),
-    1 %% -3
-  )
-  expect_equal(
-    as.vector(nv_mod(1.4, -0.2)),
-    1.4 %% -0.2,
-    tolerance = 1e-5
-  )
-  expect_equal(
-    as.vector(nv_mod(1L, -3L)),
-    1L %% -3L
-  )
+describe("nv_mod", {
+  it("follows base R flooring semantics across sign combos", {
+    lhs <- c(7, -7, 7, -7, 0, 5, -5, 1, 1.4)
+    rhs <- c(3, 3, -3, -3, 3, 5, 5, -3, -0.2)
+    expect_equal(
+      as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
+      lhs %% rhs,
+      tolerance = 1e-12
+    )
+    expect_equal(as.vector(nv_mod(1L, -3L)), 1L %% -3L)
+  })
+
+  it("keeps a remainder that is tiny next to the divisor", {
+    # Shifting by the divisor rounds such a remainder away, so it is only
+    # applied where the sign of the truncating remainder actually differs.
+    lhs <- c(1e-20, -1e-20, 1e-300)
+    rhs <- c(1, 1, 1)
+    expect_equal(
+      as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
+      lhs %% rhs
+    )
+  })
+
+  it("is NaN for a zero divisor and passes NaN through, like base R", {
+    lhs <- c(5, -5, 0, Inf, -Inf, NaN, 7)
+    rhs <- c(0, 0, 0, 3, 3, 3, Inf)
+    expect_equal(
+      as.vector(nv_mod(nv_array(lhs, dtype = "f64"), nv_array(rhs, dtype = "f64"))),
+      lhs %% rhs
+    )
+  })
 })
 
 describe("the default integer", {

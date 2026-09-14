@@ -43,7 +43,7 @@ values is returned, matching base R's \code{median()}.
 You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{AnvlBox}};
 extra arguments (e.g. \code{interpolation}) are forwarded via \code{...}.
 }
-\section{Relation to base R}{
+\section{The \code{median()} generic}{
 
 \code{\link[stats:median]{stats::median()}} flattens a multi-axis array, while \code{nv_median()} (and
 \code{median()} on an anvl array) reduces a single axis, the last one by

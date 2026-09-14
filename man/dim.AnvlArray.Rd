@@ -18,8 +18,7 @@ The shape of an array, i.e. its axis sizes -- the generic \code{\link[base:dim]{
 anvl array, and the same thing as \link[tengen:shape]{shape()}.
 
 Unlike base R, it also has a value for an array with a single axis, where
-\code{dim()} on an R vector is \code{NULL}. This is what makes \code{\link[base:nrow]{base::nrow()}} and
-\code{\link[base:ncol]{base::ncol()}} report the size of axis 1 and 2 of a 1-D array.
+\code{dim()} on an R vector is \code{NULL}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

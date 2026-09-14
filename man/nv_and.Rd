@@ -3,7 +3,7 @@
 \name{nv_and}
 \alias{nv_and}
 \alias{&.AnvlArray}
-\title{Bitwise And}
+\title{Bitwise AND}
 \usage{
 nv_and(lhs, rhs)
 }
@@ -20,25 +20,20 @@ Has the same shape and the promoted common data type of the inputs.
 \description{
 Element-wise bitwise AND of two integer arrays, which for a boolean array
 is the logical AND.
-
-This is \emph{not} what the \code{&} operator does: like in base R, \code{&} is logical,
-so it requires a boolean operand and returns a boolean array (see the
-section below).
 }
 \section{The \code{&} operator}{
 
-\code{&} is \emph{logical}, like in base R: it requires boolean operands and returns a
-boolean array, which is what \code{nv_and()} computes for them. Unlike base R it
-does not coerce a non-boolean operand by comparing it against zero -- write
-\code{x != 0} yourself -- because {anvl} does not apply R's data type coercions
-anywhere else either.
+\code{&} is \emph{logical}, like in base R.
+Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
-nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

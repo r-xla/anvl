@@ -18,25 +18,20 @@ Has the same shape and data type as the input.
 \description{
 Element-wise bitwise NOT of an integer array, which for a boolean array is
 the logical NOT.
-
-This is \emph{not} what the \code{!} operator does: like in base R, \code{!} is logical,
-so it requires a boolean operand and returns a boolean array (see the
-section below).
 }
 \section{The \code{!} operator}{
 
-\code{!} is \emph{logical}, like in base R: it requires a boolean array and returns a
-boolean array, which is what \code{nv_not()} computes for one. Unlike base R it
-does not coerce a non-boolean operand by comparing it against zero -- write
-\code{x == 0} yourself -- because {anvl} does not apply R's data type coercions
-anywhere else either.
+\code{!} is \emph{logical}, like in base R.
+Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_not(nv_array(c(TRUE, FALSE, TRUE)))
 nv_not(nv_array(12L)) # bitwise: -13
-!nv_array(c(TRUE, FALSE)) # logical
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+!nv_array(c(TRUE, FALSE))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -23,7 +23,7 @@ Has the same shape and data type as \code{x}.
 Reverses the order of elements along specified axes.
 You can also use \code{rev()}, which reverses along every axis.
 }
-\section{Relation to base R}{
+\section{The \code{rev()} generic}{
 
 \code{rev()} reverses along every axis, which puts the elements in the same
 order as \code{\link[base:rev]{base::rev()}} does (base R flattens the array to a vector first,

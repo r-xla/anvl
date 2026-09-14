@@ -24,7 +24,12 @@ Raises \code{lhs} to the power of \code{rhs} element-wise. You can also use the 
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(2, 3, 4))
 y <- nv_array(c(3, 2, 1))
-x ^ y
+nv_pow(x, y)
+\dontshow{\}) # examplesIf}
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+x <- nv_array(c(2, 3, 4))
+y <- nv_array(c(3, 2, 1))
+x^y
 \dontshow{\}) # examplesIf}
 }
 \seealso{

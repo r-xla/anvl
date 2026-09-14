@@ -8,9 +8,8 @@ nv_erfc(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is computed at the default float data type
-(see \code{\link[=default_dtypes]{default_dtypes()}}), the way \code{\link[base:sqrt]{base::sqrt()}} returns a double for an
-integer vector. A boolean array is not accepted.}
+Input array. An integer array is converted to the default floating point type
+(see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 \code{\link{arrayish}}\cr

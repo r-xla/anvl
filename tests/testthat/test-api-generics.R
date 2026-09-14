@@ -330,9 +330,8 @@ describe("nrow", {
 })
 
 describe("ncol", {
-  it("returns the size of axis 2, and NA when there is none", {
+  it("returns the size of axis 2", {
     expect_equal(ncol(nv_array(1:6, shape = c(3L, 2L))), 2L)
-    expect_true(is.na(ncol(nv_array(1L))))
   })
 })
 

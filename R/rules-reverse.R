@@ -43,11 +43,11 @@ prim_div[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
 })
 
 prim_remainder[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  # prim_remainder lowers to StableHLO `remainder`, which uses IEEE-754 truncating
-  # semantics: y = lhs - trunc(lhs / rhs) * rhs (sign of result follows lhs). Match
-  # that here — using floor() would silently disagree with the forward op for inputs
-  # of opposite sign. Non-differentiable points (rhs == 0, lhs an integer multiple
-  # of rhs) are ignored.
+  # prim_remainder lowers to StableHLO `remainder`, which truncates the quotient:
+  # y = lhs - trunc(lhs / rhs) * rhs, so the result follows the sign of lhs.
+  # Match that here — using floor() would silently disagree with the forward op
+  # for inputs of opposite sign. Non-differentiable points (rhs == 0, lhs an
+  # integer multiple of rhs) are ignored.
   lhs <- inputs[[1L]]
   rhs <- inputs[[2L]]
   grad <- grads[[1L]]

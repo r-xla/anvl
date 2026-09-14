@@ -29,7 +29,7 @@ scalar arguments are
 \link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar
 arguments.
 }
-\section{Relation to base R}{
+\section{The \code{trigamma()} generic}{
 
 \code{trigamma(x)} is \code{nv_polygamma(1, x)}.
 }
