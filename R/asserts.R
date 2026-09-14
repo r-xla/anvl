@@ -9,7 +9,9 @@
 #' @return Invisibly returns `x` if the assertion passes.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
-  ok <- test_integerish(x, lower = 1, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
+  # `lower = 0`: a zero-size axis is a legal shape, and the constructors
+  # (`nv_fill()`, `nv_iota()`, `nv_empty()`) all accept one.
+  ok <- test_integerish(x, lower = 0, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
       cli_abort("{.arg {var_name}} must be an integer vector, not {.cls {class(x)}}")
@@ -20,9 +22,20 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
     if (length(x) < min_len) {
       cli_abort("{.arg {var_name}} must have at least {min_len} element{?s}")
     }
-    if (any(x < 1)) {
-      cli_abort("{.arg {var_name}} must contain only positive integers (>= 1)")
+    if (any(x < 0)) {
+      cli_abort(c(
+        "{.arg {var_name}} must not contain a negative axis size.",
+        x = "Got {.val {x}}."
+      ))
     }
+    # Everything else `test_integerish()` rejects: a fractional size, or one
+    # above what an R integer holds. Without this arm both fell through to
+    # `as.integer()`, which truncates the first and turns the second into `NA`.
+    int_max <- .Machine$integer.max
+    cli_abort(c(
+      "{.arg {var_name}} must contain whole numbers no larger than {.val {int_max}}.",
+      x = "Got {.val {x}}."
+    ))
   }
   as.integer(x)
 }
@@ -131,6 +144,66 @@ assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
     ))
   }
   dt
+}
+
+# The R value a `prim_fill()` / `nv_fill()` call builds at `dtype` has to be
+# something that data type can hold: a number for a float, a whole number for an
+# integer, a non-negative whole number for an unsigned one and a logical for
+# `bool`. This is a check on the *R value*, not on the range of the data type --
+# `prim_fill(300L, dtype = "i8")` is still the backend's business.
+assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
+  dt <- as_dtype(dtype)
+  is_int64 <- inherits(value, "integer64")
+  # `integer64` is a double under the hood, so it is counted in explicitly.
+  is_number <- (is.numeric(value) && !is.logical(value)) || is_int64
+  is_int <- is.integer(value) || is_int64
+
+  # XLA has no missing value, and an `NA` otherwise reaches the backend and
+  # fails there with a raw MLIR message.
+  if (length(value) == 1L && !is_int64 && is.na(value) && !is.nan(value)) {
+    cli_abort(c(
+      "{.arg {arg}} must not be {.val {NA}}.",
+      "i" = "There is no missing value at the XLA level; {.val {NaN}} is the closest a float comes."
+    ))
+  }
+
+  # The literal has to be written in the target's category, the same rule
+  # `promotion_like()` applies: an R double is only ever built at a float, so
+  # `0L` serves an integer, an unsigned integer and a float alike, where `0`
+  # serves only a float. `0L` / `1L` also stand in for a logical, which is what
+  # the fills that do not know their data type statically write (`zeros()`,
+  # `ones()`, `nv_eye()`, `nv_diag()`, the gradient zeroing).
+  ok <- if (is_dtype_bool(dt)) {
+    is.logical(value) || (is_int && (value == 0L || value == 1L))
+  } else if (is_dtype_uint(dt)) {
+    is_int && value >= 0
+  } else if (is_dtype_int(dt)) {
+    is_int
+  } else {
+    is_number
+  }
+  if (ok) {
+    return(invisible(value))
+  }
+
+  wanted <- if (is_dtype_bool(dt)) {
+    "a logical, or {.code 0L} or {.code 1L}"
+  } else if (is_dtype_uint(dt)) {
+    "a non-negative R integer"
+  } else if (is_dtype_int(dt)) {
+    "an R integer"
+  } else {
+    "a number"
+  }
+  # A double at an integerish target is the common slip, so name the remedy.
+  hint <- if (is_number && !is_int && !is_dtype_float(dt)) {
+    "Write it with an {.code L}, e.g. {.code 0L}: an R double is only ever built at a float data type." # nolint
+  }
+  cli_abort(c(
+    "{.arg {arg}} must be {wanted} to be built at data type {.val {as.character(dt)}}.",
+    "x" = "Got {.obj_type_friendly {value}}{if (is_number) cli::format_inline(' {.val {value}}') else ''}.",
+    "i" = hint
+  ))
 }
 
 # Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the

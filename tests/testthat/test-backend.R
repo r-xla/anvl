@@ -84,6 +84,8 @@ describe("eager code", {
     skip_if_no_quickr()
     x <- with_backend("quickr", nv_array(1L))
     expect_error(x + 1.5, "quickr")
-    expect_error(nv_fill_like(x, 0), "belongs to the .*quickr.* backend")
+    # `0L`, not `0`: `x` is an `i32`, and the fill's value check would fire
+    # first. What is under test here is the backend mismatch.
+    expect_error(nv_fill_like(x, 0L), "belongs to the .*quickr.* backend")
   })
 })

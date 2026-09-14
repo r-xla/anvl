@@ -1307,3 +1307,23 @@ describe("prim_reduce_any / prim_reduce_all input data type", {
     )
   })
 })
+
+test_that("prim_fill names `shape` in its own error", {
+  expect_error(prim_fill(0, shape = -1L, dtype = "f32"), "negative axis size")
+  expect_equal(shape(prim_fill(0, shape = c(), dtype = "f32")), integer())
+  expect_equal(shape(prim_fill(0, shape = 0L, dtype = "f32")), 0L)
+})
+
+test_that("prim_fill() checks that `value` is something `dtype` can hold", {
+  # A literal has to be written in the target's category, as `promotion_like()`
+  # already requires: an R double is only ever built at a float, so `0L` serves
+  # everywhere and `0` serves only a float.
+  expect_error(prim_fill(0, 2L, dtype = "i32"), "must be an R integer")
+  expect_error(prim_fill(-1L, 2L, dtype = "ui8"), "must be a non-negative R integer")
+  expect_error(prim_fill(3L, 2L, dtype = "bool"), "must be a logical")
+  expect_error(prim_fill(NA, 2L, dtype = "f32"), "must not be")
+
+  expect_equal(as.vector(prim_fill(0L, 2L, dtype = "bool")), c(FALSE, FALSE))
+  expect_equal(as.integer(prim_fill(2L, 2L, dtype = "i8")), c(2L, 2L))
+  expect_equal(as.vector(prim_fill(1.5, 2L, dtype = "f32")), c(1.5, 1.5))
+})

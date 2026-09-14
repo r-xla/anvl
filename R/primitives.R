@@ -94,6 +94,10 @@ infer_reduce_boolean <- function(x, axes, drop) {
 prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
+    assert_fill_value(value, dtype)
+    # `shape = c()` is how a caller asks for a scalar.
+    shape <- shape %||% integer()
+    shape <- assert_shapevec(shape)
     infer_fill <- function(value, shape, dtype) {
       list(AbstractArray(dtype = as_dtype(dtype), shape = shape))
     }
