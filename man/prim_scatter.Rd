@@ -89,7 +89,7 @@ This is the inverse of \code{\link[=prim_gather]{prim_gather()}}: gather reads s
 at given indices, while scatter writes slices into an array at given
 indices.
 }
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 If a computed result index falls outside the bounds of \code{x}, the
 update for that index is silently ignored.

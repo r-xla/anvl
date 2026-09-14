@@ -452,7 +452,7 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
   rank <- length(shape_in)
 
   if (rank == 0L) {
-    cli_abort("reverse: scalar operands are not supported by quickr lowering") # nocov
+    cli_abort("The quickr backend cannot reverse a scalar {.arg x}.") # nocov
   }
   if (rank > 5L) {
     cli_abort("reverse: only arrays up to rank 5 are supported")
@@ -809,7 +809,7 @@ quickr_emit_gather <- function(
   out_rank <- length(out_shape)
 
   if (!op_rank) {
-    cli_abort("gather: scalar operands are not supported by quickr lowering")
+    cli_abort("The quickr backend cannot gather from a scalar {.arg x}.")
   }
   if (op_rank > 5L || si_rank > 5L || out_rank > 5L) {
     cli_abort("gather: only arrays up to rank 5 are supported")
@@ -824,7 +824,9 @@ quickr_emit_gather <- function(
     cli_abort("gather: start_indices must have rank >= 1")
   }
   if (!identical(length(slice_sizes), op_rank)) {
-    cli_abort("gather: slice_sizes must have length equal to operand rank")
+    cli_abort(
+      "{.arg slice_sizes} must have one entry per axis of {.arg x}."
+    )
   }
   index_vector_size <- as.integer(shape_start_indices[[si_rank]])
   if (!identical(as.integer(length(start_index_map)), as.integer(index_vector_size))) {
@@ -1193,7 +1195,7 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, axes, drop
       1L
     }
     if (as.character(dtype(out_aval)) %in% "bool") {
-      cli_abort("{kind}: pred reductions are not supported by quickr lowering")
+      cli_abort("{kind}: reductions of a boolean are not supported by quickr lowering")
     }
   } else {
     init_acc_scalar <- NULL
@@ -1992,7 +1994,7 @@ local({
 
       if (dt_lhs %in% "bool" || dt_rhs %in% "bool") {
         if (!prim_name %in% c("equal", "not_equal")) {
-          cli_abort("{prim_name}: comparisons on {.val pred} values are not supported by quickr lowering")
+          cli_abort("{prim_name}: comparisons on {.val bool} values are not supported by quickr lowering")
         }
 
         a <- inputs[[1L]]
@@ -2034,7 +2036,7 @@ local({
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       dt <- as.character(dtype(input_nodes[[1L]]$aval))
       if (!dt %in% "bool") {
-        cli_abort("{prim_name}: only {.val pred} dtype is supported by quickr lowering")
+        cli_abort("{prim_name}: only the {.val bool} data type is supported by quickr lowering")
       }
 
       a <- inputs[[1L]]
@@ -2062,7 +2064,7 @@ local({
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       dt <- as.character(dtype(input_nodes[[1L]]$aval))
       if (!dt %in% "bool") {
-        cli_abort("not: only {.val pred} dtype is supported by quickr lowering")
+        cli_abort("not: only the {.val bool} data type is supported by quickr lowering")
       }
       quickr_emit_assign(out_syms[[1L]], rlang::call2("!", inputs[[1L]]))
     }
@@ -2256,7 +2258,7 @@ local({
       operand_node <- input_nodes[[1L]]
       dt_in <- as.character(dtype(operand_node$aval))
       if (!dt_in %in% "bool") {
-        cli_abort("reduce_any: only {.val pred} inputs are supported by quickr lowering")
+        cli_abort("reduce_any: only a {.val bool} input is supported by quickr lowering")
       }
       quickr_emit_reduce_boolean(
         "any",
@@ -2278,7 +2280,7 @@ local({
       operand_node <- input_nodes[[1L]]
       dt_in <- as.character(dtype(operand_node$aval))
       if (!dt_in %in% "bool") {
-        cli_abort("reduce_all: only {.val pred} inputs are supported by quickr lowering")
+        cli_abort("reduce_all: only a {.val bool} input is supported by quickr lowering")
       }
       quickr_emit_reduce_boolean(
         "all",

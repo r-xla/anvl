@@ -83,7 +83,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   invalid <- shape < -1L
   if (any(invalid)) {
     cli_abort(c(
-      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer a dimension.",
+      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
       x = "Got {.val {shape[invalid]}}."
     ))
   }
@@ -100,8 +100,10 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   known <- prod(shape[-inferred])
   if (known <= 0 || nelts %% known != 0) {
     cli_abort(c(
-      "Cannot infer dimension {inferred} of {.arg {arg}}.",
-      x = "{nelts} element{?s} cannot be divided evenly into shape {.val {shape}}."
+      "Cannot infer the size of axis {inferred} of {.arg {arg}}.",
+      # The `-1` is the axis being asked for, so it is shown as `?` rather
+      # than as a size.
+      x = "{nelts} element{?s} cannot be divided evenly into shape {shape_repr(replace(shape, inferred, '?'))}." # nolint
     ))
   }
   shape[inferred] <- as.integer(nelts / known)
@@ -129,24 +131,24 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
   if (length(s) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a 2-D matrix.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (any(s == 0L)) {
     cli_abort(c(
       "{.arg {arg}} must not have any zero-sized axis.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (square && s[[1L]] != s[[2L]]) {
     cli_abort(c(
       "{.arg {arg}} must be a square matrix.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (!is_dtype_float(peek_dtype(x))) {
     cli_abort(c(
-      "{.arg {arg}} must have a floating-point dtype.",
+      "{.arg {arg}} must have a float data type.",
       "x" = "Got dtype {.val {as.character(peek_dtype(x))}}."
     ))
   }

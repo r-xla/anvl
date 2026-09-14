@@ -23,7 +23,7 @@ This either arises when using literals in traced code (e.g. \code{x + 1}) or whe
 }
 \section{Lowering}{
 
-\code{LiteralArray}s become constants inlined into the stableHLO program.
+\code{LiteralArray}s become constants inlined into the StableHLO program.
 I.e., they lower to \code{\link[stablehlo:hlo_tensor]{hlo_tensor()}}.
 }
 

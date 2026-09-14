@@ -68,16 +68,18 @@ is the reference for how this works and for the `.promote` rules (`promotion_com
   the whole pair.
 - **One backend at a time.** The backend is the option `anvl.backend` (`active_backend()`,
   `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
-  nothing infers a backend from an argument, no function takes a `backend` argument, and an array
-  or device of another backend is an error. This is what makes the default dtypes unambiguous in
-  eager code.
+  nothing infers a backend from an argument, no array operation or `jit()` takes a `backend`
+  argument, and an array or device of another backend is an error. This is what makes the default
+  dtypes unambiguous in eager code. (A handful of helpers about the backend itself do name one:
+  `install_anvl()`, `default_device()`, `local_default_dtypes()` / `with_default_dtypes()`.)
 
 ## One Backend at a Time
 
 The backend is the option `anvl.backend` (`active_backend()`, `local_backend()`, `with_backend()`).
 Every jitted function runs on it, reading it at call time; nothing infers a backend from an
-argument, no function takes a `backend` argument, and an array or device of another backend is an
-error.
+argument, no array operation or `jit()` takes a `backend` argument, and an array or device of
+another backend is an error. Only helpers *about* the backend name one (`install_anvl()`,
+`default_device()`, `local_default_dtypes()` / `with_default_dtypes()`).
 
 ## Primitive System
 

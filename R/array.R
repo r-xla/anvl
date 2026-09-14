@@ -12,7 +12,7 @@
 #' [`naxes()`][tengen::naxes] for the number of axes and
 #' [`shape()`][tengen::shape] for the axis sizes. We speak of the *size of an
 #' axis* rather than an array's "dimensions", as the latter is generally
-#' overloaded as it is used to refer to both the axis and it's size.
+#' overloaded as it is used to refer to both the axis and its size.
 #'
 #'
 #' @section Extractors:
@@ -788,7 +788,7 @@ ConcreteArray <- function(data) {
 #' [`nv_fill()`] to create a constant.
 #'
 #' @section Lowering:
-#' `LiteralArray`s become constants inlined into the stableHLO program.
+#' `LiteralArray`s become constants inlined into the StableHLO program.
 #' I.e., they lower to [`hlo_tensor()`].
 #'
 #' @param data (`double(1)` | `integer(1)` | `logical(1)` | [`AnvlArray`])\cr
@@ -816,7 +816,7 @@ ConcreteArray <- function(data) {
 #' @export
 LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
   if (!is_valid_r_lit(data) && !inherits(data, "AnvlArray")) {
-    cli_abort("LiteralArrays expect scalars or AnvlArray")
+    cli_abort("{.arg data} must be a scalar or a one-element {.cls AnvlArray}.")
   }
   if (inherits(data, "AnvlArray")) {
     if (prod(shape(data)) != 1L) {
@@ -843,7 +843,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' Inherits from [`AbstractArray`].
 #'
 #' @section Lowering:
-#' When lowering to stableHLO, these become `iota` operations that generate the integer sequence
+#' When lowering to StableHLO, these become `iota` operations that generate the integer sequence
 #' so they do not need to actually hold the data in the executable, similar to `ALTREP`s in R.
 #' It lowers to [`hlo_iota()`], optionally shifting the starting value via
 #' [`hlo_add()`].
@@ -1153,7 +1153,7 @@ arr <- function(..., shape = NULL) {
   assert_vector(vals, min.len = 1L)
   nvals <- length(vals)
   if (!is.null(shape) && (nvals != 1) && (prod(shape) != nvals)) {
-    cli_abort("Number of elements is {nvals}, but {.arg shape} is {shape}")
+    cli_abort("Number of elements is {nvals}, but {.arg shape} is {shape_repr(shape)}.")
   }
   array(vals, dim = shape %||% length(vals))
 }

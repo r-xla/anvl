@@ -1591,7 +1591,7 @@ describe("nv_select", {
   })
 
   it("errors on a 0-dimensional input", {
-    expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "0-dimensional")
+    expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "at least one axis")
   })
 
   it("accepts a negative dim", {
@@ -1623,7 +1623,7 @@ describe("nv_sort", {
   })
 
   it("errors on a 0-dimensional input", {
-    expect_error(nv_sort(nv_scalar(1)), "0-dimensional")
+    expect_error(nv_sort(nv_scalar(1)), "at least one axis")
   })
 
   it("dispatches via the sort() generic", {
@@ -1917,7 +1917,7 @@ describe("nv_quantile", {
   })
 
   it("errors on a 0-dimensional input", {
-    expect_error(nv_quantile(nv_scalar(1), 0.5), "0-dimensional")
+    expect_error(nv_quantile(nv_scalar(1), 0.5), "at least one axis")
   })
 
   it("accepts a negative dim", {
@@ -2219,7 +2219,7 @@ describe("nv_reshape", {
     expect_error(nv_reshape(nv_array(1:6), c(-1, -1)), "at most one")
   })
   it("rejects a shape that does not divide evenly", {
-    expect_error(nv_reshape(nv_array(1:6), c(4, -1)), "Cannot infer dimension")
+    expect_error(nv_reshape(nv_array(1:6), c(4, -1)), "Cannot infer the size of axis")
   })
   it("rejects negative values other than -1", {
     expect_error(nv_reshape(nv_array(1:6), c(2, -2)), "must contain only non-negative")
