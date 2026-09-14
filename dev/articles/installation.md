@@ -76,7 +76,7 @@ and CPU build for amd64/x86-64 architecture:
 | Image       | Description                          |
 |-------------|--------------------------------------|
 | `anvl-cpu`  | CPU support, based on `rocker/r-ver` |
-| `anvl-cuda` | GPU support with CUDA 12.8           |
+| `anvl-cuda` | GPU support with CUDA 13.3           |
 
 Note that running the GPU container requires the [NVIDIA Container
 Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
