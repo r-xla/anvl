@@ -25,10 +25,6 @@ Element-wise greater than comparison. You can also use the \code{>} operator.
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(3, 2, 1))
 nv_gt(x, y)
-\dontshow{\}) # examplesIf}
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(1, 3, 2))
 x > y
 \dontshow{\}) # examplesIf}
 }

@@ -25,10 +25,6 @@ Divides two arrays element-wise. You can also use the \code{/} operator.
 x <- nv_array(c(10, 20, 30))
 y <- nv_array(c(2, 5, 10))
 nv_div(x, y)
-\dontshow{\}) # examplesIf}
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(10, 20, 30))
-y <- nv_array(c(2, 5, 10))
 x / y
 \dontshow{\}) # examplesIf}
 }

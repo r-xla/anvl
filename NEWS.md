@@ -19,10 +19,7 @@
 * A `Shape` is now represented as an integer vector.
 * The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
   now require a boolean input array, improving consistency with base R.
-* `signif()` requires a float array: unlike base R it does not round an
-  integer array to a coarser magnitude, which would turn it into a float.
-  `round(x, digits)` errors for a negative `digits` on an integer array for
-  the same reason.
+* The method for `round` was removed, as `digits` is currently not supported.
 
 ## Features
 
@@ -45,10 +42,8 @@
   * Concatenating vectors via `c()`.
   * Floor division via `nv_floor_div`/`%/%`.
   * Trigonometric functions `sinpi`, `cospi` and `tanpi` and their corresponding `nv_*` functions.
-  * Rounding function `signif`.
   * The `gamma` generic.
-* `round(x, digits)` and `log(x, base)` now accept their second argument like in
-  base R.
+* `log(x, base)` now accepts its second argument like in base R.
 * New `nv_range()` returns the minimum and the maximum of an array, stacked
   along a new first axis, and is what the `range()` uses.
 * The `nv_*` functions that compute in floating point (`nv_sqrt()`,

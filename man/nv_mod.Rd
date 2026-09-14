@@ -26,10 +26,6 @@ the sign of \code{rhs}, matching base R's \code{\%\%} operator.
 x <- nv_array(c(1L, -1L))
 y <- nv_array(c(-3L, 3L))
 nv_mod(x, y)
-\dontshow{\}) # examplesIf}
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1L, -1L))
-y <- nv_array(c(-3L, 3L))
 x \%\% y
 as.vector(x) \%\% as.vector(y) # the same in base R
 \dontshow{\}) # examplesIf}

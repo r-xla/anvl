@@ -556,6 +556,7 @@ make_do_binary <- function(f) {
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
 #' nv_add(x, y)
+#' x + y
 #' @export
 #' @jit
 nv_add <- make_do_binary(prim_add)
@@ -570,6 +571,7 @@ nv_add <- make_do_binary(prim_add)
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
 #' nv_mul(x, y)
+#' x * y
 #' @export
 #' @jit
 nv_mul <- make_do_binary(prim_mul)
@@ -584,6 +586,7 @@ nv_mul <- make_do_binary(prim_mul)
 #' x <- nv_array(c(4, 5, 6))
 #' y <- nv_array(c(1, 2, 3))
 #' nv_sub(x, y)
+#' x - y
 #' @export
 #' @jit
 nv_sub <- make_do_binary(prim_sub)
@@ -598,6 +601,7 @@ nv_sub <- make_do_binary(prim_sub)
 #' x <- nv_array(c(10, 20, 30))
 #' y <- nv_array(c(2, 5, 10))
 #' nv_div(x, y)
+#' x / y
 #' @export
 #' @jit
 nv_div <- make_do_binary(prim_div)
@@ -612,6 +616,7 @@ nv_div <- make_do_binary(prim_div)
 #' x <- nv_array(c(2, 3, 4))
 #' y <- nv_array(c(3, 2, 1))
 #' nv_pow(x, y)
+#' x^y
 #' @export
 #' @jit
 nv_pow <- make_do_binary(prim_pow)
@@ -626,6 +631,7 @@ nv_pow <- make_do_binary(prim_pow)
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(1, 3, 2))
 #' nv_eq(x, y)
+#' x == y
 #' @export
 #' @jit
 nv_eq <- make_do_binary(prim_eq)
@@ -640,6 +646,7 @@ nv_eq <- make_do_binary(prim_eq)
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(1, 3, 2))
 #' nv_ne(x, y)
+#' x != y
 #' @export
 #' @jit
 nv_ne <- make_do_binary(prim_ne)
@@ -654,6 +661,7 @@ nv_ne <- make_do_binary(prim_ne)
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
 #' nv_gt(x, y)
+#' x > y
 #' @export
 #' @jit
 nv_gt <- make_do_binary(prim_gt)
@@ -668,6 +676,7 @@ nv_gt <- make_do_binary(prim_gt)
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
 #' nv_ge(x, y)
+#' x >= y
 #' @export
 #' @jit
 nv_ge <- make_do_binary(prim_ge)
@@ -682,6 +691,7 @@ nv_ge <- make_do_binary(prim_ge)
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
 #' nv_lt(x, y)
+#' x < y
 #' @export
 #' @jit
 nv_lt <- make_do_binary(prim_lt)
@@ -696,6 +706,7 @@ nv_lt <- make_do_binary(prim_lt)
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
 #' nv_le(x, y)
+#' x <= y
 #' @export
 #' @jit
 nv_le <- make_do_binary(prim_le)
@@ -757,6 +768,8 @@ nv_remainder <- make_do_binary(prim_remainder)
 #' x <- nv_array(c(1L, -1L))
 #' y <- nv_array(c(-3L, 3L))
 #' nv_mod(x, y)
+#' x %% y
+#' as.vector(x) %% as.vector(y) # the same in base R
 #' @export
 #' @jit
 nv_mod <- function(lhs, rhs) {
@@ -784,6 +797,7 @@ nv_mod <- function(lhs, rhs) {
 #' x <- nv_array(c(7L, -7L))
 #' y <- nv_array(c(2L, 2L))
 #' nv_floor_div(x, y)
+#' x %/% y
 #' @export
 #' @jit
 nv_floor_div <- function(lhs, rhs) {
@@ -814,6 +828,7 @@ nv_floor_div <- function(lhs, rhs) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
+#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
 #' @export
 #' @jit
 nv_and <- make_do_binary(prim_and)
@@ -828,6 +843,7 @@ nv_and <- make_do_binary(prim_and)
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 #' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
+#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
 #' @export
 #' @jit
 nv_or <- make_do_binary(prim_or)
@@ -961,6 +977,7 @@ nv_negate <- prim_negate
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_not(nv_array(c(TRUE, FALSE, TRUE)))
 #' nv_not(nv_array(12L)) # bitwise: -13
+#' !nv_array(c(TRUE, FALSE)) # logical
 #' @export
 nv_not <- prim_not
 
@@ -1675,7 +1692,7 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 
 #' @title Round
 #' @description
-#' Element-wise rounding. You can also use the `round()` generic.
+#' Element-wise rounding to a whole number.
 #' @template param_x_round
 #' @param method (`character(1)`)\cr
 #'   Rounding method.
@@ -1684,47 +1701,11 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @seealso [prim_round()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.4, 2.5, 3.6))
-#' round(x)
-#' round(nv_array(1:3)) # an integer array is already whole
+#' nv_round(x)
+#' nv_round(nv_array(1:3)) # an integer array is already whole
 #' @export
 nv_round <- function(x, method = "nearest_even") {
   if (is_intlike(x)) as_anvl_array(x) else prim_round(x, method = method)
-}
-
-#' @title Round to Significant Digits
-#' @description
-#' Element-wise rounding to `digits` significant digits. You can also use the
-#' `signif()` generic. It is computed by rounding the mantissa, so it can
-#' differ from base R's [base::signif()] in the last representable digit.
-#' @param x ([`arrayish`])\cr
-#'   Input array. Must be a float array: unlike base R, an integer array is not
-#'   rounded to a coarser magnitude, since that would have to turn it into a
-#'   float. Convert it with [nv_convert()] if that is what you mean.
-#' @param digits (`numeric(1)`)\cr
-#'   Number of significant digits, as in [base::signif()]. Must be a plain R
-#'   value; a value below 1 is raised to 1, like in base R.
-#' @template return_unary
-#' @seealso [nv_round()], [round()]
-#' @examplesIf pjrt::plugins_downloaded()
-#' signif(nv_array(c(123.456, -0.001234)), 3)
-#' @export
-#' @jit static "digits"
-nv_signif <- function(x, digits = 6) {
-  checkmate::assert_number(digits, finite = TRUE)
-  # Like base R, which warns and uses 1 for a smaller value.
-  digits <- max(digits, 1)
-  x <- as_anvl_array(assert_float_array(x))
-  # Shift the value so that `digits` significant digits sit in front of the
-  # decimal point, round there, and shift back. A power of ten is not a float,
-  # so both the shift and the shift back round to the nearest one, and the
-  # result can land one unit in the last place away from the float closest to
-  # the intended decimal: `signif(1.15, 2)` is 1.2000000000000002 here and
-  # 1.2000000000000000 in base R, which shifts in long double. The digits that
-  # are kept are the same either way.
-  scale <- nv_pow(10, digits - 1 - nv_floor(nv_log10(nv_abs(x))))
-  rounded <- nv_round(x * scale, method = "nearest_even") / scale
-  # 0 has no magnitude, and Inf / NaN must pass through unchanged.
-  nv_ifelse(nv_is_finite(x) & (x != 0), rounded, x)
 }
 
 ## Other operations -----------------------------------------------------------
@@ -1750,6 +1731,7 @@ nv_signif <- function(x, digits = 6) {
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
 #' nv_matmul(x, y)
+#' x %*% y
 #' @export
 #' @jit static "precision"
 nv_matmul <- function(lhs, rhs, precision = "highest") {

@@ -20,11 +20,6 @@ NULL
 
 #' @rdname nv_add
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' x + y
-#' +x # unary plus is the identity
 #' @export
 `+.AnvlArray` <- function(e1, e2) {
   # Base R's unary `+` is the identity.
@@ -36,11 +31,6 @@ NULL
 
 #' @rdname nv_sub
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(4, 5, 6))
-#' y <- nv_array(c(1, 2, 3))
-#' x - y
-#' -x # unary minus negates
 #' @export
 `-.AnvlArray` <- function(e1, e2) {
   if (missing(e2)) nv_negate(e1) else nv_sub(e1, e2)
@@ -51,10 +41,6 @@ NULL
 
 #' @rdname nv_mul
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(4, 5, 6))
-#' x * y
 #' @export
 `*.AnvlArray` <- function(e1, e2) {
   nv_mul(e1, e2)
@@ -65,10 +51,6 @@ NULL
 
 #' @rdname nv_div
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(10, 20, 30))
-#' y <- nv_array(c(2, 5, 10))
-#' x / y
 #' @export
 `/.AnvlArray` <- function(e1, e2) {
   nv_div(e1, e2)
@@ -79,10 +61,6 @@ NULL
 
 #' @rdname nv_pow
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(2, 3, 4))
-#' y <- nv_array(c(3, 2, 1))
-#' x^y
 #' @export
 `^.AnvlArray` <- function(e1, e2) {
   nv_pow(e1, e2)
@@ -93,11 +71,6 @@ NULL
 
 #' @rdname nv_mod
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1L, -1L))
-#' y <- nv_array(c(-3L, 3L))
-#' x %% y
-#' as.vector(x) %% as.vector(y) # the same in base R
 #' @export
 `%%.AnvlArray` <- function(e1, e2) {
   nv_mod(e1, e2)
@@ -108,11 +81,6 @@ NULL
 
 #' @rdname nv_floor_div
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(7L, -7L))
-#' y <- nv_array(c(2L, 2L))
-#' x %/% y
-#' as.vector(x) %/% as.vector(y) # the same in base R
 #' @export
 `%/%.AnvlArray` <- function(e1, e2) {
   nv_floor_div(e1, e2)
@@ -123,10 +91,6 @@ NULL
 
 #' @rdname nv_matmul
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_matrix(1:6, nrow = 2)
-#' y <- nv_matrix(1:6, nrow = 3)
-#' x %*% y
 #' @export
 `%*%.AnvlArray` <- function(x, y) {
   nv_matmul(x, y)
@@ -139,10 +103,6 @@ NULL
 
 #' @rdname nv_eq
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' x == y
 #' @export
 `==.AnvlArray` <- function(e1, e2) {
   nv_eq(e1, e2)
@@ -153,10 +113,6 @@ NULL
 
 #' @rdname nv_ne
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' x != y
 #' @export
 `!=.AnvlArray` <- function(e1, e2) {
   nv_ne(e1, e2)
@@ -167,10 +123,6 @@ NULL
 
 #' @rdname nv_lt
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' x < y
 #' @export
 `<.AnvlArray` <- function(e1, e2) {
   nv_lt(e1, e2)
@@ -181,10 +133,6 @@ NULL
 
 #' @rdname nv_le
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' x <= y
 #' @export
 `<=.AnvlArray` <- function(e1, e2) {
   nv_le(e1, e2)
@@ -195,10 +143,6 @@ NULL
 
 #' @rdname nv_gt
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' x > y
 #' @export
 `>.AnvlArray` <- function(e1, e2) {
   nv_gt(e1, e2)
@@ -209,10 +153,6 @@ NULL
 
 #' @rdname nv_ge
 #' @usage NULL
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3))
-#' y <- nv_array(c(1, 3, 2))
-#' x >= y
 #' @export
 `>=.AnvlArray` <- function(e1, e2) {
   nv_ge(e1, e2)
@@ -243,8 +183,6 @@ bitwise_hint <- function(fn) {
 #' @section The `&` operator:
 #' `&` is *logical*, like in base R.
 #' Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
-#' @examplesIf pjrt::plugins_downloaded()
-#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))
 #' @export
 `&.AnvlArray` <- function(e1, e2) {
   nv_and(
@@ -261,8 +199,6 @@ bitwise_hint <- function(fn) {
 #' @section The `|` operator:
 #' `|` is *logical*, like in base R.
 #' Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
-#' @examplesIf pjrt::plugins_downloaded()
-#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE))
 #' @export
 `|.AnvlArray` <- function(e1, e2) {
   nv_or(
@@ -279,8 +215,6 @@ bitwise_hint <- function(fn) {
 #' @section The `!` operator:
 #' `!` is *logical*, like in base R.
 #' Unlike base R it only accepts booleans and does not auto-convert non-booleans by comparing them with 0.
-#' @examplesIf pjrt::plugins_downloaded()
-#' !nv_array(c(TRUE, FALSE))
 #' @export
 `!.AnvlArray` <- function(x) {
   nv_not(assert_boolean_array(x, hint = bitwise_hint("nv_not")))
@@ -619,64 +553,6 @@ trunc.AnvlArray <- function(x, ...) {
 
 #' @export
 trunc.AnvlBox <- trunc.AnvlArray
-
-#' @rdname nv_round
-#' @param digits (`numeric(1)`)\cr
-#'   Number of digits to round to, as in [base::round()]. Must be a plain R
-#'   value.
-#' @param ... Further arguments of [nv_round()].
-#' @section The `round()` generic:
-#' `round(x, digits)` is computed by scaling with `10^digits`, so it can differ
-#' from [base::round()] in the last representable digit. A negative `digits`
-#' rounds an integer array to a multiple of ten in base R; on an anvl array,
-#' where an integer never turns into a float on its own, that is an error
-#' instead.
-#' @export
-round.AnvlArray <- function(x, digits = 0, ...) {
-  checkmate::assert_number(digits, finite = TRUE)
-  if (is_intlike(x)) {
-    if (digits < 0) {
-      cli_abort(c(
-        "{.fn round} cannot round an integer array to {digits} digits.",
-        "i" = "Convert it with {.fn nv_convert} first."
-      ))
-    }
-    # An integer array is already whole, whatever the number of digits.
-    return(nv_round(x, ...))
-  }
-  if (digits == 0) {
-    return(nv_round(x, ...))
-  }
-  # Scaling is the only way to reach a digit that the hardware's round does not
-  # see, but `10^digits` is not a float, so `x * scale` is the nearest float to
-  # the true product rather than the product itself. Two things follow.
-  # Normally the result is off by at most one unit in the last place --
-  # round(145.70672, 1) is 145.70000000000002 here and 145.69999999999999 in
-  # base R -- which is invisible in the digits that were kept. But where the
-  # scaling lands exactly on a tie, the tie is an artefact of the scaling and
-  # the rounded digit itself can differ: round(2.675, 2) is 2.68 here because
-  # `2.675 * 100` is exactly 267.5, and 2.67 in base R, which sees that the
-  # double behind 2.675 is just below the tie.
-  scale <- 10^digits
-  nv_round(x * scale, ...) / scale
-}
-
-#' @export
-round.AnvlBox <- round.AnvlArray
-
-#' @rdname nv_signif
-#' @usage NULL
-#' @method signif AnvlArray
-#' @export
-signif.AnvlArray <- function(x, digits = 6) {
-  nv_signif(x, digits = digits)
-}
-
-#' @method signif AnvlBox
-#' @export
-signif.AnvlBox <- signif.AnvlArray
-
-# Cumulative generics ----------------------------------------------------------
 
 #' @rdname nv_cumsum
 #' @usage NULL
@@ -1065,10 +941,6 @@ sort.AnvlBox <- sort.AnvlArray
 #' @rdname nv_subset
 #' @usage NULL
 #' @method [ AnvlArray
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_matrix(1:12, nrow = 3)
-#' x[2, ] # row 2
-#' x[1:2, ] # rows 1 to 2, all columns
 #' @export
 `[.AnvlArray` <- function(x, ...) {
   # nargs() sees trailing missing args (e.g. the last `,` in x[1:5, , ])
@@ -1096,10 +968,6 @@ sort.AnvlBox <- sort.AnvlArray
 #' @rdname nv_subset_assign
 #' @usage NULL
 #' @method [<- AnvlArray
-#' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_matrix(1:12, nrow = 3)
-#' x[1, ] <- nv_scalar(0L)
-#' x
 #' @export
 `[<-.AnvlArray` <- function(x, ..., value) {
   n_args <- nargs() - 2L

@@ -27,12 +27,7 @@ The result is the largest whole number that does not exceed \code{lhs / rhs}.
 x <- nv_array(c(7L, -7L))
 y <- nv_array(c(2L, 2L))
 nv_floor_div(x, y)
-\dontshow{\}) # examplesIf}
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(7L, -7L))
-y <- nv_array(c(2L, 2L))
 x \%/\% y
-as.vector(x) \%/\% as.vector(y) # the same in base R
 \dontshow{\}) # examplesIf}
 }
 \seealso{

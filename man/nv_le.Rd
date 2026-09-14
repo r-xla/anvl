@@ -25,10 +25,6 @@ Element-wise less than or equal comparison. You can also use the \code{<=} opera
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(3, 2, 1))
 nv_le(x, y)
-\dontshow{\}) # examplesIf}
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 2, 3))
-y <- nv_array(c(1, 3, 2))
 x <= y
 \dontshow{\}) # examplesIf}
 }

@@ -167,19 +167,6 @@ assert_boolean_array <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   x
 }
 
-# Assert that `x` is a float array, or an R value that would become one.
-assert_float_array <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
-  dt <- peek_dtype(x)
-  if (!is_dtype_float(dt)) {
-    cli_abort(c(
-      "{.arg {arg}} must be a float array.",
-      "x" = "Got data type {.val {as.character(dt)}}.",
-      info_bullets(hint %||% "Convert it with {.fn nv_convert}.")
-    ))
-  }
-  x
-}
-
 # Name each element "i" so cli shows it as its own info bullet. Naming a
 # multi-element vector as a whole would renumber the names to "i1", "i2", ...
 # and lose the bullets.

@@ -488,29 +488,6 @@ describe("nv_tanpi", {
   })
 })
 
-describe("nv_signif", {
-  it("rounds to significant digits like base R", {
-    vals <- c(1.2345, 123450, -0.00012345, 0, Inf, NaN)
-    x <- nv_array(vals, dtype = "f64")
-    expect_equal(as.vector(nv_signif(x, 3)), signif(vals, 3), tolerance = 1e-6)
-    expect_equal(as.vector(nv_signif(x)), signif(vals), tolerance = 1e-6)
-  })
-
-  it("asks for a float array, unlike base R", {
-    expect_error(nv_signif(nv_array(3L), 2), "must be a float array")
-    expect_equal(
-      as.vector(nv_signif(nv_convert(nv_array(123L), default_float()), 2)),
-      signif(123, 2)
-    )
-  })
-
-  it("means the same thing under jit()", {
-    f <- function(a) nv_signif(a, 2)
-    x <- nv_array(c(1.2345, -0.00012345), dtype = "f64")
-    expect_equal(as.vector(jit(f)(x)), as.vector(f(x)))
-  })
-})
-
 describe("make_float_unary", {
   # Every unary `nv_*` function that computes in floating point is built by
   # this factory, so one representative is enough to cover all of them.

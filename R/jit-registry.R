@@ -46,7 +46,6 @@
   list(name = "nv_clamp", static = character(0)),
   list(name = "nv_seq", static = 1:4),
   list(name = "nv_linspace", static = 1:5),
-  list(name = "nv_signif", static = "digits"),
   list(name = "nv_matmul", static = "precision"),
   list(name = "nv_solve", static = character(0)),
   list(name = "nv_triangular_solve", static = 3:6),

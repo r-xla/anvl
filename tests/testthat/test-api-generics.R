@@ -146,37 +146,6 @@ describe("trigamma", {
   })
 })
 
-# Rounding ---------------------------------------------------------------------
-
-describe("round", {
-  it("takes digits like base R", {
-    expect_equal(as.vector(round(nv_array(1.2345, dtype = "f64"), 2)), round(1.2345, 2))
-    expect_equal(as.vector(round(nv_array(1234.5, dtype = "f64"), -2)), round(1234.5, -2))
-  })
-
-  it("rounds half to even and forwards `method`, like nv_round()", {
-    expect_equal(as.vector(round(nv_array(c(0.5, 1.5)))), round(c(0.5, 1.5)))
-    expect_equal(as.vector(round(nv_array(c(0.5, 1.5)), method = "afz")), c(1, 2))
-  })
-
-  it("returns an integer array unchanged", {
-    x <- nv_array(3L)
-    expect_equal(round(x), x)
-    expect_equal(round(x, 2), x)
-    expect_equal(round(nv_array(3L, dtype = "ui8")), nv_array(3L, dtype = "ui8"))
-  })
-
-  it("rejects a negative digits for an integer array", {
-    expect_error(round(nv_array(15L), -1), "cannot round an integer array")
-  })
-
-  it("means the same thing under jit()", {
-    f <- function(a) round(a, 1)
-    x <- nv_array(c(1.25, 2.349), dtype = "f64")
-    expect_equal(as.vector(jit(f)(x)), as.vector(f(x)))
-  })
-})
-
 # Summary generics -------------------------------------------------------------
 
 describe("sum", {

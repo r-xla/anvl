@@ -31,9 +31,7 @@ Unlike base R it only accepts booleans and does not auto-convert non-booleans by
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
 nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
-\dontshow{\}) # examplesIf}
-\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE))
+nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
 \dontshow{\}) # examplesIf}
 }
 \seealso{

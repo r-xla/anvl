@@ -220,7 +220,6 @@ reference:
       - nv_ceiling
       - nv_trunc
       - nv_round
-      - nv_signif
       - nv_logistic
       - nv_erf
       - nv_erfc
