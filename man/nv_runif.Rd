@@ -14,8 +14,8 @@ Shape.}
 RNG state (\code{ui64[2]}).}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled values: a 32- or 64-bit float, as the sample is
-assembled from random bits. \code{NULL} (default) uses the backend's default
+Data type of the sampled values: a 32- or 64-bit float.
+\code{NULL} (default) uses the backend's default
 float data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 
 \item{min, max}{(\code{numeric(1)})\cr

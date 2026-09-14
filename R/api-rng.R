@@ -55,8 +55,8 @@ nv_unif_rand <- function(
 #' @template param_shape
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled values: a 32- or 64-bit float, as the sample is
-#'   assembled from random bits. `NULL` (default) uses the backend's default
+#'   Data type of the sampled values: a 32- or 64-bit float.
+#'   `NULL` (default) uses the backend's default
 #'   float data type (see [`default_dtypes()`]).
 #' @param min,max (`numeric(1)`)\cr
 #'   Lower and upper bound.
@@ -82,8 +82,6 @@ nv_runif <- function(
   shape <- assert_shapevec(shape)
 
   if (max == min) {
-    # A degenerate interval draws nothing, so the state comes back unchanged --
-    # but in the same shape as every other sampler's return.
     return(list(
       state = initial_state,
       values = nv_fill_like(initial_state, max, shape = shape, dtype = dtype)
@@ -125,11 +123,10 @@ nv_runif <- function(
 #' @template param_shape
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-#'   from random bits. `NULL` (default) takes it from
-#'   `mean` and `sd` where either is a real array, and falls back to the default
-#'   float data type (see [`default_dtypes()`]) where both are bare R values,
-#'   which have none.
+#'   Data type of the sample: a 32- or 64-bit float.
+#'   `NULL` (default) takes it from `mean` and `sd` where either is a
+#'   real array, and falls back to the default float data type (see [`default_dtypes()`])
+#'   where both are bare R values, which have none.
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -230,8 +227,8 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled values. Must be numeric -- the successes are
-#'   counted, which a boolean cannot hold. `NULL` (default) uses the backend's
+#'   Data type of the sampled values. Must be numeric.
+#'  `NULL` (default) uses the backend's
 #'   default integer data type (see [`default_dtypes()`]).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled values.
@@ -248,8 +245,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
   # as `bool` for `size = 1` and silently as an integer for anything above.
   dtype <- assert_numeric_dtype(
     dtype %||% default_int(),
-    arg = "dtype",
-    hint = "A boolean cannot hold a count; use an integer data type and compare it."
+    arg = "dtype"
   )
   checkmate::assert_int(size, lower = 1)
   checkmate::assert_number(prob, lower = 0, upper = 1)
@@ -288,8 +284,8 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 #' @param n (`integer(1)`)\cr
 #'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the sampled integers. Must be numeric -- an index is a count,
-#'   which a boolean cannot hold. `NULL` (default) uses the backend's default
+#'   Data type of the sampled integers. Must be numeric.
+#'  `NULL` (default) uses the backend's default
 #'   integer data type (see [`default_dtypes()`]).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled
@@ -307,8 +303,7 @@ nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
   # An index is a count too: at `bool` every draw collapsed to `TRUE`.
   dtype <- assert_numeric_dtype(
     dtype %||% default_int(),
-    arg = "dtype",
-    hint = "A boolean cannot hold an index; use an integer data type."
+    arg = "dtype"
   )
   assert_int(n, lower = 1)
   shape <- assert_shapevec(shape)

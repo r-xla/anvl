@@ -22,16 +22,14 @@
 * The method for `round` was removed, as `digits` is currently not supported.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
+
+## Features
+
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
   `nv_sample_int()`, `nv_sample()`) and `prim_rng_bit_generator()` return a
   named list with elements `state` and `values` instead of an unnamed pair,
   and `prim_top_k()`, `prim_cummax()` and `prim_cummin()` name theirs
-  `values` and `indices`. Positional indexing still works.
-* `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
-  hold a count or an index.
-
-## Features
-
+  `values` and `indices`.
 * The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
   `all()`) now work with multiple data inputs.
 * The default data types for floating point numbers and integers can now be
@@ -64,6 +62,8 @@
 
 ## Bug fixes
 
+* `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
+  hold a count or an index.
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
   error message, as `drop` is not supported.
 * `nv_quantile()` and `nv_median()` now compute at the default float data

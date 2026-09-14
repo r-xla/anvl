@@ -17,8 +17,8 @@ RNG state (\code{ui64[2]}).}
 Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled integers. Must be numeric -- an index is a count,
-which a boolean cannot hold. \code{NULL} (default) uses the backend's default
+Data type of the sampled integers. Must be numeric.
+\code{NULL} (default) uses the backend's default
 integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{

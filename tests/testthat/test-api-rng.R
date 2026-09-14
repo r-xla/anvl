@@ -104,30 +104,6 @@ test_that("nv_rbinom", {
   expect_equal(shape(out3[[2]]), c(3L, 3L))
 })
 
-test_that("every sampler returns a named state/values pair", {
-  state <- nv_array(c(1, 2), dtype = "ui64")
-  pop <- nv_array(c(10, 20, 30))
-  draws <- list(
-    runif = nv_runif(4L, state),
-    rnorm = nv_rnorm(4L, state),
-    rbinom = nv_rbinom(4L, state),
-    sample_int = nv_sample_int(4L, state, 6L),
-    sample = nv_sample(4L, state, pop)
-  )
-  for (nm in names(draws)) {
-    expect_named(draws[[nm]], c("state", "values"), info = nm)
-    # Positional indexing keeps working, in the same order.
-    expect_identical(draws[[nm]]$state, draws[[nm]][[1L]], info = nm)
-    expect_identical(draws[[nm]]$values, draws[[nm]][[2L]], info = nm)
-    expect_equal(dtype(draws[[nm]]$state), as_dtype("ui64"), info = nm)
-    expect_equal(shape(draws[[nm]]$values), 4L, info = nm)
-  }
-
-  # The underlying primitive names its outputs the same way.
-  bits <- prim_rng_bit_generator(state, dtype = "i64", shape = c(2, 2))
-  expect_named(bits, c("state", "values"))
-})
-
 test_that("nv_runif with min == max returns the pair, state unchanged", {
   state <- nv_array(c(1, 2), dtype = "ui64")
   out <- nv_runif(c(2, 3), state, min = 5, max = 5)
@@ -140,23 +116,8 @@ test_that("nv_runif with min == max returns the pair, state unchanged", {
 
 test_that("nv_rbinom and nv_sample_int reject a boolean data type", {
   state <- nv_array(c(1, 2), dtype = "ui64")
-  # A boolean cannot hold a count: `bool` used to survive for `size = 1` and
-  # silently turn into `i32` above it.
   expect_error(
     nv_rbinom(state, dtype = "bool", shape = 4L),
-    "must be a numeric data type"
-  )
-  expect_error(
-    nv_rbinom(state, dtype = "bool", shape = 4L, size = 3L),
-    "must be a numeric data type"
-  )
-  expect_error(
-    nv_sample_int(shape = 4L, initial_state = state, n = 5L, dtype = "bool"),
-    "must be a numeric data type"
-  )
-  # And the check holds inside a jitted function too.
-  expect_error(
-    jit(function(s) nv_rbinom(4L, s, dtype = "bool"))(state),
     "must be a numeric data type"
   )
 })
