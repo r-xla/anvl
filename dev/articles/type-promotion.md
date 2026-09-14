@@ -152,7 +152,7 @@ the arguments and outputs a data type for each one.
 
 ``` r
 
-as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
+as_anvl_arrays(1, 2, .promote = promotion_dtype("f64"))
 ```
 
     ## [[1]]
@@ -166,13 +166,13 @@ as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
     ## [ CPUf64{} ]
 
 Below, we show how to actually compute the common data type of some
-arguments using the `promote_common` rule.
+arguments using the `promotion_common` rule.
 
 ``` r
 
-promote_fn <- promote_common()
+promotion_fn <- promotion_common()
 args <- list(1, 2, nv_scalar(1L, "i8"))
-promote_fn(args)
+promotion_fn(args)
 ```
 
     ## [[1]]
@@ -190,7 +190,7 @@ it moves the inputs there:
 
 ``` r
 
-do.call(as_anvl_arrays, c(args, list(.promote = promote_fn)))
+do.call(as_anvl_arrays, c(args, list(.promote = promotion_fn)))
 ```
 
     ## [[1]]

@@ -74,7 +74,7 @@ as_anvl_arrays(nv_array(1:3), 1L)
 #>  1
 #> [ CPUi32{} ] 
 #> 
-as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
+as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promotion_common())
 #> [[1]]
 #> AnvlArray
 #>  1

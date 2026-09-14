@@ -28,14 +28,16 @@ AnvlGraph(
 
 - in_tree:
 
-  (`NULL | Node`)  
+  (`NULL` \|
+  [`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   The tree of inputs. May contain leaves for both array inputs and
   static (non-array) arguments. Only the array leaves correspond to
   entries in `inputs`; use `is_static_flat` to distinguish them.
 
 - out_tree:
 
-  (`NULL | Node`)  
+  (`NULL` \|
+  [`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   The tree of outputs.
 
 - inputs:

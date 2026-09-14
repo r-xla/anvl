@@ -7,38 +7,38 @@
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Promotion Rules — promotion_rule"><meta name="description" content="Functions for materializing R values to arrays and promoting inputs.
 Most commonly used via the .promote argument of as_anvl_arrays().
-promote_common() brings every input to their common data type
+promotion_common() brings every input to their common data type
 (common_dtype()).
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
-promote_like() brings the inputs to the data type of a selected input.
+promotion_like() brings the inputs to the data type of a selected input.
 If the selected data type is an R value, it's default data type is used.
-promote_dtype() brings the inputs to the specified data type.
-promote_rdata_common() brings the R values to the common data type, as long
+promotion_dtype() brings the inputs to the specified data type.
+promotion_rdata_common() brings the R values to the common data type, as long
 it is within their category (a double can e.g. not become a float).
 AnvlArray inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
 for one or more argument subsets.
-promote_grouped() applies several rules to disjoint subsets.
+promotion_grouped() applies several rules to disjoint subsets.
 promotion_rule() creates a new promotion rule.
 It takes in arrayish values and outputs a list of data types, with NULL indicating
 no conversion."><meta property="og:description" content="Functions for materializing R values to arrays and promoting inputs.
 Most commonly used via the .promote argument of as_anvl_arrays().
-promote_common() brings every input to their common data type
+promotion_common() brings every input to their common data type
 (common_dtype()).
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
-promote_like() brings the inputs to the data type of a selected input.
+promotion_like() brings the inputs to the data type of a selected input.
 If the selected data type is an R value, it's default data type is used.
-promote_dtype() brings the inputs to the specified data type.
-promote_rdata_common() brings the R values to the common data type, as long
+promotion_dtype() brings the inputs to the specified data type.
+promotion_rdata_common() brings the R values to the common data type, as long
 it is within their category (a double can e.g. not become a float).
 AnvlArray inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
 for one or more argument subsets.
-promote_grouped() applies several rules to disjoint subsets.
+promotion_grouped() applies several rules to disjoint subsets.
 promotion_rule() creates a new promotion rule.
 It takes in arrayish values and outputs a list of data types, with NULL indicating
 no conversion."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
@@ -114,20 +114,20 @@ no conversion."><meta property="og:image" content="https://r-xla.github.io/anvl/
     <div class="ref-description section level2">
     <p>Functions for materializing R values to arrays and promoting inputs.
 Most commonly used via the <code>.promote</code> argument of <code><a href="as_anvl_array.html">as_anvl_arrays()</a></code>.</p>
-<p><code>promote_common()</code> brings every input to their common data type
+<p><code>promotion_common()</code> brings every input to their common data type
 (<code><a href="common_dtype.html">common_dtype()</a></code>).
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.</p>
-<p><code>promote_like()</code> brings the inputs to the data type of a selected input.
+<p><code>promotion_like()</code> brings the inputs to the data type of a selected input.
 If the selected data type is an R value, it's default data type is used.</p>
-<p><code>promote_dtype()</code> brings the inputs to the specified data type.</p>
-<p><code>promote_rdata_common()</code> brings the <em>R values</em> to the common data type, as long
+<p><code>promotion_dtype()</code> brings the inputs to the specified data type.</p>
+<p><code>promotion_rdata_common()</code> brings the <em>R values</em> to the common data type, as long
 it is within their category (a <code>double</code> can e.g. <em>not</em> become a float).
 <code>AnvlArray</code> inputs are left as they are and the function throws an error
 if not all of them have exactly the same data type.
 This rule is commonly used in primitives expecting homogenous inputs
 for one or more argument subsets.</p>
-<p><code>promote_grouped()</code> applies several rules to disjoint subsets.</p>
+<p><code>promotion_grouped()</code> applies several rules to disjoint subsets.</p>
 <p><code>promotion_rule()</code> creates a new promotion rule.
 It takes in <code><a href="arrayish.html">arrayish</a></code> values and outputs a list of data types, with <code>NULL</code> indicating
 no conversion.</p>
@@ -135,15 +135,15 @@ no conversion.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">promote_common</span><span class="op">(</span>on <span class="op">=</span> <span class="cn">NULL</span>, fallback <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">promotion_common</span><span class="op">(</span>on <span class="op">=</span> <span class="cn">NULL</span>, fallback <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">promote_like</span><span class="op">(</span><span class="va">arg</span>, on <span class="op">=</span> <span class="cn">NULL</span>, coerce <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu">promotion_like</span><span class="op">(</span><span class="va">arg</span>, on <span class="op">=</span> <span class="cn">NULL</span>, coerce <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">promote_dtype</span><span class="op">(</span><span class="va">dtype</span>, on <span class="op">=</span> <span class="cn">NULL</span>, coerce <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu">promotion_dtype</span><span class="op">(</span><span class="va">dtype</span>, on <span class="op">=</span> <span class="cn">NULL</span>, coerce <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">promote_rdata_common</span><span class="op">(</span>on <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">promotion_rdata_common</span><span class="op">(</span>on <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">promote_grouped</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">promotion_grouped</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">promotion_rule</span><span class="op">(</span><span class="va">fn</span>, <span class="va">kind</span>, on <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -197,7 +197,8 @@ The rule.</p></dd>
 
 <dt id="arg-kind">kind<a class="anchor" aria-label="anchor" href="#arg-kind"></a></dt>
 <dd><p>(<code>character(1)</code>)<br>
-What the rule is, for printing: it shows as <code>&lt;promote_{kind}&gt;</code>.</p></dd>
+What the rule is, for printing: it shows as <code>&lt;{kind}&gt;</code>, so give it the
+name of the function that builds it.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -213,21 +214,21 @@ to be left unchanged.</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">promote_common</span><span class="op">(</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">pi</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">promotion_common</span><span class="op">(</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">pi</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span><span class="fu">promote_common</span><span class="op">(</span>fallback <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">promotion_common</span><span class="op">(</span>fallback <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f64&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f64&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span><span class="fu">promote_common</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">promotion_common</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>, <span class="fl">4</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -237,7 +238,7 @@ to be left unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[3]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span><span class="fu">promote_like</span><span class="op">(</span><span class="st">"x"</span>, coerce <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">promotion_like</span><span class="op">(</span><span class="st">"x"</span>, coerce <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -245,7 +246,7 @@ to be left unchanged.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f32&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># Without `coerce`, a target the input cannot hold is refused.</span></span></span>
-<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">promote_like</span><span class="op">(</span><span class="st">"x"</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/try.html" class="external-link">try</a></span><span class="op">(</span><span class="fu">promotion_like</span><span class="op">(</span><span class="st">"x"</span><span class="op">)</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span>, <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Error : Cannot bring argument 2 to data type <span style="color: #0000BB;">"f32"</span>.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #BB0000;">✖</span> <span style="color: #0000BB;">"f64"</span> is not promotable to <span style="color: #0000BB;">"f32"</span>.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> Convert it explicitly with `nv_convert()`.</span>
@@ -261,7 +262,7 @@ to be left unchanged.</p>
 <span class="r-in"><span>  <span class="st">"widest_float"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">widest_float</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;promote_widest_float&gt; </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;widest_float&gt; </span>
 <span class="r-in"><span><span class="fu"><a href="as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span>, <span class="fl">2.5</span>, <span class="fu"><a href="AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">1</span>, dtype <span class="op">=</span> <span class="st">"f64"</span><span class="op">)</span>, .promote <span class="op">=</span> <span class="va">widest_float</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>

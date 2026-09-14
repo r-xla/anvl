@@ -12,11 +12,11 @@ on to hand
 [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md):
 
     function(lhs, rhs) {
-      operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+      operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
       graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
     }
 
-[`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+[`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
 is the rule for it: an operand that has a data type keeps it, and an R
 value takes the one the others have, within its own category. That is
 what makes `prim_mul(x_f64, 2)` work whatever `x`'s data type is, while
@@ -86,7 +86,7 @@ realizing them again changes nothing.
 
 ``` r
 # An R value takes the data type of the operand it meets.
-operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promote_rdata_common())
+operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 dtype(operands$rhs)
 #> <f64>
 ```

@@ -67,7 +67,7 @@ inputs to `f32`;
 ``` r
 
 nv_add_f32 <- function(x, y) {
-  args <- as_anvl_arrays(x, y, .promote = promote_dtype("f32", coerce = TRUE))
+  args <- as_anvl_arrays(x, y, .promote = promotion_dtype("f32", coerce = TRUE))
   do.call(prim_add, args)
 }
 nv_add_f32(1, nv_scalar(1, "f64"))
@@ -213,6 +213,7 @@ tracing overhead without fusing anything new. Also skip pure I/O
 `nv_rng_state`).
 
 The roclet writes the list of tagged functions to `R/jit-registry.R` on
-every `devtools::document()` run, and `R/zzz.R` applies that registry at
-package source time so the wrapped functions are byte-compiled with the
-rest of the package.
+every
+[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+run, and `R/zzz.R` applies that registry at package source time so the
+wrapped functions are byte-compiled with the rest of the package.

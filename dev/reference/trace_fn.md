@@ -67,7 +67,7 @@ trace_fn(
 
 - in_tree:
 
-  (`Node`)  
+  ([`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   Tree structure describing how `args_flat` maps back to `f`'s
   arguments.
 

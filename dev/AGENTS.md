@@ -13,8 +13,10 @@ automatic differentiation
 
 ## Commands
 
-The generic R workflow (`devtools::test()`, `make format`,
-`jarl check .`, …) is in the shared config above. anvl-specific:
+The generic R workflow
+([`devtools::test()`](https://devtools.r-lib.org/reference/test.html),
+`make format`, `jarl check .`, …) is in the shared config above.
+anvl-specific:
 
 - **Tests are gated behind `ANVL_TEST=1`** – `tests/testthat.R` only
   calls `test_check()` when it is set, so `R CMD check` in a shell
@@ -111,10 +113,10 @@ built into the program at the dtype its use site needs, which is what
 makes `x_f64 / sqrt(2)` exact.
 [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
 is the reference for how this works and for the `.promote` rules
-([`promote_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
-[`promote_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
-[`promote_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
-[`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md))
+([`promotion_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
+[`promotion_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
+[`promotion_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md),
+[`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md))
 that `nv_*` functions pass to
 [`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md).
 Two rules that bite while writing code:
@@ -191,11 +193,12 @@ Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 `R/jit-registry.R` is **generated** by
 [`anvl::jit_roclet`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
 (activated in the `Roxygen` field of `DESCRIPTION`): tagging a function
-with `#' @jit [static = ...]` makes `devtools::document()` add it to the
-registry, and `R/zzz.R` rebinds those functions to their jitted versions
-at build time. Never edit `R/jit-registry.R` by hand; because the roclet
-lives in anvl itself, documenting requires an installed anvl that
-already exports it.
+with `#' @jit [static = ...]` makes
+[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
+add it to the registry, and `R/zzz.R` rebinds those functions to their
+jitted versions at build time. Never edit `R/jit-registry.R` by hand;
+because the roclet lives in anvl itself, documenting requires an
+installed anvl that already exports it.
 
 Tag every function whose body issues **more than one operation** with
 `@jit`.

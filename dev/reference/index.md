@@ -120,11 +120,11 @@ Functions for type conversion, promotion, and broadcasting
   : Broadcast to Shape
 - [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
   : Type Promotion Rules
-- [`promote_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promote_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promote_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
-  [`promote_grouped()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+- [`promotion_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_like()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_dtype()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+  [`promotion_grouped()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
   [`promotion_rule()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
   : Promotion Rules
 - [`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)

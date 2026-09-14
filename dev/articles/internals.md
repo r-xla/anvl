@@ -637,7 +637,7 @@ Generally, there are two situations:
 2.  None of the inputs to a primitive has a concrete data type.
 
 In the first case, the `RData` object yields
-([`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md))
+([`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md))
 to the concrete data type. Below, `nv_aval("integer", c())` is
 equivalent to `RData(c(), "integer")`. In the resulting graph, the `%x1`
 input has the data type it yielded to, and the `<- integer` records that

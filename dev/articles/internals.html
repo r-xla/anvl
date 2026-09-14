@@ -653,8 +653,8 @@ concrete data type</li>
 <li>None of the inputs to a primitive has a concrete data type.</li>
 </ol>
 <p>In the first case, the <code>RData</code> object yields
-(<code><a href="../reference/promotion_rule.html">promote_rdata_common()</a></code>) to the concrete data type. Below,
-<code>nv_aval("integer", c())</code> is equivalent to
+(<code><a href="../reference/promotion_rule.html">promotion_rdata_common()</a></code>) to the concrete data type.
+Below, <code>nv_aval("integer", c())</code> is equivalent to
 <code>RData(c(), "integer")</code>. In the resulting graph, the
 <code>%x1</code> input has the data type it yielded to, and the
 <code>&lt;- integer</code> records that the caller supplies it as an R

@@ -4,24 +4,25 @@ Functions for materializing R values to arrays and promoting inputs.
 Most commonly used via the `.promote` argument of
 [`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md).
 
-`promote_common()` brings every input to their common data type
+`promotion_common()` brings every input to their common data type
 ([`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)).
 R values always yield within the type category (such as float) and
 otherwise contribute their default data type.
 
-`promote_like()` brings the inputs to the data type of a selected input.
-If the selected data type is an R value, it's default data type is used.
+`promotion_like()` brings the inputs to the data type of a selected
+input. If the selected data type is an R value, it's default data type
+is used.
 
-`promote_dtype()` brings the inputs to the specified data type.
+`promotion_dtype()` brings the inputs to the specified data type.
 
-`promote_rdata_common()` brings the *R values* to the common data type,
-as long it is within their category (a `double` can e.g. *not* become a
-float). `AnvlArray` inputs are left as they are and the function throws
-an error if not all of them have exactly the same data type. This rule
-is commonly used in primitives expecting homogenous inputs for one or
-more argument subsets.
+`promotion_rdata_common()` brings the *R values* to the common data
+type, as long it is within their category (a `double` can e.g. *not*
+become a float). `AnvlArray` inputs are left as they are and the
+function throws an error if not all of them have exactly the same data
+type. This rule is commonly used in primitives expecting homogenous
+inputs for one or more argument subsets.
 
-`promote_grouped()` applies several rules to disjoint subsets.
+`promotion_grouped()` applies several rules to disjoint subsets.
 
 `promotion_rule()` creates a new promotion rule. It takes in
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
@@ -31,15 +32,15 @@ conversion.
 ## Usage
 
 ``` r
-promote_common(on = NULL, fallback = NULL)
+promotion_common(on = NULL, fallback = NULL)
 
-promote_like(arg, on = NULL, coerce = FALSE)
+promotion_like(arg, on = NULL, coerce = FALSE)
 
-promote_dtype(dtype, on = NULL, coerce = FALSE)
+promotion_dtype(dtype, on = NULL, coerce = FALSE)
 
-promote_rdata_common(on = NULL)
+promotion_rdata_common(on = NULL)
 
-promote_grouped(...)
+promotion_grouped(...)
 
 promotion_rule(fn, kind, on = NULL, ...)
 ```
@@ -99,7 +100,8 @@ promotion_rule(fn, kind, on = NULL, ...)
 - kind:
 
   (`character(1)`)  
-  What the rule is, for printing: it shows as `<promote_{kind}>`.
+  What the rule is, for printing: it shows as `<{kind}>`, so give it the
+  name of the function that builds it.
 
 ## Value
 
@@ -115,21 +117,21 @@ inputs to be converted and `NULL` for those to be left unchanged.
 ## Examples
 
 ``` r
-promote_common()(list(pi, nv_scalar(2L, "i64")))
+promotion_common()(list(pi, nv_scalar(2L, "i64")))
 #> [[1]]
 #> <f32>
 #> 
 #> [[2]]
 #> <f32>
 #> 
-promote_common(fallback = "f64")(list(1, 2))
+promotion_common(fallback = "f64")(list(1, 2))
 #> [[1]]
 #> <f64>
 #> 
 #> [[2]]
 #> <f64>
 #> 
-promote_common(c(1, 2))(list(-3, 4, 1))
+promotion_common(c(1, 2))(list(-3, 4, 1))
 #> [[1]]
 #> <f32>
 #> 
@@ -139,7 +141,7 @@ promote_common(c(1, 2))(list(-3, 4, 1))
 #> [[3]]
 #> NULL
 #> 
-promote_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
+promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 #> [[1]]
 #> <f32>
 #> 
@@ -147,7 +149,7 @@ promote_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64
 #> <f32>
 #> 
 # Without `coerce`, a target the input cannot hold is refused.
-try(promote_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
+try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 #> Error : Cannot bring argument 2 to data type "f32".
 #> ✖ "f64" is not promotable to "f32".
 #> ℹ Convert it explicitly with `nv_convert()`.
@@ -163,7 +165,7 @@ widest_float <- promotion_rule(
   "widest_float"
 )
 widest_float
-#> <promote_widest_float> 
+#> <widest_float> 
 as_anvl_arrays(nv_array(1L), 2.5, nv_array(1, dtype = "f64"), .promote = widest_float)
 #> [[1]]
 #> AnvlArray

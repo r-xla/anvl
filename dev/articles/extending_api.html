@@ -180,7 +180,7 @@ body does not have to distinguish between R value inputs and
 all inputs to <code>f32</code>;</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nv_add_f32</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, .promote <span class="op">=</span> <span class="fu"><a href="../reference/promotion_rule.html">promote_dtype</a></span><span class="op">(</span><span class="st">"f32"</span>, coerce <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_arrays</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, .promote <span class="op">=</span> <span class="fu"><a href="../reference/promotion_rule.html">promotion_dtype</a></span><span class="op">(</span><span class="st">"f32"</span>, coerce <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">prim_add</span>, <span class="va">args</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu">nv_add_f32</span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span>
@@ -303,7 +303,7 @@ tracing overhead without fusing anything new. Also skip pure I/O
 and device/state objects (<code>nv_device</code>,
 <code>nv_rng_state</code>).</p>
 <p>The roclet writes the list of tagged functions to
-<code>R/jit-registry.R</code> on every <code>devtools::document()</code>
+<code>R/jit-registry.R</code> on every <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>
 run, and <code>R/zzz.R</code> applies that registry at package source
 time so the wrapped functions are byte-compiled with the rest of the
 package.</p>

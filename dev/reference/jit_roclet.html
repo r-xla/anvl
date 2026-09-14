@@ -112,7 +112,7 @@ request that the function be replaced in the package namespace by
 <p></p><div class="sourceCode"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>Roxygen<span class="sc">:</span> <span class="fu">list</span>(<span class="at">markdown =</span> <span class="cn">TRUE</span>,</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>              <span class="at">roclets =</span> <span class="fu">c</span>(<span class="st">"namespace"</span>, <span class="st">"rd"</span>, <span class="st">"anvl::jit_roclet"</span>))</span></code></pre><p></p></div></li>
 <li><p>Add <code>R/jit-registry.R</code> to the <code>Collate</code> field, <strong>before</strong> <code>R/zzz.R</code>.
-<code>devtools::document()</code> will (re)generate this file on every run.</p></li>
+<code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code> will (re)generate this file on every run.</p></li>
 <li><p>In <code>R/zzz.R</code>, apply the registry at the top level (right next to
 <code>.onLoad</code>), so the wrapped functions are byte-compiled during install:</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="va">.onLoad</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">libname</span>, <span class="va">pkgname</span><span class="op">)</span> <span class="op">{</span> <span class="va">...</span> <span class="op">}</span></span>
@@ -122,7 +122,7 @@ request that the function be replaced in the package namespace by
 <p></p><div class="sourceCode r"><pre><code><span><span class="co">#' @export</span></span>
 <span><span class="co">#' @jit static = c("flag")</span></span>
 <span><span class="va">my_fun</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">flag</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="va">flag</span><span class="op">)</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1</span> <span class="kw">else</span> <span class="va">x</span> <span class="op">*</span> <span class="fl">2</span></span></code></pre><p></p></div></li>
-<li><p>Run <code>devtools::document()</code>. The first run requires that the previous
+<li><p>Run <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>. The first run requires that the previous
 install of your package already exports the roclet's pieces; on a fresh
 setup, omit the custom roclet from <code>Roxygen</code>, run <code>document()</code> once,
 install, and then re-enable it. Subsequent runs work as normal.</p></li>

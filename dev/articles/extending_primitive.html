@@ -291,7 +291,7 @@ should give <code>f64</code>. In such cases, you should call
 want to apply. This needs to be done before calling
 <code><a href="../reference/graph_desc_add.html">graph_desc_add()</a></code>. These should <em>not</em> change the data
 type of any <code>AnvlArray</code> inputs, which is what the
-<code><a href="../reference/promotion_rule.html">promote_rdata_common()</a></code> rule is for. See
+<code><a href="../reference/promotion_rule.html">promotion_rdata_common()</a></code> rule is for. See
 <code><a href="../articles/type-promotion.html">vignette("type-promotion")</a></code> for more information on these
 rules.</p>
 </div>
@@ -523,7 +523,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x5627a08eaeb0&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x562a2ca03a08&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>
@@ -652,7 +652,7 @@ we would add manual tests in:</p>
 <li><code>tests/testthat/test-primitives-reverse.R</code></li>
 </ul>
 <p>Also, ensure that no linter errors are present,
-<code>devtools::check()</code> passes, and format the code using
+<code><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">devtools::check()</a></code> passes, and format the code using
 <code>make format</code>.</p>
 </div>
 </div>

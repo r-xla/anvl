@@ -188,7 +188,7 @@ done before calling
 [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md).
 These should *not* change the data type of any `AnvlArray` inputs, which
 is what the
-[`promote_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
+[`promotion_rdata_common()`](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md)
 rule is for. See
 [`vignette("type-promotion")`](https://r-xla.github.io/anvl/dev/articles/type-promotion.md)
 for more information on these rules.
@@ -420,7 +420,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x5627a08eaeb0>
+#> <environment: 0x562a2ca03a08>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")
@@ -544,7 +544,8 @@ manual tests in:
 - `tests/testthat/test-primitives-stablehlo.R`
 - `tests/testthat/test-primitives-reverse.R`
 
-Also, ensure that no linter errors are present, `devtools::check()`
+Also, ensure that no linter errors are present,
+[`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
 passes, and format the code using `make format`.
 
 ## Higher-Order Primitives

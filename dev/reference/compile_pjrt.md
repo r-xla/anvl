@@ -33,7 +33,7 @@ compile_pjrt(
 
 - in_tree:
 
-  (`Node`)  
+  ([`RTree`](https://r-xla.github.io/pjrt/reference/build_tree.html))  
   Tree structure of the inputs.
 
 - donate:

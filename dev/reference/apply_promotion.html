@@ -13,11 +13,11 @@ the array it met happened to be at that default. A primitive whose operands
 must agree says so with this, on the same list it goes on to hand
 graph_desc_add():
 function(lhs, rhs) {
-  operands &amp;lt;- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+  operands &amp;lt;- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
   graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
 }
 
-promote_rdata_common() is the rule for it: an operand that has a data type
+promotion_rdata_common() is the rule for it: an operand that has a data type
 keeps it, and an R value takes the one the others have, within its own category.
 That is what makes prim_mul(x_f64, 2) work whatever x's data type is,
 while keeping a primitive from widening the array it was handed – promotion
@@ -29,11 +29,11 @@ the array it met happened to be at that default. A primitive whose operands
 must agree says so with this, on the same list it goes on to hand
 graph_desc_add():
 function(lhs, rhs) {
-  operands &amp;lt;- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+  operands &amp;lt;- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
   graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
 }
 
-promote_rdata_common() is the rule for it: an operand that has a data type
+promotion_rdata_common() is the rule for it: an operand that has a data type
 keeps it, and an R value takes the one the others have, within its own category.
 That is what makes prim_mul(x_f64, 2) work whatever x's data type is,
 while keeping a primitive from widening the array it was handed – promotion
@@ -116,10 +116,10 @@ the array it met happened to be at that default. A primitive whose operands
 must <em>agree</em> says so with this, on the same list it goes on to hand
 <code><a href="graph_desc_add.html">graph_desc_add()</a></code>:</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="kw">function</span><span class="op">(</span><span class="va">lhs</span>, <span class="va">rhs</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">operands</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/apply_promotion.html">apply_promotion</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>lhs <span class="op">=</span> <span class="va">lhs</span>, rhs <span class="op">=</span> <span class="va">rhs</span><span class="op">)</span>, <span class="fu"><a href="../reference/promotion_rule.html">promote_rdata_common</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">operands</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/apply_promotion.html">apply_promotion</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>lhs <span class="op">=</span> <span class="va">lhs</span>, rhs <span class="op">=</span> <span class="va">rhs</span><span class="op">)</span>, <span class="fu"><a href="../reference/promotion_rule.html">promotion_rdata_common</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/graph_desc_add.html">graph_desc_add</a></span><span class="op">(</span><span class="va">self</span>, <span class="va">operands</span>, infer_fn <span class="op">=</span> <span class="va">infer_fn</span><span class="op">)</span><span class="op">[[</span><span class="fl">1L</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="op">}</span></span></code></pre><p></p></div>
-<p><code><a href="promotion_rule.html">promote_rdata_common()</a></code> is the rule for it: an operand that has a data type
+<p><code><a href="promotion_rule.html">promotion_rdata_common()</a></code> is the rule for it: an operand that has a data type
 keeps it, and an R value takes the one the others have, within its own category.
 That is what makes <code>prim_mul(x_f64, 2)</code> work whatever <code>x</code>'s data type is,
 while keeping a primitive from widening the array it was handed – promotion
@@ -172,7 +172,7 @@ realizing them again changes nothing.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># An R value takes the data type of the operand it meets.</span></span></span>
-<span class="r-in"><span><span class="va">operands</span> <span class="op">&lt;-</span> <span class="fu">apply_promotion</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>lhs <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span>, rhs <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="promotion_rule.html">promote_rdata_common</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">operands</span> <span class="op">&lt;-</span> <span class="fu">apply_promotion</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>lhs <span class="op">=</span> <span class="fu"><a href="AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span>, rhs <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="promotion_rule.html">promotion_rdata_common</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="dtype.html">dtype</a></span><span class="op">(</span><span class="va">operands</span><span class="op">$</span><span class="va">rhs</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;f64&gt;</span>
 </code></pre></div>
