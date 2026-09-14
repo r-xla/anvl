@@ -62,10 +62,10 @@ test_that("a logical R value is a bool, not an uncommitted value", {
 })
 
 describe("eager/jit equivalence", {
-  it("agrees for promote_like() and promote_common()", {
+  it("agrees for promotion_like() and promote_common()", {
     expect_eager_jit_equal_grid(list(
       "anchored promotion" = function(x, v) {
-        args <- as_anvl_arrays(x = x, v = v, .promote = promote_like("x"))
+        args <- as_anvl_arrays(x = x, v = v, .promote = promotion_like("x"))
         args$x * args$v
       },
       "promotion to the common dtype" = function(x, v) {

@@ -42,7 +42,7 @@ The exact convenience a wrapper should add varies by operation. **Propose a wrap
 - **Broadcasting:** broadcast scalars to match array shapes via `nv_broadcast_scalars()`
 - **Default arguments:** infer `dtype` from the input when not provided
 - **Idempotency:** skip no-op cases (return the input unchanged if already correct dtype/shape)
-- **Input coercion:** bring auxiliary arguments to the input's dtype with `promote_like("x")`
+- **Input coercion:** bring auxiliary arguments to the input's dtype with `promotion_like("x")`
 
 ## Implementation
 
@@ -99,10 +99,10 @@ For full NumPy-style broadcasting (not just scalar-against-tensor), use `nv_broa
 If the underlying primitive requires all its inputs to share a dtype (e.g. `prim_clamp`, `prim_pad`), say so with a rule at the top rather than converting afterwards:
 
 ```r
-args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promote_like("x"))
+args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
 ```
 
-`promote_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have committed the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
+`promotion_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have committed the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
 
 ### Static arguments
 

@@ -3,7 +3,7 @@
 \name{promotion_rule}
 \alias{promotion_rule}
 \alias{promote_common}
-\alias{promote_like}
+\alias{promotion_like}
 \alias{promote_dtype}
 \alias{promote_rdata_common}
 \alias{promote_grouped}
@@ -11,7 +11,7 @@
 \usage{
 promote_common(on = NULL, fallback = NULL)
 
-promote_like(arg, on = NULL, coerce = FALSE)
+promotion_like(arg, on = NULL, coerce = FALSE)
 
 promote_dtype(dtype, on = NULL, coerce = FALSE)
 
@@ -52,7 +52,8 @@ The rules to apply to disjoint argument subsets.}
 The rule.}
 
 \item{kind}{(\code{character(1)})\cr
-What the rule is, for printing: it shows as \verb{<promote_\{kind\}>}.}
+What the rule is, for printing: it shows as \verb{<\{kind\}>}, so give it the
+name of the function that builds it.}
 }
 \value{
 \verb{function(args) -> list()}
@@ -68,7 +69,7 @@ Most commonly used via the \code{.promote} argument of \code{\link[=as_anvl_arra
 R values always yield within the type category (such as float) and otherwise
 contribute their default data type.
 
-\code{promote_like()} brings the inputs to the data type of a selected input.
+\code{promotion_like()} brings the inputs to the data type of a selected input.
 If the selected data type is an R value, it's default data type is used.
 
 \code{promote_dtype()} brings the inputs to the specified data type.
@@ -93,9 +94,9 @@ promote_common(fallback = "f64")(list(1, 2))
 promote_common(c(1, 2))(list(-3, 4, 1))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-promote_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
+promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 # Without `coerce`, a target the input cannot hold is refused.
-try(promote_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
+try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Every input at the widest float in the call, and never below f32.

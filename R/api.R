@@ -1504,7 +1504,7 @@ nv_popcnt <- prim_popcnt
 #' @export
 #' @jit
 nv_clamp <- function(min_val, x, max_val) {
-  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promote_like("x"))
+  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
   prim_clamp(args$min_val, args$x, args$max_val)
 }
 
@@ -1672,10 +1672,10 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  # `promote_like("x")` rather than the primitive's own rule: crossing a
+  # `promotion_like("x")` rather than the primitive's own rule: crossing a
   # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
   # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
-  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_like("x"))
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promotion_like("x"))
   x <- args$x
   padding_value <- args$padding_value
   rank <- naxes(x)

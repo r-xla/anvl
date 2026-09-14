@@ -138,7 +138,7 @@ reference:
       - nv_broadcast_to
       - common_dtype
       - promote_common
-      - promote_like
+      - promotion_like
       - promote_dtype
       - promote_rdata_common
       - promote_grouped

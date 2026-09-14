@@ -372,8 +372,8 @@ test_that("promotion_rule() builds a rule that prints and groups like the built-
     on = c("x", "y")
   )
   expect_s3_class(mine, "PromotionRule")
-  # A rule of your own names its own kind, and shows what it covers.
-  expect_equal(format(mine), "<promote_mine on \"x\", \"y\">")
+  # A rule of your own names itself, and shows what it covers.
+  expect_equal(format(mine), "<mine on \"x\", \"y\">")
 
   # It groups with anvl's own, and a group declares what its rules cover
   # together -- which is what lets groups nest.

@@ -61,14 +61,14 @@ promote_common <- function(on = NULL, fallback = NULL) {
       dtype <- do.call(common_dtype_of, c(args[positions], list(.fallback = fallback)))
       dtypes_at(args, positions, dtype)
     },
-    "common",
+    "promote_common",
     on = on,
     fallback = fallback
   )
 }
 
 #' @description
-#' `promote_like()` brings the inputs to the data type of a selected input.
+#' `promotion_like()` brings the inputs to the data type of a selected input.
 #' If the selected data type is an R value, it's default data type is used.
 #' @param arg (`character(1)` | `numeric(1)`)\cr
 #'   Which input to take the data type from: its name in the
@@ -77,10 +77,10 @@ promote_common <- function(on = NULL, fallback = NULL) {
 #' @rdname promotion_rule
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
-#' promote_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
+#' promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
 #' # Without `coerce`, a target the input cannot hold is refused.
-#' try(promote_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
-promote_like <- function(arg, on = NULL, coerce = FALSE) {
+#' try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
+promotion_like <- function(arg, on = NULL, coerce = FALSE) {
   assert_arg_ref(arg, "arg", len = 1L)
   assert_on(on)
   assert_flag(coerce)
@@ -89,7 +89,7 @@ promote_like <- function(arg, on = NULL, coerce = FALSE) {
       dtype <- do.call(common_dtype_of, args[rule_positions(arg, args, "arg")])
       dtypes_named(args, rule_positions(on, args, "on"), dtype, coerce)
     },
-    "like",
+    "promotion_like",
     on = on,
     arg = arg,
     coerce = coerce
@@ -110,7 +110,7 @@ promote_dtype <- function(dtype, on = NULL, coerce = FALSE) {
     function(args) {
       dtypes_named(args, rule_positions(on, args, "on"), dtype, coerce)
     },
-    "dtype",
+    "promote_dtype",
     on = on,
     dtype = dtype,
     coerce = coerce
@@ -130,7 +130,7 @@ promote_rdata_common <- function(on = NULL) {
   assert_on(on)
   promotion_rule(
     function(args) resolve_rdata_common(args, rule_positions(on, args, "on")),
-    "rdata_common",
+    "promote_rdata_common",
     on = on
   )
 }
@@ -146,7 +146,7 @@ promote_grouped <- function(...) {
   if (!length(rules) || !all(vapply(rules, is_promotion_rule, logical(1L)))) {
     cli_abort(c(
       "{.fn promote_grouped} takes promotion rules, one per group of arguments.",
-      i = "Build them with {.fn promote_common}, {.fn promote_like}, {.fn promote_dtype} or {.fn promote_rdata_common}, or wrap a rule of your own with {.fn promotion_rule}.", # nolint
+      i = "Build them with {.fn promote_common}, {.fn promotion_like}, {.fn promote_dtype} or {.fn promote_rdata_common}, or wrap a rule of your own with {.fn promotion_rule}.", # nolint
       i = "A bare function will not do here: a group has to know which arguments each rule covers before it calls any of them, and only a {.cls PromotionRule} says." # nolint
     ))
   }
@@ -157,7 +157,7 @@ promote_grouped <- function(...) {
       # target never depends on another's having been applied first.
       dtypes_merged(lapply(rules, resolve_promote, args = args), args)
     },
-    "grouped",
+    "promote_grouped",
     # A group covers what its rules cover together, so a group nested in another
     # answers for its coverage the way any other rule does.
     on = rules_coverage(rules),
@@ -210,7 +210,8 @@ assert_disjoint_rules <- function(rules) {
 #' @param fn (`function`)\cr
 #'   The rule.
 #' @param kind (`character(1)`)\cr
-#'   What the rule is, for printing: it shows as `<promote_{kind}>`.
+#'   What the rule is, for printing: it shows as `<{kind}>`, so give it the
+#'   name of the function that builds it.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Every input at the widest float in the call, and never below f32.
 #' widest_float <- promotion_rule(
@@ -270,15 +271,15 @@ format.PromotionRule <- function(x, ...) {
   spec <- attr(x, "spec")
   detail <- switch(
     kind,
-    common = if (is.null(spec$fallback)) "" else sprintf("(fallback %s)", as.character(spec$fallback)),
-    rdata_common = "",
-    like = sprintf("(%s%s)", format_arg_ref(spec$arg), if (isTRUE(spec$coerce)) ", coerce" else ""),
-    dtype = sprintf("(%s%s)", as.character(spec$dtype), if (isTRUE(spec$coerce)) ", coerce" else ""),
-    grouped = sprintf("(%s)", paste(vapply(spec$rules, format_rule, character(1L)), collapse = ", ")),
+    promote_common = if (is.null(spec$fallback)) "" else sprintf("(fallback %s)", as.character(spec$fallback)),
+    promote_rdata_common = "",
+    promotion_like = sprintf("(%s%s)", format_arg_ref(spec$arg), if (isTRUE(spec$coerce)) ", coerce" else ""),
+    promote_dtype = sprintf("(%s%s)", as.character(spec$dtype), if (isTRUE(spec$coerce)) ", coerce" else ""),
+    promote_grouped = sprintf("(%s)", paste(vapply(spec$rules, format_rule, character(1L)), collapse = ", ")),
     ""
   )
   on <- if (is.null(spec$on)) "" else sprintf(" on %s", format_arg_ref(spec$on))
-  sprintf("<promote_%s%s%s>", kind, detail, on)
+  sprintf("<%s%s%s>", kind, detail, on)
 }
 
 format_rule <- function(x) {
@@ -306,7 +307,7 @@ resolve_promote <- function(promote, args) {
     cli_abort(c(
       "{.arg .promote} must be a promotion rule, not {.cls {class(promote)}}.",
       i = "A rule is a function of the call's arguments returning the data type each one is brought to.", # nolint
-      i = "Build one with {.fn promote_common}, {.fn promote_like}, {.fn promote_dtype} or {.fn promote_rdata_common}, and combine several with {.fn promote_grouped}." # nolint
+      i = "Build one with {.fn promote_common}, {.fn promotion_like}, {.fn promote_dtype} or {.fn promote_rdata_common}, and combine several with {.fn promote_grouped}." # nolint
     ))
   }
   dtypes <- promote(args)
@@ -560,7 +561,7 @@ rule_positions <- function(ref, args, what) {
     cli_abort(c(
       "{.arg {what}} names {?an argument/arguments} this call does not have: {.val {ref[is.na(found)]}}.",
       i = "The arguments are {.val {rlang::names2(args)}}.",
-      i = "Referring to one by name needs them named, e.g. {.code as_anvl_arrays(x = x, y = y, .promote = promote_like(\"x\"))}." # nolint
+      i = "Referring to one by name needs them named, e.g. {.code as_anvl_arrays(x = x, y = y, .promote = promotion_like(\"x\"))}." # nolint
     ))
   }
   found

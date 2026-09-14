@@ -581,7 +581,7 @@ nv_subset_assign <- function(x, ..., value) {
   # `value` is assigned at the data type of the array it goes into, so an R
   # value is *built* there rather than converted to it -- and one that data type
   # cannot hold (`x_i32[i] <- 1.5`) is an error, not a silent truncation.
-  args <- as_anvl_arrays(x = x, value = value, .promote = promote_like("x"))
+  args <- as_anvl_arrays(x = x, value = value, .promote = promotion_like("x"))
   x <- args$x
   value <- args$value
 
