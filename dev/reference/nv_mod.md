@@ -43,12 +43,12 @@ nv_mod(x, y)
 #> AnvlArray
 #>  -2
 #>   2
-#> [ CPUf32{2} ] 
+#> [ CPUi32{2} ] 
 x %% y
 #> AnvlArray
 #>  -2
 #>   2
-#> [ CPUf32{2} ] 
+#> [ CPUi32{2} ] 
 as.vector(x) %% as.vector(y) # the same in base R
 #> [1] -2  2
 ```

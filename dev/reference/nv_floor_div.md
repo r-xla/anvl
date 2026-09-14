@@ -42,10 +42,10 @@ nv_floor_div(x, y)
 #> AnvlArray
 #>   3
 #>  -4
-#> [ CPUf32{2} ] 
+#> [ CPUi32{2} ] 
 x %/% y
 #> AnvlArray
 #>   3
 #>  -4
-#> [ CPUf32{2} ] 
+#> [ CPUi32{2} ] 
 ```
