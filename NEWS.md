@@ -86,6 +86,9 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
+* `nv_mod()` / `%%` and `nv_floor_div()` / `%/%` keep the data type of their
+  operands. The shift literals were bare R doubles, so an integer operand was
+  promoted to a float and the result came back as one.
 * The gradient of `nv_gamma()` is now correct for positive whole numbers.
 * `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
   `nv_reduce_all()`) now reject a non-boolean input when the call is traced.

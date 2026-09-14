@@ -2275,6 +2275,24 @@ describe("nv_mod", {
     )
   })
 
+  it("keeps the operands' data type, rather than floating an integer", {
+    # The shift literals used to be bare R doubles, which promoted an integer
+    # remainder to a float -- and `nv_floor_div()`, which subtracts the
+    # remainder, floated with it.
+    x <- nv_array(c(7L, -7L, 8L, -8L))
+    y <- nv_array(c(3L, 3L, -3L, -3L))
+    expect_equal(dtype(nv_mod(x, y)), default_int())
+    expect_equal(dtype(nv_floor_div(x, y)), default_int())
+    expect_equal(as.integer(nv_mod(x, y)), as.vector(x) %% as.vector(y))
+    expect_equal(as.integer(nv_floor_div(x, y)), as.vector(x) %/% as.vector(y))
+
+    # Unsigned stays unsigned, and a float stays that float.
+    u <- nv_array(7L, dtype = "ui8")
+    expect_equal(dtype(nv_mod(u, nv_array(2L, dtype = "ui8"))), as_dtype("ui8"))
+    f <- nv_array(c(7, -7), dtype = "f64")
+    expect_equal(dtype(nv_mod(f, nv_array(c(3, 3), dtype = "f64"))), as_dtype("f64"))
+  })
+
   it("is NaN for a zero divisor and passes NaN through, like base R", {
     lhs <- c(5, -5, 0, Inf, -Inf, NaN, 7)
     rhs <- c(0, 0, 0, 3, 3, 3, Inf)
