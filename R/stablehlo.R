@@ -124,7 +124,7 @@ stablehlo <- function(
   if (!is.null(platform)) {
     local_platform(platform)
   }
-  # Node -> FuncValue
+  # GraphNode -> FuncValue
   env <- HloEnv(parent = env)
   # A top-level lowering builds the module's `main` func (whose hlo_return
   # finalizes the module). A closure/region lowering (id = "", e.g. a scatter

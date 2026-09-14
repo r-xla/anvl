@@ -33,12 +33,12 @@ Mapping: \code{GraphValue} -> \code{GraphBox}}
 \item{constants}{(\code{list(GraphValue)})\cr
 The constants of the graph.}
 
-\item{in_tree}{(\code{NULL | Node})\cr
+\item{in_tree}{(\code{NULL} | \code{\link[pjrt:RTree]{RTree}})\cr
 The tree of inputs. May contain leaves for both array inputs and static
 (non-array) arguments. Only the array leaves correspond to entries in
 \code{inputs}; use \code{is_static_flat} to distinguish them.}
 
-\item{out_tree}{(\code{NULL | Node})\cr
+\item{out_tree}{(\code{NULL} | \code{\link[pjrt:RTree]{RTree}})\cr
 The tree of outputs.}
 
 \item{inputs}{(\code{list(GraphValue)})\cr

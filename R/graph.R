@@ -110,11 +110,11 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::RTree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::RTree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -173,11 +173,11 @@ AnvlGraph <- function(
 #'   Mapping: `GraphValue` -> `GraphBox`
 #' @param constants (`list(GraphValue)`)\cr
 #'   The constants of the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::RTree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::RTree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -619,7 +619,7 @@ match_args_to_formals <- function(f, args) {
 #'     into the parent graph.
 #' @param args_flat (`list`)\cr
 #'   Flattened arguments. Must be accompanied by `in_tree`.
-#' @param in_tree (`Node`)\cr
+#' @param in_tree ([`RTree`][pjrt::RTree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
 #' @return An [`AnvlGraph`] containing the traced operations.

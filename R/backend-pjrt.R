@@ -105,7 +105,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Function to compile.
 #' @param args_flat (`list`)\cr
 #'   Flat list of abstract input values.
-#' @param in_tree (`Node`)\cr
+#' @param in_tree ([`RTree`][pjrt::RTree])\cr
 #'   Tree structure of the inputs.
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
