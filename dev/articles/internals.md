@@ -602,8 +602,8 @@ trace_fn(function(x) {
     ## Error:
     ## ! An R value has no data type of its own until it is used.
     ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
-    ##   only takes a data type when it meets a typed array, or when it commits to the
-    ##   default ("i32").
+    ##   only takes a data type when it meets a typed array, or when it materializes
+    ##   at the default ("i32").
     ## ℹ Give it one explicitly with `nv_convert()`.
 
 ``` r
@@ -621,8 +621,8 @@ trace_fn(function() {
     ## Error:
     ## ! An R value has no data type of its own until it is used.
     ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
-    ##   only takes a data type when it meets a typed array, or when it commits to the
-    ##   default ("f32").
+    ##   only takes a data type when it meets a typed array, or when it materializes
+    ##   at the default ("f32").
     ## ℹ Give it one explicitly with `nv_convert()`.
 
 An `RData` object resolves its data type when something materializes it,
@@ -767,7 +767,7 @@ and the
 [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 constructor. If
 [`prim_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_convert.md)
-were to follow the usual rule of committing its R inputs to their
+were to follow the usual rule of materializing its R inputs at their
 default data type, then `prim_convert(large_double, "i32")` would first
 convert the R `double` to an `f32` (the default float data type on pjrt)
 and then to an `i32`, which would result in a loss of precision. In

@@ -66,11 +66,11 @@ compile_pjrt(
 - default_dtypes:
 
   (`NULL` \| `list(float, int)`)  
-  The data types the traced R values commit to when nothing else decides
-  one (see
+  The data types the traced R values materialize at when nothing else
+  decides one (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)),
   read off `info$context` so the program matches the cache key it is
-  filed under. `NULL` uses the pair in force.
+  filed under. `NULL` uses the active pair.
 
 ## Value
 

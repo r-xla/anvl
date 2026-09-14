@@ -13,10 +13,8 @@ automatic differentiation
 
 ## Commands
 
-The generic R workflow
-([`devtools::test()`](https://devtools.r-lib.org/reference/test.html),
-`make format`, `jarl check .`, …) is in the shared config above.
-anvl-specific:
+The generic R workflow (`devtools::test()`, `make format`,
+`jarl check .`, …) is in the shared config above. anvl-specific:
 
 - **Tests are gated behind `ANVL_TEST=1`** – `tests/testthat.R` only
   calls `test_check()` when it is set, so `R CMD check` in a shell
@@ -101,6 +99,27 @@ broadcast first with
 - **Arrays, not tensors.** In anvl-facing docs, messages, and
   identifiers, say *array* rather than *tensor*. The primary array
   argument of `nv_*` / `prim_*` functions is called `x`.
+- **Materialize, take, canonicalize.** Three words for the R value -\>
+  `AnvlArray` story, one each:
+  - *materialize* is the **event** – an R value becoming an array at a
+    data type. An R value *materializes at* a data type and
+    *materializes as* an array; before that it is *unmaterialized*.
+    `materialize_at()` and `materialize_rdata()` are the functions that
+    do it.
+  - *takes* / *settles on* is **which** data type it gets: a value
+    *takes* the data type of the array it meets, and *settles on* the
+    default when it meets nothing.
+    [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
+    reports the data type a value *would take*.
+  - *canonicalize* is the **code discipline** of calling
+    [`as_anvl_array()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md)
+    /
+    [`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md)
+    at the top of an `nv_*` function so it works eagerly and under
+    [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).
+
+  Don’t reach for a synonym (*commit*, *realize*, *standardize*) for any
+  of the three.
 
 ## Supported dtypes
 
@@ -125,13 +144,13 @@ Two rules that bite while writing code:
   [`dtype()`](https://r-xla.github.io/anvl/dev/reference/dtype.md) on an
   argument that may still be a bare R value – it errors. Use
   [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md)
-  to ask what it *would* commit to.
+  to ask which data type it would take.
 - A primitive promotes nothing unless its body says so: one whose
   operands must agree calls
   [`apply_promotion()`](https://r-xla.github.io/anvl/dev/reference/apply_promotion.md)
   on them before anything else reads them.
-- A trace output that met nothing commits at the default float / integer
-  of the backend in force, which
+- A trace output that met nothing materializes at the default float /
+  integer of the active backend, which
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
   reports
   ([`default_float()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
@@ -207,12 +226,11 @@ Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 `R/jit-registry.R` is **generated** by
 [`anvl::jit_roclet`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
 (activated in the `Roxygen` field of `DESCRIPTION`): tagging a function
-with `#' @jit [static = ...]` makes
-[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
-add it to the registry, and `R/zzz.R` rebinds those functions to their
-jitted versions at build time. Never edit `R/jit-registry.R` by hand;
-because the roclet lives in anvl itself, documenting requires an
-installed anvl that already exports it.
+with `#' @jit [static = ...]` makes `devtools::document()` add it to the
+registry, and `R/zzz.R` rebinds those functions to their jitted versions
+at build time. Never edit `R/jit-registry.R` by hand; because the roclet
+lives in anvl itself, documenting requires an installed anvl that
+already exports it.
 
 Tag every function whose body issues **more than one operation** with
 `@jit`.

@@ -16,7 +16,7 @@ prim_while(init, cond, body)
 
   (`named list()`)  
   Named list of initial state values. Each one becomes a parameter of
-  the loop's sub-graphs. R values are committed at their default data
+  the loop's sub-graphs. R values are materialized at their default data
   type.
 
 - cond:

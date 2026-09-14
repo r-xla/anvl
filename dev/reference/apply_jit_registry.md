@@ -12,8 +12,7 @@ instead of being rebuilt on every `.onLoad`:
     anvl::apply_jit_registry(.jit_registry)
 
 `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
-regenerated on every
-[`devtools::document()`](https://devtools.r-lib.org/reference/document.html).
+regenerated on every `devtools::document()`.
 
 ## Usage
 

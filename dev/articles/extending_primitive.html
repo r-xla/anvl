@@ -270,9 +270,10 @@ everywhere (see <code><a href="../reference/default_dtypes.html">default_dtypes(
 <p>For functions taking a single dynamic input, as does
 <code>prim_repeat_along</code> from above, this is almost always the
 right thing to do. The inputs section of the printed graph shows both
-halves of it: the input’s data type is the default the value committed
-to, and the <code>&lt;- double</code> records that the caller supplies
-an R double rather than an array that already had one.</p>
+halves of it: the input’s data type is the default the value
+materialized at, and the <code>&lt;- double</code> records that the
+caller supplies an R double rather than an array that already had
+one.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">prim_repeat_along</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; &lt;AnvlGraph&gt;</span></span>
@@ -283,7 +284,7 @@ an R double rather than an array that already had one.</p>
 <span><span class="co">#&gt;   Outputs:</span></span>
 <span><span class="co">#&gt;     %1: f32[4, 3]</span></span></code></pre></div>
 <p>Where the default goes wrong is when a primitive has several operands
-that must agree. Committing each to its own default would make
+that must agree. Materializing each at its own default would make
 <code>prim_add(1, nv_scalar(2, "f64"))</code> an error – the literal
 would become <code>f32</code> and meet an <code>f64</code> – where it
 should give <code>f64</code>. In such cases, you should call
@@ -523,7 +524,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x55eb26e96160&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x56193a6ea270&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>
@@ -556,9 +557,9 @@ function:</p>
 still be a bare R value – one that has no data type yet (see
 <code><a href="../reference/RData.html">?RData</a></code>). <code><a href="../reference/shape.html">shape()</a></code> and <code><a href="../reference/naxes.html">naxes()</a></code>
 answer for it as they do for an array. For the data type there is
-<code><a href="../reference/peek_dtype.html">peek_dtype()</a></code>, which reports the type the value
-<em>would</em> commit to; <code><a href="../reference/dtype.html">dtype()</a></code> errors on an R value,
-because there is nothing to report until it is used.</p>
+<code><a href="../reference/peek_dtype.html">peek_dtype()</a></code>, which reports the data type the value
+<em>would</em> take; <code><a href="../reference/dtype.html">dtype()</a></code> errors on an R value, because
+there is nothing to report until it is used.</p>
 </div>
 <div class="section level3">
 <h3 id="using-your-primitive">Using Your Primitive<a class="anchor" aria-label="anchor" href="#using-your-primitive"></a>
@@ -652,7 +653,7 @@ we would add manual tests in:</p>
 <li><code>tests/testthat/test-primitives-reverse.R</code></li>
 </ul>
 <p>Also, ensure that no linter errors are present,
-<code><a href="https://devtools.r-lib.org/reference/check.html" class="external-link">devtools::check()</a></code> passes, and format the code using
+<code>devtools::check()</code> passes, and format the code using
 <code>make format</code>.</p>
 </div>
 </div>

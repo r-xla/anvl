@@ -29,8 +29,7 @@ A roxygen2 roclet object.
                       roclets = c("namespace", "rd", "anvl::jit_roclet"))
 
 3.  Add `R/jit-registry.R` to the `Collate` field, **before** `R/zzz.R`.
-    [`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
-    will (re)generate this file on every run.
+    `devtools::document()` will (re)generate this file on every run.
 
 4.  In `R/zzz.R`, apply the registry at the top level (right next to
     `.onLoad`), so the wrapped functions are byte-compiled during
@@ -46,12 +45,11 @@ A roxygen2 roclet object.
         #' @jit static = c("flag")
         my_fun <- function(x, flag) if (flag) x + 1 else x * 2
 
-6.  Run
-    [`devtools::document()`](https://devtools.r-lib.org/reference/document.html).
-    The first run requires that the previous install of your package
-    already exports the roclet's pieces; on a fresh setup, omit the
-    custom roclet from `Roxygen`, run `document()` once, install, and
-    then re-enable it. Subsequent runs work as normal.
+6.  Run `devtools::document()`. The first run requires that the previous
+    install of your package already exports the roclet's pieces; on a
+    fresh setup, omit the custom roclet from `Roxygen`, run `document()`
+    once, install, and then re-enable it. Subsequent runs work as
+    normal.
 
 ## Tag syntax
 

@@ -626,8 +626,8 @@ of an R value within the program and they behave similarly.</p>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> An R value has no data type of its own until it is used.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value</span></span>
-<span><span class="co">##   only takes a data type when it meets a typed array, or when it commits to the</span></span>
-<span><span class="co">##   default (<span style="color: #0000BB;">"i32"</span>).</span></span>
+<span><span class="co">##   only takes a data type when it meets a typed array, or when it materializes</span></span>
+<span><span class="co">##   at the default (<span style="color: #0000BB;">"i32"</span>).</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
 <div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
@@ -640,8 +640,8 @@ of an R value within the program and they behave similarly.</p>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> An R value has no data type of its own until it is used.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value</span></span>
-<span><span class="co">##   only takes a data type when it meets a typed array, or when it commits to the</span></span>
-<span><span class="co">##   default (<span style="color: #0000BB;">"f32"</span>).</span></span>
+<span><span class="co">##   only takes a data type when it meets a typed array, or when it materializes</span></span>
+<span><span class="co">##   at the default (<span style="color: #0000BB;">"f32"</span>).</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
 <p>An <code>RData</code> object resolves its data type when something
 materializes it, which is either a primitive or a call to
@@ -759,7 +759,7 @@ type.</p>
 <p>There is one special case, however: operations that explicitly
 request a data type, such as <code><a href="../reference/prim_convert.html">prim_convert()</a></code> and the
 <code><a href="../reference/AnvlArray.html">nv_array()</a></code> constructor. If <code><a href="../reference/prim_convert.html">prim_convert()</a></code> were
-to follow the usual rule of committing its R inputs to their default
+to follow the usual rule of materializing its R inputs at their default
 data type, then <code>prim_convert(large_double, "i32")</code> would
 first convert the R <code>double</code> to an <code>f32</code> (the
 default float data type on pjrt) and then to an <code>i32</code>, which

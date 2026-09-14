@@ -73,8 +73,8 @@ dtype(1)
     ## Error:
     ## ! An R value has no data type of its own until it is used.
     ## ℹ `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value
-    ##   only takes a data type when it meets a typed array, or when it commits to the
-    ##   default ("f32").
+    ##   only takes a data type when it meets a typed array, or when it materializes
+    ##   at the default ("f32").
     ## ℹ Give it one explicitly with `nv_convert()`.
 
 The type promotion table from above therefore does not apply to them.
@@ -112,8 +112,8 @@ It is therefore important to understand the rules that govern the
 materialization of R objects as `AnvlArray`s. Generally, there are two
 routes:
 
-1.  An R value is committed at its default data type (`double` and
-    `integer` take the defaults of the backend in force, `f32` and `i32`
+1.  An R value is materialized at its default data type (`double` and
+    `integer` take the defaults of the active backend, `f32` and `i32`
     on pjrt; `logical` takes `bool`). This is e.g. the case in unary
     functions such as `nv_exp`.
 2.  The R values data type is inferred from other arguments, as is the

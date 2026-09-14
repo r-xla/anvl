@@ -8,9 +8,9 @@
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Bring a Primitive's Operands to One Data Type — apply_promotion"><meta name="description" content="Applies a promotion rule to the operands of a primitive,
 inside the primitive's own body.
 A primitive promotes nothing on its own: an R value among its operands would
-commit to its own default, so whether a call worked would depend on whether
-the array it met happened to be at that default. A primitive whose operands
-must agree says so with this, on the same list it goes on to hand
+materialize at its own default, so whether a call worked would depend on
+whether the array it met happened to be at that default. A primitive whose
+operands must agree says so with this, on the same list it goes on to hand
 graph_desc_add():
 function(lhs, rhs) {
   operands &amp;lt;- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
@@ -24,9 +24,9 @@ while keeping a primitive from widening the array it was handed – promotion
 across categories is the nv_* layer's job."><meta property="og:description" content="Applies a promotion rule to the operands of a primitive,
 inside the primitive's own body.
 A primitive promotes nothing on its own: an R value among its operands would
-commit to its own default, so whether a call worked would depend on whether
-the array it met happened to be at that default. A primitive whose operands
-must agree says so with this, on the same list it goes on to hand
+materialize at its own default, so whether a call worked would depend on
+whether the array it met happened to be at that default. A primitive whose
+operands must agree says so with this, on the same list it goes on to hand
 graph_desc_add():
 function(lhs, rhs) {
   operands &amp;lt;- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
@@ -111,9 +111,9 @@ across categories is the nv_* layer's job."><meta property="og:image" content="h
     <p>Applies a <a href="promotion_rule.html">promotion rule</a> to the operands of a primitive,
 inside the primitive's own body.</p>
 <p>A primitive promotes nothing on its own: an R value among its operands would
-commit to its own default, so whether a call worked would depend on whether
-the array it met happened to be at that default. A primitive whose operands
-must <em>agree</em> says so with this, on the same list it goes on to hand
+materialize at its own default, so whether a call worked would depend on
+whether the array it met happened to be at that default. A primitive whose
+operands must <em>agree</em> says so with this, on the same list it goes on to hand
 <code><a href="graph_desc_add.html">graph_desc_add()</a></code>:</p>
 <p></p><div class="sourceCode r"><pre><code><span><span class="kw">function</span><span class="op">(</span><span class="va">lhs</span>, <span class="va">rhs</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">operands</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/apply_promotion.html">apply_promotion</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>lhs <span class="op">=</span> <span class="va">lhs</span>, rhs <span class="op">=</span> <span class="va">rhs</span><span class="op">)</span>, <span class="fu"><a href="../reference/promotion_rule.html">promotion_rdata_common</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
@@ -147,7 +147,7 @@ The rule to apply; see <a href="promotion_rule.html">promotion_rule</a>.</p></dd
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br><code>operands</code>, each realized at the data type the rule named for it.</p>
+    <p>(<code><a href="https://rdrr.io/r/base/list.html" class="external-link">list()</a></code>)<br><code>operands</code>, each materialized at the data type the rule named for it.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
@@ -162,7 +162,7 @@ settled data types throughout: <code><a href="prim_reduce.html">prim_reduce()</a
 its reductor and <code><a href="prim_scatter.html">prim_scatter()</a></code> builds its update computation's parameter
 slots from <code><a href="peek_dtype.html">peek_dtype()</a></code>, both before recording a call.</p>
 <p>It is idempotent: once every operand is at the data type the rule names,
-realizing them again changes nothing.</p>
+materializing them again changes nothing.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

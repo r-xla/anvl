@@ -621,8 +621,8 @@ type.</p>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> An R value has no data type of its own until it is used.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `dtype()` is undefined here for the same reason `dtype(1.5)` is: the value</span></span>
-<span><span class="co">##   only takes a data type when it meets a typed array, or when it commits to the</span></span>
-<span><span class="co">##   default (<span style="color: #0000BB;">"f32"</span>).</span></span>
+<span><span class="co">##   only takes a data type when it meets a typed array, or when it materializes</span></span>
+<span><span class="co">##   at the default (<span style="color: #0000BB;">"f32"</span>).</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Give it one explicitly with `nv_convert()`.</span></span></code></pre>
 <p>The type promotion table from above therefore does not apply to them.
 However, it is possible to apply an {anvl} function to R values
@@ -646,9 +646,9 @@ However, it is possible to apply an {anvl} function to R values
 materialization of R objects as <code>AnvlArray</code>s. Generally,
 there are two routes:</p>
 <ol style="list-style-type: decimal">
-<li>An R value is committed at its default data type
+<li>An R value is materialized at its default data type
 (<code>double</code> and <code>integer</code> take the defaults of the
-backend in force, <code>f32</code> and <code>i32</code> on pjrt;
+active backend, <code>f32</code> and <code>i32</code> on pjrt;
 <code>logical</code> takes <code>bool</code>). This is e.g. the case in
 unary functions such as <code>nv_exp</code>.</li>
 <li>The R values data type is inferred from other arguments, as is the

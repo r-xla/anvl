@@ -5,7 +5,7 @@
       fontURL: "https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/output/chtml/fonts/woff-v2"
     }
   };
-</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Promotion Rules — promotion_rule"><meta name="description" content="Functions for materializing R values to arrays and promoting inputs.
+</script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Promotion Rules — promotion_rule"><meta name="description" content="Functions for materializing R values as arrays and promoting inputs.
 Most commonly used via the .promote argument of as_anvl_arrays().
 promotion_common() brings every input to their common data type
 (common_dtype()).
@@ -23,7 +23,7 @@ for one or more argument subsets.
 promotion_grouped() applies several rules to disjoint subsets.
 promotion_rule() creates a new promotion rule.
 It takes in arrayish values and outputs a list of data types, with NULL indicating
-no conversion."><meta property="og:description" content="Functions for materializing R values to arrays and promoting inputs.
+no conversion."><meta property="og:description" content="Functions for materializing R values as arrays and promoting inputs.
 Most commonly used via the .promote argument of as_anvl_arrays().
 promotion_common() brings every input to their common data type
 (common_dtype()).
@@ -112,7 +112,7 @@ no conversion."><meta property="og:image" content="https://r-xla.github.io/anvl/
     </div>
 
     <div class="ref-description section level2">
-    <p>Functions for materializing R values to arrays and promoting inputs.
+    <p>Functions for materializing R values as arrays and promoting inputs.
 Most commonly used via the <code>.promote</code> argument of <code><a href="as_anvl_array.html">as_anvl_arrays()</a></code>.</p>
 <p><code>promotion_common()</code> brings every input to their common data type
 (<code><a href="common_dtype.html">common_dtype()</a></code>).
@@ -160,8 +160,8 @@ Subset of arguments to apply a rule to. Indicated either via position or argumen
 <dt id="arg-fallback">fallback<a class="anchor" aria-label="anchor" href="#arg-fallback"></a></dt>
 <dd><p>(<code>NULL</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code> | <code>character(1)</code>)<br>
 The data type to settle on when <em>every</em> input is a bare R value, in place
-of the default those would commit to on their own. <code>NULL</code> (default) leaves
-them their default.</p></dd>
+of the default those would materialize at on their own. <code>NULL</code> (default)
+leaves them their default.</p></dd>
 
 
 <dt id="arg-arg">arg<a class="anchor" aria-label="anchor" href="#arg-arg"></a></dt>

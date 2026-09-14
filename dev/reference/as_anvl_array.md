@@ -21,7 +21,7 @@ as_anvl_arrays(..., .promote = NULL)
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Input to standardize.
+  Input to canonicalize.
 
 - device:
 

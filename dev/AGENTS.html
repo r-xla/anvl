@@ -82,7 +82,7 @@
 </div>
 <div class="section level2">
 <h2 id="commands">Commands<a class="anchor" aria-label="anchor" href="#commands"></a></h2>
-<p>The generic R workflow (<code><a href="https://devtools.r-lib.org/reference/test.html" class="external-link">devtools::test()</a></code>, <code>make format</code>, <code>jarl check .</code>, …) is in the shared config above. anvl-specific:</p>
+<p>The generic R workflow (<code>devtools::test()</code>, <code>make format</code>, <code>jarl check .</code>, …) is in the shared config above. anvl-specific:</p>
 <ul><li>
 <strong>Tests are gated behind <code>ANVL_TEST=1</code></strong> – <code>tests/testthat.R</code> only calls <code>test_check()</code> when it is set, so <code>R CMD check</code> in a shell without it runs <em>no</em> tests. <code>.Renviron</code> sets it (together with <code>PJRT_INSTALL=1</code>) for work inside the package.</li>
 <li>Single file: <code>testthat::test_active_file("tests/testthat/test-reverse.R")</code>, or <code>devtools::test(filter = "reverse")</code>.</li>
@@ -111,6 +111,16 @@
 <li>Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of “dimensions”, so calls into them keep those argument names (e.g. <code>hlo_reduce(dimensions = axes - 1L)</code>, <code>array(dim = ...)</code>) with the anvl-side axis variable on the right.</li>
 <li>
 <strong>Arrays, not tensors.</strong> In anvl-facing docs, messages, and identifiers, say <em>array</em> rather than <em>tensor</em>. The primary array argument of <code>nv_*</code> / <code>prim_*</code> functions is called <code>x</code>.</li>
+<li>
+<strong>Materialize, take, canonicalize.</strong> Three words for the R value -&gt; <code>AnvlArray</code> story, one each:
+<ul><li>
+<em>materialize</em> is the <strong>event</strong> – an R value becoming an array at a data type. An R value <em>materializes at</em> a data type and <em>materializes as</em> an array; before that it is <em>unmaterialized</em>. <code>materialize_at()</code> and <code>materialize_rdata()</code> are the functions that do it.</li>
+<li>
+<em>takes</em> / <em>settles on</em> is <strong>which</strong> data type it gets: a value <em>takes</em> the data type of the array it meets, and <em>settles on</em> the default when it meets nothing. <code><a href="reference/peek_dtype.html">peek_dtype()</a></code> reports the data type a value <em>would take</em>.</li>
+<li>
+<em>canonicalize</em> is the <strong>code discipline</strong> of calling <code><a href="reference/as_anvl_array.html">as_anvl_array()</a></code> / <code><a href="reference/as_anvl_array.html">as_anvl_arrays()</a></code> at the top of an <code>nv_*</code> function so it works eagerly and under <code><a href="reference/jit.html">jit()</a></code>.</li>
+</ul>
+Don’t reach for a synonym (<em>commit</em>, <em>realize</em>, <em>standardize</em>) for any of the three.</li>
 </ul></div>
 <div class="section level2">
 <h2 id="supported-dtypes">Supported dtypes<a class="anchor" aria-label="anchor" href="#supported-dtypes"></a></h2>
@@ -119,9 +129,9 @@
 <div class="section level2">
 <h2 id="type-promotion">Type Promotion<a class="anchor" aria-label="anchor" href="#type-promotion"></a></h2>
 <p>An R value entering a program is not converted at the boundary – it is built into the program at the dtype its use site needs, which is what makes <code>x_f64 / sqrt(2)</code> exact. <code><a href="articles/type-promotion.html">vignette("type-promotion")</a></code> is the reference for how this works and for the <code>.promote</code> rules (<code><a href="reference/promotion_rule.html">promotion_common()</a></code>, <code><a href="reference/promotion_rule.html">promotion_like()</a></code>, <code><a href="reference/promotion_rule.html">promotion_dtype()</a></code>, <code><a href="reference/promotion_rule.html">promotion_rdata_common()</a></code>) that <code>nv_*</code> functions pass to <code><a href="reference/as_anvl_array.html">as_anvl_arrays()</a></code>. Two rules that bite while writing code:</p>
-<ul><li>Never call <code><a href="reference/dtype.html">dtype()</a></code> on an argument that may still be a bare R value – it errors. Use <code><a href="reference/peek_dtype.html">peek_dtype()</a></code> to ask what it <em>would</em> commit to.</li>
+<ul><li>Never call <code><a href="reference/dtype.html">dtype()</a></code> on an argument that may still be a bare R value – it errors. Use <code><a href="reference/peek_dtype.html">peek_dtype()</a></code> to ask which data type it would take.</li>
 <li>A primitive promotes nothing unless its body says so: one whose operands must agree calls <code><a href="reference/apply_promotion.html">apply_promotion()</a></code> on them before anything else reads them.</li>
-<li>A trace output that met nothing commits at the default float / integer of the backend in force, which <code><a href="reference/default_dtypes.html">default_dtypes()</a></code> reports (<code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code> for one category) and the option <code>anvl.default_dtypes</code> overrides. A trace is pinned to the pair the dispatcher keyed its program on (<code>GraphDescriptor$default_dtypes</code>); name a category with <code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code>, never hardcode <code>"f32"</code> / <code>"i32"</code> as a default. <code>default_dtype_r()</code> is for the few places that map an R storage type chosen at run time, and <code>current_default_dtypes()</code> for the whole pair.</li>
+<li>A trace output that met nothing materializes at the default float / integer of the active backend, which <code><a href="reference/default_dtypes.html">default_dtypes()</a></code> reports (<code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code> for one category) and the option <code>anvl.default_dtypes</code> overrides. A trace is pinned to the pair the dispatcher keyed its program on (<code>GraphDescriptor$default_dtypes</code>); name a category with <code><a href="reference/default_dtypes.html">default_float()</a></code> / <code><a href="reference/default_dtypes.html">default_int()</a></code>, never hardcode <code>"f32"</code> / <code>"i32"</code> as a default. <code>default_dtype_r()</code> is for the few places that map an R storage type chosen at run time, and <code>current_default_dtypes()</code> for the whole pair.</li>
 <li>
 <strong>One backend at a time.</strong> The backend is the option <code>anvl.backend</code> (<code><a href="reference/active_backend.html">active_backend()</a></code>, <code><a href="reference/local_backend.html">local_backend()</a></code>, <code><a href="reference/with_backend.html">with_backend()</a></code>). Every jitted function runs on it, reading it at call time; nothing infers a backend from an argument, no array operation or <code><a href="reference/jit.html">jit()</a></code> takes a <code>backend</code> argument, and an array or device of another backend is an error. This is what makes the default dtypes unambiguous in eager code. (A handful of helpers about the backend itself do name one: <code><a href="reference/install_anvl.html">install_anvl()</a></code>, <code><a href="reference/default_device.html">default_device()</a></code>, <code><a href="reference/local_default_dtypes.html">local_default_dtypes()</a></code> / <code><a href="reference/local_default_dtypes.html">with_default_dtypes()</a></code>.)</li>
 </ul></div>
@@ -142,7 +152,7 @@
 <div class="section level2">
 <h2 id="jit-roclet">
 <code>@jit</code> Roclet<a class="anchor" aria-label="anchor" href="#jit-roclet"></a></h2>
-<p><code>R/jit-registry.R</code> is <strong>generated</strong> by <code><a href="reference/jit_roclet.html">anvl::jit_roclet</a></code> (activated in the <code>Roxygen</code> field of <code>DESCRIPTION</code>): tagging a function with <code>#' @jit [static = ...]</code> makes <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code> add it to the registry, and <code>R/zzz.R</code> rebinds those functions to their jitted versions at build time. Never edit <code>R/jit-registry.R</code> by hand; because the roclet lives in anvl itself, documenting requires an installed anvl that already exports it.</p>
+<p><code>R/jit-registry.R</code> is <strong>generated</strong> by <code><a href="reference/jit_roclet.html">anvl::jit_roclet</a></code> (activated in the <code>Roxygen</code> field of <code>DESCRIPTION</code>): tagging a function with <code>#' @jit [static = ...]</code> makes <code>devtools::document()</code> add it to the registry, and <code>R/zzz.R</code> rebinds those functions to their jitted versions at build time. Never edit <code>R/jit-registry.R</code> by hand; because the roclet lives in anvl itself, documenting requires an installed anvl that already exports it.</p>
 <p>Tag every function whose body issues <strong>more than one operation</strong> with <code>@jit</code>.</p>
 </div>
 <div class="section level2">

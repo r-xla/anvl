@@ -121,7 +121,7 @@ If you do want `f64` throughout, set it once rather than annotating
 every value: `options(anvl.default_dtypes = c(float = "f64"))`, or
 `with_default_dtypes(c(float = "f64"), ...)` for a single scope.
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)
-reports what is in force. Note that a program is compiled for the
+reports the active pair. Note that a program is compiled for the
 defaults it was compiled under, so changing them recompiles rather than
 reusing a program built at the other precision.
 

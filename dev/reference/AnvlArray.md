@@ -51,7 +51,7 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
   [`DataType`](https://r-xla.github.io/tengen/reference/DataType.html))  
   One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a
   [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html).
-  The default (`NULL`) uses the data type the R value commits to (see
+  The default (`NULL`) uses the data type the R value takes (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
   This depends on the backend. For the default `"pjrt"` backend,
   `double`s become `f32`, `integer` `i32` and `logical`s `bool`. You can
@@ -239,8 +239,8 @@ nv_scalar(3.14)
 # An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  -1.0238e-12  3.0959e-41 -1.0782e-12
-#>   3.0959e-41 -6.4534e-12  3.0959e-41
+#>  4.6471e+26 3.0739e-41 4.6471e+26
+#>  3.0739e-41 4.6451e+24 3.0739e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

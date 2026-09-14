@@ -124,7 +124,7 @@ Its type is determined by a data type and a shape.</p>
 <dt id="arg-dtype">dtype<a class="anchor" aria-label="anchor" href="#arg-dtype"></a></dt>
 <dd><p>(<code>NULL</code> | <code>character(1)</code> | <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">DataType</a></code>)<br>
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a <code><a href="https://r-xla.github.io/tengen/reference/DataType.html" class="external-link">tengen::DataType</a></code>.
-The default (<code>NULL</code>) uses the data type the R value commits to (see
+The default (<code>NULL</code>) uses the data type the R value takes (see
 <code><a href="default_dtypes.html">default_dtypes()</a></code>). This depends on the backend.
 For the default <code>"pjrt"</code> backend, <code>double</code>s become <code>f32</code>, <code>integer</code>
 <code>i32</code> and <code>logical</code>s <code>bool</code>.
@@ -280,8 +280,8 @@ The supported data types and devices differ between backends.</p>
 <span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  -1.0238e-12  3.0959e-41 -1.0782e-12</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0959e-41 -6.4534e-12  3.0959e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4.6471e+26 3.0739e-41 4.6471e+26</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0739e-41 4.6451e+24 3.0739e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

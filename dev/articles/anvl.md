@@ -62,7 +62,7 @@ y
     ## [ CPUf32{2,3} ]
 
 Without specifying the data type, it will default to the data types of
-the backend in force: `"f32"` for R doubles and `"i32"` for integers on
+the active backend: `"f32"` for R doubles and `"i32"` for integers on
 pjrt, and `"bool"` for logicals everywhere. We chose this default,
 because on modern accelerators such as GPUs, single-precision floating
 point operations are considerably faster than when working in double

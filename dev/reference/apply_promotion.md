@@ -5,10 +5,10 @@ rule](https://r-xla.github.io/anvl/dev/reference/promotion_rule.md) to
 the operands of a primitive, inside the primitive's own body.
 
 A primitive promotes nothing on its own: an R value among its operands
-would commit to its own default, so whether a call worked would depend
-on whether the array it met happened to be at that default. A primitive
-whose operands must *agree* says so with this, on the same list it goes
-on to hand
+would materialize at its own default, so whether a call worked would
+depend on whether the array it met happened to be at that default. A
+primitive whose operands must *agree* says so with this, on the same
+list it goes on to hand
 [`graph_desc_add()`](https://r-xla.github.io/anvl/dev/reference/graph_desc_add.md):
 
     function(lhs, rhs) {
@@ -47,7 +47,7 @@ apply_promotion(operands, promote)
 ## Value
 
 ([`list()`](https://rdrr.io/r/base/list.html))  
-`operands`, each realized at the data type the rule named for it.
+`operands`, each materialized at the data type the rule named for it.
 
 ## Details
 
@@ -74,7 +74,7 @@ builds its update computation's parameter slots from
 both before recording a call.
 
 It is idempotent: once every operand is at the data type the rule names,
-realizing them again changes nothing.
+materializing them again changes nothing.
 
 ## See also
 

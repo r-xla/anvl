@@ -163,7 +163,7 @@ omit specifying the device, as CPU is the default.</p>
 <span><span class="co">##  2 4 6</span></span>
 <span><span class="co">## [ CPUf32{2,3} ]</span></span></code></pre>
 <p>Without specifying the data type, it will default to the data types
-of the backend in force: <code>"f32"</code> for R doubles and
+of the active backend: <code>"f32"</code> for R doubles and
 <code>"i32"</code> for integers on pjrt, and <code>"bool"</code> for
 logicals everywhere. We chose this default, because on modern
 accelerators such as GPUs, single-precision floating point operations

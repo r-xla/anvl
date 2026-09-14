@@ -92,8 +92,8 @@ GraphDescriptor(
 - default_dtypes:
 
   (`NULL` \| `list(float, int)`)  
-  The data types every R value in this trace commits to when nothing
-  else decides one (see
+  The data types every R value in this trace materializes at when
+  nothing else decides one (see
   [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 - backend:

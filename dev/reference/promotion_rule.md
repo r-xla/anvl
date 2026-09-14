@@ -1,6 +1,6 @@
 # Promotion Rules
 
-Functions for materializing R values to arrays and promoting inputs.
+Functions for materializing R values as arrays and promoting inputs.
 Most commonly used via the `.promote` argument of
 [`as_anvl_arrays()`](https://r-xla.github.io/anvl/dev/reference/as_anvl_array.md).
 
@@ -60,7 +60,7 @@ promotion_rule(fn, kind, on = NULL, ...)
   [`tengen::DataType`](https://r-xla.github.io/tengen/reference/DataType.html)
   \| `character(1)`)  
   The data type to settle on when *every* input is a bare R value, in
-  place of the default those would commit to on their own. `NULL`
+  place of the default those would materialize at on their own. `NULL`
   (default) leaves them their default.
 
 - arg:

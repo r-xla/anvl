@@ -2,7 +2,7 @@
 
 Sets the `anvl.backend` option for the duration of the expression. Every
 array built and every operation run in `code` uses the backend, and R
-values commit to its default data types (see
+values materialize at its default data types (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
 ## Usage

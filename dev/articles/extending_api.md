@@ -213,7 +213,6 @@ tracing overhead without fusing anything new. Also skip pure I/O
 `nv_rng_state`).
 
 The roclet writes the list of tagged functions to `R/jit-registry.R` on
-every
-[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
-run, and `R/zzz.R` applies that registry at package source time so the
-wrapped functions are byte-compiled with the rest of the package.
+every `devtools::document()` run, and `R/zzz.R` applies that registry at
+package source time so the wrapped functions are byte-compiled with the
+rest of the package.

@@ -161,9 +161,9 @@ and `bool` for logicals everywhere (see
 For functions taking a single dynamic input, as does `prim_repeat_along`
 from above, this is almost always the right thing to do. The inputs
 section of the printed graph shows both halves of it: the input’s data
-type is the default the value committed to, and the `<- double` records
-that the caller supplies an R double rather than an array that already
-had one.
+type is the default the value materialized at, and the `<- double`
+records that the caller supplies an R double rather than an array that
+already had one.
 
 ``` r
 
@@ -178,7 +178,7 @@ trace_fn(prim_repeat_along, list(nv_aval("double", c(2, 3)), 2, 1))
 ```
 
 Where the default goes wrong is when a primitive has several operands
-that must agree. Committing each to its own default would make
+that must agree. Materializing each at its own default would make
 `prim_add(1, nv_scalar(2, "f64"))` an error – the literal would become
 `f32` and meet an `f64` – where it should give `f64`. In such cases, you
 should call
@@ -420,7 +420,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x55eb26e96160>
+#> <environment: 0x56193a6ea270>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")
@@ -462,7 +462,7 @@ R value – one that has no data type yet (see
 [`naxes()`](https://r-xla.github.io/anvl/dev/reference/naxes.md) answer
 for it as they do for an array. For the data type there is
 [`peek_dtype()`](https://r-xla.github.io/anvl/dev/reference/peek_dtype.md),
-which reports the type the value *would* commit to;
+which reports the data type the value *would* take;
 [`dtype()`](https://r-xla.github.io/anvl/dev/reference/dtype.md) errors
 on an R value, because there is nothing to report until it is used.
 
@@ -544,8 +544,7 @@ manual tests in:
 - `tests/testthat/test-primitives-stablehlo.R`
 - `tests/testthat/test-primitives-reverse.R`
 
-Also, ensure that no linter errors are present,
-[`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
+Also, ensure that no linter errors are present, `devtools::check()`
 passes, and format the code using `make format`.
 
 ## Higher-Order Primitives
