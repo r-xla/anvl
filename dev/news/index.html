@@ -132,6 +132,7 @@
 <li>The gradient of <code><a href="../reference/nv_gamma.html">nv_gamma()</a></code> is now correct for positive whole numbers.</li>
 <li>
 <code><a href="../reference/prim_reduce_any.html">prim_reduce_any()</a></code> / <code><a href="../reference/prim_reduce_all.html">prim_reduce_all()</a></code> (and <code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code> / <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code>) now reject a non-boolean input when the call is traced. Type inference declared a <code>bool</code> output whatever the input was, so an integer operand reached the lowering and failed with <code>Data types of inputs and init_values must match</code>.</li>
+<li>Printed graphs, arrays and error messages now spell a data type the way anvl does, so <code>bool</code> no longer shows up as its MLIR spelling <code>i1</code>.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="tests-development-version">Tests<a class="anchor" aria-label="anchor" href="#tests-development-version"></a></h3>

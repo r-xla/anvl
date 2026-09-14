@@ -152,6 +152,8 @@
   declared a `bool` output whatever the input was, so an integer operand
   reached the lowering and failed with
   `Data types of inputs and init_values must match`.
+- Printed graphs, arrays and error messages now spell a data type the
+  way anvl does, so `bool` no longer shows up as its MLIR spelling `i1`.
 
 ### Tests
 
