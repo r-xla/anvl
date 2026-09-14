@@ -8,15 +8,16 @@ prim_reverse(x, axes)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reverse.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type and shape as \code{x}.
+(\code{\link{arrayish}})\cr
+Has the input's data type and shape.
 }
 \description{
 Reverses the order of elements along specified axes.
@@ -32,11 +33,13 @@ Reverses the order of elements along specified axes.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reverse]{hlo_reverse()}}.
+Lowers to \code{\link[stablehlo:hlo_reverse]{hlo_reverse()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reverse}{reverse}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the order along axis 1 is flipped
 x <- nv_array(c(1, 2, 3, 4, 5))
 prim_reverse(x, axes = 1L)
 \dontshow{\}) # examplesIf}

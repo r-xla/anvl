@@ -8,7 +8,8 @@ prim_static_slice(x, start_indices, limit_indices, strides)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{start_indices}{(\code{integer()})\cr
 Start indices (inclusive), one per axis. Must satisfy
@@ -23,7 +24,7 @@ Step sizes, one per axis. Must be \verb{>= 1}. A stride of \code{1}
 selects every element; a stride of \code{2} selects every other element, etc.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as the input and shape
 \code{ceiling((limit_indices - start_indices + 1) / strides)}.
 }
@@ -45,12 +46,13 @@ computed at runtime (e.g. depends on array values).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}.
+Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}, specified under
+\href{https://openxla.org/stablehlo/spec#slice}{slice}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# 1-D: extract elements 2 through 4 (limit is exclusive)
+# 1-D: extract elements 2 through 5, the limit being inclusive
 x <- nv_array(1:10)
 prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 
@@ -58,7 +60,7 @@ prim_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 x <- nv_array(1:10)
 prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
 
-# 2-D: extract a submatrix (rows 1-2, columns 2-3)
+# 2-D: extract the submatrix of rows 1-3 and columns 2-4
 x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 prim_static_slice(x,
   start_indices = c(1L, 2L),

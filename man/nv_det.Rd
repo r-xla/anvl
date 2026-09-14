@@ -8,16 +8,18 @@ nv_det(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Square matrix of floating-point data type.}
+Square matrix of any float data type.}
 }
 \value{
-Scalar \code{\link{arrayish}} with the same dtype as \code{x}.
+(\code{\link{arrayish}})\cr
+A scalar with the input's data type.
 }
 \description{
 Computes the determinant of a square matrix via \code{\link[=nv_determinant]{nv_determinant()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a scalar with the matrix's data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_det(a)
 \dontshow{\}) # examplesIf}

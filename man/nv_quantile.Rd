@@ -8,7 +8,8 @@ nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{probs}{(\code{numeric(1)} | 1-D \code{array})\cr
 One or more probabilities in \verb{[0, 1]}. Either a length-1 numeric
@@ -26,11 +27,11 @@ One of \code{"linear"} (default), \code{"lower"}, \code{"higher"}, \code{"neares
 \code{"midpoint"}. See "Interpolation modes".}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 For scalar \code{probs}: same shape as \code{x} with \code{axis} removed. For
 array \code{probs}: a \strong{leading} axis of size \code{length(probs)} is
 prepended. The data type is that of \code{x}, or the default float for a
@@ -56,9 +57,10 @@ computed (and returned) at the default float data type.
 }
 \section{Interpolation modes}{
 
-Let \code{h = (n - 1) * q} be the 0-based fractional index for an axis of
-length \code{n} and probability \code{q}, with \code{lo = floor(h)}, \code{hi = ceil(h)},
-\code{frac = h - lo}. Then:
+For an axis of size \code{n} and a probability \code{q}, let
+\code{h = 1 + (n - 1) * q} be the position \code{q} falls at in the sorted values,
+with \code{lo = floor(h)}, \code{hi = ceiling(h)} and \code{frac = h - lo}. Then, writing
+\code{sorted} for the values sorted along the axis:
 \itemize{
 \item \code{"linear"} (default): \code{(1 - frac) * sorted[lo] + frac * sorted[hi]}.
 \item \code{"lower"}: \code{sorted[lo]} — the lower bracket of \code{linear}.
@@ -70,6 +72,7 @@ length \code{n} and probability \code{q}, with \code{lo = floor(h)}, \code{hi = 
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a float result even for an integer input, since it interpolates
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_quantile(x, 0.5) # = nv_median(x)
 nv_quantile(x, array(c(0.25, 0.5, 0.75)))

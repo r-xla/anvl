@@ -49,13 +49,12 @@ Raw payloads are read in column-major element order, or row-major
 with \code{byrow = TRUE}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the data type the R value takes (see
-\code{\link[=default_dtypes]{default_dtypes()}}). This depends on the backend.
-For the default \code{"pjrt"} backend, \code{double}s become \code{f32}, \code{integer}
-\code{i32} and \code{logical}s \code{bool}.
-You can change the defaults via the \code{anvl.default_dtypes} option, or for
-a scope with \code{\link[=local_default_dtypes]{local_default_dtypes()}} / \code{\link[=with_default_dtypes]{with_default_dtypes()}}.}
+Data type of the result: one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64, or a
+\code{\link[tengen:DataType]{tengen::DataType}}. Can be any data type the backend supports; \code{data}
+is built at it, so a value that data type cannot hold exactly is
+converted. The default (\code{NULL}) is the data type the R value materializes at
+(see \code{\link[=default_dtypes]{default_dtypes()}}), which depends on the backend and on the
+\code{anvl.default_dtypes} option.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -106,7 +105,9 @@ An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are 
 (the default) are taken from \code{like}.}
 }
 \value{
-(\code{\link{AnvlArray}})
+(\code{\link{AnvlArray}})\cr
+Has the given \code{dtype} (or the default for \code{data}'s R storage type) and the
+given \code{shape} (or the one inferred from \code{data}).
 }
 \description{
 The main array object.
@@ -157,22 +158,22 @@ The supported data types and devices differ between backends.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# A 1-d array (vector) with shape (4). Default type for integers is `i32`
+# a 1-d array (vector) with shape (4), at the default data type for integers
 nv_array(1:4)
 
-# Specify a dtype
+# specify a dtype
 nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 
-# A 2x3 matrix
+# a 2x3 matrix
 nv_array(1:6, shape = c(2L, 3L))
 
-# A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+# a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 
-# A scalar array.
+# a scalar array
 nv_scalar(3.14)
 
-# An uninitialized 2x3 array (contents are unspecified)
+# an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 
 # --- Extractors ---

@@ -8,15 +8,16 @@ prim_cumsum(x, axis)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to accumulate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Cumulative sum of array elements along a single axis.
@@ -35,11 +36,14 @@ OR rather than a running count. \code{\link[=nv_cumsum]{nv_cumsum()}} counts ins
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}} with \code{\link[stablehlo:hlo_add]{hlo_add()}} as the reducer.
+Lowers to \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce_window}{reduce_window}.
+The reducer is \code{\link[stablehlo:hlo_add]{hlo_add()}}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the accumulation keeps the input's data type
 x <- nv_matrix(1:6, nrow = 2)
 prim_cumsum(x, axis = 1L)
 \dontshow{\}) # examplesIf}

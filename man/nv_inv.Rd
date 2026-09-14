@@ -8,11 +8,12 @@ nv_inv(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Square non-singular matrix.}
+One input, a square non-singular matrix with exactly 2 axes. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-The inverse, same shape and dtype as \code{x}.
+(\code{\link{arrayish}})\cr
+The inverse, with the input's shape and data type.
 }
 \description{
 Computes \code{x^-1}, the inverse of a square non-singular matrix \code{x}, by
@@ -24,6 +25,7 @@ a right-hand side.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the inverse has the matrix's shape and data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_inv(a)
 \dontshow{\}) # examplesIf}

@@ -16,7 +16,7 @@ An array-like object.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-\code{character(1)}
+(\code{character(1)})
 }
 \description{
 Returns the platform name (e.g. \code{"cpu"}, \code{"cuda"}) identifying

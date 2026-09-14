@@ -8,11 +8,12 @@ prim_floor(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point.}
+One input. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise floor.
@@ -28,13 +29,18 @@ Element-wise floor.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_floor]{hlo_floor()}}.
+Lowers to \code{\link[stablehlo:hlo_floor]{hlo_floor()}}, specified under
+\href{https://openxla.org/stablehlo/spec#floor}{floor}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 prim_floor(x)
+
+# an R value materializes at its default data type
+prim_floor(1.2)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -17,6 +17,7 @@ Environment in which to look up and rebind functions. Defaults to
 namespace.}
 }
 \value{
+(\code{environment})\cr
 Invisibly returns \code{envir}.
 }
 \description{

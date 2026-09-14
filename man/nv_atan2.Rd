@@ -8,25 +8,33 @@ nv_atan2(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-An integer operand is converted to the default float data type (see
-\code{\link[=default_dtypes]{default_dtypes()}}).
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs. Can be any numeric data type: an integer operand is converted
+to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) before the two
+are brought to a \link[=common_dtype]{common data type}, so that common data
+type is always a float. Scalars are broadcast. An R double assumes the
+other operand's data type, falling back to its
+\link[=default_dtypes]{default data type}; an R integer materializes at its default
+and is converted like any other integer.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and common data type.
 }
 \description{
-Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive
-x-axis and the point \verb{(rhs, lhs)}.
+Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive x-axis
+and the point \verb{(rhs, lhs)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 y <- nv_array(c(1, 0, -1))
 x <- nv_array(c(0, 1, 0))
 nv_atan2(y, x)
+
+# different data types are promoted to their common one
+nv_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64"))
+
+# a scalar is broadcast and an R integer is converted to a float
+nv_atan2(y, 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -1613,7 +1613,7 @@ describe("nv_select", {
     expect_error(nv_select(nv_array(c(1, 2, 3)), axis = 1L, index = 5L))
   })
 
-  it("errors on a 0-dimensional input", {
+  it("errors on a scalar input", {
     expect_error(nv_select(nv_scalar(1), axis = 1L, index = 1L), "at least one axis")
   })
 
@@ -1645,7 +1645,7 @@ describe("nv_sort", {
     expect_equal(nv_sort(m), expected)
   })
 
-  it("errors on a 0-dimensional input", {
+  it("errors on a scalar input", {
     expect_error(nv_sort(nv_scalar(1)), "at least one axis")
   })
 
@@ -1676,8 +1676,12 @@ describe("nv_argsort", {
     expect_equal(as.vector(x)[perm], c(5, 4, 3, 1, 1))
   })
 
-  it("returns i32 dtype", {
-    expect_dtype(nv_argsort(nv_array(c(1, 2))), default_int())
+  it("returns the default integer data type", {
+    expect_equal(dtype(nv_argsort(nv_array(c(1, 2)))), default_int())
+    with_default_dtypes(
+      c(int = "i64"),
+      expect_equal(dtype(nv_argsort(nv_array(c(1, 2)))), as_dtype("i64"))
+    )
   })
 
   it("accepts a negative dim", {
@@ -1939,7 +1943,7 @@ describe("nv_quantile", {
     expect_error(nv_quantile(nv_array(c(1, 2)), 1.5))
   })
 
-  it("errors on a 0-dimensional input", {
+  it("errors on a scalar input", {
     expect_error(nv_quantile(nv_scalar(1), 0.5), "at least one axis")
   })
 
@@ -1971,8 +1975,8 @@ describe("nv_argmax / nv_argmin", {
     expect_equal(nv_argmax(m), prim_argmax(m, axis = 2L))
     expect_equal(nv_argmin(m), prim_argmin(m, axis = 2L))
   })
-  it("errors on a 0-dimensional input", {
-    expect_error(nv_argmax(nv_scalar(3)))
+  it("errors on a scalar input", {
+    expect_error(nv_argmax(nv_scalar(3)), "at least one axis")
     expect_error(nv_argmin(nv_scalar(3)))
   })
   it("accepts a negative dim", {
@@ -2395,11 +2399,260 @@ describe("the default integer", {
   })
 })
 
+test_that("nv_quantile and nv_median interpolate at a float data type", {
+  # `probs` used to be built at the key's data type, so at an integer one it
+  # rounded to 0 and every quantile came back as the smallest element.
+  expect_equal(as.vector(as_array(nv_median(nv_array(1:4)))), 2.5)
+  expect_equal(as.vector(as_array(nv_median(nv_array(c(1, 2, 3, 4))))), 2.5)
+  expect_equal(as.vector(as_array(nv_quantile(nv_array(1:4), 0.25))), 1.75)
+  expect_equal(
+    as.vector(as_array(nv_quantile(nv_array(1:4), array(c(0.25, 0.5, 0.75))))),
+    c(1.75, 2.5, 3.25)
+  )
+  expect_equal(
+    as.vector(as_array(nv_median(nv_array(c(TRUE, TRUE, FALSE, FALSE))))),
+    0.5
+  )
+  # The result is a float whatever the interpolation mode does, and a non-float
+  # input is interpolated at the default float rather than a fixed one.
+  expect_equal(
+    dtype(nv_quantile(nv_array(1:4), 0.5, interpolation = "lower")),
+    default_float()
+  )
+  expect_equal(dtype(nv_median(nv_array(1:4, dtype = "i8"))), default_float())
+  with_default_dtypes(c(float = "f64"), {
+    expect_equal(dtype(nv_median(nv_array(1:4))), as_dtype("f64"))
+  })
+  expect_equal(dtype(nv_median(nv_array(c(1, 2), dtype = "f64"))), as_dtype("f64"))
+  # `probs` is a scalar or a 1-D array.
+  expect_error(
+    nv_quantile(nv_array(c(1, 2, 3, 4)), array(c(0.25, 0.5), dim = c(1, 2))),
+    "must be a length-1 numeric or a 1-D array"
+  )
+})
+
+test_that("`%/%` is flooring integer division", {
+  expect_equal(as.integer(nv_array(c(7L, 8L, 9L)) %/% 2L), c(3L, 4L, 4L))
+  expect_equal(as.integer(nv_array(-7L) %/% 2L), -7L %/% 2L)
+  expect_equal(as.vector(as_array(nv_array(c(7, 8)) %/% 2)), c(3, 4))
+})
+
+test_that("shape mismatches print the shapes once each", {
+  a <- nv_array(matrix(1:6 / 1, 2), dtype = "f32")
+  b <- nv_array(matrix(1:6 / 1, 3), dtype = "f32")
+  expect_error(nv_concatenate(a, b, axis = 1L), "\\(2x3\\), \\(3x2\\)")
+  expect_error(
+    nv_rbind(a, nv_array(matrix(1:8 / 1, 2), dtype = "f32")),
+    "\\(2x3\\), \\(2x4\\)"
+  )
+})
+
+test_that("the flag and enum arguments are checked in the nv_* layer", {
+  x <- nv_array(c(1, 2, 3, 4))
+  for (f in list(nv_reduce_sum, nv_reduce_prod, nv_reduce_max, nv_reduce_min, nv_mean)) {
+    expect_error(f(x, nan_rm = "yes"), "logical flag")
+  }
+  expect_error(nv_cumsum(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_cummax(x, with_indices = "yes"), "logical flag")
+  expect_error(nv_argmax(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "logical flag")
+  m <- nv_array(matrix(c(4, 2, 2, 3), 2), dtype = "f32")
+  expect_error(nv_chol(m, lower = "yes"), "logical flag")
+  expect_error(nv_triangular_solve(m, m, lower = "yes"), "logical flag")
+  expect_error(nv_seq(7, 3), "must not be greater than")
+})
+
+test_that("the variadic functions and `like` refuse nothing to work with", {
+  expect_error(nv_concatenate(), "At least one array")
+  expect_error(nv_rbind(), "At least one array")
+  expect_error(nv_cbind(), "At least one array")
+  expect_error(nv_broadcast_arrays(), "At least one array")
+  expect_error(nv_broadcast_scalars(), "At least one array")
+  expect_error(nv_promote_to_common(), "At least one array")
+  expect_error(nv_fill_like(1, 2, shape = 2L), "must be an array")
+})
+
+test_that("nv_serialize returns NULL when it writes to a connection", {
+  path <- withr::local_tempfile()
+  con <- file(path, "wb")
+  expect_null(nv_serialize(list(x = nv_array(c(1, 2))), con = con))
+  # The caller owns the connection, so it is flushed here before reading back.
+  close(con)
+  expect_equal(nv_read(path)$x, nv_array(c(1, 2)))
+})
+
+test_that("nv_solve, nv_triangular_solve and nv_conv* promote across data types", {
+  # The `nv_*` layer promotes, as `nv_matmul()` does; the primitives underneath
+  # still require operands that already agree.
+  a32 <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f32")
+  a64 <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
+  b32 <- nv_matrix(c(1, 2), nrow = 2, dtype = "f32")
+  b64 <- nv_matrix(c(1, 2), nrow = 2, dtype = "f64")
+
+  out_dtype <- function(f) {
+    graph <- trace_fn(f, list())
+    dtype(graph$outputs[[1L]]$aval)
+  }
+  # `nv_solve()` needs the `lu` FFI handler to run, so the data type is read
+  # off the traced graph.
+  expect_equal(out_dtype(function() nv_solve(a32, b64)), as_dtype("f64"))
+  expect_equal(out_dtype(function() nv_solve(a64, b32)), as_dtype("f64"))
+  expect_equal(out_dtype(function() nv_solve(a32, b32)), as_dtype("f32"))
+
+  L32 <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
+  L64 <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f64")
+  expect_equal(dtype(nv_triangular_solve(L32, b64)), as_dtype("f64"))
+  expect_equal(dtype(nv_triangular_solve(L64, b32)), as_dtype("f64"))
+  expect_equal(dtype(nv_triangular_solve(L32, b32)), as_dtype("f32"))
+  # An R value takes the array's data type rather than forcing its default.
+  expect_equal(
+    dtype(nv_triangular_solve(L64, matrix(c(4, 3), ncol = 1L))),
+    as_dtype("f64")
+  )
+
+  x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
+  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+  w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
+  expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
+  # An integer input meets a float weight at the float.
+  expect_equal(
+    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
+    as_dtype("f32")
+  )
+  expect_equal(
+    dtype(nv_conv2d(
+      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+  expect_equal(
+    dtype(nv_conv3d(
+      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+
+  # The solves still need the common data type to be a float, and say which
+  # argument to look at.
+  expect_error(
+    nv_solve(nv_array(matrix(1:4, 2)), nv_array(matrix(1:2, 2))),
+    "`a` must be a float data type"
+  )
+  expect_error(
+    nv_triangular_solve(nv_array(matrix(1:4, 2)), nv_array(matrix(1:2, 2))),
+    "`a` must be a float data type"
+  )
+})
+
+test_that("prim_chol and nv_chol accept batched inputs", {
+  # The lowering broadcasts its triangle mask over the batch axes, and both
+  # pages promise batch support.
+  spd <- matrix(c(4, 1, 1, 1, 4, 1, 1, 1, 4), nrow = 3)
+  bx <- array(NA_real_, dim = c(2L, 3L, 3L))
+  bx[1L, , ] <- spd
+  bx[2L, , ] <- spd * 2
+  out <- nv_chol(nv_array(bx, dtype = "f64"))
+  expect_equal(shape(out), c(2L, 3L, 3L))
+  got <- as_array(out)
+  expect_equal(got[1L, , ], chol(spd), tolerance = 1e-8)
+  expect_equal(got[2L, , ], chol(spd * 2), tolerance = 1e-8)
+
+  # A single matrix still works, and the constraints still fire, on the last
+  # two axes.
+  expect_equal(shape(nv_chol(nv_array(spd, dtype = "f32"))), c(3L, 3L))
+  expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its last two axes")
+  expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
+  expect_error(nv_chol(nv_array(spd)), NA)
+  expect_error(nv_chol(nv_array(matrix(1:4, 2))), "float data type")
+})
+
+test_that("nv_inv reports its own argument, and gradient accepts any float", {
+  expect_error(nv_inv(nv_array(matrix(1:4, 2))), "`x` must be a float data type")
+  # The check and the message agree on what "float" means.
+  expect_error(
+    jit(gradient(function(x) nv_reduce_sum(nv_convert(x, "i32"))))(nv_array(c(1, 2))),
+    "float scalar"
+  )
+})
+
+test_that("the API layer checks what its pages promise", {
+  x3 <- nv_array(c(3, 1, 2))
+  f23 <- nv_array(matrix(1:6, 2, 3) + 0)
+
+  # `nv_top_k()` coerced `k` before checking it, so a fractional or logical `k`
+  # was silently truncated where `prim_top_k()` refuses both -- and
+  # `with_indices` reached a bare `if()`.
+  expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 1L, with_indices = 1), "logical flag")
+  expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
+
+  # `nv_quantile()`'s bad-`probs` message was raw `checkmate` output.
+  expect_error(nv_quantile(x3, 1.5), "`probs` must be probabilities")
+  expect_error(nv_quantile(x3, NA_real_), "`probs` must be probabilities")
+
+  # `nv_matmul()` left conformability to `prim_dot_general()`, which reports it
+  # in terms of `contracting_axes` with 0-based numbers.
+  expect_error(nv_matmul(f23, f23), "are not conformable")
+  expect_error(
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(matrix(1, 2, 2))),
+    "same number of axes"
+  )
+  expect_error(
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(array(1, c(3, 2, 2)))),
+    "must have the same batch axes"
+  )
+  expect_equal(shape(nv_matmul(f23, nv_array(matrix(1:6, 3, 2) + 0))), c(2L, 2L))
+
+  # A rank mismatch and a size mismatch are different mistakes.
+  expect_error(nv_concatenate(f23, nv_array(c(1, 2, 3)), axis = 1L), "same number of axes")
+  expect_error(
+    nv_concatenate(f23, nv_array(matrix(1:4, 2, 2) + 0), axis = 1L),
+    "same shape apart from axis 1"
+  )
+
+  # `nv_conv*` reported `kernel_input_feature_dimension` and `N`, neither of
+  # which is an argument of theirs.
+  expect_error(
+    nv_conv1d(nv_array(array(1, c(1, 2, 4))), nv_array(array(1, c(1, 3, 2)))),
+    "`weight`'s second axis"
+  )
+  expect_error(
+    nv_conv1d(nv_array(matrix(1, 2, 2)), nv_array(matrix(1, 2, 2))),
+    "must have 3 axes for a 1-D convolution"
+  )
+  expect_equal(
+    shape(nv_conv1d(nv_array(array(1, c(1, 1, 5))), nv_array(array(1, c(1, 1, 3))))),
+    c(1L, 1L, 3L)
+  )
+
+  # `nv_subset()`'s page says an R value is accepted, and now it is.
+  quos <- list(rlang::quo(1L), rlang::missing_arg())
+  # `as.integer()` rather than `as.vector()`: under an `i64` default the result
+  # comes back as a `bit64::integer64`, whose class `as.vector()` strips.
+  expect_equal(
+    as.integer(as_array(rlang::inject(nv_subset(array(1:6, c(2, 3)), !!!quos)))),
+    c(1L, 3L, 5L)
+  )
+})
+
 test_that("assert_shapevec() rejects what it cannot represent", {
+  # None of the specific arms fired for a fractional or out-of-range size, so
+  # both fell through to `as.integer()` -- truncating the first and turning the
+  # second into `NA`.
   expect_error(nv_fill(1, shape = 2.7), "must contain whole numbers")
   expect_error(nv_fill(1, shape = 1e10), "must contain whole numbers")
   expect_error(nv_fill(1, shape = Inf), "must contain whole numbers")
   expect_error(nv_fill(1, shape = c(-1L, 2L)), "must not contain a negative axis size")
+  # A zero-size axis is still legal, and the argument keeps its own name.
   expect_equal(shape(nv_fill(1, shape = c(0L, 3L))), c(0L, 3L))
   expect_error(nv_fill(1, shape = c(-1L, 2L)), "`shape`")
 })
@@ -2413,4 +2666,32 @@ test_that("a constructor that fills internally works at every data type", {
   b <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
   expect_equal(as.vector(nv_tril(b)), c(TRUE, TRUE, FALSE, TRUE))
   expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
+})
+
+test_that("the quantile page's formula is the one the code computes", {
+  # `h = 1 + (n - 1) * q` in 1-based terms, as the page now states.
+  x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
+  n <- 4L
+  sorted <- c(1, 2, 3, 4)
+  for (q in c(0, 0.1, 0.3, 0.5, 0.75, 1)) {
+    h <- 1 + (n - 1) * q
+    lo <- floor(h)
+    hi <- ceiling(h)
+    frac <- h - lo
+    want <- list(
+      linear = (1 - frac) * sorted[lo] + frac * sorted[hi],
+      lower = sorted[lo],
+      higher = sorted[hi],
+      nearest = if (frac < 0.5) sorted[lo] else sorted[hi],
+      midpoint = (sorted[lo] + sorted[hi]) / 2
+    )
+    for (mode in names(want)) {
+      expect_equal(
+        as.vector(as_array(nv_quantile(x, q, interpolation = mode))),
+        want[[mode]],
+        tolerance = 1e-12,
+        info = paste(mode, q)
+      )
+    }
+  }
 })

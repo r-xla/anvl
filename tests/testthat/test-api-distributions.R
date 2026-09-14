@@ -362,13 +362,19 @@ describe("nv_qnorm", {
   })
 
   it("converts mean/sd to the dtype of p", {
-    # `p`'s data type, not the default float. The two coincide under the
-    # standard defaults, which is what let the result follow the default
-    # unnoticed while the coefficients materialized there.
+    # `p`'s own data type, not the default float: the R integers yield to it and
+    # so do the coefficients inside. The two coincide under the standard
+    # defaults, which is what let the result follow the default unnoticed.
     out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
     expect_dtype(out, "f32")
-    out64 <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f64"), mean = 0L, sd = 1L)
-    expect_dtype(out64, "f64")
+    with_default_dtypes(
+      c(float = "f64"),
+      expect_dtype(
+        nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L),
+        "f32"
+      )
+    )
+    expect_dtype(nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f64"), mean = 0L, sd = 1L), "f64")
   })
 })
 
@@ -383,23 +389,17 @@ describe("eager/jit equivalence", {
   })
 })
 
-describe("the float category", {
-  it("nv_pnorm() and nv_qnorm() still need a 32- or 64-bit float", {
-    # `f16` / `bf16` are float data types, so the general float check accepts
-    # them -- but these two carry one coefficient set per width, and a narrower
-    # float would silently take the `f64` set.
-    #
-    # The `jit()` is needed: eagerly, `nv_convert()` runs at once and has to
-    # materialise a `bf16` buffer, which no backend does, so the call dies with
-    # "Unsupported type: bf16" before it reaches the check. Under tracing the
-    # array stays abstract and the check runs.
-    expect_error(
-      jit(function(x) nv_pnorm(nv_convert(x, "bf16")))(nv_array(c(0.5, 0.5))),
-      "must be a 32- or 64-bit float data type"
-    )
-    expect_error(
-      jit(function(x) nv_qnorm(nv_convert(x, "bf16")))(nv_array(c(0.5, 0.5))),
-      "must be a 32- or 64-bit float data type"
-    )
-  })
+test_that("nv_pnorm() and nv_qnorm() refuse a float width they have no coefficients for", {
+  # One coefficient set per width, so a narrower float would silently take the
+  # `f64` set -- which the page said was refused.
+  expect_error(
+    trace_fn(function(p) nv_qnorm(p), list(nv_aval("f16", 3L))),
+    "must be a 32- or 64-bit float"
+  )
+  expect_error(
+    trace_fn(function(q) nv_pnorm(q), list(nv_aval("bf16", 3L))),
+    "must be a 32- or 64-bit float"
+  )
+  # `nv_dnorm()` has no coefficients and takes any float.
+  expect_s3_class(trace_fn(function(x) nv_dnorm(x), list(nv_aval("f16", 3L))), "AnvlGraph")
 })
