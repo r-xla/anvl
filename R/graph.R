@@ -55,7 +55,7 @@ format.GraphLiteral <- function(x, ...) {
   } else {
     as.character(x$aval$data)
   }
-  sprintf("GraphLiteral(%s, %s, %s)", val, dtype_name(x$aval$dtype), shape2string(x$aval$shape))
+  sprintf("GraphLiteral(%s, %s, %s)", val, as.character(x$aval$dtype), shape2string(x$aval$shape))
 }
 
 #' @export

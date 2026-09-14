@@ -1022,7 +1022,7 @@ prim_reduce <- new_primitive(
     if (out_aval$dtype != op_dtype) {
       cli_abort(c(
         "{.arg reductor} must return a value with the same dtype as {.arg x}.",
-        x = "Got reductor output dtype {.field {dtype_name(out_aval$dtype)}}."
+        x = "Got reductor output dtype {.field {as.character(out_aval$dtype)}}."
       ))
     }
 
@@ -2802,9 +2802,9 @@ prim_print <- new_primitive(
     aval <- to_abstract(x)
     dims <- paste0(shape(aval), collapse = ",")
     footer <- if (is_rdata(aval)) {
-      sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, dtype_name(peek_dtype(aval)))
+      sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
     } else {
-      sprintf("[ %s{%s} ]", dtype_name(dtype(aval)), dims)
+      sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
     }
     # `x` is printed, not consumed: the call takes a rendering of it and the
     # original is handed straight back. Inserting a print therefore cannot
