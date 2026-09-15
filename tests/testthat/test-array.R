@@ -228,6 +228,23 @@ test_that("== and != operators throw errors for AbstractArray", {
   expect_error(x != y, "Use.*neq_type")
 })
 
+describe("eq_type", {
+  it("errors for an RData, which has no data type to compare", {
+    r <- RData(integer(), "double")
+    x <- AbstractArray(default_float(), integer())
+    expect_error(eq_type(r, x), "undefined for an <RData>")
+    expect_error(eq_type(x, r), "undefined for an <RData>")
+    expect_error(eq_type(r, r), "undefined for an <RData>")
+    expect_error(neq_type(r, x), "undefined for an <RData>")
+  })
+
+  it("errors for values that are not AbstractArrays", {
+    x <- AbstractArray("f32", integer())
+    expect_error(eq_type(x, 1), "must be AbstractArrays")
+    expect_error(eq_type(1, x), "must be AbstractArrays")
+  })
+})
+
 test_that("to_abstract", {
   # an R value, which has no dtype of its own yet
   expect_equal(to_abstract(TRUE), RData(integer(), "logical"))

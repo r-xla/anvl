@@ -909,10 +909,13 @@ print.IotaArray <- function(x, ...) {
 #' @title Compare AbstractArray Types
 #' @description
 #' Compare two abstract arrays for type equality.
+#'
+#' An [`RData`] has no data type to compare, so it is an error here, just as
+#' [`dtype()`][tengen::dtype] is. Commit it first, e.g. with [`nv_convert()`].
 #' @param e1 ([`AbstractArray`])\cr
-#'   First array to compare.
+#'   First array to compare. Must not be an [`RData`].
 #' @param e2 ([`AbstractArray`])\cr
-#'   Second array to compare.
+#'   Second array to compare. Must not be an [`RData`].
 #' @return `logical(1)` - `TRUE` if the arrays are equal, `FALSE` otherwise.
 #' @examples
 #' a <- nv_aval("f32", c(2L, 3L))
@@ -934,8 +937,17 @@ eq_type <- function(e1, e2) {
   if (!inherits(e1, "AbstractArray") || !inherits(e2, "AbstractArray")) {
     cli_abort("e1 and e2 must be AbstractArrays")
   }
-  # An `RData` compares as the dtype it would commit to; it has no other.
-  if (peek_dtype(e1) != peek_dtype(e2) || !identical(e1$shape, e2$shape)) {
+  if (is_rdata(e1) || is_rdata(e2)) {
+    cli_abort(
+      c(
+        "{.fn eq_type} is undefined for an {.cls RData}.",
+        i = "An R value has no data type of its own until it is used, so there is nothing to compare.",
+        i = "Give it one explicitly with {.fn nv_convert}."
+      ),
+      call = NULL
+    )
+  }
+  if (dtype(e1) != dtype(e2) || !identical(e1$shape, e2$shape)) {
     return(FALSE)
   }
   TRUE
