@@ -171,7 +171,10 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   # `1` and `1L` both build at `i32`, while `1.5` builds at neither. This keeps
   # the fills that do not know their data type statically (`zeros()`, `ones()`,
   # `nv_eye()`, `nv_diag()`, the gradient zeroing) free to write a plain `0`.
-  is_whole <- is_int64 || test_int(value)
+  # Not `test_int()`: that is FALSE beyond R's integer range, which would make
+  # the `too_large` arm below unreachable and report a large whole double as
+  # "not a whole number".
+  is_whole <- is_int64 || (is_number && is.finite(value) && value == trunc(value))
   # A whole double is built as an R integer, so one beyond that range would
   # silently arrive at the backend as `NA`.
   too_large <- is_whole && !is_int64 && !is.integer(value) && abs(value) > .Machine$integer.max
