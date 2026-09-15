@@ -66,11 +66,13 @@ format_param_value <- function(p) {
     return(as.character(p))
   }
   if (is_anvl_array(p)) {
-    # A parameter can carry a whole array -- the constant a folded `fill` was
-    # built from. Print it the way the rest of the graph prints an array
-    # instead of dumping the object's fields.
-    if (length(shape(p)) == 0L) {
-      return(sprintf("%s:%s", format_param_value(as_array(p)), as.character(dtype(p))))
+    # The one array a parameter carries is the one-element constant that
+    # `inline_scalarish_constants()` turns into a `fill`, so print its value
+    # the way a literal node does rather than dumping the object's fields.
+    # A shape of `c(1, 1)` is still one element, so go by the element count.
+    if (prod(shape(p)) == 1L) {
+      value <- format_param_value(as.vector(as_array(p)))
+      return(sprintf("%s:%s", value, as.character(dtype(p))))
     }
     return(format_aval_short(p))
   }

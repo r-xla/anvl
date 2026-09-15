@@ -260,16 +260,34 @@
     Output
       [1] "\"a\\\\b\""
 
-# format_param_value: an array parameter prints as an array
+# format_param_value: a one-element array parameter prints its value
 
     Code
       format_param_value(nv_scalar(1, dtype = "f32"))
     Output
       [1] "1:f32"
     Code
+      format_param_value(nv_array(1, shape = c(1, 1), dtype = "f32"))
+    Output
+      [1] "1:f32"
+    Code
       format_param_value(nv_array(c(1, 2, 3), dtype = "f32"))
     Output
       [1] "f32[3]"
+
+# a folded constant prints its value in the `fill` it becomes
+
+    Code
+      graph
+    Output
+      <AnvlGraph>
+        Inputs:
+          %x1: f32[]
+        Body:
+          %1: f32[] = mul(%x1, 2:f32)
+          2:f32: f32[] = fill [value = 2:f32, dtype = f32, shape = integer(0)] ()
+        Outputs:
+          %1: f32[] 
 
 # a call whose parameters do not fit the width wraps them
 

@@ -149,11 +149,25 @@ test_that("format_param_value: character values are escaped", {
   })
 })
 
-test_that("format_param_value: an array parameter prints as an array", {
+test_that("format_param_value: a one-element array parameter prints its value", {
+  # `inline_scalarish_constants()` hands `prim_fill()` the constant itself as
+  # its `value`, and a one-element array can have any all-ones shape.
   expect_snapshot({
     format_param_value(nv_scalar(1, dtype = "f32"))
+    format_param_value(nv_array(1, shape = c(1, 1), dtype = "f32"))
     format_param_value(nv_array(c(1, 2, 3), dtype = "f32"))
   })
+})
+
+test_that("a folded constant prints its value in the `fill` it becomes", {
+  local_registered_default_dtypes()
+  y <- nv_scalar(2, dtype = "f32")
+  graph <- inline_scalarish_constants(
+    trace_fn(function(x) x * y, list(x = nv_scalar(1, dtype = "f32")))
+  )
+  fill <- graph$calls[[length(graph$calls)]]
+  expect_true(is_anvl_array(fill$params$value))
+  expect_snapshot(graph)
 })
 
 test_that("a call whose parameters do not fit the width wraps them", {
