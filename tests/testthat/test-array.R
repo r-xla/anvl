@@ -242,7 +242,7 @@ test_that("to_abstract", {
   x <- GraphBox(aval, local_descriptor())
   expect_equal(to_abstract(x), aval$aval)
 
-  # pure -- an R value contributes the dtype it would commit to
+  # pure -- an R value contributes the dtype it would materialize at
   x <- nv_scalar(1)
   expect_equal(to_abstract(x, pure = TRUE), AbstractArray(default_float(), c()))
   expect_equal(to_abstract(1L, pure = TRUE), AbstractArray(default_int(), c()))
@@ -478,7 +478,7 @@ describe("as_anvl_arrays", {
     out <- as_anvl_arrays(x, 1L)
     expect_equal(device(out[[1L]]), dev)
     expect_equal(device(out[[2L]]), dev)
-    # ... and when a promote rule realizes them
+    # ... and when a promote rule materializes them
     out <- as_anvl_arrays(x, 1.5, .promote = promotion_common())
     expect_equal(device(out[[2L]]), dev)
   })
@@ -553,7 +553,7 @@ describe("as_anvl_arrays", {
     expect_equal(dtype(out[[2L]]), default_float())
   })
 
-  it("realizes every input at the common dtype with promotion_common()", {
+  it("materializes every input at the common dtype with promotion_common()", {
     out <- as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promotion_common())
     expect_equal(dtype(out[[1L]]), default_float())
     expect_equal(dtype(out[[2L]]), default_float())
@@ -571,7 +571,7 @@ describe("as_anvl_arrays", {
   })
 
   it("builds an R value at the common dtype rather than converting to it", {
-    # The point of realize_at(): converting an f32 sqrt(2) to f64 would only
+    # The point of materialize_at(): converting an f32 sqrt(2) to f64 would only
     # widen a number that had already lost its digits.
     out <- as_anvl_arrays(nv_array(1, dtype = "f64"), sqrt(2), .promote = promotion_common())
     expect_identical(as.character(dtype(out[[2L]])), "f64")
@@ -586,7 +586,7 @@ describe("as_anvl_arrays", {
     expect_equal(device(out[[2L]]), dev)
   })
 
-  it("realizes every input at one argument's dtype with a named anchor", {
+  it("materializes every input at one argument's dtype with a named anchor", {
     out <- as_anvl_arrays(x = nv_array(1L), y = nv_array(2L, dtype = "i8"), .promote = promotion_like("x"))
     expect_equal(dtype(out$x), default_int())
     expect_equal(dtype(out$y), default_int())
@@ -633,7 +633,7 @@ describe("as_anvl_arrays", {
     expect_identical(as.numeric(out$y), sqrt(2))
   })
 
-  it("commits an R value anchor to its default dtype", {
+  it("materializes an R value anchor at its default dtype", {
     out <- as_anvl_arrays(x = 1L, y = nv_array(2L), .promote = promotion_like("x"))
     expect_equal(dtype(out$x), default_int())
     expect_equal(dtype(out$y), default_int())
@@ -651,7 +651,7 @@ describe("as_anvl_arrays", {
     expect_error(promotion_common(on = list()), "names or positions")
   })
 
-  it("realizes only the inputs a rule names, aligning the rest", {
+  it("materializes only the inputs a rule names, aligning the rest", {
     # `nv_ifelse()`'s shape: `pred` takes part in the device alignment but not in
     # the promotion, so it stays a bool.
     out <- as_anvl_arrays(
@@ -685,7 +685,7 @@ describe("as_anvl_arrays", {
     expect_equal(device(out$pred), dev)
   })
 
-  it("realizes every input at a dtype the caller names", {
+  it("materializes every input at a dtype the caller names", {
     out <- as_anvl_arrays(nv_array(1L), sqrt(2), .promote = promotion_dtype("f64"))
     expect_identical(as.character(dtype(out[[1L]])), "f64")
     expect_identical(as.character(dtype(out[[2L]])), "f64")

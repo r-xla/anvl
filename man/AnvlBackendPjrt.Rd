@@ -37,7 +37,7 @@ Operations require all inputs to live on the same device.
 
 \code{bool}; the signed integers \code{i8}, \code{i16}, \code{i32} and \code{i64}; the unsigned
 integers \code{ui8}, \code{ui16}, \code{ui32} and \code{ui64}; and the floats \code{f32} and \code{f64}.
-An R double commits to \code{f32} on this backend and an R integer to \code{i32}
+An R double materializes at \code{f32} on this backend and an R integer at \code{i32}
 unless the defaults say otherwise (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 

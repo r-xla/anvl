@@ -19,7 +19,7 @@ API functions shipped with {anvl} must work with **both** the pjrt and quickr ba
 
 - Never name a backend in an API function: no `backend =` arguments, no `with_backend()` calls. The caller chooses the backend.
 - If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's device. Do **not** call `device()` on a traced input -- it fails under `jit()`.
-- Never hardcode `"f32"` / `"i32"` as a default data type; take `dtype = NULL` and resolve it with `default_float()` / `default_int()`, which read the defaults in force (see `default_dtypes()`).
+- Never hardcode `"f32"` / `"i32"` as a default data type; take `dtype = NULL` and resolve it with `default_float()` / `default_int()`, which read the active defaults (see `default_dtypes()`).
 
 ### Follow R semantics
 
@@ -69,9 +69,9 @@ For ops needing custom logic, write a function that normalizes its array inputs 
 - `as_anvl_array(x)` for a single array input.
 - `as_anvl_arrays(...)` for multiple array inputs (infers a common device, errors on mismatched backends/devices).
 
-A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value commits to its default (the float default in force, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
+A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value materializes at its default (the active float default, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
 
-After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` what it *would* commit to.
+After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` which data type it would take.
 
 ### Constants and the `_like` pattern
 
@@ -102,7 +102,7 @@ If the underlying primitive requires all its inputs to share a dtype (e.g. `prim
 args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
 ```
 
-`promotion_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have committed the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
+`promotion_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have materialized the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
 
 ### Static arguments
 

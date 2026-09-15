@@ -10,14 +10,14 @@ test_that("an R value takes the dtype of the array it meets", {
   )
 })
 
-test_that("an R value that meets nothing commits to the default dtype", {
+test_that("an R value that meets nothing materializes at the default dtype", {
   expect_equal(jit(function() 1 * 2)(), nv_scalar(2, dtype = default_float()))
   expect_equal(jit(function() 1L * 2L)(), nv_scalar(2L, dtype = default_int()))
 })
 
-test_that("a value that has committed keeps its dtype", {
-  # `x * 1L` commits to i32 -- the R value cannot stay a bool -- and the i16
-  # then promotes against a real i32, which wins.
+test_that("a value that has materialized keeps its dtype", {
+  # `x * 1L` materializes at i32 -- the R value cannot stay a bool -- and the
+  # i16 then promotes against a real i32, which wins.
   f <- function(x, y) (x * 1L) + y
   expect_equal(
     jit(f)(nv_scalar(TRUE), nv_scalar(2L, "i16")),
@@ -51,7 +51,7 @@ test_that("prim_while carries the dtype of its state", {
   )
 })
 
-test_that("a logical R value is a bool, not an uncommitted value", {
+test_that("a logical R value is a bool, not an unmaterialized value", {
   f <- function(x) x * TRUE
   graph <- trace_fn(f, list(x = nv_scalar(1L)))
   # The logical is built at `bool` -- the only dtype that holds it faithfully --
@@ -99,7 +99,7 @@ describe("eager code", {
   it("reads the same default the operation runs with", {
     skip_if_no_quickr()
     # A plain R helper decides a promotion eagerly, between dispatches. The
-    # default it reads is the one of the backend in force, which is also the
+    # default it reads is the one of the active backend, which is also the
     # backend the operation then runs on.
     promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promotion_common())[[2L]]
     expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), default_float())

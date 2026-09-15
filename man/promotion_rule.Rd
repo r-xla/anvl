@@ -27,8 +27,8 @@ Subset of arguments to apply a rule to. Indicated either via position or argumen
 
 \item{fallback}{(\code{NULL} | \code{\link[tengen:DataType]{tengen::DataType}} | \code{character(1)})\cr
 The data type to settle on when \emph{every} input is a bare R value, in place
-of the default those would commit to on their own. \code{NULL} (default) leaves
-them their default.}
+of the default those would materialize at on their own. \code{NULL} (default)
+leaves them their default.}
 
 \item{arg}{(\code{character(1)} | \code{numeric(1)})\cr
 Which input to take the data type from: its name in the
@@ -61,7 +61,7 @@ A function returning data types for those inputs to be converted and \code{NULL}
 to be left unchanged.
 }
 \description{
-Functions for materializing R values to arrays and promoting inputs.
+Functions for materializing R values as arrays and promoting inputs.
 Most commonly used via the \code{.promote} argument of \code{\link[=as_anvl_arrays]{as_anvl_arrays()}}.
 
 \code{promotion_common()} brings every input to their common data type

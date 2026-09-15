@@ -115,7 +115,7 @@ test_that("promote_dt_rdata", {
       as_dtype(z)
     )
   }
-  # An R value commits to i32, f32 or bool, and yields from there.
+  # An R value materializes at i32, f32 or bool, and yields from there.
   check("i32", "i32", "i32")
   check("bool", "bool", "bool")
   check("f32", "f32", "f32")
@@ -153,7 +153,7 @@ test_that("a rule that cannot place an argument says which one", {
   expect_equal(dtype(coerced$v), as_dtype("i32"))
 })
 
-test_that("common_dtype_of: a fallback settles what R values alone commit to", {
+test_that("common_dtype_of: a fallback settles what R values alone materialize at", {
   rint <- RData(integer(), "integer")
   rdbl <- RData(integer(), "double")
   rlgl <- RData(integer(), "logical")
@@ -183,7 +183,7 @@ test_that("common_dtype_of: a fallback settles what R values alone commit to", {
   )
 })
 
-test_that("promotion_common(fallback = ) realizes R values at the fallback", {
+test_that("promotion_common(fallback = ) materializes R values at the fallback", {
   # Nothing brings a dtype: every argument is built at the fallback.
   args <- as_anvl_arrays(1, 2L, .promote = promotion_common(fallback = "f64"))
   expect_equal(dtype(args[[1L]]), as_dtype("f64"))
@@ -209,7 +209,7 @@ test_that("promotion_common(fallback = ) realizes R values at the fallback", {
 
 test_that("promotion_rdata_common() moves the R values and nothing else", {
   # The common data type of inputs that may not be converted is the one they
-  # already share, and the R values are realized at it.
+  # already share, and the R values are materialized at it.
   args <- as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promotion_rdata_common())
   expect_equal(dtype(args[[1L]]), as_dtype("f64"))
   expect_equal(dtype(args[[2L]]), as_dtype("f64"))
@@ -282,7 +282,8 @@ test_that("a promotion rule is a function of the call's arguments", {
   out <- as_anvl_arrays(nv_array(1L), nv_array(1L, dtype = "i8"), .promote = keeps_second)
   expect_equal(lapply(out, dtype), list(as_dtype("f64"), as_dtype("i8")))
 
-  # It sees the arguments as the caller passed them, R values uncommitted.
+  # It sees the arguments as the caller passed them, R values not yet
+  # materialized.
   seen <- NULL
   spy <- function(args) {
     seen <<- args

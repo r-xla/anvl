@@ -21,7 +21,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       # respect to: the gradient comes back at whatever data type the forward
       # pass happened to settle the value at, so the answer would depend on how
       # the rest of the body used it rather than on what the caller passed.
-      # Committing it here would only hide that behind the default.
+      # Materializing it here would only hide that behind the default.
       if (has_no_dtype(args_flat[[i]])) {
         cli_abort(c(
           "Cannot compute gradient with respect to a value that has no data type.",

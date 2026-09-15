@@ -10,8 +10,8 @@ describe("RData", {
   })
 
   it("answers the extractors the same way for a bare R value", {
-    # Eagerly the R value *is* the uncommitted value, so it has to answer the way
-    # the boxed one does under jit().
+    # Eagerly the R value *is* the unmaterialized value, so it has to answer the
+    # way the boxed one does under jit().
     expect_equal(shape(1.5), integer())
     expect_equal(naxes(1.5), 0L)
     expect_equal(shape(TRUE), integer())
@@ -112,7 +112,7 @@ describe("a finished graph's R inputs", {
 
 describe("peek_dtype", {
   it("answers for an R value where dtype() does not", {
-    # The API needs "what would this commit to" without forcing a commitment.
+    # The API needs "what would this materialize at" without forcing one.
     seen <- NULL
     invisible(jit(function(x) {
       seen <<- peek_dtype(x)
@@ -172,7 +172,7 @@ describe("resolve_upload_dtype", {
     # Where one of them does hold the others, that one is used unchanged.
     expect_equal(resolve_upload_dtype(dbl, c("f32", "f64")), "f64")
     expect_equal(resolve_upload_dtype(dbl, "f16"), "f16")
-    # A value the body never used commits to its default.
+    # A value the body never used materializes at its default.
     expect_equal(resolve_upload_dtype(dbl, character()), as.character(default_float()))
     expect_equal(resolve_upload_dtype(RData(integer(), "integer"), c("i32", "i64")), "i64")
   })
@@ -249,7 +249,7 @@ describe("an R value at its use site", {
     expect_equal(f(-1.9), "-1")
   })
 
-  it("commits to the default data type when nothing claims it", {
+  it("materializes at the default data type when nothing claims it", {
     expect_equal(dtype(jit(function() 1)()), default_float())
     expect_equal(dtype(jit(function() 1L)()), default_int())
     expect_equal(dtype(jit(function() TRUE)()), as_dtype("bool"))
@@ -276,8 +276,8 @@ describe("an R value at its use site", {
   it("takes the default when it only ever meets other literals", {
     # This only happens when the default float is narrower than an R double.
     local_registered_default_dtypes()
-    # The f64 arrives on `y`, one step after `x` has already committed. This is
-    # the documented limit of committing per operation.
+    # The f64 arrives on `y`, one step after `x` has already materialized. This
+    # is the documented limit of materializing per operation.
     f <- jit(function(x) {
       y <- x * 2
       y + nv_scalar(1, dtype = "f64")
@@ -315,7 +315,7 @@ describe("an R value at its use site", {
     expect_match(src, "stablehlo.convert", fixed = TRUE)
   })
 
-  it("commits to its default as a sub-graph parameter", {
+  it("materializes at its default as a sub-graph parameter", {
     # This only happens when the default float is narrower than an R double.
     local_registered_default_dtypes()
     # A loop's state is a parameter of its sub-graphs, and those are traced before
@@ -395,8 +395,9 @@ describe("nv_convert", {
 describe("prim_convert", {
   it("builds an R value at the target data type directly", {
     # The primitive has no `promote` rule to box a literal written in the body,
-    # so without boxing it here the value would commit at its default and be
-    # converted from `f32`, giving a different answer than the same call eagerly.
+    # so without boxing it here the value would materialize at its default and
+    # be converted from `f32`, giving a different answer than the same call
+    # eagerly.
     expect_identical(as_array(jit(function() prim_convert(sqrt(2), "f64"))()), sqrt(2))
     expect_identical(as_array(prim_convert(sqrt(2), "f64")), sqrt(2))
     expect_identical(as_array(jit(function(x) x * prim_convert(sqrt(2), "f64"))(nv_scalar(1, dtype = "f64"))), sqrt(2)) # nolint
@@ -406,11 +407,11 @@ describe("prim_convert", {
 })
 
 describe("a primitive's operands", {
-  # A primitive whose operands must agree brings them to one data type in its own
-  # body, before it records a call (see `apply_promotion()`). Without that, an
-  # R value would commit to its own default and whether the call worked would
-  # depend on whether the array it met happened to be at that default -- which is
-  # a fact about `default_dtype_r()`, not about the call.
+  # A primitive whose operands must agree brings them to one data type in its
+  # own body, before it records a call (see `apply_promotion()`). Without that,
+  # an R value would materialize at its own default and whether the call worked
+  # would depend on whether the array it met happened to be at that default --
+  # which is a fact about `default_dtype_r()`, not about the call.
 
   it("an R value takes the data type of the operand it meets", {
     for (dt in c("f32", "f64")) {
@@ -500,7 +501,7 @@ describe("a primitive's operands", {
   it("primitives whose operands are meant to differ opt out", {
     # `promote = NULL`: a sort payload and a loop-carried state are deliberately
     # heterogeneous, so there is nothing for an R value to yield to and each
-    # commits to its own default, as before.
+    # materializes at its own default, as before.
     expect_equal(dtype(nv_argsort(nv_array(c(3, 1, 2)))), default_int())
     expect_equal(as.vector(nv_sort(nv_array(c(3, 1, 2)))), c(1, 2, 3))
     out <- nv_while(
@@ -541,9 +542,10 @@ describe("an R value in an nv_* function", {
   })
 
   it("is built at the common data type by binding and cross products", {
-    # These combine their arguments downstream (`nv_concatenate()`, `nv_matmul()`),
-    # so they have to decide the dtype up front: committing an R value first would
-    # round it through `f32` on its way to the `f64` it is combined with.
+    # These combine their arguments downstream (`nv_concatenate()`,
+    # `nv_matmul()`), so they have to decide the dtype up front: materializing
+    # an R value first would round it through `f32` on its way to the `f64` it
+    # is combined with.
     x <- nv_matrix(c(1, 1), nrow = 1L, dtype = "f64")
     r <- matrix(c(0.1, sqrt(2)), nrow = 1L)
     expect_identical(as.vector(nv_rbind(x, r)), as.vector(rbind(c(1, 1), c(0.1, sqrt(2)))))
@@ -668,7 +670,8 @@ describe("staging an R value out of its own category", {
 
   it("stays quiet where the staging introduces nothing", {
     # An R integer stages at i32 and a logical at bool -- their own defaults, so
-    # nothing is brought in that the value would not have committed to anyway.
+    # nothing is brought in that the value would not have materialized at
+    # anyway.
     quiet <- function(expr) expect_no_warning(expr, class = "anvl_staging_widens_warning")
     quiet(trace_fn(function(x) prim_convert(x, "f32"), list(x = nv_aval("integer", integer()))))
     quiet(trace_fn(function(x) prim_convert(x, "i8"), list(x = nv_aval("integer", integer()))))
@@ -695,7 +698,7 @@ describe("the default float", {
     expect_no_warning(nv_convert(1.5, "i32"))
   })
 
-  it("decides what an R double commits to in a trace", {
+  it("decides what an R double materializes at in a trace", {
     local_default_dtypes(c(float = "f64"))
     expect_equal(dtype(jit(function() 1.5)()), as_dtype("f64"))
     # An R argument is uploaded at the default.
@@ -715,7 +718,7 @@ describe("the default float", {
 })
 
 describe("the default integer", {
-  it("decides what an R integer commits to in a trace", {
+  it("decides what an R integer materializes at in a trace", {
     local_default_dtypes(c(int = "i64"))
     expect_equal(dtype(jit(function() 1L)()), as_dtype("i64"))
     expect_equal(dtype(jit(function(x) x)(1L)), as_dtype("i64"))

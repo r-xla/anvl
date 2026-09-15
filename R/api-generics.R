@@ -603,8 +603,8 @@ cummin.AnvlBox <- cummin.AnvlArray
 # as an unused argument.
 #
 # `reduce` reduces one array with those options, `r_reduce` reduces a plain R
-# value in R -- so that it enters as a literal and does not commit to a data
-# type of its own -- and `combine` joins two reduced arguments.
+# value in R -- so that it enters as a literal and does not materialize at a
+# data type of its own -- and `combine` joins two reduced arguments.
 summary_generic <- function(op, args, reduce, r_reduce, combine) {
   named <- nzchar(names(args) %||% rep("", length(args)))
   data <- args[!named]

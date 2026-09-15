@@ -214,10 +214,10 @@ nv_convert <- function(x, dtype) {
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
-  # `realize_at()` rather than canonicalizing first: an R value is *built* at
-  # the target dtype, keeping every digit it had, where converting it from its
-  # own default would round through `f32` on the way.
-  realize_at(x, as_dtype(dtype))
+  # `materialize_at()` rather than canonicalizing first: an R value is *built*
+  # at the target dtype, keeping every digit it had, where converting it from
+  # its own default would round through `f32` on the way.
+  materialize_at(x, as_dtype(dtype))
 }
 
 #' @title Transpose
@@ -453,7 +453,7 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @jit
 nv_rbind <- function(...) {
   # Promoted here rather than in `nv_concatenate()` below: an R value has to be
-  # built at the common dtype directly, where committing it first would round
+  # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
   args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
@@ -3414,8 +3414,9 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
     to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
     n_valid_kd <- if (nan_rm) {
       # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
-      # rather than crossing categories out of an integer count and committing
-      # `h` -- and with it `lo_f`, `frac` and `out` -- at the default float.
+      # rather than crossing categories out of an integer count and
+      # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
+      # default float.
       prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
     } else {
       nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)

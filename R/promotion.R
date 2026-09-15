@@ -17,7 +17,7 @@ common_dtype <- function(lhs_dtype, rhs_dtype) {
 #' @title Promotion Rules
 #' @name promotion_rule
 #' @description
-#' Functions for materializing R values to arrays and promoting inputs.
+#' Functions for materializing R values as arrays and promoting inputs.
 #' Most commonly used via the `.promote` argument of [`as_anvl_arrays()`].
 #' @param on (`NULL` | `character()` | `numeric()`)\cr
 #'   Subset of arguments to apply a rule to. Indicated either via position or argument name.
@@ -41,8 +41,8 @@ NULL
 #' contribute their default data type.
 #' @param fallback (`NULL` | [`tengen::DataType`] | `character(1)`)\cr
 #'   The data type to settle on when *every* input is a bare R value, in place
-#'   of the default those would commit to on their own. `NULL` (default) leaves
-#'   them their default.
+#'   of the default those would materialize at on their own. `NULL` (default)
+#'   leaves them their default.
 #' @rdname promotion_rule
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -301,7 +301,7 @@ print.PromotionRule <- function(x, ...) {
 
 # Ask a rule what data type each argument is brought to, and check that it
 # answered in the shape the contract asks for -- a bad answer is easier to
-# report here, against the rule, than to trip over while realizing values.
+# report here, against the rule, than to trip over while materializing values.
 resolve_promote <- function(promote, args) {
   if (!is.function(promote)) {
     cli_abort(c(
@@ -337,9 +337,9 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #' inside the primitive's own body.
 #'
 #' A primitive promotes nothing on its own: an R value among its operands would
-#' commit to its own default, so whether a call worked would depend on whether
-#' the array it met happened to be at that default. A primitive whose operands
-#' must *agree* says so with this, on the same list it goes on to hand
+#' materialize at its own default, so whether a call worked would depend on
+#' whether the array it met happened to be at that default. A primitive whose
+#' operands must *agree* says so with this, on the same list it goes on to hand
 #' [`graph_desc_add()`]:
 #'
 #' ```r
@@ -369,14 +369,14 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #' slots from [`peek_dtype()`], both before recording a call.
 #'
 #' It is idempotent: once every operand is at the data type the rule names,
-#' realizing them again changes nothing.
+#' materializing them again changes nothing.
 #'
 #' @param operands (`list()`)\cr
 #'   The operands, named as the primitive's [`graph_desc_add()`] call names them.
 #' @param promote (`function`)\cr
 #'   The rule to apply; see [promotion_rule].
 #' @return (`list()`)\cr
-#'   `operands`, each realized at the data type the rule named for it.
+#'   `operands`, each materialized at the data type the rule named for it.
 #' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # An R value takes the data type of the operand it meets.
@@ -389,13 +389,13 @@ apply_promotion <- function(operands, promote) {
   if (!length(operands)) {
     return(operands)
   }
-  # Realize every operand the rule places at the data type it named, and leave
-  # the rest as they are. `as_anvl_arrays()` does the same but converts the
-  # untouched ones as well, and places them on a device.
+  # Materialize every operand the rule places at the data type it named, and
+  # leave the rest as they are. `as_anvl_arrays()` does the same but converts
+  # the untouched ones as well, and places them on a device.
   dtypes <- resolve_promote(promote, operands)
   for (i in seq_along(operands)) {
     if (!is.null(dtypes[[i]])) {
-      operands[[i]] <- realize_at(operands[[i]], dtype = dtypes[[i]])
+      operands[[i]] <- materialize_at(operands[[i]], dtype = dtypes[[i]])
     }
   }
   operands
@@ -569,7 +569,7 @@ rule_positions <- function(ref, args, what) {
 
 # The common dtype of several arrayish values, the one every operand of an
 # operation is brought to. An R value yields: it takes the dtype of the values
-# it meets, and contributes only the dtype it would commit to when it meets
+# it meets, and contributes only the dtype it would materialize at when it meets
 # nothing but other R values.
 # For internal use.
 common_dtype_of <- function(..., .fallback = NULL) {
@@ -599,8 +599,8 @@ common_dtype_of <- function(..., .fallback = NULL) {
       cdt <- promote_dt_known(cdt, dt)
     }
   }
-  # `.fallback` is the data type the R values commit to when nothing in the call
-  # has one of its own to give them -- it replaces the default they would
+  # `.fallback` is the data type the R values materialize at when nothing in the
+  # call has one of its own to give them -- it replaces the default they would
   # otherwise take, and is ignored the moment any argument brings a real data
   # type. They yield to it as they would to any data type, within their own
   # category, so a fallback below them leaves them where they are.
@@ -678,7 +678,7 @@ promotable_to <- function(from, to) {
   common_dtype(from, to) == to
 }
 
-# Whether `x` is (or would commit to) an int-like array, i.e. a signed or
+# Whether `x` is (or would materialize as) an int-like array, i.e. a signed or
 # unsigned integer one.
 is_intlike <- function(x) {
   dt <- peek_dtype(x)
