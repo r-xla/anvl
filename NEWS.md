@@ -86,6 +86,10 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
+* `nv_qnorm()` is accurate to its operand's data type rather than to the
+  default float; its coefficients used to be materialized at the default.
+* `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` name their own operand when it
+  is not a float.
 * `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold:
   a whole number for an integer data type, a non-negative one for an unsigned
   one, a logical or `0` / `1` for `bool`.
