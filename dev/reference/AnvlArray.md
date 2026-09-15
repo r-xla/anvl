@@ -239,8 +239,8 @@ nv_scalar(3.14)
 # An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  1.2424e+03 3.0798e-41 1.2424e+03
-#>  3.0798e-41 1.2424e+03 3.0798e-41
+#>  -2.3910e-01  3.0744e-41 -3.9177e+02
+#>   3.0744e-41 -3.4483e+02  3.0744e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
