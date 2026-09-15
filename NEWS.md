@@ -86,6 +86,11 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
+* `prim_dynamic_slice()` and `prim_dynamic_update_slice()` validate their
+  arguments through stablehlo's type inference instead of building the output
+  shape by hand, so a bad index or slice size is reported at trace time.
+* `prim_reduce()` rejects a `reductor` that does not take exactly two
+  arguments; a three-argument one silently returned `init`.
 * `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold:
   a whole number for an integer data type, a non-negative one for an unsigned
   one, a logical or `0` / `1` for `bool`.
