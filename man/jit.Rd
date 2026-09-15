@@ -39,7 +39,8 @@ another backend takes is rejected when the function is called on a backend
 that does not, since the backend is not known until then.}
 }
 \value{
-A \code{JitFunction} (a \code{function} with the same formals as \code{f}).
+(\code{JitFunction})\cr
+A \code{function} with the same formals as \code{f}.
 The returned wrapper expects \code{\link{AnvlArray}} inputs and returns
 \code{\link{AnvlArray}} values.
 }
@@ -127,7 +128,7 @@ would only get stripped again.
 f <- jit(function(x, y) x + y)
 f(nv_array(1), nv_array(2))
 
-# Static arguments enable data-dependent control flow
+# static arguments enable data-dependent control flow
 g <- jit(function(x, flag) {
   if (flag) x + 1 else x * 2
 }, static = "flag")
@@ -135,7 +136,7 @@ g(nv_array(3), TRUE)
 g(nv_array(3), FALSE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-# The same function runs on whichever backend is active when it is called
+# the same function runs on whichever backend is active when it is called
 with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }

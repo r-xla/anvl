@@ -8,16 +8,21 @@ nv_flatten(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input, with at least 1 axis. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
-1-D array.
+Has the input's data type, and one axis holding all of its elements.
 }
 \description{
-Flattens an N-dimensional array into a 1-dimensional array.
+Flattens an array of any rank into an array with a single axis, reading the
+elements in row-major order (the last axis fastest), as \code{\link[=nv_reshape]{nv_reshape()}} does.
 Fails with scalar inputs.
 }
 \examples{
+\dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the 2x2 matrix becomes a length-4 vector
 nv_flatten(matrix(1:4, nrow = 2))
+\dontshow{\}) # examplesIf}
 }

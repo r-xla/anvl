@@ -30,19 +30,19 @@ NULL
 #' RData(c(2, 3), "double")
 #' # is equivalent to
 #' nv_aval("double", c(2, 3))
-#' # Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
+#' # below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
 #' # dtype becomes f64.
-#' # By NOT converting RData to their default data type we prevent loss of precision
-#' # (double -> f32 -> f64 roundrips)
+#' # by NOT converting RData to their default data type we prevent loss of precision
+#' # (avoiding a double -> default data type -> f64 round trip)
 #' graph <- trace_fn(function(x) {
 #'     print(x)
 #'     list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))
 #'   }, list(x = nv_aval("double", c()))
 #' )
 #' print(graph)
-#' # The actual inputs to the compiled program
+#' # the actual inputs to the compiled program
 #' graph$inputs
-#' # The data types of the R values; AnvlArrays get NA here
+#' # the data types of the R values; AnvlArrays get NA here
 #' graph$rdata_types
 #' @export
 RData <- function(shape, r_type) {
@@ -307,7 +307,9 @@ r_const_at <- function(x, dtype, desc) {
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
-#' @return ([`tengen::DataType`])
+#' @return ([`tengen::DataType`])\cr
+#'   The data type `x` has, or the [default data type][default_dtypes] it would
+#'   materialize at if it is still a bare R value.
 #' @seealso [as_anvl_arrays()], [RData], [shape()][tengen::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)

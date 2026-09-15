@@ -189,14 +189,18 @@ f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
 jit_cache_size(f_jit)
 ```
 
-When we execute the function with arrays of different `dtype` or `shape`, the function will be recompiled:
+# same data types and shapes, different values and the same static argument
+counted_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
+traces # still 1: served from the cache
 
 ```{r}
 f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
 jit_cache_size(f_jit)
 ```
 
-Also, if we provide different values for static arguments, the function will be recompiled:
+# a different data type is another one again
+counted_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
+traces # 3
 
 ```{r}
 f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
@@ -262,21 +266,18 @@ graph <- trace_fn(function(x) {
 graph
 ```
 
-Here, `y` is a closed-over constant and it is included in the `$constants` field of the graph, just like the literal `1`.
+Here, `y` is a closed-over constant and it is included in the `$constants` field of the graph. The literal `1` is not: it is written straight into the body.
 
 ```{r}
 graph$constants
 ```
 
-When compiling such a program to StableHLO, constants are treated differently depending on their shape (we follow JAX's approach here).
-That is, constants with 1 element are **inlined** into the program, whereas other constants are added as inputs to the StableHLO program.
-This is because inlining large constants into the executable is inefficient.
-However, if we didn't inline small scalars, the compiler would be unable to do constant folding.
+When compiling such a program to StableHLO, an R literal is **inlined** into the program -- there it is a `stablehlo.constant`, which the compiler can fold -- while a captured `AnvlArray` becomes an input to the StableHLO program, whatever its size.
+This is because inlining an array into the executable would copy its data into the program text, which is wasteful for a large one and buys nothing for a small one: the value is already a buffer on the device.
 
 ```{r}
 out <- stablehlo(graph)
 out[[1L]]
-out[[2L]]
 ```
 
 Also, before compiling, we remove unused constants.
@@ -370,7 +371,8 @@ The problem with this approach is that:
 2. some accelerators (such as Metal) do not support `f64` at all.
 
 Therefore, one of the underlying ideas is to only introduce `f64` values when someone actually requested
-this data type.
+this data type -- which is why `f32` is the default float on pjrt, and why that default is configurable
+(`default_dtypes()`): a program that wants double precision throughout can ask for it.
 
 ```{r}
 trace_fn(\(x) {
@@ -378,17 +380,19 @@ trace_fn(\(x) {
 }, list(nv_aval("double", c())))
 ```
 
-Otherwise, the `double` input is fed as an `f32` to the pjrt program:
+Otherwise the input is fed at whatever data type its use sites ask for, and a
+use site that asks for nothing in particular -- a bare R number on the other
+side -- settles on the default float:
 
 ```{r}
 trace_fn(\(x) {
-  prim_add(x, nv_scalar(1, "f32"))
+  prim_add(x, 1)
 }, list(nv_aval("double", c())))
 ```
 
 
 There is one special case, however: operations that explicitly request a data type, such as `prim_convert()` and the `nv_array()` constructor.
-If `prim_convert()` were to follow the usual rule of materializing its R inputs at their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to an `f32` (the default float data type on pjrt) and then to an `i32`, which would result in a loss of precision.
+If `prim_convert()` were to follow the usual rule of materializing its R inputs to their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to the default float (`f32` as pjrt registers it -- see `default_dtypes()`) and then to an `i32`, which would result in a loss of precision.
 In order to prevent this, `prim_convert()` materializes its input at its natural representation.
 
 ```{r}
@@ -397,7 +401,13 @@ trace_fn(\(x) {
 }, list(nv_aval("double", c())))
 ```
 
-Because of its possibly problematic implications, a warning message is thrown when this happens.
+Because of its possibly problematic implications, a warning message is thrown
+when the staging widens past the data type the value would have materialized at
+anyway -- as above, where an R `double` reaches `i32` through `f64` under an
+`f32` default. Under an `f64` default the staging brings in nothing new and
+there is nothing to warn about; the same goes the other way, for a default
+integer narrower than `i32`, where the staging is unavoidable and the caller
+has no remedy to be pointed at.
 In the future, we might also implement a better solution to this problem.
 One idea would be to convert the `double` input directly to an `i32` before passing it to the compiled program.
 

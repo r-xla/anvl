@@ -53,7 +53,8 @@ vector selects a subset by name. The available passes are:
 \code{\link[=jit]{jit()}} always traces with all passes enabled.}
 }
 \value{
-An \code{\link{AnvlGraph}} containing the traced operations.
+(\code{\link{AnvlGraph}})\cr
+Contains the traced operations.
 }
 \description{
 Executes \code{f} with abstract array arguments and records every primitive operation into

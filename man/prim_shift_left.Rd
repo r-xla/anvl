@@ -8,12 +8,14 @@ prim_shift_left(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type boolean, integer, or unsigned integer.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any integer data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise left bit shift.
@@ -28,14 +30,17 @@ Element-wise left bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_left]{hlo_shift_left()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_left]{hlo_shift_left()}}, specified under
+\href{https://openxla.org/stablehlo/spec#shift_left}{shift_left}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1L, 2L, 4L))
-y <- nv_array(c(1L, 2L, 1L))
-prim_shift_left(x, y)
+# two R values: both take an R integer's default data type
+prim_shift_left(8L, 2L)
+
+# the R value is built at the array's data type instead
+prim_shift_left(8L, nv_scalar(2L, "i64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

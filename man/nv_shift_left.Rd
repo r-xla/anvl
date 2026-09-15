@@ -8,13 +8,15 @@ nv_shift_left(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Left and right operand.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
-Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
+Two inputs with a \link[=common_dtype]{common data type}. Can be
+any integer data type. Scalars are broadcast, and R values assume the other
+operand's data type within their \link[=dtypes]{data type category},
+otherwise falling back to their \link[=default_dtypes]{default data type} and
+being converted to the common data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and the promoted common data type of the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise left bit shift.
@@ -24,6 +26,12 @@ Element-wise left bit shift.
 x <- nv_array(c(1L, 2L, 4L))
 y <- nv_array(c(1L, 2L, 1L))
 nv_shift_left(x, y)
+
+# different data types are promoted to their common one
+nv_shift_left(nv_scalar(8L, "i32"), nv_scalar(2L, "i64"))
+
+# a scalar is broadcast
+nv_shift_left(x, 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

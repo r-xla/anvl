@@ -8,11 +8,13 @@ prim_eigh(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Symmetric square matrix of floating-point data type.}
+One input, a symmetric square matrix with exactly 2 axes. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-Named \code{list} with elements \code{values} (length \code{n}) and \code{vectors}
-(shape \verb{(n, n)}). Both have the same dtype as the input.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{values} (length \code{n}) and \code{vectors}
+(shape \verb{(n, n)}). Both have the input's data type.
 }
 \description{
 Computes the eigendecomposition of a symmetric matrix \code{x} of
@@ -38,6 +40,7 @@ Lowers to \code{\link[stablehlo:hlo_custom_call]{hlo_custom_call()}} with target
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` and `vectors` both have the input's data type
 x <- nv_array(c(2, 1, 1, 2), shape = c(2, 2), dtype = "f64")
 prim_eigh(x)
 \dontshow{\}) # examplesIf}

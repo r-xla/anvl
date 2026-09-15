@@ -16,14 +16,15 @@ Input array. An integer array is returned unchanged.}
 \item{...}{Further arguments of \code{\link[=nv_trunc]{nv_trunc()}}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise truncation (round toward zero). You can also use \code{trunc()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.2, 2.7, -1.5))
 trunc(x)
 trunc(nv_array(1:3)) # an integer array is already whole

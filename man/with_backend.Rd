@@ -13,6 +13,7 @@ Backend to use (\code{"pjrt"} or \code{"quickr"}).}
 \item{code}{An expression to evaluate with the given backend.}
 }
 \value{
+(\code{any})\cr
 The result of evaluating \code{code}.
 }
 \description{

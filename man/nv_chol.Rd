@@ -11,24 +11,30 @@ nv_chol(x, lower = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Symmetric positive-definite matrix with at least 2 axes.
-The last two axes form the square matrix; any leading axes
-are batch axes.}
+Symmetric positive-definite matrix with at least 2 axes, of any float data
+type. The last two axes form the square matrix; any leading axes are batch
+axes.}
 
 \item{lower}{(\code{logical(1)})\cr If \code{TRUE}, return the lower-triangular factor.}
 
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Triangular matrix with the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Triangular matrix with the input's shape and data type. The values in the
+triangle not selected by \code{lower} are implementation-defined.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 Supports batched inputs: axes before the last two are batch axes.
 }
+\details{
+Differentiation is only implemented for a single matrix: a \code{\link[=gradient]{gradient()}} of a
+batched decomposition errors.
+}
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the factor has the matrix's shape and data type
 a <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f32")
 nv_chol(a)
 \dontshow{\}) # examplesIf}

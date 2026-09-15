@@ -15,14 +15,15 @@ Rounding method.
 Either \code{"nearest_even"} (default) or \code{"afz"} (away from zero).}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise rounding to a whole number.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(1.4, 2.5, 3.6))
 nv_round(x)
 nv_round(nv_array(1:3)) # an integer array is already whole

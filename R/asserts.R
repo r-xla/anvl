@@ -1,12 +1,15 @@
 #' @title Assert Shape Vector
 #' @description
-#' Check whether an input is a valid shape vector (integer vector with all positive values).
+#' Check whether an input is a valid shape vector: whole, non-negative axis
+#' sizes. A zero-size axis is legal, so 0 is accepted.
 #' @param x Object to check.
 #' @param min_len (`integer(1)`)\cr
-#'   Minimum length of the shape vector. Default is 1.
+#'   Minimum number of axes. Default is 0, which admits `integer()` -- the
+#'   shape of a scalar.
 #' @param var_name (`character(1)`)\cr
 #'   Name of the variable to use in error messages.
-#' @return Invisibly returns `x` if the assertion passes.
+#' @return (`integer()`)\cr
+#'   `x` as an integer vector.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   ok <- test_integerish(x, lower = 0L, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
@@ -217,8 +220,8 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
 }
 
 # Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
-# sense the documentation gives the word: integer or float, but not `bool`.
-# Returns the converted DataType.
+# sense `?dtypes` gives the word: integer or float, but not `bool`. Returns the
+# converted DataType.
 assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
   if (is_dtype_bool(dt)) {
@@ -235,9 +238,8 @@ assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
 # category. Returns the converted DataType.
 assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt <- as_dtype(x)
-  # The float category, so that this and `is_dtype_float()` agree on what
-  # counts as a float. A caller that needs a particular layout says so itself:
-  # `assert_rng_float_dtype()` is the 32/64-bit one.
+  # The float category, as `?dtypes` defines it, so this and `is_dtype_float()`
+  # agree on what counts as a float.
   if (!is_dtype_float(dt)) {
     cli_abort(c(
       "{.arg {arg}} must be a float data type.",
@@ -258,9 +260,19 @@ assert_some_arrays <- function(..., call = rlang::caller_env()) {
   invisible(NULL)
 }
 
-assert_linalg_matrix <- function(x, arg, square = FALSE) {
+# `batched = TRUE` accepts leading batch axes and checks only the last two,
+# which is what the operations whose lowering broadcasts over batches take
+# (`prim_chol()`, `prim_triangular_solve()`); the others are strictly 2-D.
+assert_linalg_matrix <- function(x, arg, square = FALSE, batched = FALSE) {
   s <- shape(x)
-  if (length(s) != 2L) {
+  if (batched) {
+    if (length(s) < 2L) {
+      cli_abort(c(
+        "{.arg {arg}} must have at least 2 axes, the last two forming a matrix.",
+        "x" = "Got shape {shape_repr(s)}."
+      ))
+    }
+  } else if (length(s) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a 2-D matrix.",
       "x" = "Got shape {shape_repr(s)}."
@@ -272,9 +284,10 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
       "x" = "Got shape {shape_repr(s)}."
     ))
   }
-  if (square && s[[1L]] != s[[2L]]) {
+  mat <- utils::tail(s, 2L)
+  if (square && mat[[1L]] != mat[[2L]]) {
     cli_abort(c(
-      "{.arg {arg}} must be a square matrix.",
+      "{.arg {arg}} must be square in its last two axes.",
       "x" = "Got shape {shape_repr(s)}."
     ))
   }

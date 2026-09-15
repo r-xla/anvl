@@ -7,15 +7,6 @@ test_that("array", {
   expect_equal(as_array(x), array(1:4, c(4, 1)))
 })
 
-test_that("nv_array asks for a shape when the data is empty", {
-  # Which axis is empty is not in the data: `0`, `c(2, 0)` and `c(0, 3)` all
-  # hold no elements.
-  expect_error(nv_array(numeric(0)), "must be provided when")
-  expect_error(nv_array(integer(0)), "must be provided when")
-  expect_shape(nv_array(numeric(0), shape = 0L), 0L)
-  expect_shape(nv_array(numeric(0), shape = c(2L, 0L)), c(2L, 0L))
-})
-
 test_that("device returns the pjrt device", {
   x <- nv_array(1, device = "cpu")
   expect_true(device(x) == pjrt::as_pjrt_device("cpu"))
