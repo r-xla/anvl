@@ -139,12 +139,6 @@ Tests that use the quickr backend must call `skip_if_no_quickr()` at the top of 
 This helper skips when quickr is not installed, and also when the `ANVL_SKIP_QUICKR` environment variable is set (quickr tests can be slow and are often skipped locally).
 To test a different backend, use `local_backend()` (not `withr::local_options()` directly).
 
-Assert a data type with `expect_dtype(x, "i32")` and a shape with `expect_shape(x, c(2, 3))`
-(`helper-expect.R`), not `expect_equal(dtype(x), as_dtype("i32"))` -- they name the offending
-expression and both data types in the failure message. `expect_dtype()` also takes a `DataType`, so
-`expect_dtype(x, default_int())` works; it goes through `dtype()`, which means a bare R value is an
-error there exactly as it is everywhere else.
-
 ## Documentation
 
 When writing roxygen2 documentation for primitives or API functions:
