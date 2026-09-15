@@ -133,6 +133,19 @@
 
 ### Bug fixes
 
+- Coercing a traced array to R inside
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) –
+  [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),
+  [`as.vector()`](https://rdrr.io/r/base/vector.html),
+  [`as.numeric()`](https://rdrr.io/r/base/numeric.html),
+  [`as.character()`](https://rdrr.io/r/base/character.html) and friends
+  – now aborts with an explanation instead of falling through to the
+  base R generic. Some of those used to fail with a message about lists
+  or dimensions, and
+  [`as.vector()`](https://rdrr.io/r/base/vector.html),
+  [`as.list()`](https://rdrr.io/r/base/list.html) and
+  [`as.character()`](https://rdrr.io/r/base/character.html) silently
+  returned the traced box itself.
 - [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)
   and
   [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)

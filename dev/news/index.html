@@ -125,7 +125,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
+<ul><li>Coercing a traced array to R inside <code><a href="../reference/jit.html">jit()</a></code> – <code><a href="../reference/as_array.html">as_array()</a></code>, <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>, <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric()</a></code>, <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code> and friends – now aborts with an explanation instead of falling through to the base R generic. Some of those used to fail with a message about lists or dimensions, and <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>, <code><a href="https://rdrr.io/r/base/list.html" class="external-link">as.list()</a></code> and <code><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character()</a></code> silently returned the traced box itself.</li>
+<li>
 <code><a href="../reference/nv_rbinom.html">nv_rbinom()</a></code> and <code><a href="../reference/nv_sample_int.html">nv_sample_int()</a></code> reject a boolean <code>dtype</code>, which cannot hold a count or an index.</li>
 <li>Subsetting with <code>drop</code> (e.g. <code>x[1, , drop = FALSE]</code>) now gives a better error message, as <code>drop</code> is not supported.</li>
 <li>
