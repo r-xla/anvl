@@ -62,6 +62,11 @@
 
 ## Bug fixes
 
+* Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
+  `as.numeric()`, `as.character()` and friends -- now aborts with an
+  explanation instead of falling through to the base R generic. Some of those
+  used to fail with a message about lists or dimensions, and `as.vector()`,
+  `as.list()` and `as.character()` silently returned the traced box itself.
 * `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
   hold a count or an index.
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
