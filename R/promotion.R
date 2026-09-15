@@ -1,6 +1,14 @@
 #' @title Type Promotion Rules
 #' @description
 #' Compute the common data type.
+#'
+#' Two integer data types meet at one that holds every value of both: a signed
+#' and an unsigned one at the narrowest signed data type wide enough for the
+#' unsigned side (`ui8` and `i8` at `i16`, `ui32` and `i32` at `i64`). `ui64`
+#' is the exception -- no signed data type holds it, and an integer does not
+#' become a float on its own -- so `ui64` and a signed integer have no common
+#' data type and the pair is an error. Convert one side with [`nv_convert()`]
+#' to decide what they meet at.
 #' @param lhs_dtype ([`tengen::DataType`])\cr
 #'   The left-hand side type.
 #' @param rhs_dtype ([`tengen::DataType`])\cr
@@ -9,6 +17,7 @@
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
+#' try(common_dtype("ui64", "i8"))
 #' @export
 common_dtype <- function(lhs_dtype, rhs_dtype) {
   promote_dt_known(as_dtype(lhs_dtype), as_dtype(rhs_dtype))
@@ -625,7 +634,15 @@ promote_dt_rdata <- function(rdtype, dtype) {
   if (dtype_category(dtype) >= dtype_category(rdtype)) dtype else rdtype
 }
 
+# The data type two data types meet at. Errors where they meet at none, which
+# `promote_dt_known_or_null()` describes.
 promote_dt_known <- function(dt1, dt2) {
+  promote_dt_known_or_null(dt1, dt2) %||% abort_no_common_dtype(dt1, dt2)
+}
+
+# The same, answering `NULL` instead of erroring -- for the callers asking
+# whether a promotion exists rather than performing one.
+promote_dt_known_or_null <- function(dt1, dt2) {
   if (dt1 == dt2) {
     return(dt1)
   }
@@ -649,21 +666,11 @@ promote_dt_known <- function(dt1, dt2) {
     if (is_dtype_int(dt2)) {
       return(as_dtype(paste0("i", max(dtype_width(dt1), dtype_width(dt2)))))
     }
-    if (dtype_width(dt2) < dtype_width(dt1)) {
-      # the int can hold the unsigned int
-      return(dt1)
-    }
-    # int can't hold the unsigned int
-    # we use signed int, but increase bits of unsigned int
-    # this can lead to overflows then we have uint64 but this can't be avoided
-    return(as_dtype(paste0("i", min(64L, dtype_width(dt2) * 2L))))
+    return(promote_dt_int_uint(dt1, dt2))
   }
   if (is_dtype_int(dt2)) {
     if (is_dtype_uint(dt1)) {
-      if (dtype_width(dt2) > dtype_width(dt1)) {
-        return(dt2)
-      }
-      return(as_dtype(paste0("i", min(64L, dtype_width(dt1) * 2L))))
+      return(promote_dt_int_uint(dt2, dt1))
     }
     cli_abort("internal error")
   }
@@ -671,11 +678,40 @@ promote_dt_known <- function(dt1, dt2) {
   as_dtype(paste0("ui", max(dtype_width(dt1), dtype_width(dt2))))
 }
 
+# A signed and an unsigned integer meet at the narrowest signed data type that
+# holds both: one wider than the unsigned one already does, and otherwise it
+# takes twice its width -- `ui8` meets `i8` at `i16`, `ui32` meets `i32` at
+# `i64`. `ui64` has no such data type, its values reaching past what `i64`
+# holds, and an integer does not cross into the floats on its own, so the pair
+# meets nowhere.
+promote_dt_int_uint <- function(int_dtype, uint_dtype) {
+  if (dtype_width(uint_dtype) < dtype_width(int_dtype)) {
+    return(int_dtype)
+  }
+  width <- dtype_width(uint_dtype) * 2L
+  if (width > 64L) {
+    return(NULL)
+  }
+  as_dtype(paste0("i", width))
+}
+
+abort_no_common_dtype <- function(dt1, dt2) {
+  cli_abort(
+    c(
+      "{.val {as.character(dt1)}} and {.val {as.character(dt2)}} have no common data type.",
+      x = "No integer data type holds every value of both, and an integer does not become a float on its own.", # nolint
+      i = "Convert one of them with {.fn nv_convert} -- {.val f64} holds both, exactly up to 2^53."
+    ),
+    call = NULL
+  )
+}
+
 promotable_to <- function(from, to) {
   if (identical(from, to)) {
     return(TRUE)
   }
-  common_dtype(from, to) == to
+  common <- promote_dt_known_or_null(from, to)
+  !is.null(common) && common == to
 }
 
 # Whether `x` is (or would materialize as) an int-like array, i.e. a signed or

@@ -6,6 +6,9 @@
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* `common_dtype()` now errors for `ui64` and a signed integer instead of
+  returning `i64`, which could not hold every `ui64` value. Convert one of them
+  with `nv_convert()`.
 * `jit_eval()` was removed as it is no longer needed.
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
   accumulate a boolean array at the default integer data type instead of returning a boolean.

@@ -100,12 +100,42 @@ test_that("promote_dt_known", {
   check("i64", "i32", "i64")
   check("i64", "i16", "i64")
   check("i64", "bool", "i64")
-  # against unsigned ints
+  # against unsigned ints: the narrowest signed dtype that holds both
   check("i32", "ui8", "i32")
+  check("i8", "ui8", "i16")
+  check("i32", "ui16", "i32")
   check("i32", "ui32", "i64")
-  check("i64", "ui64", "i64")
+  check("i8", "ui32", "i64")
   # unsigned vs unsigned
   check("ui64", "ui32", "ui64")
+})
+
+test_that("promote_dt_known: ui64 and a signed int have no common dtype", {
+  # No signed integer holds every `ui64` value and an integer does not become a
+  # float on its own, so there is nowhere for the pair to meet.
+  for (dt in c("i8", "i16", "i32", "i64")) {
+    expect_error(common_dtype("ui64", dt), "have no common data type")
+    expect_error(common_dtype(dt, "ui64"), "have no common data type")
+  }
+  expect_error(common_dtype("ui64", "i8"), "Convert one of them")
+
+  # ... so a `ui64` is not promotable to a signed integer either, and asking is
+  # a question rather than a promotion: it answers instead of erroring.
+  expect_false(promotable_to(as_dtype("ui64"), as_dtype("i64")))
+  expect_true(promotable_to(as_dtype("ui32"), as_dtype("i64")))
+  expect_true(promotable_to(as_dtype("ui64"), as_dtype("f64")))
+})
+
+test_that("common_dtype_of: a ui64 meeting a signed int is refused", {
+  expect_error(
+    common_dtype_of(AbstractArray("ui64", Shape(2)), AbstractArray("i32", Shape(2))),
+    "have no common data type"
+  )
+  # An R integer takes the `ui64` instead of bringing a signed one of its own.
+  expect_equal(
+    common_dtype_of(AbstractArray("ui64", Shape(2)), RData(integer(), "integer")),
+    as_dtype("ui64")
+  )
 })
 
 test_that("promote_dt_rdata", {
