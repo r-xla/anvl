@@ -709,6 +709,86 @@ prim_while[["stablehlo"]] <- function(..., cond_graph, body_graph, .env) {
   hlo_while(..., cond = cond_func, body = body_func, simplify = FALSE)
 }
 
+# A while loop over the state (i, carry..., out buffers..., xs...). Each
+# iteration slices step i of every xs leaf, runs the traced body inline, and
+# writes its outputs into the buffers at step i; xs ride along unchanged.
+prim_scan[["stablehlo"]] <- function(..., body_graph, length, reverse, n_carry, n_xs, .env) {
+  args <- list(...)
+  outer <- args[[1L]]$func
+  n <- as.integer(length)
+  carry0 <- args[seq_len(n_carry)]
+  xs0 <- args[n_carry + seq_len(n_xs)]
+  avals_body <- lapply(body_graph$outputs, \(out) out$aval)
+  out_avals <- avals_body[-seq_len(n_carry)]
+  n_out <- base::length(out_avals)
+
+  bufs0 <- lapply(out_avals, function(aval) {
+    dt <- as.character(aval$dtype)
+    zero <- switch(substr(dt, 1L, 1L), "b" = FALSE, "i" = , "u" = 0L, 0)
+    hlo_tensor(zero, dtype = dt, shape = as.integer(c(n, shape(aval))), func = outer)
+  })
+  i0 <- hlo_scalar(0L, dtype = "i32", func = outer)
+  state <- c(list(i0), carry0, bufs0, xs0)
+
+  # Both regions declare the full state as their inputs, in state order.
+  declare_state <- function() {
+    i <- hlo_input("i", "i32")
+    rest <- lapply(seq_along(state)[-1L], function(k) {
+      tt <- state[[k]]$value_type$type
+      hlo_input(paste0("s", k), as.character(tt$dtype), shape(tt))
+    })
+    list(i = i, rest = rest)
+  }
+
+  cond_func <- stablehlo::local_func("")
+  st <- declare_state()
+  cond_func <- hlo_return(hlo_compare(
+    st$i,
+    hlo_scalar(n, dtype = "i32"),
+    comparison_direction = "LT",
+    compare_type = "SIGNED"
+  ))
+
+  body_func <- stablehlo::local_func("")
+  st <- declare_state()
+  i <- st$i
+  carry_in <- st$rest[seq_len(n_carry)]
+  bufs_in <- st$rest[n_carry + seq_len(n_out)]
+  xs_in <- st$rest[n_carry + n_out + seq_len(n_xs)]
+  zero_i <- hlo_scalar(0L, dtype = "i32")
+  one_i <- hlo_scalar(1L, dtype = "i32")
+  idx <- if (reverse) hlo_subtract(hlo_scalar(n - 1L, dtype = "i32"), i) else i
+
+  slices <- lapply(xs_in, function(x) {
+    shp <- shape(x$value_type)
+    starts <- c(list(idx), rep(list(zero_i), base::length(shp) - 1L))
+    sl <- rlang::exec(hlo_dynamic_slice, x, !!!starts, slice_sizes = as.integer(c(1L, shp[-1L])))
+    hlo_reshape(sl, as.integer(shp[-1L]))
+  })
+
+  env <- HloEnv(parent = .env)
+  ins <- c(carry_in, slices)
+  for (k in seq_along(body_graph$inputs)) {
+    env_add(env, body_graph$inputs[[k]], ins[[k]])
+  }
+  outs <- lower_graph_calls(body_graph, env, stablehlo::.current_func())
+  carry_new <- outs[seq_len(n_carry)]
+  bufs_new <- Map(
+    function(buf, out) {
+      shp <- shape(out$value_type)
+      upd <- hlo_reshape(out, as.integer(c(1L, shp)))
+      starts <- c(list(idx), rep(list(zero_i), base::length(shp)))
+      rlang::exec(hlo_dynamic_update_slice, buf, upd, !!!starts)
+    },
+    bufs_in,
+    outs[n_carry + seq_len(n_out)]
+  )
+  body_func <- rlang::exec(hlo_return, hlo_add(i, one_i), !!!carry_new, !!!bufs_new, !!!xs_in)
+
+  res <- rlang::exec(hlo_while, !!!state, cond = cond_func, body = body_func, simplify = FALSE)
+  c(res[1L + seq_len(n_carry)], res[1L + n_carry + seq_len(n_out)])
+}
+
 prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
   ops <- list(...)
   hlo_sort(

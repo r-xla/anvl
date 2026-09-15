@@ -324,6 +324,7 @@ reference:
     contents:
       - nv_if
       - nv_while
+      - nv_scan
       - nv_ifelse
 
   - subtitle: Distributions
