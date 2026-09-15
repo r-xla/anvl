@@ -23,10 +23,6 @@
 #' nv_save(list(x = x), path)
 #' nv_read(path)
 nv_save <- function(arrays, path) {
-  # `assert_list(types = )` subsets `arrays` internally, and an `AnvlArray` has
-  # a `[` method -- so a bare array sends the *assertion* into `nv_subset()` and
-  # the caller sees a subsetting error. Say what is wrong first, as
-  # `prim_sort()` does for the same trap.
   if (is_arrayish(arrays) || !is.list(arrays)) {
     cli_abort("{.arg arrays} must be a named list of arrays, not a single array.")
   }

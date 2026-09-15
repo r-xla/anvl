@@ -248,9 +248,6 @@ assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt
 }
 
-# Assert that a variadic function was given at least one array. Without this an
-# empty `...` reaches `max()`, `Reduce()` or stablehlo and produces a warning or
-# a raw backend message.
 assert_some_arrays <- function(..., call = rlang::caller_env()) {
   if (...length() == 0L) {
     cli_abort(

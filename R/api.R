@@ -1827,9 +1827,6 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  # The `nv_*` layer promotes across data types, as `nv_matmul()` does: an
-  # `f32` and an `f64` meet at `f64` rather than being refused. The primitives
-  # underneath still require operands that already agree.
   args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
@@ -1912,7 +1909,6 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  # As in `nv_solve()`: the `nv_*` layer promotes across data types.
   args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b

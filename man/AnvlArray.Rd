@@ -75,6 +75,8 @@ named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} back
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
+Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
+no elements -- so \code{shape} is required there.
 To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
 \item{byrow}{(\code{logical(1)})\cr

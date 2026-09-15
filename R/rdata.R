@@ -178,9 +178,7 @@ rdata_staging_dtype <- function(r_type, dtype) {
   # have taken anyway. An R integer stages through `i32`, so under an `i64`
   # default it stages through something narrower than its default and the
   # program acquires nothing it could have avoided.
-  own_default <- default_dtype_r(r_type)
-  remedy_works <- rdata_builds_directly(r_type, own_default) && dtype_materializable(own_default)
-  if (!dtype_holds(own_default, staged) && remedy_works) {
+  if (!dtype_holds(default_dtype_r(r_type), staged)) {
     cli_warn(
       c(
         "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
@@ -562,13 +560,4 @@ graph_input_dtypes <- function(graph) {
     vapply(graph$inputs, function(gval) as.character(gval$aval$dtype), character(1L)),
     NA_character_
   )
-}
-
-# Whether a backend can hold an array of this data type at all. `f16` and
-# `bf16` are float data types everywhere anvl reasons about data types, but no
-# backend materializes them yet -- see `?dtypes`. The one caller is the staging
-# warning, whose hint must not recommend a conversion that cannot be built;
-# this is the single place to update when a backend gains them.
-dtype_materializable <- function(dtype) {
-  !is_dtype_float(dtype) || dtype_width(dtype) >= 32L
 }

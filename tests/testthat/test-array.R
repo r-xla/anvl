@@ -1,16 +1,19 @@
 test_that("array", {
-  # A zero-length vector: a `NULL` shape means "a scalar" to the pjrt backend,
-  # and a scalar cannot hold zero elements, so this used to fail there.
-  expect_shape(nv_array(numeric(0)), 0L)
-  expect_shape(nv_array(integer(0)), 0L)
-  expect_shape(nv_array(numeric(0), shape = c(2L, 0L)), c(2L, 0L))
-
   x <- nv_array(1:4, dtype = "i32", shape = c(4, 1), device = "cpu")
   expect_snapshot(x)
   expect_class(x, "AnvlArray")
   expect_shape(x, c(4, 1))
   expect_dtype(x, "i32")
   expect_equal(as_array(x), array(1:4, c(4, 1)))
+})
+
+test_that("nv_array asks for a shape when the data is empty", {
+  # Which axis is empty is not in the data: `0`, `c(2, 0)` and `c(0, 3)` all
+  # hold no elements.
+  expect_error(nv_array(numeric(0)), "must be provided when")
+  expect_error(nv_array(integer(0)), "must be provided when")
+  expect_shape(nv_array(numeric(0), shape = 0L), 0L)
+  expect_shape(nv_array(numeric(0), shape = c(2L, 0L)), c(2L, 0L))
 })
 
 test_that("device returns the pjrt device", {

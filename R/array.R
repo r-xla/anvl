@@ -57,6 +57,8 @@
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
+#'   Empty data has no shape to infer -- `0`, `c(2, 0)` and `c(0, 3)` all hold
+#'   no elements -- so `shape` is required there.
 #'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
@@ -162,10 +164,6 @@ nv_array <- function(
   }
   if (!is.null(shape)) {
     shape <- as.integer(shape)
-  } else if (is.null(dim(data)) && length(data) == 0L) {
-    # An empty vector: name the axis, since a `NULL` shape means "a scalar" to
-    # the pjrt backend and a scalar cannot hold zero elements.
-    shape <- 0L
   }
   is_raw_payload <- is.raw(data)
   if (is_raw_payload) {
@@ -175,6 +173,13 @@ nv_array <- function(
     if (is.null(shape)) {
       cli_abort("{.arg shape} must be provided when {.arg data} is a raw vector.")
     }
+  } else if (is.null(shape) && is.null(dim(data)) && length(data) == 0L) {
+    # A zero-length vector does not say which axis is empty, so there is
+    # nothing to infer: `0`, `c(2, 0)` and `c(0, 3)` all hold no elements.
+    cli_abort(c(
+      "{.arg shape} must be provided when {.arg data} is empty.",
+      i = "A zero-length vector does not say which axis is empty, e.g. {.code shape = 0L} or {.code shape = c(2L, 0L)}."
+    ))
   }
   if (byrow && !is_raw_payload) {
     fill_shape <- shape %||% (if (!is.null(dim(data))) as.integer(dim(data)) else as.integer(length(data)))

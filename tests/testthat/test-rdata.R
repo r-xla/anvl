@@ -687,12 +687,11 @@ describe("the default float", {
     )
     local_default_dtypes(c(float = "f64"))
     expect_no_warning(nv_convert(1.5, "i32"))
-    # Nor where the remedy the hint names does not exist: under a default
-    # integer narrower than `i32`, converting in its own category first would
-    # stage through `i32` too.
+    # An R integer staged through `i32` warns wherever the default integer is
+    # narrower than that.
     with_default_dtypes(
       c(int = "i8"),
-      expect_no_warning(nv_convert(1L, "f32"), class = "anvl_staging_widens_warning")
+      expect_warning(nv_convert(1L, "f32"), class = "anvl_staging_widens_warning")
     )
   })
 
