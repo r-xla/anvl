@@ -576,10 +576,6 @@ prim_dynamic_slice <- new_primitive(
   function(x, ..., slice_sizes) {
     start_indices <- list(...)
     infer_fn <- function(x, ..., slice_sizes) {
-      # Built by hand this used to skip stablehlo's inference altogether, so
-      # everything it checks -- one index per axis, each a scalar of integer
-      # type, `slice_sizes` within `x` -- only surfaced in the PJRT compiler,
-      # as a raw MLIR dump.
       sizes_attr <- r_to_constant(
         as.integer(slice_sizes),
         dtype = "i64",
@@ -644,8 +640,6 @@ prim_dynamic_update_slice <- new_primitive(
   function(x, update, ...) {
     start_indices <- list(...)
     infer_fn <- function(x, update, ...) {
-      # As in `prim_dynamic_slice()`: building the aval by hand skipped every
-      # constraint stablehlo checks, leaving them to the PJRT compiler.
       out <- do.call(
         stablehlo::infer_types_dynamic_update_slice,
         c(list(at2vt(x), at2vt(update)), lapply(list(...), at2vt))
@@ -1012,23 +1006,6 @@ prim_reduce <- new_primitive(
     }
     if (!is.function(reductor)) {
       cli_abort("{.arg reductor} must be a function.")
-    }
-    # Traced below with exactly two positional arguments, so a third argument
-    # with no default is left missing -- and R never complains, because the
-    # body does not force it. The traced body then just hands an operand back
-    # and the reduction silently returns `init`. Arguments that do have a
-    # default are fine, so it is the required ones that are counted.
-    # stablehlo cannot catch this: by the time it sees the body the arity is
-    # already fixed.
-    fmls <- formals(reductor)
-    named <- fmls[names(fmls) != "..."]
-    n_required <- sum(vapply(named, function(f) is.name(f) && !nzchar(f), logical(1L)))
-    takes_two <- "..." %in% names(fmls) || length(named) >= 2L
-    if (n_required > 2L || !takes_two) {
-      cli_abort(c(
-        "{.arg reductor} must be callable with two arguments.",
-        x = "It has {n_required} argument{?s} without a default and {length(named)} in total."
-      ))
     }
 
     # `x` and `init` agree: the rule above brought them together or refused.

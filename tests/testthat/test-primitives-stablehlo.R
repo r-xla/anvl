@@ -1377,36 +1377,3 @@ test_that("the dynamic slicing primitives go through stablehlo's inference", {
     c(99, 20, 30)
   )
 })
-
-test_that("prim_reduce() requires a reductor it can call with two arguments", {
-  v <- nv_array(c(10, 20, 30))
-  add <- function(a, b) nv_add(a, b)
-  # A third required argument is left missing, and R does not complain because
-  # the body never forces it -- so the traced body just handed an operand back
-  # and the reduction silently returned `init` instead of 60.
-  expect_error(
-    prim_reduce(v, init = nv_scalar(0), reductor = function(a, b, c) a, axes = 1L),
-    "must be callable with two arguments"
-  )
-  expect_error(
-    prim_reduce(v, init = nv_scalar(0), reductor = function(a) a, axes = 1L),
-    "must be callable with two arguments"
-  )
-
-  # An extra argument that has a default is fine: the two operands still bind.
-  expect_equal(
-    as.vector(prim_reduce(
-      v,
-      init = nv_scalar(0),
-      reductor = function(a, b, how = "sum") add(a, b),
-      axes = 1L
-    )),
-    60
-  )
-  # As is `...`.
-  expect_equal(
-    as.vector(prim_reduce(v, init = nv_scalar(0), reductor = function(...) add(...), axes = 1L)),
-    60
-  )
-  expect_equal(as.vector(prim_reduce(v, init = nv_scalar(0), reductor = add, axes = 1L)), 60)
-})
