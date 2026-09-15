@@ -14,11 +14,17 @@ format_node_id <- function(node, node_ids) {
 format_literal <- function(node) {
   val <- node$aval$data
   if (is_anvl_array(val)) {
-    val <- as_array(val)
+    val <- as.vector(as_array(val))
   }
-  dt <- as.character(dtype(node$aval))
-  shp <- shape(node$aval)
-  sprintf("%s:%s%s", val, dt, if (length(shp)) sprintf("[%s]", shape2string(shp)) else "")
+  format_valued_array(val, node$aval)
+}
+
+# A value that carries its own data type and shape: `2:f32[]` for a scalar,
+# `1:f32[1, 1]` for a shaped one. The `dtype[shape]` half is `format_aval_short()`,
+# so such a value reads as an aval with its value in front -- and the shape is
+# always there, so a one-element array is not mistaken for a scalar.
+format_valued_array <- function(value, aval) {
+  sprintf("%s:%s", value, format_aval_short(aval))
 }
 
 # `r_type` is the R storage type this value is uploaded from, out of the graph's
@@ -55,35 +61,71 @@ build_node_ids <- function(inputs, constants, calls) {
   node_ids
 }
 
-format_param <- function(param) {
-  if (identical(param, list())) {
-    return("")
+format_param_value <- function(p) {
+  if (is.null(p)) {
+    return("NULL")
   }
-  if (test_scalar(param)) {
-    as.character(param)
-  } else if (is.atomic(param) && length(param) > 1L) {
-    sprintf("c(%s)", paste(param, collapse = ", "))
-  } else if (is_graph(param)) {
-    sprintf("graph[%s -> %s]", length(param$inputs), length(param$outputs))
-  } else if (is_dtype(param)) {
-    as.character(param)
-  } else if (is.list(param)) {
-    if (!is.null(names(param))) {
-      sprintf("[%s]", paste(names(param), "=", sapply(param, format_param), collapse = ", "))
-    } else {
-      sprintf("[%s]", paste(sapply(param, format_param), collapse = ", "))
+  if (is_graph(p)) {
+    return(sprintf("graph[%d -> %d]", length(p$inputs), length(p$outputs)))
+  }
+  if (is_dtype(p)) {
+    return(as.character(p))
+  }
+  if (is_anvl_array(p)) {
+    # The one array a parameter carries is the one-element constant that
+    # `inline_scalarish_constants()` turns into a `fill`, so print its value
+    # the way a literal node does rather than dumping the object's fields.
+    # A shape of `c(1, 1)` is still one element, so go by the element count.
+    if (prod(shape(p)) == 1L) {
+      return(format_valued_array(as.vector(as_array(p)), p))
     }
+    return(format_aval_short(p))
+  }
+  if (is.atomic(p)) {
+    if (length(p) == 0L) {
+      return(sprintf("%s(0)", typeof(p)))
+    }
+    elts <- if (is.character(p)) encodeString(p, quote = '"') else format(p, trim = TRUE)
+    if (!is.null(names(p))) {
+      elts <- paste0(names(p), " = ", elts)
+    } else if (length(p) == 1L) {
+      return(elts)
+    }
+    sprintf("c(%s)", paste(elts, collapse = ", "))
+  } else if (is.list(p)) {
+    sprintf("[%s]", paste(format_param_parts(p), collapse = ", "))
   } else {
-    x <- try(format(param), silent = TRUE)
-    if (length(x) == 1L) {
-      x
+    out <- try(deparse(p, nlines = 1L), silent = TRUE)
+    if (inherits(out, "try-error") || length(out) != 1L) {
+      sprintf("<%s>", class(p)[[1L]])
     } else {
-      "<any>"
+      out
     }
   }
 }
 
-format_call <- function(call, node_ids, indent = "  ") {
+# The entries of a parameter list, each rendered as "<name> = <value>" (or as
+# the bare value, when the entry has no name). Kept separate from
+# `format_param_value()` so that a caller can lay the entries out on one line or
+# on one line each.
+format_param_parts <- function(params) {
+  if (is.null(params)) {
+    return(character())
+  }
+  if (!is.list(params)) {
+    return(format_param_value(params))
+  }
+  parts <- vapply(params, format_param_value, character(1))
+  if (!is.null(names(params))) {
+    parts <- paste0(names(params), " = ", parts)
+  }
+  parts
+}
+
+# A call whose parameters would push the line past `width` puts them one per
+# line instead -- `gather` and `scatter` carry enough of them to otherwise run
+# far off the screen.
+format_call <- function(call, node_ids, indent = "  ", width = getOption("width", 80L)) {
   input_ids <- vapply(call$inputs, format_node_id, character(1), node_ids = node_ids)
   inputs_str <- paste(input_ids, collapse = ", ")
 
@@ -96,11 +138,24 @@ format_call <- function(call, node_ids, indent = "  ") {
     sprintf("(%s): (%s)", paste(output_ids, collapse = ", "), paste(output_types, collapse = ", "))
   }
 
-  params_str <- format_param(call$params)
-  if (params_str != "") {
-    params_str <- sprintf(" %s ", params_str)
+  prefix <- sprintf("%s%s = %s", indent, outputs_str, call$primitive$name)
+  suffix <- sprintf("(%s)", inputs_str)
+
+  parts <- format_param_parts(call$params)
+  if (length(parts) == 0L) {
+    return(paste0(prefix, suffix))
   }
-  sprintf("%s%s = %s%s(%s)", indent, outputs_str, call$primitive$name, params_str, inputs_str)
+  one_line <- sprintf("%s [%s] %s", prefix, paste(parts, collapse = ", "), suffix)
+  if (nchar(one_line) <= width) {
+    return(one_line)
+  }
+  sprintf(
+    "%s [\n%s\n%s] %s",
+    prefix,
+    paste0(indent, "  ", parts, collapse = ",\n"),
+    indent,
+    suffix
+  )
 }
 
 format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph", rdata_types = NULL) {
