@@ -171,6 +171,14 @@
   already matched its `update_computation`.
 - Improved the numerics for
   [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md).
+- [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  is accurate to its operand’s data type rather than to the default
+  float; its coefficients used to be materialized at the default.
+- [`nv_dnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),
+  [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  and
+  [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
+  name their own operand when it is not a float.
 - [`prim_fill()`](https://r-xla.github.io/anvl/dev/reference/prim_fill.md)
   / [`nv_fill()`](https://r-xla.github.io/anvl/dev/reference/nv_fill.md)
   check that `value` is something `dtype` can hold: a whole number for

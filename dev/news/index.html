@@ -137,6 +137,10 @@
 <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>’s <code>reductor</code> no longer has to name its arguments <code>lhs</code> and <code>rhs</code>. They were passed by name, so <code>function(a, b)</code> failed with <code>unused arguments (lhs = ..., rhs = ...)</code>; they are now matched positionally, as <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> already matched its <code>update_computation</code>.</li>
 <li>Improved the numerics for <code><a href="../reference/nv_mod.html">nv_mod()</a></code>.</li>
 <li>
+<code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> is accurate to its operand’s data type rather than to the default float; its coefficients used to be materialized at the default.</li>
+<li>
+<code><a href="../reference/nv_normal.html">nv_dnorm()</a></code>, <code><a href="../reference/nv_normal.html">nv_pnorm()</a></code> and <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> name their own operand when it is not a float.</li>
+<li>
 <code><a href="../reference/prim_fill.html">prim_fill()</a></code> / <code><a href="../reference/nv_fill.html">nv_fill()</a></code> check that <code>value</code> is something <code>dtype</code> can hold: a whole number for an integer data type, a non-negative one for an unsigned one, a logical or <code>0</code> / <code>1</code> for <code>bool</code>.</li>
 <li>Every data type of the float category counts as a float, so <code>f16</code> and <code>bf16</code> pass the checks that used to accept only <code>f32</code> and <code>f64</code>. <code><a href="../reference/nv_normal.html">nv_pnorm()</a></code> and <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> keep the narrower requirement, as they carry one coefficient set per width.</li>
 <li>The gradient of <code><a href="../reference/nv_gamma.html">nv_gamma()</a></code> is now correct for positive whole numbers.</li>
