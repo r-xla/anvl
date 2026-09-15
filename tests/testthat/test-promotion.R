@@ -58,7 +58,7 @@ test_that("a logical R value is a bool, not an unmaterialized value", {
   # and the program converts it to the dtype it met, so the multiply itself sees
   # an i32.
   mul <- Filter(function(call) call$primitive$name == "mul", graph$calls)[[1L]]
-  expect_equal(dtype(mul$inputs[[2L]]$aval), default_int())
+  expect_dtype(mul$inputs[[2L]]$aval, default_int())
 })
 
 describe("eager/jit equivalence", {
@@ -79,19 +79,19 @@ describe("eager/jit equivalence", {
 describe("the default float", {
   it("does not change the yielding rule", {
     local_default_dtypes(c(float = "f64"))
-    expect_equal(dtype(nv_array(1, dtype = "f32") + 1.5), as_dtype("f32"))
-    expect_equal(dtype(jit(function(x) x * 2)(nv_array(1, dtype = "f32"))), as_dtype("f32"))
+    expect_dtype(nv_array(1, dtype = "f32") + 1.5, "f32")
+    expect_dtype(jit(function(x) x * 2)(nv_array(1, dtype = "f32")), "f32")
     # Crossing a category takes the *default* of the other category.
-    expect_equal(dtype(nv_array(1L, dtype = "i32") + 1.5), as_dtype("f64"))
+    expect_dtype(nv_array(1L, dtype = "i32") + 1.5, "f64")
   })
 })
 
 describe("the default integer", {
   it("does not change the yielding rule", {
     local_default_dtypes(c(int = "i64"))
-    expect_equal(dtype(nv_array(1L, dtype = "i32") + 1L), as_dtype("i32"))
-    expect_equal(dtype(nv_array(1L, dtype = "i8") * 2L), as_dtype("i8"))
-    expect_equal(dtype(nv_array(TRUE) + 1L), as_dtype("i64"))
+    expect_dtype(nv_array(1L, dtype = "i32") + 1L, "i32")
+    expect_dtype(nv_array(1L, dtype = "i8") * 2L, "i8")
+    expect_dtype(nv_array(TRUE) + 1L, "i64")
   })
 })
 
@@ -102,11 +102,11 @@ describe("eager code", {
     # default it reads is the one of the active backend, which is also the
     # backend the operation then runs on.
     promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promotion_common())[[2L]]
-    expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), default_float())
+    expect_dtype(promote(nv_array(1L, dtype = "i32")), default_float())
     with_backend("quickr", {
-      expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), as_dtype("f64"))
+      expect_dtype(promote(nv_array(1L, dtype = "i32")), "f64")
       expect_equal(peek_dtype(1.5), as_dtype("f64"))
-      expect_equal(dtype(nv_fill(0, 3)), as_dtype("f64"))
+      expect_dtype(nv_fill(0, 3), "f64")
     })
   })
 })

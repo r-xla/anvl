@@ -13,9 +13,9 @@ test_that("prim_cos", {
 test_that("prim_rng_bit_generator", {
   out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
   expect_named(out, c("state", "values"))
-  expect_equal(dtype(out$state), as_dtype("ui64"))
-  expect_equal(shape(out$state), 2L)
-  expect_equal(shape(out$values), c(2L, 2L))
+  expect_dtype(out$state, "ui64")
+  expect_shape(out$state, 2L)
+  expect_shape(out$values, c(2L, 2L))
 })
 
 test_that("prim_bitcast_convert", {
@@ -632,9 +632,9 @@ describe("prim_lu", {
     A <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
     out <- prim_lu(A)
     expect_named(out, c("LU", "pivots", "permutation"))
-    expect_equal(shape(out$LU), c(2L, 2L))
-    expect_equal(shape(out$pivots), 2L)
-    expect_equal(shape(out$permutation), 2L)
+    expect_shape(out$LU, c(2L, 2L))
+    expect_shape(out$pivots, 2L)
+    expect_shape(out$permutation, 2L)
     LU <- as_array(out$LU)
     pivots <- as_array(out$pivots)
     # `as.integer()`: the permutation follows the default integer data type, and
@@ -975,7 +975,7 @@ describe("prim_top_k", {
     expect_named(out, c("values", "indices"))
     expect_equal(as.vector(out$values), c(9, 6, 5))
     expect_equal(as.vector(out$indices), c(6L, 8L, 5L))
-    expect_equal(dtype(out$indices), default_int())
+    expect_dtype(out$indices, default_int())
   })
 
   it("operates per-row on a matrix", {
@@ -993,7 +993,7 @@ describe("prim_top_k", {
 
   it("preserves the input dtype on values output", {
     out <- prim_top_k(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), k = 2L)
-    expect_equal(as.character(dtype(out[[1L]])), "i32")
+    expect_dtype(out[[1L]], "i32")
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
   })
 
@@ -1019,13 +1019,13 @@ describe("prim_argmax", {
   it("supports drop = FALSE", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     out <- prim_argmax(m, axis = 2L, drop = FALSE)
-    expect_equal(shape(out), c(2L, 1L))
+    expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(3L, 2L))
   })
 
   it("returns dtype i32", {
     out <- prim_argmax(nv_array(c(1, 2, 3)), axis = 1L)
-    expect_equal(dtype(out), default_int())
+    expect_dtype(out, default_int())
   })
 
   it("works with integer input", {
@@ -1054,8 +1054,8 @@ describe("prim_argmax", {
     # produces an empty (length-0) i32 vector.
     m <- nv_matrix(numeric(0), nrow = 0, ncol = 3)
     out <- prim_argmax(m, axis = 2L)
-    expect_equal(shape(out), 0L)
-    expect_equal(dtype(out), default_int())
+    expect_shape(out, 0L)
+    expect_dtype(out, default_int())
   })
 
   it("accepts a negative dim", {
@@ -1111,7 +1111,7 @@ describe("prim_reduce", {
   it("supports drop = FALSE", {
     m <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)
     out <- prim_reduce(m, init = nv_scalar(0), axes = 2L, drop = FALSE, reductor = prim_add)
-    expect_equal(shape(out), c(2L, 1L))
+    expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(9, 12))
   })
 
@@ -1306,4 +1306,40 @@ describe("prim_reduce_any / prim_reduce_all input data type", {
       paste0("Got \"", as.character(default_float()), "\"")
     )
   })
+})
+
+test_that("prim_fill names `shape` in its own error", {
+  expect_error(prim_fill(0, shape = -1L, dtype = "f32"), "negative axis size")
+  expect_equal(shape(prim_fill(0, shape = c(), dtype = "f32")), integer())
+  expect_equal(shape(prim_fill(0, shape = 0L, dtype = "f32")), 0L)
+})
+
+test_that("prim_fill() checks that `value` is something `dtype` can hold", {
+  expect_error(prim_fill(1.5, 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(Inf, 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(TRUE, 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(-1L, 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(prim_fill(-1, 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(prim_fill(3L, 2L, dtype = "bool"), "must be a logical")
+  expect_error(prim_fill(NA, 2L, dtype = "f32"), "must not be")
+  expect_error(prim_fill(c(1, 2), 2L, dtype = "f32"), "must be a scalar")
+  # A whole double is built as an R integer, so a larger one would arrive as
+  # `NA` rather than the value that was written.
+  expect_error(prim_fill(2^40, 2L, dtype = "i64"), "must be no larger than")
+
+  expect_equal(as.vector(prim_fill(0L, 2L, dtype = "bool")), c(FALSE, FALSE))
+  expect_equal(as.integer(prim_fill(2L, 2L, dtype = "i8")), c(2L, 2L))
+  expect_equal(as.vector(prim_fill(1.5, 2L, dtype = "f32")), c(1.5, 1.5))
+})
+
+test_that("prim_fill() takes a whole number at an integer data type", {
+  # `1` and `1L` both build at `i32`, the same way a literal meeting an `i32`
+  # array does. This is also what the fills that do not know their data type
+  # statically (`nv_eye()`, `nv_diag()`, the gradient zeroing) write.
+  expect_equal(as.integer(prim_fill(1, 2L, dtype = "i32")), c(1L, 1L))
+  expect_equal(as.integer(prim_fill(-3, 2L, dtype = "i64")), c(-3L, -3L))
+  expect_equal(as.integer(prim_fill(3, 2L, dtype = "ui8")), c(3L, 3L))
+  expect_equal(as.vector(prim_fill(1, 2L, dtype = "bool")), c(TRUE, TRUE))
+  expect_equal(as.vector(prim_fill(0, 2L, dtype = "bool")), c(FALSE, FALSE))
+  expect_equal(as.integer(nv_fill(1, shape = 2L, dtype = "i32")), c(1L, 1L))
 })

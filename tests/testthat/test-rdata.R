@@ -1,21 +1,21 @@
 describe("RData", {
   it("reports the shape the R value can answer for", {
     x <- RData(integer(), "double")
-    expect_equal(shape(x), integer())
+    expect_shape(x, integer())
     expect_error(dtype(x), "no data type of its own")
 
     y <- RData(c(2L, 3L), "integer")
-    expect_equal(shape(y), c(2L, 3L))
+    expect_shape(y, c(2L, 3L))
     expect_equal(naxes(y), 2L)
   })
 
   it("answers the extractors the same way for a bare R value", {
     # Eagerly the R value *is* the unmaterialized value, so it has to answer the
     # way the boxed one does under jit().
-    expect_equal(shape(1.5), integer())
+    expect_shape(1.5, integer())
     expect_equal(naxes(1.5), 0L)
-    expect_equal(shape(TRUE), integer())
-    expect_equal(shape(array(1:6, c(2, 3))), c(2L, 3L))
+    expect_shape(TRUE, integer())
+    expect_shape(array(1:6, c(2, 3)), c(2L, 3L))
     expect_error(dtype(1.5), "no data type of its own")
     expect_error(dtype(1L), "no data type of its own")
     expect_error(dtype(TRUE), "no data type of its own")
@@ -33,7 +33,7 @@ describe("RData", {
     # `nv_*_like` derives the result's dtype from its argument, so it errors too.
     expect_error(jit(function(x) nv_fill_like(x, 3))(1), "no data type of its own")
     # Giving it a dtype answers the question.
-    expect_equal(dtype(jit(function(x) nv_fill_like(x, 3))(nv_scalar(1))), default_float())
+    expect_dtype(jit(function(x) nv_fill_like(x, 3))(nv_scalar(1)), default_float())
   })
 
   it("does have a shape inside a traced function", {
@@ -71,7 +71,7 @@ describe("RData", {
 
   it("has no abstract value for an R vector that is not arrayish", {
     expect_error(to_abstract(c(1, 2, 3)), "undefined for a length-3")
-    expect_equal(shape(to_abstract(array(1:6, c(2, 3)))), c(2L, 3L))
+    expect_shape(to_abstract(array(1:6, c(2, 3))), c(2L, 3L))
   })
 })
 
@@ -85,7 +85,7 @@ describe("a finished graph's R inputs", {
     # at, and nothing else.
     expect_s3_class(graph$inputs[[1L]]$aval, "AbstractArray")
     expect_s3_class(graph$inputs[[2L]]$aval, "AbstractArray")
-    expect_equal(dtype(graph$inputs[[2L]]$aval), as_dtype("f64"))
+    expect_dtype(graph$inputs[[2L]]$aval, "f64")
     # Which of them the caller supplies as bare R data, and as what, is beside
     # them -- one entry per input, NA for an array the caller passes through.
     expect_equal(graph$rdata_types, c(NA_character_, "double"))
@@ -250,11 +250,11 @@ describe("an R value at its use site", {
   })
 
   it("materializes at the default data type when nothing claims it", {
-    expect_equal(dtype(jit(function() 1)()), default_float())
-    expect_equal(dtype(jit(function() 1L)()), default_int())
-    expect_equal(dtype(jit(function() TRUE)()), as_dtype("bool"))
-    expect_equal(dtype(jit(identity)(1)), default_float())
-    expect_equal(dtype(jit(identity)(array(1:4))), default_int())
+    expect_dtype(jit(function() 1)(), default_float())
+    expect_dtype(jit(function() 1L)(), default_int())
+    expect_dtype(jit(function() TRUE)(), "bool")
+    expect_dtype(jit(identity)(1), default_float())
+    expect_dtype(jit(identity)(array(1:4)), default_int())
     # ... including a value that only ever meets other R values
     expect_equal(jit(function() nv_mul(2, 3))(), nv_scalar(6, dtype = default_float()))
     expect_equal(jit(function() nv_mul(2, 3L))(), nv_scalar(6, dtype = default_float()))
@@ -262,10 +262,10 @@ describe("an R value at its use site", {
   })
 
   it("takes the data type it meets, whatever the width", {
-    expect_equal(dtype(nv_array(1L, dtype = "i8") + 1), default_float())
-    expect_equal(dtype(nv_array(1L, dtype = "i8") + 1L), as_dtype("i8"))
-    expect_equal(dtype(nv_array(1, dtype = "f64") + 1L), as_dtype("f64"))
-    expect_equal(dtype(nv_array(TRUE) + 1L), default_int())
+    expect_dtype(nv_array(1L, dtype = "i8") + 1, default_float())
+    expect_dtype(nv_array(1L, dtype = "i8") + 1L, "i8")
+    expect_dtype(nv_array(1, dtype = "f64") + 1L, "f64")
+    expect_dtype(nv_array(TRUE) + 1L, default_int())
     # narrower than the value's own default, and on either side of the operator
     expect_equal(jit(function(x) x * 2L)(nv_scalar(1, dtype = "i16")), nv_scalar(2L, dtype = "i16"))
     expect_equal(jit(function(x) 2 + x)(nv_scalar(1)), nv_scalar(3))
@@ -283,7 +283,7 @@ describe("an R value at its use site", {
       y + nv_scalar(1, dtype = "f64")
     })
     out <- f(sqrt(2))
-    expect_equal(dtype(out), as_dtype("f64"))
+    expect_dtype(out, "f64")
     expect_false(isTRUE(all.equal(as_array(out), 2 * sqrt(2) + 1, tolerance = 1e-15)))
   })
 
@@ -322,7 +322,7 @@ describe("an R value at its use site", {
     # the state meets anything, so there is nothing for a bare R value there to
     # take a data type from. Documented in `?RData`.
     out <- nv_while(list(i = 1), \(i) i < 10, \(i) list(i = i * 2))
-    expect_equal(dtype(out$i), default_float())
+    expect_dtype(out$i, default_float())
     # ... so a body that carries another data type is an error, not an f64 loop.
     expect_error(
       nv_while(list(i = 1), \(i) i < 10, \(i) list(i = i * nv_scalar(2, dtype = "f64"))),
@@ -378,7 +378,7 @@ describe("nv_array", {
   it("points at nv_convert(), which is exact", {
     f <- jit(function(v) nv_convert(v, "f64"))
     expect_identical(as_array(f(sqrt(2))), sqrt(2))
-    expect_equal(dtype(jit(function(v) nv_convert(v, "i64"))(2L)), as_dtype("i64"))
+    expect_dtype(jit(function(v) nv_convert(v, "i64"))(2L), "i64")
   })
 })
 
@@ -424,15 +424,15 @@ describe("a primitive's operands", {
       expect_equal(dtype(prim_add(x, 1L)), as_dtype(dt), info = dt)
       expect_equal(dtype(prim_add(1L, x)), as_dtype(dt), info = dt)
     }
-    expect_equal(dtype(prim_and(nv_scalar(TRUE), TRUE)), as_dtype("bool"))
+    expect_dtype(prim_and(nv_scalar(TRUE), TRUE), "bool")
   })
 
   it("the operand slots that take a scalar accept a literal", {
     x <- nv_array(c(1, 2), dtype = "f64")
-    expect_equal(dtype(prim_pad(x, 0, 1L, 0L, 0L)), as_dtype("f64"))
-    expect_equal(dtype(prim_clamp(0, x, 1)), as_dtype("f64"))
-    expect_equal(dtype(prim_reduce(x, init = 0, axes = 1L, reductor = prim_add)), as_dtype("f64"))
-    expect_equal(dtype(prim_ifelse(nv_scalar(TRUE), nv_scalar(1, dtype = "f64"), 0)), as_dtype("f64"))
+    expect_dtype(prim_pad(x, 0, 1L, 0L, 0L), "f64")
+    expect_dtype(prim_clamp(0, x, 1), "f64")
+    expect_dtype(prim_reduce(x, init = 0, axes = 1L, reductor = prim_add), "f64")
+    expect_dtype(prim_ifelse(nv_scalar(TRUE), nv_scalar(1, dtype = "f64"), 0), "f64")
   })
 
   it("a literal reaches a primitive with every digit it had", {
@@ -449,14 +449,14 @@ describe("a primitive's operands", {
   it("brings a primitive call's operands together without the default data type", {
     # This is the point of the change: `prim_mul(x, 2)` used to work only because
     # `f32` happens to be the default for an R double.
-    expect_equal(dtype(prim_mul(nv_scalar(1, dtype = "f32"), 2)), as_dtype("f32"))
-    expect_equal(dtype(prim_mul(nv_scalar(1, dtype = "f64"), 2)), as_dtype("f64"))
+    expect_dtype(prim_mul(nv_scalar(1, dtype = "f32"), 2), "f32")
+    expect_dtype(prim_mul(nv_scalar(1, dtype = "f64"), 2), "f64")
   })
 
   it("an all-R group agrees only within one R storage type", {
-    expect_equal(dtype(prim_add(1, 2)), default_float())
-    expect_equal(dtype(prim_add(1L, 2L)), default_int())
-    expect_equal(dtype(prim_and(TRUE, FALSE)), as_dtype("bool"))
+    expect_dtype(prim_add(1, 2), default_float())
+    expect_dtype(prim_add(1L, 2L), default_int())
+    expect_dtype(prim_and(TRUE, FALSE), "bool")
     # A mix has no data type to agree on, and says so rather than picking one.
     expect_error(prim_add(1, 2L), "no data type to agree on")
     expect_error(prim_add(TRUE, 1L), "no data type to agree on")
@@ -472,8 +472,8 @@ describe("a primitive's operands", {
     expect_error(prim_add(nv_scalar(1, dtype = "f64"), 1L), "own category")
     expect_error(prim_add(nv_scalar(1, dtype = "f64"), 1L), "nv_convert")
     # ... where the `nv_*` layer promotes across categories, as it always did.
-    expect_equal(dtype(nv_add(nv_scalar(1, dtype = "f64"), 1L)), as_dtype("f64"))
-    expect_equal(dtype(nv_add(nv_scalar(1L, dtype = "i8"), 1.5)), default_float())
+    expect_dtype(nv_add(nv_scalar(1, dtype = "f64"), 1L), "f64")
+    expect_dtype(nv_add(nv_scalar(1L, dtype = "i8"), 1.5), default_float())
   })
 
   it("a group with several data types present is reported by the rule", {
@@ -492,33 +492,30 @@ describe("a primitive's operands", {
     )
     # A rule that leaves an operand out says nothing about it: `pred` is a bool
     # whatever the branches are.
-    expect_equal(
-      dtype(prim_ifelse(nv_scalar(TRUE), nv_scalar(1L, dtype = "i8"), nv_scalar(2L, dtype = "i8"))),
-      as_dtype("i8")
-    )
+    expect_dtype(prim_ifelse(nv_scalar(TRUE), nv_scalar(1L, dtype = "i8"), nv_scalar(2L, dtype = "i8")), "i8")
   })
 
   it("primitives whose operands are meant to differ opt out", {
     # `promote = NULL`: a sort payload and a loop-carried state are deliberately
     # heterogeneous, so there is nothing for an R value to yield to and each
     # materializes at its own default, as before.
-    expect_equal(dtype(nv_argsort(nv_array(c(3, 1, 2)))), default_int())
+    expect_dtype(nv_argsort(nv_array(c(3, 1, 2))), default_int())
     expect_equal(as.vector(nv_sort(nv_array(c(3, 1, 2)))), c(1, 2, 3))
     out <- nv_while(
       list(i = nv_scalar(0L), w = 0.5),
       function(i, w) i < nv_scalar(3L),
       function(i, w) list(i = i + 1L, w = w * nv_scalar(0.5, dtype = "f32"))
     )
-    expect_equal(dtype(out[[1L]]), default_int())
-    expect_equal(dtype(out[[2L]]), default_float())
+    expect_dtype(out[[1L]], default_int())
+    expect_dtype(out[[2L]], default_float())
   })
 
   it("an argument a rule leaves out keeps its own data type", {
     # `pred` is a bool however the branches are typed, and indices stay integers.
     out <- prim_ifelse(nv_scalar(TRUE), nv_scalar(1L, dtype = "i8"), 3L)
-    expect_equal(dtype(out), as_dtype("i8"))
+    expect_dtype(out, "i8")
     x <- nv_array(c(1, 2, 3), dtype = "f64")
-    expect_equal(dtype(nv_subset(x, 2)), as_dtype("f64"))
+    expect_dtype(nv_subset(x, 2), "f64")
     expect_equal(as.vector(nv_subset(x, nv_array(2L, dtype = "i64"))), 2)
   })
 
@@ -528,7 +525,7 @@ describe("a primitive's operands", {
     for (dt in names(arrays)) {
       eager <- prim_add(arrays[[dt]], values[[dt]])
       traced <- jit(function(x, v) prim_add(x, v))(arrays[[dt]], values[[dt]])
-      expect_equal(dtype(eager), dtype(traced), info = dt)
+      expect_dtype(eager, dtype(traced), info = dt)
       expect_identical(format(as_array(eager)), format(as_array(traced)), info = dt)
     }
   })
@@ -554,7 +551,7 @@ describe("an R value in an nv_* function", {
     expect_identical(as.vector(nv_crossprod(y, matrix(sqrt(2)))), sqrt(2))
     expect_identical(as.vector(nv_tcrossprod(y, matrix(sqrt(2)))), sqrt(2))
     # The common dtype is still the one both sides agree on.
-    expect_equal(dtype(nv_rbind(nv_matrix(1L, nrow = 1L), matrix(1))), default_float())
+    expect_dtype(nv_rbind(nv_matrix(1L, nrow = 1L), matrix(1)), default_float())
   })
 
   it("uses the array's data type when assigned into one", {
@@ -600,36 +597,27 @@ describe("an R value in an nv_* function", {
   it("yields to the array in nv_solve() and nv_triangular_solve()", {
     a <- nv_array(matrix(c(2, 0, 0, 2), nrow = 2), dtype = "f64")
     out <- nv_solve(a, matrix(c(2, 4), ncol = 1L))
-    expect_equal(dtype(out), as_dtype("f64"))
+    expect_dtype(out, "f64")
     expect_equal(as.vector(out), c(1, 2))
     # ... and two typed arrays that disagree are still rejected, rather than one
     # of them being widened.
     expect_error(nv_solve(a, nv_array(matrix(c(2, 4), ncol = 1L), dtype = "f32")))
     out <- nv_triangular_solve(a, matrix(c(2, 4), ncol = 1L))
-    expect_equal(dtype(out), as_dtype("f64"))
+    expect_dtype(out, "f64")
   })
 
   it("names no data type for nv_rnorm(), which falls back to the default float", {
     state <- nv_rng_state(42L)
     # Bare R values have no data type, so the sample falls back to the default
     # float rather than to whatever R stores its numbers as.
-    expect_equal(dtype(nv_rnorm(4L, state, mean = 0, sd = 1)[[2L]]), default_float())
+    expect_dtype(nv_rnorm(4L, state, mean = 0, sd = 1)[[2L]], default_float())
     # A real array names it.
-    expect_equal(
-      dtype(nv_rnorm(4L, state, mean = nv_scalar(0, dtype = "f64"))[[2L]]),
-      as_dtype("f64")
-    )
-    expect_equal(
-      dtype(nv_rnorm(4L, state, sd = nv_scalar(1, dtype = "f64"))[[2L]]),
-      as_dtype("f64")
-    )
+    expect_dtype(nv_rnorm(4L, state, mean = nv_scalar(0, dtype = "f64"))[[2L]], "f64")
+    expect_dtype(nv_rnorm(4L, state, sd = nv_scalar(1, dtype = "f64"))[[2L]], "f64")
     # An integer array cannot name one, so the default float stands.
-    expect_equal(dtype(nv_rnorm(4L, state, mean = nv_scalar(0L))[[2L]]), default_float())
+    expect_dtype(nv_rnorm(4L, state, mean = nv_scalar(0L))[[2L]], default_float())
     # ... and an explicit `dtype` still wins.
-    expect_equal(
-      dtype(nv_rnorm(4L, state, dtype = "f64", mean = 0)[[2L]]),
-      as_dtype("f64")
-    )
+    expect_dtype(nv_rnorm(4L, state, dtype = "f64", mean = 0)[[2L]], "f64")
     # An f64 mean cannot be narrowed to an f32 sample.
     expect_error(
       nv_rnorm(4L, state, dtype = "f32", mean = nv_scalar(0, dtype = "f64")),
@@ -700,14 +688,14 @@ describe("the default float", {
 
   it("decides what an R double materializes at in a trace", {
     local_default_dtypes(c(float = "f64"))
-    expect_equal(dtype(jit(function() 1.5)()), as_dtype("f64"))
+    expect_dtype(jit(function() 1.5)(), "f64")
     # An R argument is uploaded at the default.
-    expect_equal(dtype(jit(function(x) x)(1.5)), as_dtype("f64"))
+    expect_dtype(jit(function(x) x)(1.5), "f64")
     # Constants built inside the trace as well.
-    expect_equal(dtype(jit(function() nv_array(c(1, 2)))()), as_dtype("f64"))
-    expect_equal(dtype(jit(function() nv_fill(0, 2))()), as_dtype("f64"))
+    expect_dtype(jit(function() nv_array(c(1, 2)))(), "f64")
+    expect_dtype(jit(function() nv_fill(0, 2))(), "f64")
     # And the all-R-values branch of promotion.
-    expect_equal(dtype(jit(function(x, y) x + y)(1, 2)), as_dtype("f64"))
+    expect_dtype(jit(function(x, y) x + y)(1, 2), "f64")
   })
 
   it("keeps an R value exact", {
@@ -720,8 +708,8 @@ describe("the default float", {
 describe("the default integer", {
   it("decides what an R integer materializes at in a trace", {
     local_default_dtypes(c(int = "i64"))
-    expect_equal(dtype(jit(function() 1L)()), as_dtype("i64"))
-    expect_equal(dtype(jit(function(x) x)(1L)), as_dtype("i64"))
-    expect_equal(dtype(jit(function() nv_seq(1, 3))()), as_dtype("i64"))
+    expect_dtype(jit(function() 1L)(), "i64")
+    expect_dtype(jit(function(x) x)(1L), "i64")
+    expect_dtype(jit(function() nv_seq(1, 3))(), "i64")
   })
 })

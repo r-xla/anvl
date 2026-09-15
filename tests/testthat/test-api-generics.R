@@ -54,7 +54,7 @@ describe("`&`", {
     q <- c(TRUE, TRUE, FALSE)
     out <- nv_array(p) & nv_array(q)
     expect_equal(as.vector(out), p & q)
-    expect_equal(dtype(out), as_dtype("bool"))
+    expect_dtype(out, "bool")
   })
 
   it("rejects a non-boolean array instead of coercing it", {
@@ -291,7 +291,7 @@ describe("rev", {
     # Base R flattens; an anvl array keeps its shape, but the elements come out
     # in the same order.
     expect_equal(as.vector(rev(nv_array(m))), rev(as.vector(m)))
-    expect_equal(shape(rev(nv_array(m))), shape(nv_array(m)))
+    expect_shape(rev(nv_array(m)), shape(nv_array(m)))
   })
 
   it("passes a scalar array through", {
