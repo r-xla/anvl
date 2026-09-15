@@ -87,3 +87,39 @@ describe("eager code", {
     expect_error(nv_fill_like(x, 0), "belongs to the .*quickr.* backend")
   })
 })
+
+test_that("register_backend() builds the backend on first use, not at registration", {
+  # Registration is top-level code, so anything built there is serialized into
+  # the lazy-load database before the namespace can be instrumented; see
+  # register_backend(). Registering must therefore only record a promise.
+  withr::defer(rm(list = "lazytest", envir = globals$backends))
+  # An environment rather than a local, so the flag is the same one whichever
+  # frame the promise ends up being evaluated in.
+  state <- new.env(parent = emptyenv())
+  state$built <- FALSE
+  register_backend("lazytest", {
+    state$built <- TRUE
+    "the lazytest backend"
+  })
+  expect_false(state$built)
+
+  # Listing the registry must not force it either -- assert_backend() and
+  # check_jit_options() both walk the names.
+  expect_true("lazytest" %in% ls(globals$backends))
+  expect_false(state$built)
+
+  expect_identical(globals$backends[["lazytest"]], "the lazytest backend")
+  expect_true(state$built)
+
+  # R caches a forced promise, so the value is built exactly once.
+  state$built <- FALSE
+  expect_identical(globals$backends[["lazytest"]], "the lazytest backend")
+  expect_false(state$built)
+})
+
+test_that("the registered backends are all reachable", {
+  expect_setequal(ls(globals$backends), c("plain", "pjrt", "quickr"))
+  for (name in ls(globals$backends)) {
+    expect_s3_class(globals$backends[[name]], "AnvlBackend")
+  }
+})

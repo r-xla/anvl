@@ -74,11 +74,22 @@ AnvlBackend <- function(
   )
 }
 
+# `backend` is deliberately left unevaluated and built on first use.
+#
+# Registration happens as top-level code, which R evaluates when the namespace
+# is *installed* and then restores from the lazy-load database on load. A
+# backend constructed there would be a set of closures serialized before
+# anything can instrument the namespace, which is why covr reported every
+# backend method as untested however often the tests called it -- the methods
+# it instruments and the ones the registry holds were different objects
+# (r-lib/covr#556). A promise is forced by the first array operation instead,
+# long after load, and builds its methods from whatever the namespace holds
+# then. R forces it once and caches the value, so this costs nothing per call.
 register_backend <- function(name, backend) {
   if (name %in% c("float", "int")) {
     cli_abort("A backend must not be named after a data type category ({.val float} or {.val int}).")
   }
-  globals$backends[[name]] <- backend
+  delayedAssign(name, backend, eval.env = environment(), assign.env = globals$backends)
 }
 
 # Compare two device objects for equality, returning FALSE when they are of
@@ -125,7 +136,7 @@ print.PlainDeviceCpu <- function(x, ...) {
   invisible(x)
 }
 
-globals$backends <- list()
+globals$backends <- new.env(parent = emptyenv())
 
 # The plain backend is merely for capturing constants during jitting in a backend-agnostic way.
 # Otherwise it is unused
@@ -214,7 +225,7 @@ active_backend <- function() {
 }
 
 assert_backend <- function(backend) {
-  assert_choice(backend, names(globals$backends))
+  assert_choice(backend, ls(globals$backends))
 }
 
 #' Temporarily set the backend
