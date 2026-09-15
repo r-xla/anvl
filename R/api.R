@@ -312,50 +312,53 @@ nv_flatten <- function(x) {
 #' y <- nv_array(c(4, 5, 6))
 #' nv_concatenate(x, y)
 #' @export
-nv_concatenate <- jit(static = "axis", function(..., axis = NULL) {
-  args <- do.call(nv_promote_to_common, list(...))
-  shapes <- lapply(args, shape)
-  ranks <- lengths(shapes)
-  non_scalar_shapes <- shapes[ranks > 0L]
-  n_scalars <- sum(ranks == 0L)
-  max_axis <- max(max(ranks), 1L)
-  if (is.null(axis)) {
-    if (max(ranks) > 1L) {
-      cli_abort("{.arg axis} must be provided when concatenating arrays with more than one axis.")
-    }
-    axis <- 1L
-  } else {
-    axis <- resolve_axis(axis, max_axis)
-  }
-
-  non_scalar_shapes_without_axis <- lapply(non_scalar_shapes, \(shape) {
-    shape[-axis]
-  })
-  if (length(non_scalar_shapes) && length(unique(non_scalar_shapes_without_axis)) != 1L) {
-    cli_abort(c(
-      "All non-scalar arrays must have the same shape apart from axis {axis}, the one they are joined along.", # nolint
-      x = "Got shapes {shapes_repr(shapes)}."
-    ))
-  }
-  size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
-
-  out_shape <- if (length(non_scalar_shapes)) {
-    x <- non_scalar_shapes[[1L]]
-    x[axis] <- size_out_axis
-  } else {
-    n_scalars
-  }
-  out_shape_axis_is_one <- out_shape
-  out_shape_axis_is_one[axis] <- 1L
-  args <- lapply(args, \(arg) {
-    if (naxes(arg) == 0L) {
-      nv_broadcast_to(arg, out_shape_axis_is_one)
+nv_concatenate <- jit(
+  function(..., axis = NULL) {
+    args <- do.call(nv_promote_to_common, list(...))
+    shapes <- lapply(args, shape)
+    ranks <- lengths(shapes)
+    non_scalar_shapes <- shapes[ranks > 0L]
+    n_scalars <- sum(ranks == 0L)
+    max_axis <- max(max(ranks), 1L)
+    if (is.null(axis)) {
+      if (max(ranks) > 1L) {
+        cli_abort("{.arg axis} must be provided when concatenating arrays with more than one axis.")
+      }
+      axis <- 1L
     } else {
-      arg
+      axis <- resolve_axis(axis, max_axis)
     }
-  })
-  rlang::exec(prim_concatenate, !!!args, axis = axis)
-})
+
+    non_scalar_shapes_without_axis <- lapply(non_scalar_shapes, \(shape) {
+      shape[-axis]
+    })
+    if (length(non_scalar_shapes) && length(unique(non_scalar_shapes_without_axis)) != 1L) {
+      cli_abort(c(
+        "All non-scalar arrays must have the same shape apart from axis {axis}, the one they are joined along.", # nolint
+        x = "Got shapes {shapes_repr(shapes)}."
+      ))
+    }
+    size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
+
+    out_shape <- if (length(non_scalar_shapes)) {
+      x <- non_scalar_shapes[[1L]]
+      x[axis] <- size_out_axis
+    } else {
+      n_scalars
+    }
+    out_shape_axis_is_one <- out_shape
+    out_shape_axis_is_one[axis] <- 1L
+    args <- lapply(args, \(arg) {
+      if (naxes(arg) == 0L) {
+        nv_broadcast_to(arg, out_shape_axis_is_one)
+      } else {
+        arg
+      }
+    })
+    rlang::exec(prim_concatenate, !!!args, axis = axis)
+  },
+  static = "axis"
+)
 
 #' @title Combine arrays by rows or columns
 #' @name nv_bind
@@ -1403,11 +1406,14 @@ nv_gamma <- jit(function(x) {
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' nv_polygamma(1, x) # trigamma
 #' @export
-nv_polygamma <- jit(static = 1L, function(n, x) {
-  args <- nv_promote_to_common(n, int_to_float(x))
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
-  do.call(prim_polygamma, args)
-})
+nv_polygamma <- jit(
+  function(n, x) {
+    args <- nv_promote_to_common(n, int_to_float(x))
+    args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+    do.call(prim_polygamma, args)
+  },
+  static = 1L
+)
 
 #' @title Error Function
 #' @description
@@ -1561,24 +1567,27 @@ nv_iota <- prim_iota
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
-nv_seq <- jit(static = 1:4, function(start, end, dtype = NULL, device = NULL) {
-  dtype <- dtype %||% default_int()
-  assert_int(start)
-  assert_int(end)
-  if (start > end) {
-    cli_abort(c(
-      "{.arg start} must not be greater than {.arg end}.",
-      x = "Got {.val {start}} and {.val {end}}."
-    ))
-  }
-  nv_iota(
-    shape = end - start + 1,
-    dtype = dtype,
-    axis = 1L,
-    start = start,
-    device = device
-  )
-})
+nv_seq <- jit(
+  function(start, end, dtype = NULL, device = NULL) {
+    dtype <- dtype %||% default_int()
+    assert_int(start)
+    assert_int(end)
+    if (start > end) {
+      cli_abort(c(
+        "{.arg start} must not be greater than {.arg end}.",
+        x = "Got {.val {start}} and {.val {end}}."
+      ))
+    }
+    nv_iota(
+      shape = end - start + 1,
+      dtype = dtype,
+      axis = 1L,
+      start = start,
+      device = device
+    )
+  },
+  static = 1:4
+)
 
 #' @title Evenly Spaced Sequence
 #' @description
@@ -1615,21 +1624,24 @@ nv_seq <- jit(static = 1:4, function(start, end, dtype = NULL, device = NULL) {
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_linspace_like(x, 0, 1, steps = 3L)
 #' @export
-nv_linspace <- jit(static = 1:5, function(start, end, steps, dtype = NULL, device = NULL) {
-  assert_number(start)
-  assert_number(end)
-  assert_int(steps, lower = 1L)
-  dtype <- assert_float_dtype(
-    dtype %||% default_float(),
-    arg = "dtype",
-    hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
-  )
-  if (steps == 1L) {
-    return(nv_fill(start, 1L, dtype = dtype, device = device))
-  }
-  indices <- nv_iota(axis = 1L, shape = steps, dtype = dtype, start = 0L, device = device)
-  indices * ((end - start) / (steps - 1L)) + start
-})
+nv_linspace <- jit(
+  function(start, end, steps, dtype = NULL, device = NULL) {
+    assert_number(start)
+    assert_number(end)
+    assert_int(steps, lower = 1L)
+    dtype <- assert_float_dtype(
+      dtype %||% default_float(),
+      arg = "dtype",
+      hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
+    )
+    if (steps == 1L) {
+      return(nv_fill(start, 1L, dtype = dtype, device = device))
+    }
+    indices <- nv_iota(axis = 1L, shape = steps, dtype = dtype, start = 0L, device = device)
+    indices * ((end - start) / (steps - 1L)) + start
+  },
+  static = 1:5
+)
 
 #' @title Pad
 #' @description
@@ -1712,25 +1724,28 @@ nv_round <- function(x, method = "nearest_even") {
 #' nv_matmul(x, y)
 #' x %*% y
 #' @export
-nv_matmul <- jit(static = "precision", function(lhs, rhs, precision = "highest") {
-  args <- nv_promote_to_common(lhs, rhs)
-  lhs <- args[[1L]]
-  rhs <- args[[2L]]
-  if (naxes(lhs) < 2L) {
-    cli_abort("{.arg lhs} must have at least 2 axes, but it has {naxes(lhs)}.")
-  }
-  if (naxes(rhs) < 2L) {
-    cli_abort("{.arg rhs} must have at least 2 axes, but it has {naxes(rhs)}.")
-  }
-  nbatch <- naxes(lhs) - 2L
-  prim_dot_general(
-    lhs,
-    rhs,
-    contracting_axes = list(naxes(lhs), naxes(rhs) - 1L),
-    batching_axes = list(seq_len(nbatch), seq_len(nbatch)),
-    precision = precision
-  )
-})
+nv_matmul <- jit(
+  function(lhs, rhs, precision = "highest") {
+    args <- nv_promote_to_common(lhs, rhs)
+    lhs <- args[[1L]]
+    rhs <- args[[2L]]
+    if (naxes(lhs) < 2L) {
+      cli_abort("{.arg lhs} must have at least 2 axes, but it has {naxes(lhs)}.")
+    }
+    if (naxes(rhs) < 2L) {
+      cli_abort("{.arg rhs} must have at least 2 axes, but it has {naxes(rhs)}.")
+    }
+    nbatch <- naxes(lhs) - 2L
+    prim_dot_general(
+      lhs,
+      rhs,
+      contracting_axes = list(naxes(lhs), naxes(rhs) - 1L),
+      batching_axes = list(seq_len(nbatch), seq_len(nbatch)),
+      precision = precision
+    )
+  },
+  static = "precision"
+)
 
 #' @title Cholesky Decomposition
 #' @description
@@ -1861,7 +1876,6 @@ nv_solve <- jit(function(a, b) {
 #' nv_triangular_solve(L, b)
 #' @export
 nv_triangular_solve <- jit(
-  static = 3:6,
   function(
     a,
     b,
@@ -1921,7 +1935,8 @@ nv_triangular_solve <- jit(
       x <- prim_reshape(x, shape = b_shape)
     }
     x
-  }
+  },
+  static = 3:6
 )
 
 # If we took a logarithm in nv_determinant(), the pivot sign is only part of the story
@@ -1980,44 +1995,47 @@ nv_det <- jit(function(x) {
 #' nv_determinant(a)
 #' nv_determinant(a, logarithm = FALSE)
 #' @export
-nv_determinant <- jit(static = 2L, function(x, logarithm = TRUE) {
-  x <- as_anvl_array(x)
-  # Adopted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
-  shp <- shape(x)
-  if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
-    cli_abort("{.arg x} must be a square 2-D matrix")
-  }
-  n <- shp[[1L]]
-  dt <- dtype(x)
-  # Empty matrix: det of the 0x0 matrix is the empty product = 1, so
-  # log|det| = 0 and sign(det) = +1. This matches `base::determinant()`
-  # and short-circuits since prim_lu rejects zero-sized inputs.
-  if (n == 0L) {
-    one <- nv_scalar_like(x, 1)
-    modulus <- if (logarithm) nv_scalar_like(x, 0) else one
-    return(list(modulus = modulus, sign = one))
-  }
-  factored <- prim_lu(x)
-  LU <- factored$LU
-  pivots <- factored$pivots
-  diag_U <- nv_extract_diag(LU)
-  pivot_sign <- lu_pivot_sign(pivots, n, dt)
+nv_determinant <- jit(
+  function(x, logarithm = TRUE) {
+    x <- as_anvl_array(x)
+    # Adopted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
+    shp <- shape(x)
+    if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
+      cli_abort("{.arg x} must be a square 2-D matrix")
+    }
+    n <- shp[[1L]]
+    dt <- dtype(x)
+    # Empty matrix: det of the 0x0 matrix is the empty product = 1, so
+    # log|det| = 0 and sign(det) = +1. This matches `base::determinant()`
+    # and short-circuits since prim_lu rejects zero-sized inputs.
+    if (n == 0L) {
+      one <- nv_scalar_like(x, 1)
+      modulus <- if (logarithm) nv_scalar_like(x, 0) else one
+      return(list(modulus = modulus, sign = one))
+    }
+    factored <- prim_lu(x)
+    LU <- factored$LU
+    pivots <- factored$pivots
+    diag_U <- nv_extract_diag(LU)
+    pivot_sign <- lu_pivot_sign(pivots, n, dt)
 
-  if (logarithm) {
-    # log|x| discards the sign of each diagonal entry, so accumulate
-    # it separately as prod(sign(diag(U))).
-    diag_sign <- nv_reduce_prod(nv_sign(diag_U), axes = 1L)
-    sign <- prim_mul(pivot_sign, diag_sign)
-    modulus <- nv_reduce_sum(prim_log(prim_abs(diag_U)), axes = 1L)
-  } else {
-    # The signed product carries both magnitude and sign; split at the end.
-    signed_prod <- nv_reduce_prod(diag_U, axes = 1L)
-    sign <- prim_mul(pivot_sign, nv_sign(signed_prod))
-    modulus <- prim_abs(signed_prod)
-  }
+    if (logarithm) {
+      # log|x| discards the sign of each diagonal entry, so accumulate
+      # it separately as prod(sign(diag(U))).
+      diag_sign <- nv_reduce_prod(nv_sign(diag_U), axes = 1L)
+      sign <- prim_mul(pivot_sign, diag_sign)
+      modulus <- nv_reduce_sum(prim_log(prim_abs(diag_U)), axes = 1L)
+    } else {
+      # The signed product carries both magnitude and sign; split at the end.
+      signed_prod <- nv_reduce_prod(diag_U, axes = 1L)
+      sign <- prim_mul(pivot_sign, nv_sign(signed_prod))
+      modulus <- prim_abs(signed_prod)
+    }
 
-  list(modulus = modulus, sign = sign)
-})
+    list(modulus = modulus, sign = sign)
+  },
+  static = 2L
+)
 
 #' @title Matrix Inverse
 #' @description
@@ -2196,10 +2214,13 @@ nv_diag <- jit(function(x) {
 #' x <- nv_fill(0, shape = c(3, 3), dtype = "f64")
 #' nv_eye_like(x, 3L)
 #' @export
-nv_eye <- jit(static = 1:3, function(n, dtype = NULL, device = NULL) {
-  dtype <- dtype %||% default_float()
-  nv_diag(nv_fill(1, n, dtype = dtype, device = device))
-})
+nv_eye <- jit(
+  function(n, dtype = NULL, device = NULL) {
+    dtype <- dtype %||% default_float()
+    nv_diag(nv_fill(1, n, dtype = dtype, device = device))
+  },
+  static = 1:3
+)
 
 # Expand `axes = NULL` to "all axes". Negative axes are resolved here
 # (not just in the primitive) because `nv_mean()` / `nv_var()` / `nv_sd()`
@@ -2232,14 +2253,17 @@ nv_eye <- jit(static = 1:3, function(n, dtype = NULL, device = NULL) {
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' nv_reduce_sum(nv_array(c(TRUE, FALSE, TRUE))) # counts: 2
 #' @export
-nv_reduce_sum <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- .count_bool(as_anvl_array(x))
-  axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    x <- nv_ifelse(nv_is_nan(x), 0, x)
-  }
-  prim_reduce_sum(x, axes = axes, drop = drop)
-})
+nv_reduce_sum <- jit(
+  function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+    x <- .count_bool(as_anvl_array(x))
+    axes <- .resolve_reduce_axes(x, axes)
+    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+      x <- nv_ifelse(nv_is_nan(x), 0, x)
+    }
+    prim_reduce_sum(x, axes = axes, drop = drop)
+  },
+  static = 2:4
+)
 
 #' @title Mean
 #' @description
@@ -2257,18 +2281,21 @@ nv_reduce_sum <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm 
 #' nv_mean(nv_array(c(1, NaN, 3)))
 #' nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_mean <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
-  axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    is_nan <- nv_is_nan(x)
-    total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
-    count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
-    return(total / count)
-  }
-  nelts <- prod(shape(x)[axes])
-  nv_reduce_sum(x, axes, drop) / nelts
-})
+nv_mean <- jit(
+  function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+    x <- as_anvl_array(x)
+    axes <- .resolve_reduce_axes(x, axes)
+    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+      is_nan <- nv_is_nan(x)
+      total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
+      count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
+      return(total / count)
+    }
+    nelts <- prod(shape(x)[axes])
+    nv_reduce_sum(x, axes, drop) / nelts
+  },
+  static = 2:4
+)
 
 #' @title Product Reduction
 #' @description
@@ -2286,14 +2313,17 @@ nv_mean <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm = FALS
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)))
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_prod <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- .count_bool(as_anvl_array(x))
-  axes <- .resolve_reduce_axes(x, axes)
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    x <- nv_ifelse(nv_is_nan(x), 1, x)
-  }
-  prim_reduce_prod(x, axes = axes, drop = drop)
-})
+nv_reduce_prod <- jit(
+  function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+    x <- .count_bool(as_anvl_array(x))
+    axes <- .resolve_reduce_axes(x, axes)
+    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+      x <- nv_ifelse(nv_is_nan(x), 1, x)
+    }
+    prim_reduce_prod(x, axes = axes, drop = drop)
+  },
+  static = 2:4
+)
 
 #' @title Max Reduction
 #' @description
@@ -2310,11 +2340,14 @@ nv_reduce_prod <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm
 #' nv_reduce_max(nv_array(c(1, NaN, 3)))
 #' nv_reduce_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_max <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
-  axes <- .resolve_reduce_axes(x, axes)
-  .nv_reduce_extreme(x, axes, drop, nan_rm, -Inf, prim_reduce_max)
-})
+nv_reduce_max <- jit(
+  function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+    x <- as_anvl_array(x)
+    axes <- .resolve_reduce_axes(x, axes)
+    .nv_reduce_extreme(x, axes, drop, nan_rm, -Inf, prim_reduce_max)
+  },
+  static = 2:4
+)
 
 #' @title Min Reduction
 #' @description
@@ -2331,11 +2364,14 @@ nv_reduce_max <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm 
 #' nv_reduce_min(nv_array(c(1, NaN, 3)))
 #' nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_min <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
-  axes <- .resolve_reduce_axes(x, axes)
-  .nv_reduce_extreme(x, axes, drop, nan_rm, Inf, prim_reduce_min)
-})
+nv_reduce_min <- jit(
+  function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+    x <- as_anvl_array(x)
+    axes <- .resolve_reduce_axes(x, axes)
+    .nv_reduce_extreme(x, axes, drop, nan_rm, Inf, prim_reduce_min)
+  },
+  static = 2:4
+)
 
 # Shared NaN-aware reduction for max/min. Unlike sum/prod (which lower to
 # arithmetic that propagates NaN), the min/max kernels are comparison-based
@@ -2375,12 +2411,15 @@ nv_reduce_min <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm 
 #' nv_range(nv_array(c(3, 1, 4)))
 #' nv_range(nv_matrix(1:6, nrow = 2), axes = 1L)
 #' @export
-nv_range <- jit(static = 2:3, function(x, axes = NULL, nan_rm = FALSE) {
-  stack_min_max(
-    nv_reduce_min(x, axes = axes, nan_rm = nan_rm),
-    nv_reduce_max(x, axes = axes, nan_rm = nan_rm)
-  )
-})
+nv_range <- jit(
+  function(x, axes = NULL, nan_rm = FALSE) {
+    stack_min_max(
+      nv_reduce_min(x, axes = axes, nan_rm = nan_rm),
+      nv_reduce_max(x, axes = axes, nan_rm = nan_rm)
+    )
+  },
+  static = 2:3
+)
 
 # The minimum and the maximum next to each other, which is what base R's
 # range() returns. A new leading axis keeps the reduced axes intact, so a
@@ -2444,17 +2483,20 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 #' @export
-nv_cumsum <- jit(static = 2:3, function(x, axis = NULL, nan_rm = FALSE) {
-  x <- .count_bool(as_anvl_array(x))
-  if (is.null(axis)) {
-    x <- nv_reshape(x, prod(shape(x)))
-    axis <- 1L
-  }
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    x <- nv_ifelse(nv_is_nan(x), 0, x)
-  }
-  prim_cumsum(x, axis = axis)
-})
+nv_cumsum <- jit(
+  function(x, axis = NULL, nan_rm = FALSE) {
+    x <- .count_bool(as_anvl_array(x))
+    if (is.null(axis)) {
+      x <- nv_reshape(x, prod(shape(x)))
+      axis <- 1L
+    }
+    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+      x <- nv_ifelse(nv_is_nan(x), 0, x)
+    }
+    prim_cumsum(x, axis = axis)
+  },
+  static = 2:3
+)
 
 #' @title Cumulative Product
 #' @description
@@ -2475,17 +2517,20 @@ nv_cumsum <- jit(static = 2:3, function(x, axis = NULL, nan_rm = FALSE) {
 #' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 #' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 #' @export
-nv_cumprod <- jit(static = 2:3, function(x, axis = NULL, nan_rm = FALSE) {
-  x <- .count_bool(as_anvl_array(x))
-  if (is.null(axis)) {
-    x <- nv_reshape(x, prod(shape(x)))
-    axis <- 1L
-  }
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    x <- nv_ifelse(nv_is_nan(x), 1, x)
-  }
-  prim_cumprod(x, axis = axis)
-})
+nv_cumprod <- jit(
+  function(x, axis = NULL, nan_rm = FALSE) {
+    x <- .count_bool(as_anvl_array(x))
+    if (is.null(axis)) {
+      x <- nv_reshape(x, prod(shape(x)))
+      axis <- 1L
+    }
+    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+      x <- nv_ifelse(nv_is_nan(x), 1, x)
+    }
+    prim_cumprod(x, axis = axis)
+  },
+  static = 2:3
+)
 
 #' @title Cumulative Maximum
 #' @description
@@ -2508,9 +2553,12 @@ nv_cumprod <- jit(static = 2:3, function(x, axis = NULL, nan_rm = FALSE) {
 #' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
-nv_cummax <- jit(static = 2:4, function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
-  .nv_cum_extreme(x, axis, with_indices, nan_rm, -Inf, prim_cummax)
-})
+nv_cummax <- jit(
+  function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
+    .nv_cum_extreme(x, axis, with_indices, nan_rm, -Inf, prim_cummax)
+  },
+  static = 2:4
+)
 
 #' @title Cumulative Minimum
 #' @description
@@ -2533,9 +2581,12 @@ nv_cummax <- jit(static = 2:4, function(x, axis = NULL, with_indices = FALSE, na
 #' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
 #' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
-nv_cummin <- jit(static = 2:4, function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
-  .nv_cum_extreme(x, axis, with_indices, nan_rm, Inf, prim_cummin)
-})
+nv_cummin <- jit(
+  function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
+    .nv_cum_extreme(x, axis, with_indices, nan_rm, Inf, prim_cummin)
+  },
+  static = 2:4
+)
 
 # NaN propagation for the default `nan_rm = FALSE` path is now handled in
 # `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
@@ -2683,32 +2734,35 @@ nv_is_infinite <- jit(function(x) {
 #' nv_var(x, axes = 1L)
 #' nv_var(nv_array(c(1, NaN, 3, 5)), axes = 1L, nan_rm = TRUE)
 #' @export
-nv_var <- jit(static = 2:5, function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
-  correction <- assert_int(correction, coerce = TRUE)
-  axes <- .resolve_reduce_axes(x, axes)
-  mean_bc <- nv_broadcast_to(
-    nv_mean(x, axes, drop = FALSE, nan_rm = nan_rm),
-    shape(x)
-  )
-  diff <- x - mean_bc
-  ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
-  if (nan_rm && is_dtype_float(peek_dtype(x))) {
-    # Counted at `ssum`'s data type, not at an integer one: the divisor then
-    # stays there, because `0` and `correction` are R values meeting a float
-    # array of their own or a narrower category and so yield to it. Counting
-    # into an integer instead would make the R double `0` cross categories and
-    # pull the result to the default float, so `nan_rm` alone would change the
-    # data type -- which is why the `nan_rm = FALSE` branch below is right.
-    count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), dtype(ssum)), axes, drop)
-    # When count <= correction the divisor clamps to 0 and ssum is 0
-    # (single non-NaN point has zero deviation, all-NaN slice contributes
-    # nothing), so 0/0 = NaN propagates naturally — no explicit mask needed.
-    return(ssum / nv_max(0, count - correction))
-  }
-  nelts <- prod(shape(x)[axes])
-  ssum / max(0L, nelts - correction)
-})
+nv_var <- jit(
+  function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
+    x <- as_anvl_array(x)
+    correction <- assert_int(correction, coerce = TRUE)
+    axes <- .resolve_reduce_axes(x, axes)
+    mean_bc <- nv_broadcast_to(
+      nv_mean(x, axes, drop = FALSE, nan_rm = nan_rm),
+      shape(x)
+    )
+    diff <- x - mean_bc
+    ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
+    if (nan_rm && is_dtype_float(peek_dtype(x))) {
+      # Counted at `ssum`'s data type, not at an integer one: the divisor then
+      # stays there, because `0` and `correction` are R values meeting a float
+      # array of their own or a narrower category and so yield to it. Counting
+      # into an integer instead would make the R double `0` cross categories and
+      # pull the result to the default float, so `nan_rm` alone would change the
+      # data type -- which is why the `nan_rm = FALSE` branch below is right.
+      count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), dtype(ssum)), axes, drop)
+      # When count <= correction the divisor clamps to 0 and ssum is 0
+      # (single non-NaN point has zero deviation, all-NaN slice contributes
+      # nothing), so 0/0 = NaN propagates naturally — no explicit mask needed.
+      return(ssum / nv_max(0, count - correction))
+    }
+    nelts <- prod(shape(x)[axes])
+    ssum / max(0L, nelts - correction)
+  },
+  static = 2:5
+)
 
 #' @title Standard Deviation
 #' @description
@@ -2728,9 +2782,12 @@ nv_var <- jit(static = 2:5, function(x, axes = NULL, drop = TRUE, correction = 1
 #' nv_sd(x)              # all axes -> scalar
 #' nv_sd(x, axes = 1L)
 #' @export
-nv_sd <- jit(static = 2:5, function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
-  nv_sqrt(nv_var(x, axes, drop, correction, nan_rm = nan_rm))
-})
+nv_sd <- jit(
+  function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
+    nv_sqrt(nv_var(x, axes, drop, correction, nan_rm = nan_rm))
+  },
+  static = 2:5
+)
 
 ## Array manipulation ----------------------------------------------------------
 
@@ -2914,10 +2971,13 @@ assert_tri_args <- function(shape, diagonal) {
 #' x <- nv_fill(0, shape = c(3, 3))
 #' nv_lower_tri_like(x)
 #' @export
-nv_lower_tri <- jit(static = 1:3, function(shape, diagonal = -1L, device = NULL) {
-  assert_tri_args(shape, diagonal)
-  tri_mask(shape, as.integer(diagonal), lower = TRUE, device = device)
-})
+nv_lower_tri <- jit(
+  function(shape, diagonal = -1L, device = NULL) {
+    assert_tri_args(shape, diagonal)
+    tri_mask(shape, as.integer(diagonal), lower = TRUE, device = device)
+  },
+  static = 1:3
+)
 
 #' @title Upper Triangular Mask
 #' @description
@@ -2942,10 +3002,13 @@ nv_lower_tri <- jit(static = 1:3, function(shape, diagonal = -1L, device = NULL)
 #' x <- nv_fill(0, shape = c(3, 3))
 #' nv_upper_tri_like(x)
 #' @export
-nv_upper_tri <- jit(static = 1:3, function(shape, diagonal = 1L, device = NULL) {
-  assert_tri_args(shape, diagonal)
-  tri_mask(shape, as.integer(diagonal), lower = FALSE, device = device)
-})
+nv_upper_tri <- jit(
+  function(shape, diagonal = 1L, device = NULL) {
+    assert_tri_args(shape, diagonal)
+    tri_mask(shape, as.integer(diagonal), lower = FALSE, device = device)
+  },
+  static = 1:3
+)
 
 #' @title Lower Triangular Matrix
 #' @description
@@ -2962,13 +3025,16 @@ nv_upper_tri <- jit(static = 1:3, function(shape, diagonal = 1L, device = NULL) 
 #' x <- nv_fill(1, c(3, 3))
 #' nv_tril(x)
 #' @export
-nv_tril <- jit(static = 2L, function(x, diagonal = 0L) {
-  x <- as_anvl_array(x)
-  if (naxes(x) != 2L) {
-    cli_abort("{.arg x} must be a 2-D array")
-  }
-  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
-})
+nv_tril <- jit(
+  function(x, diagonal = 0L) {
+    x <- as_anvl_array(x)
+    if (naxes(x) != 2L) {
+      cli_abort("{.arg x} must be a 2-D array")
+    }
+    nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+  },
+  static = 2L
+)
 
 #' @title Upper Triangular Matrix
 #' @description
@@ -2985,13 +3051,16 @@ nv_tril <- jit(static = 2L, function(x, diagonal = 0L) {
 #' x <- nv_fill(1, c(3, 3))
 #' nv_triu(x)
 #' @export
-nv_triu <- jit(static = 2L, function(x, diagonal = 0L) {
-  x <- as_anvl_array(x)
-  if (naxes(x) != 2L) {
-    cli_abort("{.arg x} must be a 2-D array")
-  }
-  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
-})
+nv_triu <- jit(
+  function(x, diagonal = 0L) {
+    x <- as_anvl_array(x)
+    if (naxes(x) != 2L) {
+      cli_abort("{.arg x} must be a 2-D array")
+    }
+    nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+  },
+  static = 2L
+)
 
 #' @title Cross Product (Matrix)
 #' @description
@@ -3188,15 +3257,18 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' nv_argsort(x)
 #' @export
-nv_argsort <- jit(static = 2:4, function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
-  x <- as_anvl_array(x)
-  if (naxes(x) == 0L) {
-    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
-  }
-  axis <- axis %||% naxes(x)
-  idx <- nv_iota_like(x, axis = axis, dtype = default_int())
-  prim_sort(list(x, idx), axis = axis, descending = decreasing, is_stable = stable)[[2L]]
-})
+nv_argsort <- jit(
+  function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
+    x <- as_anvl_array(x)
+    if (naxes(x) == 0L) {
+      cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
+    }
+    axis <- axis %||% naxes(x)
+    idx <- nv_iota_like(x, axis = axis, dtype = default_int())
+    prim_sort(list(x, idx), axis = axis, descending = decreasing, is_stable = stable)[[2L]]
+  },
+  static = 2:4
+)
 
 #' @title Top-K Elements
 #' @description
@@ -3230,33 +3302,36 @@ nv_argsort <- jit(static = 2:4, function(x, axis = NULL, decreasing = FALSE, sta
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_top_k(m, k = 2L, axis = 2L)
 #' @export
-nv_top_k <- jit(static = 2:4, function(x, k, axis = NULL, with_indices = FALSE) {
-  x <- as_anvl_array(x)
-  rank <- naxes(x)
-  if (rank == 0L) {
-    cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
-  }
-  axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
-  k <- as.integer(k)
-  assert_int(k, lower = 1L, upper = shape(x)[axis])
-
-  # prim_top_k operates on the last axis; transpose axis to last and back.
-  if (axis != rank) {
-    perm <- seq_len(rank)
-    perm[c(axis, rank)] <- c(rank, axis)
-    out <- prim_top_k(prim_transpose(x, permutation = perm), k = k)
-    values <- prim_transpose(out$values, permutation = perm)
-    if (with_indices) {
-      indices <- prim_transpose(out$indices, permutation = perm)
-      list(values = values, indices = indices)
-    } else {
-      values
+nv_top_k <- jit(
+  function(x, k, axis = NULL, with_indices = FALSE) {
+    x <- as_anvl_array(x)
+    rank <- naxes(x)
+    if (rank == 0L) {
+      cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
     }
-  } else {
-    out <- prim_top_k(x, k = k)
-    if (with_indices) out else out$values
-  }
-})
+    axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+    k <- as.integer(k)
+    assert_int(k, lower = 1L, upper = shape(x)[axis])
+
+    # prim_top_k operates on the last axis; transpose axis to last and back.
+    if (axis != rank) {
+      perm <- seq_len(rank)
+      perm[c(axis, rank)] <- c(rank, axis)
+      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k)
+      values <- prim_transpose(out$values, permutation = perm)
+      if (with_indices) {
+        indices <- prim_transpose(out$indices, permutation = perm)
+        list(values = values, indices = indices)
+      } else {
+        values
+      }
+    } else {
+      out <- prim_top_k(x, k = k)
+      if (with_indices) out else out$values
+    }
+  },
+  static = 2:4
+)
 
 #' @title Quantile
 #' @description
@@ -3313,94 +3388,97 @@ nv_top_k <- jit(static = 2:4, function(x, k, axis = NULL, with_indices = FALSE) 
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
 #' @export
-nv_quantile <- jit(static = 2:5, function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
-  x <- as_anvl_array(x)
-  # A quantile lies between two elements, so -- like base R's quantile() --
-  # a non-float array is computed at the default float instead of rounding the
-  # interpolation weights down to whole numbers.
-  if (!is_dtype_float(peek_dtype(x))) {
-    x <- nv_convert(x, default_float())
-  }
-  rank <- naxes(x)
-  if (rank == 0L) {
-    cli_abort("{.arg x} must have at least one axis to take quantiles along, but it is a scalar.")
-  }
-  assert_choice(interpolation, c("linear", "lower", "higher", "nearest", "midpoint"))
-  if (!is_valid_r(probs)) {
-    cli_abort("{.arg probs} must either be a length-1 numeric or 1-D R array.")
-  }
-  checkmate::assert_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)
-
-  is_probs_array <- !is.null(dim(probs))
-  axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
-  shp <- shape(x)
-  K <- length(probs)
-  probs <- as.numeric(probs)
-  is_float <- is_dtype_float(peek_dtype(x))
-  shp_kd <- replace(shp, axis, 1L)
-  shp_K <- replace(shp, axis, K)
-
-  # For float input, find NaN positions: nan_rm = TRUE sanitizes them to +Inf
-  # so they sort to the end; nan_rm = FALSE uses them post-hoc to propagate.
-  if (is_float) {
-    nan_mask <- nv_is_nan(x)
-    to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
-    n_valid_kd <- if (nan_rm) {
-      # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
-      # rather than crossing categories out of an integer count and
-      # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
-      # default float.
-      prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
-    } else {
-      nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
+nv_quantile <- jit(
+  function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+    x <- as_anvl_array(x)
+    # A quantile lies between two elements, so -- like base R's quantile() --
+    # a non-float array is computed at the default float instead of rounding the
+    # interpolation weights down to whole numbers.
+    if (!is_dtype_float(peek_dtype(x))) {
+      x <- nv_convert(x, default_float())
     }
-  } else {
-    to_sort <- x
-    n_valid_kd <- nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
-  }
-  sorted <- prim_sort(list(to_sort), axis = axis)[[1L]]
+    rank <- naxes(x)
+    if (rank == 0L) {
+      cli_abort("{.arg x} must have at least one axis to take quantiles along, but it is a scalar.")
+    }
+    assert_choice(interpolation, c("linear", "lower", "higher", "nearest", "midpoint"))
+    if (!is_valid_r(probs)) {
+      cli_abort("{.arg probs} must either be a length-1 numeric or 1-D R array.")
+    }
+    checkmate::assert_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)
 
-  # Broadcast `(K,) probs` along `axis` and `(shp_kd,) n_valid_kd` across
-  # `axis` → both shaped `shp_K`, with K varying along `axis`.
-  probs_shape <- replace(rep(1L, rank), axis, K)
-  probs_b <- nv_broadcast_to(
-    prim_reshape(nv_array_like(sorted, probs, shape = K), probs_shape),
-    shp_K
-  )
-  n_valid_b <- nv_broadcast_to(n_valid_kd, shp_K)
-  h <- (n_valid_b - 1) * probs_b
-  lo_f <- nv_floor(h)
-  hi_f <- nv_ceiling(h)
-  frac <- h - lo_f
+    is_probs_array <- !is.null(dim(probs))
+    axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+    shp <- shape(x)
+    K <- length(probs)
+    probs <- as.numeric(probs)
+    is_float <- is_dtype_float(peek_dtype(x))
+    shp_kd <- replace(shp, axis, 1L)
+    shp_K <- replace(shp, axis, K)
 
-  lo_val <- .gather_along_axis(sorted, nv_convert(lo_f + 1, "i32"), axis, rank, shp)
-  hi_val <- .gather_along_axis(sorted, nv_convert(hi_f + 1, "i32"), axis, rank, shp)
+    # For float input, find NaN positions: nan_rm = TRUE sanitizes them to +Inf
+    # so they sort to the end; nan_rm = FALSE uses them post-hoc to propagate.
+    if (is_float) {
+      nan_mask <- nv_is_nan(x)
+      to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
+      n_valid_kd <- if (nan_rm) {
+        # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
+        # rather than crossing categories out of an integer count and
+        # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
+        # default float.
+        prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
+      } else {
+        nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
+      }
+    } else {
+      to_sort <- x
+      n_valid_kd <- nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
+    }
+    sorted <- prim_sort(list(to_sort), axis = axis)[[1L]]
 
-  out <- switch(
-    interpolation,
-    "lower" = lo_val,
-    "higher" = hi_val,
-    "nearest" = nv_ifelse(frac < 0.5, lo_val, hi_val),
-    "linear" = lo_val * (1 - frac) + hi_val * frac,
-    "midpoint" = (lo_val + hi_val) / 2
-  )
+    # Broadcast `(K,) probs` along `axis` and `(shp_kd,) n_valid_kd` across
+    # `axis` → both shaped `shp_K`, with K varying along `axis`.
+    probs_shape <- replace(rep(1L, rank), axis, K)
+    probs_b <- nv_broadcast_to(
+      prim_reshape(nv_array_like(sorted, probs, shape = K), probs_shape),
+      shp_K
+    )
+    n_valid_b <- nv_broadcast_to(n_valid_kd, shp_K)
+    h <- (n_valid_b - 1) * probs_b
+    lo_f <- nv_floor(h)
+    hi_f <- nv_ceiling(h)
+    frac <- h - lo_f
 
-  # Propagate NaN: nan_rm = TRUE produces NaN only for all-NaN slices;
-  # nan_rm = FALSE produces NaN for any slice that contained a NaN (XLA's
-  # sort places NaN unpredictably, so we can't rely on the gather hitting it).
-  if (is_float) {
-    bad <- if (nan_rm) n_valid_kd == 0 else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
-    out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
-  }
+    lo_val <- .gather_along_axis(sorted, nv_convert(lo_f + 1, "i32"), axis, rank, shp)
+    hi_val <- .gather_along_axis(sorted, nv_convert(hi_f + 1, "i32"), axis, rank, shp)
 
-  # For scalar probs, drop the (now size-1) reduced axis. For array probs,
-  # move the K axis (currently at `axis`) to the front.
-  if (is_probs_array) {
-    prim_transpose(out, permutation = c(axis, seq_len(rank)[-axis]))
-  } else {
-    prim_reshape(out, shp[-axis])
-  }
-})
+    out <- switch(
+      interpolation,
+      "lower" = lo_val,
+      "higher" = hi_val,
+      "nearest" = nv_ifelse(frac < 0.5, lo_val, hi_val),
+      "linear" = lo_val * (1 - frac) + hi_val * frac,
+      "midpoint" = (lo_val + hi_val) / 2
+    )
+
+    # Propagate NaN: nan_rm = TRUE produces NaN only for all-NaN slices;
+    # nan_rm = FALSE produces NaN for any slice that contained a NaN (XLA's
+    # sort places NaN unpredictably, so we can't rely on the gather hitting it).
+    if (is_float) {
+      bad <- if (nan_rm) n_valid_kd == 0 else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
+      out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
+    }
+
+    # For scalar probs, drop the (now size-1) reduced axis. For array probs,
+    # move the K axis (currently at `axis`) to the front.
+    if (is_probs_array) {
+      prim_transpose(out, permutation = c(axis, seq_len(rank)[-axis]))
+    } else {
+      prim_reshape(out, shp[-axis])
+    }
+  },
+  static = 2:5
+)
 
 
 #' @title Median
@@ -3444,9 +3522,12 @@ nv_quantile <- jit(static = 2:5, function(x, probs, axis = NULL, interpolation =
 #' nv_median(nv_array(c(1, NaN, 3, 5)))
 #' nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
-nv_median <- jit(static = 2:4, function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
-  nv_quantile(x, probs = 0.5, axis = axis, interpolation = interpolation, nan_rm = nan_rm)
-})
+nv_median <- jit(
+  function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+    nv_quantile(x, probs = 0.5, axis = axis, interpolation = interpolation, nan_rm = nan_rm)
+  },
+  static = 2:4
+)
 
 #' @title Index of the Maximum
 #' @description
@@ -3477,14 +3558,17 @@ nv_median <- jit(static = 2:4, function(x, axis = NULL, interpolation = "linear"
 #' nv_argmax(nv_array(c(1, NaN, 3)))
 #' nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_argmax <- jit(static = 2:4, function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
-  if (naxes(x) == 0L) {
-    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
-  }
-  axis <- axis %||% naxes(x)
-  .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmax)
-})
+nv_argmax <- jit(
+  function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+    x <- as_anvl_array(x)
+    if (naxes(x) == 0L) {
+      cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
+    }
+    axis <- axis %||% naxes(x)
+    .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmax)
+  },
+  static = 2:4
+)
 
 #' @title Index of the Minimum
 #' @description
@@ -3509,14 +3593,17 @@ nv_argmax <- jit(static = 2:4, function(x, axis = NULL, drop = TRUE, nan_rm = FA
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)))
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 #' @export
-nv_argmin <- jit(static = 2:4, function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
-  x <- as_anvl_array(x)
-  if (naxes(x) == 0L) {
-    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
-  }
-  axis <- axis %||% naxes(x)
-  .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmin)
-})
+nv_argmin <- jit(
+  function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+    x <- as_anvl_array(x)
+    if (naxes(x) == 0L) {
+      cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
+    }
+    axis <- axis %||% naxes(x)
+    .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmin)
+  },
+  static = 2:4
+)
 
 # Shared NaN-aware argmax/argmin. The XLA arg-reduction kernels are
 # comparison-based and silently skip NaN, so `nan_rm = TRUE` is free — we

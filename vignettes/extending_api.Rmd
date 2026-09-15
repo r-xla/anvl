@@ -137,17 +137,17 @@ If the function has static arguments (anything that is not an arrayish input -- 
 
 ```r
 #' @export
-nv_mean <- jit(static = 2:4, function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+nv_mean <- jit(function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   ...
-})
+}, static = 2:4)
 
 #' @export
-nv_concatenate <- jit(static = "axis", function(..., axis = NULL) {
+nv_concatenate <- jit(function(..., axis = NULL) {
   ...
-})
+}, static = "axis")
 ```
 
-Pass `static` first, so that the function stays the last argument and the call keeps its compact form.
+Put `static` after the function, so that the signature reads on its own line.
 Use names rather than positions whenever an argument lives after `...`, since `...` has no fixed position.
 
 **When to skip `jit()`.** Don't wrap a function whose body is essentially a single primitive call -- direct aliases (`nv_log <- prim_log`) or thin wrappers that just validate and forward to one primitive. The underlying primitive is already jit-wrapped, so adding another `jit()` layer adds tracing overhead without fusing anything new.

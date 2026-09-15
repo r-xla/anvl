@@ -103,10 +103,12 @@ Primitives are `JitPrimitive` callables constructed by `new_primitive()` (define
 ## Jit-wrapping
 
 API functions are wrapped in `jit()` at the definition itself, with `static`
-first so that the function stays the last argument:
+after the function so the signature reads on its own line:
 
 ```r
-nv_foo <- jit(static = "axis", function(x, axis) { ... })
+nv_foo <- jit(function(x, axis) {
+  ...
+}, static = "axis")
 ```
 
 The call runs when the package is sourced, so the wrapper is byte-compiled with

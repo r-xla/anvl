@@ -48,9 +48,12 @@ nv_scalar_like <- function(like, data, dtype = NULL, device = NULL) {
 
 #' @rdname AnvlArray
 #' @export
-nv_empty_like <- jit(static = 2:4, function(like, dtype = NULL, shape = NULL, device = NULL) {
-  do.call(nv_empty, like_defaults(like, dtype = dtype, shape = shape, device = device))
-})
+nv_empty_like <- jit(
+  function(like, dtype = NULL, shape = NULL, device = NULL) {
+    do.call(nv_empty, like_defaults(like, dtype = dtype, shape = shape, device = device))
+  },
+  static = 2:4
+)
 
 #' @rdname nv_fill
 #' @export
@@ -78,48 +81,63 @@ nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, dev
 
 #' @rdname nv_seq
 #' @export
-nv_seq_like <- jit(static = 2:5, function(like, start, end, dtype = NULL, device = NULL) {
-  do.call(
-    nv_seq,
-    c(
-      list(start = start, end = end),
-      like_defaults(like, dtype = dtype, device = device)
+nv_seq_like <- jit(
+  function(like, start, end, dtype = NULL, device = NULL) {
+    do.call(
+      nv_seq,
+      c(
+        list(start = start, end = end),
+        like_defaults(like, dtype = dtype, device = device)
+      )
     )
-  )
-})
+  },
+  static = 2:5
+)
 
 #' @rdname nv_linspace
 #' @export
-nv_linspace_like <- jit(static = 2:6, function(like, start, end, steps, dtype = NULL, device = NULL) {
-  do.call(
-    nv_linspace,
-    c(
-      list(start = start, end = end, steps = steps),
-      like_defaults(like, dtype = dtype, device = device)
+nv_linspace_like <- jit(
+  function(like, start, end, steps, dtype = NULL, device = NULL) {
+    do.call(
+      nv_linspace,
+      c(
+        list(start = start, end = end, steps = steps),
+        like_defaults(like, dtype = dtype, device = device)
+      )
     )
-  )
-})
+  },
+  static = 2:6
+)
 
 #' @rdname nv_eye
 #' @export
-nv_eye_like <- jit(static = 2:4, function(like, n, dtype = NULL, device = NULL) {
-  do.call(nv_eye, c(list(n = n), like_defaults(like, dtype = dtype, device = device)))
-})
+nv_eye_like <- jit(
+  function(like, n, dtype = NULL, device = NULL) {
+    do.call(nv_eye, c(list(n = n), like_defaults(like, dtype = dtype, device = device)))
+  },
+  static = 2:4
+)
 
 #' @rdname nv_lower_tri
 #' @export
-nv_lower_tri_like <- jit(static = 2:4, function(like, diagonal = -1L, shape = NULL, device = NULL) {
-  do.call(
-    nv_lower_tri,
-    c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
-  )
-})
+nv_lower_tri_like <- jit(
+  function(like, diagonal = -1L, shape = NULL, device = NULL) {
+    do.call(
+      nv_lower_tri,
+      c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
+    )
+  },
+  static = 2:4
+)
 
 #' @rdname nv_upper_tri
 #' @export
-nv_upper_tri_like <- jit(static = 2:4, function(like, diagonal = 1L, shape = NULL, device = NULL) {
-  do.call(
-    nv_upper_tri,
-    c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
-  )
-})
+nv_upper_tri_like <- jit(
+  function(like, diagonal = 1L, shape = NULL, device = NULL) {
+    do.call(
+      nv_upper_tri,
+      c(list(diagonal = diagonal), like_defaults(like, shape = shape, device = device))
+    )
+  },
+  static = 2:4
+)

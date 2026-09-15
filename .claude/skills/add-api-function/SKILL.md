@@ -106,13 +106,14 @@ args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = p
 
 ### Static arguments
 
-An API function is wrapped in `jit()` at the definition itself. Pass `static`
-first, so the function stays the last argument and the call keeps its compact
-form:
+An API function is wrapped in `jit()` at the definition itself, with `static`
+after the function so the signature reads on its own line:
 
 ```r
 #' @export
-nv_foo <- jit(static = "axis", function(x, axis) { ... })   # or static = 2:4
+nv_foo <- jit(function(x, axis) {
+  ...
+}, static = "axis")   # or static = 2:4
 ```
 
 Omit `static` entirely when there are none: `nv_foo <- jit(function(x) { ... })`.

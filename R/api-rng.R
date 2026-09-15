@@ -72,7 +72,6 @@ nv_unif_rand <- function(
 #' result$values
 #' @export
 nv_runif <- jit(
-  static = c(1L, 3L, 4L, 5L),
   function(
     shape,
     initial_state,
@@ -121,7 +120,8 @@ nv_runif <- jit(
     Y <- U + min
 
     return(list(state = Unif$state, values = Y))
-  }
+  },
+  static = c(1L, 3L, 4L, 5L)
 )
 
 #' @rdname nv_normal
@@ -149,76 +149,79 @@ nv_runif <- jit(
 #' sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
 #' nv_rnorm(c(2, 3), state, sd = sds)$values
 #' @export
-nv_rnorm <- jit(static = c(1L, 3L), function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
-  shape <- assert_shapevec(shape)
+nv_rnorm <- jit(
+  function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
+    shape <- assert_shapevec(shape)
 
-  rule <- if (is.null(dtype)) {
-    promotion_common(fallback = default_float())
-  } else {
-    promotion_dtype(assert_rng_float_dtype(dtype))
-  }
-  args <- as_anvl_arrays(mean = mean, sd = sd, .promote = rule)
-  mean <- args$mean
-  sd <- args$sd
-  dtype <- assert_rng_float_dtype(
-    dtype(mean),
-    arg = "mean/sd",
-    hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
-  )
-  # n: amount of rvs needed
-  n <- prod(shape)
+    rule <- if (is.null(dtype)) {
+      promotion_common(fallback = default_float())
+    } else {
+      promotion_dtype(assert_rng_float_dtype(dtype))
+    }
+    args <- as_anvl_arrays(mean = mean, sd = sd, .promote = rule)
+    mean <- args$mean
+    sd <- args$sd
+    dtype <- assert_rng_float_dtype(
+      dtype(mean),
+      arg = "mean/sd",
+      hint = "Pass {.arg dtype} to say what data type the sample should be drawn at."
+    )
+    # n: amount of rvs needed
+    n <- prod(shape)
 
-  # Box-Muller Method:
-  # from two random uniform variables u1 and u2 we can produce to normals z1, z2
-  # z1 = sqrt(-2 * log(u1)) * cos(2 * pi * u2)
-  # z2 = sqrt(-2 * log(u1)) * sin(2 * pi * u2)
-  # Box-Muller works via polar representation of coordinates.
-  # We scale this approach and genereate ceil(n/2) uniform rvs twice (U, Theta)
+    # Box-Muller Method:
+    # from two random uniform variables u1 and u2 we can produce to normals z1, z2
+    # z1 = sqrt(-2 * log(u1)) * cos(2 * pi * u2)
+    # z2 = sqrt(-2 * log(u1)) * sin(2 * pi * u2)
+    # Box-Muller works via polar representation of coordinates.
+    # We scale this approach and genereate ceil(n/2) uniform rvs twice (U, Theta)
 
-  # generate the first ceil(n/2) random uniform variables
-  U <- nv_unif_rand(
-    initial_state = initial_state,
-    dtype = dtype,
-    shape = as.integer(ceiling(n / 2))
-  )
+    # generate the first ceil(n/2) random uniform variables
+    U <- nv_unif_rand(
+      initial_state = initial_state,
+      dtype = dtype,
+      shape = as.integer(ceiling(n / 2))
+    )
 
-  # compute the radius R = sqrt(-2 * log(u1))
-  R <- nv_mul(nv_log(U$values), -2)
-  sqrt_R <- nv_sqrt(R)
+    # compute the radius R = sqrt(-2 * log(u1))
+    R <- nv_mul(nv_log(U$values), -2)
+    sqrt_R <- nv_sqrt(R)
 
-  # generate second batch of ceil(n/2) random uniform variables
-  Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2)))
+    # generate second batch of ceil(n/2) random uniform variables
+    Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2)))
 
-  # compute cos(2 * pi * u2) / sin(2 * pi * u2)
-  Theta$values <- nv_mul(Theta$values, 2 * pi)
-  sin_Theta <- nv_sin(Theta$values)
-  cos_Theta <- nv_cos(Theta$values)
+    # compute cos(2 * pi * u2) / sin(2 * pi * u2)
+    Theta$values <- nv_mul(Theta$values, 2 * pi)
+    sin_Theta <- nv_sin(Theta$values)
+    cos_Theta <- nv_cos(Theta$values)
 
-  # compute z1, z2
-  Z1 <- nv_mul(sqrt_R, sin_Theta)
-  Z2 <- nv_mul(sqrt_R, cos_Theta)
+    # compute z1, z2
+    Z1 <- nv_mul(sqrt_R, sin_Theta)
+    Z2 <- nv_mul(sqrt_R, cos_Theta)
 
-  # concatenate z = (z1, z2)
-  Z <- nv_concatenate(Z1, Z2, axis = 1L)
+    # concatenate z = (z1, z2)
+    Z <- nv_concatenate(Z1, Z2, axis = 1L)
 
-  # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
-  if (n %% 2 == 1) {
-    Z <- nv_static_slice(Z, start_indices = 1L, limit_indices = n, strides = 1L)
-  }
+    # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
+    if (n %% 2 == 1) {
+      Z <- nv_static_slice(Z, start_indices = 1L, limit_indices = n, strides = 1L)
+    }
 
-  # reshape Z to match requested shape
-  Z <- nv_reshape(Z, shape = shape)
+    # reshape Z to match requested shape
+    Z <- nv_reshape(Z, shape = shape)
 
-  # Scale and shift the standard normals. This happens after the reshape so
-  # that an arrayish `mean`/`sd` broadcasts against `shape` and not against the
-  # flat buffer of ceil(n/2) * 2 draws.
-  # was:    mean(Z) = 0, var(Z) = 1
-  # now:    mean(N) = mean, var(N) = sd^2
-  N <- Z * sd + mean
+    # Scale and shift the standard normals. This happens after the reshape so
+    # that an arrayish `mean`/`sd` broadcasts against `shape` and not against the
+    # flat buffer of ceil(n/2) * 2 draws.
+    # was:    mean(Z) = 0, var(Z) = 1
+    # now:    mean(N) = mean, var(N) = sd^2
+    N <- Z * sd + mean
 
-  # return state and Normals N
-  list(state = Theta$state, values = N)
-})
+    # return state and Normals N
+    list(state = Theta$state, values = N)
+  },
+  static = c(1L, 3L)
+)
 
 #' @title Sample from a Binomial Distribution
 #' @description
@@ -243,38 +246,41 @@ nv_rnorm <- jit(static = c(1L, 3L), function(shape, initial_state, dtype = NULL,
 #' result <- nv_rbinom(c(2, 3), state)
 #' result$values
 #' @export
-nv_rbinom <- jit(static = c(1L, 3L, 4L, 5L), function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
-  # The sample counts successes, which `bool` cannot hold: it used to come back
-  # as `bool` for `size = 1` and silently as an integer for anything above.
-  dtype <- assert_numeric_dtype(
-    dtype %||% default_int(),
-    arg = "dtype"
-  )
-  checkmate::assert_int(size, lower = 1)
-  checkmate::assert_number(prob, lower = 0, upper = 1)
-  shape <- assert_shapevec(shape)
+nv_rbinom <- jit(
+  function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
+    # The sample counts successes, which `bool` cannot hold: it used to come back
+    # as `bool` for `size = 1` and silently as an integer for anything above.
+    dtype <- assert_numeric_dtype(
+      dtype %||% default_int(),
+      arg = "dtype"
+    )
+    checkmate::assert_int(size, lower = 1)
+    checkmate::assert_number(prob, lower = 0, upper = 1)
+    shape <- assert_shapevec(shape)
 
-  n_samples <- prod(shape)
-  n_trials <- n_samples * size
+    n_samples <- prod(shape)
+    n_trials <- n_samples * size
 
-  # Generate uniform samples in [0, 1) and compare to prob
-  # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
-  # so we don't benefit from using runif w.r.t. unbiasedness
-  res <- nv_unif_rand(initial_state, shape = n_trials, dtype = "f64")
-  U <- res$values
+    # Generate uniform samples in [0, 1) and compare to prob
+    # Note that using runif() generates in (0, 1), but by shifting the 0 to the smallest value
+    # so we don't benefit from using runif w.r.t. unbiasedness
+    res <- nv_unif_rand(initial_state, shape = n_trials, dtype = "f64")
+    U <- res$values
 
-  # Success if U < prob
-  successes <- nv_convert(nv_lt(U, prob), dtype = dtype)
+    # Success if U < prob
+    successes <- nv_convert(nv_lt(U, prob), dtype = dtype)
 
-  result <- if (size == 1L) {
-    nv_reshape(successes, shape = shape)
-  } else {
-    successes <- nv_reshape(nv_convert(successes, dtype), shape = c(size, shape))
-    nv_reduce_sum(successes, axes = 1L, drop = TRUE)
-  }
+    result <- if (size == 1L) {
+      nv_reshape(successes, shape = shape)
+    } else {
+      successes <- nv_reshape(nv_convert(successes, dtype), shape = c(size, shape))
+      nv_reduce_sum(successes, axes = 1L, drop = TRUE)
+    }
 
-  list(state = res$state, values = result)
-})
+    list(state = res$state, values = result)
+  },
+  static = c(1L, 3L, 4L, 5L)
+)
 
 #' @title Sample Integers
 #' @description
@@ -301,19 +307,22 @@ nv_rbinom <- jit(static = c(1L, 3L, 4L, 5L), function(shape, initial_state, size
 #' result <- nv_sample_int(6, state, 6L)
 #' result$values
 #' @export
-nv_sample_int <- jit(static = c(1L, 3L, 4L), function(shape, initial_state, n, dtype = NULL) {
-  # An index is a count too: at `bool` every draw collapsed to `TRUE`.
-  dtype <- assert_numeric_dtype(
-    dtype %||% default_int(),
-    arg = "dtype"
-  )
-  assert_int(n, lower = 1)
-  shape <- assert_shapevec(shape)
+nv_sample_int <- jit(
+  function(shape, initial_state, n, dtype = NULL) {
+    # An index is a count too: at `bool` every draw collapsed to `TRUE`.
+    dtype <- assert_numeric_dtype(
+      dtype %||% default_int(),
+      arg = "dtype"
+    )
+    assert_int(n, lower = 1)
+    shape <- assert_shapevec(shape)
 
-  out <- sample_indices(initial_state, as.integer(n), prod(shape))
+    out <- sample_indices(initial_state, as.integer(n), prod(shape))
 
-  list(state = out$state, values = nv_reshape(nv_convert(out$values, dtype), shape))
-})
+    list(state = out$state, values = nv_reshape(nv_convert(out$values, dtype), shape))
+  },
+  static = c(1L, 3L, 4L)
+)
 
 #' @title Sample from a Population
 #' @description
@@ -337,19 +346,22 @@ nv_sample_int <- jit(static = c(1L, 3L, 4L), function(shape, initial_state, n, d
 #' result <- nv_sample(5, state, pop)
 #' result$values
 #' @export
-nv_sample <- jit(static = 1L, function(shape, initial_state, x) {
-  shape <- assert_shapevec(shape)
-  x <- as_anvl_array(x)
-  x_shape <- shape(x)
-  if (length(x_shape) != 1L) {
-    cli_abort("{.arg x} must be a 1-D array, but has {length(x_shape)} axes.")
-  }
-  n <- x_shape[1L]
+nv_sample <- jit(
+  function(shape, initial_state, x) {
+    shape <- assert_shapevec(shape)
+    x <- as_anvl_array(x)
+    x_shape <- shape(x)
+    if (length(x_shape) != 1L) {
+      cli_abort("{.arg x} must be a 1-D array, but has {length(x_shape)} axes.")
+    }
+    n <- x_shape[1L]
 
-  out <- sample_indices(initial_state, n, prod(shape))
+    out <- sample_indices(initial_state, n, prod(shape))
 
-  list(state = out$state, values = nv_reshape(nv_subset(x, out$values), shape))
-})
+    list(state = out$state, values = nv_reshape(nv_subset(x, out$values), shape))
+  },
+  static = 1L
+)
 
 # Draw `n_sample` uniformly distributed 1-based indices into a population of
 # size `n`, with replacement. Returns the updated RNG state and the indices.
