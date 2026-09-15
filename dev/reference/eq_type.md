@@ -2,6 +2,12 @@
 
 Compare two abstract arrays for type equality.
 
+An [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md) has no
+data type to compare, so it is an error here, just as
+[`dtype()`](https://r-xla.github.io/tengen/reference/dtype.html) is.
+Commit it first, e.g. with
+[`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md).
+
 ## Usage
 
 ``` r
@@ -15,12 +21,14 @@ neq_type(e1, e2)
 - e1:
 
   ([`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))  
-  First array to compare.
+  First array to compare. Must not be an
+  [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md).
 
 - e2:
 
   ([`AbstractArray`](https://r-xla.github.io/anvl/dev/reference/AbstractArray.md))  
-  Second array to compare.
+  Second array to compare. Must not be an
+  [`RData`](https://r-xla.github.io/anvl/dev/reference/RData.md).
 
 ## Value
 
