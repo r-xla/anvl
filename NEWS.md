@@ -25,6 +25,8 @@
 
 ## Features
 
+* New `jit_cache_size()` reports how many compiled programs a jitted function
+  currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
   `nv_sample_int()`, `nv_sample()`) and `prim_rng_bit_generator()` return a
   named list with elements `state` and `values` instead of an unnamed pair,

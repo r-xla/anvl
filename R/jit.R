@@ -90,6 +90,8 @@
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
 #' @seealso
+#'   [`jit_cache_size()`] for how many programs a jitted function has cached.
+#'
 #'   [`jit_roclet()`] for the `@jit` tag used inside R packages.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
@@ -182,6 +184,63 @@ jit_config <- function(f) {
     return(NULL)
   }
   environment(f)$.jit_cfg
+}
+
+#' @title Number of cached programs of a jitted function
+#' @description
+#' The number of compiled programs a function returned by [`jit()`] currently
+#' holds for one backend, i.e. how many entries of its compilation cache are
+#' filled. A call whose inputs hit an existing entry leaves this unchanged; a
+#' call that misses adds one, up to the `cache_size` cap [`jit()`] was given,
+#' beyond which the least recently used entry is evicted.
+#'
+#' Each backend a jitted function has run on keeps its own cache, so this is
+#' reported for one backend at a time.
+#' @param f (`function`)\cr
+#'   A function returned by [`jit()`].
+#' @param backend (`character(1)`)\cr
+#'   The backend whose cache to report on. Defaults to the active one
+#'   ([`active_backend()`]).
+#' @return `integer(1)`. A backend that `f` has not run on yet reports `0`,
+#'   since the caches are created on first use.
+#' @seealso [`jit()`]
+#' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' f <- jit(function(x, y) x + y)
+#' jit_cache_size(f)
+#'
+#' f(nv_scalar(1), nv_scalar(2))
+#' jit_cache_size(f)
+#'
+#' # same dtypes and shapes -- a cache hit, no new entry
+#' f(nv_scalar(3), nv_scalar(4))
+#' jit_cache_size(f)
+#'
+#' # a different shape -- a second program is compiled
+#' f(nv_array(c(1, 2)), nv_array(c(3, 4)))
+#' jit_cache_size(f)
+jit_cache_size <- function(f, backend = active_backend()) {
+  assert_backend(backend)
+  dispatcher <- jit_dispatcher(f, backend)
+  if (is.null(dispatcher)) {
+    return(0L)
+  }
+  pjrt::dispatcher_size(dispatcher)
+}
+
+# The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
+# implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
+# run on that backend yet, since the implementations are built on first call.
+jit_dispatcher <- function(f, backend = active_backend()) {
+  jit_fns <- environment(f)$.jit_fns
+  if (is.null(jit_fns)) {
+    cli_abort("{.arg f} is not a jitted function.")
+  }
+  impl <- jit_fns[[backend]]
+  if (is.null(impl)) {
+    return(NULL)
+  }
+  environment(impl)$dispatcher
 }
 
 # The options a backend's `jit` method takes beyond the ones every backend

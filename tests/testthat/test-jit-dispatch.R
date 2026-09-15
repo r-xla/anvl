@@ -11,8 +11,6 @@ skip_if_no_jit <- function() {
   testthat::skip_if_not(pjrt::plugins_downloaded())
 }
 
-jit_size <- function(f) cache_size(f)
-
 arr_of <- function(res) as.numeric(tengen::as_array(res))
 
 test_that("jit() dispatches, caches, and returns wrapped arrays", {
@@ -72,7 +70,7 @@ test_that("jit() with static args compiles per static value", {
   expect_equal(arr_of(f(x, TRUE)), 4)
   expect_equal(arr_of(f(x, FALSE)), 6)
   expect_equal(arr_of(f(x, TRUE)), 4) # hit
-  expect_equal(jit_size(f), 2L)
+  expect_equal(jit_cache_size(f), 2L)
 })
 
 test_that("a jitted call with no dynamic input dispatches on its statics alone", {
@@ -82,7 +80,7 @@ test_that("a jitted call with no dynamic input dispatches on its statics alone",
   f <- jit(function(n) nv_eye(n), static = "n")
   expect_equal(tengen::as_array(f(2L)), diag(2))
   expect_equal(tengen::as_array(f(2L)), diag(2))
-  expect_equal(jit_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 })
 
 test_that("jit() uploads bare R literals and arrays", {
@@ -94,19 +92,19 @@ test_that("jit() uploads bare R literals and arrays", {
   # signature does not change, so the second call is a cache hit.
   expect_equal(arr_of(f(x, 5)), c(6, 7))
   expect_equal(arr_of(f(x, 50)), c(51, 52))
-  expect_equal(jit_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 
   # kArray and kRData are *different* key material: bare R data has no dtype of
   # its own, so it cannot share an entry with an array that has one -- the two
   # compile to different programs, one taking an f32 input and one uploading the
   # R value at whatever dtype the trace decided.
   expect_equal(arr_of(f(x, nv_scalar(5, dtype = "f32"))), c(6, 7))
-  expect_equal(jit_size(f), 2L)
+  expect_equal(jit_cache_size(f), 2L)
 
   # A different R storage type is a different key again: `3L` is an R integer,
   # keyed apart from an R double even though both end up at f32 here.
   expect_equal(arr_of(f(x, 3L)), c(4, 5))
-  expect_equal(jit_size(f), 3L)
+  expect_equal(jit_cache_size(f), 3L)
 
   # An R array leaf uploads column-major, like pjrt_buffer().
   g <- jit(function(x) x)
@@ -122,13 +120,13 @@ test_that("every dtype is its own cache entry", {
   for (dt in dtypes) {
     invisible(f(nv_array(c(1, 2), dtype = dt)))
   }
-  expect_equal(jit_size(f), length(dtypes))
+  expect_equal(jit_cache_size(f), length(dtypes))
 
   # Same dtype and shape, different values -> cache hit.
   g <- jit(function(x) x)
   invisible(g(nv_array(c(1, 2), dtype = "f64")))
   invisible(g(nv_array(c(7, 7), dtype = "f64")))
-  expect_equal(jit_size(g), 1L)
+  expect_equal(jit_cache_size(g), 1L)
 })
 
 # What follows is how the cache key treats real R values as static arguments.
@@ -139,13 +137,13 @@ test_that("invalid jit() inputs are rejected natively, naming the argument", {
   x <- nv_array(c(1, 2), dtype = "f32")
   expect_error(f(x, "nope"), "invalid input `y`.*<character> of length 1")
   expect_error(f(x, c(1, 2, 3)), "invalid input `y`.*<numeric> of length 3")
-  expect_equal(jit_size(f), 0L) # rejected before any compile
+  expect_equal(jit_cache_size(f), 0L) # rejected before any compile
 
   # A static argument must not be an AnvlArray: it would key the cache on its
   # contents, and be traced as an input execution never supplies.
   g <- jit(function(x, s) x + 1, static = "s")
   expect_error(g(x, x), "invalid static input `s`.*must not be an AnvlArray")
-  expect_equal(jit_size(g), 0L)
+  expect_equal(jit_cache_size(g), 0L)
 })
 
 test_that("jit() rejects inputs spread across devices, naming the input", {
@@ -159,7 +157,7 @@ test_that("jit() rejects inputs spread across devices, naming the input", {
   # conflicting input is an error -- caught natively, before the cache is
   # probed, so nothing is compiled.
   expect_error(f(x0, y1), "invalid input `y`.*different device")
-  expect_equal(jit_size(f), 0L)
+  expect_equal(jit_cache_size(f), 0L)
 })
 
 test_that("jit(device = ) fixes the entry's device and moves inputs to it", {
@@ -176,7 +174,7 @@ test_that("jit(device = ) fixes the entry's device and moves inputs to it", {
   # and the device is not part of the key: one entry serves both.
   y1 <- nv_array(c(3, 4), dtype = "f32", device = "cpu:1")
   expect_equal(arr_of(f(y1)), c(4, 5))
-  expect_equal(jit_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 })
 
 test_that("a jitted function with no array inputs keys on the default device", {
@@ -184,7 +182,7 @@ test_that("a jitted function with no array inputs keys on the default device", {
   f <- jit(function(n) n + 1)
   expect_equal(arr_of(f(41)), 42)
   expect_equal(arr_of(f(41)), 42)
-  expect_equal(jit_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 })
 
 test_that("the quickr backend dispatches through the closure engine", {
@@ -198,7 +196,7 @@ test_that("the quickr backend dispatches through the closure engine", {
     expect_identical(r1$backend, "quickr")
     expect_equal(arr_of(r1), c(11, 22))
     invisible(f(x, y))
-    expect_equal(jit_size(f), 1L)
+    expect_equal(jit_cache_size(f), 1L)
   })
 })
 

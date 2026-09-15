@@ -85,7 +85,7 @@ test_that("jit: an autoconverted leaf is not baked into the program", {
   # Same key, so this is a cache hit -- and it must still return its own value,
   # not the one the program was compiled with.
   expect_identical(as_array(f(x, pi)), pi)
-  expect_equal(cache_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 })
 
 test_that("jit: a leaf used at two dtypes is exact at the wider one", {
