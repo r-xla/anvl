@@ -1343,3 +1343,70 @@ test_that("prim_fill() takes a whole number at an integer data type", {
   expect_equal(as.vector(prim_fill(0, 2L, dtype = "bool")), c(FALSE, FALSE))
   expect_equal(as.integer(nv_fill(1, shape = 2L, dtype = "i32")), c(1L, 1L))
 })
+
+test_that("the dynamic slicing primitives go through stablehlo's inference", {
+  v <- nv_array(c(10, 20, 30))
+  # These built their output aval by hand, so nothing stablehlo checks was
+  # checked: the mistakes below reached the PJRT compiler and came back as raw
+  # MLIR dumps.
+  expect_error(
+    prim_dynamic_slice(v, nv_scalar(1.5), slice_sizes = 1L),
+    "must have dtype int or uint"
+  )
+  expect_error(
+    prim_dynamic_slice(v, nv_scalar(1L), nv_scalar(1L), slice_sizes = 1L),
+    "must equal rank"
+  )
+  expect_error(
+    prim_dynamic_slice(v, nv_scalar(1L), slice_sizes = 9L),
+    "must not be greater than"
+  )
+  expect_error(
+    prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1.5)),
+    "must have dtype int or uint"
+  )
+  expect_error(
+    prim_dynamic_update_slice(v, nv_array(c(1, 2, 3, 4), shape = c(2, 2)), nv_scalar(1L)),
+    "must equal rank"
+  )
+
+  # The valid calls still give what they always did.
+  expect_equal(as.vector(prim_dynamic_slice(v, nv_scalar(1L), slice_sizes = 2L)), c(10, 20))
+  expect_equal(
+    as.vector(prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1L))),
+    c(99, 20, 30)
+  )
+})
+
+test_that("prim_reduce() requires a reductor it can call with two arguments", {
+  v <- nv_array(c(10, 20, 30))
+  add <- function(a, b) nv_add(a, b)
+  # A third required argument is left missing, and R does not complain because
+  # the body never forces it -- so the traced body just handed an operand back
+  # and the reduction silently returned `init` instead of 60.
+  expect_error(
+    prim_reduce(v, init = nv_scalar(0), reductor = function(a, b, c) a, axes = 1L),
+    "must be callable with two arguments"
+  )
+  expect_error(
+    prim_reduce(v, init = nv_scalar(0), reductor = function(a) a, axes = 1L),
+    "must be callable with two arguments"
+  )
+
+  # An extra argument that has a default is fine: the two operands still bind.
+  expect_equal(
+    as.vector(prim_reduce(
+      v,
+      init = nv_scalar(0),
+      reductor = function(a, b, how = "sum") add(a, b),
+      axes = 1L
+    )),
+    60
+  )
+  # As is `...`.
+  expect_equal(
+    as.vector(prim_reduce(v, init = nv_scalar(0), reductor = function(...) add(...), axes = 1L)),
+    60
+  )
+  expect_equal(as.vector(prim_reduce(v, init = nv_scalar(0), reductor = add, axes = 1L)), 60)
+})
