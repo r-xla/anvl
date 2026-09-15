@@ -34,6 +34,16 @@ instead of being rebuilt on every \code{.onLoad}:
 \code{.jit_registry} is the variable defined by \code{R/jit-registry.R}, which is
 regenerated on every \code{devtools::document()}.
 }
+\section{Aliases}{
+
+Because this runs after the rest of the package is sourced, an alias of a
+tagged function (\code{g <- f}) has already copied the unwrapped function by the
+time \code{f} is rebound. Every other binding in \code{envir} that still holds one of
+the tagged functions is therefore rebound along with it, to the very same
+\code{JitFunction}, so \code{f} and \code{g} stay interchangeable and share one compilation
+cache.
+}
+
 \seealso{
 \code{\link[=jit_roclet]{jit_roclet()}}, \code{\link[=jit]{jit()}}
 }

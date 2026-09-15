@@ -51,6 +51,15 @@
 #'
 #' Anything other than a `static = ...` argument is rejected.
 #'
+#' @section Aliases:
+#' The tag marks the *function*, not the name it happens to be bound to.
+#' [`apply_jit_registry()`] runs after the rest of the package is sourced, so an
+#' alias written earlier (`g <- f`) has already copied the unwrapped function;
+#' it is rebound to the same `JitFunction` as `f`, and the two share one
+#' compilation cache. A function reachable under several names is therefore
+#' jitted under all of them, so tag a bare alias of something that must stay
+#' unwrapped (`nv_x <- prim_x`) only if you want `prim_x` jitted too.
+#'
 #' @seealso [`apply_jit_registry()`], [`jit()`]
 #' @return A roxygen2 roclet object.
 #' @export

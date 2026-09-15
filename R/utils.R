@@ -20,6 +20,14 @@ dtype_from_buffer <- function(x) {
 #' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
 #' regenerated on every `devtools::document()`.
 #'
+#' @section Aliases:
+#' Because this runs after the rest of the package is sourced, an alias of a
+#' tagged function (`g <- f`) has already copied the unwrapped function by the
+#' time `f` is rebound. Every other binding in `envir` that still holds one of
+#' the tagged functions is therefore rebound along with it, to the very same
+#' `JitFunction`, so `f` and `g` stay interchangeable and share one compilation
+#' cache.
+#'
 #' @param registry (`list`)\cr
 #'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
 #'   `.jit_registry` object emitted by the roclet.
@@ -31,14 +39,50 @@ dtype_from_buffer <- function(x) {
 #' @seealso [`jit_roclet()`], [`jit()`]
 #' @export
 apply_jit_registry <- function(registry, envir = parent.frame()) {
-  for (entry in registry) {
-    assign(
-      entry$name,
-      jit(get(entry$name, envir = envir, inherits = FALSE), static = entry$static),
-      envir = envir
-    )
+  names(registry) <- vapply(registry, function(entry) entry$name, character(1L))
+  originals <- lapply(names(registry), get, envir = envir, inherits = FALSE)
+  names(originals) <- names(registry)
+  aliases <- jit_registry_aliases(originals, envir)
+
+  for (name in names(registry)) {
+    wrapper <- jit(originals[[name]], static = registry[[name]]$static)
+    for (target in c(name, aliases[[name]])) {
+      assign(target, wrapper, envir = envir)
+    }
   }
   invisible(envir)
+}
+
+# Names in `envir`, other than the tagged ones, that hold one of `originals`,
+# as a list mapping each tagged name to its aliases. Two functions that are
+# `identical()` have the same formals, body and enclosure, so an alias is
+# indistinguishable from its target and jitting it is what the tag asked for.
+jit_registry_aliases <- function(originals, envir) {
+  candidates <- setdiff(ls(envir, all.names = TRUE), names(originals))
+  values <- mget(
+    candidates,
+    envir = envir,
+    mode = "function",
+    ifnotfound = list(NULL),
+    inherits = FALSE
+  )
+  matches <- lapply(values, function(value) {
+    if (is.null(value)) {
+      return(character())
+    }
+    names(originals)[vapply(originals, identical, logical(1L), value)]
+  })
+  ambiguous <- which(lengths(matches) > 1L)
+  if (length(ambiguous)) {
+    name <- names(matches)[ambiguous[1L]]
+    targets <- matches[[ambiguous[1L]]]
+    cli_abort(c(
+      "Cannot apply the {.code @jit} registry.",
+      x = "{.val {name}} is an alias of more than one tagged function: {.val {targets}}."
+    ))
+  }
+  matches <- matches[lengths(matches) == 1L]
+  split(names(matches), unlist(matches, use.names = FALSE))
 }
 
 hashvalues <- function(h) {

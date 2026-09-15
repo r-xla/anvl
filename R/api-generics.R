@@ -9,12 +9,10 @@ NULL
 # The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
 # functions, registered for the second class.
 #
-# A delegate *calls* its twin instead of being assigned it
-# (`floor.AnvlArray <- nv_floor`), even where the arguments line up exactly.
-# An assignment captures the function, and R/zzz.R rebinds every `@jit`-tagged
-# `nv_*` name to its jitted wrapper after this file is sourced, so the alias
-# would hold the version from before that and quietly skip `jit()`. Calling by
-# name looks the binding up when the method runs, whatever the collation order.
+# A delegate *calls* its twin (`floor.AnvlArray <- function(x) nv_floor(x)`)
+# rather than being assigned it, so that every method here reads the same, also
+# where the arguments do not line up. Assigning works too: `apply_jit_registry()`
+# in R/zzz.R rebinds the aliases of a `@jit`-tagged function along with it.
 
 # Arithmetic operators ---------------------------------------------------------
 

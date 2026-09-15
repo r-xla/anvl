@@ -63,6 +63,17 @@ other expression yielding a character/integer vector are allowed.
 Anything other than a \code{static = ...} argument is rejected.
 }
 
+\section{Aliases}{
+
+The tag marks the \emph{function}, not the name it happens to be bound to.
+\code{\link[=apply_jit_registry]{apply_jit_registry()}} runs after the rest of the package is sourced, so an
+alias written earlier (\code{g <- f}) has already copied the unwrapped function;
+it is rebound to the same \code{JitFunction} as \code{f}, and the two share one
+compilation cache. A function reachable under several names is therefore
+jitted under all of them, so tag a bare alias of something that must stay
+unwrapped (\code{nv_x <- prim_x}) only if you want \code{prim_x} jitted too.
+}
+
 \seealso{
 \code{\link[=apply_jit_registry]{apply_jit_registry()}}, \code{\link[=jit]{jit()}}
 }

@@ -62,6 +62,9 @@
 
 ## Bug fixes
 
+* An alias of a `@jit`-tagged function (`g <- f`) is now rebound to the same
+  `JitFunction` as the function itself, instead of keeping the unwrapped
+  version.
 * `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
   hold a count or an index.
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
