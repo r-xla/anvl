@@ -397,20 +397,23 @@ this requires the input types to be known. Instead, <code>f_jit</code>
 is a “lazy” function that will only perform these steps once the inputs
 are provided. However, if those steps were applied every time the
 <code>f_jit</code> function is called, this would be very inefficient,
-because tracing and compiling take some time. Therefore, the function
-<code>f_jit</code> also contains a cache (implemented as an
-<code><a href="https://rdrr.io/pkg/xlamisc/man/LRUCache.html" class="external-link">xlamisc::LRUCache</a></code>), which will check whether there is
-already a compiled executable for the given inputs. For this, the types
-of all <code>AnvlArray</code>s need to match exactly (data type and
-shape) and all static arguments need to be identical. For example, if we
-run the function with <code>AnvlArray</code>s of the same type, but
-different values, the function won’t be recompiled, which we can see by
-checking the size of the cache, which is already 1, because we have
+because tracing and compiling take some time. Therefore,
+<code>f_jit</code> also holds a cache of compiled executables, which
+will check whether there is already one for the given inputs. The cache
+is an LRU cache of <code><a href="../reference/jit.html">jit()</a></code>’s <code>cache_size</code> entries,
+owned by the backend’s dispatcher (<code><a href="https://r-xla.github.io/pjrt/reference/dispatcher.html" class="external-link">pjrt::dispatcher()</a></code>), so
+a function that has run on more than one backend holds one cache per
+backend (see <em>Backend and Device in <code><a href="../reference/jit.html">jit()</a></code></em> below).
+For a hit, the types of all <code>AnvlArray</code>s need to match
+exactly (data type and shape) and all static arguments need to be
+identical. For example, if we run the function with
+<code>AnvlArray</code>s of the same type, but different values, the
+function won’t be recompiled, which we can see with
+<code><a href="../reference/jit_cache_size.html">jit_cache_size()</a></code>, which is already 1, because we have
 called it on <code>x</code> and <code>y</code> above.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cache_size</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">environment</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">$</span><span class="va">cache</span><span class="op">$</span><span class="va">size</span></span>
-<span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## NULL</span></span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 1</span></span></code></pre>
 <p>After calling it with arrays of the same types and identical static
 argument values, the size of the cache remains 1:</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
@@ -419,8 +422,8 @@ argument values, the size of the cache remains 1:</p>
 <span><span class="co">##  -97</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## NULL</span></span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 1</span></span></code></pre>
 <p>When we execute the function with arrays of different
 <code>dtype</code> or <code>shape</code>, the function will be
 recompiled:</p>
@@ -430,8 +433,8 @@ recompiled:</p>
 <span><span class="co">##  3</span></span>
 <span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## NULL</span></span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 2</span></span></code></pre>
 <p>Also, if we provide different values for static arguments, the
 function will be recompiled:</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
@@ -440,8 +443,8 @@ function will be recompiled:</p>
 <span><span class="co">##  2</span></span>
 <span><span class="co">## [ CPUf32{} ]</span></span></code></pre>
 <div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">cache_size</span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## NULL</span></span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/jit_cache_size.html">jit_cache_size</a></span><span class="op">(</span><span class="va">f_jit</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## [1] 3</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="gradient">
@@ -799,9 +802,11 @@ the inputs right at the beginning, so this problem rarely happens.</p>
 (<code><a href="../reference/active_backend.html">active_backend()</a></code>, the option <code>anvl.backend</code>). A
 <code>JitFunction</code> reads it on every call and keeps one
 implementation – the backend’s <code>jit</code> method’s result, with
-its own compilation cache – per backend it has been called on. Nothing
-infers a backend from the arguments: an array of another backend is
-rejected by the dispatcher. This is what makes the default data types
+its own compilation cache – per backend it has been called on.
+<code><a href="../reference/jit_cache_size.html">jit_cache_size()</a></code> reports one of those caches, the active
+backend’s unless its <code>backend</code> argument names another.
+Nothing infers a backend from the arguments: an array of another backend
+is rejected by the dispatcher. This is what makes the default data types
 (<code><a href="../reference/default_dtypes.html">default_dtypes()</a></code>) unambiguous in eager code, where a bare
 R value has nothing but the active backend to take its default from.</p>
 <p>Device handling within a backend has two things to be aware of:</p>

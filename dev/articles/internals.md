@@ -307,24 +307,29 @@ as this requires the input types to be known. Instead, `f_jit` is a
 “lazy” function that will only perform these steps once the inputs are
 provided. However, if those steps were applied every time the `f_jit`
 function is called, this would be very inefficient, because tracing and
-compiling take some time. Therefore, the function `f_jit` also contains
-a cache (implemented as an
-[`xlamisc::LRUCache`](https://rdrr.io/pkg/xlamisc/man/LRUCache.html)),
-which will check whether there is already a compiled executable for the
-given inputs. For this, the types of all `AnvlArray`s need to match
-exactly (data type and shape) and all static arguments need to be
-identical. For example, if we run the function with `AnvlArray`s of the
-same type, but different values, the function won’t be recompiled, which
-we can see by checking the size of the cache, which is already 1,
-because we have called it on `x` and `y` above.
+compiling take some time. Therefore, `f_jit` also holds a cache of
+compiled executables, which will check whether there is already one for
+the given inputs. The cache is an LRU cache of
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)’s
+`cache_size` entries, owned by the backend’s dispatcher
+([`pjrt::dispatcher()`](https://r-xla.github.io/pjrt/reference/dispatcher.html)),
+so a function that has run on more than one backend holds one cache per
+backend (see *Backend and Device in
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md)* below).
+For a hit, the types of all `AnvlArray`s need to match exactly (data
+type and shape) and all static arguments need to be identical. For
+example, if we run the function with `AnvlArray`s of the same type, but
+different values, the function won’t be recompiled, which we can see
+with
+[`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md),
+which is already 1, because we have called it on `x` and `y` above.
 
 ``` r
 
-cache_size <- function(f) environment(f)$cache$size
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
-    ## NULL
+    ## [1] 1
 
 After calling it with arrays of the same types and identical static
 argument values, the size of the cache remains 1:
@@ -340,10 +345,10 @@ f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
 
 ``` r
 
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
-    ## NULL
+    ## [1] 1
 
 When we execute the function with arrays of different `dtype` or
 `shape`, the function will be recompiled:
@@ -359,10 +364,10 @@ f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
 
 ``` r
 
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
-    ## NULL
+    ## [1] 2
 
 Also, if we provide different values for static arguments, the function
 will be recompiled:
@@ -378,10 +383,10 @@ f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
 
 ``` r
 
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
-    ## NULL
+    ## [1] 3
 
 ### `gradient()`
 
@@ -812,9 +817,12 @@ There is exactly one active backend at any time
 ([`active_backend()`](https://r-xla.github.io/anvl/dev/reference/active_backend.md),
 the option `anvl.backend`). A `JitFunction` reads it on every call and
 keeps one implementation – the backend’s `jit` method’s result, with its
-own compilation cache – per backend it has been called on. Nothing
-infers a backend from the arguments: an array of another backend is
-rejected by the dispatcher. This is what makes the default data types
+own compilation cache – per backend it has been called on.
+[`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
+reports one of those caches, the active backend’s unless its `backend`
+argument names another. Nothing infers a backend from the arguments: an
+array of another backend is rejected by the dispatcher. This is what
+makes the default data types
 ([`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
 unambiguous in eager code, where a bare R value has nothing but the
 active backend to take its default from.

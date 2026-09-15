@@ -45,6 +45,10 @@
 
 ### Features
 
+- New
+  [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
+  reports how many compiled programs a jitted function currently holds
+  for a backend.
 - The random number generators
   ([`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md),
   [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md),

@@ -55,31 +55,30 @@ Three things happen:
 ### The compilation cache
 
 When a call’s inputs match a cached entry, both tracing and compilation
-are skipped. We can observe this directly by inspecting the size of the
-cache held inside the jitted function:
+are skipped. We can observe this directly with
+[`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md),
+which reports how many programs the jitted function currently holds:
 
 ``` r
 
-cache_size <- function(f) environment(f)$cache$size
-
 linear_jit <- jit(linear)
-cache_size(linear_jit)   # 0: nothing cached yet
-#> NULL
+jit_cache_size(linear_jit)   # 0: nothing cached yet
+#> [1] 0
 
 linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(1))
 #> AnvlArray
 #>  7
 #> [ CPUf32{} ]
-cache_size(linear_jit)   # 1: a new entry was added
-#> NULL
+jit_cache_size(linear_jit)   # 1: a new entry was added
+#> [1] 1
 
 # same shapes -> cache hit, size unchanged
 linear_jit(nv_scalar(2), nv_scalar(3), nv_scalar(5))
 #> AnvlArray
 #>  11
 #> [ CPUf32{} ]
-cache_size(linear_jit)
-#> NULL
+jit_cache_size(linear_jit)
+#> [1] 1
 
 # different shapes -> a second entry is added
 linear_jit(
@@ -91,8 +90,8 @@ linear_jit(
 #>  4
 #>  9
 #> [ CPUf32{2} ]
-cache_size(linear_jit)
-#> NULL
+jit_cache_size(linear_jit)
+#> [1] 2
 ```
 
 Each input to the function contributes to the cache key differently,

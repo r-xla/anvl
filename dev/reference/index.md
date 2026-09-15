@@ -499,6 +499,8 @@ Code transformations
 
 - [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) : JIT
   compile a function
+- [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
+  : Number of cached programs of a jitted function
 - [`gradient()`](https://r-xla.github.io/anvl/dev/reference/gradient.md)
   : Gradient
 - [`value_and_gradient()`](https://r-xla.github.io/anvl/dev/reference/value_and_gradient.md)

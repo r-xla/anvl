@@ -78,6 +78,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/is_device.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/is_dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/jit_cache_size.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit_roclet.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/length.AnvlArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_backend.html</loc></url>

@@ -147,6 +147,9 @@ for the one-time setup of the roclet in your package.
 
 ## See also
 
+[`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
+for how many programs a jitted function has cached.
+
 [`jit_roclet()`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
 for the `@jit` tag used inside R packages.
 
