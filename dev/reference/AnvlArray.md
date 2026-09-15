@@ -93,8 +93,10 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
   (`NULL` \| [`integer()`](https://rdrr.io/r/base/integer.html))  
   The output shape of the array. The default (`NULL`) is to infer it
   from the data if possible. Note that `nv_array` interprets length 1
-  vectors as having shape `(1)`. To create a "scalar" with no axes
-  (shape `()`), use `nv_scalar` or explicitly specify `shape = c()`.
+  vectors as having shape `(1)`. Empty data has no shape to infer – `0`,
+  `c(2, 0)` and `c(0, 3)` all hold no elements – so `shape` is required
+  there. To create a "scalar" with no axes (shape `()`), use `nv_scalar`
+  or explicitly specify `shape = c()`.
 
 - byrow:
 
@@ -243,9 +245,8 @@ nv_scalar(3.14)
 # An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#> 1e+45 *
-#>  1.4013 1.4013 1.4013
-#>  1.4013 1.4013 1.4013
+#>  -3.0426e-05  3.0651e-41 -3.1662e-09
+#>   3.0651e-41 -3.0442e-05  3.0651e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

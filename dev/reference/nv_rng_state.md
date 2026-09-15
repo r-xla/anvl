@@ -6,7 +6,7 @@ random sampling functions and is updated after each call.
 ## Usage
 
 ``` r
-nv_rng_state(seed, device = default_device())
+nv_rng_state(seed, device = NULL)
 ```
 
 ## Arguments

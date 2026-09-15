@@ -154,6 +154,8 @@ named by the <code>PJRT_PLATFORM</code> environment variable on the <code>"pjrt"
 The output shape of the array.
 The default (<code>NULL</code>) is to infer it from the data if possible.
 Note that <code>nv_array</code> interprets length 1 vectors as having shape <code>(1)</code>.
+Empty data has no shape to infer – <code>0</code>, <code>c(2, 0)</code> and <code>c(0, 3)</code> all hold
+no elements – so <code>shape</code> is required there.
 To create a "scalar" with no axes (shape <code>()</code>), use <code>nv_scalar</code> or explicitly specify <code>shape = c()</code>.</p></dd>
 
 
@@ -285,9 +287,8 @@ The supported data types and devices differ between backends.</p>
 <span class="r-in"><span><span class="co"># An uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1e+45 *</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013 1.4013 1.4013</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013 1.4013 1.4013</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  -3.0426e-05  3.0651e-41 -3.1662e-09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   3.0651e-41 -3.0442e-05  3.0651e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

@@ -139,6 +139,17 @@
 <li>
 <code><a href="../reference/prim_reduce.html">prim_reduce()</a></code>’s <code>reductor</code> no longer has to name its arguments <code>lhs</code> and <code>rhs</code>. They were passed by name, so <code>function(a, b)</code> failed with <code>unused arguments (lhs = ..., rhs = ...)</code>; they are now matched positionally, as <code><a href="../reference/prim_scatter.html">prim_scatter()</a></code> already matched its <code>update_computation</code>.</li>
 <li>Improved the numerics for <code><a href="../reference/nv_mod.html">nv_mod()</a></code>.</li>
+<li>The variadic array functions (<code><a href="../reference/nv_concatenate.html">nv_concatenate()</a></code>, <code><a href="../reference/nv_bind.html">nv_rbind()</a></code>, <code><a href="../reference/nv_bind.html">nv_cbind()</a></code>, <code><a href="../reference/nv_broadcast_scalars.html">nv_broadcast_scalars()</a></code>, <code><a href="../reference/nv_broadcast_arrays.html">nv_broadcast_arrays()</a></code>, <code><a href="../reference/nv_promote_to_common.html">nv_promote_to_common()</a></code>) say so when given no array, instead of warning or failing internally.</li>
+<li>
+<code><a href="../reference/AnvlArray.html">nv_array()</a></code> of a zero-length vector asks for a <code>shape</code> instead of failing inside the backend; which axis is empty cannot be inferred from the data.</li>
+<li>
+<code><a href="../reference/nv_save.html">nv_save()</a></code> and <code><a href="../reference/nv_serialize.html">nv_serialize()</a></code> given a single array say so, instead of failing inside <code><a href="../reference/nv_subset.html">nv_subset()</a></code>. <code><a href="../reference/nv_serialize.html">nv_serialize()</a></code> to a connection returns invisibly.</li>
+<li>The <code>_like()</code> functions name <code>like</code> when it is an R value with no data type.</li>
+<li>
+<code><a href="../reference/nv_solve.html">nv_solve()</a></code> and <code><a href="../reference/nv_triangular_solve.html">nv_triangular_solve()</a></code> promote their operands, as <code><a href="../reference/nv_matmul.html">nv_matmul()</a></code> does, instead of refusing two arrays that disagree.</li>
+<li>On the <code>"quickr"</code> backend a call whose outputs are all empty emits the empty arrays directly, instead of an elementwise operation quickr rejects.</li>
+<li>
+<code><a href="../reference/nv_reduce_any.html">nv_reduce_any()</a></code>, <code><a href="../reference/nv_reduce_all.html">nv_reduce_all()</a></code> and <code><a href="../reference/nv_sort.html">nv_sort()</a></code> are jitted, and <code><a href="../reference/nv_polygamma.html">nv_polygamma()</a></code>’s <code>n</code> is no longer static, so it accepts an array as <code><a href="../reference/prim_polygamma.html">prim_polygamma()</a></code> does.</li>
 <li>
 <code><a href="../reference/nv_normal.html">nv_qnorm()</a></code> is accurate to its operand’s data type rather than to the default float; its coefficients used to be materialized at the default.</li>
 <li>

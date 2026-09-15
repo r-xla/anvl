@@ -188,6 +188,44 @@
   already matched its `update_computation`.
 - Improved the numerics for
   [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md).
+- The variadic array functions
+  ([`nv_concatenate()`](https://r-xla.github.io/anvl/dev/reference/nv_concatenate.md),
+  [`nv_rbind()`](https://r-xla.github.io/anvl/dev/reference/nv_bind.md),
+  [`nv_cbind()`](https://r-xla.github.io/anvl/dev/reference/nv_bind.md),
+  [`nv_broadcast_scalars()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md),
+  [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md),
+  [`nv_promote_to_common()`](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md))
+  say so when given no array, instead of warning or failing internally.
+- [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  of a zero-length vector asks for a `shape` instead of failing inside
+  the backend; which axis is empty cannot be inferred from the data.
+- [`nv_save()`](https://r-xla.github.io/anvl/dev/reference/nv_save.md)
+  and
+  [`nv_serialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
+  given a single array say so, instead of failing inside
+  [`nv_subset()`](https://r-xla.github.io/anvl/dev/reference/nv_subset.md).
+  [`nv_serialize()`](https://r-xla.github.io/anvl/dev/reference/nv_serialize.md)
+  to a connection returns invisibly.
+- The `_like()` functions name `like` when it is an R value with no data
+  type.
+- [`nv_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_solve.md)
+  and
+  [`nv_triangular_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_triangular_solve.md)
+  promote their operands, as
+  [`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md)
+  does, instead of refusing two arrays that disagree.
+- On the `"quickr"` backend a call whose outputs are all empty emits the
+  empty arrays directly, instead of an elementwise operation quickr
+  rejects.
+- [`nv_reduce_any()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_any.md),
+  [`nv_reduce_all()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_all.md)
+  and
+  [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md)
+  are jitted, and
+  [`nv_polygamma()`](https://r-xla.github.io/anvl/dev/reference/nv_polygamma.md)’s
+  `n` is no longer static, so it accepts an array as
+  [`prim_polygamma()`](https://r-xla.github.io/anvl/dev/reference/prim_polygamma.md)
+  does.
 - [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   is accurate to its operand’s data type rather than to the default
   float; its coefficients used to be materialized at the default.
