@@ -303,7 +303,7 @@ tracing overhead without fusing anything new. Also skip pure I/O
 and device/state objects (<code>nv_device</code>,
 <code>nv_rng_state</code>).</p>
 <p>The roclet writes the list of tagged functions to
-<code>R/jit-registry.R</code> on every <code>devtools::document()</code>
+<code>R/jit-registry.R</code> on every <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>
 run, and <code>R/zzz.R</code> applies that registry at package source
 time so the wrapped functions are byte-compiled with the rest of the
 package.</p>

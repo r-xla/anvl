@@ -19,7 +19,10 @@ nv_fill_like(like, value, shape = NULL, dtype = NULL, device = NULL)
 - value:
 
   (`numeric(1)`)  
-  Scalar value to fill the array with.
+  Scalar value to fill the array with. It has to be something `dtype`
+  can hold: a whole number for an integer data type, a non-negative
+  whole number for an unsigned one, and a logical or `0` / `1` for
+  `bool`.
 
 - shape:
 

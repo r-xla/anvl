@@ -160,6 +160,11 @@
   already matched its `update_computation`.
 - Improved the numerics for
   [`nv_mod()`](https://r-xla.github.io/anvl/dev/reference/nv_mod.md).
+- [`prim_fill()`](https://r-xla.github.io/anvl/dev/reference/prim_fill.md)
+  / [`nv_fill()`](https://r-xla.github.io/anvl/dev/reference/nv_fill.md)
+  check that `value` is something `dtype` can hold: a whole number for
+  an integer data type, a non-negative one for an unsigned one, a
+  logical or `0` / `1` for `bool`.
 - Every data type of the float category counts as a float, so `f16` and
   `bf16` pass the checks that used to accept only `f32` and `f64`.
   [`nv_pnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)

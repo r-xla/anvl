@@ -102,7 +102,9 @@ efficiently represented in the compiled program, while the latter uses
 
 <dl><dt id="arg-value">value<a class="anchor" aria-label="anchor" href="#arg-value"></a></dt>
 <dd><p>(<code>numeric(1)</code>)<br>
-Scalar value to fill the array with.</p></dd>
+Scalar value to fill the array with. It has to be something <code>dtype</code> can
+hold: a whole number for an integer data type, a non-negative whole number
+for an unsigned one, and a logical or <code>0</code> / <code>1</code> for <code>bool</code>.</p></dd>
 
 
 <dt id="arg-shape">shape<a class="anchor" aria-label="anchor" href="#arg-shape"></a></dt>

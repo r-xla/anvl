@@ -420,7 +420,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x56193a6ea270>
+#> <environment: 0x5616873cc650>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")
@@ -544,7 +544,8 @@ manual tests in:
 - `tests/testthat/test-primitives-stablehlo.R`
 - `tests/testthat/test-primitives-reverse.R`
 
-Also, ensure that no linter errors are present, `devtools::check()`
+Also, ensure that no linter errors are present,
+[`devtools::check()`](https://devtools.r-lib.org/reference/check.html)
 passes, and format the code using `make format`.
 
 ## Higher-Order Primitives
