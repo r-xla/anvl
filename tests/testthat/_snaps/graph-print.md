@@ -7,7 +7,7 @@
         Inputs:
           %x1: f32[]
         Body:
-          %1: f32[] = convert [dtype = f32] (1:i32)
+          %1: f32[] = convert [dtype = f32] (1:i32[])
           %2: f32[] = mul(%x1, %1)
         Outputs:
           %2: f32[] 
@@ -265,11 +265,11 @@
     Code
       format_param_value(nv_scalar(1, dtype = "f32"))
     Output
-      [1] "1:f32"
+      [1] "1:f32[]"
     Code
       format_param_value(nv_array(1, shape = c(1, 1), dtype = "f32"))
     Output
-      [1] "1:f32"
+      [1] "1:f32[1, 1]"
     Code
       format_param_value(nv_array(c(1, 2, 3), dtype = "f32"))
     Output
@@ -284,8 +284,8 @@
         Inputs:
           %x1: f32[]
         Body:
-          %1: f32[] = mul(%x1, 2:f32)
-          2:f32: f32[] = fill [value = 2:f32, dtype = f32, shape = integer(0)] ()
+          %1: f32[] = mul(%x1, 2:f32[])
+          2:f32[]: f32[] = fill [value = 2:f32[], dtype = f32, shape = integer(0)] ()
         Outputs:
           %1: f32[] 
 

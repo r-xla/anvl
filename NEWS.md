@@ -66,6 +66,9 @@
   prints as `f32[3]`, and an unknown object falls back to its deparsed form.
   A call whose parameters do not fit the console width (`gather`, `scatter`)
   now prints them one per line instead of running off the screen.
+* A literal in a graph now always shows its shape, so a one-element array is
+  not mistaken for a scalar: `2:f32[]` rather than `2:f32`, and `1:f32[1, 1]`
+  rather than `1:f32[(1,1)]`.
 
 ## Bug fixes
 

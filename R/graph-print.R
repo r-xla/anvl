@@ -14,11 +14,17 @@ format_node_id <- function(node, node_ids) {
 format_literal <- function(node) {
   val <- node$aval$data
   if (is_anvl_array(val)) {
-    val <- as_array(val)
+    val <- as.vector(as_array(val))
   }
-  dt <- as.character(dtype(node$aval))
-  shp <- shape(node$aval)
-  sprintf("%s:%s%s", val, dt, if (length(shp)) sprintf("[%s]", shape2string(shp)) else "")
+  format_valued_array(val, node$aval)
+}
+
+# A value that carries its own data type and shape: `2:f32[]` for a scalar,
+# `1:f32[1, 1]` for a shaped one. The `dtype[shape]` half is `format_aval_short()`,
+# so such a value reads as an aval with its value in front -- and the shape is
+# always there, so a one-element array is not mistaken for a scalar.
+format_valued_array <- function(value, aval) {
+  sprintf("%s:%s", value, format_aval_short(aval))
 }
 
 # `r_type` is the R storage type this value is uploaded from, out of the graph's
@@ -71,8 +77,7 @@ format_param_value <- function(p) {
     # the way a literal node does rather than dumping the object's fields.
     # A shape of `c(1, 1)` is still one element, so go by the element count.
     if (prod(shape(p)) == 1L) {
-      value <- format_param_value(as.vector(as_array(p)))
-      return(sprintf("%s:%s", value, as.character(dtype(p))))
+      return(format_valued_array(as.vector(as_array(p)), p))
     }
     return(format_aval_short(p))
   }
