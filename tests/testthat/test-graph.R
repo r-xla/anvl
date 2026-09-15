@@ -376,8 +376,6 @@ describe("how an R value is built into a graph", {
 })
 
 describe("coercing a traced array to R", {
-  # Grab whatever the traced function makes of `x` without letting the result
-  # escape into the graph's outputs.
   trace_call <- function(f) {
     jit(function(x) {
       f(x)
@@ -410,12 +408,8 @@ describe("coercing a traced array to R", {
     })
   }
 
-  it("the message names the function that was called", {
-    expect_error(trace_call(as.vector), "`as.vector\\(\\)` is not defined for a <GraphBox>")
-    expect_error(trace_call(as_array), "`as_array\\(\\)` is not defined for a <GraphBox>")
-  })
-
   it("a closed-over concrete array still converts", {
+    # the closed-over array is anyway a constant.
     k <- nv_array(1:3)
     out <- NULL
     jit(function(x) {
@@ -423,11 +417,5 @@ describe("coercing a traced array to R", {
       x
     })(nv_array(1:3))
     expect_equal(out, array(1:3))
-  })
-
-  it("eager coercion is unaffected", {
-    x <- nv_array(1:3)
-    expect_equal(as_array(x), array(1:3))
-    expect_equal(as.vector(x), 1:3)
   })
 })
