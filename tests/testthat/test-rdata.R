@@ -659,6 +659,15 @@ describe("staging an R value out of its own category", {
     )
   })
 
+  it("names the data type to convert through in its own category", {
+    local_registered_default_dtypes()
+    w <- expect_warning(nv_convert(1.9, "i32"), class = "anvl_staging_widens_warning")
+    # Rendering the message is what a printed warning or a vignette does, and it
+    # is the only place a `{}` expression naming something out of scope shows up.
+    msg <- gsub("\\s+", " ", conditionMessage(w))
+    expect_match(msg, 'nv_convert(nv_convert(x, "f32"), "i32")', fixed = TRUE)
+  })
+
   it("stays quiet where the staging introduces nothing", {
     # An R integer stages at i32 and a logical at bool -- their own defaults, so
     # nothing is brought in that the value would not have materialized at
