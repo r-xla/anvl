@@ -4,16 +4,15 @@
 \alias{prim_sign}
 \title{Primitive Sign}
 \usage{
-prim_sign(operand)
+prim_sign(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type signed integer or floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise sign.
@@ -28,7 +27,7 @@ Element-wise sign.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_sign]{stablehlo::hlo_sign()}}.
+Lowers to \code{\link[stablehlo:hlo_sign]{hlo_sign()}}.
 }
 
 \examples{

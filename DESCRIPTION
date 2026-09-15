@@ -1,57 +1,69 @@
 Package: anvl
-Title: Framework for R code transformations
-Version: 0.1.0.9000
+Title: Accelerated Array Computing and Automatic Differentiation
+Version: 0.4.0.9000
 Authors@R: c(
     person("Sebastian", "Fischer", , "seb.fischer@tutamail.com", role = c("cre", "aut"),
            comment = c(ORCID = "https://orcid.org/0000-0002-9609-3197")),
     person("Daniel", "Falbel", , "daniel@posit.co", role = "aut",
            comment = c(ORCID = "https://orcid.org/0009-0006-0143-2392")),
+    person("Tomasz", "Kalinowski", , "tomasz@posit.co", role = "aut"),
     person("Nikolai", "German", , "niko.german@gmail.com", role = "aut",
-           comment = c(ORCID = "https://orcid.org/0009-0001-7394-8367"))
+           comment = c(ORCID = "https://orcid.org/0009-0001-7394-8367")),
+    person("Louis", "Aslett", , "louis.aslett@durham.ac.uk", role = "ctb",
+           comment = c(ORCID = "https://orcid.org/0000-0003-2211-233X"))
   )
-Description: Code transformation framework for R.
+Description: Accelerated array computing and code transformations for R.
+    Numerical programs operating on multi-dimensional arrays can be
+    just-in-time compiled to optimized executables via 'XLA' -- the same
+    compiler that powers 'JAX' and 'TensorFlow' -- and run on CPU or
+    NVIDIA GPU from the same source. Also provides reverse-mode automatic
+    differentiation, returning the gradient of a function as another R
+    function.
 License: MIT + file LICENSE
 URL: https://r-xla.github.io/anvl/, https://github.com/r-xla/anvl
 BugReports: https://github.com/r-xla/anvl/issues
 Depends:
-    R (>= 4.2.0)
+    R (>= 4.4.0)
 Imports:
     checkmate,
     cli,
+    fastmap,
     methods,
-    pjrt (>= 0.2.0),
+    pjrt (>= 0.5.0.9000),
     rlang,
     safetensors (>= 0.2.0),
-    stablehlo (>= 0.2.0),
-    tengen (>= 0.2.0),
+    stablehlo (>= 0.4.0),
+    tengen (>= 0.3.0),
     withr,
-    xlamisc (>= 0.2.0)
+    xlamisc (>= 0.4.1)
 Suggests:
+    bit64,
     knitr,
     quarto,
     rmarkdown,
-    quickr (>= 0.2.1.9000),
+    quickr (>= 0.3.0),
     testthat (>= 3.0.0)
-Remotes:
-    r-xla/stablehlo,
-    r-xla/tengen,
-    r-xla/xlamisc,
-    r-xla/pjrt,
-    t-kalinowski/quickr
 Additional_repositories:
     https://r-xla.r-universe.dev
+Remotes:
+    r-xla/pjrt,
+    r-xla/tengen,
+    r-xla/stablehlo,
+    r-xla/xlamisc
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
 Collate:
     'aaa.R'
+    'api-distributions.R'
     'array.R'
     'device.R'
+    'default-dtypes.R'
     'backend.R'
     'jit.R'
+    'promotion.R'
     'primitive.R'
     'type-converters.R'
     'utils.R'
@@ -63,22 +75,25 @@ Collate:
     'api-subset.R'
     'api-utilities.R'
     'asserts.R'
+    'backend-pjrt.R'
     'backend-quickr.R'
-    'backend-xla.R'
     'bibentries.R'
     'box.R'
-    'flatten.R'
     'graph-passes.R'
     'graph.R'
+    'rdata.R'
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
-    'promotion.R'
+    'jit-registry.R'
+    'jit-roclet.R'
     'quickr.R'
     'reexports.R'
     'reverse.R'
+    'roxygen.R'
     'rules-reverse.R'
     'rules-stablehlo.R'
     'serialize.R'
     'stablehlo.R'
     'zzz.R'
+Config/roxygen2/version: 8.1.0

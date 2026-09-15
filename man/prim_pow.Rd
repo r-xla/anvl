@@ -14,7 +14,6 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
 Raises lhs to the power of rhs element-wise.
@@ -30,7 +29,7 @@ Raises lhs to the power of rhs element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_power]{stablehlo::hlo_power()}}.
+Lowers to \code{\link[stablehlo:hlo_power]{hlo_power()}}.
 }
 
 \examples{

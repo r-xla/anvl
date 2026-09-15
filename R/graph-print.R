@@ -16,14 +16,24 @@ format_literal <- function(node) {
   if (is_anvl_array(val)) {
     val <- as_array(val)
   }
-  dt <- repr(dtype(node$aval))
-  dt <- if (node$aval$ambiguous) paste0(dt, "?") else dt
+  dt <- as.character(dtype(node$aval))
   shp <- shape(node$aval)
   sprintf("%s:%s%s", val, dt, if (length(shp)) sprintf("[%s]", shape2string(shp)) else "")
 }
 
-format_aval_short <- function(aval) {
-  sprintf("%s[%s]", paste0(repr(dtype(aval)), if (aval$ambiguous) "?" else ""), paste(shape(aval), collapse = ", "))
+# `r_type` is the R storage type this value is uploaded from, out of the graph's
+# `rdata_types`. Only the Inputs section has one to pass: the "<- <r type>" note
+# says what the caller supplies and what the program uploads it as, which is a
+# fact about the input. An output that happens to *be* an input
+# (`jit(identity)`) is still just a value of its data type.
+format_aval_short <- function(aval, r_type = NA_character_) {
+  out <- sprintf("%s[%s]", as.character(dtype(aval)), paste(shape(aval), collapse = ", "))
+  if (!is.na(r_type)) {
+    # An input the caller supplies as bare R data, which the program uploads at
+    # the dtype shown -- worth seeing, since nothing else in the graph says so.
+    return(paste0(out, " <- ", r_type))
+  }
+  out
 }
 
 build_node_ids <- function(inputs, constants, calls) {
@@ -60,13 +70,13 @@ format_param_value <- function(p) {
     return(sprintf("graph[%d -> %d]", length(p$inputs), length(p$outputs)))
   }
   if (is_dtype(p)) {
-    return(repr(p))
+    return(as.character(p))
   }
   if (is.atomic(p)) {
     if (length(p) == 0L) {
       return(sprintf("%s(0)", typeof(p)))
     }
-    elts <- if (is.character(p)) sprintf('"%s"', p) else format(p)
+    elts <- if (is.character(p)) sprintf('"%s"', p) else format(p, trim = TRUE)
     if (length(p) == 1L) elts else sprintf("c(%s)", paste(elts, collapse = ", "))
   } else if (is.list(p)) {
     parts <- vapply(p, format_param_value, character(1))
@@ -104,7 +114,7 @@ format_call <- function(call, node_ids, indent = "  ") {
   sprintf("%s%s = %s%s(%s)", indent, outputs_str, call$primitive$name, params_str, inputs_str)
 }
 
-format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph") {
+format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph", rdata_types = NULL) {
   lines <- character()
 
   # Build node ID mapping
@@ -115,10 +125,16 @@ format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph"
 
   # Inputs section
   if (length(inputs) > 0L) {
+    r_types <- rdata_types %||% rep(NA_character_, length(inputs))
     input_strs <- vapply(
-      inputs,
-      function(node) {
-        sprintf("    %s: %s", format_node_id(node, node_ids), format_aval_short(node$aval))
+      seq_along(inputs),
+      function(i) {
+        node <- inputs[[i]]
+        sprintf(
+          "    %s: %s",
+          format_node_id(node, node_ids),
+          format_aval_short(node$aval, r_types[[i]])
+        )
       },
       character(1)
     )
@@ -198,7 +214,8 @@ format.AnvlGraph <- function(x, ...) {
     constants = x$constants,
     calls = x$calls,
     outputs = x$outputs,
-    title = "AnvlGraph"
+    title = "AnvlGraph",
+    rdata_types = x$rdata_types
   )
 }
 
@@ -215,9 +232,10 @@ format.GraphDescriptor <- function(x, ...) {
   format_graph_body(
     inputs = x$inputs,
     constants = constants,
-    calls = x$calls,
+    calls = x$calls$as_list(),
     outputs = x$outputs,
-    title = "GraphDescriptor"
+    title = "GraphDescriptor",
+    rdata_types = x$rdata_types
   )
 }
 

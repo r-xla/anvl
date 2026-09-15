@@ -1,0 +1,161 @@
+---
+title: "Extending the API"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Extending the API}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+library(anvl)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+In this vignette we will cover some general guidelines that ensure your anvl functions come without surprises.
+This is primarily intended for extending the API -- either in your own package or contributing to {anvl} itself -- but is also helpful when writing your own scripts.
+
+The general guidelines are:
+
+1. The function must be pure.
+1. Consistent input and output types:
+   1. The dynamic (arrayish) inputs should accept `AnvlArray`s as well as R vectors of length 1 and `array`s.
+   1. The function should only output `AnvlArray`s.
+1. The function should work with arbitrary devices.
+1. The function should (unless there are specific reasons) work in eager and jit mode.
+1. Use static arguments when you require data-dependent input checks.
+1. Tag the function with `#' @jit` so it is jit-wrapped at package build time
+   (see *Jit-wrapping API Functions* below).
+
+## Pure Functions
+
+This is extensively covered in the *JIT Deep Dive*, so we won't repeat it here.
+While the subsequent sections mostly address issues that are relevant in eager mode, purity is the primary requirement to enable usage of `jit()` with your function.
+
+## Consistent Input and Output Types
+
+Functions in anvl have `AnvlArray` inputs and R data inputs.
+R data can be used dynamically, when it is passed to an argument that expects an `AnvlArray`, or statically, when it is passed to an argument that `jit()` marked as static.
+To make this work, you should call `as_anvl_arrays()` on all dynamic input values.
+If there is only a single one, you can also use `as_anvl_array()`.
+
+They do four things, and three of them are decisions *across* the whole argument set, which is why a function with several arrayish arguments should normalize them in **one** `as_anvl_arrays()` call rather than one `as_anvl_array()` per argument:
+
+1. every input is put on one device, and a call mixing devices or backends is rejected,
+2. the type promotion rules of the `.promote` argument are applied, which handle both placement of R values, as well as conversions between
+   `AnvlArray`s, e.g., to make `nv_add(nv_scalar(1, "f32"), nv_scalar(1, "f64"))` work.
+3. afterwards, `dtype()` is well defined and the remaining body does not have to distinguish between R value inputs and `AnvlArray` inputs.
+4. it reduces differences between eager and jit mode, see the `vignette("gotchas")` for a discussion.
+
+Below, we add a function that performs the addition after coercing all inputs to `f32`;
+
+```{r}
+nv_add_f32 <- function(x, y) {
+  args <- as_anvl_arrays(x, y, .promote = promotion_dtype("f32", coerce = TRUE))
+  do.call(prim_add, args)
+}
+nv_add_f32(1, nv_scalar(1, "f64"))
+```
+
+## Arbitrary Devices
+
+In order to ensure that your function works with inputs from arbitrary devices, you need to be careful when creating new constants within your function.
+Let's say you are creating your function and working on GPU:
+
+```{r}
+nv_add_one_naive <- function(x) {
+  x <- as_anvl_array(x)
+  x + nv_fill(1L, shape(x), device = "cuda")
+}
+```
+
+As long as you are adding ones on a CUDA GPU, this function will work fine!
+However, if you suddenly use it on the CPU, it will fail, because we can't add a CPU array to a CUDA array.
+Constants should always be initialized on the same device as the inputs.
+If there are multiple inputs and you called `as_anvl_arrays()` on them at the top, you know that there is only a single device.
+
+One way to achieve this is to simply pass the input's device to `nv_fill()`:
+
+```{r}
+nv_add_one1 <- function(x) {
+  # Converting is what gives the value a device to read back here.
+  x <- as_anvl_array(x)
+  x + nv_fill(1L, shape(x), device = device(x))
+}
+```
+
+Another option is to rely on `nv_<op>_like` functions.
+These take in another `AnvlArray` as their first input and use its properties as the defaults for their arguments.
+In this case, the created array will assume the data type, shape and device from the input array.
+
+```{r}
+nv_add_one2 <- function(x) {
+  x + nv_fill_like(x, 1L)
+}
+```
+
+Note that when you only want to use a function with `jit()`, you can just omit specifying the device at all, as `jit()` is smart enough to place it on the correct device.
+
+## Static Arguments to Enable Input Checks
+
+One restriction of the XLA compiler is that it does not really allow for runtime checks.
+Let's say you want to sample from a Bernoulli distribution with probability `p`.
+If you make `p` a dynamic input, you can't check that it is within `[0, 1]`, so you need to make it a static input.
+Don't convert it to an `AnvlArray` before checking its value.
+Later in the function, it will actually be converted, but from XLA's point of view, it will just be a constant within the compiled program and not a dynamic input.
+
+```{r}
+nv_rbernoulli <- function(initial_state, p) {
+  initial_state <- as_anvl_array(initial_state)
+  stopifnot((p >= 0) && (p <= 1))
+
+  # returns: (state, sample)
+  out <- nv_runif(1L, initial_state)
+  out_state <- out[[1L]]
+  x <- nv_convert(out[[2L]] <= p, "i32")
+  list(out_state, x)
+}
+nv_rbernoulli(nv_rng_state(1), 0.2)[[2L]]
+```
+
+## Jit-wrapping API Functions
+
+Most user-facing API functions in anvl are wrapped in `jit(f, ...)` so that calling them traces and compiles a single program instead of executing each operation eagerly.
+The wrapping is driven by the `@jit` roclet (see `?jit_roclet`).
+
+In `R/api*.R`, tag any function that performs more than one primitive operation with `#' @jit`:
+
+```r
+#' @export
+#' @jit
+nv_log2 <- function(x) {
+  x <- as_anvl_array(x)
+  nv_log(x) / log(2)
+}
+```
+
+If the function has static arguments (anything that is not an arrayish input -- axes, shape, dtype, control flags, functions used as templates, ...), list them with `static = c(...)` using either positional indices or argument names:
+
+```r
+#' @export
+#' @jit static = c(2L, 3L)
+nv_mean <- function(x, axes = NULL, drop = TRUE) {
+  ...
+}
+
+#' @export
+#' @jit static = c("axis")
+nv_concatenate <- function(..., axis = NULL) {
+  ...
+}
+```
+
+Use names rather than positions whenever an argument lives after `...`, since `...` has no fixed position.
+
+**When to skip `#' @jit`.** Don't tag a function whose body is essentially a single primitive call -- direct aliases (`nv_log <- prim_log`), `make_do_binary(prim_X)` factories, or thin wrappers that just validate and forward to one primitive. The underlying primitive is already jit-wrapped, so adding another `jit()` layer adds tracing overhead without fusing anything new.
+Also skip pure I/O (`nv_save`, `nv_serialize`), backend constructors (`nv_array`, `nv_scalar`, `nv_matrix`), and device/state objects (`nv_device`, `nv_rng_state`).
+
+The roclet writes the list of tagged functions to `R/jit-registry.R` on every `devtools::document()` run, and `R/zzz.R` applies that registry at package source time so the wrapped functions are byte-compiled with the rest of the package.

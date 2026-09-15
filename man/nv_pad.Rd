@@ -5,7 +5,7 @@
 \title{Pad}
 \usage{
 nv_pad(
-  operand,
+  x,
   padding_value,
   edge_padding_low,
   edge_padding_high,
@@ -13,25 +13,29 @@ nv_pad(
 )
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
-Scalar value to use for padding. Must have the same dtype as \code{operand}.}
+Scalar value to use for padding. It is brought to \code{x}'s data type: an R
+value is built at it (\code{nv_pad(x_f64, 0)}, and \code{0L} does just as well),
+and a value that already has one is converted, unless \code{x}'s data type
+cannot hold it -- an \code{f64} padding value for an \code{f32} array is an error
+rather than a silent narrowing.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
-Amount of padding to add at the start of each dimension.}
+Amount of padding to add at the start of each axis.}
 
 \item{edge_padding_high}{(\code{integer()})\cr
-Amount of padding to add at the end of each dimension.}
+Amount of padding to add at the end of each axis.}
 
 \item{interior_padding}{(\code{integer()} | \code{NULL})\cr
-Amount of padding to add between elements in each dimension.
+Amount of padding to add between elements in each axis.
 If \code{NULL} (default), no interior padding is applied.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand}.
+Has the same data type as \code{x}.
 }
 \description{
 Pads an array with a given value at the edges and optionally between elements.

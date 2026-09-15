@@ -2,18 +2,18 @@
 % Please edit documentation in R/primitives.R
 \name{prim_bitcast_convert}
 \alias{prim_bitcast_convert}
-\title{Primitive Bitcast Convert}
+\title{Primitive Bitcast Conversion}
 \usage{
-prim_bitcast_convert(operand, dtype)
+prim_bitcast_convert(x, dtype)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Target data type. If it has the same bit width as the input, the output
-shape is unchanged. If narrower, an extra trailing dimension is added.
-If wider, the last dimension is consumed.}
+shape is unchanged. If narrower, an extra trailing axis is added.
+If wider, the last axis is consumed.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -33,7 +33,7 @@ modifying the underlying data.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{stablehlo::hlo_bitcast_convert()}}.
+Lowers to \code{\link[stablehlo:hlo_bitcast_convert]{hlo_bitcast_convert()}}.
 }
 
 \examples{

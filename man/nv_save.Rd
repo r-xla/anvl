@@ -26,7 +26,7 @@ a file connection.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded("cpu")) withAutoprint(\{ # examplesIf}
-x <- nv_array(array(1:6, dim = c(2, 3)))
+x <- nv_matrix(1:6, nrow = 2)
 x
 path <- tempfile(fileext = ".safetensors")
 nv_save(list(x = x), path)

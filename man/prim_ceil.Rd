@@ -4,16 +4,15 @@
 \alias{prim_ceil}
 \title{Primitive Ceiling}
 \usage{
-prim_ceil(operand)
+prim_ceil(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise ceiling.
@@ -29,7 +28,7 @@ Element-wise ceiling.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_ceil]{stablehlo::hlo_ceil()}}.
+Lowers to \code{\link[stablehlo:hlo_ceil]{hlo_ceil()}}.
 }
 
 \examples{
@@ -39,5 +38,5 @@ prim_ceil(x)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_ceil]{nv_ceil()}}, \code{\link[=ceiling]{ceiling()}}
+\code{\link[=nv_ceiling]{nv_ceiling()}}, \code{\link[=ceiling]{ceiling()}}
 }

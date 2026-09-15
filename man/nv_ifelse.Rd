@@ -8,18 +8,20 @@ nv_ifelse(pred, true_value, false_value)
 }
 \arguments{
 \item{pred}{(\code{\link{arrayish}} of boolean type)\cr
-Predicate array. Must be scalar or the same shape as \code{true_value}.}
+Predicate array. Must be scalar or have the same shape as the
+non-scalar arguments.}
 
-\item{true_value}{(\code{\link{arrayish}})\cr
-Values to return where \code{pred} is \code{TRUE}.}
-
-\item{false_value}{(\code{\link{arrayish}})\cr
-Values to return where \code{pred} is \code{FALSE}.
-Must have the same shape and data type as \code{true_value}.}
+\item{true_value, false_value}{(\code{\link{arrayish}})\cr
+Values to return where \code{pred} is \code{TRUE} / \code{FALSE}.
+\code{true_value} and \code{false_value} are
+\link[=nv_promote_to_common]{promoted to a common data type}.
+Scalars (including \code{pred}) are
+\link[=nv_broadcast_scalars]{broadcast} to the shape of the non-scalar arguments.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as \code{true_value}.
+Has the common data type of \code{true_value} and \code{false_value} and the
+shape of the non-scalar arguments.
 }
 \description{
 Selects elements from \code{true_value} or \code{false_value} based on \code{pred},
@@ -29,6 +31,8 @@ analogous to R's \code{\link[=ifelse]{ifelse()}}.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 pred <- nv_array(c(TRUE, FALSE, TRUE))
 nv_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
+# scalar branches are broadcast and promoted to a common dtype
+nv_ifelse(pred, nv_scalar(1L), nv_scalar(0.5))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

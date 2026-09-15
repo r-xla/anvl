@@ -4,16 +4,15 @@
 \alias{prim_tan}
 \title{Primitive Tangent}
 \usage{
-prim_tan(operand)
+prim_tan(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise tangent.
@@ -29,7 +28,7 @@ Element-wise tangent.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_tan]{stablehlo::hlo_tan()}}.
+Lowers to \code{\link[stablehlo:hlo_tan]{hlo_tan()}}.
 }
 
 \examples{

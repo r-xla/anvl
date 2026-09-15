@@ -4,29 +4,28 @@
 \alias{prim_static_slice}
 \title{Primitive Static Slice}
 \usage{
-prim_static_slice(operand, start_indices, limit_indices, strides)
+prim_static_slice(x, start_indices, limit_indices, strides)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{start_indices}{(\code{integer()})\cr
-Start indices (inclusive), one per dimension. Must satisfy
-\verb{1 <= start_indices <= limit_indices} per dimension.}
+Start indices (inclusive), one per axis. Must satisfy
+\verb{1 <= start_indices <= limit_indices} per axis.}
 
 \item{limit_indices}{(\code{integer()})\cr
-End indices (inclusive), one per dimension. Must satisfy
-\code{limit_indices <= nv_shape(operand)} per dimension.}
+End indices (inclusive), one per axis. Must satisfy
+\code{limit_indices <= shape(x)} per axis.}
 
 \item{strides}{(\code{integer()})\cr
-Step sizes, one per dimension. Must be \verb{>= 1}. A stride of \code{1}
+Step sizes, one per axis. Must be \verb{>= 1}. A stride of \code{1}
 selects every element; a stride of \code{2} selects every other element, etc.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input and shape
 \code{ceiling((limit_indices - start_indices + 1) / strides)}.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Extracts a slice from an array using static (compile-time) indices.
@@ -46,7 +45,7 @@ computed at runtime (e.g. depends on array values).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_slice]{stablehlo::hlo_slice()}}.
+Lowers to \code{\link[stablehlo:hlo_slice]{hlo_slice()}}.
 }
 
 \examples{
@@ -60,7 +59,7 @@ x <- nv_array(1:10)
 prim_static_slice(x, start_indices = 1L, limit_indices = 10L, strides = 2L)
 
 # 2-D: extract a submatrix (rows 1-2, columns 2-3)
-x <- nv_array(matrix(1:12, nrow = 3, ncol = 4))
+x <- nv_matrix(1:12, nrow = 3, ncol = 4)
 prim_static_slice(x,
   start_indices = c(1L, 2L),
   limit_indices = c(3L, 4L),

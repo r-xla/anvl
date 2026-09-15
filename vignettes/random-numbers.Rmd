@@ -39,59 +39,67 @@ state <- nv_rng_state(42L)
 state
 ```
 
-The main functions for generating random numbers are `nv_runif()`, `nv_rdunif()`, `nv_rbinom()`, and `nv_rnorm()`.
-All those functions return a list with two elements:
+The main functions for generating random numbers are `nv_runif()`, `nv_rnorm()`, `nv_rbinom()`, `nv_sample_int()`, and `nv_sample()`.
+All those functions return a named list of two elements:
 
-1. The **new** RNG state (to be used for subsequent random number generation).
-2. The generated random numbers.
+1. `state` -- the **new** RNG state, to be used for subsequent random number
+   generation.
+2. `values` -- the generated random numbers.
 
 Let's generate some uniform random numbers:
 
 ```{r}
-f <- jit(function(state) {
-  nv_runif(state, dtype = "f32", shape = c(2, 3))
-})
-
-result <- f(state)
-result[[1]]  # new state
-result[[2]]  # random numbers
+result <- nv_runif(state, dtype = "f32", shape = c(2, 3))
+result$state
+result$values
 ```
 
 For normally distributed random numbers:
 
 ```{r}
-g <- jit(function(state) {
-  nv_rnorm(state, dtype = "f32", shape = c(2, 3), mu = 0, sigma = 1)
-})
+result <- nv_rnorm(state, dtype = "f32", shape = c(2, 3), mean = 0, sd = 1)
+result$values
+```
 
-result <- g(state)
-result[[2]]
+`mean` and `sd` are arrayish, so they may vary across the sample, as long as
+they have the same shape as it:
+
+```{r}
+sds <- nv_matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2)
+nv_rnorm(state, dtype = "f32", shape = c(2, 3), sd = sds)$values
+```
+
+To draw integers, use `nv_sample_int()`, the counterpart to R's `sample.int()`:
+
+```{r}
+# roll six dice
+nv_sample_int(6L, state, 6L)$values
+```
+
+`nv_sample()` draws from an arbitrary population instead.
+Unlike R's `sample()`, its population argument is never overloaded with a count, so `nv_sample(5L, state, nv_array(6))` samples from the population `6` rather than from `1:6`:
+
+```{r}
+population <- nv_array(c(10, 20, 30))
+nv_sample(8L, state, population)$values
 ```
 
 One thing to avoid is to reuse the same state for multiple calls as done in the example below:
 
 ```{r}
-h <- jit(function(state) {
-  result1 <- nv_runif(state, dtype = "f32", shape = 3L)
-  result2 <- nv_runif(state, dtype = "f32", shape = 3L)
-  list(first = result1[[2]], second = result2[[2]])
-})
-
-h(state)
+result1 <- nv_runif(state, dtype = "f32", shape = 3L)
+result2 <- nv_runif(state, dtype = "f32", shape = 3L)
+list(first = result1$values, second = result2$values)
 ```
 
 As you can see, both calls produced identical random numbers because we used the same state for both.
 To get different random numbers in subsequent calls, you need to pass the **new** state returned by the previous call:
 
 ```{r}
-proper_rng <- jit(function(state) {
-  result1 <- nv_runif(state, dtype = "f32", shape = c(3))
-  new_state <- result1[[1]]
-  result2 <- nv_runif(new_state, dtype = "f32", shape = c(3))
-  list(first = result1[[2]], second = result2[[2]])
-})
-
-proper_rng(state)
+result1 <- nv_runif(state, dtype = "f32", shape = 3L)
+new_state <- result1$state
+result2 <- nv_runif(new_state, dtype = "f32", shape = 3L)
+list(first = result1$values, second = result2$values)
 ```
 
 Now we get different random numbers because we properly propagated the state.

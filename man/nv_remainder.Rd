@@ -2,7 +2,7 @@
 % Please edit documentation in R/api.R
 \name{nv_remainder}
 \alias{nv_remainder}
-\title{Remainder}
+\title{Remainder (Truncating)}
 \usage{
 nv_remainder(lhs, rhs)
 }
@@ -17,15 +17,17 @@ Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other op
 Has the same shape and the promoted common data type of the inputs.
 }
 \description{
-Element-wise remainder of division. You can also use the \code{\%\%} operator.
+Element-wise remainder.
+This differs from base R's \code{\%\%}, use \code{\link[=nv_mod]{nv_mod()}}/\code{\%\%} instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(7, 8, 9))
 y <- nv_array(c(3, 3, 4))
-x \%\% y
+nv_remainder(x, y)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_remainder]{prim_remainder()}} for the underlying primitive.
+\code{\link[=nv_mod]{nv_mod()}} for the flooring remainder, \code{\link[=prim_remainder]{prim_remainder()}} for the
+underlying primitive.
 }

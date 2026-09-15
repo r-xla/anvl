@@ -15,12 +15,12 @@ If you have experience with JAX in Python, you should feel right at home.
 We will start by introducing the main data structure, which is the `AnvlArray`.
 It is essentially like an R array, with some differences:
 
-1. It supports more data types, such as different precisions, as well as unsigned integers.
-2. The array can live on different *device*s, such as CPU or GPU.
-3. 0-dimensional arrays can be used to represent scalars.
+1. It supports more data types, such as different precisions or unsigned integers.
+2. The array is managed by a specific backend (which we will ignore for now) and can live on different *device*s, such as CPU (aka host) or a GPU.
+3. 0-dimensional arrays are used to represent scalars.
 
-We can create an `AnvlArray` from R objects using `nv_array`.
-Below, we create a 0-dimensional array (i.e., a scalar) that holds a 16-bit integer on the CPU.
+We can create an `AnvlArray` from R objects using `nv_array()`.
+Below, we create a 0-dimensional array (i.e., a scalar) that holds a 16-bit integer living on the CPU.
 
 ```{r}
 library(anvl)
@@ -28,250 +28,229 @@ set.seed(42)
 nv_array(1L, dtype = "i16", device = "cpu", shape = integer())
 ```
 
-Note that for the creation of scalars, you can also use `nv_scalar` as a shorthand to skip specifying the shape and omit specifying the device, as CPU is the default.
+Note that for the creation of scalars, you can also use `nv_scalar()` as a shorthand to skip specifying the shape and omit specifying the device, as CPU is the default.
 
 ```{r}
-nv_scalar(1L, dtype = "i16")
+x <- nv_scalar(1L, dtype = "i16")
+x
 ```
 
-We can also create higher-dimensional arrays, for example a 2x3 array with single-precision floating-point numbers.
-Without specifying the data type, it will default to `"f32"` for R doubles and `"i32"` for integers.
+We can also create higher-dimensional arrays, for example a `2x3` array with single-precision floating-point numbers.
 
 ```{r}
-x <- array(1:6, dim = c(2, 3))
-y <- nv_array(x)
+y <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(2, 3))
 y
 ```
 
-The `as_array()` function allows to convert `AnvlArray`s back to R objects.
-Note that for 0-dimensional arrays, the result is an R vector of length 1, as R arrays cannot have 0 dimensions.
+Without specifying the data type, it will default to the data types of the active backend: `"f32"` for R doubles and `"i32"` for integers on pjrt, and `"bool"` for logicals everywhere.
+We chose this default, because on modern accelerators such as GPUs, single-precision floating point operations are considerably faster than when working in double precision.
+It is possible to change this default via the `anvl.default_dtypes` option.
+Below, `with_default_dtypes()` modifies this option temporarily:
+
+```{r}
+with_default_dtypes(c(float = "f64", int = "i64"), {
+  print(nv_scalar(2L))
+  print(nv_scalar(pi))
+})
+```
+
+You can extract the object's properties using getter methods.
+
+```{r}
+dtype(y)
+shape(y) # or dim()
+device(y)
+```
+
+`AnvlArray`s have value semantics and are (with an exception we cover later) never modified in-place.
+
+```{r}
+y2 <- y
+y2[1, 1] <- 99L
+y2[1, 1]
+y[1, 1]
+```
+
+Note that such subset assignment always copies -- unlike plain R, where `y[i] <- val` can be done in place when `y` has only one reference.
+This only applies to *eager* execution. Inside a jit-compiled function (covered later), the compiler can optimize reallocations away, similar to R's copy-on-write.
+
+The `as_array()` function allows to convert `AnvlArray`s back to R objects, which involves copying the data.
+Note that for 0-dimensional arrays, the result is an R vector of length 1, as R arrays cannot have 0 axes.
 
 ```{r}
 as_array(y)
 ```
 
-We can transform `AnvlArray`s using {anvl} functions , as well as overloaded R operators:
+`AnvlArray`s can also be saved to disk and loaded back via `nv_save()` / `nv_read()`, which use the [safetensors](https://huggingface.co/docs/safetensors/index) format -- a simple, cross-framework standard also used by e.g. PyTorch and JAX:
 
 ```{r}
-nv_add(y, y)
+path <- tempfile(fileext = ".safetensors")
+nv_save(list(x = x, y = y), path)
+
+loaded <- nv_read(path)
+loaded$x
 ```
 
-This works because {anvl}'s user-facing `nv_*` functions — as well as the operators dispatched on `AnvlArray`s — are themselves `jit()`-compiled.
-When called outside of a `jit()` context, each operation is compiled and executed immediately.
+## Transforming AnvlArrays
 
-### Two layers: `nv_*` API and `prim_*` primitives
+There are two categories of functions in {anvl} that can be used to transform arrays:
 
-{anvl} has two layers:
+1. Anvl primitives, that follow the naming scheme `prim_<op>`.
+   They define the fundamental operations that can be expressed in {anvl}.
+   These functions are rather low-level and often lack some ergonomics such as type promotion or broadcasting.
+   Most users will not require to use them; for an overview see `vignette("primitives")`, and for how to add one see `vignette("extending_primitive")`.
+1. The main User API (`nv_<op>` functions) and the overloaded R operators that dispatch to them.
+   They are built on top of the primitives and either add convenience or higher-level functionality.
 
-- **`nv_*` functions** (e.g. `nv_add()`, `nv_matmul()`, `nv_fill()`) — the user-facing API. These handle broadcasting, type promotion, default arguments, and R-idiomatic semantics. They are exported and documented individually.
-- **`prim_*` functions** (e.g. `prim_add()`, `prim_fill()`) — the atomic operations recorded into the computation graph. Each primitive carries its interpretation rules (stablehlo lowering, reverse-mode autodiff, quickr lowering). Most users only need the `nv_*` functions; `prim_*` is relevant when defining new primitives or inspecting rules.
-This is called *eager mode*.
+```{r, error = TRUE}
+prim_add(y, y)
+prim_add(y, x)
 
-These functions can also be used inside a `jit()` call, where their operations are inlined into the outer computation graph rather than being compiled separately (see the [Composability](#composability) section).
-
-While eager mode is convenient for interactive use, compiling a larger function with `jit()` will lead to a more efficient binary.
-
-## JIT Compilation
-
-When many operations are applied in sequence, it is more efficient to compile them together into a single executable using `jit()`, rather than compiling each operation individually as in eager mode.
-
-```{r}
-plus_jit <- jit(`+`)
-plus_jit(y, y)
+nv_add(y, x)
 ```
 
-The result of the operation is again an `AnvlArray`.
-
-We can also jit-compile more complex functions.
-Below, we define a function that takes in a data matrix `X`, a weight vector `beta`, and a scalar bias `alpha`, and computes the linear model output $y = X \times \beta + \alpha$.
+Next we define a function that computes the output of a linear model $y = X \beta + \alpha$, generate some example data and call the function.
+We could have also used the overloaded `%*%` and `+` operators, but chose the underlying `nv_*` function for clarity.
 
 ```{r}
 linear_model_r <- function(X, beta, alpha) {
-  X %*% beta + alpha
+  y0 <- nv_matmul(X, beta)
+  nv_add(y0, alpha)
 }
+```
 
-linear_model <- jit(linear_model_r)
+We simulate some training data from a univariate linear model and randomly initialize some parameters that we'll fit later.
 
-X <- nv_array(rnorm(6), dtype = "f32", shape = c(2, 3))
-beta <- nv_array(rnorm(3), dtype = "f32", shape = c(3, 1))
+```{r}
+X <- matrix(rnorm(100), ncol = 1)
+beta_true <- rnorm(1)
+alpha_true <- rnorm(1)
+y <- X %*% beta_true + alpha_true + rnorm(100, sd = 0.5)
+plot(X, y)
+X <- nv_array(X, dtype = "f32")
+y <- nv_array(y, dtype = "f32")
+
+beta <- nv_array(rnorm(1), shape = c(1, 1), dtype = "f32")
 alpha <- nv_scalar(rnorm(1), dtype = "f32")
 
-linear_model(X, beta, alpha)
+y_hat0 <- linear_model_r(X[1:2, ], beta, alpha)
+y_hat0
 ```
 
-One restriction of {anvl} is that a function has to be re-compiled for every unique combination of input types, each consisting of a specific shape and data type.
-To demonstrate this, we create a slightly modified version of our previous linear predictor function:
+What we have done in this section is commonly referred to as *eager execution*.
+To understand what this means, we need to differentiate it from *JIT compilation*, which is the primary goal of {anvl} and which we will cover next.
+
+## Just In Time Compilation
+
+JIT stands for *just-in-time* compilation: instead of compiling the function ahead of time, {anvl} waits until the first call (when the input shapes and dtypes are known) and only then translates the function into a single optimized executable, which is cached for subsequent calls.
+
+To get the most out of {anvl} in terms of performance, one should usually `jit()` your functions.
+For example, we can jit-compile the `linear_model_r` function we defined earlier.
+The output is a function with the same signature that produces the same results:
 
 ```{r}
-linear_model2 <- jit(function(X, beta, alpha) {
-  cat("compiling ...\n")
-  X %*% beta + alpha
-})
+linear_model <- jit(linear_model_r)
+y_hat1 <- linear_model(X[1:2, ], beta, alpha)
+all(y_hat0 == y_hat1)
 ```
 
-Next, we create a little helper function that creates example inputs with different numbers of observations:
+The difference from eager mode is that `jit()` compiles the whole function using [XLA](https://openxla.org/xla), which is the same compiler that underpins frameworks like TensorFlow and JAX.
+The output is an executable program that runs independently of the R interpreter.
+Note that under the hood, each `prim_*` function is itself a `jit()`-compiled function.
+
+One central assumption about programs that are `jit()`-compiled is that the R function is a *pure* function, so do not rely on side effects such as manipulation of global state within such a function.
+See the [Tracing Contract](jit.html#the-tracing-contract) section of the JIT deep dive for a more thorough explanation.
+
+At the jit boundary, plain R values are transparently converted to `AnvlArray`s, so you don't need to wrap every input in `nv_array()` yourself.
+This applies to both `nv_*` calls and your own `jit()`-compiled functions:
 
 ```{r}
-simul_data <- function(n, p) {
-  list(
-    X = nv_array(rnorm(n * p), dtype = "f32", shape = c(n, p)),
-    beta = nv_array(rnorm(p), dtype = "f32", shape = c(p, 1)),
-    alpha = nv_scalar(rnorm(1), dtype = "f32")
-  )
-}
+nv_add(1, array(2:3))
 ```
 
-Below, we call the function twice on data with the same shapes.
+An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to a default (on pjrt `f32` for doubles and `i32` for integers, and `bool` for logicals) when it meets nothing else.
+See `vignette("type-promotion")` for the full rules.
+
+Note that we only auto-convert `double`/`integer`/`logical`s that are
+
+1. vectors of length 1^[Since R has no distinct scalar type, converting general vectors would be inconsistent: a length-1 vector would become a 0D `AnvlArray` (scalar), but a length-2 vector a 1D array of shape `(2)`.]
+2. arbitrary arrays or matrices
+
+Besides `AnvlArray`s, jit-compiled functions can also take plain R values as arguments without converting them to `AnvlArray`s internally.
+Such arguments must be marked as `static`.
+Non-static (arrayish) inputs trigger recompilation only when the input type combination changes; static inputs trigger recompilation for every new value.
+
+To illustrate this, we create a jitted mean-squared error function whose reduction is configurable -- `reduction = "mean"` returns a scalar loss, `"sum"` returns the un-normalized total:
 
 ```{r}
-do.call(linear_model2, simul_data(2, 3))
-do.call(linear_model2, simul_data(2, 3))
-```
-
-We can notice that we only see the `"compiling ..."` message the first time, where the function is first compiled into an XLA executable, cached, and executed.
-The second time, the executable is retrieved from the cache (because the inputs have the same shapes and data types) and executed without recompilation.
-Because the executable contains only the operations applied to `AnvlArray`s, it does not contain the `cat()` call, so we don't see it the second time.
-
-If we call the function on data with different shapes (or data types), the function is re-compiled and the message re-appears.
-
-```{r}
-y_hat <- do.call(linear_model2, simul_data(4, 3))
-```
-
-Because the compilation step itself can take some time, {anvl} therefore gives the best results when the same function is called many times with the same (or only a few different) input types, or the computation itself is sufficiently large to amortize the compilation overhead.
-
-### Static Arguments
-
-Besides `AnvlArray`s, jit-compiled functions can also take in regular R values as arguments.
-For example, we might want a linear model with or without a bias term.
-To do so, we add the `logical(1)` argument `with_bias` to our function.
-We need to mark this argument as `static`, so {anvl} knows to treat it as a regular R value.
-
-```{r}
-linear_model3 <- jit(function(X, beta, alpha = NULL, with_bias) {
-  if (with_bias) {
-    cat("Compiling with bias ...\n")
-    X %*% beta + alpha
+mse <- jit(function(y_hat, y, reduction) {
+  se <- (y_hat - y)^2.0
+  if (reduction == "mean") {
+    mean(se)
   } else {
-    cat("Compiling without bias ...\n")
-    X %*% beta
+    sum(se)
   }
-}, static = "with_bias")
+}, static = "reduction")
+
+mse(linear_model(X, beta, alpha), y, reduction = "mean")
+mse(linear_model(X, beta, alpha), y, reduction = "sum")
 ```
 
-We can now call this function with or without a bias term:
+jit-compiled functions can also be called inside other `jit()` calls.
+When this happens, the inner function is not compiled and executed separately -- instead, they are compiled together.
+We combine `linear_model` and `mse` into a jitted `model_loss`:
 
 ```{r}
-linear_model3(X, beta, with_bias = FALSE)
-linear_model3(X, beta, alpha, with_bias = TRUE)
-```
-
-Static arguments work differently than `AnvlArrays` as the function will be re-compiled for each new observed value of the static argument, not only each unique input type combination.
-
-### Nested Inputs and Outputs
-
-Inputs and outputs can also be nested data structures that contain `AnvlArray`s, although we currently only support (named) lists.
-
-```{r}
-linear_model4 <- jit(function(inputs) {
-  list(y_hat = inputs[[1]] %*% inputs[[2]] + inputs[[3]])
-})
-linear_model4(list(X, beta, alpha))
-```
-
-### Composability
-
-Jit-compiled functions can be called inside other `jit()` calls.
-When this happens, the inner function is not compiled and executed separately -- instead, its operations are traced and inlined into the outer computation graph, as if you had called the original R function directly.
-
-```{r}
-add_jit <- jit(function(x, y) x + y)
-mul_jit <- jit(function(x, y) x * y)
-
-combined <- jit(function(a, b) {
-  s <- add_jit(a, b)
-  mul_jit(s, a)
+model_loss <- jit(function(X, beta, alpha, y) {
+  y_hat <- linear_model(X, beta, alpha)
+  mse(y_hat, y, reduction = "mean")
 })
 
-combined(nv_scalar(3L), nv_scalar(4L))
+model_loss(X, beta, alpha, y)
 ```
 
-This means you can build complex programs by composing smaller jitted building blocks.
-Each piece can be used standalone (where it is compiled and executed normally) or as part of a larger jitted function (where its operations are folded into the outer compilation).
+To get a better understanding of how `jit()` works see `vignette("jit")`.
+For a detailed discussion of when to prefer eager vs. jit mode, see `vignette("efficiency")`.
 
-So far, we have only implemented the prediction step for the linear model.
-One of the core applications of {anvl} is to implement learning algorithms, for which we often need gradients, as well as control flow.
-We will start with gradients.
+## Automatic Differentiation (AD)
 
-## Automatic Differentiation
+Another central feature of {anvl} is its ability to differentiate functions.
+Currently, we only support reverse-mode AD and no higher-order derivatives, but this will hopefully be added in the future.
+To showcase the automatic differentiation capabilities, we will use gradient descent to fit the linear model to the training data we simulated earlier -- although one would usually do this by solving the normal equations of course.
 
-In {anvl}, you can easily obtain the gradient function of a scalar-valued function via `gradient()`.
-Currently, we don't support jacobians or hessians, but this will hopefilly be added in the future.
-Below, we implement the loss function for our linear model.
-
-```{r}
-mse <- function(y_hat, y) {
-  mean((y_hat - y)^2.0)
-}
-```
-
-We now need some target variables `y`, so we simulate some data from a linear model:
+Using the `gradient()` transformation, we can automatically obtain the gradient function of `model_loss` with respect to a subset of its arguments that we specify via `wrt`.
+These must be `AnvlArray` inputs and not static values.
+The resulting `model_loss_grad` has the same signature as `model_loss`, but returns a named list of gradients -- one entry per argument listed in `wrt`:
 
 ```{r}
-beta <- rnorm(1)
-X <- matrix(rnorm(100), ncol = 1)
-alpha <- rnorm(1)
-y <- X %*% beta + alpha + rnorm(100, sd = 0.5)
-plot(X, y)
-X <- nv_array(X)
-y <- nv_array(y)
-```
-
-Next, we randomly initialize the model parameters:
-
-```{r}
-beta_hat <- nv_array(rnorm(1), shape = c(1, 1), dtype = "f32")
-alpha_hat <- nv_scalar(rnorm(1), dtype = "f32")
-```
-
-We can now define a function that does the prediction and calculates the loss.
-Note that we could also call the jit-compiled `linear_model` here instead of `linear_model_r` -- as discussed in the composability section, jitted functions called within `jit()` are transparently inlined.
-
-```{r}
-model_loss <- function(X, beta, alpha, y) {
-  y_hat <- linear_model_r(X, beta, alpha)
-  mse(y_hat, y)
-}
-```
-
-Using the `gradient()` transformation, we can automatically obtain the gradient function of `model_loss` with respect to some of its arguments, which we specify.
-
-```{r}
-model_loss_grad <- gradient(
+model_loss_grad <- jit(gradient(
   model_loss,
   wrt = c("beta", "alpha")
-)
+))
+
+model_loss_grad(X, beta, alpha, y)
 ```
 
 Finally, we define the update step for the weights using gradient descent.
+We group the parameters into a `weights` list that the function both accepts and returns -- this shows that inputs and outputs of a `jit()`-compiled function can be (nested) lists of `AnvlArray`s, not just bare arrays:
 
 ```{r}
-update_weights_r <- function(X, beta, alpha, y) {
-  lr <- 0.1
-  grads <- model_loss_grad(X, beta, alpha, y)
-  beta_new <- beta - lr * grads$beta
-  alpha_new <- alpha - lr * grads$alpha
-  list(beta = beta_new, alpha = alpha_new)
-}
-update_weights <- jit(update_weights_r)
+update_weights <- jit(function(X, weights, y, lr) {
+  grads <- model_loss_grad(X, weights$beta, weights$alpha, y)
+  list(
+    beta = weights$beta - lr * grads$beta,
+    alpha = weights$alpha - lr * grads$alpha
+  )
+})
 ```
 
-This already allows us to fit the linear model
+This already allows us to fit the linear model.
 
 ```{r}
-weights <- list(beta = beta_hat, alpha = alpha_hat)
+weights <- list(beta = beta, alpha = alpha)
+lr <- 0.1
 for (i in 1:100) {
-  weights <- update_weights(X, weights$beta, weights$alpha, y)
+  weights <- update_weights(X, weights, y, lr)
 }
 ```
 
@@ -282,62 +261,24 @@ plot(as_array(X), as_array(y))
 abline(as_array(weights$alpha), as_array(weights$beta), col = "red")
 ```
 
-While this might seem like a reasonable solution, it continuously switches between the R interpreter and the XLA runtime. Moreover, we allocate new arrays in each iteration for the weights.
-While the latter might not be a big problem for small models, it can cause significant overhead when working with bigger arrays.
+One problem with the above approach is that we are creating new weight arrays in each iteration and throw away the previous weights, just like we saw earlier when demonstrating subset assignment.
+We can work around this using the `donate` argument of `jit()`, which allows XLA to overwrite the inputs.
+See the [Donation](efficiency.html#donation) section of the efficiency vignette for details.
 
-Next, we will discuss control flow in {anvl} before we address immutability.
+Next, we will discuss control flow.
 
 ## Control Flow
 
-In principle, there are three ways to implement control-flow in {anvl}:
+In principle, there are three ways to implement control flow in {anvl}:
 
-1. Embed jit-compiled functions inside R control-flow constructs, which we have seen earlier.
-2. Embed R control flow inside a jit-compiled function (we have also seen this earlier when our linear model allowed to optionally include a bias term).
-3. Use special control-flow primitives provided by anvl, such as `nv_while()` and `nv_if()`.
+1. Embed jit-compiled functions inside R control-flow constructs, which we have seen above.
+2. Embed R control flow inside a jit-compiled function (we have also seen this earlier when `mse` branched on `reduction`).
+   R `for`/`while` loops are unrolled at trace time and R `if`-statements only retain the taken branch -- see the [R loops are unrolled](jit.html#r-loops-are-unrolled) and [R `if` statements pick one branch](jit.html#r-if-statements-pick-one-branch) sections of the JIT deep dive.
+3. Use special control-flow primitives provided by {anvl}, such as `nv_while()` and `nv_if()`.
 
-Which solution is best depends on the specific scenario, so we will cover all three cases, at the risk of being a bit repetitive.
-We will illustrate this with our linear model training example from earlier.
-The first implementation is what we have already seen earlier: we jit-compile the update step and then repeatedly call it in an R loop:
-
-```{r}
-n_steps <- 100L
-beta_hat <- nv_array(rnorm(1), shape = c(1, 1), dtype = "f32")
-alpha_hat <- nv_scalar(rnorm(1), dtype = "f32")
-
-weights <- list(beta = beta_hat, alpha = alpha_hat)
-for (i in seq_len(n_steps)) {
-  weights <- update_weights(X, weights$beta, weights$alpha, y)
-}
-weights
-```
-
-For simple update steps, this solution can be inefficient because every call into a jit-compiled function has some overhead.
-How significant this overhead is depends on how expensive each call in the loop is -- for expensive functions the overhead becomes negligible.
-
-The second approach is to use an R loop within the jit-compiled function.
-There, the loop will be unrolled during the compilation step (for conditionals, only one branch is included in the executable as discussed earlier).
-This will be rather slow in the example at hand, because we will also re-compute the gradient function in each iteration.
-Moreover, the parameter `n_steps` is static, which means that for every unique value of `n_steps`, the function will be re-compiled into a different executable.
-
-```{r}
-train_unrolled <- jit(function(X, beta, alpha, y, n_steps) {
-  lr <- nv_scalar(0.1)
-  for (i in seq_len(n_steps)) {
-    grads <- model_loss_grad(X, beta, alpha, y)
-    beta <- beta - lr * grads$beta
-    alpha <- alpha - lr * grads$alpha
-  }
-  list(beta = beta, alpha = alpha)
-}, static = "n_steps")
-
-beta_hat <- nv_array(rnorm(1), shape = c(1, 1), dtype = "f32")
-alpha_hat <- nv_scalar(rnorm(1), dtype = "f32")
-train_unrolled(X, beta_hat, alpha_hat, y, n_steps = 10L)
-```
-
-Finally, the third approach is to use the `nv_while` function.
-It is not like a standard while loop, because `anvl` is purely functional.
-
+Which solution is best depends on the specific use case.
+The first two have already been demonstrated, so we focus on `nv_while()` here.
+It is not like a standard while loop, because {anvl} is purely functional.
 The function takes in:
 
 1. An initial state, which is a (nested) list of `AnvlArray`s.
@@ -345,10 +286,9 @@ The function takes in:
 1. A `body` function, which takes as input the current state and returns a new state.
 
 ```{r}
-train_while <- jit(function(X, beta, alpha, y, n_steps) {
-  lr <- 0.1
+train_while <- jit(function(X, beta, alpha, y, n_steps, lr) {
   nv_while(
-    list(beta = beta, alpha = alpha, i = nv_scalar(0L)),
+    list(beta = beta, alpha = alpha, i = 0),
     \(beta, alpha, i) i < n_steps,
     \(beta, alpha, i) {
       grads <- model_loss_grad(X, beta, alpha, y)
@@ -361,57 +301,7 @@ train_while <- jit(function(X, beta, alpha, y, n_steps) {
   )
 })
 
-beta_hat <- nv_array(rnorm(1), shape = c(1, 1), dtype = "f32")
-alpha_hat <- nv_scalar(rnorm(1), dtype = "f32")
-train_while(X, beta_hat, alpha_hat, y, nv_scalar(100L))
+train_while(X, beta, alpha, y, nv_scalar(100L), lr = 0.1)
 ```
 
-The same approach works analogously for `if`-statements, where the {anvl} primitive `nv_if` is available.
-
-## Immutability
-
-`AnvlArray` objects are immutable, i.e., once created, their value cannot be changed.
-In other words, there are conceptually no in-place updates like `x[1] <- x[1] + 1`.
-This means that {anvl} follows **value semantics**, i.e., functions are **pure**.
-Naturally, this raises the question of how this impacts performance.
-We need to distinguish two scenarios:
-
-1. Updating an `AnvlArray` that "lives within" a jit-compiled function.
-1. Updating an `AnvlArray` "living in R" through a jit-compiled function.
-
-For the first scenario, there is nothing to worry about.
-The XLA compiler is able to optimize this, ensuring that no unnecessary copies are actually made.
-This is similar to copy-on-write semantics in R.
-If you evaluate `x <- 1:10; y <- x`, you are conceptually creating a copy of `x` when assigning it to `y`, but internally, this is optimized away and the copy will only be created when modifying `y` or `x`.
-Because {anvl} uses compilation and shapes are known at compile time, it can make many more such optimizations, minimizing unnecessary copies as much as possible.
-
-However, there is also the case where one calls into an {anvl} function from R code, as we have done in our initial linear model example.
-
-```{r}
-weights <- update_weights(X, weights$beta, weights$alpha, y)
-```
-
-Because the assignment of the outputs of the {anvl} function to R variables does not happen within the executable, the XLA compiler cannot optimize this.
-If we know that some of the inputs to the {anvl} function are not needed anymore after the function call (as is the case for "update-calls" like above), we can mark them as "donatable" when jit-compiling.
-
-```{r}
-update_weights_donatable <- jit(update_weights_r, donate = c("beta", "alpha"))
-```
-
-This will tell the XLA compiler that we no longer need the inputs `alpha` and `beta` afterwards, so their underlying memory can be reused.
-
-```{r}
-weights_out <- update_weights_donatable(X, weights$beta, weights$alpha, y)
-```
-
-If we now print the input weights, we get an error because the arrays have been deleted.
-
-```{r, error = TRUE}
-weights
-```
-
-But the new weights are still there.
-
-```{r}
-weights_out
-```
+The same approach works analogously for `if`-statements, where the {anvl} primitive `nv_if()` is available.

@@ -2,18 +2,14 @@
 % Please edit documentation in R/api.R, R/api-generics.R
 \name{nv_is_nan}
 \alias{nv_is_nan}
-\alias{is.nan.AnvlBox}
+\alias{is.nan.AnvlArray}
 \title{Is NaN}
 \usage{
-nv_is_nan(operand)
-
-\method{is.nan}{AnvlBox}(x)
+nv_is_nan(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
-
-\item{x}{(\code{\link{arrayish}})\cr Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

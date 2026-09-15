@@ -4,7 +4,7 @@
 \alias{IotaArray}
 \title{Iota Array Class}
 \usage{
-IotaArray(shape, dtype, dimension, start = 1L, ambiguous = FALSE)
+IotaArray(shape, dtype, axis, start = 1L)
 }
 \arguments{
 \item{shape}{(\code{\link[stablehlo:Shape]{stablehlo::Shape}} | \code{integer()})\cr
@@ -13,16 +13,11 @@ The shape of the array.}
 \item{dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
 The data type.}
 
-\item{dimension}{(\code{integer(1)})\cr
-The dimension along which values increase.}
+\item{axis}{(\code{integer(1)})\cr
+The axis along which values increase.}
 
 \item{start}{(\code{integer(1)})\cr
 The starting value.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 }
 \description{
 An \code{\link{AbstractArray}} representing an integer sequence.
@@ -31,22 +26,21 @@ Inherits from \code{\link{AbstractArray}}.
 }
 \section{Lowering}{
 
-When lowering to stableHLO, these become \code{iota} operations that generate the integer sequence
+When lowering to StableHLO, these become \code{iota} operations that generate the integer sequence
 so they do not need to actually hold the data in the executable, similar to \code{ALTREP}s in R.
-It lowers to \code{\link[stablehlo:hlo_iota]{stablehlo::hlo_iota()}}, optionally shifting the starting value via
-\code{\link[stablehlo:hlo_add]{stablehlo::hlo_add()}}.
+It lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}, optionally shifting the starting value via
+\code{\link[stablehlo:hlo_add]{hlo_add()}}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- IotaArray(shape = 4L, dtype = "i32", dimension = 1L)
+x <- IotaArray(shape = 4L, dtype = "i32", axis = 1L)
 x
-ambiguous(x)
 shape(x)
-ndims(x)
+naxes(x)
 dtype(x)
 # How it appears during tracing:
-graph <- trace_fn(function() nv_iota(dim = 1L, dtype = "i32", shape = 4L), list())
+graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 graph
 graph$outputs[[1]]$aval
 \dontshow{\}) # examplesIf}

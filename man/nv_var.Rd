@@ -2,31 +2,37 @@
 % Please edit documentation in R/api.R
 \name{nv_var}
 \alias{nv_var}
-\title{Variance Reduction}
+\title{Variance}
 \usage{
-nv_var(operand, dims, drop = TRUE, correction = 1L)
+nv_var(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
-\item{dims}{(\code{integer()})\cr
-Dimensions to reduce.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
+axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced dimensions.}
+Whether to drop reduced axes.}
 
 \item{correction}{(\code{integer(1)})\cr
 Degrees of freedom correction. Default is \code{1} (Bessel's correction).}
+
+\item{nan_rm}{(\code{logical(1)})\cr
+How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+(default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same data type as the input.
-When \code{drop = TRUE}, the reduced dimensions are removed.
-When \code{drop = FALSE}, the reduced dimensions are set to 1.
+When \code{drop = TRUE}, the reduced axes are removed.
+When \code{drop = FALSE}, the reduced axes are set to 1.
 }
 \description{
-Computes the variance along the specified dimensions.
+Computes the variance along the specified axes.
 }
 \details{
 Uses Bessel's correction by default (\code{correction = 1}), matching R's \code{\link[=var]{var()}}.
@@ -35,9 +41,11 @@ Set \code{correction = 0} for population variance.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))
-nv_var(x, dims = 1L)
+nv_var(x)             # all axes -> scalar
+nv_var(x, axes = 1L)
+nv_var(nv_array(c(1, NaN, 3, 5)), axes = 1L, nan_rm = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_sd]{nv_sd()}}, \code{\link[=nv_reduce_mean]{nv_reduce_mean()}}
+\code{\link[=nv_sd]{nv_sd()}}, \code{\link[=nv_mean]{nv_mean()}}
 }

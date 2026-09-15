@@ -4,24 +4,18 @@
 \alias{prim_convert}
 \title{Primitive Convert}
 \usage{
-prim_convert(operand, dtype, ambiguous = FALSE)
+prim_convert(x, dtype)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Target data type.}
-
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the given \code{dtype} and the same shape as \code{operand}.
-Ambiguity is controlled by the \code{ambiguous} parameter.
+Has the given \code{dtype} and the same shape as \code{x}.
 }
 \description{
 Converts the elements of an array to a different data type.
@@ -37,7 +31,7 @@ Converts the elements of an array to a different data type.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_convert]{stablehlo::hlo_convert()}}.
+Lowers to \code{\link[stablehlo:hlo_convert]{hlo_convert()}}.
 }
 
 \examples{

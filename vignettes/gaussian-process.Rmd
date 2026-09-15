@@ -51,7 +51,7 @@ rbf_kernel_matrix <- function(X1, X2, lengthscale, signal_var) {
     nv_reshape(X2, c(1L, m, d))
   )
   diff <- diff[[1L]] - diff[[2L]]
-  sq_dist <- nv_reduce_sum(diff * diff, dims = 3L)
+  sq_dist <- nv_reduce_sum(diff * diff, axes = 3L)
   signal_var * exp(-sq_dist / (2 * lengthscale^2))
 }
 ```
@@ -135,11 +135,24 @@ legend("topright", legend = c("Observations", "True function"),
   pch = c(19, NA), lty = c(NA, 1), col = c("black", "blue"), lwd = c(NA, 2))
 ```
 
-The `predict_gp` function implements the posterior predictive formulas using `nv_solve`
-to solve the linear systems involving $\mathbf{K}_y$ rather than explicitly inverting the
-kernel matrix.
+The `predict_gp` function implements the posterior predictive formulas by Cholesky-
+factorizing $\mathbf{K}_y = \mathbf{L} \mathbf{L}^\top$ and applying `nv_triangular_solve`
+twice (a forward solve against $\mathbf{L}$ and a back solve against $\mathbf{L}^\top$),
+rather than explicitly inverting the kernel matrix.
 
 ```{r}
+chol_solve <- function(L, b) {
+  # solves K_y x = b where K_y = L L^T (L lower triangular)
+  y <- nv_triangular_solve(L, b,
+    left_side = TRUE, lower = TRUE,
+    unit_diagonal = FALSE, transpose_a = FALSE
+  )
+  nv_triangular_solve(L, y,
+    left_side = TRUE, lower = TRUE,
+    unit_diagonal = FALSE, transpose_a = TRUE
+  )
+}
+
 predict_gp <- jit(function(kernel, X_train, y_train, X_test, lengthscale, signal_var, noise_var) {
   n <- shape(X_train)[1L]
 
@@ -149,12 +162,14 @@ predict_gp <- jit(function(kernel, X_train, y_train, X_test, lengthscale, signal
   K_s <- kernel(X_test, X_train, lengthscale, signal_var)
   K_ss <- kernel(X_test, X_test, lengthscale, signal_var)
 
+  L <- nv_chol(K_y, lower = TRUE)
+
   # Predictive mean: K_s %*% K_y^{-1} %*% y
-  alpha <- nv_solve(K_y, y_train)
+  alpha <- chol_solve(L, y_train)
   mu <- K_s %*% alpha
 
   # Predictive covariance: K_ss - K_s %*% K_y^{-1} %*% K_s^T
-  v <- nv_solve(K_y, t(K_s))
+  v <- chol_solve(L, t(K_s))
   cov <- K_ss - K_s %*% v
 
   list(mu = mu, cov = cov)
@@ -164,9 +179,9 @@ predict_gp <- jit(function(kernel, X_train, y_train, X_test, lengthscale, signal
 We apply this with $\ell = 0.5$, $\sigma_f^2 = 2$, and $\sigma^2 = 0.04$:
 
 ```{r}
-X_t <- nv_array(matrix(X_train, ncol = 1))
-y_t <- nv_array(matrix(y_train, ncol = 1))
-X_test_t <- nv_array(matrix(X_test, ncol = 1))
+X_t <- nv_matrix(X_train, ncol = 1)
+y_t <- nv_matrix(y_train, ncol = 1)
+X_test_t <- nv_matrix(X_test, ncol = 1)
 
 pred <- predict_gp(
   rbf_kernel_matrix, X_t, y_t, X_test_t,
@@ -177,7 +192,7 @@ pred <- predict_gp(
 ```
 
 ```{r, fig.width=7, fig.height=5, echo=FALSE}
-mu_pred <- as.vector(as_array(pred$mu))
+mu_pred <- as.vector(pred$mu)
 var_pred <- diag(as_array(pred$cov))
 sd_pred <- sqrt(pmax(var_pred, 0))
 plot(X_test, mu_pred, type = "l", lwd = 2, col = "red",
@@ -239,17 +254,24 @@ neg_log_marginal_likelihood <- function(kernel, X, y, lengthscale, signal_var, n
   eye <- nv_eye(n, dtype = dtype(K))
   K_y <- K + noise_var * eye
 
-  L <- nv_cholesky(K_y, lower = TRUE)
+  L <- nv_chol(K_y, lower = TRUE)
 
-  # alpha = K_y^{-1} y
-  alpha <- nv_solve(K_y, y)
+  # alpha = K_y^{-1} y, computed via L L^T x = y
+  z <- nv_triangular_solve(L, y,
+    left_side = TRUE, lower = TRUE,
+    unit_diagonal = FALSE, transpose_a = FALSE
+  )
+  alpha <- nv_triangular_solve(L, z,
+    left_side = TRUE, lower = TRUE,
+    unit_diagonal = FALSE, transpose_a = TRUE
+  )
 
   # Data fit term: 0.5 * y^T %*% alpha
-  data_fit <- 0.5 * nv_reduce_sum(y * alpha, dims = c(1L, 2L))
+  data_fit <- 0.5 * nv_reduce_sum(y * alpha, axes = c(1L, 2L))
 
   # Log determinant: sum(log(diag(L)))
-  diag_L <- nv_reduce_sum(L * eye, dims = 2L)
-  log_det <- nv_reduce_sum(log(diag_L), dims = 1L)
+  diag_L <- nv_reduce_sum(L * eye, axes = 2L)
+  log_det <- nv_reduce_sum(log(diag_L), axes = 1L)
 
   data_fit + log_det
 }
@@ -322,7 +344,7 @@ pred <- predict_gp(
   result$lengthscale, result$signal_var, result$noise_var
 )
 
-mu <- as.vector(as_array(pred$mu))
+mu <- as.vector(pred$mu)
 var <- diag(as_array(pred$cov))
 sd <- sqrt(pmax(var, 0))
 plot(X_test, mu, type = "l", lwd = 2, col = "red",
@@ -361,8 +383,8 @@ for (n in n_values) {
   X_dense <- sort(runif(n, -5, 5))
   y_dense <- true_fn(X_dense) + rnorm(n, sd = noise_sd)
 
-  X_dense_t <- nv_array(matrix(X_dense, ncol = 1))
-  y_dense_t <- nv_array(matrix(y_dense, ncol = 1))
+  X_dense_t <- nv_matrix(X_dense, ncol = 1)
+  y_dense_t <- nv_matrix(y_dense, ncol = 1)
 
   res_dense <- train_gp(
     X_dense_t, y_dense_t,
@@ -378,7 +400,7 @@ for (n in n_values) {
     res_dense$lengthscale, res_dense$signal_var, res_dense$noise_var
   )
 
-  mu_d <- as.vector(as_array(pred_dense$mu))
+  mu_d <- as.vector(pred_dense$mu)
   var_d <- diag(as_array(pred_dense$cov))
   sd_d <- sqrt(pmax(var_d, 0))
 

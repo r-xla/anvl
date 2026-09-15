@@ -14,10 +14,11 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
-Element-wise remainder of division.
+Element-wise remainder. The result has the sign of the dividend, which is
+what StableHLO's \code{remainder} does. Base R's \code{\%\%} takes the sign of the
+divisor instead and is available via \code{\link[=nv_mod]{nv_mod()}}.
 }
 \section{Implemented Rules}{
 
@@ -29,16 +30,15 @@ Element-wise remainder of division.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_remainder]{stablehlo::hlo_remainder()}}.
+Lowers to \code{\link[stablehlo:hlo_remainder]{hlo_remainder()}}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(7, 10, 15))
-y <- nv_array(c(3, 4, 6))
-prim_remainder(x, y)
+prim_remainder(1, -3)
+1 \%\% -3
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_remainder]{nv_remainder()}}, \code{\%\%}
+\code{\link[=nv_remainder]{nv_remainder()}}
 }

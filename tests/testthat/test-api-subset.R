@@ -22,7 +22,7 @@ describe("nv_subset and nv_subset_assign", {
     })
 
     args <- lapply(r_args, \(a) a[[1L]])
-    drop_dims <- vapply(r_args, \(a) a[[2L]], logical(1L))
+    drop_axes <- vapply(r_args, \(a) a[[2L]], logical(1L))
 
     value_shape <- subset_spec_to_shape(spec)
 
@@ -36,9 +36,7 @@ describe("nv_subset and nv_subset_assign", {
       dim(r_subset_result) <- value_shape
     }
 
-    static_subset <- as_array(jit(function(x) {
-      rlang::inject(nv_subset(x, !!!quos))
-    })(x))
+    static_subset <- as_array(rlang::inject(nv_subset(x, !!!quos)))
 
     expect_equal(static_subset, r_subset_result)
 
@@ -52,9 +50,7 @@ describe("nv_subset and nv_subset_assign", {
 
     v <- nv_array(value, shape = value_shape)
 
-    static_assign <- as_array(jit(function(x, v) {
-      rlang::inject(nv_subset_assign(x, !!!quos, value = v))
-    })(x, v))
+    static_assign <- as_array(rlang::inject(nv_subset_assign(x, !!!quos, value = v)))
 
     expect_equal(static_assign, r_assign_result)
   }
@@ -75,7 +71,11 @@ describe("nv_subset and nv_subset_assign", {
     check(c(10L), array(c(1L, 4L, 7L)))
   })
 
-  it("2D: single element in both dims", {
+  it("1D: array(i) keeps the axis", {
+    check(c(10L), array(3L))
+  })
+
+  it("2D: single element in both axes", {
     check(c(4L, 5L), 2L, 3L)
   })
 
@@ -83,19 +83,19 @@ describe("nv_subset and nv_subset_assign", {
     check(c(6L, 4L), 2:4, )
   })
 
-  it("2D: single in first dim, range in second", {
+  it("2D: single in first axis, range in second", {
     check(c(5L, 8L), 3L, 2:6)
   })
 
-  it("2D: single in first dim, full second", {
+  it("2D: single in first axis, full second", {
     check(c(4L, 5L), 2L, )
   })
 
-  it("2D: range in both dims", {
+  it("2D: range in both axes", {
     check(c(6L, 8L), 2:4, 3:6)
   })
 
-  it("2D: full first dim, range in second", {
+  it("2D: full first axis, range in second", {
     check(c(3L, 6L), , 2:4)
   })
 
@@ -103,23 +103,23 @@ describe("nv_subset and nv_subset_assign", {
     check(c(2, 3, 2), 1:2, array(c(1L, 3L)), 1)
   })
 
-  it("2D: gather in first dim, full second", {
+  it("2D: gather in first axis, full second", {
     check(c(6L, 4L), array(c(1L, 3L, 5L)), )
   })
 
-  it("2D: gather in both dims", {
+  it("2D: gather in both axes", {
     check(c(5L, 6L), array(c(1L, 3L, 5L)), array(c(2L, 4L)))
   })
 
-  it("2D: gather in one dim, single in the other", {
+  it("2D: gather in one axis, single in the other", {
     check(c(5L, 6L), array(c(2L, 4L)), 3L)
   })
 
-  it("2D: single-element array preserves dim", {
+  it("2D: single-element array preserves axis", {
     check(c(4L, 3L), array(2L), )
   })
 
-  it("2D: trailing dim unspecified (defaults to full)", {
+  it("2D: trailing axis unspecified (defaults to full)", {
     check(c(4L, 3L), 2:3)
   })
 
@@ -131,11 +131,11 @@ describe("nv_subset and nv_subset_assign", {
     check(c(3L, 4L, 2L), , , )
   })
 
-  it("3D: gather in two dims, scalar in third", {
+  it("3D: gather in two axes, scalar in third", {
     check(c(4L, 5L, 6L), array(c(1L, 3L)), array(c(2L, 5L)), 1L)
   })
 
-  it("3D: gather in first two dims, range in third", {
+  it("3D: gather in first two axes, range in third", {
     check(c(4L, 5L, 6L), array(c(1L, 3L)), array(c(2L, 4L, 5L)), 2:4)
   })
 
@@ -143,15 +143,22 @@ describe("nv_subset and nv_subset_assign", {
     check(c(3, 4, 2, 4), 1:2, array(c(1L, 2L, 4L)), , array(c(3L, 1L)))
   })
 
+  # TODO: these tests use duplicate destination indices (`array(c(2L, 2L))`).
+  # stablehlo.scatter is non-deterministic on GPU when indices collide, so the
+  # equality check against R's last-wins result fails on CUDA. Improve check()
+  # to verify that colliding cells hold one of the legal source values.
   it("5D: 3 multi-index subsets, no drop", {
+    skip_if(is_cuda())
     check(c(3, 4, 2, 4, 3), 1:2, array(c(1L, 2L, 4L)), , array(c(3L, 1L)), array(c(2L, 2L)))
   })
 
   it("5D: 3 multi-index subsets, 1 drop", {
+    skip_if(is_cuda())
     check(c(3, 4, 2, 4, 3), 1, array(c(1L, 2L, 4L)), , array(c(3L, 1L)), array(c(2L, 2L)))
   })
 
   it("5D: 3 multi-index subsets, 2 drops", {
+    skip_if(is_cuda())
     check(c(3, 4, 2, 4, 3), 1, array(c(1L, 2L, 4L)), 2, array(c(3L, 1L)), array(c(2L, 2L)))
   })
 
@@ -163,7 +170,7 @@ describe("nv_subset and nv_subset_assign", {
     check(c(8L), 8L)
   })
 
-  it("1D: length-1 range preserves dim", {
+  it("1D: length-1 range preserves axis", {
     check(c(10L), 3:3)
   })
 
@@ -175,28 +182,44 @@ describe("nv_subset and nv_subset_assign", {
     check(c(10L), array(c(7L, 3L, 1L)))
   })
 
+  # TODO: duplicate destination index — stablehlo.scatter is non-deterministic
+  # on GPU. Improve check() to verify membership rather than last-wins equality.
   it("1D: gather with duplicate indices", {
+    skip_if(is_cuda())
     check(c(6L), array(c(2L, 2L, 4L)))
   })
 
-  it("2D: dimension of size 1", {
+  it("2D: axis of size 1", {
     check(c(1L, 5L), 1L, 2:4)
   })
 
-  it("3D: all dims dropped (scalar result)", {
+  it("3D: all axes dropped (scalar result)", {
     check(c(4L, 5L, 3L), 2L, 3L, 1L)
   })
 
-  it("3D: trailing dims unspecified with drop", {
+  it("3D: trailing axes unspecified with drop", {
     check(c(4L, 5L, 3L), 2L)
   })
 
-  it("2D: gather with duplicates in both dims", {
+  # TODO: duplicate destination indices — stablehlo.scatter is non-deterministic
+  # on GPU. Improve check() to verify membership rather than last-wins equality.
+  it("2D: gather with duplicates in both axes", {
+    skip_if(is_cuda())
     check(c(4L, 5L), array(c(1L, 1L, 3L)), array(c(2L, 2L)))
   })
 
-  it("2D: boundary indices in both dims", {
+  it("2D: boundary indices in both axes", {
     check(c(3L, 4L), 1:3, 1:4)
+  })
+
+  # Minimal CUDA-safe duplicate-index test: writes 100 values to position 1,
+  # then checks that element 1 holds one of those values (rather than asserting
+  # which specific one — that would be non-deterministic on GPU).
+  it("scatter with all-colliding destination indices yields a valid write", {
+    x <- nv_array(1:100)
+    result <- as_array(nv_subset_assign(x, array(rep(1L, 100)), value = nv_array(101:200)))
+    expect_true(as.integer(result)[1L] %in% 101:200)
+    expect_equal(as.integer(result)[-1L], 2:100)
   })
 
   it("subset errors on R vector of length > 1", {
@@ -213,7 +236,7 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[1:5, , ], "Too many subset specifications")
     expect_error(x[1:5, 1:3, ], "Too many subset specifications")
 
-    y <- nv_array(matrix(1:6, nrow = 2)) # 2-D
+    y <- nv_matrix(1:6, nrow = 2) # 2-D
     expect_error(y[1, 1, ], "Too many subset specifications")
     expect_error(y[1, 1, , ], "Too many subset specifications")
   })
@@ -233,7 +256,7 @@ describe("nv_subset and nv_subset_assign", {
       "Too many subset specifications"
     )
 
-    y <- nv_array(matrix(1:6, nrow = 2)) # 2-D
+    y <- nv_matrix(1:6, nrow = 2) # 2-D
     expect_error(
       {
         y[1, 1, ] <- 0L
@@ -243,7 +266,7 @@ describe("nv_subset and nv_subset_assign", {
   })
 
   it("subset_assign broadcasts scalar rhs", {
-    expect_jit_equal(
+    expect_equal(
       {
         x <- nv_array(1:3)
         x[1:3] <- -1L
@@ -256,7 +279,7 @@ describe("nv_subset and nv_subset_assign", {
   it("subset_assign errors when update shape doesn't match", {
     expect_error(
       {
-        x <- nv_array(matrix(1:6, nrow = 2))
+        x <- nv_matrix(1:6, nrow = 2)
         x[1:2, 1:2] <- nv_array(1:2)
         x
       },
@@ -269,7 +292,7 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[0:5], "out of bounds")
   })
 
-  it("errors on out-of-bounds range (end > dim_size)", {
+  it("errors on out-of-bounds range (end > axis_size)", {
     x <- nv_array(1:10)
     expect_error(x[5:11], "out of bounds")
   })
@@ -279,7 +302,7 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[0L], "out of bounds")
   })
 
-  it("errors on out-of-bounds single index (> dim_size)", {
+  it("errors on out-of-bounds single index (> axis_size)", {
     x <- nv_array(1:10)
     expect_error(x[11L], "out of bounds")
   })
@@ -293,10 +316,10 @@ describe("nv_subset and nv_subset_assign", {
   it("works with all-static indices via [", {
     r_arr <- array(1:24, dim = c(2, 3, 4))
     x <- nv_array(r_arr)
-    result <- jit(function(x) x[2L, 1L, 3L])(x)
+    result <- x[2L, 1L, 3L]
     expect_equal(as_array(result), r_arr[2, 1, 3])
 
-    result2 <- jit(function(x) x[array(c(1L, 1L)), array(c(2L, 3L)), array(c(2L, 1L))])(x)
+    result2 <- x[array(c(1L, 1L)), array(c(2L, 3L)), array(c(2L, 1L))]
     expect_equal(as_array(result2), r_arr[c(1, 1), c(2, 3), c(2, 1)])
   })
 
@@ -330,75 +353,60 @@ describe("nv_subset and nv_subset_assign", {
   })
 })
 
-
 describe("subset_specs_start_indices", {
   it("returns all 1s for SubsetFull specs", {
-    result <- jit(function() {
-      subsets <- list(SubsetFull(5L), SubsetFull(3L))
-      subset_specs_start_indices(subsets)
-    })()
+    subsets <- list(SubsetFull(5L), SubsetFull(3L))
+    result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i32"))
-    expect_equal(as.integer(as_array(result)), c(1L, 1L))
+    expect_equal(as.integer(result), c(1L, 1L))
   })
 
   it("returns start values for SubsetRange specs", {
-    result <- jit(function() {
-      subsets <- list(SubsetRange(3L, 5L), SubsetRange(2L, 4L))
-      subset_specs_start_indices(subsets)
-    })()
+    subsets <- list(SubsetRange(3L, 5L), SubsetRange(2L, 4L))
+    result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i32"))
-    expect_equal(as.integer(as_array(result)), c(3L, 2L))
+    expect_equal(as.integer(result), c(3L, 2L))
   })
 
   it("returns the index for scalar SubsetIndices", {
-    result <- jit(function() {
-      subsets <- list(SubsetIndex(nv_scalar(4L, dtype = "i64")))
-      subset_specs_start_indices(subsets)
-    })()
+    subsets <- list(SubsetIndex(nv_scalar(4L, dtype = "i64")))
+    result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i64"))
-    expect_equal(as.integer(as_array(result)), 4L)
+    expect_equal(as.integer(result), 4L)
   })
 
   it("handles mixed spec types", {
-    result <- jit(function() {
-      subsets <- list(
-        SubsetRange(2L, 5L),
-        SubsetFull(10L),
-        SubsetIndex(nv_scalar(3L, dtype = "i64"))
-      )
-      subset_specs_start_indices(subsets)
-    })()
+    subsets <- list(
+      SubsetRange(2L, 5L),
+      SubsetFull(10L),
+      SubsetIndex(nv_scalar(3L, dtype = "i64"))
+    )
+    result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i64"))
-    expect_equal(as.integer(as_array(result)), c(2L, 1L, 3L))
+    expect_equal(as.integer(result), c(2L, 1L, 3L))
   })
 
   it("uses i32 for all-static subsets", {
-    result <- jit(function() {
-      subsets <- list(SubsetFull(5L), SubsetRange(3L, 5L))
-      subset_specs_start_indices(subsets)
-    })()
+    subsets <- list(SubsetFull(5L), SubsetRange(3L, 5L))
+    result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i32"))
-    expect_equal(as.integer(as_array(result)), c(1L, 3L))
+    expect_equal(as.integer(result), c(1L, 3L))
   })
 
   it("uses max integer type when dynamic indices are present", {
-    result <- jit(function() {
-      subsets <- list(
-        SubsetIndex(nv_scalar(2L, dtype = "i16")),
-        SubsetRange(3L, 5L)
-      )
-      subset_specs_start_indices(subsets)
-    })()
+    subsets <- list(
+      SubsetIndex(nv_scalar(2L, dtype = "i16")),
+      SubsetRange(3L, 5L)
+    )
+    result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i32"))
   })
 
-  it("works with a single dimension", {
-    result <- jit(function() {
-      subsets <- list(SubsetRange(2L, 7L))
-      subset_specs_start_indices(subsets)
-    })()
+  it("works with a single axis", {
+    subsets <- list(SubsetRange(2L, 7L))
+    result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i32"))
-    expect_equal(as.integer(as_array(result)), 2L)
+    expect_equal(as.integer(result), 2L)
   })
 
   it("works with empty subset", {
@@ -411,64 +419,5 @@ describe("subset_specs_start_indices", {
       x[] <- nv_array(2:11)
     }
     expect_equal(x, nv_array(2:11))
-  })
-})
-
-describe("subsetting cross-device eager (check_eager)", {
-  it("nv_subset with static indices", {
-    check_eager(function(x) x[2L, 1L], nv_array(matrix(1:12, nrow = 3)))
-    check_eager(function(x) x[1:2, ], nv_array(matrix(1:12, nrow = 3)))
-    check_eager(function(x) x[, 1:2], nv_array(matrix(1:12, nrow = 3)))
-    check_eager(function(x) x[array(c(1L, 3L)), ], nv_array(matrix(1:12, nrow = 3)))
-    check_eager(function(x) x[], nv_array(1:10))
-  })
-
-  it("nv_subset with dynamic indices", {
-    check_eager(
-      function(x, i) x[i],
-      nv_array(1:10),
-      nv_scalar(3L)
-    )
-    check_eager(
-      function(x, idx) x[idx],
-      nv_array(1:10),
-      nv_array(c(1L, 3L, 5L))
-    )
-    check_eager(
-      function(x, i, j) x[i, j],
-      nv_array(matrix(1:12, nrow = 3)),
-      nv_scalar(2L),
-      nv_scalar(1L)
-    )
-  })
-
-  it("nv_subset_assign with static indices", {
-    check_eager(
-      function(x, v) {
-        x[1, ] <- v
-        x
-      },
-      nv_array(matrix(1:12, nrow = 3)),
-      nv_array(c(0L, 0L, 0L, 0L))
-    )
-    check_eager(
-      function(x) {
-        x[] <- 0L
-        x
-      },
-      nv_array(1:5)
-    )
-  })
-
-  it("nv_subset_assign with dynamic indices", {
-    check_eager(
-      function(x, i, v) {
-        x[i] <- v
-        x
-      },
-      nv_array(1:10),
-      nv_scalar(3L),
-      nv_scalar(99L)
-    )
   })
 })

@@ -6,7 +6,7 @@ describe("inline_scalarish_constants", {
     expected_constants_after = NULL,
     check_literals = NULL
   ) {
-    graph <- do.call(trace_fn, c(list(f = graph_fun), args, list(toplevel = TRUE)))
+    graph <- do.call(trace_fn, c(list(f = graph_fun), args))
 
     if (!is.null(expected_constants_before)) {
       expect_length(graph$constants, expected_constants_before)
@@ -77,7 +77,7 @@ describe("inline_scalarish_constants", {
 
     check_inlining(
       graph_fun = f,
-      args = list(list(x = nv_scalar(1))),
+      args = list(list(x = nv_scalar(1)))
     )
   })
 
@@ -196,7 +196,7 @@ describe("inline_scalarish_constants", {
       )
     }
 
-    g1 <- trace_fn(f, list(x = nv_scalar(TRUE), y = nv_scalar(TRUE)), toplevel = TRUE)
+    g1 <- trace_fn(f, list(x = nv_scalar(TRUE), y = nv_scalar(TRUE)))
     g2 <- inline_scalarish_constants(g1)
 
     check_inlining(
@@ -286,5 +286,80 @@ describe("remove_unused_constants", {
     expect_length(graph$constants, 1L)
     new_graph <- remove_unused_constants(graph)
     expect_length(new_graph$constants, 1L)
+  })
+})
+
+describe("resolve_optimization_passes", {
+  it("TRUE selects all passes in canonical order", {
+    expect_identical(
+      resolve_optimization_passes(TRUE),
+      names(graph_optimization_passes)
+    )
+  })
+
+  it("FALSE selects no passes", {
+    expect_identical(resolve_optimization_passes(FALSE), character())
+  })
+
+  it("a character vector selects a subset, in canonical order", {
+    expect_identical(
+      resolve_optimization_passes("remove_unused_constants"),
+      "remove_unused_constants"
+    )
+    expect_identical(
+      resolve_optimization_passes(c("remove_unused_constants", "inline_scalars")),
+      names(graph_optimization_passes)
+    )
+    expect_identical(resolve_optimization_passes(character()), character())
+  })
+
+  it("rejects unknown pass names", {
+    expect_error(resolve_optimization_passes("nope"), "Unknown optimization pass")
+  })
+
+  it("rejects a non-flag logical", {
+    expect_error(resolve_optimization_passes(c(TRUE, FALSE)))
+    expect_error(resolve_optimization_passes(NA))
+  })
+})
+
+describe("optimize_graph", {
+  it("FALSE leaves scalar constants in the graph, TRUE inlines them", {
+    y <- nv_scalar(1)
+    f <- function(x) x + y
+    graph <- trace_fn(f, list(x = nv_scalar(1)))
+    expect_length(graph$constants, 1L)
+
+    expect_length(optimize_graph(graph, FALSE)$constants, 1L)
+    expect_length(optimize_graph(graph, TRUE)$constants, 0L)
+    expect_length(
+      optimize_graph(graph, "remove_unused_constants")$constants,
+      1L
+    )
+  })
+})
+
+describe("trace_fn(optimize = )", {
+  it("defaults to no optimization and honours the passes when requested", {
+    y <- nv_scalar(1)
+    f <- function(x) x + y
+
+    expect_length(trace_fn(f, list(x = nv_scalar(1)))$constants, 1L)
+    expect_length(
+      trace_fn(f, list(x = nv_scalar(1)), optimize = FALSE)$constants,
+      1L
+    )
+    expect_length(
+      trace_fn(f, list(x = nv_scalar(1)), optimize = TRUE)$constants,
+      0L
+    )
+    expect_length(
+      trace_fn(
+        f,
+        list(x = nv_scalar(1)),
+        optimize = "remove_unused_constants"
+      )$constants,
+      1L
+    )
   })
 })

@@ -4,28 +4,27 @@
 \alias{prim_dynamic_update_slice}
 \title{Primitive Dynamic Update Slice}
 \usage{
-prim_dynamic_update_slice(operand, update, ...)
+prim_dynamic_update_slice(x, update, ...)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
-data type and number of dimensions as \code{operand}, with
-\code{nv_shape(update) <= nv_shape(operand)} per dimension.}
+data type and number of axes as \code{x}, with
+\code{shape(update) <= shape(x)} per axis.}
 
 \item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per dimension of \code{operand}.
+Scalar start indices, one per axis of \code{x}.
 Each must be a scalar array.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type and shape as \code{operand}.
-It is ambiguous if the input is ambiguous.
+Has the same data type and shape as \code{x}.
 }
 \description{
-Returns a copy of \code{operand} with a slice replaced by \code{update} at a
+Returns a copy of \code{x} with a slice replaced by \code{update} at a
 runtime-determined position. This is the write counterpart of
 \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}: dynamic slice reads a block from an array,
 while dynamic update slice writes a block into an array.
@@ -41,13 +40,13 @@ while dynamic update slice writes a block into an array.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{stablehlo::hlo_dynamic_update_slice()}}.
+Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}.
 }
 
-\section{Out Of Bounds Behavior}{
+\section{Out of Bounds Behavior}{
 
 Start indices are clamped before the slice is extracted:
-\code{adjusted_start_indices = clamp(1, start_indices, nv_shape(operand) - slice_sizes + 1)}.
+\code{adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)}.
 This means that out-of-bounds indices will not cause an error, but
 the effective start position may differ from the requested one.
 }
@@ -61,8 +60,8 @@ start <- nv_scalar(2L)
 prim_dynamic_update_slice(x, update, start)
 
 # 2-D: write a 2x2 block into a 3x4 matrix
-x <- nv_array(matrix(0L, nrow = 3, ncol = 4))
-update <- nv_array(matrix(c(1L, 2L, 3L, 4L), nrow = 2, ncol = 2))
+x <- nv_fill(0L, shape = c(3, 4))
+update <- nv_matrix(c(1L, 2L, 3L, 4L), nrow = 2, ncol = 2)
 row_start <- nv_scalar(2L)
 col_start <- nv_scalar(3L)
 prim_dynamic_update_slice(x, update, row_start, col_start)

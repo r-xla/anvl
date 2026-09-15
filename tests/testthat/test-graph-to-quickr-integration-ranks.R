@@ -9,10 +9,10 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
   batch_dim <- 2L
 
   matmul_any_rank <- function(A, B) {
-    if (ndims(A) == 1L) {
+    if (naxes(A) == 1L) {
       A <- nv_reshape(A, c(1L, shape(A)))
     }
-    if (ndims(B) == 1L) {
+    if (naxes(B) == 1L) {
       B <- nv_reshape(B, c(shape(B), 1L))
     }
 
@@ -20,10 +20,10 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
       if (identical(shape(x), target_shape)) {
         return(x)
       }
-      if (ndims(x) < length(target_shape)) {
-        x <- nv_reshape(x, c(rep.int(1L, length(target_shape) - ndims(x)), shape(x)))
+      if (naxes(x) < length(target_shape)) {
+        x <- nv_reshape(x, c(rep.int(1L, length(target_shape) - naxes(x)), shape(x)))
       }
-      prim_broadcast_in_dim(x, shape = target_shape, broadcast_dimensions = seq_along(target_shape))
+      prim_broadcast_in_axes(x, shape = target_shape, broadcast_axes = seq_along(target_shape))
     }
 
     shA <- shape(A)
@@ -42,7 +42,7 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
     A %*% B
   }
 
-  template_tensor <- function(x) {
+  template_array <- function(x) {
     shp <- dim(x)
     if (is.null(shp)) {
       shp <- c(length(x))
@@ -79,7 +79,7 @@ test_that("integration: `%*%` matches PJRT for array ranks 1..5", {
     A <- make_input(a_rank, "lhs")
     B <- make_input(b_rank, "rhs")
 
-    templates <- list(A = template_tensor(A), B = template_tensor(B))
+    templates <- list(A = template_array(A), B = template_array(B))
     run <- list(
       args = list(A = A, B = B),
       info = paste0("a_rank=", a_rank, ", b_rank=", b_rank)

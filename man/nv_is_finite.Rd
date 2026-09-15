@@ -2,18 +2,14 @@
 % Please edit documentation in R/api.R, R/api-generics.R
 \name{nv_is_finite}
 \alias{nv_is_finite}
-\alias{is.finite.AnvlBox}
+\alias{is.finite.AnvlArray}
 \title{Is Finite}
 \usage{
-nv_is_finite(operand)
-
-\method{is.finite}{AnvlBox}(x)
+nv_is_finite(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
-
-\item{x}{(\code{\link{arrayish}})\cr Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

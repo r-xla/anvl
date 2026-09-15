@@ -4,16 +4,15 @@
 \alias{prim_popcnt}
 \title{Primitive Population Count}
 \usage{
-prim_popcnt(operand)
+prim_popcnt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type integer or unsigned integer.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise population count (number of set bits).
@@ -28,7 +27,7 @@ Element-wise population count (number of set bits).
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_popcnt]{stablehlo::hlo_popcnt()}}.
+Lowers to \code{\link[stablehlo:hlo_popcnt]{hlo_popcnt()}}.
 }
 
 \examples{

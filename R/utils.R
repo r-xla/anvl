@@ -3,6 +3,44 @@ dtype_from_buffer <- function(x) {
   as_dtype(d)
 }
 
+#' @title Apply a `@jit` registry
+#' @description
+#' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
+#' listed function in `envir` to
+#' `jit(f, static = entry$static)`.
+#'
+#' Call this from the top level of your package's `R/zzz.R`, right next to
+#' `.onLoad`, so the wrappers are byte-compiled during package install
+#' instead of being rebuilt on every `.onLoad`:
+#'
+#' ```r
+#' anvl::apply_jit_registry(.jit_registry)
+#' ```
+#'
+#' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
+#' regenerated on every `devtools::document()`.
+#'
+#' @param registry (`list`)\cr
+#'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
+#'   `.jit_registry` object emitted by the roclet.
+#' @param envir (`environment`)\cr
+#'   Environment in which to look up and rebind functions. Defaults to
+#'   `parent.frame()`, which at top-level package source time is the package
+#'   namespace.
+#' @return Invisibly returns `envir`.
+#' @seealso [`jit_roclet()`], [`jit()`]
+#' @export
+apply_jit_registry <- function(registry, envir = parent.frame()) {
+  for (entry in registry) {
+    assign(
+      entry$name,
+      jit(get(entry$name, envir = envir, inherits = FALSE), static = entry$static),
+      envir = envir
+    )
+  }
+  invisible(envir)
+}
+
 hashvalues <- function(h) {
   val <- vector("list", numhash(h))
   idx <- 0
@@ -84,9 +122,6 @@ without <- function(x, indices) {
 }
 
 shape2string <- function(x, parenthesize = TRUE) {
-  if (is_shape(x)) {
-    x <- x$dims
-  }
   if (parenthesize) {
     sprintf("(%s)", paste0(x, collapse = ","))
   } else {
@@ -94,61 +129,41 @@ shape2string <- function(x, parenthesize = TRUE) {
   }
 }
 
-shapes2string <- function(shapes) {
-  paste0(sapply(shapes, shape2string), sep = ", ")
+# The shape spelling for user-facing messages: `(2x3)`, and `()` for a scalar.
+# `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
+# `RData(double, (2,3))` are built from and stays as it is -- so everything a
+# caller reads in an error or warning goes through these two instead.
+shape_repr <- function(shape) {
+  sprintf("(%s)", paste0(shape, collapse = "x"))
 }
 
-zeros <- function(dtype, shape, ambiguous) {
-  prim_fill(0L, dtype = dtype, shape = shape, ambiguous = ambiguous)
+shapes_repr <- function(shapes) {
+  paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
-ones <- function(dtype, shape, ambiguous) {
-  prim_fill(1L, dtype = dtype, shape = shape, ambiguous = ambiguous)
+zeros <- function(dtype, shape) {
+  prim_fill(0L, dtype = dtype, shape = shape)
+}
+
+ones <- function(dtype, shape) {
+  prim_fill(1L, dtype = dtype, shape = shape)
 }
 
 
-zeros_like <- function(x, ambiguous = FALSE) {
-  zeros(dtype(x), shape(x), ambiguous)
+zeros_like <- function(x) {
+  zeros(dtype(x), shape(x))
 }
 
-ones_like <- function(x, ambiguous = FALSE) {
-  ones(dtype(x), shape(x), ambiguous)
-}
-
-#' @title Abstract Properties
-#' @name abstract_properties
-#' @description
-#' Calls the extractor after converting the input to an [`AbstractArray`].
-#' @param x ([`arrayish`])\cr
-#' @export
-shape_abstract <- function(x) {
-  shape(to_abstract(x))
-}
-
-#' @rdname abstract_properties
-#' @export
-ndims_abstract <- function(x) {
-  length(shape_abstract(x))
-}
-
-#' @rdname abstract_properties
-#' @export
-dtype_abstract <- function(x) {
-  dtype(to_abstract(x))
-}
-
-#' @export
-#' @rdname abstract_properties
-ambiguous_abstract <- function(x) {
-  to_abstract(x)$ambiguous
-}
-
-dtype2string <- function(dtype, ambiguous = FALSE) {
-  paste0(repr(dtype), if (ambiguous) "?")
+ones_like <- function(x) {
+  ones(dtype(x), shape(x))
 }
 
 is_valid_r_lit <- function(x) {
-  test_scalar(x) && (is.numeric(x) || is.logical(x)) && is.null(dim(x))
+  length(x) == 1L &&
+    is.null(dim(x)) &&
+    (is.numeric(x) || is.logical(x)) &&
+    # Accept NaN/Inf but reject NA (NA has no obvious dtype).
+    (is.nan(x) || !is.na(x))
 }
 
 is_valid_r_array <- function(x) {
@@ -159,23 +174,43 @@ is_valid_r <- function(x) {
   (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
 }
 
+# The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
+# implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
+# run on that backend yet, since the implementations are built on first call.
+jit_dispatcher <- function(f, backend = active_backend()) {
+  jit_fns <- environment(f)$.jit_fns
+  if (is.null(jit_fns)) {
+    cli_abort("{.arg f} is not a jitted function.")
+  }
+  impl <- jit_fns[[backend]]
+  if (is.null(impl)) {
+    return(NULL)
+  }
+  environment(impl)$dispatcher
+}
+
+# The number of programs `f` has cached for the active backend.
 cache_size <- function(f) {
-  environment(f)$cache$size
+  dispatcher <- jit_dispatcher(f)
+  if (is.null(dispatcher)) {
+    return(0L)
+  }
+  pjrt::dispatcher_size(dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
-# This ensures that out-of-bounds indices are clamped to [1, operand_size - slice_size + 1]
-# for each dimension.
+# This ensures that out-of-bounds indices are clamped to [1, x_size - slice_size + 1]
+# for each axis.
 gather_clamp_indices <- function(
   start_indices,
-  operand_shape,
+  x_shape,
   slice_sizes,
   start_index_map,
-  index_vector_dim
+  index_vector_axis
 ) {
-  # slice_sizes are in the order of the operand_shape, so we need to reverse the start_index_map
-  if (length(operand_shape) != length(slice_sizes)) {
-    cli_abort("operand_shape and slice_sizes must have the same length")
+  # slice_sizes are in the order of `x_shape`, so we need to reverse the start_index_map
+  if (length(x_shape) != length(slice_sizes)) {
+    cli_abort("{.arg x_shape} and {.arg slice_sizes} must have the same length")
   }
 
   indices_shape <- shape(start_indices)
@@ -188,92 +223,71 @@ gather_clamp_indices <- function(
   # Build max bounds for each coordinate
   max_bounds <- integer(n_index_coords)
   for (coord_idx in seq_len(n_index_coords)) {
-    operand_dim <- start_index_map[coord_idx]
-    operand_size <- operand_shape[operand_dim]
-    slice_size_for_dim <- slice_sizes[operand_dim]
-    max_bounds[coord_idx] <- max(1L, operand_size - slice_size_for_dim + 1L)
+    x_axis <- start_index_map[coord_idx]
+    x_size <- x_shape[x_axis]
+    slice_size_for_axis <- slice_sizes[x_axis]
+    max_bounds[coord_idx] <- max(1L, x_size - slice_size_for_axis + 1L)
   }
 
-  if (index_vector_dim <= length(indices_shape)) {
-    # Explicit index vector dimension - build bounds arrays
+  if (index_vector_axis <= length(indices_shape)) {
+    # Explicit index vector axis - build bounds arrays
     bounds_shape <- rep(1L, length(indices_shape))
-    bounds_shape[index_vector_dim] <- n_index_coords
+    bounds_shape[index_vector_axis] <- n_index_coords
 
-    min_tensor <- prim_broadcast_in_dim(
+    min_bound <- prim_broadcast_in_axes(
       prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
       indices_shape,
       integer()
     )
 
-    # The max bound is the same for a given slice along the index_vector_dim
-    max_tensor_vals <- prim_reshape(
-      nv_convert(nv_array(max_bounds, dtype = "i64"), dtype = dtype(start_indices)),
+    # The max bound is the same for a given slice along the index_vector_axis
+    max_bound_vals <- prim_reshape(
+      prim_convert(
+        nv_array(max_bounds, dtype = default_int()),
+        dtype = dtype(start_indices)
+      ),
       bounds_shape
     )
-    max_tensor <- nv_broadcast_to(max_tensor_vals, indices_shape)
+    max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    prim_clamp(min_bound, start_indices, max_bound)
   } else {
     # Implicit index vector (single coordinate)
-    min_tensor <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
-    max_tensor <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
+    max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
+    prim_clamp(min_bound, start_indices, max_bound)
   }
 }
 
 # Compute gather slice_sizes from scatter parameters.
-# This inverts a scatter into a gather: for each operand dimension, the slice
-# size is 1 for inserted/batching dims, or the update's window size otherwise.
+# This inverts a scatter into a gather: for each axis of `x`, the slice
+# size is 1 for inserted/batching axes, or the update's window size otherwise.
 scatter_to_gather_slice_sizes <- function(
   update_shape,
-  input_shape,
-  update_window_dims,
-  inserted_window_dims,
-  input_batching_dims
+  x_shape,
+  update_window_axes,
+  inserted_window_axes,
+  x_batching_axes
 ) {
-  slice_sizes <- integer(length(input_shape))
+  slice_sizes <- integer(length(x_shape))
   update_window_pos <- 1L
-  for (i in seq_along(input_shape)) {
-    if (i %in% inserted_window_dims) {
+  for (i in seq_along(x_shape)) {
+    if (i %in% inserted_window_axes) {
       slice_sizes[i] <- 1L
-    } else if (i %in% input_batching_dims) {
+    } else if (i %in% x_batching_axes) {
       slice_sizes[i] <- 1L
     } else {
-      slice_sizes[i] <- update_shape[update_window_dims[update_window_pos]]
+      slice_sizes[i] <- update_shape[update_window_axes[update_window_pos]]
       update_window_pos <- update_window_pos + 1L
     }
   }
   slice_sizes
 }
 
-is_device_arg <- function(x) {
-  inherits(x, "AnvlDeviceArg")
+col_major_layout <- function(naxes) {
+  as.integer(seq.int(0L, naxes - 1L))
 }
 
-# returns list(device | NULL, backend)
-resolve_device <- function(device, backend) {
-  if (is.character(device)) {
-    backend <- backend %||% default_backend()
-    device <- if (backend == "auto") {
-      nv_device(device, default_backend())
-    } else {
-      nv_device(device, backend)
-    }
-    return(list(device, backend))
-  }
-  if (is.null(device)) {
-    return(list(NULL, backend %||% default_backend()))
-  }
-  # concrete device
-  if (is.null(backend) || (backend == "auto")) {
-    return(list(device, backend(device)))
-  }
-  if (backend(device) != backend) {
-    cli_abort(c(
-      "Backend of requested device does not match requested backend",
-      i = "backend(device) = {backend(device)}",
-      i = "backend = {backend}"
-    ))
-  }
-  list(device, backend)
+col_major_layouts <- function(...) {
+  lapply(list(...), col_major_layout)
 }

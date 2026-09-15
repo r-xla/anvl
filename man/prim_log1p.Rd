@@ -4,16 +4,15 @@
 \alias{prim_log1p}
 \title{Primitive Log Plus One}
 \usage{
-prim_log1p(operand)
+prim_log1p(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise log(1 + x), more accurate for small x.
@@ -29,7 +28,7 @@ Element-wise log(1 + x), more accurate for small x.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_log_plus_one]{stablehlo::hlo_log_plus_one()}}.
+Lowers to \code{\link[stablehlo:hlo_log_plus_one]{hlo_log_plus_one()}}.
 }
 
 \examples{

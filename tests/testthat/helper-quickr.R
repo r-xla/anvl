@@ -46,7 +46,7 @@ expect_quickr_matches_pjrt_fn <- function(
   graph <- trace_fn(fn, templates)
   f_r <- graph_to_quickr_r_function(graph)
   f_quick <- graph_to_quickr_function(graph, unwrap = TRUE)
-  run_pjrt <- compile_graph_pjrt(graph) # nolint
+  run_pjrt <- graph_runner_pjrt(graph) # nolint
   arg_names <- names(templates)
 
   for (run in runs) {

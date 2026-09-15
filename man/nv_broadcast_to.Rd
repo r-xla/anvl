@@ -4,18 +4,18 @@
 \alias{nv_broadcast_to}
 \title{Broadcast to Shape}
 \usage{
-nv_broadcast_to(operand, shape)
+nv_broadcast_to(x, shape)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Each existing dimension must either match or be 1.}
+Target shape. Each existing axis must either match or be 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the given \code{shape} and the same data type as \code{operand}.
+Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
 Broadcasts an array to a target shape using NumPy-style broadcasting rules.
@@ -28,5 +28,5 @@ nv_broadcast_to(x, shape = c(2, 3))
 }
 \seealso{
 \code{\link[=nv_broadcast_arrays]{nv_broadcast_arrays()}}, \code{\link[=nv_broadcast_scalars]{nv_broadcast_scalars()}},
-\code{\link[=prim_broadcast_in_dim]{prim_broadcast_in_dim()}} for the underlying primitive.
+\code{\link[=prim_broadcast_in_axes]{prim_broadcast_in_axes()}} for the underlying primitive.
 }
