@@ -11,7 +11,9 @@
 #' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
-#'   Scalar value to fill the array with.
+#'   Scalar value to fill the array with. It has to be something `dtype` can
+#'   hold: a whole number for an integer data type, a non-negative whole number
+#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | `NULL`)\cr

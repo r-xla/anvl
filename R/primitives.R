@@ -76,7 +76,9 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' efficiently represented in the compiled program, while the latter uses
 #' 100 * 100 * 4 bytes of memory.
 #' @param value (`numeric(1)`)\cr
-#'   Scalar value to fill the array with.
+#'   Scalar value to fill the array with. It has to be something `dtype` can
+#'   hold: a whole number for an integer data type, a non-negative whole number
+#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @template param_dtype
@@ -94,6 +96,10 @@ infer_reduce_boolean <- function(x, axes, drop) {
 prim_fill <- new_primitive(
   "fill",
   function(value, shape, dtype, device = NULL) {
+    assert_fill_value(value, dtype)
+    # `shape = c()` is how a caller asks for a scalar.
+    shape <- shape %||% integer()
+    shape <- assert_shapevec(shape)
     infer_fill <- function(value, shape, dtype) {
       list(AbstractArray(dtype = as_dtype(dtype), shape = shape))
     }

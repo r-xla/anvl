@@ -205,16 +205,16 @@ describe("with_dtypes()", {
     local_registered_default_dtypes()
     add_f64 <- with_dtypes(nv_add, c(float = "f64"))
     out <- add_f64(nv_array(1, dtype = "f32"), 2.5)
-    expect_equal(dtype(out), as_dtype("f64"))
+    expect_dtype(out, "f64")
     # The `f32` operand is converted before the call, so the R value meets an
     # `f64` array and the sum keeps every digit of 2.5.
     expect_equal(as.vector(out), 3.5)
     # A category the wrapper does not name is untouched, in the arguments and
     # in the result.
-    expect_equal(dtype(add_f64(nv_array(1L, dtype = "i32"), 2L)), as_dtype("i32"))
-    expect_equal(dtype(add_f64(nv_array(TRUE), TRUE)), as_dtype("bool"))
+    expect_dtype(add_f64(nv_array(1L, dtype = "i32"), 2L), "i32")
+    expect_dtype(add_f64(nv_array(TRUE), TRUE), "bool")
     # Inside the body the defaults are the ones the wrapper names.
-    expect_equal(dtype(with_dtypes(function() nv_fill(0, 2), c(float = "f64"))()), as_dtype("f64"))
+    expect_dtype(with_dtypes(function() nv_fill(0, 2), c(float = "f64"))(), "f64")
     expect_equal(default_float(), as_dtype("f32"))
   })
 
@@ -233,12 +233,12 @@ describe("with_dtypes()", {
     # the defaults of the call alone.
     f <- with_dtypes(function(x) list(x = x, filled = nv_fill(0, 2)), c(uint = "ui32"))
     out <- f(nv_array(1L, dtype = "ui8"))
-    expect_equal(dtype(out$x), as_dtype("ui32"))
-    expect_equal(dtype(out$filled), as_dtype("f32"))
+    expect_dtype(out$x, "ui32")
+    expect_dtype(out$filled, "f32")
     # Named alongside the others it converts as they do.
     g <- with_dtypes(nv_add, c(float = "f64", uint = "ui32"))
-    expect_equal(dtype(g(nv_array(1L, dtype = "ui8"), 2L)), as_dtype("ui32"))
-    expect_equal(dtype(g(nv_array(1, dtype = "f32"), 2)), as_dtype("f64"))
+    expect_dtype(g(nv_array(1L, dtype = "ui8"), 2L), "ui32")
+    expect_dtype(g(nv_array(1, dtype = "f32"), 2), "f64")
   })
 
   it("keeps the signature of the function it wraps", {
@@ -248,15 +248,9 @@ describe("with_dtypes()", {
     expect_identical(formals(g), formals(f))
     # An argument the wrapper is not given is left out, so `f`'s own default
     # decides -- and `...` reaches `f` as it would without the wrapper.
-    expect_equal(shape(g(nv_array(1, dtype = "f32"))$filled), 2L)
-    expect_equal(shape(g(nv_array(1, dtype = "f32"), 3)$filled), 3L)
-    expect_equal(
-      dtype(with_dtypes(function(...) nv_add(...), c(float = "f64"))(
-        nv_array(1, dtype = "f32"),
-        2
-      )),
-      as_dtype("f64")
-    )
+    expect_shape(g(nv_array(1, dtype = "f32"))$filled, 2L)
+    expect_shape(g(nv_array(1, dtype = "f32"), 3)$filled, 3L)
+    expect_dtype(with_dtypes(function(...) nv_add(...), c(float = "f64"))(nv_array(1, dtype = "f32"), 2), "f64")
   })
 
   it("walks a structured argument and result as a tree", {
@@ -269,8 +263,8 @@ describe("with_dtypes()", {
     )
     out <- f(list(a = nv_array(1, dtype = "f32"), b = nv_array(2, dtype = "f32")), 2)
     expect_named(out, c("sum", "scaled"))
-    expect_equal(dtype(out$sum), as_dtype("f64"))
-    expect_equal(dtype(out$scaled[[1L]]), as_dtype("f64"))
+    expect_dtype(out$sum, "f64")
+    expect_dtype(out$scaled[[1L]], "f64")
     expect_equal(as.vector(out$sum), 3)
   })
 
@@ -288,7 +282,7 @@ describe("with_dtypes()", {
     # The static argument still selects the branch, and stays an R value.
     expect_equal(as.vector(g(nv_array(3, dtype = "f32"), TRUE)), 4)
     expect_equal(as.vector(g(nv_array(3, dtype = "f32"), FALSE)), 6)
-    expect_equal(dtype(g(nv_array(3, dtype = "f32"), TRUE)), as_dtype("f64"))
+    expect_dtype(g(nv_array(3, dtype = "f32"), TRUE), "f64")
   })
 
   it("rejects anything but a mapping of the data type categories", {

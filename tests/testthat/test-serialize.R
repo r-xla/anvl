@@ -28,8 +28,8 @@ test_that("nv_serialize and nv_unserialize work for quickr backend", {
   reloaded <- nv_unserialize(raw_data)
   expect_equal(backend(reloaded$x), "quickr")
   expect_equal(as_array(reloaded$x), as_array(x))
-  expect_equal(dtype(reloaded$x), dtype(x))
-  expect_equal(shape(reloaded$x), shape(x))
+  expect_dtype(reloaded$x, dtype(x))
+  expect_shape(reloaded$x, shape(x))
 })
 
 test_that("nv_save and nv_read work for quickr backend", {
@@ -42,7 +42,7 @@ test_that("nv_save and nv_read work for quickr backend", {
   reloaded <- nv_read(tmp)
   expect_equal(backend(reloaded$x), "quickr")
   expect_equal(as_array(reloaded$x), as_array(x))
-  expect_equal(dtype(reloaded$x), dtype(x))
+  expect_dtype(reloaded$x, dtype(x))
 })
 
 test_that("serialization round-trips scalars and typed arrays", {

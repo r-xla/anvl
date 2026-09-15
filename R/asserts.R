@@ -9,20 +9,36 @@
 #' @return Invisibly returns `x` if the assertion passes.
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
-  ok <- test_integerish(x, lower = 1, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
+  ok <- test_integerish(x, lower = 0L, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
+  fmt <- function(x) {
+    sprintf("(%s)", paste0(x, collapse = ", "))
+  }
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
       cli_abort("{.arg {var_name}} must be an integer vector, not {.cls {class(x)}}")
     }
     if (anyNA(x)) {
-      cli_abort("{.arg {var_name}} must not contain missing values")
+      cli_abort(c(
+        "{.arg {var_name}} must not contain missing values",
+        x = "Got {fmt(x)}."
+      ))
     }
     if (length(x) < min_len) {
-      cli_abort("{.arg {var_name}} must have at least {min_len} element{?s}")
+      cli_abort(c(
+        "{.arg {var_name}} must have at least {min_len} element{?s}",
+        x = "Got {fmt(x)}."
+      ))
     }
-    if (any(x < 1)) {
-      cli_abort("{.arg {var_name}} must contain only positive integers (>= 1)")
+    if (any(x < 0)) {
+      cli_abort(c(
+        "{.arg {var_name}} must not contain a negative axis size.",
+        x = "Got {fmt(x)}."
+      ))
     }
+    cli_abort(c(
+      "{.arg {var_name}} must contain whole numbers in the integer range",
+      x = "Got {fmt(x)}."
+    ))
   }
   as.integer(x)
 }
@@ -131,6 +147,73 @@ assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
     ))
   }
   dt
+}
+
+assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
+  dt <- as_dtype(dtype)
+  is_int64 <- inherits(value, "integer64")
+  is_number <- is.numeric(value) || is_int64
+
+  if (length(value) != 1L) {
+    cli_abort(c(
+      "{.arg {arg}} must be a scalar.",
+      "x" = "Got {.obj_type_friendly {value}} of length {length(value)}."
+    ))
+  }
+  if (is.na(value) && !is.nan(value)) {
+    cli_abort(c(
+      "{.arg {arg}} must not be {.val {NA}}.",
+      "i" = "There is no missing value at the XLA level; {.val {NaN}} is the closest a float comes."
+    ))
+  }
+
+  # What an integer data type needs is a whole *number*, not an R integer:
+  # `1` and `1L` both build at `i32`, while `1.5` builds at neither. This keeps
+  # the fills that do not know their data type statically (`zeros()`, `ones()`,
+  # `nv_eye()`, `nv_diag()`, the gradient zeroing) free to write a plain `0`.
+  # `test_int()` only accepts a double that fits into an R integer, so the
+  # out-of-range whole doubles are recognized here and rejected below.
+  is_whole <- is_int64 ||
+    test_int(value) ||
+    (is.double(value) && is.finite(value) && value == trunc(value))
+  # A whole double is built as an R integer, so one beyond that range would
+  # silently arrive at the backend as `NA`.
+  too_large <- is_whole && !is_int64 && !is.integer(value) && abs(value) > .Machine$integer.max
+  if (too_large && !is_dtype_float(dt)) {
+    int_max <- .Machine$integer.max
+    cli_abort(c(
+      "{.arg {arg}} must be no larger than {.val {int_max}} to be built at data type {.val {as.character(dt)}}.", # nolint
+      "x" = "Got {.val {value}}.",
+      "i" = "A whole number is built as an R integer."
+    ))
+  }
+
+  ok <- if (is_dtype_bool(dt)) {
+    is.logical(value) || (is_whole && (value == 0 || value == 1))
+  } else if (is_dtype_uint(dt)) {
+    is_whole && value >= 0
+  } else if (is_dtype_int(dt)) {
+    is_whole
+  } else {
+    is_number
+  }
+  if (ok) {
+    return(invisible(value))
+  }
+
+  wanted <- if (is_dtype_bool(dt)) {
+    cli::format_inline("a logical, or {.code 0} or {.code 1}")
+  } else if (is_dtype_uint(dt)) {
+    "a non-negative whole number"
+  } else if (is_dtype_int(dt)) {
+    "a whole number"
+  } else {
+    "a number"
+  }
+  cli_abort(c(
+    "{.arg {arg}} must be {wanted} to be built at data type {.val {as.character(dt)}}.",
+    "x" = "Got {.obj_type_friendly {value}}{if (is_number) cli::format_inline(' {.val {value}}') else ''}."
+  ))
 }
 
 # Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the

@@ -8,7 +8,9 @@ prim_fill(value, shape, dtype, device = NULL)
 }
 \arguments{
 \item{value}{(\code{numeric(1)})\cr
-Scalar value to fill the array with.}
+Scalar value to fill the array with. It has to be something \code{dtype} can
+hold: a whole number for an integer data type, a non-negative whole number
+for an unsigned one, and a logical or \code{0} / \code{1} for \code{bool}.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
