@@ -14,7 +14,7 @@ test_that("stablehlo rule is tested", {
   )
   missing <- Filter(
     function(nm) {
-      !grepl(paste0('(test_that|describe)\\("', nm), content)
+      !grepl(paste0('(test_that|describe|it)\\("', nm), content)
     },
     primitive_names
   )

@@ -1,0 +1,557 @@
+---
+title: "`nv_pnorm` vs JAX — performance & accuracy"
+subtitle: "Standard normal CDF: value & gradient, `log.p` on/off, 32- & 64-bit"
+date: today
+author: Opus 4.8 supervised by Louis Aslett
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: true
+    code-tools: true
+    code-summary: "Show code"
+    embed-resources: true
+    theme: cosmo
+    fig-width: 9
+    fig-height: 6.5
+    tbl-cap-location: top
+execute:
+  warning: false
+  message: false
+  cache: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+## Everything regenerates on `quarto render`; no result is hard-coded.
+##
+## Portable configuration -- no machine-specific path is baked in. Override on
+## the render line, e.g.
+##   PNORM_PY=/path/to/venv/bin/python quarto render pnorm-jax-comparison.qmd
+##
+##   PNORM_PY    Python interpreter that provides jax, numpy and
+##               google-benchmark. Default: this repo's uv venv at
+##               ../../../py-benchmarks/.venv/bin/python, else python3 on PATH.
+##   PNORM_FULL  "0" for a fast reduced-grid preview; default runs the full grid.
+##   PNORM_PERF  "0" skips the performance report entirely (it renders blank);
+##               accuracy still runs. Independent of PNORM_FULL -- use it when
+##               iterating on the accuracy panels without waiting on timings.
+##   DEVICE      Compute device for BOTH anvl and JAX: "cpu" (default) or "cuda"
+##               for GPU. GPU needs the matching PJRT plugin (anvl) and a
+##               CUDA-enabled jaxlib (JAX) installed on the target machine.
+env_or <- function(var, default = "") {
+  v <- Sys.getenv(var, unset = ""); if (nzchar(v)) v else default
+}
+FULL   <- env_or("PNORM_FULL", "1") != "0"
+PERF   <- env_or("PNORM_PERF", "1") != "0"
+DEVICE <- env_or("DEVICE", "cpu")
+## anvl reads PJRT_PLATFORM in default_device(); nv_array()/jit() then place and
+## compile on it. JAX is steered per-subprocess via JAX_PLATFORMS (run_py_chunk).
+Sys.setenv(PJRT_PLATFORM = DEVICE)
+
+suppressPackageStartupMessages({
+  library(anvl)
+  library(Rmpfr)
+  library(jsonlite)
+  library(bench)
+  library(ggplot2)
+  library(plotly)
+  library(dplyr)
+  library(tidyr)
+  library(DT)
+  library(htmltools)
+})
+
+## Python interpreter (needs jax, numpy, google-benchmark); env-overridable.
+PY_BIN <- env_or("PNORM_PY")
+if (!nzchar(PY_BIN)) {
+  repo_py <- "../../../py-benchmarks/.venv/bin/python"
+  PY_BIN <- if (file.exists(repo_py)) repo_py else unname(Sys.which("python3"))
+}
+if (!nzchar(PY_BIN) || !file.exists(PY_BIN))
+  stop("No Python interpreter found. Set PNORM_PY=/path/to/venv/bin/python ",
+       "(needs jax, numpy, google-benchmark).")
+if (!identical(0L, suppressWarnings(system2(PY_BIN,
+      c("-c", shQuote("import jax, numpy, google_benchmark")),
+      stdout = FALSE, stderr = FALSE))))
+  stop("Python at '", PY_BIN, "' lacks jax / numpy / google-benchmark; ",
+       "point PNORM_PY at an environment that has all three.")
+
+WORK <- tempfile("pnorm_jax_"); dir.create(WORK)
+
+## --- run an embedded (eval:false) python chunk in the project venv --------
+run_py_chunk <- function(label, envvars = character()) {
+  src <- knitr::knit_code$get(label)
+  py  <- file.path(WORK, paste0(label, ".py"))
+  writeLines(src, py)
+  status <- system2(PY_BIN, shQuote(py),
+                    env = c(envvars, paste0("JAX_PLATFORMS=", DEVICE)),
+                    stdout = TRUE, stderr = TRUE)
+  st <- attr(status, "status")
+  if (!is.null(st) && st != 0)
+    stop("python chunk '", label, "' failed:\n", paste(status, collapse = "\n"))
+  invisible(status)
+}
+
+## --- shared configuration -------------------------------------------------
+DTYPES  <- c("f64", "f32")
+SIZES   <- if (FULL) c(1, 10, 100, 1e3, 1e4, 1e5, 1e6, 1e7) else c(1, 100, 1e4)
+# Input-generation recipe shared verbatim with the python side (perf-jax-src).
+# For timing only the *distribution* of inputs must match, not the exact draws,
+# so each language samples locally from the same band with a fixed seed.
+REGIONS <- list(
+  deep_left  = c(-40, -25),   # below the asymptotic (Mills-ratio) threshold
+  middle     = c(-3,   3),    # bulk of the distribution
+  deep_upper = c( 25,  40),   # far upper tail (log1p / near-1 regime)
+  random     = c(-40,  40)    # scattered across every branch
+)
+SEED <- 1L
+PREC <- 512L                  # bits of mpfr ground-truth precision
+```
+
+```{python}
+#| label: perf-jax-src
+#| eval: false
+
+# JAX performance for one (dtype, size): times cdf/logcdf value & gradient
+# across the 4 input regions with google-benchmark. Parameters arrive via
+# environment variables; a google-benchmark JSON is written for R to read.
+import os
+import jax
+jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
+import numpy as np
+import google_benchmark as gb
+
+DT = {"f64": jnp.float64, "f32": jnp.float32}
+REGIONS = {"deep_left": (-40, -25), "middle": (-3, 3),
+           "deep_upper": (25, 40), "random": (-40, 40)}
+
+value_fn = {False: jax.jit(lambda x: jax.scipy.stats.norm.cdf(x)),
+            True:  jax.jit(lambda x: jax.scipy.stats.norm.logcdf(x))}
+grad_fn = {False: jax.jit(jax.vmap(jax.grad(lambda z: jax.scipy.stats.norm.cdf(z)))),
+           True:  jax.jit(jax.vmap(jax.grad(lambda z: jax.scipy.stats.norm.logcdf(z))))}
+
+dt = DT[os.environ["PJ_DTYPE"]]
+size = int(os.environ["PJ_SIZE"])
+rng = np.random.default_rng(int(os.environ["PJ_SEED"]))
+arrays = {r: jnp.asarray(rng.uniform(lo, hi, size), dtype=dt)
+          for r, (lo, hi) in REGIONS.items()}
+
+
+def make_bench(fn, arr):
+    def b(state):
+        while state:
+            np.asarray(fn(arr))          # force host materialisation, cf. as.vector()
+    return b
+
+
+for region, arr in arrays.items():
+    for logp in (False, True):
+        for op, table in (("value", value_fn), ("grad", grad_fn)):
+            fn = table[logp]
+            np.asarray(fn(arr))          # warm up / compile
+            gb.register(make_bench(fn, arr),
+                        name=f"{region}|{'T' if logp else 'F'}|{op}")
+
+gb.main([
+    "perf_jax", "--benchmark_format=json",
+    f"--benchmark_out={os.environ['PJ_OUT']}", "--benchmark_out_format=json",
+    f"--benchmark_min_time={os.environ['PJ_MINTIME']}s",
+    f"--benchmark_repetitions={os.environ['PJ_REPS']}",
+])
+```
+
+```{python}
+#| label: acc-jax-src
+#| eval: false
+
+# JAX values on a shared z-grid: cdf, logcdf, and their elementwise gradients,
+# for both dtypes. Reads the grid JSON from PJ_GRID, writes results to PJ_OUT.
+# Results are cast to float64 for lossless transport (f32 is a subset of f64).
+import os, json
+import jax
+jax.config.update("jax_enable_x64", True)
+import jax.numpy as jnp
+import numpy as np
+
+DT = {"f64": jnp.float64, "f32": jnp.float32}
+cdf = jax.jit(lambda x: jax.scipy.stats.norm.cdf(x))
+logcdf = jax.jit(lambda x: jax.scipy.stats.norm.logcdf(x))
+gcdf = jax.jit(jax.vmap(jax.grad(lambda z: jax.scipy.stats.norm.cdf(z))))
+glogcdf = jax.jit(jax.vmap(jax.grad(lambda z: jax.scipy.stats.norm.logcdf(z))))
+
+grid = json.load(open(os.environ["PJ_GRID"]))
+out = {"meta": {"jax": jax.__version__}}
+for name, dt in DT.items():
+    z = jnp.asarray(grid[name], dtype=dt)
+    out[name] = {
+        "value_F": np.asarray(cdf(z), np.float64).tolist(),
+        "value_T": np.asarray(logcdf(z), np.float64).tolist(),
+        "grad_F":  np.asarray(gcdf(z), np.float64).tolist(),
+        "grad_T":  np.asarray(glogcdf(z), np.float64).tolist(),
+    }
+json.dump(out, open(os.environ["PJ_OUT"], "w"))
+```
+
+This document compares the proposed anvl `nv_pnorm()` against
+JAX's `jax.scipy.stats.norm` on `r toupper(DEVICE)`. Every combination of **dtype** (32-/64-bit),
+**`log.p`** (the value $\Phi$ vs the log-CDF $\log\Phi$), and **quantity** (the value
+vs its gradient w.r.t. the input) is measured, for the standard normal
+(`mean = 0`, `sd = 1`, `lower.tail = TRUE`). Performance uses the R
+[`bench`](https://bench.r-lib.org) package and Python
+[`google-benchmark`](https://github.com/google/benchmark); accuracy uses
+`Rmpfr` at `r PREC`-bit precision as ground truth.
+
+# Performance
+
+```{r}
+#| label: perf-run
+
+anvl_perf_cell <- function(arr, logp, op) {
+  if (op == "value") {
+    call_fn <- function() as.vector(nv_pnorm(arr, log.p = logp))
+  } else {
+    gfn <- jit(gradient(function(q) nv_reduce_sum(nv_pnorm(q, log.p = logp)),
+                        wrt = "q"))
+    call_fn <- function() as.vector(gfn(arr)[[1L]])
+  }
+  invisible(call_fn())                         # warm up / compile
+  b <- bench::mark(call_fn(), min_iterations = 5, min_time = 0.05,
+                   max_iterations = 200, check = FALSE, memory = FALSE,
+                   filter_gc = FALSE)
+  as.numeric(b$min) * 1000                      # robust minimum, ms
+}
+
+perf_df <- NULL
+if (PERF) {                    # skip the whole performance grid when PNORM_PERF=0
+perf_rows <- list()
+for (dt in DTYPES) {
+  for (size in SIZES) {
+    n <- as.integer(size)
+
+    ## ---- anvl (bench) ----
+    for (rg in names(REGIONS)) {
+      lo <- REGIONS[[rg]][1]; hi <- REGIONS[[rg]][2]
+      arr <- nv_array(runif(n, lo, hi), dtype = dt)
+      for (logp in c(FALSE, TRUE)) for (op in c("value", "grad")) {
+        perf_rows[[length(perf_rows) + 1L]] <- data.frame(
+          dtype = dt, size = size, region = rg, logp = logp, op = op,
+          impl = "anvl", time_ms = anvl_perf_cell(arr, logp, op))
+      }
+      rm(arr); gc(FALSE)
+    }
+
+    ## ---- JAX (google-benchmark, one subprocess per (dtype, size)) ----
+    out_json <- file.path(WORK, sprintf("perf_%s_%d.json", dt, n))
+    run_py_chunk("perf-jax-src", c(
+      sprintf("PJ_DTYPE=%s", dt), sprintf("PJ_SIZE=%d", n),
+      sprintf("PJ_OUT=%s", out_json), sprintf("PJ_SEED=%d", SEED),
+      "PJ_MINTIME=0.05", "PJ_REPS=5"))
+    jx <- fromJSON(out_json, simplifyVector = FALSE)$benchmarks
+    reps <- Filter(function(b) b$run_type == "iteration", jx)
+    tmin <- tapply(vapply(reps, function(b) b$real_time, numeric(1)),
+                   vapply(reps, function(b) b$run_name, character(1)), min)
+    for (nm in names(tmin)) {
+      parts <- strsplit(nm, "|", fixed = TRUE)[[1]]
+      perf_rows[[length(perf_rows) + 1L]] <- data.frame(
+        dtype = dt, size = size, region = parts[1],
+        logp = parts[2] == "T", op = parts[3],
+        impl = "jax", time_ms = tmin[[nm]] / 1e6)   # ns -> ms
+    }
+  }
+}
+perf_df <- dplyr::bind_rows(perf_rows)
+perf_df$region <- factor(perf_df$region,
+                         levels = c("deep_left", "middle", "deep_upper", "random"))
+perf_df$logp_lab <- ifelse(perf_df$logp, "log.p = TRUE", "log.p = FALSE")
+}
+```
+
+```{r}
+#| label: perf-intro
+#| echo: false
+#| results: asis
+if (PERF) cat(sprintf(
+  "Steady-state wall-clock time **per call** — a robust minimum over repeated timings (`bench`'s fastest iteration for anvl, google-benchmark's fastest repetition for JAX), with host materialisation forced on both sides — as the input grows from a single element to %s. Four input regimes are shown: `deep_left` (all below the asymptotic-tail threshold), `middle` (the bulk), `deep_upper` (far upper tail), and `random` (scattered across every branch). Hover any point for exact values.\n",
+  format(max(SIZES), big.mark = ",", scientific = FALSE)))
+if (!PERF) cat("*Performance report disabled (`PNORM_PERF=0`). Set `PNORM_PERF=1` to include it.*\n")
+```
+
+```{r}
+#| label: perf-plot-fn
+
+perf_plot <- function(dt, op) {
+  d <- dplyr::filter(perf_df, dtype == dt, op == !!op)
+  d$tt <- sprintf("size %s | %s | %s\n%s: %.3g ms",
+                  format(d$size, big.mark = ",", scientific = FALSE),
+                  d$region, d$logp_lab, d$impl, d$time_ms)
+  g <- ggplot(d, aes(size, time_ms, colour = impl, linetype = logp_lab,
+                     group = interaction(impl, logp_lab), text = tt)) +
+    geom_line(linewidth = 0.5) + geom_point(size = 1.4) +
+    facet_wrap(~region, ncol = 2) +
+    scale_x_log10(breaks = SIZES,
+                  labels = format(SIZES, scientific = FALSE, big.mark = ",",
+                                  trim = TRUE)) +
+    scale_y_log10() +
+    scale_colour_manual(values = c(anvl = "#2c7fb8", jax = "#d95f0e")) +
+    labs(x = "input length", y = "time per call (ms)",
+         colour = NULL, linetype = NULL,
+         title = sprintf("%s-bit · %s", sub("f", "", dt),
+                         if (op == "value") "value" else "gradient")) +
+    theme_minimal(base_size = 12)
+  ggplotly(g, tooltip = "text") |> layout(legend = list(orientation = "h", y = -0.15))
+}
+```
+
+```{r}
+#| label: perf-h-64
+#| echo: false
+#| results: asis
+if (PERF) cat("\n## 64-bit\n")
+```
+
+```{r}
+#| label: perf-f64-value
+if (PERF) perf_plot("f64", "value")
+```
+
+```{r}
+#| label: perf-f64-grad
+if (PERF) perf_plot("f64", "grad")
+```
+
+```{r}
+#| label: perf-h-32
+#| echo: false
+#| results: asis
+if (PERF) cat("\n## 32-bit\n")
+```
+
+```{r}
+#| label: perf-f32-value
+if (PERF) perf_plot("f32", "value")
+```
+
+```{r}
+#| label: perf-f32-grad
+if (PERF) perf_plot("f32", "grad")
+```
+
+# Accuracy
+
+```{r}
+#| label: acc-config
+
+## z-grid: dense through the body, geometric into both tails. Extents are
+## chosen wide enough to bracket, on both sides, the region where either
+## implementation still holds accuracy (the deep-tail floor and the tail
+## under/overflow walls); per-panel trims below focus each view.
+mags <- sort(unique(c(seq(0, 6, by = 0.2), seq(6, 45, by = 0.5),
+                      10^seq(log10(6), 4, length.out = 60))))
+zgrid <- sort(unique(c(-mags, mags)))
+
+## Per-(dtype, op, log.p) display window (signed z). Deep-tail (log.p = TRUE)
+## windows run to the mpfr-reliable limit on the left; value/gradient windows
+## bracket the tail under/overflow walls.
+trims <- list(
+  f64 = list(value_F = c(-44, 9), grad_F = c(-44, 44),
+             value_T = c(-1e4, 44), grad_T = c(-1e4, 44)),
+  f32 = list(value_F = c(-16, 9), grad_F = c(-16, 16),
+             value_T = c(-1e4, 16), grad_T = c(-1e4, 16)))
+COMBOS <- c("value_F", "value_T", "grad_F", "grad_T")
+```
+
+```{r}
+#| label: acc-run
+
+## --- 512-bit mpfr ground truth (dtype-independent, computed once) ---------
+s2 <- sqrt(mpfr(2, PREC)); pi_m <- Const("pi", PREC)
+gold_all <- function(z) {
+  zm  <- mpfr(z, PREC)
+  Phi <- 0.5 * erfc(-zm / s2)
+  phi <- exp(-(zm * zm) / 2) / sqrt(2 * pi_m)
+  logPhi <- mpfr(numeric(length(z)), PREC)          # cancellation-free logPhi
+  lo <- z <= 0
+  if (any(lo))   logPhi[lo]  <- log(0.5 * erfc(-zm[lo] / s2))
+  if (!all(lo))  logPhi[!lo] <- log1p(-0.5 * erfc(zm[!lo] / s2))
+  list(value_F = Phi, value_T = logPhi, grad_F = phi, grad_T = phi / Phi)
+}
+## Cast computed doubles up to mpfr, form the relative error at full precision,
+## and only then cast the single scalar back to a double.
+rel_err <- function(computed, gold_m) {
+  re <- as.numeric(abs(mpfr(computed, PREC) - gold_m) / abs(gold_m))
+  re[!is.finite(computed)] <- NA_real_
+  re
+}
+gold <- gold_all(zgrid)
+
+## --- anvl on the grid -----------------------------------------------------
+anvl_acc <- function(z, dt) {
+  arr <- nv_array(z, dtype = dt)
+  gF <- jit(gradient(function(q) nv_reduce_sum(nv_pnorm(q, log.p = FALSE)), wrt = "q"))
+  gT <- jit(gradient(function(q) nv_reduce_sum(nv_pnorm(q, log.p = TRUE)),  wrt = "q"))
+  list(value_F = as.vector(nv_pnorm(arr, log.p = FALSE)),
+       value_T = as.vector(nv_pnorm(arr, log.p = TRUE)),
+       grad_F  = as.vector(gF(arr)[[1L]]),
+       grad_T  = as.vector(gT(arr)[[1L]]))
+}
+
+## --- JAX on the same grid (one subprocess) --------------------------------
+grid_json <- file.path(WORK, "acc_grid.json")
+write_json(list(f64 = zgrid, f32 = zgrid), grid_json, digits = 17, auto_unbox = TRUE)
+acc_out <- file.path(WORK, "acc_jax.json")
+run_py_chunk("acc-jax-src", c(sprintf("PJ_GRID=%s", grid_json),
+                              sprintf("PJ_OUT=%s", acc_out)))
+jax_acc <- fromJSON(acc_out, simplifyVector = TRUE)
+JAX_VER <- jax_acc$meta$jax
+
+op_of   <- c(value_F = "value", value_T = "value", grad_F = "grad", grad_T = "grad")
+logp_of <- c(value_F = FALSE,   value_T = TRUE,     grad_F = FALSE,  grad_T = TRUE)
+
+acc_rows <- list()
+for (dt in DTYPES) {
+  av <- anvl_acc(zgrid, dt)
+  for (cb in COMBOS) {
+    ra <- rel_err(av[[cb]], gold[[cb]])
+    rj <- rel_err(jax_acc[[dt]][[cb]], gold[[cb]])
+    acc_rows[[length(acc_rows) + 1L]] <- data.frame(
+      dtype = dt, combo = cb, op = op_of[[cb]], logp = logp_of[[cb]], z = zgrid,
+      anvl_val = av[[cb]], jax_val = jax_acc[[dt]][[cb]],
+      anvl_re = ra, jax_re = rj)
+  }
+}
+acc_df <- dplyr::bind_rows(acc_rows)
+```
+
+Relative error against the `r PREC`-bit `Rmpfr` ground truth (for gradients, the
+analytic derivative $\phi$ or $\phi/\Phi$, also computed in `Rmpfr`). The
+$x$-axis is a **signed-log** of the input $z$ so both tails and the body are
+visible at once; $y$ is log relative error. The dotted line marks 100% relative
+error — a finite result that has lost all accuracy (e.g. tail underflow to
+zero); $\times$ markers in the top band are non-finite results. Each panel's
+$x$-range spans the region where at least one implementation still holds
+accuracy (bounded, on the deep-tail side, by how far the mpfr reference itself
+stays exact). Hover for exact values.
+
+```{r}
+#| label: acc-plot-fn
+
+slog <- function(z) sign(z) * log10(1 + abs(z))
+UF_Y <- 5                                   # marker band for non-finite results
+FLOOR <- 1e-17
+z_breaks <- c(-1e4, -1e3, -100, -30, -10, -3, -1, 0, 1, 3, 10, 30, 100, 1e3, 1e4)
+
+acc_plot <- function(dt) {
+  long <- acc_df |>
+    dplyr::filter(dtype == dt) |>
+    tidyr::pivot_longer(c(anvl_re, jax_re), names_to = "impl", values_to = "re") |>
+    dplyr::mutate(impl = sub("_re", "", impl),
+                  value = ifelse(impl == "anvl", anvl_val, jax_val))
+  ## per-panel trim to its display window
+  keep <- mapply(function(dd, cc, zz) {
+    tr <- trims[[dd]][[cc]]; zz >= tr[1] & zz <= tr[2]
+  }, long$dtype, long$combo, long$z)
+  long <- long[keep, ]
+
+  long$status <- ifelse(is.na(long$re), "non-finite", "ok")
+  long$re_plot <- ifelse(long$status == "ok", pmax(long$re, FLOOR), UF_Y)
+  long$panel <- factor(paste0(long$op, ",  log.p = ", long$logp),
+                       levels = c("value,  log.p = FALSE", "value,  log.p = TRUE",
+                                  "grad,  log.p = FALSE",  "grad,  log.p = TRUE"))
+  long$tt <- sprintf("z = %.4g\n%s: %s\nvalue = %.6g",
+                     long$z, long$impl,
+                     ifelse(long$status == "ok",
+                            formatC(long$re, format = "e", digits = 2), "non-finite"),
+                     long$value)
+
+  g <- ggplot(long, aes(slog(z), re_plot, colour = impl, group = impl, text = tt)) +
+    geom_hline(yintercept = 1, linetype = "dotted", colour = "grey60") +
+    geom_line(data = subset(long, status == "ok"), linewidth = 0.4) +
+    geom_point(aes(shape = status), size = 1.3) +
+    facet_wrap(~panel, scales = "free_x", ncol = 2) +
+    scale_x_continuous(breaks = slog(z_breaks),
+                       labels = format(z_breaks, scientific = FALSE, trim = TRUE)) +
+    scale_y_log10() +
+    scale_shape_manual(values = c(ok = 16, `non-finite` = 4), guide = "none") +
+    scale_colour_manual(values = c(anvl = "#2c7fb8", jax = "#d95f0e")) +
+    labs(x = "input z (signed-log scale)", y = "relative error", colour = NULL,
+         title = sprintf("%s-bit relative error vs %d-bit mpfr",
+                         sub("f", "", dt), PREC)) +
+    theme_minimal(base_size = 12)
+  ggplotly(g, tooltip = "text") |> layout(legend = list(orientation = "h", y = -0.18))
+}
+```
+
+## 64-bit
+
+```{r}
+#| label: acc-f64
+acc_plot("f64")
+```
+
+## 32-bit
+
+```{r}
+#| label: acc-f32
+acc_plot("f32")
+```
+
+# Detailed results
+
+Full numeric results, three significant figures. Collapsed by default.
+
+::: {.callout-note title="Performance — every cell (time per call, ms)" collapse="true"}
+```{r}
+#| label: perf-table
+if (!PERF) {
+  htmltools::HTML("<em>Performance report disabled (<code>PNORM_PERF=0</code>).</em>")
+} else {
+  perf_tab <- perf_df |>
+    dplyr::transmute(dtype, size, region = as.character(region),
+                     `log.p` = logp, op, impl, `time (ms)` = time_ms) |>
+    dplyr::arrange(dtype, op, region, size, impl)
+  ## Rounding is display-only (formatSignif); the underlying data stays exact.
+  datatable(perf_tab, rownames = FALSE, filter = "top",
+            options = list(pageLength = 15, scrollX = TRUE)) |>
+    formatSignif("time (ms)", 3)
+}
+```
+:::
+
+::: {.callout-note title="Accuracy — every grid point (relative error & value)" collapse="true"}
+```{r}
+#| label: acc-table
+## Relative error is rounded to 3 s.f. for readability (display-only); the
+## value columns keep full double precision, as do all underlying data.
+acc_tab <- acc_df |>
+  dplyr::transmute(dtype, op, `log.p` = logp, z,
+                   `anvl rel.err` = anvl_re, `jax rel.err` = jax_re,
+                   `anvl value`   = anvl_val, `jax value`  = jax_val) |>
+  dplyr::arrange(dtype, op, `log.p`, z)
+datatable(acc_tab, rownames = FALSE, filter = "top",
+          options = list(pageLength = 15, scrollX = TRUE)) |>
+  formatSignif(c("anvl rel.err", "jax rel.err"), 3) |>
+  formatSignif("z", 6)
+```
+:::
+
+---
+
+```{r}
+#| label: colophon
+#| echo: false
+#| results: asis
+grid_info <- if (PERF) {
+  sprintf("performance sizes %s; ",
+          paste(format(SIZES, scientific = FALSE, trim = TRUE), collapse = ", "))
+} else "performance report disabled; "
+cat(sprintf(
+  "Generated %s · device %s · anvl %s · JAX %s · %s · Rmpfr %s (%d-bit) · bench %s · google-benchmark.\n%s%d accuracy points per combination.\n",
+  format(Sys.Date()), toupper(DEVICE), as.character(packageVersion("anvl")), JAX_VER,
+  R.version.string, as.character(packageVersion("Rmpfr")), PREC,
+  as.character(packageVersion("bench")), grid_info, length(zgrid)))
+```

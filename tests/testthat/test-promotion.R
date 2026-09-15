@@ -1,48 +1,44 @@
-test_that("ambiguity is propagated by binary ops", {
-  f <- function(x, y) {
-    (x * 1L) + y
-  }
-  expect_equal(
-    jit(f)(nv_scalar(TRUE), nv_scalar(2L, "i16")),
-    nv_scalar(3L, dtype = "i16")
-  )
-})
-
-test_that("ambiguity is propagated by unary ops", {
-  f <- function(x) {
-    nv_negate(1L) + x
-  }
+test_that("an R value takes the dtype of the array it meets", {
+  f <- function(x) x * 1L
   expect_equal(
     jit(f)(nv_scalar(2L, "i16")),
-    nv_scalar(1L, dtype = "i16")
+    nv_scalar(2L, dtype = "i16")
+  )
+  expect_equal(
+    jit(f)(nv_scalar(2, "f64")),
+    nv_scalar(2, dtype = "f64")
   )
 })
 
-test_that("prim_convert reverse", {
-  out <- jit(function(x) {
-    z <- prim_convert(x, "f32", ambiguous = FALSE)
-    a <- gradient(\(y) {
-      y_int <- prim_convert(y, "i32", ambiguous = TRUE)
-      prim_convert(y_int, "f32", ambiguous = TRUE)
-    })(z)[[1L]]
-  })(nv_scalar(TRUE))
-  expect_equal(out, nv_scalar(1, dtype = "f32"))
+test_that("an R value that meets nothing materializes at the default dtype", {
+  expect_equal(jit(function() 1 * 2)(), nv_scalar(2, dtype = default_float()))
+  expect_equal(jit(function() 1L * 2L)(), nv_scalar(2L, dtype = default_int()))
 })
 
-test_that("prim_if propagates ambiguity", {
+test_that("a value that has materialized keeps its dtype", {
+  # `x * 1L` materializes at i32 -- the R value cannot stay a bool -- and the
+  # i16 then promotes against a real i32, which wins.
+  f <- function(x, y) (x * 1L) + y
+  expect_equal(
+    jit(f)(nv_scalar(TRUE), nv_scalar(2L, "i16")),
+    nv_scalar(3L, dtype = default_int())
+  )
+})
+
+test_that("prim_if outputs keep the dtype of their branches", {
   f <- function(pred, x) {
     x <- x * 2L
     nv_if(pred, \() x, \() x * x) * nv_scalar(3L, dtype = "i16")
   }
   expect_equal(
     jit(f)(nv_scalar(TRUE), nv_scalar(TRUE)),
-    nv_scalar(6L, dtype = "i16")
+    nv_scalar(6L, dtype = default_int())
   )
 })
 
-test_that("prim_while propagates ambiguity", {
+test_that("prim_while carries the dtype of its state", {
   f <- jit(function(n) {
-    i <- 0L * nv_scalar(TRUE) # ambiguous i32
+    i <- 0L * nv_scalar(TRUE)
     nv_while(list(i = i), \(i) i <= n, \(i) {
       i <- i + 1L
       list(i = i)
@@ -51,14 +47,66 @@ test_that("prim_while propagates ambiguity", {
   })
   expect_equal(
     f(nv_scalar(10L)),
-    nv_scalar(33L, dtype = "i16")
+    nv_scalar(33L, dtype = default_int())
   )
 })
 
-test_that("boolean is not ambiguous", {
-  f <- function(x) {
-    x * TRUE
-  }
+test_that("a logical R value is a bool, not an unmaterialized value", {
+  f <- function(x) x * TRUE
   graph <- trace_fn(f, list(x = nv_scalar(1L)))
-  expect_false(graph$calls[[1L]]$inputs[[1L]]$aval$ambiguous)
+  # The logical is built at `bool` -- the only dtype that holds it faithfully --
+  # and the program converts it to the dtype it met, so the multiply itself sees
+  # an i32.
+  mul <- Filter(function(call) call$primitive$name == "mul", graph$calls)[[1L]]
+  expect_dtype(mul$inputs[[2L]]$aval, default_int())
+})
+
+describe("eager/jit equivalence", {
+  it("agrees for promotion_like() and promotion_common()", {
+    expect_eager_jit_equal_grid(list(
+      "anchored promotion" = function(x, v) {
+        args <- as_anvl_arrays(x = x, v = v, .promote = promotion_like("x"))
+        args$x * args$v
+      },
+      "promotion to the common dtype" = function(x, v) {
+        args <- as_anvl_arrays(x, v, .promote = promotion_common())
+        args[[1L]] * args[[2L]]
+      }
+    ))
+  })
+})
+
+describe("the default float", {
+  it("does not change the yielding rule", {
+    local_default_dtypes(c(float = "f64"))
+    expect_dtype(nv_array(1, dtype = "f32") + 1.5, "f32")
+    expect_dtype(jit(function(x) x * 2)(nv_array(1, dtype = "f32")), "f32")
+    # Crossing a category takes the *default* of the other category.
+    expect_dtype(nv_array(1L, dtype = "i32") + 1.5, "f64")
+  })
+})
+
+describe("the default integer", {
+  it("does not change the yielding rule", {
+    local_default_dtypes(c(int = "i64"))
+    expect_dtype(nv_array(1L, dtype = "i32") + 1L, "i32")
+    expect_dtype(nv_array(1L, dtype = "i8") * 2L, "i8")
+    expect_dtype(nv_array(TRUE) + 1L, "i64")
+  })
+})
+
+describe("eager code", {
+  it("reads the same default the operation runs with", {
+    skip_if_no_quickr()
+    # A plain R helper decides a promotion eagerly, between dispatches. The
+    # default it reads is the one of the active backend, which is also the
+    # backend the operation then runs on.
+    promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promotion_common())[[2L]]
+    expect_dtype(promote(nv_array(1L, dtype = "i32")), default_float())
+    with_backend("quickr", {
+      expect_dtype(promote(nv_array(1L, dtype = "i32")), "f64")
+      expect_equal(peek_dtype(1.5), as_dtype("f64"))
+      expect_dtype(nv_fill(0, 3), "f64")
+    })
+  })
 })

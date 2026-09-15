@@ -2,18 +2,14 @@
 % Please edit documentation in R/api.R, R/api-generics.R
 \name{nv_is_infinite}
 \alias{nv_is_infinite}
-\alias{is.infinite.AnvlBox}
+\alias{is.infinite.AnvlArray}
 \title{Is Infinite}
 \usage{
-nv_is_infinite(operand)
-
-\method{is.infinite}{AnvlBox}(x)
+nv_is_infinite(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
-
-\item{x}{(\code{\link{arrayish}})\cr Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

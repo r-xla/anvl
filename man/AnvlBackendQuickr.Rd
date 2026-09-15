@@ -11,8 +11,7 @@ An \code{\link{AnvlBackend}} object with subclass \code{"AnvlBackendQuickr"}.
 }
 \description{
 Constructs the quickr backend, which stores array data as plain R arrays and
-compiles jitted functions to R code via the
-\href{https://CRAN.R-project.org/package=quickr}{quickr} package.
+compiles jitted functions to R code via the \CRANpkg{quickr} package.
 }
 \details{
 To use it, the \code{"quickr"} package needs to be installed.
@@ -27,9 +26,10 @@ quickr package to be installed.
 An \code{\link{AnvlArray}} with \code{backend = "quickr"} is, under the hood, a plain R
 vector or array (\code{numeric}, \code{integer}, or \code{logical}) stored in the \verb{$data}
 field. \code{\link[=as_array]{as_array()}} returns the underlying vector/array directly without
-copying, and \code{\link[=nv_array]{nv_array()}} simply wraps an R vector/array. As a
-consequence, there is no separate notion of a device: data always lives in
-R's memory and computation always runs on the CPU.
+copying, and \code{\link[=nv_array]{nv_array()}} simply wraps an R vector/array. Data always lives
+in R's memory and computation always runs on the CPU, so the only device is
+\code{\link[=quickr_device]{quickr_device("cpu")}}; every array still carries it in
+\verb{$device}, as arrays of every backend do.
 }
 
 \section{Status}{
@@ -39,11 +39,16 @@ This backend is \strong{experimental} and has a number of limitations:
 \item Compilation (tracing + quickr lowering) is somewhat slow, so it is best
 suited to long-running or repeatedly-called functions where the one-time
 compilation cost is amortized.
-\item Only a subset of the primitives that the XLA backend supports are currently
+\item Only a subset of the primitives that the PJRT backend supports are currently
 lowered to quickr code. See \code{vignette("primitives")} for an overview.
-\item Only the data types \code{f64}, \code{i32}, and \code{bool} are supported.
 \item Only CPU execution is supported.
+\item Only three data types are supported; see the section below.
 }
+}
+
+\section{Supported data types}{
+
+\code{f64}, \code{i32} and \code{bool} -- the three R storage types.
 }
 
 \section{Quickr JIT arguments}{
@@ -57,5 +62,5 @@ would only get stripped again.
 }
 
 \seealso{
-\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendXla]{AnvlBackendXla()}}, \code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
+\code{\link[=AnvlBackend]{AnvlBackend()}}, \code{\link[=AnvlBackendPjrt]{AnvlBackendPjrt()}}, \code{\link[=local_backend]{local_backend()}}, \code{\link[=jit]{jit()}}.
 }

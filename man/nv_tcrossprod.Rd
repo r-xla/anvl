@@ -2,31 +2,33 @@
 % Please edit documentation in R/api.R, R/api-generics.R
 \name{nv_tcrossprod}
 \alias{nv_tcrossprod}
-\alias{tcrossprod.AnvlBox}
+\alias{tcrossprod.AnvlArray}
 \title{Transpose Cross Product (Matrix)}
 \usage{
-nv_tcrossprod(x, y = NULL)
+nv_tcrossprod(lhs, rhs = NULL)
 
-\method{tcrossprod}{AnvlBox}(x, y = NULL, ...)
+\method{tcrossprod}{AnvlArray}(x, y = NULL, ...)
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr
-An array with at least 2 dimensions.}
+\item{lhs}{(\code{\link{arrayish}})\cr
+An array with at least 2 axes.}
 
-\item{y}{(\code{\link{arrayish}} | \code{NULL})\cr
-Optional second array. If \code{NULL}, uses \code{x}.}
+\item{rhs}{(\code{\link{arrayish}} | \code{NULL})\cr
+Optional second array. If \code{NULL}, uses \code{lhs}.}
 
-\item{...}{Unused.}
+\item{x, y}{Same as \code{lhs} and \code{rhs}; the names used by the base R S3 generic.}
+
+\item{...}{No additional arguments.}
 }
 \value{
 \code{\link{arrayish}}
 }
 \description{
-Computes \code{x \%*\% t(y)}. If \code{y} is missing, computes \code{x \%*\% t(x)}.
+Computes \code{lhs \%*\% t(rhs)}. If \code{rhs} is missing, computes \code{lhs \%*\% t(lhs)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(matrix(1:6, nrow = 2), dtype = "f32")
+x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
 nv_tcrossprod(x)
 \dontshow{\}) # examplesIf}
 }

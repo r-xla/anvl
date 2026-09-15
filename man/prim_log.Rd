@@ -4,16 +4,15 @@
 \alias{prim_log}
 \title{Primitive Logarithm}
 \usage{
-prim_log(operand)
+prim_log(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise natural logarithm.
@@ -29,7 +28,7 @@ Element-wise natural logarithm.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_log]{stablehlo::hlo_log()}}.
+Lowers to \code{\link[stablehlo:hlo_log]{hlo_log()}}.
 }
 
 \examples{

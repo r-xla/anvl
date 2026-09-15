@@ -4,16 +4,15 @@
 \alias{prim_abs}
 \title{Primitive Absolute Value}
 \usage{
-prim_abs(operand)
+prim_abs(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type signed integer or floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise absolute value.
@@ -29,7 +28,7 @@ Element-wise absolute value.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_abs]{stablehlo::hlo_abs()}}.
+Lowers to \code{\link[stablehlo:hlo_abs]{hlo_abs()}}.
 }
 
 \examples{

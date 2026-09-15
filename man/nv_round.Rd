@@ -4,11 +4,11 @@
 \alias{nv_round}
 \title{Round}
 \usage{
-nv_round(operand, method = "nearest_even")
+nv_round(x, method = "nearest_even")
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array. An integer array is returned unchanged.}
 
 \item{method}{(\code{character(1)})\cr
 Rounding method.
@@ -19,12 +19,13 @@ Either \code{"nearest_even"} (default) or \code{"afz"} (away from zero).}
 Has the same shape and data type as the input.
 }
 \description{
-Element-wise rounding. You can also use the \code{round()} generic.
+Element-wise rounding to a whole number.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1.4, 2.5, 3.6))
-round(x)
+nv_round(x)
+nv_round(nv_array(1:3)) # an integer array is already whole
 \dontshow{\}) # examplesIf}
 }
 \seealso{

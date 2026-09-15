@@ -4,15 +4,15 @@
 \alias{nv_outer}
 \title{Outer Product}
 \usage{
-nv_outer(x, y)
+nv_outer(lhs, rhs)
 }
 \arguments{
-\item{x, y}{(\code{\link{arrayish}})\cr
+\item{lhs, rhs}{(\code{\link{arrayish}})\cr
 1-D arrays.}
 }
 \value{
 \code{\link{arrayish}}\cr
-A 2-D array of shape \verb{(length(x), length(y))}.
+A 2-D array of shape \verb{(length(lhs), length(rhs))}.
 }
 \description{
 Computes the outer product of two 1-D arrays.

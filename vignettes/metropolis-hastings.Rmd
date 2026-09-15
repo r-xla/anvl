@@ -151,7 +151,7 @@ for (i in seq_len(n_samples)) {
   thetas[[i]] <- theta
 }
 
-samples <- do.call(rbind, lapply(thetas, function(x) as.vector(as_array(x))))
+samples <- do.call(rbind, lapply(thetas, function(x) as.vector(x)))
 colnames(samples) <- c("theta1", "theta2")
 ```
 

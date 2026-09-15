@@ -14,7 +14,6 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
 Divides two arrays element-wise.
@@ -30,7 +29,7 @@ Divides two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_divide]{stablehlo::hlo_divide()}}.
+Lowers to \code{\link[stablehlo:hlo_divide]{hlo_divide()}}.
 }
 
 \examples{

@@ -4,16 +4,15 @@
 \alias{prim_negate}
 \title{Primitive Negation}
 \usage{
-prim_negate(operand)
+prim_negate(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type integer or floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Negates an array element-wise.
@@ -29,7 +28,7 @@ Negates an array element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_negate]{stablehlo::hlo_negate()}}.
+Lowers to \code{\link[stablehlo:hlo_negate]{hlo_negate()}}.
 }
 
 \examples{

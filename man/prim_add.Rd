@@ -14,7 +14,6 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
 Adds two arrays element-wise.
@@ -30,7 +29,7 @@ Adds two arrays element-wise.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_add]{stablehlo::hlo_add()}}.
+Lowers to \code{\link[stablehlo:hlo_add]{hlo_add()}}.
 }
 
 \examples{

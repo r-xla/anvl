@@ -10,8 +10,19 @@ nv_rng_state(seed, device = default_device())
 \item{seed}{(\code{\link{arrayish}})\cr
 Scalar \code{i32} seed value.}
 
-\item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr
-Device for data to live on.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
+
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
+named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 }
 \value{
 \code{\link{nv_array}} of dtype \code{ui64} and shape \code{(2)}.
@@ -27,10 +38,11 @@ state
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-Other rng: 
-\code{\link{nv_rbinom}()},
-\code{\link{nv_rdunif}()},
-\code{\link{nv_rnorm}()},
-\code{\link{nv_runif}()}
+Other rng:
+\code{\link{nv_normal}},
+\code{\link[=nv_rbinom]{nv_rbinom()}},
+\code{\link[=nv_runif]{nv_runif()}},
+\code{\link[=nv_sample]{nv_sample()}},
+\code{\link[=nv_sample_int]{nv_sample_int()}}
 }
 \concept{rng}

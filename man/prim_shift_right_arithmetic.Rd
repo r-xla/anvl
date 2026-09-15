@@ -14,7 +14,6 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
 Element-wise arithmetic right bit shift.
@@ -29,7 +28,7 @@ Element-wise arithmetic right bit shift.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_shift_right_arithmetic]{stablehlo::hlo_shift_right_arithmetic()}}.
+Lowers to \code{\link[stablehlo:hlo_shift_right_arithmetic]{hlo_shift_right_arithmetic()}}.
 }
 
 \examples{

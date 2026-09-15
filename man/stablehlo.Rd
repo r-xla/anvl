@@ -4,11 +4,26 @@
 \alias{stablehlo}
 \title{Lower a graph to StableHLO}
 \usage{
-stablehlo(graph, constants_as_inputs = TRUE, env = NULL, donate = character())
+stablehlo(
+  graph,
+  id = "main",
+  constants_as_inputs = TRUE,
+  env = NULL,
+  donate = character(),
+  donate_unaliased_outputs = FALSE,
+  platform = NULL
+)
 }
 \arguments{
 \item{graph}{(\code{\link{AnvlGraph}})\cr
 The graph to lower (e.g. produced by \code{\link[=trace_fn]{trace_fn()}}).}
+
+\item{id}{(\code{character(1)})\cr
+The id of the resulting StableHLO function. Use \code{"main"} (the default)
+for a top-level lowering (returning from the \code{main} function finalizes
+the module) and \code{""} for a closure/region lowering (e.g. a while body or
+a scatter update computation) that builds an anonymous nested function
+inside an enclosing build.}
 
 \item{constants_as_inputs}{(\code{logical(1)})\cr
 If \code{TRUE} (default), constants are registered as inputs to the StableHLO function
@@ -24,12 +39,30 @@ Optional environment for reusing variable mappings across nested function loweri
 Names of the arguments whose buffers should be donated.
 Donated buffers can be aliased with outputs of the same type, enabling in-place
 operations.}
+
+\item{donate_unaliased_outputs}{(\code{logical(1)})\cr
+If \code{TRUE} and the current target platform is \code{"cpu"}, append a
+phantom donated input for every output that isn't already aliased
+to a user-\code{donate}d input.
+This is needed internally so R keeps track of the CPU buffers memory in order
+to know when to garbage collect.}
+
+\item{platform}{(\code{NULL} | \code{character(1)})\cr
+Target platform name (e.g. \code{"cpu"}, \code{"cuda"}). Stored on a process-wide
+global during the call so that platform-aware lowering rules (queried via
+\code{\link[=current_platform]{current_platform()}}) can branch on it. \code{NULL} (the default)
+leaves the current value untouched — recursive calls from higher-order
+primitives inherit the platform of the enclosing call.}
 }
 \value{
-A \code{list} of length 2:
+A \code{list} of length 3:
 \itemize{
 \item the \code{\link[stablehlo:Func]{stablehlo::Func}}
 \item The list of \code{\link{GraphValue}}s holding \code{\link{ConcreteArray}}s.
+\item A list of phantom-output specs, one per phantom donated input
+appended when \code{donate_unaliased_outputs = TRUE}. Each entry is a
+\code{list(dtype, shape)} describing the buffer the executor must
+allocate. Empty when no phantoms were added.
 }
 }
 \description{
@@ -40,7 +73,7 @@ XLA executable with \code{pjrt::pjrt_compile()}.
 
 The rules for translating to stablehlo are stored in \verb{$rules[["stablehlo"]]} of the primitives.
 
-This is a low-level function; most users should use \code{\link[=jit]{jit()}} or \code{\link[=xla]{xla()}} instead.
+This is a low-level function; most users should use \code{\link[=jit]{jit()}} instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
@@ -51,5 +84,5 @@ stablehlo(graph)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}, \code{\link[=xla]{xla()}}
+\code{\link[=trace_fn]{trace_fn()}}, \code{\link[=jit]{jit()}}, \code{\link[=current_platform]{current_platform()}}
 }

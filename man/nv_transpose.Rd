@@ -2,30 +2,35 @@
 % Please edit documentation in R/api.R, R/api-generics.R
 \name{nv_transpose}
 \alias{nv_transpose}
-\alias{t.AnvlBox}
+\alias{t.AnvlArray}
 \title{Transpose}
 \usage{
 nv_transpose(x, permutation = NULL)
-
-\method{t}{AnvlBox}(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Array to transpose.}
+Input array.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
-New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.}
+New ordering of axes. If \code{NULL} (default), reverses the axes.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{x} and shape \code{nv_shape(x)[permutation]}.
+Has the same data type as \code{x} and shape \code{shape(x)[permutation]}.
 }
 \description{
-Permutes the dimensions of an array. You can also use \code{t()} for matrices.
+Permutes the axes of an array. You can also use \code{t()} for matrices.
 }
+\section{The \code{t()} generic}{
+
+\code{t()} requires a matrix, whereas \code{\link[base:t]{base::t()}} also transposes a vector (into
+a one-row matrix) and reverses the axes of a higher-rank array.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(matrix(1:6, nrow = 2))
+x <- nv_matrix(1:6, nrow = 2)
 t(x)
 \dontshow{\}) # examplesIf}
 }

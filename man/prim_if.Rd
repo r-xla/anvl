@@ -16,7 +16,6 @@ with the same structure, dtypes, and shapes.}
 }
 \value{
 Result of the executed branch.\cr
-An output is ambiguous if it is ambiguous in both branches.
 }
 \description{
 Conditional execution of one of two branches based on a scalar boolean
@@ -28,13 +27,12 @@ evaluates only the selected branch.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
 }
 }
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_if]{stablehlo::hlo_if()}}.
+Lowers to \code{\link[stablehlo:hlo_if]{hlo_if()}}.
 }
 
 \examples{

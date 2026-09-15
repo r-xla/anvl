@@ -14,7 +14,6 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
 Element-wise minimum of two arrays.
@@ -30,7 +29,7 @@ Element-wise minimum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_minimum]{stablehlo::hlo_minimum()}}.
+Lowers to \code{\link[stablehlo:hlo_minimum]{hlo_minimum()}}.
 }
 
 \examples{

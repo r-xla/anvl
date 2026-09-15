@@ -8,7 +8,8 @@ prim_while(init, cond, body)
 }
 \arguments{
 \item{init}{(\verb{named list()})\cr
-Named list of initial state values.}
+Named list of initial state values. Each one becomes a parameter of the
+loop's sub-graphs. R values are materialized at their default data type.}
 
 \item{cond}{(\code{function})\cr
 Condition function that receives the current state as arguments
@@ -39,7 +40,7 @@ Otherwise, no state is maintained between iterations.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_while]{stablehlo::hlo_while()}}.
+Lowers to \code{\link[stablehlo:hlo_while]{hlo_while()}}.
 }
 
 \examples{

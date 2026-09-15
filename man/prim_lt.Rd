@@ -14,7 +14,6 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape as the inputs and boolean data type.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
 Element-wise less than comparison.
@@ -30,7 +29,7 @@ Element-wise less than comparison.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_compare]{stablehlo::hlo_compare()}} with \code{comparison_direction = "LT"}.
+Lowers to \code{\link[stablehlo:hlo_compare]{hlo_compare()}} with \code{comparison_direction = "LT"}.
 }
 
 \examples{

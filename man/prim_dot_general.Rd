@@ -4,7 +4,13 @@
 \alias{prim_dot_general}
 \title{Primitive Dot General}
 \usage{
-prim_dot_general(lhs, rhs, contracting_dims, batching_dims)
+prim_dot_general(
+  lhs,
+  rhs,
+  contracting_axes,
+  batching_axes,
+  precision = "highest"
+)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
@@ -12,22 +18,27 @@ Left and right operand.
 Operands are \link[=nv_promote_to_common]{promoted to a common data type}.
 Scalars are \link[=nv_broadcast_scalars]{broadcast} to the shape of the other operand.}
 
-\item{contracting_dims}{(\code{list(integer(), integer())})\cr
-A list of two integer vectors specifying which dimensions of \code{lhs} and
-\code{rhs} to contract over. The contracted dimensions must have matching sizes.}
+\item{contracting_axes}{(\code{list(integer(), integer())})\cr
+A list of two integer vectors specifying which axes of \code{lhs} and
+\code{rhs} to contract over. The contracted axes must have matching sizes.}
 
-\item{batching_dims}{(\code{list(integer(), integer())})\cr
-A list of two integer vectors specifying which dimensions of \code{lhs} and
-\code{rhs} are batch dimensions. These must have matching sizes.}
+\item{batching_axes}{(\code{list(integer(), integer())})\cr
+A list of two integer vectors specifying which axes of \code{lhs} and
+\code{rhs} are batch axes. These must have matching sizes.}
+
+\item{precision}{(\code{character(1)})\cr
+Controls the trade-off between speed and numerical accuracy of the
+operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
+Only the StableHLO backend honors this; it is ignored by the quickr backend.}
 }
 \value{
 \code{\link{arrayish}}\cr
-The output shape is the batch dimensions followed by the remaining
-(non-contracted, non-batched) dimensions of \code{lhs}, then \code{rhs}.
+The output shape is the batch axes followed by the remaining
+(non-contracted, non-batched) axes of \code{lhs}, then \code{rhs}.
 }
 \description{
 General dot product of two arrays, supporting contraction over arbitrary
-dimensions and batching.
+axes and batching.
 }
 \section{Implemented Rules}{
 
@@ -40,16 +51,16 @@ dimensions and batching.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dot_general]{stablehlo::hlo_dot_general()}}.
+Lowers to \code{\link[stablehlo:hlo_dot_general]{hlo_dot_general()}}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(matrix(1:6, nrow = 2))
-y <- nv_array(matrix(1:6, nrow = 3))
+x <- nv_matrix(1:6, nrow = 2)
+y <- nv_matrix(1:6, nrow = 3)
 prim_dot_general(x, y,
-  contracting_dims = list(2L, 1L),
-  batching_dims = list(integer(0), integer(0))
+  contracting_axes = list(2L, 1L),
+  batching_axes = list(integer(0), integer(0))
 )
 \dontshow{\}) # examplesIf}
 }

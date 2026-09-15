@@ -4,6 +4,7 @@
 \alias{AnvlArray}
 \alias{nv_array}
 \alias{nv_scalar}
+\alias{nv_matrix}
 \alias{nv_empty}
 \alias{nv_array_like}
 \alias{nv_scalar_like}
@@ -15,74 +16,87 @@ nv_array(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  ambiguous = NULL,
-  backend = NULL
+  byrow = FALSE,
+  check = FALSE
 )
 
-nv_scalar(data, dtype = NULL, device = NULL, ambiguous = NULL, backend = NULL)
+nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
 
-nv_empty(dtype, shape, device = NULL, ambiguous = FALSE)
-
-nv_array_like(
-  like,
+nv_matrix(
   data,
+  nrow = NULL,
+  ncol = NULL,
   dtype = NULL,
   device = NULL,
-  shape = NULL,
-  ambiguous = NULL,
-  backend = NULL
+  byrow = FALSE
 )
 
-nv_scalar_like(
-  like,
-  data,
-  dtype = NULL,
-  device = NULL,
-  ambiguous = NULL,
-  backend = NULL
-)
+nv_empty(dtype, shape, device = NULL)
 
-nv_empty_like(
-  like,
-  dtype = NULL,
-  shape = NULL,
-  device = NULL,
-  ambiguous = NULL
-)
+nv_array_like(like, data, dtype = NULL, device = NULL, shape = NULL)
+
+nv_scalar_like(like, data, dtype = NULL, device = NULL)
+
+nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 }
 \arguments{
 \item{data}{(any)\cr
 \code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.}
 
-\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{tengen::DataType}})\cr
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the current backend's default dtype:
-\code{f32} for numeric data on \code{"xla"}, \code{f64} for numeric data on \code{"quickr"},
-\code{i32} for integer data, and \code{bool} for logical data.}
+The default (\code{NULL}) uses the data type the R value takes (see
+\code{\link[=default_dtypes]{default_dtypes()}}). This depends on the backend.
+For the default \code{"pjrt"} backend, \code{double}s become \code{f32}, \code{integer}
+\code{i32} and \code{logical}s \code{bool}.
+You can change the defaults via the \code{anvl.default_dtypes} option, or for
+a scope with \code{\link[=local_default_dtypes]{local_default_dtypes()}} / \code{\link[=with_default_dtypes]{with_default_dtypes()}}.}
 
-\item{device}{(\code{NULL} | \code{character(1)} | \code{\link[pjrt:pjrt_device]{PJRTDevice}})\cr
-The device for the array (\code{"cpu"}, \code{"cuda"}).
-Default is to use the CPU for new arrays.
-This can be changed by setting the \code{PJRT_PLATFORM} environment variable.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
+
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
+named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 
 \item{shape}{(\code{NULL} | \code{integer()})\cr
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
-To create a "scalar" with dimension \verb{()}, use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
+To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
-\item{ambiguous}{(\code{NULL} | \code{logical(1)})\cr
-Whether the dtype should be marked as ambiguous.
-Defaults to \code{FALSE} for new arrays.}
+\item{byrow}{(\code{logical(1)})\cr
+When constructing from an R object and the result has at least two
+axes, fill the array in row-major order rather than the
+default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'s \code{byrow}.
+Only allowed when \code{data} is an R object — passing an existing
+\code{AnvlArray} together with \code{byrow = TRUE} is an error.}
 
-\item{backend}{(\code{NULL} | \code{character(1)})\cr
-Backend to use (\code{"xla"} or \code{"quickr"}).
-Defaults to \code{default_backend()}.
-Must not be specified inside \code{\link[=jit]{jit()}}.}
+\item{check}{(\code{logical(1)})\cr
+If \code{TRUE}, error when \code{data} contains any \code{NA} values. XLA has no
+representation for missing values, so they are otherwise silently
+coerced to the closest available value of the target dtype (e.g. \code{NaN}
+for floats, the bit pattern \code{-2147483648} for \code{i32}, \code{TRUE} for
+\code{bool}). Defaults to \code{FALSE}. See the "Gotchas" vignette.}
+
+\item{nrow}{(\code{NULL} | \code{integer(1)})\cr
+Number of rows. Inferred from \code{ncol} and the data length if \code{NULL}.
+Defaults to \code{1} when \code{data} is a scalar.}
+
+\item{ncol}{(\code{NULL} | \code{integer(1)})\cr
+Number of columns. Inferred from \code{nrow} and the data length if \code{NULL}.
+Defaults to \code{1} when \code{data} is a scalar.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
-An existing array. Any of \code{dtype}, \code{device}, \code{shape}, \code{ambiguous}, and
-\code{backend} that are \code{NULL} (the default) are taken from \code{like}.}
+An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are \code{NULL}
+(the default) are taken from \code{like}.}
 }
 \value{
 (\code{\link{AnvlArray}})
@@ -91,16 +105,28 @@ An existing array. Any of \code{dtype}, \code{device}, \code{shape}, \code{ambig
 The main array object.
 Its type is determined by a data type and a shape.
 }
+\section{Terminology}{
+
+An array's \strong{axes} are the indices that identify its directions, numbered
+\code{1}, \code{2}, \code{3}, ... The \strong{size} of an axis (its \emph{axis size}) is the extent
+along that axis, and the \strong{shape} is the vector of all axis sizes. For
+example, \code{nv_array(1:6, shape = c(2, 3))} has two axes; the size of axis \code{1}
+is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2, 3)}. Use
+\code{\link[tengen:naxes]{naxes()}} for the number of axes and
+\code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
+axis} rather than an array's "dimensions", as the latter is generally
+overloaded as it is used to refer to both the axis and its size.
+}
+
 \section{Extractors}{
 
 The following generic functions can be used to extract information from an \code{AnvlArray}:
 \itemize{
 \item \code{\link[tengen:dtype]{dtype()}}: Get the data type of the array.
-\item \code{\link[tengen:shape]{shape()}}: Get the shape (dimensions) of the array.
-\item \code{\link[tengen:ndims]{ndims()}}: Get the number of dimensions.
+\item \code{\link[tengen:shape]{shape()}}: Get the shape (axis sizes) of the array.
+\item \code{\link[tengen:naxes]{naxes()}}: Get the number of axes.
 \item \code{\link[tengen:device]{device()}}: Get the device of the array.
 \item \code{\link[=platform]{platform()}}: Get the platform (e.g. \code{"cpu"}, \code{"cuda"}).
-\item \code{\link[=ambiguous]{ambiguous()}}: Get whether the dtype is ambiguous.
 }
 }
 
@@ -115,6 +141,13 @@ Serialize/deserialize arrays to/from raw vectors.
 }
 }
 
+\section{Backend}{
+
+An \code{AnvlArray} is backend-dependent: it belongs to exactly one backend
+(\code{"pjrt"} or the experimental \code{"quickr"}) and lives on a device of that backend.
+The supported data types and devices differ between backends.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # A 1-d array (vector) with shape (4). Default type for integers is `i32`
@@ -126,20 +159,22 @@ nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 # A 2x3 matrix
 nv_array(1:6, shape = c(2L, 3L))
 
+# A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
+
 # A scalar array.
 nv_scalar(3.14)
 
-# A 0x3 array
-nv_empty("f32", shape = c(0L, 3L))
+# An uninitialized 2x3 array (contents are unspecified)
+nv_empty("f32", shape = c(2L, 3L))
 
 # --- Extractors ---
 x <- nv_array(1:6, shape = c(2L, 3L))
 dtype(x)
 shape(x)
-ndims(x)
+naxes(x)
 device(x)
 platform(x)
-ambiguous(x)
 
 # --- Transforming arrays with jit ---
 add_one <- jit(function(x) x + 1)

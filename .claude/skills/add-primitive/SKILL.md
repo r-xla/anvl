@@ -6,7 +6,7 @@ user_invocable: true
 
 # Add a New Primitive to anvl
 
-Read `vignettes/new_primitive.Rmd` first — it is the primary guide with a complete walkthrough (primitive creation via `new_primitive()`, stablehlo rule, reverse rule, nv_* API, file organization). This skill covers additional details not in the vignette.
+Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with a complete walkthrough (primitive creation via `new_primitive()`, stablehlo rule, reverse rule, nv_* API, file organization). This skill covers additional details not in the vignette.
 
 ## Before Starting: Check StableHLO Support
 
@@ -16,11 +16,29 @@ Read `vignettes/new_primitive.Rmd` first — it is the primary guide with a comp
 3. If the op doesn't exist in stablehlo, stop and tell the user — it must be added there first.
 4. Read the StableHLO SPEC (`../stablehlo/SPEC.md`) for the operation's semantics and constraints.
 
+## Argument Naming
+
+The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always named **`x`** — never `operand`, `input`, `a`, or anything else. This holds even when StableHLO's own spec calls it `operand` or `input`.
+
+- Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
+- Two symmetric operands of a binary op: `lhs` / `rhs`.
+- Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
+- Axis arguments derived from `x` follow it, and are spelled *axes*, never *dims*: `x_batching_axes`, `scatter_axes_to_x_axes`, `offset_axes`, `index_vector_axis`.
+
+When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.
+
+```r
+stablehlo::GatherDimensionNumbers(
+  operand_batching_dims = x_batching_axes - 1L,  # spec name on the left
+  ...
+)
+```
+
 ## Roxygen Documentation
 
 Use templates from `man-roxygen/` where applicable:
 
-- **Unary ops:** `@template param_prim_operand_any` (or `_float`, `_signed_numeric`)
+- **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
 - **Binary ops:** `@template params_prim_lhs_rhs_any` (or `_numeric`, `_float`)
 - **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
@@ -47,6 +65,10 @@ Beyond what the vignette covers:
 - Build gradient expressions using `prim_*` primitives — never use R arithmetic directly.
 - For non-differentiable points (e.g. `abs` at 0, `floor` everywhere), follow PyTorch conventions (subgradients, zero gradients, etc.). Read existing rules in `R/rules-reverse.R` for examples.
 
+## Optional: Quickr Rule
+
+If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend; only the quickr one refuses it.
+
 ## API Wrapper (`nv_*`)
 
 Follow the `/add-api-function` skill for this step — it covers design principles (R naming, semantics, generics), implementation, documentation, `_pkgdown.yml` placement, and testing.
@@ -70,7 +92,7 @@ Use `describe()` / `it()` blocks. Cover:
 - Different shapes (scalar, vector, matrix, 3D)
 - Boundary values (depends on the specific operation)
 - dtype variations where relevant
-- Parameter variations (e.g. different `dims`, `permutation` values)
+- Parameter variations (e.g. different `axes`, `permutation` values)
 - Non-differentiable points: include those values in the test inputs and verify anvl's gradient matches torch's gradient at those points.
 
 ### Forward test example (torch comparison in `inst/extra-tests/test-primitives-stablehlo-torch.R`)
@@ -115,13 +137,13 @@ describe("prim_foo", {
     verify_grad_uni(prim_foo, torch::torch_foo, gen = gen_foo)
   })
 
-  it("tensor gradient", {
-    verify_grad_uni_tensor(prim_foo, torch::torch_foo, shape = c(3, 4), gen = gen_foo)
+  it("array gradient", {
+    verify_grad_uni_array(prim_foo, torch::torch_foo, shape = c(3, 4), gen = gen_foo)
   })
 })
 ```
 
-For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_tensor` with `gen_lhs` / `gen_rhs`.
+For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_array` with `gen_lhs` / `gen_rhs`.
 
 ### Key testing helpers
 
@@ -129,10 +151,10 @@ For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_tensor` with 
 |--------|------|---------|
 | `expect_jit_torch_unary` | `inst/extra-tests/torch-helpers.R` | Compare unary forward with torch |
 | `expect_jit_torch_binary` | `inst/extra-tests/torch-helpers.R` | Compare binary forward with torch |
-| `verify_grad_uni` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + tensor) |
-| `verify_grad_uni_tensor` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (tensor only) |
-| `verify_grad_biv` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + tensor) |
-| `verify_grad_biv_tensor` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (tensor only) |
+| `verify_grad_uni` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + array) |
+| `verify_grad_uni_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (array only) |
+| `verify_grad_biv` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + array) |
+| `verify_grad_biv_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (array only) |
 | `generate_test_data` | `inst/extra-tests/torch-helpers.R` | Random input sampling by dtype |
 
 Custom generators (`gen`, `gen_x`, `gen_y`, `gen_lhs`, `gen_rhs`) have signature `function(shp, dtype)` and return an R array (or scalar for `integer()` shape).
@@ -152,9 +174,10 @@ devtools::test()  # or run specific test files
 ## Checklist
 
 - [ ] Can be expressed in StableHLO
-- [ ] Primitive defined: `prim_<name> <- new_primitive("<name>", function(...) { graph_desc_add(self, ...) })` with roxygen docs and `@export` (auto-registered into the internal primitive registry)
+- [ ] Primitive defined: `prim_<name> <- new_primitive("<name>", function(...) { graph_desc_add(self, ...) })` with roxygen docs and `@export` (auto-registered into the internal primitive registry). For simple shapes, use `make_unary_op()` / `make_binary_op()` / `make_reduce_op()` / `make_compare_op()` instead of writing the body by hand.
 - [ ] StableHLO rule: `prim_<name>[["stablehlo"]]` in `R/rules-stablehlo.R`
 - [ ] Reverse rule: `prim_<name>[["reverse"]]` in `R/rules-reverse.R`
+- [ ] Quickr rule (optional): `quickr_register_prim_lowerer(prim_<name>, ...)` in `R/rules-quickr.R`
 - [ ] API wrapper: `nv_<name>` added via `/add-api-function` skill
 - [ ] Tests: primitive forward + reverse, property-based with edge cases (use `describe("prim_<name>", { ... })`)
 - [ ] `devtools::document()` run
