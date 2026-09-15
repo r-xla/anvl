@@ -225,7 +225,7 @@ active_backend <- function() {
 }
 
 assert_backend <- function(backend) {
-  assert_choice(backend, ls(globals$backends))
+  assert_choice(backend, names(globals$backends))
 }
 
 #' Temporarily set the backend
