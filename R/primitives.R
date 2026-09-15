@@ -576,15 +576,16 @@ prim_dynamic_slice <- new_primitive(
   function(x, ..., slice_sizes) {
     start_indices <- list(...)
     infer_fn <- function(x, ..., slice_sizes) {
-      start_indices_avals <- list(...)
-      for (i in seq_along(start_indices_avals)) {
-        aval <- start_indices_avals[[i]]
-        if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
-        }
-      }
-      out <- AbstractArray(dtype = x$dtype, shape = slice_sizes)
-      list(out)
+      sizes_attr <- r_to_constant(
+        as.integer(slice_sizes),
+        dtype = "i64",
+        shape = length(slice_sizes)
+      )
+      out <- do.call(
+        stablehlo::infer_types_dynamic_slice,
+        c(list(at2vt(x)), lapply(list(...), at2vt), list(slice_sizes = sizes_attr))
+      )[[1L]]
+      list(vt2at(out))
     }
     graph_desc_add(
       self,
@@ -639,15 +640,11 @@ prim_dynamic_update_slice <- new_primitive(
   function(x, update, ...) {
     start_indices <- list(...)
     infer_fn <- function(x, update, ...) {
-      start_indices_avals <- list(...)
-      for (i in seq_along(start_indices_avals)) {
-        aval <- start_indices_avals[[i]]
-        if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
-        }
-      }
-      out <- AbstractArray(dtype = x$dtype, shape = shape(x))
-      list(out)
+      out <- do.call(
+        stablehlo::infer_types_dynamic_update_slice,
+        c(list(at2vt(x), at2vt(update)), lapply(list(...), at2vt))
+      )[[1L]]
+      list(vt2at(out))
     }
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     graph_desc_add(

@@ -374,3 +374,48 @@ describe("how an R value is built into a graph", {
     expect_equal(as_array(out$acc), 8)
   })
 })
+
+describe("coercing a traced array to R", {
+  trace_call <- function(f) {
+    jit(function(x) {
+      f(x)
+      x
+    })(nv_array(1:3))
+  }
+
+  coercions <- list(
+    as_array = as_array,
+    as_raw = as_raw,
+    as.array = as.array,
+    as.matrix = as.matrix,
+    as.vector = as.vector,
+    as.list = as.list,
+    as.double = as.double,
+    as.numeric = as.numeric,
+    as.integer = as.integer,
+    as.logical = as.logical,
+    as.character = as.character,
+    as.integer64 = bit64::as.integer64
+  )
+
+  for (nm in names(coercions)) {
+    local({
+      fn <- coercions[[nm]]
+      name <- nm
+      it(paste0(name, "() errors"), {
+        expect_error(trace_call(fn), "has no values")
+      })
+    })
+  }
+
+  it("a closed-over concrete array still converts", {
+    # the closed-over array is anyway a constant.
+    k <- nv_array(1:3)
+    out <- NULL
+    jit(function(x) {
+      out <<- as_array(k)
+      x
+    })(nv_array(1:3))
+    expect_equal(out, array(1:3))
+  })
+})

@@ -110,3 +110,20 @@ describe("eager code", {
     })
   })
 })
+
+describe("a ui64 that meets a signed integer", {
+  it("is refused rather than promoted to a float", {
+    x <- nv_array(c(1, 2), dtype = "ui64")
+    y <- nv_array(c(3L, 4L), dtype = "i32")
+    expect_error(x + y, "have no common data type")
+    expect_error(jit(function(a, b) a + b)(x, y), "have no common data type")
+  })
+
+  it("promotes once one side is converted", {
+    x <- nv_convert(nv_array(c(1, 2), dtype = "ui64"), "f64")
+    y <- nv_array(c(3L, 4L), dtype = "i32")
+    out <- x + y
+    expect_dtype(out, "f64")
+    expect_equal(as.vector(tengen::as_array(out)), c(4, 6))
+  })
+})

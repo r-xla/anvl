@@ -173,34 +173,34 @@ One might think that `jit()` first calls `trace_fn()`, then runs `stablehlo()`, 
 This is, however, not what is happening, as this requires the input types to be known.
 Instead, `f_jit` is a "lazy" function that will only perform these steps once the inputs are provided.
 However, if those steps were applied every time the `f_jit` function is called, this would be very inefficient, because tracing and compiling take some time.
-Therefore, the function `f_jit` also contains a cache (implemented as an `xlamisc::LRUCache`), which will check whether there is already a compiled executable for the given inputs.
-For this, the types of all `AnvlArray`s need to match exactly (data type and shape) and all static arguments need to be identical.
-For example, if we run the function with `AnvlArray`s of the same type, but different values, the function won't be recompiled, which we can see by checking the size of the cache, which is already 1, because we have called it on `x` and `y` above.
+Therefore, `f_jit` also holds a cache of compiled executables, which will check whether there is already one for the given inputs.
+The cache is an LRU cache of `jit()`'s `cache_size` entries, owned by the backend's dispatcher (`pjrt::dispatcher()`), so a function that has run on more than one backend holds one cache per backend (see *Backend and Device in `jit()`* below).
+For a hit, the types of all `AnvlArray`s need to match exactly (data type and shape) and all static arguments need to be identical.
+For example, if we run the function with `AnvlArray`s of the same type, but different values, the function won't be recompiled, which we can see with `jit_cache_size()`, which is already 1, because we have called it on `x` and `y` above.
 
 ```{r}
-cache_size <- function(f) environment(f)$cache$size
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
 After calling it with arrays of the same types and identical static argument values, the size of the cache remains 1:
 
 ```{r}
 f_jit(nv_scalar(-99, "f32"), nv_scalar(2, "f32"), "add")
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
 When we execute the function with arrays of different `dtype` or `shape`, the function will be recompiled:
 
 ```{r}
 f_jit(nv_scalar(1, "i32"), nv_scalar(2, "i32"), "add")
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
 Also, if we provide different values for static arguments, the function will be recompiled:
 
 ```{r}
 f_jit(nv_scalar(1, "f32"), nv_scalar(2, "f32"), "mul")
-cache_size(f_jit)
+jit_cache_size(f_jit)
 ```
 
 
@@ -407,6 +407,7 @@ This is why API functions and primitives should always canonicalize the inputs r
 
 There is exactly one active backend at any time (`active_backend()`, the option `anvl.backend`).
 A `JitFunction` reads it on every call and keeps one implementation -- the backend's `jit` method's result, with its own compilation cache -- per backend it has been called on.
+`jit_cache_size()` reports one of those caches, the active backend's unless its `backend` argument names another.
 Nothing infers a backend from the arguments: an array of another backend is rejected by the dispatcher.
 This is what makes the default data types (`default_dtypes()`) unambiguous in eager code, where a bare R value has nothing but the active backend to take its default from.
 

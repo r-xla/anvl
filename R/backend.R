@@ -6,6 +6,9 @@ NULL
 #' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
 #' This should be a `structure()` with at least a `$data` field that contains the actual
 #' underlying data (`PJRTBuffer` for `"pjrt"` backend, `array()` for `"quickr"` backend).
+#' Receives `row_major` (`logical(1)`, default `FALSE`), which gives the
+#' element order of raw byte payloads; backends that do not support raw
+#' `data` should abort on it.
 #' @param new_empty (`function`)\cr Constructs an AnvlArray of the given
 #' `dtype` and `shape` with unspecified contents. Called by [`nv_empty()`].
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
@@ -129,7 +132,10 @@ globals$backends <- list()
 register_backend(
   "plain",
   AnvlBackend(
-    new_data = function(data, dtype, shape, device) {
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      if (is.raw(data)) {
+        cli_abort("Raw {.arg data} payloads are not supported inside {.fn jit}.")
+      }
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }

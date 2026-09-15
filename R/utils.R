@@ -174,30 +174,6 @@ is_valid_r <- function(x) {
   (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
 }
 
-# The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
-# implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
-# run on that backend yet, since the implementations are built on first call.
-jit_dispatcher <- function(f, backend = active_backend()) {
-  jit_fns <- environment(f)$.jit_fns
-  if (is.null(jit_fns)) {
-    cli_abort("{.arg f} is not a jitted function.")
-  }
-  impl <- jit_fns[[backend]]
-  if (is.null(impl)) {
-    return(NULL)
-  }
-  environment(impl)$dispatcher
-}
-
-# The number of programs `f` has cached for the active backend.
-cache_size <- function(f) {
-  dispatcher <- jit_dispatcher(f)
-  if (is.null(dispatcher)) {
-    return(0L)
-  }
-  pjrt::dispatcher_size(dispatcher)
-}
-
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
 # This ensures that out-of-bounds indices are clamped to [1, x_size - slice_size + 1]
 # for each axis.

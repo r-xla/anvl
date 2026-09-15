@@ -75,6 +75,9 @@ NULL
 #' @jit static "log"
 nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
   assert_flag(log)
+  # Before the promotion, so a non-float operand is reported as `x` rather than
+  # as a failure to bring `mean` to its data type.
+  assert_float_dtype(peek_dtype(x), arg = "x", hint = "Convert it with `nv_convert()`.")
   args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promotion_like("x"))
   x <- args$x
   mean <- args$mean
@@ -95,6 +98,8 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
 nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
+  # As in `nv_dnorm()`: name the operand, not `mean`.
+  assert_float_dtype(peek_dtype(q), arg = "q", hint = "Convert it with `nv_convert()`.")
   args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promotion_like("q"))
   q <- args$q
   mean <- args$mean
@@ -291,6 +296,8 @@ qnorm_f32_coefs <- list(
 nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
+  # As in `nv_dnorm()`: name the operand, not `mean`.
+  assert_float_dtype(peek_dtype(p), arg = "p", hint = "Convert it with `nv_convert()`.")
   args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promotion_like("p"))
   p <- args$p
   mean <- args$mean
@@ -349,7 +356,15 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   use_far_tail <- z >= 8
   # See important "NOTE" preceding coefficients above regarding this helper func
   select_far <- function(far, near) {
-    Map(function(x, y) nv_ifelse(use_far_tail, x, y), far, near)
+    # The coefficients are plain R numbers, so a bare `nv_ifelse(pred, x, y)`
+    # would have nothing to yield to and materialize at the default float,
+    # dragging the whole result up with it. They are built at `p`'s data type
+    # instead.
+    Map(
+      function(x, y) nv_ifelse(use_far_tail, nv_scalar_like(p, x), nv_scalar_like(p, y)),
+      far,
+      near
+    )
   }
   ratio <- horner(inv_z, select_far(cf$p_far_tail, cf$p_tail)) /
     horner(inv_z, select_far(cf$q_far_tail, cf$q_tail))
@@ -369,7 +384,14 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
     res_central,
     nv_ifelse(use_upper, res_tail, -res_tail)
   )
-  res_std <- nv_ifelse(is_boundary, nv_ifelse(use_upper, Inf, -Inf), res_std)
+  # The infinities are built at `p`'s data type: two bare R doubles here would
+  # have nothing to yield to, materialize at the default float, and drag the
+  # result up with them.
+  res_std <- nv_ifelse(
+    is_boundary,
+    nv_ifelse(use_upper, nv_scalar_like(p, Inf), nv_scalar_like(p, -Inf)),
+    res_std
+  )
   # Handle tail switch
   if (!lower_tail) {
     res_std <- -res_std

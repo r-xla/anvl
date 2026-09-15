@@ -300,8 +300,12 @@ AnvlBackendPjrt <- function() {
     # already do for dtype/shape). This turns the per-call dtype()/shape()/
     # device() reads on the hot dispatch path into plain field accesses instead
     # of repeated S3-dispatch -> C++/pjrt calls.
-    new_data = function(data, dtype, shape, device) {
-      buf <- pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      buf <- if (is.raw(data)) {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape, row_major = row_major)
+      } else {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+      }
       structure(
         list(
           data = buf,
