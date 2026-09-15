@@ -31,7 +31,9 @@ AnvlBackend(
   [`structure()`](https://rdrr.io/r/base/structure.html) with at least a
   `$data` field that contains the actual underlying data (`PJRTBuffer`
   for `"pjrt"` backend, [`array()`](https://rdrr.io/r/base/array.html)
-  for `"quickr"` backend).
+  for `"quickr"` backend). Receives `row_major` (`logical(1)`, default
+  `FALSE`), which gives the element order of raw byte payloads; backends
+  that do not support raw `data` should abort on it.
 
 - new_empty:
 

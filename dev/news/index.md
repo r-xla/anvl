@@ -64,6 +64,13 @@
   and
   [`prim_cummin()`](https://r-xla.github.io/anvl/dev/reference/prim_cummin.md)
   name theirs `values` and `indices`.
+- [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  accepts a [`raw()`](https://rdrr.io/r/base/raw.html) vector holding
+  the native byte payload of `prod(shape)` elements of `dtype` (both
+  then required); `byrow` selects row-major element order for the
+  payload. Only supported on the `"pjrt"` backend; the inverse direction
+  is the existing
+  [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md).
 - The reductions ([`sum()`](https://rdrr.io/r/base/sum.html),
   [`prod()`](https://rdrr.io/r/base/prod.html),
   [`max()`](https://rdrr.io/r/base/Extremes.html),

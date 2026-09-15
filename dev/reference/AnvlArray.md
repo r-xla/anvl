@@ -43,7 +43,11 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
   [`integer()`](https://rdrr.io/r/base/integer.html),
   [`double()`](https://rdrr.io/r/base/double.html), or
   [`logical()`](https://rdrr.io/r/base/logical.html) scalar, vector, or
-  array.
+  array. Alternatively a [`raw()`](https://rdrr.io/r/base/raw.html)
+  vector holding the native little-endian byte payload of `prod(shape)`
+  elements of `dtype`; both `dtype` and `shape` are then required (only
+  supported on the `"pjrt"` backend). Raw payloads are read in
+  column-major element order, or row-major with `byrow = TRUE`.
 
 - dtype:
 
@@ -239,8 +243,8 @@ nv_scalar(3.14)
 # An uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  -1.6325e-31  3.0817e-41 -2.7166e-31
-#>   3.0817e-41 -2.6915e-31  3.0817e-41
+#>  0 0 0
+#>  0 0 0
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
