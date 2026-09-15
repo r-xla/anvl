@@ -36,10 +36,10 @@ test_that("jit: quickr backend preserves nested multi-output shapes and types", 
 
   out <- f(nv_array(1:3))
 
-  expect_equal(dtype(out$flags), as_dtype("bool"))
-  expect_equal(dtype(out$payload$shifted), as_dtype("i32"))
-  expect_identical(shape(out$flags), 3L)
-  expect_identical(shape(out$payload$shifted), 3L)
+  expect_dtype(out$flags, "bool")
+  expect_dtype(out$payload$shifted, "i32")
+  expect_shape(out$flags, 3L)
+  expect_shape(out$payload$shifted, 3L)
   expect_identical(as_array(out$flags), array(c(FALSE, TRUE, TRUE), dim = 3L))
   expect_identical(as_array(out$payload$shifted), array(2:4, dim = 3L))
 })

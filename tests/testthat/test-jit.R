@@ -550,21 +550,21 @@ describe("a scoped override inside a jitted body", {
     helper <- function(x) x * 2 + 0.5
     f <- jit(function(x) list(lo = helper(x), hi = with_default_dtypes(c(float = "f64"), helper(x))))
     out <- f(nv_array(1L, dtype = "i32"))
-    expect_equal(dtype(out$lo), default_float())
-    expect_equal(dtype(out$hi), as_dtype("f64"))
+    expect_dtype(out$lo, default_float())
+    expect_dtype(out$hi, "f64")
   })
 
   it("does not reach a bare R value handed out of the scope", {
     # The value has materialized at nothing inside the scope, so it takes the
     # default where it is used -- the per-operation rule, not a special case.
-    expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), default_float())
+    expect_dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))(), default_float())
   })
 
   it("takes the trace's baseline, not the active backend", {
     skip_if_no_quickr()
     # A program is compiled for one backend, so switching inside the body
     # cannot change what its R values materialize at.
-    expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), default_float())
+    expect_dtype(jit(function() with_backend("quickr", nv_array(1.5)))(), default_float())
   })
 
   it("does not change what the program is keyed on", {
@@ -575,13 +575,13 @@ describe("a scoped override inside a jitted body", {
       with_default_dtypes(c(float = "f64"), x + 1.5)
     })
     x <- nv_array(1L, dtype = "i32")
-    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_dtype(f(x), "f64")
     expect_equal(n_traced, 1L)
     # The scoped region is `f64` either way, but the baseline still keys the
     # cache, so a different default outside the body is a different program.
-    with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
+    with_default_dtypes(c(float = "f64"), expect_dtype(f(x), "f64"))
     expect_equal(n_traced, 2L)
-    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_dtype(f(x), "f64")
     expect_equal(n_traced, 2L)
   })
 })

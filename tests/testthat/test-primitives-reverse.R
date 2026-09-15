@@ -99,8 +99,8 @@ test_that("prim_dot_general: batched matmul gradient w.r.t both inputs", {
     dA <- out[[1L]]
     dB <- out[[2L]]
 
-    expect_equal(shape(dA), shape(A))
-    expect_equal(shape(dB), shape(B))
+    expect_shape(dA, shape(A))
+    expect_shape(dB, shape(B))
 
     # Verify linearization: <A, dA> == l(A,B) and <B, dB> == l(A,B)
     all_axes_A <- seq_along(shape(A))
@@ -355,7 +355,7 @@ test_that("prim_convert reverse converts gradients to the input dtype", {
 
   grads <- f(x)
   expect_equal(as_array(grads[[1L]]), array(1, dim = dim(x_arr)))
-  expect_equal(dtype(grads[[1L]]), as_dtype("f32"))
+  expect_dtype(grads[[1L]], "f32")
 })
 
 test_that("prim_convert reverse is zero across a non-float data type", {
@@ -379,7 +379,7 @@ test_that("prim_convert reverse passes the gradient through between floats", {
   x <- nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
   f <- jit(gradient(function(x) nv_reduce_sum(prim_convert(prim_convert(x, "f32"), "f64"))))
   expect_equal(as.numeric(f(x)[[1L]]), c(1, 1, 1))
-  expect_equal(dtype(f(x)[[1L]]), as_dtype("f64"))
+  expect_dtype(f(x)[[1L]], "f64")
 })
 
 test_that("prim_convert reverse leaves the rest of an expression differentiable", {

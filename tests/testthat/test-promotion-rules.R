@@ -150,7 +150,7 @@ test_that("a rule that cannot place an argument says which one", {
   err <- tryCatch(as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32")), error = identity)
   expect_false(any(grepl("coerce", conditionMessage(err), fixed = TRUE)))
   coerced <- suppressWarnings(as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32", coerce = TRUE)))
-  expect_equal(dtype(coerced$v), as_dtype("i32"))
+  expect_dtype(coerced$v, "i32")
 })
 
 test_that("common_dtype_of: a fallback settles what R values alone materialize at", {
@@ -186,13 +186,13 @@ test_that("common_dtype_of: a fallback settles what R values alone materialize a
 test_that("promotion_common(fallback = ) materializes R values at the fallback", {
   # Nothing brings a dtype: every argument is built at the fallback.
   args <- as_anvl_arrays(1, 2L, .promote = promotion_common(fallback = "f64"))
-  expect_equal(dtype(args[[1L]]), as_dtype("f64"))
-  expect_equal(dtype(args[[2L]]), as_dtype("f64"))
+  expect_dtype(args[[1L]], "f64")
+  expect_dtype(args[[2L]], "f64")
 
   # An argument that has one wins over the fallback.
   args <- as_anvl_arrays(nv_array(1L), 2L, .promote = promotion_common(fallback = "f64"))
-  expect_equal(dtype(args[[1L]]), default_int())
-  expect_equal(dtype(args[[2L]]), default_int())
+  expect_dtype(args[[1L]], default_int())
+  expect_dtype(args[[2L]], default_int())
 
   # `on` still restricts which arguments the rule covers.
   args <- as_anvl_arrays(
@@ -200,8 +200,8 @@ test_that("promotion_common(fallback = ) materializes R values at the fallback",
     y = 2,
     .promote = promotion_common(on = "x", fallback = "f64")
   )
-  expect_equal(dtype(args$x), as_dtype("f64"))
-  expect_equal(dtype(args$y), default_float())
+  expect_dtype(args$x, "f64")
+  expect_dtype(args$y, default_float())
 
   expect_equal(format(promotion_common(fallback = "f64")), "<promotion_common(fallback f64)>")
   expect_equal(format(promotion_common()), "<promotion_common>")
@@ -211,8 +211,8 @@ test_that("promotion_rdata_common() moves the R values and nothing else", {
   # The common data type of inputs that may not be converted is the one they
   # already share, and the R values are materialized at it.
   args <- as_anvl_arrays(nv_array(1, dtype = "f64"), 1.5, .promote = promotion_rdata_common())
-  expect_equal(dtype(args[[1L]]), as_dtype("f64"))
-  expect_equal(dtype(args[[2L]]), as_dtype("f64"))
+  expect_dtype(args[[1L]], "f64")
+  expect_dtype(args[[2L]], "f64")
 
   # `on` restricts which arguments have to agree; the rest keep their own.
   args <- as_anvl_arrays(
@@ -221,8 +221,8 @@ test_that("promotion_rdata_common() moves the R values and nothing else", {
     z = 2,
     .promote = promotion_rdata_common(on = c("x", "y"))
   )
-  expect_equal(dtype(args$y), as_dtype("i8"))
-  expect_equal(dtype(args$z), default_float())
+  expect_dtype(args$y, "i8")
+  expect_dtype(args$z, default_float())
 
   # Several data types among the covered arguments have no common one to reach
   # without converting one of them, which this rule does not do.
@@ -252,7 +252,7 @@ test_that("promotion_rdata_common() moves the R values and nothing else", {
     y = nv_array(1, dtype = "f64"),
     .promote = promotion_rdata_common(on = "x")
   )
-  expect_equal(dtype(args$y), as_dtype("f64"))
+  expect_dtype(args$y, "f64")
 
   expect_equal(format(promotion_rdata_common()), "<promotion_rdata_common>")
 })

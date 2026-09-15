@@ -13,9 +13,9 @@ test_that("prim_cos", {
 test_that("prim_rng_bit_generator", {
   out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
   expect_named(out, c("state", "values"))
-  expect_equal(dtype(out$state), as_dtype("ui64"))
-  expect_equal(shape(out$state), 2L)
-  expect_equal(shape(out$values), c(2L, 2L))
+  expect_dtype(out$state, "ui64")
+  expect_shape(out$state, 2L)
+  expect_shape(out$values, c(2L, 2L))
 })
 
 test_that("prim_bitcast_convert", {
@@ -632,9 +632,9 @@ describe("prim_lu", {
     A <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
     out <- prim_lu(A)
     expect_named(out, c("LU", "pivots", "permutation"))
-    expect_equal(shape(out$LU), c(2L, 2L))
-    expect_equal(shape(out$pivots), 2L)
-    expect_equal(shape(out$permutation), 2L)
+    expect_shape(out$LU, c(2L, 2L))
+    expect_shape(out$pivots, 2L)
+    expect_shape(out$permutation, 2L)
     LU <- as_array(out$LU)
     pivots <- as_array(out$pivots)
     # `as.integer()`: the permutation follows the default integer data type, and
@@ -975,7 +975,7 @@ describe("prim_top_k", {
     expect_named(out, c("values", "indices"))
     expect_equal(as.vector(out$values), c(9, 6, 5))
     expect_equal(as.vector(out$indices), c(6L, 8L, 5L))
-    expect_equal(dtype(out$indices), default_int())
+    expect_dtype(out$indices, default_int())
   })
 
   it("operates per-row on a matrix", {
@@ -993,7 +993,7 @@ describe("prim_top_k", {
 
   it("preserves the input dtype on values output", {
     out <- prim_top_k(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), k = 2L)
-    expect_equal(as.character(dtype(out[[1L]])), "i32")
+    expect_dtype(out[[1L]], "i32")
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
   })
 
@@ -1019,13 +1019,13 @@ describe("prim_argmax", {
   it("supports drop = FALSE", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     out <- prim_argmax(m, axis = 2L, drop = FALSE)
-    expect_equal(shape(out), c(2L, 1L))
+    expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(3L, 2L))
   })
 
   it("returns dtype i32", {
     out <- prim_argmax(nv_array(c(1, 2, 3)), axis = 1L)
-    expect_equal(dtype(out), default_int())
+    expect_dtype(out, default_int())
   })
 
   it("works with integer input", {
@@ -1054,8 +1054,8 @@ describe("prim_argmax", {
     # produces an empty (length-0) i32 vector.
     m <- nv_matrix(numeric(0), nrow = 0, ncol = 3)
     out <- prim_argmax(m, axis = 2L)
-    expect_equal(shape(out), 0L)
-    expect_equal(dtype(out), default_int())
+    expect_shape(out, 0L)
+    expect_dtype(out, default_int())
   })
 
   it("accepts a negative dim", {
@@ -1111,7 +1111,7 @@ describe("prim_reduce", {
   it("supports drop = FALSE", {
     m <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)
     out <- prim_reduce(m, init = nv_scalar(0), axes = 2L, drop = FALSE, reductor = prim_add)
-    expect_equal(shape(out), c(2L, 1L))
+    expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(9, 12))
   })
 

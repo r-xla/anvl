@@ -53,7 +53,7 @@ describe("nv_dnorm", {
 
   it("converts mean/sd to the dtype of x", {
     out <- nv_dnorm(nv_array(c(0, 1), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), as_dtype("f32"))
+    expect_dtype(out, "f32")
   })
 
   it("works under jit with log as a static argument", {
@@ -189,7 +189,7 @@ describe("nv_pnorm", {
 
   it("converts mean/sd to the dtype of q", {
     out <- nv_pnorm(nv_array(c(0, 1), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), as_dtype("f32"))
+    expect_dtype(out, "f32")
   })
 })
 
@@ -347,7 +347,7 @@ describe("nv_qnorm", {
 
   it("converts mean/sd to the dtype of p", {
     out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), default_float())
+    expect_dtype(out, default_float())
   })
 })
 
