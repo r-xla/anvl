@@ -2352,19 +2352,15 @@ describe("the default integer", {
 })
 
 test_that("assert_shapevec() rejects what it cannot represent", {
-  # None of the specific arms fired for a fractional or out-of-range size, so
-  # both fell through to `as.integer()` -- truncating the first and turning the
-  # second into `NA`.
   expect_error(nv_fill(1, shape = 2.7), "must contain whole numbers")
   expect_error(nv_fill(1, shape = 1e10), "must contain whole numbers")
   expect_error(nv_fill(1, shape = Inf), "must contain whole numbers")
   expect_error(nv_fill(1, shape = c(-1L, 2L)), "must not contain a negative axis size")
-  # A zero-size axis is still legal, and the argument keeps its own name.
   expect_equal(shape(nv_fill(1, shape = c(0L, 3L))), c(0L, 3L))
   expect_error(nv_fill(1, shape = c(-1L, 2L)), "`shape`")
 })
 
-test_that("a constructor that fills internally still works at every data type", {
+test_that("a constructor that fills internally works at every data type", {
   # These fill at a data type they do not know statically, writing a plain `0`
   # or `1`, so they are what `assert_fill_value()` has to keep accepting.
   expect_equal(as.vector(nv_eye(2L, dtype = "bool")), c(TRUE, FALSE, FALSE, TRUE))

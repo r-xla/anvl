@@ -11,7 +11,9 @@
 #' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
-#'   Scalar value to fill the array with.
+#'   Scalar value to fill the array with. It has to be something `dtype` can
+#'   hold: a whole number for an integer data type, a non-negative whole number
+#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | `NULL`)\cr
@@ -2194,7 +2196,7 @@ nv_diag <- function(x) {
     ))
   }
   n <- shape(x)[1L]
-  zeros <- nv_fill_like(x, 0L, shape = c(n, n))
+  zeros <- nv_fill_like(x, 0, shape = c(n, n))
   idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
   indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
@@ -2237,7 +2239,7 @@ nv_diag <- function(x) {
 #' @jit static 1:3
 nv_eye <- function(n, dtype = NULL, device = NULL) {
   dtype <- dtype %||% default_float()
-  nv_diag(nv_fill(1L, n, dtype = dtype, device = device))
+  nv_diag(nv_fill(1, n, dtype = dtype, device = device))
 }
 
 # Expand `axes = NULL` to "all axes". Negative axes are resolved here
@@ -3028,7 +3030,7 @@ nv_tril <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0L))
+  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
 }
 
 #' @title Upper Triangular Matrix
@@ -3052,7 +3054,7 @@ nv_triu <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0L))
+  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
 }
 
 #' @title Cross Product (Matrix)

@@ -86,7 +86,9 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
-* `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold.
+* `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold:
+  a whole number for an integer data type, a non-negative one for an unsigned
+  one, a logical or `0` / `1` for `bool`.
 * Every data type of the float category counts as a float, so `f16` and `bf16`
   pass the checks that used to accept only `f32` and `f64`. `nv_pnorm()` and
   `nv_qnorm()` keep the narrower requirement, as they carry one coefficient
