@@ -53,7 +53,7 @@ describe("nv_dnorm", {
 
   it("converts mean/sd to the dtype of x", {
     out <- nv_dnorm(nv_array(c(0, 1), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), as_dtype("f32"))
+    expect_dtype(out, "f32")
   })
 
   it("works under jit with log as a static argument", {
@@ -189,7 +189,7 @@ describe("nv_pnorm", {
 
   it("converts mean/sd to the dtype of q", {
     out <- nv_pnorm(nv_array(c(0, 1), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), as_dtype("f32"))
+    expect_dtype(out, "f32")
   })
 })
 
@@ -347,7 +347,7 @@ describe("nv_qnorm", {
 
   it("converts mean/sd to the dtype of p", {
     out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_equal(dtype(out), default_float())
+    expect_dtype(out, default_float())
   })
 })
 
@@ -359,5 +359,26 @@ describe("eager/jit equivalence", {
       pnorm = function(x, v) nv_pnorm(f64(), sd = v),
       qnorm = function(x, v) nv_qnorm(f64(), mean = v)
     ))
+  })
+})
+
+describe("the float category", {
+  it("nv_pnorm() and nv_qnorm() still need a 32- or 64-bit float", {
+    # `f16` / `bf16` are float data types, so the general float check accepts
+    # them -- but these two carry one coefficient set per width, and a narrower
+    # float would silently take the `f64` set.
+    #
+    # The `jit()` is needed: eagerly, `nv_convert()` runs at once and has to
+    # materialise a `bf16` buffer, which no backend does, so the call dies with
+    # "Unsupported type: bf16" before it reaches the check. Under tracing the
+    # array stays abstract and the check runs.
+    expect_error(
+      jit(function(x) nv_pnorm(nv_convert(x, "bf16")))(nv_array(c(0.5, 0.5))),
+      "must be a 32- or 64-bit float data type"
+    )
+    expect_error(
+      jit(function(x) nv_qnorm(nv_convert(x, "bf16")))(nv_array(c(0.5, 0.5))),
+      "must be a 32- or 64-bit float data type"
+    )
   })
 })

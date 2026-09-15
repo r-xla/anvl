@@ -54,7 +54,7 @@ Below, we add a function that performs the addition after coercing all inputs to
 
 ```{r}
 nv_add_f32 <- function(x, y) {
-  args <- as_anvl_arrays(x, y, .promote = promote_dtype("f32", coerce = TRUE))
+  args <- as_anvl_arrays(x, y, .promote = promotion_dtype("f32", coerce = TRUE))
   do.call(prim_add, args)
 }
 nv_add_f32(1, nv_scalar(1, "f64"))

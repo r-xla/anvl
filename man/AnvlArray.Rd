@@ -45,7 +45,7 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the data type the R value commits to (see
+The default (\code{NULL}) uses the data type the R value takes (see
 \code{\link[=default_dtypes]{default_dtypes()}}). This depends on the backend.
 For the default \code{"pjrt"} backend, \code{double}s become \code{f32}, \code{integer}
 \code{i32} and \code{logical}s \code{bool}.
@@ -115,7 +115,7 @@ is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2
 \code{\link[tengen:naxes]{naxes()}} for the number of axes and
 \code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
 axis} rather than an array's "dimensions", as the latter is generally
-overloaded as it is used to refer to both the axis and it's size.
+overloaded as it is used to refer to both the axis and its size.
 }
 
 \section{Extractors}{

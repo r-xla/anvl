@@ -12,9 +12,10 @@ test_that("prim_cos", {
 
 test_that("prim_rng_bit_generator", {
   out <- prim_rng_bit_generator(nv_array(c(1, 2), dtype = "ui64"), "THREE_FRY", "i64", c(2, 2))
-  expect_equal(dtype(out[[1]]), as_dtype("ui64"))
-  expect_equal(shape(out[[1]]), 2L)
-  expect_equal(shape(out[[2]]), c(2L, 2L))
+  expect_named(out, c("state", "values"))
+  expect_dtype(out$state, "ui64")
+  expect_shape(out$state, 2L)
+  expect_shape(out$values, c(2L, 2L))
 })
 
 test_that("prim_bitcast_convert", {
@@ -191,10 +192,10 @@ test_that("reductions over a zero-size axis return the identity", {
   expect_equal(as_array(prim_reduce_any(empty1_bool, axes = 1L, drop = TRUE)), FALSE)
   expect_equal(as_array(prim_reduce_all(empty1_bool, axes = 1L, drop = TRUE)), TRUE)
 
-  # Reducing along an empty axis of a higher-rank tensor keeps the other axes.
+  # Reducing along an empty axis of a higher-rank array keeps the other axes.
   empty2 <- nv_array(numeric(0), shape = c(2L, 0L), dtype = "f32")
   expect_equal(as_array(prim_reduce_sum(empty2, axes = 2L, drop = TRUE)), array(c(0, 0), 2L))
-  # Reducing a non-empty axis of a tensor with a separate empty axis is fine too.
+  # Reducing a non-empty axis of an array with a separate empty axis is fine too.
   out <- as_array(prim_reduce_max(empty2, axes = 1L, drop = TRUE))
   expect_equal(dim(out), 0L)
 })
@@ -281,13 +282,15 @@ describe("cumulative ops", {
   it("prim_cummax returns running argmax indices", {
     x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6), dtype = "f32")
     out <- prim_cummax(x, axis = 1L)
-    expect_equal(c(as_array(out[[2L]])), c(1L, 1L, 3L, 3L, 5L, 6L, 6L, 6L))
+    expect_named(out, c("values", "indices"))
+    expect_equal(c(as_array(out$indices)), c(1L, 1L, 3L, 3L, 5L, 6L, 6L, 6L))
   })
   it("prim_cummin returns running argmin indices with last-occurrence tiebreak", {
     # Tie at j=4 (x_4 == y_3 == 1): last-occurrence picks 4, then carries forward.
     x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6), dtype = "f32")
     out <- prim_cummin(x, axis = 1L)
-    expect_equal(c(as_array(out[[2L]])), c(1L, 2L, 2L, 4L, 4L, 4L, 4L, 4L))
+    expect_named(out, c("values", "indices"))
+    expect_equal(c(as_array(out$indices)), c(1L, 2L, 2L, 4L, 4L, 4L, 4L, 4L))
   })
   it("prim_cummax plateau breaks ties to last occurrence", {
     x <- nv_array(c(1, 3, 3, 2), dtype = "f32")
@@ -327,7 +330,7 @@ test_that("prim_reshape infers a -1 dimension", {
   expect_equal(prim_reshape(x, c(-1, 3)), prim_reshape(x, c(2, 3)))
   expect_equal(prim_reshape(nv_array(1:6, shape = c(2, 3)), -1), nv_array(c(1L, 3L, 5L, 2L, 4L, 6L)))
   expect_error(prim_reshape(x, c(-1, -1)), "at most one")
-  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer dimension")
+  expect_error(prim_reshape(x, c(4, -1)), "Cannot infer the size of axis")
   expect_error(prim_reshape(x, c(2, -2)), "must contain only non-negative")
 })
 
@@ -620,7 +623,7 @@ describe("prim_qr", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_qr(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_qr(int_mat), "floating-point")
+    expect_error(prim_qr(int_mat), "float data type")
   })
 })
 
@@ -629,9 +632,9 @@ describe("prim_lu", {
     A <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
     out <- prim_lu(A)
     expect_named(out, c("LU", "pivots", "permutation"))
-    expect_equal(shape(out$LU), c(2L, 2L))
-    expect_equal(shape(out$pivots), 2L)
-    expect_equal(shape(out$permutation), 2L)
+    expect_shape(out$LU, c(2L, 2L))
+    expect_shape(out$pivots, 2L)
+    expect_shape(out$permutation, 2L)
     LU <- as_array(out$LU)
     pivots <- as_array(out$pivots)
     # `as.integer()`: the permutation follows the default integer data type, and
@@ -657,7 +660,7 @@ describe("prim_lu", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_lu(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_lu(int_mat), "floating-point")
+    expect_error(prim_lu(int_mat), "float data type")
   })
 })
 
@@ -701,7 +704,7 @@ describe("prim_svd", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 2, dtype = "f32")
     expect_error(prim_svd(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_svd(int_mat), "floating-point")
+    expect_error(prim_svd(int_mat), "float data type")
   })
 })
 
@@ -731,7 +734,7 @@ describe("prim_eigh", {
     empty <- nv_matrix(numeric(0), nrow = 0, ncol = 0, dtype = "f32")
     expect_error(prim_eigh(empty), "zero-sized")
     int_mat <- nv_matrix(1:4, nrow = 2, dtype = "i32")
-    expect_error(prim_eigh(int_mat), "floating-point")
+    expect_error(prim_eigh(int_mat), "float data type")
     rect <- nv_matrix(1:6, nrow = 2, dtype = "f32")
     expect_error(prim_eigh(rect), "square")
   })
@@ -855,9 +858,9 @@ test_that("prim_print shows the R type where a value has no data type yet", {
   # registered pair rather than whatever the run configured.
   local_registered_default_dtypes()
   # A print is not a use site that settles an R value: reporting the data type
-  # this call commits it to would name one nothing else in the program has --
-  # here `x` is uploaded at f64 for the addition. Rendering the value does need
-  # a data type, so the footer says which one it used.
+  # this call materializes it at would name one nothing else in the program has
+  # -- here `x` is uploaded at f64 for the addition. Rendering the value does
+  # need a data type, so the footer says which one it used.
   g <- jit(function(x) {
     prim_print(x)
     x + nv_scalar(0.3, "f64")
@@ -869,10 +872,10 @@ test_that("prim_print shows the R type where a value has no data type yet", {
 })
 
 test_that("prim_print hands its argument back untouched", {
-  # A print is an observation: it must not change what the program computes.
-  # `x` stays uncommitted, so the multiplication still sees a value with no data
-  # type and settles it at f64 -- committing it to its default first would have
-  # rounded it through f32.
+  # A print is an observation: it must not change what the program computes. `x`
+  # stays unmaterialized, so the multiplication still sees a value with no data
+  # type and settles it at f64 -- materializing it at its default first would
+  # have rounded it through f32.
   with_print <- jit(function(x) prim_print(x) * nv_scalar(1, dtype = "f64"))
   without <- jit(function(x) x * nv_scalar(1, dtype = "f64"))
   # `expect_output()` hands the value back, so the print is checked without an
@@ -969,9 +972,10 @@ describe("prim_top_k", {
   it("returns values and 1-based indices along the last axis", {
     out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L)
     expect_length(out, 2L)
-    expect_equal(as.vector(out[[1L]]), c(9, 6, 5))
-    expect_equal(as.vector(out[[2L]]), c(6L, 8L, 5L))
-    expect_equal(dtype(out[[2L]]), default_int())
+    expect_named(out, c("values", "indices"))
+    expect_equal(as.vector(out$values), c(9, 6, 5))
+    expect_equal(as.vector(out$indices), c(6L, 8L, 5L))
+    expect_dtype(out$indices, default_int())
   })
 
   it("operates per-row on a matrix", {
@@ -989,7 +993,7 @@ describe("prim_top_k", {
 
   it("preserves the input dtype on values output", {
     out <- prim_top_k(nv_array(c(5L, 2L, 8L, 1L), dtype = "i32"), k = 2L)
-    expect_equal(as.character(dtype(out[[1L]])), "i32")
+    expect_dtype(out[[1L]], "i32")
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
   })
 
@@ -1015,13 +1019,13 @@ describe("prim_argmax", {
   it("supports drop = FALSE", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     out <- prim_argmax(m, axis = 2L, drop = FALSE)
-    expect_equal(shape(out), c(2L, 1L))
+    expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(3L, 2L))
   })
 
   it("returns dtype i32", {
     out <- prim_argmax(nv_array(c(1, 2, 3)), axis = 1L)
-    expect_equal(dtype(out), default_int())
+    expect_dtype(out, default_int())
   })
 
   it("works with integer input", {
@@ -1032,16 +1036,16 @@ describe("prim_argmax", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmax(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     expect_error(
       prim_argmax(nv_matrix(numeric(0), nrow = 3, ncol = 0), axis = 2L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
     # Inside jit too.
     expect_error(
       jit(function(x) prim_argmax(x, axis = 1L))(nv_array(numeric(0), shape = 0L)),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 
@@ -1050,8 +1054,8 @@ describe("prim_argmax", {
     # produces an empty (length-0) i32 vector.
     m <- nv_matrix(numeric(0), nrow = 0, ncol = 3)
     out <- prim_argmax(m, axis = 2L)
-    expect_equal(shape(out), 0L)
-    expect_equal(dtype(out), default_int())
+    expect_shape(out, 0L)
+    expect_dtype(out, default_int())
   })
 
   it("accepts a negative dim", {
@@ -1078,7 +1082,7 @@ describe("prim_argmin", {
   it("errors at trace time when reducing along a size-0 axis", {
     expect_error(
       prim_argmin(nv_array(numeric(0), shape = 0L), axis = 1L),
-      "undefined for an empty axis"
+      "must have elements along the axis this reads"
     )
   })
 
@@ -1107,7 +1111,7 @@ describe("prim_reduce", {
   it("supports drop = FALSE", {
     m <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)
     out <- prim_reduce(m, init = nv_scalar(0), axes = 2L, drop = FALSE, reductor = prim_add)
-    expect_equal(shape(out), c(2L, 1L))
+    expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(9, 12))
   })
 
@@ -1302,4 +1306,74 @@ describe("prim_reduce_any / prim_reduce_all input data type", {
       paste0("Got \"", as.character(default_float()), "\"")
     )
   })
+})
+
+test_that("prim_fill names `shape` in its own error", {
+  expect_error(prim_fill(0, shape = -1L, dtype = "f32"), "negative axis size")
+  expect_equal(shape(prim_fill(0, shape = c(), dtype = "f32")), integer())
+  expect_equal(shape(prim_fill(0, shape = 0L, dtype = "f32")), 0L)
+})
+
+test_that("prim_fill() checks that `value` is something `dtype` can hold", {
+  expect_error(prim_fill(1.5, 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(Inf, 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(TRUE, 2L, dtype = "i32"), "must be a whole number")
+  expect_error(prim_fill(-1L, 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(prim_fill(-1, 2L, dtype = "ui8"), "must be a non-negative whole number")
+  expect_error(prim_fill(3L, 2L, dtype = "bool"), "must be a logical")
+  expect_error(prim_fill(NA, 2L, dtype = "f32"), "must not be")
+  expect_error(prim_fill(c(1, 2), 2L, dtype = "f32"), "must be a scalar")
+  # A whole double is built as an R integer, so a larger one would arrive as
+  # `NA` rather than the value that was written.
+  expect_error(prim_fill(2^40, 2L, dtype = "i64"), "must be no larger than")
+
+  expect_equal(as.vector(prim_fill(0L, 2L, dtype = "bool")), c(FALSE, FALSE))
+  expect_equal(as.integer(prim_fill(2L, 2L, dtype = "i8")), c(2L, 2L))
+  expect_equal(as.vector(prim_fill(1.5, 2L, dtype = "f32")), c(1.5, 1.5))
+})
+
+test_that("prim_fill() takes a whole number at an integer data type", {
+  # `1` and `1L` both build at `i32`, the same way a literal meeting an `i32`
+  # array does. This is also what the fills that do not know their data type
+  # statically (`nv_eye()`, `nv_diag()`, the gradient zeroing) write.
+  expect_equal(as.integer(prim_fill(1, 2L, dtype = "i32")), c(1L, 1L))
+  expect_equal(as.integer(prim_fill(-3, 2L, dtype = "i64")), c(-3L, -3L))
+  expect_equal(as.integer(prim_fill(3, 2L, dtype = "ui8")), c(3L, 3L))
+  expect_equal(as.vector(prim_fill(1, 2L, dtype = "bool")), c(TRUE, TRUE))
+  expect_equal(as.vector(prim_fill(0, 2L, dtype = "bool")), c(FALSE, FALSE))
+  expect_equal(as.integer(nv_fill(1, shape = 2L, dtype = "i32")), c(1L, 1L))
+})
+
+test_that("the dynamic slicing primitives go through stablehlo's inference", {
+  v <- nv_array(c(10, 20, 30))
+  # These built their output aval by hand, so nothing stablehlo checks was
+  # checked: the mistakes below reached the PJRT compiler and came back as raw
+  # MLIR dumps.
+  expect_error(
+    prim_dynamic_slice(v, nv_scalar(1.5), slice_sizes = 1L),
+    "must have dtype int or uint"
+  )
+  expect_error(
+    prim_dynamic_slice(v, nv_scalar(1L), nv_scalar(1L), slice_sizes = 1L),
+    "must equal rank"
+  )
+  expect_error(
+    prim_dynamic_slice(v, nv_scalar(1L), slice_sizes = 9L),
+    "must not be greater than"
+  )
+  expect_error(
+    prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1.5)),
+    "must have dtype int or uint"
+  )
+  expect_error(
+    prim_dynamic_update_slice(v, nv_array(c(1, 2, 3, 4), shape = c(2, 2)), nv_scalar(1L)),
+    "must equal rank"
+  )
+
+  # The valid calls still give what they always did.
+  expect_equal(as.vector(prim_dynamic_slice(v, nv_scalar(1L), slice_sizes = 2L)), c(10, 20))
+  expect_equal(
+    as.vector(prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1L))),
+    c(99, 20, 30)
+  )
 })

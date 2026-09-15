@@ -75,7 +75,7 @@ NULL
 #' @jit static "log"
 nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
   assert_flag(log)
-  args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promote_like("x"))
+  args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promotion_like("x"))
   x <- args$x
   mean <- args$mean
   sd <- args$sd
@@ -95,12 +95,13 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
 nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promote_like("q"))
+  args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promotion_like("q"))
   q <- args$q
   mean <- args$mean
   sd <- args$sd
-  # The thresholds below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(q), arg = "q")
+  # One threshold set per width, so a narrower float has none: it would
+  # silently take the `f64` set.
+  op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
 
   # Standardise, flipping sign if computing upper tail
   d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
@@ -290,12 +291,12 @@ qnorm_f32_coefs <- list(
 nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
-  args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promote_like("p"))
+  args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promotion_like("p"))
   p <- args$p
   mean <- args$mean
   sd <- args$sd
-  # The coefficients below are written for 32- and 64-bit floats only.
-  op_dtype <- assert_float_dtype(dtype(p), arg = "p")
+  # One coefficient set per width -- see `nv_pnorm()`.
+  op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
 
   is_f32 <- op_dtype == "f32"
 

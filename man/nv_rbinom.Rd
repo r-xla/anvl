@@ -20,12 +20,13 @@ Number of trials.}
 Probability of success on each trial.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled values. \code{NULL} (default) uses the backend's
+Data type of the sampled values. Must be numeric.
+\code{NULL} (default) uses the backend's
 default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})\cr
-List of two elements: the updated RNG state and the sampled values.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{state}, the updated RNG state, and \code{values}, the sampled values.
 }
 \description{
 Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
@@ -36,7 +37,7 @@ When \code{size = 1} (the default), this is a Bernoulli distribution.
 state <- nv_rng_state(42L)
 # Bernoulli samples
 result <- nv_rbinom(c(2, 3), state)
-result[[2]]
+result$values
 \dontshow{\}) # examplesIf}
 }
 \seealso{

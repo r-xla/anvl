@@ -423,7 +423,7 @@ describe("jit: backend and device handling", {
 
   # a constructor declares the device it was asked for (graph_desc_add(device = ))
   it("reads a constructor's device from a static argument", {
-    # No `dtype`: the fill takes the default float of the backend in force, so
+    # No `dtype`: the fill takes the default float of the active backend, so
     # this also runs on quickr (which has no `f32`).
     f <- jit(function(val, dev) nv_fill(val, 2L, device = dev), static = c("val", "dev"))
     expect_equal(device(f(1, "cpu:0")), nv_device("cpu:0"))
@@ -550,21 +550,21 @@ describe("a scoped override inside a jitted body", {
     helper <- function(x) x * 2 + 0.5
     f <- jit(function(x) list(lo = helper(x), hi = with_default_dtypes(c(float = "f64"), helper(x))))
     out <- f(nv_array(1L, dtype = "i32"))
-    expect_equal(dtype(out$lo), default_float())
-    expect_equal(dtype(out$hi), as_dtype("f64"))
+    expect_dtype(out$lo, default_float())
+    expect_dtype(out$hi, "f64")
   })
 
   it("does not reach a bare R value handed out of the scope", {
-    # The value has committed to nothing inside the scope, so it takes the
+    # The value has materialized at nothing inside the scope, so it takes the
     # default where it is used -- the per-operation rule, not a special case.
-    expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), default_float())
+    expect_dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))(), default_float())
   })
 
-  it("takes the trace's baseline, not the backend in force", {
+  it("takes the trace's baseline, not the active backend", {
     skip_if_no_quickr()
     # A program is compiled for one backend, so switching inside the body
-    # cannot change what its R values commit to.
-    expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), default_float())
+    # cannot change what its R values materialize at.
+    expect_dtype(jit(function() with_backend("quickr", nv_array(1.5)))(), default_float())
   })
 
   it("does not change what the program is keyed on", {
@@ -575,13 +575,13 @@ describe("a scoped override inside a jitted body", {
       with_default_dtypes(c(float = "f64"), x + 1.5)
     })
     x <- nv_array(1L, dtype = "i32")
-    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_dtype(f(x), "f64")
     expect_equal(n_traced, 1L)
     # The scoped region is `f64` either way, but the baseline still keys the
     # cache, so a different default outside the body is a different program.
-    with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
+    with_default_dtypes(c(float = "f64"), expect_dtype(f(x), "f64"))
     expect_equal(n_traced, 2L)
-    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_dtype(f(x), "f64")
     expect_equal(n_traced, 2L)
   })
 })

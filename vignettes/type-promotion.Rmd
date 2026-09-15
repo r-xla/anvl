@@ -70,10 +70,10 @@ nv_add(1, nv_scalar(1, "f64"))
 nv_add(1, 2)
 ```
 
-It is therefore important to understand to understand the rules that govern the materialization of R objects as `AnvlArray`s.
+It is therefore important to understand the rules that govern the materialization of R objects as `AnvlArray`s.
 Generally, there are two routes:
 
-1. An R value is committed at its default data type (`double` and `integer` take the defaults of the backend in force, `f32` and `i32` on pjrt; `logical` takes `bool`).
+1. An R value is materialized at its default data type (`double` and `integer` take the defaults of the active backend, `f32` and `i32` on pjrt; `logical` takes `bool`).
    This is e.g. the case in unary functions such as `nv_exp`.
 2. The R values data type is inferred from other arguments, as is the case of the `nv_add` call above.
    When no concrete data type is present, `nv_add(1, 2)` falls back to the default, which is `f32` for `double`s on pjrt.
@@ -96,22 +96,22 @@ You can canonicalize and promote inputs to a function via the `.promote` field o
 It takes a `PromotionRule`, which is a special function that takes in the arguments and outputs a data type for each one.
 
 ```{r}
-as_anvl_arrays(1, 2, .promote = promote_dtype("f64"))
+as_anvl_arrays(1, 2, .promote = promotion_dtype("f64"))
 ```
 
-Below, we show how to actually compute the common data type of some arguments using the `promote_common` rule.
+Below, we show how to actually compute the common data type of some arguments using the `promotion_common` rule.
 
 
 ```{r}
-promote_fn <- promote_common()
+promotion_fn <- promotion_common()
 args <- list(1, 2, nv_scalar(1L, "i8"))
-promote_fn(args)
+promotion_fn(args)
 ```
 
 And when used in `as_anvl_arrays()` it moves the inputs there:
 
 ```{r}
-do.call(as_anvl_arrays, c(args, list(.promote = promote_fn)))
+do.call(as_anvl_arrays, c(args, list(.promote = promotion_fn)))
 ```
 
 For more information about the available rules, see `?promotion_rule`.

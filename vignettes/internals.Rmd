@@ -331,7 +331,7 @@ Generally, there are two situations:
 1. An `RData` object is combined with an object that has a concrete data type
 2. None of the inputs to a primitive has a concrete data type.
 
-In the first case, the `RData` object yields (`promote_rdata_common()`) to the concrete data type.
+In the first case, the `RData` object yields (`promotion_rdata_common()`) to the concrete data type.
 Below, `nv_aval("integer", c())` is equivalent to `RData(c(), "integer")`.
 In the resulting graph, the `%x1` input has the data type it yielded to, and the `<- integer` records that the caller supplies it as an R integer, which the runtime uploads at that data type.
 
@@ -388,7 +388,7 @@ trace_fn(\(x) {
 
 
 There is one special case, however: operations that explicitly request a data type, such as `prim_convert()` and the `nv_array()` constructor.
-If `prim_convert()` were to follow the usual rule of committing its R inputs to their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to an `f32` (the default float data type on pjrt) and then to an `i32`, which would result in a loss of precision.
+If `prim_convert()` were to follow the usual rule of materializing its R inputs at their default data type, then `prim_convert(large_double, "i32")` would first convert the R `double` to an `f32` (the default float data type on pjrt) and then to an `i32`, which would result in a loss of precision.
 In order to prevent this, `prim_convert()` materializes its input at its natural representation.
 
 ```{r}

@@ -167,8 +167,8 @@ test_that("can pass constant to nested trace_fn call if it is defined in the par
 test_that("GraphLiteral", {
   local_registered_default_dtypes()
   gl <- GraphLiteral(LiteralArray(1L, integer()))
-  expect_equal(dtype(gl), default_int())
-  expect_equal(shape(gl), integer())
+  expect_dtype(gl, default_int())
+  expect_shape(gl, integer())
   expect_snapshot(gl)
 })
 
@@ -218,7 +218,7 @@ test_that("error handling: stablehlo errors use anvl's terminology", {
   local_registered_default_dtypes()
   # `cli_abort()` errors from stablehlo store an already formatted message in
   # the condition's fields. Shapes rather than data types, since operands whose
-  # data types disagree are refused by `promote_rdata_common()` before inference
+  # data types disagree are refused by `promotion_rdata_common()` before inference
   # ever sees them.
   expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
@@ -291,8 +291,8 @@ test_that("trace_fn(mode = 'subgraph') promotes R lits/arrays to AnvlArray input
     mode = "subgraph"
   )
   expect_equal(length(graph$inputs), 2L)
-  expect_equal(shape(graph$inputs[[1L]]), integer())
-  expect_equal(shape(graph$inputs[[2L]]), 2L)
+  expect_shape(graph$inputs[[1L]], integer())
+  expect_shape(graph$inputs[[2L]], 2L)
 })
 
 test_that("trace_fn(mode = 'subgraph') errors on non-arrayish args", {

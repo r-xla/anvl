@@ -110,11 +110,11 @@ PrimitiveCall <- function(primitive, inputs, params, outputs) {
 #'
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -167,17 +167,17 @@ AnvlGraph <- function(
 #' Descriptor of an [`AnvlGraph`]. This is a mutable class.
 #' @param calls (`list(PrimitiveCall)`)\cr
 #'   The primitive calls that make up the graph.
-#' @param tensor_to_gval (`hashtab`)\cr
+#' @param array_to_gval (`hashtab`)\cr
 #'   Mapping: `AnvlArray` -> `GraphValue`
 #' @param gval_to_box (`hashtab`)\cr
 #'   Mapping: `GraphValue` -> `GraphBox`
 #' @param constants (`list(GraphValue)`)\cr
 #'   The constants of the graph.
-#' @param in_tree (`NULL | Node`)\cr
+#' @param in_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of inputs. May contain leaves for both array inputs and static
 #'   (non-array) arguments. Only the array leaves correspond to entries in
 #'   `inputs`; use `is_static_flat` to distinguish them.
-#' @param out_tree (`NULL | Node`)\cr
+#' @param out_tree (`NULL` | [`RTree`][pjrt::build_tree])\cr
 #'   The tree of outputs.
 #' @param inputs (`list(GraphValue)`)\cr
 #'   The inputs to the graph (array arguments only).
@@ -189,8 +189,8 @@ AnvlGraph <- function(
 #' @param static_args_flat (`NULL | list()`)\cr
 #'   Flattened traced values for the static arguments indicated by `is_static_flat`.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
-#'   The data types every R value in this trace commits to when nothing else
-#'   decides one (see [`default_dtypes()`]).
+#'   The data types every R value in this trace materializes at when nothing
+#'   else decides one (see [`default_dtypes()`]).
 #' @param backend (`character(1)`)\cr
 #'   The backend this trace is compiled for. Required: it decides which entry
 #'   of the `anvl.default_dtypes` option applies to the trace, so switching the
@@ -204,7 +204,7 @@ AnvlGraph <- function(
 #' @export
 GraphDescriptor <- function(
   calls = list(),
-  tensor_to_gval = NULL,
+  array_to_gval = NULL,
   gval_to_box = NULL,
   constants = list(),
   in_tree = NULL,
@@ -226,7 +226,7 @@ GraphDescriptor <- function(
   if (length(calls)) {
     env$calls$madd(.list = calls)
   }
-  env$data_to_gval <- tensor_to_gval %||% hashtab()
+  env$array_to_gval <- array_to_gval %||% hashtab()
   env$gval_to_box <- gval_to_box %||% hashtab()
   env$constants <- constants
   env$in_tree <- in_tree
@@ -369,7 +369,7 @@ format.GraphBox <- function(x, ...) {
 maybe_box_arrayish <- function(x, desc = .current_descriptor()) {
   if (is_graph_box(x)) {
     # An R value belongs to the graph it was written in, so one reaching
-    # another graph has to commit before it can be captured there.
+    # another graph has to materialize before it can be captured there.
     if (is_rdata_box(x) && !identical(x$desc, desc)) {
       materialize_rdata(x, peek_dtype(x))
     }
@@ -422,8 +422,8 @@ maybe_box_input <- function(x, desc, mode) {
     # e.g.: \(x) prim_while(list(i = x), ...)
     if (is_graph_box(x)) {
       # A subgraph parameter needs a dtype, and the subgraph is traced before
-      # its operands meet anything, so an R value commits here.
-      x <- commit_rdata_box(x)
+      # its operands meet anything, so an R value materializes here.
+      x <- materialize_rdata_box(x)
       gval <- GraphValue(aval = abstract_aval(x$gnode$aval))
       return(register_input(desc, gval))
     }
@@ -477,7 +477,7 @@ maybe_box_input <- function(x, desc, mode) {
     return(register_rdata_input(desc, x))
   }
   if (is_graph_box(x)) {
-    x <- commit_rdata_box(x)
+    x <- materialize_rdata_box(x)
     return(register_input(desc, x$gnode))
   }
   if (is_abstract_array(x)) {
@@ -490,7 +490,7 @@ maybe_box_input <- function(x, desc, mode) {
 # Strip data from a (possibly concrete) array aval, returning a pure
 # AbstractArray with the same dtype and shape.
 abstract_aval <- function(aval) {
-  if (is_concrete_tensor(aval)) {
+  if (is_concrete_array(aval)) {
     AbstractArray(dtype = aval$dtype, shape = aval$shape)
   } else {
     aval
@@ -531,12 +531,12 @@ get_box_or_register_const <- function(desc, x) {
     if (backend(x) != "plain") {
       desc$devices <- c(desc$devices, device(x))
     }
-    gval <- desc$data_to_gval[[x]]
+    gval <- desc$array_to_gval[[x]]
     if (!is.null(gval)) {
       return(desc$gval_to_box[[gval]])
     }
     gval <- GraphValue(aval = ConcreteArray(x))
-    desc$data_to_gval[[x]] <- gval
+    desc$array_to_gval[[x]] <- gval
     desc$constants <- c(desc$constants, list(gval))
     box <- GraphBox(gval, desc)
     desc$gval_to_box[[gval]] <- box
@@ -567,8 +567,8 @@ get_box_or_register_const <- function(desc, x) {
   # Now, we create the new box and register it, so if we see it again, we can return it immediately.
   new_box <- GraphBox(x, desc)
 
-  if (is_concrete_tensor(x$aval)) {
-    desc$data_to_gval[[x$aval$data]] <- x
+  if (is_concrete_array(x$aval)) {
+    desc$array_to_gval[[x$aval$data]] <- x
   }
   desc$gval_to_box[[x]] <- new_box
   desc$constants <- c(desc$constants, list(x))
@@ -619,7 +619,7 @@ match_args_to_formals <- function(f, args) {
 #'     into the parent graph.
 #' @param args_flat (`list`)\cr
 #'   Flattened arguments. Must be accompanied by `in_tree`.
-#' @param in_tree (`Node`)\cr
+#' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
 #' @return An [`AnvlGraph`] containing the traced operations.
@@ -699,7 +699,7 @@ trace_fn <- function(
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
-  outputs_flat <- lapply(output[[2L]], function(x) commit_rdata_box(maybe_box_arrayish(x)))
+  outputs_flat <- lapply(output[[2L]], function(x) materialize_rdata_box(maybe_box_arrayish(x)))
 
   desc$out_tree <- out_tree
   desc$outputs <- lapply(outputs_flat, \(x) x$gnode)
@@ -709,7 +709,8 @@ trace_fn <- function(
   # the enclosing trace and stay open there, so the input is handed back up to
   # it and only the converts between dtypes stay here, where
   # transform_gradient() differentiates them. A sub-graph has none to settle:
-  # its R values commit when `maybe_box_input()` builds the parameter slots.
+  # its R values materialize when `maybe_box_input()` builds the parameter
+  # slots.
   # We might
   if (mode == "toplevel") {
     # Standard case:
@@ -875,9 +876,9 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   gnodes_in <- vector("list", n_in)
   avals_in <- vector("list", n_in)
   for (i in seq_len(n_in)) {
-    # Commit R values to their default dtype, which happens when no promotion rule
-    # materialized them (default behavior)
-    gnode <- commit_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
+    # Materialize R values at their default dtype, which happens when no
+    # promotion rule materialized them (default behavior)
+    gnode <- materialize_rdata_box(maybe_box_arrayish(args[[i]], desc))$gnode
     gnodes_in[[i]] <- gnode
     avals_in[[i]] <- gnode$aval
   }

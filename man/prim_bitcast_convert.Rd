@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_bitcast_convert}
 \alias{prim_bitcast_convert}
-\title{Primitive Bitcast Convert}
+\title{Primitive Bitcast Conversion}
 \usage{
 prim_bitcast_convert(x, dtype)
 }
