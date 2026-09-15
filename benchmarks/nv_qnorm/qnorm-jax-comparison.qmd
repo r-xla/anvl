@@ -407,7 +407,7 @@ gen_inputs <- function(regime, log_p, n) {
 REGIMES <- c("central", "tail", "deep tail", "mixed")
 
 ## --- the three implementations, as timed and as evaluated -----------------
-## nv_qnorm is tagged `@jit static c("lower_tail", "log_p")`, so it is already
+## nv_qnorm is wrapped in `jit(static = c("lower_tail", "log_p"), ...)`, so it is already
 ## jit-compiled: calling it directly exercises the compiled path, and wrapping it
 ## in jit() again would measure something the user never runs.
 anvl_value <- function(arr, log_p) as.vector(nv_qnorm(arr, log_p = log_p))

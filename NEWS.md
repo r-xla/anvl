@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+* The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
+  definition instead.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
@@ -62,9 +64,6 @@
 
 ## Bug fixes
 
-* An alias of a `@jit`-tagged function (`g <- f`) is now rebound to the same
-  `JitFunction` as the function itself, instead of keeping the unwrapped
-  version.
 * `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
   hold a count or an index.
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better

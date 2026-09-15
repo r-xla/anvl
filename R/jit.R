@@ -1,6 +1,7 @@
 #' @include backend.R
 #' @include device.R
 #' @include array.R
+#' @include utils.R
 #' @title JIT compile a function
 #' @description
 #' Wraps a function so that it is traced and compiled on first call. Subsequent
@@ -67,30 +68,9 @@
 #' `f_f64 <- with_dtypes(f, c(float = "f64"))` runs `f` at `f64`, unless `f` itself
 #' changes the default data types.
 #'
-#' @section Jitting in a Package:
-#' To `jit()` a function defined in an R package, prefer the `@jit` roxygen
-#' tag over a top-level `jit()` call:
-#'
-#' ```r
-#' #' @export
-#' #' @jit static = c("flag")
-#' my_fun <- function(x, flag) if (flag) x + 1 else x * 2
-#' ```
-#'
-#' This delegates the wrapping to [`jit_roclet()`], which records the
-#' tagged functions in `R/jit-registry.R`. The wrapping itself happens at
-#' package build time via [`apply_jit_registry()`] in `R/zzz.R`, so the
-#' resulting `JitFunction` is byte-compiled with the rest of the package
-#' instead of being rebuilt on every `.onLoad`.
-#'
-#' See [`jit_roclet()`] for the one-time setup of the roclet in your
-#' package.
-#'
 #' @return A `JitFunction` (a `function` with the same formals as `f`).
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
-#' @seealso
-#'   [`jit_roclet()`] for the `@jit` tag used inside R packages.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- jit(function(x, y) x + y)

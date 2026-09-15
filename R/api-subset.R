@@ -589,7 +589,7 @@ subset_scatter_core <- jit(
 #' x[1, ] <- nv_scalar(0L)
 #' x
 #' @export
-# Not `@jit`-tagged: the `...` subscripts are captured via NSE (`enquos()`),
+# Not wrapped in `jit()`: the `...` subscripts are captured via NSE (`enquos()`),
 # which jit's argument handling cannot trace. The parsing stays here (eager) and
 # the array work is delegated to the jitted [subset_scatter_core()].
 nv_subset_assign <- function(x, ..., value) {

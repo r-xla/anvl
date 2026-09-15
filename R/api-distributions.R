@@ -1,3 +1,6 @@
+#' @include jit.R
+NULL
+
 ## Probability distributions ---------------------------------------------------
 
 #' @title The Normal Distribution
@@ -72,8 +75,7 @@ NULL
 
 #' @rdname nv_normal
 #' @export
-#' @jit static "log"
-nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
+nv_dnorm <- jit(static = "log", function(x, mean = 0, sd = 1, log = FALSE) {
   assert_flag(log)
   args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promotion_like("x"))
   x <- args$x
@@ -87,12 +89,11 @@ nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
     return(log_density)
   }
   nv_exp(log_density)
-}
+})
 
 #' @rdname nv_normal
 #' @export
-#' @jit static c("lower_tail", "log_p")
-nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
+nv_pnorm <- jit(static = c("lower_tail", "log_p"), function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
   args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promotion_like("q"))
@@ -173,7 +174,7 @@ nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
         if (is_f32) series_minus_1 else nv_log1p(series_minus_1)
     )
   )
-}
+})
 
 # Horner's method for polynomials, coefficients in decreasing power order.
 # x can be vector, say length n.
@@ -287,8 +288,7 @@ qnorm_f32_coefs <- list(
 
 #' @rdname nv_normal
 #' @export
-#' @jit static c("lower_tail", "log_p")
-nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
+nv_qnorm <- jit(static = c("lower_tail", "log_p"), function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   assert_flag(lower_tail)
   assert_flag(log_p)
   args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promotion_like("p"))
@@ -376,4 +376,4 @@ nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
   }
   # Unstandardise as necessary
   mean + sd * res_std
-}
+})

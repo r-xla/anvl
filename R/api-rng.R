@@ -1,3 +1,6 @@
+#' @include jit.R
+NULL
+
 nv_unif_rand <- function(
   shape,
   initial_state,
@@ -68,56 +71,58 @@ nv_unif_rand <- function(
 #' result <- nv_runif(c(2, 3), state)
 #' result$values
 #' @export
-#' @jit static c(1L, 3L, 4L, 5L)
-nv_runif <- function(
-  shape,
-  initial_state,
-  dtype = NULL,
-  min = 0,
-  max = 1
-) {
-  dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
-  checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
-  checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
-  shape <- assert_shapevec(shape)
-
-  if (max == min) {
-    return(list(
-      state = initial_state,
-      values = nv_fill_like(initial_state, max, shape = shape, dtype = dtype)
-    ))
-  }
-
-  .range <- max - min
-
-  # generate samples in [0, 1)
-  Unif <- nv_unif_rand(initial_state = initial_state, shape = shape, dtype = dtype)
-  U <- Unif$values
-
-  # check if some values are <= 0
-  le_zero <- nv_le(U, 0)
-
-  # Define smallest step (like R's 0.5 * i2_32m1 philosophy)
-  # for f32 and 23 mantissa bits 2^-24 lies between 0 and 2^-23,
-  # the next smallest generated value.
-  # Same applies for f64 and 2^-53 and 52 mantissa bits.
-  smallest_step <- nv_fill_like(
+nv_runif <- jit(
+  static = c(1L, 3L, 4L, 5L),
+  function(
+    shape,
     initial_state,
-    ifelse(dtype == "f32", 2^-24, 2^-53),
-    shape = shape,
-    dtype = dtype
-  )
+    dtype = NULL,
+    min = 0,
+    max = 1
+  ) {
+    dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
+    checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
+    checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
+    shape <- assert_shapevec(shape)
 
-  # Replace values <= 0 with smallest_step
-  U <- nv_ifelse(le_zero, smallest_step, U)
+    if (max == min) {
+      return(list(
+        state = initial_state,
+        values = nv_fill_like(initial_state, max, shape = shape, dtype = dtype)
+      ))
+    }
 
-  # expand to range
-  U <- nv_mul(U, .range)
-  # shift to interval
-  Y <- U + min
+    .range <- max - min
 
-  return(list(state = Unif$state, values = Y))
-}
+    # generate samples in [0, 1)
+    Unif <- nv_unif_rand(initial_state = initial_state, shape = shape, dtype = dtype)
+    U <- Unif$values
+
+    # check if some values are <= 0
+    le_zero <- nv_le(U, 0)
+
+    # Define smallest step (like R's 0.5 * i2_32m1 philosophy)
+    # for f32 and 23 mantissa bits 2^-24 lies between 0 and 2^-23,
+    # the next smallest generated value.
+    # Same applies for f64 and 2^-53 and 52 mantissa bits.
+    smallest_step <- nv_fill_like(
+      initial_state,
+      ifelse(dtype == "f32", 2^-24, 2^-53),
+      shape = shape,
+      dtype = dtype
+    )
+
+    # Replace values <= 0 with smallest_step
+    U <- nv_ifelse(le_zero, smallest_step, U)
+
+    # expand to range
+    U <- nv_mul(U, .range)
+    # shift to interval
+    Y <- U + min
+
+    return(list(state = Unif$state, values = Y))
+  }
+)
 
 #' @rdname nv_normal
 #' @template param_shape
@@ -144,8 +149,7 @@ nv_runif <- function(
 #' sds <- nv_array(matrix(c(0.01, 0.1, 1, 10, 100, 1000), nrow = 2))
 #' nv_rnorm(c(2, 3), state, sd = sds)$values
 #' @export
-#' @jit static c(1L, 3L)
-nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
+nv_rnorm <- jit(static = c(1L, 3L), function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
   shape <- assert_shapevec(shape)
 
   rule <- if (is.null(dtype)) {
@@ -214,7 +218,7 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 
   # return state and Normals N
   list(state = Theta$state, values = N)
-}
+})
 
 #' @title Sample from a Binomial Distribution
 #' @description
@@ -239,8 +243,7 @@ nv_rnorm <- function(shape, initial_state, dtype = NULL, mean = 0, sd = 1) {
 #' result <- nv_rbinom(c(2, 3), state)
 #' result$values
 #' @export
-#' @jit static c(1L, 3L, 4L, 5L)
-nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
+nv_rbinom <- jit(static = c(1L, 3L, 4L, 5L), function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL) {
   # The sample counts successes, which `bool` cannot hold: it used to come back
   # as `bool` for `size = 1` and silently as an integer for anything above.
   dtype <- assert_numeric_dtype(
@@ -271,7 +274,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
   }
 
   list(state = res$state, values = result)
-}
+})
 
 #' @title Sample Integers
 #' @description
@@ -298,8 +301,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 #' result <- nv_sample_int(6, state, 6L)
 #' result$values
 #' @export
-#' @jit static c(1L, 3L, 4L)
-nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
+nv_sample_int <- jit(static = c(1L, 3L, 4L), function(shape, initial_state, n, dtype = NULL) {
   # An index is a count too: at `bool` every draw collapsed to `TRUE`.
   dtype <- assert_numeric_dtype(
     dtype %||% default_int(),
@@ -311,7 +313,7 @@ nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
   out <- sample_indices(initial_state, as.integer(n), prod(shape))
 
   list(state = out$state, values = nv_reshape(nv_convert(out$values, dtype), shape))
-}
+})
 
 #' @title Sample from a Population
 #' @description
@@ -335,8 +337,7 @@ nv_sample_int <- function(shape, initial_state, n, dtype = NULL) {
 #' result <- nv_sample(5, state, pop)
 #' result$values
 #' @export
-#' @jit static 1L
-nv_sample <- function(shape, initial_state, x) {
+nv_sample <- jit(static = 1L, function(shape, initial_state, x) {
   shape <- assert_shapevec(shape)
   x <- as_anvl_array(x)
   x_shape <- shape(x)
@@ -348,7 +349,7 @@ nv_sample <- function(shape, initial_state, x) {
   out <- sample_indices(initial_state, n, prod(shape))
 
   list(state = out$state, values = nv_reshape(nv_subset(x, out$values), shape))
-}
+})
 
 # Draw `n_sample` uniformly distributed 1-based indices into a population of
 # size `n`, with replacement. Returns the updated RNG state and the indices.

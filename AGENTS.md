@@ -100,15 +100,20 @@ Primitives are `JitPrimitive` callables constructed by `new_primitive()` (define
 - **`reverse`** -- Autodiff rules in `R/rules-reverse.R`, built with `rule_reverse()`.
 - **`quickr`** -- R-native lowering rules in `R/rules-quickr.R` for the quickr backend.
 
-## `@jit` Roclet
+## Jit-wrapping
 
-`R/jit-registry.R` is **generated** by `anvl::jit_roclet` (activated in the `Roxygen` field of
-`DESCRIPTION`): tagging a function with `#' @jit [static = ...]` makes `devtools::document()` add it
-to the registry, and `R/zzz.R` rebinds those functions to their jitted versions at build time. Never
-edit `R/jit-registry.R` by hand; because the roclet lives in anvl itself, documenting requires an
-installed anvl that already exports it.
+API functions are wrapped in `jit()` at the definition itself, with `static`
+first so that the function stays the last argument:
 
-Tag every function whose body issues **more than one operation** with `@jit`.
+```r
+nv_foo <- jit(static = "axis", function(x, axis) { ... })
+```
+
+The call runs when the package is sourced, so the wrapper is byte-compiled with
+the rest of the package; the file must therefore be collated after `R/jit.R`
+(declare `#' @include jit.R`).
+
+Wrap every function whose body issues **more than one operation**.
 
 ## Broadcasting
 

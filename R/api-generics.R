@@ -8,11 +8,6 @@ NULL
 #
 # The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
 # functions, registered for the second class.
-#
-# A delegate *calls* its twin (`floor.AnvlArray <- function(x) nv_floor(x)`)
-# rather than being assigned it, so that every method here reads the same, also
-# where the arguments do not line up. Assigning works too: `apply_jit_registry()`
-# in R/zzz.R rebinds the aliases of a `@jit`-tagged function along with it.
 
 # Arithmetic operators ---------------------------------------------------------
 
