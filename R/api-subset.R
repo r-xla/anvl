@@ -1,3 +1,6 @@
+#' @include jit.R
+NULL
+
 SubsetFull <- function(size) {
   structure(list(size = size), class = "SubsetFull")
 }
