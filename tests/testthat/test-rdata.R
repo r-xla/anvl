@@ -599,9 +599,12 @@ describe("an R value in an nv_* function", {
     out <- nv_solve(a, matrix(c(2, 4), ncol = 1L))
     expect_dtype(out, "f64")
     expect_equal(as.vector(out), c(1, 2))
-    # ... and two typed arrays that disagree are still rejected, rather than one
-    # of them being widened.
-    expect_error(nv_solve(a, nv_array(matrix(c(2, 4), ncol = 1L), dtype = "f32")))
+    # ... and two typed arrays that disagree now meet at their common data
+    # type, as they do in `nv_matmul()`. They used to be refused, because the
+    # primitive's "operands must already agree" passed straight through.
+    widened <- nv_solve(a, nv_array(matrix(c(2, 4), ncol = 1L), dtype = "f32"))
+    expect_dtype(widened, "f64")
+    expect_equal(as.vector(widened), c(1, 2))
     out <- nv_triangular_solve(a, matrix(c(2, 4), ncol = 1L))
     expect_dtype(out, "f64")
   })
