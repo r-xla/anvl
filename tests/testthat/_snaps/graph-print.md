@@ -127,7 +127,7 @@
     Code
       format_param(c(TRUE, FALSE))
     Output
-      [1] "c( TRUE, FALSE)"
+      [1] "c(TRUE, FALSE)"
 
 # format_param: empty atomic vectors show typeof(0)
 
@@ -198,6 +198,7 @@
       format_param(g)
     Output
       [1] "graph[1 -> 1]"
+
 # an input the caller supplies as bare R data names its R type
 
     Code
@@ -223,7 +224,7 @@
           %x2: i32[2] <- integer
         Body:
           %1: f32[2] = convert [dtype = f32] (%x2)
-          %2: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = <any>] (%x1)
+          %2: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = integer(0)] (%x1)
           %3: f32[2] = add(%2, %1)
         Outputs:
           %3: f32[2] 
