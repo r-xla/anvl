@@ -45,9 +45,11 @@ for (i in seq_along(dtypes)) {
     tbl[i, j] <- tryCatch(as.character(common_dtype(dtypes[i], dtypes[j])), error = function(e) "--")
   }
 }
-rownames(tbl) <- dtypes
+# The column headers are bold as table headers; the row labels are cells, so
+# they are emphasized here to match.
+rownames(tbl) <- sprintf("<strong>%s</strong>", dtypes)
 colnames(tbl) <- dtypes
-knitr::kable(tbl, format = "html", caption = "Type promotion rules (row × column)")
+knitr::kable(tbl, format = "html", escape = FALSE, caption = "Type promotion rules (row × column)")
 ```
 
 Two integer types meet at a type that holds every value of both, so `i8` and `ui8` meet at `i16`.
