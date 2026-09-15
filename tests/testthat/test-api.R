@@ -24,6 +24,11 @@ test_that("nv_fill rejects non-scalar-R value with a helpful message", {
 })
 
 test_that("broadcasting scalars", {
+  # An empty `...` used to fail inside `hlo_return()` instead of saying what
+  # was missing.
+  expect_error(nv_broadcast_scalars(), "At least one array is required")
+  expect_error(nv_broadcast_arrays(), "At least one array is required")
+  expect_error(nv_promote_to_common(), "At least one array is required")
   expect_equal(
     nv_add(
       nv_scalar(1),
@@ -97,6 +102,11 @@ test_that("nv_ifelse broadcasts scalars and promotes branches to a common dtype"
 })
 
 describe("nv_concatenate", {
+  it("needs at least one array", {
+    # An empty `...` never reaches stablehlo, so nothing downstream caught it:
+    # this used to reach `max()` and return `-Inf` with an R warning.
+    expect_error(nv_concatenate(), "At least one array is required")
+  })
   it("auto-promotes to common", {
     expect_equal(
       nv_concatenate(nv_array(c(1, 2)), nv_array(3:4)),
@@ -152,6 +162,9 @@ describe("nv_concatenate", {
 })
 
 describe("nv_rbind", {
+  it("needs at least one array", {
+    expect_error(nv_rbind(), "At least one array is required")
+  })
   it("stacks two 1-D vectors as rows (eager)", {
     x <- nv_array(c(1, 2, 3))
     y <- nv_array(c(4, 5, 6))
@@ -258,6 +271,9 @@ describe("nv_rbind", {
 })
 
 describe("nv_cbind", {
+  it("needs at least one array", {
+    expect_error(nv_cbind(), "At least one array is required")
+  })
   it("stacks two 1-D vectors as columns (eager)", {
     x <- nv_array(c(1, 2, 3))
     y <- nv_array(c(4, 5, 6))
@@ -602,6 +618,13 @@ describe("nv_polygamma", {
     vals <- c(0.5, 1, 2, 5)
     expect_equal(
       nv_polygamma(2, nv_array(vals)),
+      nv_array(psigamma(vals, 2)),
+      tolerance = 1e-5
+    )
+    # `n` was static, so an array was refused here while `prim_polygamma()`
+    # took one.
+    expect_equal(
+      nv_polygamma(nv_scalar(2), nv_array(vals)),
       nv_array(psigamma(vals, 2)),
       tolerance = 1e-5
     )
@@ -2016,6 +2039,17 @@ describe("literals adopt device of array siblings", {
 })
 
 describe("nv_solve", {
+  it("promotes its operands instead of refusing them", {
+    # The primitive underneath requires operands that already agree, and that
+    # requirement used to pass straight through, so an `f32` and an `f64` were
+    # refused rather than meeting at `f64` as `nv_matmul()` does.
+    A_mat <- matrix(c(4, 3, 6, 3), nrow = 2)
+    b_vec <- c(1, 2)
+    x <- nv_solve(nv_array(A_mat, dtype = "f32"), nv_array(b_vec, dtype = "f64"))
+    expect_dtype(x, "f64")
+    expect_equal(as_array(x), array(solve(A_mat, b_vec)), tolerance = 1e-5)
+  })
+
   it("matches base R for matrix b (output stays a 2-D matrix)", {
     A_mat <- matrix(c(4, 3, 6, 3), nrow = 2)
     b_mat <- matrix(c(1, 2), nrow = 2)
@@ -2033,6 +2067,16 @@ describe("nv_solve", {
 })
 
 describe("nv_triangular_solve", {
+  it("promotes its operands instead of refusing them", {
+    # As in `nv_solve()`: an `f32` and an `f64` meet at `f64` now, where the
+    # primitive's "operands must already agree" used to pass straight through.
+    L_mat <- matrix(c(3, 1, 0, 2), nrow = 2)
+    b <- c(6, 5)
+    x <- nv_triangular_solve(nv_array(L_mat, dtype = "f32"), nv_array(b, dtype = "f64"))
+    expect_dtype(x, "f64")
+    expect_equal(as_array(x), array(solve(L_mat, b)), tolerance = 1e-5)
+  })
+
   it("matches base R (lower, vector b)", {
     L_mat <- matrix(c(3, 1, 0, 2), nrow = 2)
     expect_equal(

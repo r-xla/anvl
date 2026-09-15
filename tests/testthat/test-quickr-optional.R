@@ -14,6 +14,18 @@ test_that("graph_to_quickr_function requires {quickr}", {
 })
 
 describe("the quickr backend", {
+  it("emits a call whose outputs are all empty directly", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    # quickr's elementwise operators reject an empty operand even where both
+    # shapes agree, so lowering `x + x` on a `2x0` failed. An empty result has
+    # only one possible value, so it is emitted without touching the operands.
+    empty <- nv_array(numeric(0), shape = c(2L, 0L))
+    out <- jit(function(x) nv_add(x, x))(empty)
+    expect_shape(out, c(2L, 0L))
+    expect_equal(length(as.vector(out)), 0L)
+  })
+
   it("rejects a float default it cannot represent", {
     skip_if_no_quickr()
     local_backend("quickr")

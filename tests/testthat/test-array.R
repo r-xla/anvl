@@ -1,4 +1,10 @@
 test_that("array", {
+  # A zero-length vector: a `NULL` shape means "a scalar" to the pjrt backend,
+  # and a scalar cannot hold zero elements, so this used to fail there.
+  expect_shape(nv_array(numeric(0)), 0L)
+  expect_shape(nv_array(integer(0)), 0L)
+  expect_shape(nv_array(numeric(0), shape = c(2L, 0L)), c(2L, 0L))
+
   x <- nv_array(1:4, dtype = "i32", shape = c(4, 1), device = "cpu")
   expect_snapshot(x)
   expect_class(x, "AnvlArray")
@@ -355,6 +361,11 @@ test_that("default floating dtype is f64 for quickr", {
 })
 
 test_that("nv_array_like inherits dtype, shape, device, backend from like", {
+  # An R value has no data type to take defaults from, and the message used to
+  # be about the value rather than about `like`.
+  expect_error(nv_array_like(3, c(1L, 2L)), "`like` must be an array")
+  expect_error(nv_fill_like(3, 1), "`like` must be an array")
+
   like <- nv_array(c(1L, 2L, 3L), dtype = "i16")
   out <- nv_array_like(like, c(7L, 8L, 9L))
   expect_dtype(out, dtype(like))

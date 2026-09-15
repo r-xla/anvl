@@ -79,7 +79,7 @@ minmax_raw <- function(bits, signed = TRUE) {
 }
 
 
-nv_minval <- function(dtype, device) {
+nv_minval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(-Inf, dtype = dtype, device = device)
@@ -96,7 +96,7 @@ nv_minval <- function(dtype, device) {
   }
 }
 
-nv_maxval <- function(dtype, device) {
+nv_maxval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(Inf, dtype = dtype, device = device)

@@ -684,6 +684,13 @@ describe("the default float", {
     )
     local_default_dtypes(c(float = "f64"))
     expect_no_warning(nv_convert(1.5, "i32"))
+    # Nor where the remedy the hint names does not exist: under a default
+    # integer narrower than `i32`, converting in its own category first would
+    # stage through `i32` too.
+    with_default_dtypes(
+      c(int = "i8"),
+      expect_no_warning(nv_convert(1L, "f32"), class = "anvl_staging_widens_warning")
+    )
   })
 
   it("decides what an R double materializes at in a trace", {

@@ -100,6 +100,7 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' @export
 #' @jit
 nv_broadcast_scalars <- function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shapes <- lapply(args, shape)
   non_scalar_shapes <- Filter(\(s) length(s) > 0L, shapes)
@@ -139,6 +140,7 @@ nv_broadcast_scalars <- function(...) {
 #' @export
 #' @jit
 nv_promote_to_common <- function(...) {
+  assert_some_arrays(...)
   # An R value has no dtype to convert *from*: it is built at the common one
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
   # converting an f32 `sqrt(2)` would only widen a number that had already lost
@@ -169,6 +171,7 @@ nv_promote_to_common <- function(...) {
 #' @export
 #' @jit
 nv_broadcast_arrays <- function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shape <- Reduce(broadcast_shapes, lapply(args, shape))
   lapply(args, nv_broadcast_to, shape = shape)
@@ -316,6 +319,7 @@ nv_flatten <- function(x) {
 #' @export
 #' @jit static "axis"
 nv_concatenate <- function(..., axis = NULL) {
+  assert_some_arrays(...)
   args <- do.call(nv_promote_to_common, list(...))
   shapes <- lapply(args, shape)
   ranks <- lengths(shapes)
@@ -454,6 +458,7 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @export
 #' @jit
 nv_rbind <- function(...) {
+  assert_some_arrays(...)
   # Promoted here rather than in `nv_concatenate()` below: an R value has to be
   # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
@@ -467,6 +472,7 @@ nv_rbind <- function(...) {
 #' @export
 #' @jit
 nv_cbind <- function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
   args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
@@ -1434,7 +1440,7 @@ nv_gamma <- function(x) {
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' nv_polygamma(1, x) # trigamma
 #' @export
-#' @jit static 1L
+#' @jit
 nv_polygamma <- function(n, x) {
   args <- nv_promote_to_common(n, int_to_float(x))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
@@ -1821,10 +1827,10 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  # `a` and `b` must agree, and neither is widened to meet the other: an R
-  # matrix yields to `a`'s data type, two typed arrays that disagree are
-  # rejected.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
+  # The `nv_*` layer promotes across data types, as `nv_matmul()` does: an
+  # `f32` and an `f64` meet at `f64` rather than being refused. The primitives
+  # underneath still require operands that already agree.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
   a_shape <- shape(a)
@@ -1906,8 +1912,8 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  # As in `nv_solve()`: the two must agree, and neither is widened.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
+  # As in `nv_solve()`: the `nv_*` layer promotes across data types.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
 
@@ -2449,6 +2455,7 @@ stack_min_max <- function(lo, hi) {
 #' nv_reduce_any(x)            # all axes -> scalar
 #' nv_reduce_any(x, axes = 1L)
 #' @export
+#' @jit static 2:3
 nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
   x <- as_anvl_array(x)
   prim_reduce_any(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
@@ -2467,6 +2474,7 @@ nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
 #' nv_reduce_all(x)            # all axes -> scalar
 #' nv_reduce_all(x, axes = 1L)
 #' @export
+#' @jit static 2:3
 nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
   x <- as_anvl_array(x)
   prim_reduce_all(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
@@ -3220,6 +3228,7 @@ nv_select <- function(x, axis, index) {
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_sort(m, axis = 2L)
 #' @export
+#' @jit static 2:4
 nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {

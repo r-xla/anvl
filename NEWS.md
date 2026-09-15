@@ -86,6 +86,23 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
+* The variadic array functions (`nv_concatenate()`, `nv_rbind()`, `nv_cbind()`,
+  `nv_broadcast_scalars()`, `nv_broadcast_arrays()`, `nv_promote_to_common()`)
+  say so when given no array, instead of warning or failing internally.
+* `nv_array()` of a zero-length vector gives a length-0 array.
+* `nv_save()` and `nv_serialize()` given a single array say so, instead of
+  failing inside `nv_subset()`. `nv_serialize()` to a connection returns
+  invisibly.
+* The `_like()` functions name `like` when it is an R value with no data type.
+* `nv_solve()` and `nv_triangular_solve()` promote their operands, as
+  `nv_matmul()` does, instead of refusing two arrays that disagree.
+* The staging warning no longer fires where the caller has no way to avoid the
+  staging.
+* On the `"quickr"` backend a call whose outputs are all empty emits the empty
+  arrays directly, instead of an elementwise operation quickr rejects.
+* `nv_reduce_any()`, `nv_reduce_all()` and `nv_sort()` are jitted, and
+  `nv_polygamma()`'s `n` is no longer static, so it accepts an array as
+  `prim_polygamma()` does.
 * `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold:
   a whole number for an integer data type, a non-negative one for an unsigned
   one, a logical or `0` / `1` for `bool`.

@@ -178,12 +178,14 @@ rdata_staging_dtype <- function(r_type, dtype) {
   # have taken anyway. An R integer stages through `i32`, so under an `i64`
   # default it stages through something narrower than its default and the
   # program acquires nothing it could have avoided.
-  if (!dtype_holds(default_dtype_r(r_type), staged)) {
+  own_default <- default_dtype_r(r_type)
+  remedy_works <- rdata_builds_directly(r_type, own_default) && dtype_materializable(own_default)
+  if (!dtype_holds(own_default, staged) && remedy_works) {
     cli_warn(
       c(
         "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
         x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts.", # nolint
-        i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(default_dtype_r(r_type))}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
+        i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(own_default)}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
       ),
       class = "anvl_staging_widens_warning"
     )
@@ -560,4 +562,13 @@ graph_input_dtypes <- function(graph) {
     vapply(graph$inputs, function(gval) as.character(gval$aval$dtype), character(1L)),
     NA_character_
   )
+}
+
+# Whether a backend can hold an array of this data type at all. `f16` and
+# `bf16` are float data types everywhere anvl reasons about data types, but no
+# backend materializes them yet -- see `?dtypes`. The one caller is the staging
+# warning, whose hint must not recommend a conversion that cannot be built;
+# this is the single place to update when a backend gains them.
+dtype_materializable <- function(dtype) {
+  !is_dtype_float(dtype) || dtype_width(dtype) >= 32L
 }
