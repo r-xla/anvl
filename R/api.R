@@ -541,12 +541,15 @@ nv_ifelse <- jit(function(pred, true_value, false_value) {
 
 ## Binary ops ------------------------------------------------------------------
 
+# Jitted here rather than at each `nv_*`, because promotion and broadcasting
+# make this more than one operation -- unlike `make_float_unary()`, which is a
+# thin wrapper around a single primitive and stays eager.
 make_do_binary <- function(f) {
-  function(lhs, rhs) {
+  jit(function(lhs, rhs) {
     args <- nv_promote_to_common(lhs, rhs)
     args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
     do.call(f, args)
-  }
+  })
 }
 
 #' @title Addition
@@ -561,7 +564,7 @@ make_do_binary <- function(f) {
 #' nv_add(x, y)
 #' x + y
 #' @export
-nv_add <- jit(make_do_binary(prim_add))
+nv_add <- make_do_binary(prim_add)
 
 #' @title Multiplication
 #' @description
@@ -575,7 +578,7 @@ nv_add <- jit(make_do_binary(prim_add))
 #' nv_mul(x, y)
 #' x * y
 #' @export
-nv_mul <- jit(make_do_binary(prim_mul))
+nv_mul <- make_do_binary(prim_mul)
 
 #' @title Subtraction
 #' @description
@@ -589,7 +592,7 @@ nv_mul <- jit(make_do_binary(prim_mul))
 #' nv_sub(x, y)
 #' x - y
 #' @export
-nv_sub <- jit(make_do_binary(prim_sub))
+nv_sub <- make_do_binary(prim_sub)
 
 #' @title Division
 #' @description
@@ -603,7 +606,7 @@ nv_sub <- jit(make_do_binary(prim_sub))
 #' nv_div(x, y)
 #' x / y
 #' @export
-nv_div <- jit(make_do_binary(prim_div))
+nv_div <- make_do_binary(prim_div)
 
 #' @title Power
 #' @description
@@ -617,7 +620,7 @@ nv_div <- jit(make_do_binary(prim_div))
 #' nv_pow(x, y)
 #' x^y
 #' @export
-nv_pow <- jit(make_do_binary(prim_pow))
+nv_pow <- make_do_binary(prim_pow)
 
 #' @title Equal
 #' @description
@@ -631,7 +634,7 @@ nv_pow <- jit(make_do_binary(prim_pow))
 #' nv_eq(x, y)
 #' x == y
 #' @export
-nv_eq <- jit(make_do_binary(prim_eq))
+nv_eq <- make_do_binary(prim_eq)
 
 #' @title Not Equal
 #' @description
@@ -645,7 +648,7 @@ nv_eq <- jit(make_do_binary(prim_eq))
 #' nv_ne(x, y)
 #' x != y
 #' @export
-nv_ne <- jit(make_do_binary(prim_ne))
+nv_ne <- make_do_binary(prim_ne)
 
 #' @title Greater Than
 #' @description
@@ -659,7 +662,7 @@ nv_ne <- jit(make_do_binary(prim_ne))
 #' nv_gt(x, y)
 #' x > y
 #' @export
-nv_gt <- jit(make_do_binary(prim_gt))
+nv_gt <- make_do_binary(prim_gt)
 
 #' @title Greater Than or Equal
 #' @description
@@ -673,7 +676,7 @@ nv_gt <- jit(make_do_binary(prim_gt))
 #' nv_ge(x, y)
 #' x >= y
 #' @export
-nv_ge <- jit(make_do_binary(prim_ge))
+nv_ge <- make_do_binary(prim_ge)
 
 #' @title Less Than
 #' @description
@@ -687,7 +690,7 @@ nv_ge <- jit(make_do_binary(prim_ge))
 #' nv_lt(x, y)
 #' x < y
 #' @export
-nv_lt <- jit(make_do_binary(prim_lt))
+nv_lt <- make_do_binary(prim_lt)
 
 #' @title Less Than or Equal
 #' @description
@@ -701,7 +704,7 @@ nv_lt <- jit(make_do_binary(prim_lt))
 #' nv_le(x, y)
 #' x <= y
 #' @export
-nv_le <- jit(make_do_binary(prim_le))
+nv_le <- make_do_binary(prim_le)
 
 #' @title Maximum
 #' @description
@@ -714,7 +717,7 @@ nv_le <- jit(make_do_binary(prim_le))
 #' y <- nv_array(c(4, 2, 6))
 #' nv_max(x, y)
 #' @export
-nv_max <- jit(make_do_binary(prim_max))
+nv_max <- make_do_binary(prim_max)
 
 #' @title Minimum
 #' @description
@@ -727,7 +730,7 @@ nv_max <- jit(make_do_binary(prim_max))
 #' y <- nv_array(c(4, 2, 6))
 #' nv_min(x, y)
 #' @export
-nv_min <- jit(make_do_binary(prim_min))
+nv_min <- make_do_binary(prim_min)
 
 #' @title Remainder (Truncating)
 #' @description
@@ -742,7 +745,7 @@ nv_min <- jit(make_do_binary(prim_min))
 #' y <- nv_array(c(3, 3, 4))
 #' nv_remainder(x, y)
 #' @export
-nv_remainder <- jit(make_do_binary(prim_remainder))
+nv_remainder <- make_do_binary(prim_remainder)
 
 #' @title Modulo (Flooring Remainder)
 #' @description
@@ -822,7 +825,7 @@ nv_floor_div <- jit(function(lhs, rhs) {
 #' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
 #' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
 #' @export
-nv_and <- jit(make_do_binary(prim_and))
+nv_and <- make_do_binary(prim_and)
 
 #' @title Bitwise OR
 #' @description
@@ -836,7 +839,7 @@ nv_and <- jit(make_do_binary(prim_and))
 #' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
 #' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
 #' @export
-nv_or <- jit(make_do_binary(prim_or))
+nv_or <- make_do_binary(prim_or)
 
 #' @title Bitwise XOR
 #' @description
@@ -851,7 +854,7 @@ nv_or <- jit(make_do_binary(prim_or))
 #' nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
 #' xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
 #' @export
-nv_xor <- jit(make_do_binary(prim_xor))
+nv_xor <- make_do_binary(prim_xor)
 
 #' @title Shift Left
 #' @description
@@ -864,7 +867,7 @@ nv_xor <- jit(make_do_binary(prim_xor))
 #' y <- nv_array(c(1L, 2L, 1L))
 #' nv_shift_left(x, y)
 #' @export
-nv_shift_left <- jit(make_do_binary(prim_shift_left))
+nv_shift_left <- make_do_binary(prim_shift_left)
 
 #' @title Logical Shift Right
 #' @description
@@ -877,7 +880,7 @@ nv_shift_left <- jit(make_do_binary(prim_shift_left))
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_logical(x, y)
 #' @export
-nv_shift_right_logical <- jit(make_do_binary(prim_shift_right_logical))
+nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 
 #' @title Arithmetic Shift Right
 #' @description
@@ -890,7 +893,7 @@ nv_shift_right_logical <- jit(make_do_binary(prim_shift_right_logical))
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_arithmetic(x, y)
 #' @export
-nv_shift_right_arithmetic <- jit(make_do_binary(prim_shift_right_arithmetic))
+nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 
 #' @title Arctangent 2
 #' @description
