@@ -40,21 +40,30 @@ common_dtype("i64", "f32")
 
 A table with the promotion rules is below.
 
-|      | bool | i8  | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
-|:-----|:-----|:----|:----|:----|:----|:-----|:-----|:-----|:-----|:----|:----|
-| bool | bool | i8  | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
-| i8   | i8   | i8  | i16 | i32 | i64 | i16  | i32  | i64  | i64  | f32 | f64 |
-| i16  | i16  | i16 | i16 | i32 | i64 | i16  | i32  | i64  | i64  | f32 | f64 |
-| i32  | i32  | i32 | i32 | i32 | i64 | i32  | i32  | i64  | i64  | f32 | f64 |
-| i64  | i64  | i64 | i64 | i64 | i64 | i64  | i64  | i64  | i64  | f32 | f64 |
-| ui8  | ui8  | i16 | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
-| ui16 | ui16 | i32 | i32 | i32 | i64 | ui16 | ui16 | ui32 | ui64 | f32 | f64 |
-| ui32 | ui32 | i64 | i64 | i64 | i64 | ui32 | ui32 | ui32 | ui64 | f32 | f64 |
-| ui64 | ui64 | i64 | i64 | i64 | i64 | ui64 | ui64 | ui64 | ui64 | f32 | f64 |
-| f32  | f32  | f32 | f32 | f32 | f32 | f32  | f32  | f32  | f32  | f32 | f64 |
-| f64  | f64  | f64 | f64 | f64 | f64 | f64  | f64  | f64  | f64  | f64 | f64 |
+|          | bool | i8  | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
+|:---------|:-----|:----|:----|:----|:----|:-----|:-----|:-----|:-----|:----|:----|
+| **bool** | bool | i8  | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
+| **i8**   | i8   | i8  | i16 | i32 | i64 | i16  | i32  | i64  | –    | f32 | f64 |
+| **i16**  | i16  | i16 | i16 | i32 | i64 | i16  | i32  | i64  | –    | f32 | f64 |
+| **i32**  | i32  | i32 | i32 | i32 | i64 | i32  | i32  | i64  | –    | f32 | f64 |
+| **i64**  | i64  | i64 | i64 | i64 | i64 | i64  | i64  | i64  | –    | f32 | f64 |
+| **ui8**  | ui8  | i16 | i16 | i32 | i64 | ui8  | ui16 | ui32 | ui64 | f32 | f64 |
+| **ui16** | ui16 | i32 | i32 | i32 | i64 | ui16 | ui16 | ui32 | ui64 | f32 | f64 |
+| **ui32** | ui32 | i64 | i64 | i64 | i64 | ui32 | ui32 | ui32 | ui64 | f32 | f64 |
+| **ui64** | ui64 | –   | –   | –   | –   | ui64 | ui64 | ui64 | ui64 | f32 | f64 |
+| **f32**  | f32  | f32 | f32 | f32 | f32 | f32  | f32  | f32  | f32  | f32 | f64 |
+| **f64**  | f64  | f64 | f64 | f64 | f64 | f64  | f64  | f64  | f64  | f64 | f64 |
 
 Type promotion rules (row × column) {.table}
+
+Two integer types meet at a type that holds every value of both, so `i8`
+and `ui8` meet at `i16`. The exception is `ui64`: no signed integer type
+holds its values, and an integer never becomes a float on its own, so a
+`ui64` and a signed integer have no common type at all (the `--` cells
+above). This is where JAX and NumPy fall back to a float – {anvl}
+instead asks you to say what you want, by converting one of the operands
+with
+[`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md).
 
 The biggest differentiator between our type system and the one from JAX
 is the handling of array objects from the host language, which is R in

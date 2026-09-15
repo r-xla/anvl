@@ -80,6 +80,8 @@
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
 <ul><li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
 <li>
+<code><a href="../reference/common_dtype.html">common_dtype()</a></code> now errors for <code>ui64</code> and a signed integer instead of returning <code>i64</code>, which could not hold every <code>ui64</code> value. Convert one of them with <code><a href="../reference/nv_convert.html">nv_convert()</a></code>.</li>
+<li>
 <code>jit_eval()</code> was removed as it is no longer needed.</li>
 <li>
 <code><a href="../reference/nv_reduce_sum.html">nv_reduce_sum()</a></code>, <code><a href="../reference/nv_reduce_prod.html">nv_reduce_prod()</a></code>, <code><a href="../reference/nv_cumsum.html">nv_cumsum()</a></code> and <code><a href="../reference/nv_cumprod.html">nv_cumprod()</a></code> now accumulate a boolean array at the default integer data type instead of returning a boolean.</li>

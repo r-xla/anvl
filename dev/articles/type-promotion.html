@@ -187,7 +187,7 @@ f64
 <tbody>
 <tr>
 <td style="text-align:left;">
-bool
+<strong>bool</strong>
 </td>
 <td style="text-align:left;">
 bool
@@ -225,7 +225,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-i8
+<strong>i8</strong>
 </td>
 <td style="text-align:left;">
 i8
@@ -252,7 +252,7 @@ i32
 i64
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
 f32
@@ -263,7 +263,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-i16
+<strong>i16</strong>
 </td>
 <td style="text-align:left;">
 i16
@@ -290,7 +290,7 @@ i32
 i64
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
 f32
@@ -301,7 +301,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-i32
+<strong>i32</strong>
 </td>
 <td style="text-align:left;">
 i32
@@ -328,7 +328,7 @@ i32
 i64
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
 f32
@@ -339,7 +339,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-i64
+<strong>i64</strong>
 </td>
 <td style="text-align:left;">
 i64
@@ -366,7 +366,7 @@ i64
 i64
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
 f32
@@ -377,27 +377,27 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-ui8
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i16
-</td>
-<td style="text-align:left;">
-i32
-</td>
-<td style="text-align:left;">
-i64
+<strong>ui8</strong>
 </td>
 <td style="text-align:left;">
 ui8
 </td>
 <td style="text-align:left;">
+i16
+</td>
+<td style="text-align:left;">
+i16
+</td>
+<td style="text-align:left;">
+i32
+</td>
+<td style="text-align:left;">
+i64
+</td>
+<td style="text-align:left;">
+ui8
+</td>
+<td style="text-align:left;">
 ui16
 </td>
 <td style="text-align:left;">
@@ -415,7 +415,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-ui16
+<strong>ui16</strong>
 </td>
 <td style="text-align:left;">
 ui16
@@ -453,7 +453,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-ui32
+<strong>ui32</strong>
 </td>
 <td style="text-align:left;">
 ui32
@@ -491,22 +491,22 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-ui64
+<strong>ui64</strong>
 </td>
 <td style="text-align:left;">
 ui64
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
-i64
+–
 </td>
 <td style="text-align:left;">
 ui64
@@ -529,7 +529,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-f32
+<strong>f32</strong>
 </td>
 <td style="text-align:left;">
 f32
@@ -567,7 +567,7 @@ f64
 </tr>
 <tr>
 <td style="text-align:left;">
-f64
+<strong>f64</strong>
 </td>
 <td style="text-align:left;">
 f64
@@ -605,6 +605,14 @@ f64
 </tr>
 </tbody>
 </table>
+<p>Two integer types meet at a type that holds every value of both, so
+<code>i8</code> and <code>ui8</code> meet at <code>i16</code>. The
+exception is <code>ui64</code>: no signed integer type holds its values,
+and an integer never becomes a float on its own, so a <code>ui64</code>
+and a signed integer have no common type at all (the <code>--</code>
+cells above). This is where JAX and NumPy fall back to a float – {anvl}
+instead asks you to say what you want, by converting one of the operands
+with <code><a href="../reference/nv_convert.html">nv_convert()</a></code>.</p>
 <p>The biggest differentiator between our type system and the one from
 JAX is the handling of array objects from the host language, which is R
 in our case. While introducing more complexity, these rules prevent the

@@ -10,6 +10,10 @@
   system and a new system of rules for type promotions. With it, also
   the promotion behavior of various primitives and API functions was
   improved.
+- [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
+  now errors for `ui64` and a signed integer instead of returning `i64`,
+  which could not hold every `ui64` value. Convert one of them with
+  [`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md).
 - `jit_eval()` was removed as it is no longer needed.
 - [`nv_reduce_sum()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_sum.md),
   [`nv_reduce_prod()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_prod.md),
