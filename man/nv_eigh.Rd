@@ -4,10 +4,10 @@
 \alias{nv_eigh}
 \title{Symmetric Eigendecomposition}
 \usage{
-nv_eigh(operand)
+nv_eigh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Symmetric square matrix of floating-point data type.}
 }
 \value{
@@ -15,11 +15,11 @@ Named \code{list} with elements \code{values} (length \code{n}) and \code{vector
 (shape \verb{(n, n)}). Both have the same dtype as the input.
 }
 \description{
-Computes the eigendecomposition of a symmetric matrix \code{operand} of
+Computes the eigendecomposition of a symmetric matrix \code{x} of
 shape \verb{(n, n)}:
 \deqn{A = \mathrm{vectors} \, \mathrm{diag}(\mathrm{values}) \,
   \mathrm{vectors}^\top.}
-Only the lower triangle of \code{operand} is read. The columns of \code{vectors}
+Only the lower triangle of \code{x} is read. The columns of \code{vectors}
 are the (orthonormal) eigenvectors and \code{values} is the length-\code{n}
 vector of (real) eigenvalues in ascending order. Output names and
 order match \code{\link[base:eigen]{base::eigen()}}.

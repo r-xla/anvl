@@ -4,11 +4,12 @@
 \alias{prim_iota}
 \title{Primitive Iota}
 \usage{
-prim_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+prim_iota(axis, dtype, shape, start = 1L, device = NULL)
 }
 \arguments{
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which values increase (1-indexed).}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which values increase. Negative values count from the end
+of \code{shape}, i.e. \code{-1} refers to the last axis.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
@@ -19,20 +20,26 @@ Shape of the output array.}
 \item{start}{(\code{integer(1)})\cr
 Starting value.}
 
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
 
-\item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr
-Device for data to live on.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
+named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
-Creates an array with values increasing along the specified dimension.
+Creates an array with values increasing along the specified axis.
 }
 \section{Implemented Rules}{
 
@@ -49,7 +56,7 @@ Lowers to \code{\link[stablehlo:hlo_iota]{hlo_iota()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-prim_iota(dim = 1L, dtype = "i32", shape = 5L)
+prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -4,18 +4,19 @@
 \alias{nv_argmin}
 \title{Index of the Minimum}
 \usage{
-nv_argmin(operand, dim = NULL, drop = TRUE, nan_rm = FALSE)
+nv_argmin(x, axis = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to find the index. If \code{NULL} (default), uses
-the last dimension.}
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to find the index. Negative values count from the
+end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses
+the last axis.}
 
 \item{drop}{(\code{logical(1)})\cr
-If \code{TRUE} (default) the reduced dimension is removed; if \code{FALSE} it
+If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it
 is kept with size 1.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
@@ -23,11 +24,12 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}} of dtype \code{i32}\cr
-Same shape as \code{operand} with \code{dim} removed (or set to 1 if \code{drop = FALSE}).
+\code{\link{arrayish}} of the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}})\cr
+Same shape as \code{x} with \code{axis} removed (or set to 1 if \code{drop = FALSE}).
 }
 \description{
-Returns the index of the minimum value along a dimension. Ties are broken
+Returns the index of the minimum value along an axis. Ties are broken
 by returning the smallest index.
 }
 \section{NaN handling}{

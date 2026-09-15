@@ -21,7 +21,7 @@ test_that("@jit supports the terse form without `=`", {
   expect_equal(parse_jit_static("static  2:5"), 2:5)
   expect_equal(parse_jit_static("static c(1L, 3L, 4L)"), c(1L, 3L, 4L))
   expect_equal(parse_jit_static("static 2L"), 2L)
-  expect_equal(parse_jit_static('static "dimension"'), "dimension")
+  expect_equal(parse_jit_static('static "axis"'), "axis")
 })
 
 test_that("@jit coerces numeric static positions to integer", {

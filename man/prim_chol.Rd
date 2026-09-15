@@ -4,29 +4,28 @@
 \alias{prim_chol}
 \title{Primitive Cholesky Decomposition}
 \usage{
-prim_chol(operand, lower = FALSE)
+prim_chol(x, lower = FALSE)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point with at least 2 dimensions.
-The last two dimensions must be equal (square matrix); any leading
-dimensions are batch dimensions.}
+\item{x}{(\code{\link{arrayish}})\cr
+Arrayish value of data type floating-point with at least 2 axes.
+The last two axes must be equal (square matrix); any leading
+axes are batch axes.}
 
 \item{lower}{(\code{logical(1)})\cr
 If \code{FALSE} (default, matching base R's \code{\link[base:chol]{base::chol()}}), compute the
-upper triangular factor \code{U} such that \code{operand = t(U) \%*\% U}. If
+upper triangular factor \code{U} such that \code{x = t(U) \%*\% U}. If
 \code{TRUE}, compute the lower triangular factor \code{L} such that
-\code{operand = L \%*\% t(L)}.}
+\code{x = L \%*\% t(L)}.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
 The values in the triangle not specified by \code{lower} are implementation-defined.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-Dimensions before the last two are batch dimensions.
+Axes before the last two are batch axes.
 }
 \section{Implemented Rules}{
 
@@ -49,11 +48,11 @@ prim_chol(x, lower = TRUE)
 \dontshow{\}) # examplesIf}
 }
 \references{
-Murray, Iain (2016).
+Murray I (2016).
 \dQuote{Differentiation of the Cholesky decomposition.}
 \emph{arXiv preprint arXiv:1602.07527}.
 
-Walter, Sebastian (2012).
+Walter S (2012).
 \emph{Structured higher-order algorithmic differentiation in the forward and reverse mode with application in optimum experimental design}.
 Ph.D. thesis, Mathematisch-Naturwissenschaftliche Fakult"at II.
 }

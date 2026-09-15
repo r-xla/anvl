@@ -4,23 +4,23 @@
 \alias{prim_transpose}
 \title{Primitive Transpose}
 \usage{
-prim_transpose(operand, permutation)
+prim_transpose(x, permutation)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{permutation}{(\code{integer()})\cr
-Specifies the new ordering of dimensions. Must be a permutation of
-\code{seq_len(ndims)} where \code{ndims} is the number of dimensions of \code{operand}.}
+Specifies the new ordering of axes. Must be a permutation of
+\code{seq_len(naxes(x))}, the axis indices of \code{x}.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input and shape \code{nv_shape(operand)[permutation]}.
-It is ambiguous if the input is ambiguous.
+Has the same data type as the input and shape \code{shape(x)[permutation]}.
 }
 \description{
-Permutes the dimensions of an array.
+Permutes the axes of an array.
 }
 \section{Implemented Rules}{
 

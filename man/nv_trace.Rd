@@ -4,15 +4,15 @@
 \alias{nv_trace}
 \title{Matrix Trace}
 \usage{
-nv_trace(operand)
+nv_trace(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr
-A scalar with the same data type as \code{operand}.
+A scalar with the same data type as \code{x}.
 }
 \description{
 Computes the trace (sum of diagonal elements) of a 2-D array.

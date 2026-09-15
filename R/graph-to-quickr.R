@@ -1,6 +1,29 @@
 #' @include rules-quickr.R
 NULL
 
+# Bring one of the call's inputs to the R storage type the compiled function
+# declares for it. Only an input built from bare R data can need this: it
+# arrives as whatever R type the caller wrote (`2L`), while the program may
+# have decided to consume it as something else (an `f64`, because it met an
+# f64 array). `dtype` is NA for every other input, which is passed through.
+quickr_coerce_input <- function(value, dtype) {
+  if (is.na(dtype)) {
+    return(value)
+  }
+  ctor <- quickr_dtype_to_r_ctor(dtype)
+  if (!identical(storage.mode(value), ctor)) {
+    storage.mode(value) <- ctor
+  }
+  value
+}
+
+quickr_coerce_inputs <- function(args, input_dtypes) {
+  if (is.null(input_dtypes)) {
+    return(args)
+  }
+  .mapply(quickr_coerce_input, list(args, input_dtypes), NULL)
+}
+
 quickr_restore_leaf <- function(value, info) {
   shape <- as.integer(info$shape)
 
@@ -12,11 +35,15 @@ quickr_restore_leaf <- function(value, info) {
   }
 
   if (!is.null(info$backend)) {
-    value <- nv_array(
+    # The compiled function knows what it produced: an array of its own backend
+    # at the graph's output data type, whatever backend is active where it is
+    # called from. Built through the backend directly rather than `nv_array()`,
+    # which builds on the active backend and would read the default data types.
+    value <- globals$backends[[info$backend]]$new_data(
       value,
+      dtype = as_dtype(info$dtype),
       shape = shape,
-      ambiguous = info$ambiguous,
-      backend = info$backend
+      device = NULL
     )
   }
 
@@ -52,8 +79,7 @@ graph_to_quickr_prepare <- function(graph) {
   out_infos <- lapply(graph$outputs, function(node) {
     list(
       dtype = as.character(dtype(node)),
-      shape = shape(node),
-      ambiguous = node$aval$ambiguous
+      shape = shape(node)
     )
   })
   is_static_flat <- graph$is_static_flat
@@ -138,6 +164,8 @@ graph_to_quickr_make_wrapper <- function(
   wrapper_env$static_args_flat <- graph$static_args_flat
   wrapper_env$const_args <- const_args
   wrapper_env$restore_output <- quickr_restore_output
+  wrapper_env$input_dtypes <- graph_input_dtypes(graph)
+  wrapper_env$coerce_inputs <- quickr_coerce_inputs
 
   if (isTRUE(flat)) {
     # pjrt's dispatcher calls this one, and it passes the call's inputs only:
@@ -147,7 +175,7 @@ graph_to_quickr_make_wrapper <- function(
     # to check or drop.
     flat_wrapper <- function(args_flat) {}
     body(flat_wrapper) <- quote({
-      args <- stats::setNames(args_flat, leaf_arg_names)
+      args <- stats::setNames(coerce_inputs(args_flat, input_dtypes), leaf_arg_names)
       value <- do.call(inner, c(const_args, args))
       restore_output(value, out_tree, out_infos)
     })
@@ -194,6 +222,7 @@ graph_to_quickr_make_wrapper <- function(
     } else {
       args <- mget(leaf_arg_names, envir = environment(), inherits = FALSE)
     }
+    args <- stats::setNames(coerce_inputs(args, input_dtypes), names(args))
 
     value <- do.call(inner, c(const_args, args))
     restore_output(value, out_tree, out_infos)
@@ -212,13 +241,13 @@ graph_to_quickr_make_wrapper <- function(
 #' compilation) suitable for `quickr::quick()`. The returned function expects
 #' plain R scalars/vectors/arrays and returns plain R values/arrays.
 #'
-#' Most users will prefer [`jit()`] with `backend = "quickr"`.
+#' Most users will prefer [`jit()`] under `with_backend("quickr", ...)`.
 #' This function is the lower-level graph API.
 #'
 #' @param graph ([`AnvlGraph`])\cr
 #'   Graph to convert.
 #' @return (`function`)
-#' @seealso [`jit()`] with `options(anvl.backend = "quickr")` for tracing and compiling a
+#' @seealso [`jit()`] under `with_backend("quickr", ...)` for tracing and compiling a
 #'   regular R function in one step.
 #' @export
 graph_to_quickr_r_function <- function(graph) {
@@ -230,7 +259,7 @@ graph_to_quickr_r_function <- function(graph) {
   r_fun <- prep$r_fun
   # The lowered function is intended to be runnable as plain R code as well as
   # compilable by {quickr}. When {quickr} is installed, its `declare()` can
-  # modify arguments at runtime (e.g. stripping dims), which breaks plain R
+  # modify arguments at runtime (e.g. stripping axes), which breaks plain R
   # execution. Keep the `declare(type(...))` call for compilation, but make it
   # a no-op when evaluating the lowered function in R.
   environment(r_fun)$declare <- function(...) invisible(NULL)
@@ -266,7 +295,7 @@ graph_to_quickr_r_function <- function(graph) {
 #' The code generator currently supports arrays up to rank 5. Some primitives
 #' are more restricted (e.g. `transpose` currently only handles rank-2 arrays).
 #'
-#' Most users will prefer [`jit()`] with `backend = "quickr"`. This function is
+#' Most users will prefer [`jit()`] under `with_backend("quickr", ...)`. This function is
 #' the lower-level graph API.
 #'
 #' @param graph ([`AnvlGraph`])\cr
@@ -281,7 +310,7 @@ graph_to_quickr_r_function <- function(graph) {
 #'   takes a single flat list of all leaves (including static slots).
 #' @return (`function`) that returns [`AnvlArray`] outputs (or a tree of
 #'   them), or plain R values when `unwrap = TRUE`.
-#' @seealso [`jit()`] with `backend = "quickr"` for tracing and compiling a
+#' @seealso [`jit()`] under `with_backend("quickr", ...)` for tracing and compiling a
 #'   regular R function in one step.
 #' @keywords internal
 graph_to_quickr_function <- function(graph, unwrap = FALSE, flat = FALSE) {

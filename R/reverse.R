@@ -8,14 +8,34 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
         ))
       }
 
-      if (!inherits(dtype_abstract(args_flat[[i]]), "FloatType")) {
+      if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          x = "Got {repr(dtype_abstract(args_flat[[i]]))}"
+          # `repr()` on a data type gives stablehlo's spelling (`i1` for a
+          # boolean); the pages speak anvl's, which `as.character()` gives.
+          x = "Got {.val {as.character(peek_dtype(args_flat[[i]]))}}."
+        ))
+      }
+
+      # A value with no data type of its own cannot be differentiated with
+      # respect to: the gradient comes back at whatever data type the forward
+      # pass happened to settle the value at, so the answer would depend on how
+      # the rest of the body used it rather than on what the caller passed.
+      # Materializing it here would only hide that behind the default.
+      if (has_no_dtype(args_flat[[i]])) {
+        cli_abort(c(
+          "Cannot compute gradient with respect to a value that has no data type.",
+          x = "It is an R {peek_r_type(args_flat[[i]])}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
+          i = "Give it one first, e.g. {.code nv_array(x, \"f32\")} or {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
         ))
       }
     }
   }
+}
+
+# The R storage type behind a value that has no data type yet, for messages.
+peek_r_type <- function(x) {
+  to_abstract(x)$r_type %||% "value"
 }
 
 prepare_gradient_args <- function(args, wrt) {
@@ -149,10 +169,10 @@ validate_gradient_output <- function(out_gvals) {
     cli_abort("gradient can only be computed for functions that return a scalar")
   }
   dt <- out$aval$dtype
-  if (!(dt == as_dtype("f32") || dt == as_dtype("f64"))) {
+  if (!is_dtype_float(dt)) {
     cli_abort(c(
       x = "gradient can only be computed for functions that return float scalar",
-      i = "Got dtype={.field {repr(dt)}}"
+      i = "Got dtype={.field {as.character(dt)}}"
     ))
   }
   out
@@ -322,7 +342,7 @@ run_backward_pass <- function(graph, desc, backwards, required_env, out) {
   grad_env <- hashtab()
   grad_env[[out]] <- get_box_or_register_const(
     desc,
-    nv_scalar(1L, dtype = out$aval$dtype, ambiguous = out$aval$ambiguous)
+    nv_scalar(1L, dtype = out$aval$dtype)
   )
 
   add_or_init <- function(grad1, grad2) {
@@ -344,13 +364,9 @@ run_backward_pass <- function(graph, desc, backwards, required_env, out) {
     }
 
     output_grads <- lapply(call$outputs, \(output) {
-      grad <- grad_env[[output]]
-      if (is.null(grad)) {
-        # Output grad may be NULL if there is dead code.
-        prim_fill(0L, dtype = dtype(output), shape = shape(output))
-      } else {
-        grad
-      }
+      # Output grad may be NULL if there is dead code.
+      grad_env[[output]] %||%
+        zeros(dtype(output), shape(output))
     })
 
     bwd <- backwards[[i]]
@@ -383,18 +399,14 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
       next
     }
     input <- graph$inputs[[i]]
-    grad <- grad_env[[input]]
-    x <- if (is.null(grad)) {
-      const <- get_box_or_register_const(
-        desc,
-        nv_scalar(0L, dtype = input$aval$dtype, ambiguous = input$aval$ambiguous)
-      )
-      nv_broadcast_to(const, shape(input$aval))
-    } else {
-      grad
-    }
-    # Match the input's ambiguity flag.
-    x$gnode$aval$ambiguous <- input$aval$ambiguous
+    x <- grad_env[[input]] %||%
+      {
+        const <- get_box_or_register_const(
+          desc,
+          nv_scalar(0L, dtype = input$aval$dtype)
+        )
+        nv_broadcast_to(const, shape(input$aval))
+      }
     input_grads <- c(input_grads, list(x$gnode))
   }
   input_grads
@@ -434,6 +446,7 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #' g2 <- jit(gradient(f2, wrt = "x"), static = "power")
 #' g2(nv_array(c(1, 2, 3), dtype = "f32"), power = 2L)
 gradient <- function(f, wrt = NULL) {
+  assert_function(f)
   wrt <- resolve_arg_names(f, wrt, "wrt")
   if (!is.null(wrt) && !all(wrt %in% formalArgs(f))) {
     cli_abort("wrt must be a subset of the formal arguments of f")

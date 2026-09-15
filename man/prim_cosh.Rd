@@ -4,16 +4,15 @@
 \alias{prim_cosh}
 \title{Primitive Hyperbolic Cosine}
 \usage{
-prim_cosh(operand)
+prim_cosh(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise hyperbolic cosine.

@@ -5,52 +5,52 @@
 \title{Primitive Convolution}
 \usage{
 prim_convolution(
-  lhs,
-  rhs,
-  input_batch_dimension,
-  input_feature_dimension,
-  input_spatial_dimensions,
-  kernel_input_feature_dimension,
-  kernel_output_feature_dimension,
-  kernel_spatial_dimensions,
-  output_batch_dimension,
-  output_feature_dimension,
-  output_spatial_dimensions,
+  x,
+  kernel,
+  input_batch_axis,
+  input_feature_axis,
+  input_spatial_axes,
+  kernel_input_feature_axis,
+  kernel_output_feature_axis,
+  kernel_spatial_axes,
+  output_batch_axis,
+  output_feature_axis,
+  output_spatial_axes,
   window_strides,
   padding,
-  lhs_dilation,
-  rhs_dilation,
+  x_dilation,
+  kernel_dilation,
   feature_group_count = 1L,
   batch_group_count = 1L,
   precision = "highest"
 )
 }
 \arguments{
-\item{lhs}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.}
+\item{x}{(\code{\link{arrayish}})\cr Input, e.g. \verb{[batch, channels, *spatial]}.}
 
-\item{rhs}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
+\item{kernel}{(\code{\link{arrayish}})\cr Kernel, e.g. \verb{[out_ch, in_ch/groups, *spatial]}.}
 
-\item{input_batch_dimension, input_feature_dimension}{(\code{integer(1)})\cr
-1-based batch/feature dimension of \code{lhs}.}
+\item{input_batch_axis, input_feature_axis}{(\code{integer(1)})\cr
+batch/feature axis of \code{x}.}
 
-\item{input_spatial_dimensions}{(\code{integer()})\cr 1-based spatial dims of \code{lhs}.}
+\item{input_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{x}.}
 
-\item{kernel_input_feature_dimension, kernel_output_feature_dimension}{(\code{integer(1)})\cr
-1-based input/output feature dimension of \code{rhs}.}
+\item{kernel_input_feature_axis, kernel_output_feature_axis}{(\code{integer(1)})\cr
+Input and output feature axis of \code{kernel}.}
 
-\item{kernel_spatial_dimensions}{(\code{integer()})\cr 1-based spatial dims of \code{rhs}.}
+\item{kernel_spatial_axes}{(\code{integer()})\cr Spatial axes of \code{kernel}.}
 
-\item{output_batch_dimension, output_feature_dimension}{(\code{integer(1)})\cr
-1-based batch/feature dimension of the output.}
+\item{output_batch_axis, output_feature_axis}{(\code{integer(1)})\cr
+batch/feature axis of the output.}
 
-\item{output_spatial_dimensions}{(\code{integer()})\cr
-1-based spatial dims of the output.}
+\item{output_spatial_axes}{(\code{integer()})\cr
+Spatial axes of the output.}
 
-\item{window_strides}{(\code{integer()})\cr Stride per spatial dim.}
+\item{window_strides}{(\code{integer()})\cr Stride per spatial axis.}
 
 \item{padding}{(\code{matrix})\cr \verb{[n_spatial, 2]} of \verb{(low, high)} padding.}
 
-\item{lhs_dilation, rhs_dilation}{(\code{integer()})\cr Input/kernel dilation.}
+\item{x_dilation, kernel_dilation}{(\code{integer()})\cr Input/kernel dilation.}
 
 \item{feature_group_count, batch_group_count}{(\code{integer(1)})\cr Grouping.}
 
@@ -62,7 +62,5 @@ prim_convolution(
 }
 \description{
 General N-D windowed convolution, lowering to StableHLO's
-\code{convolution} op. Dimension numbers are given 1-based (anvl
-convention) and converted to StableHLO's 0-based layout internally.
-Most users want \code{\link[=nv_conv1d]{nv_conv1d()}} / \code{\link[=nv_conv2d]{nv_conv2d()}} / \code{\link[=nv_conv3d]{nv_conv3d()}} instead.
+\code{convolution} op.
 }

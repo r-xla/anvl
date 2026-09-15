@@ -20,9 +20,9 @@ Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
 \section{Broadcasting Rules}{
 
 \enumerate{
-\item If the arrays have different numbers of dimensions, prepend size-1
-dimensions to the shorter shape.
-\item For each dimension: if the sizes match, keep them; if one is 1, expand
+\item If the arrays have different numbers of axes, prepend size-1
+axes to the shorter shape.
+\item For each axis: if the sizes match, keep them; if one is 1, expand
 it to the other's size; otherwise raise an error.
 }
 }

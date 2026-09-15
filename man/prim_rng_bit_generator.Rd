@@ -25,9 +25,9 @@ Data type of the generated random values.}
 Shape.}
 }
 \value{
-\code{list} of two \code{\link{arrayish}} values:\cr
-The first element is the updated RNG state with the same dtype and shape
-as \code{initial_state}. The second element is an array of random values with
+(named \code{list} of two \code{\link{arrayish}})\cr
+Element \code{state} is the updated RNG state with the same dtype and shape
+as \code{initial_state}. Element \code{values} is an array of random values with
 the given \code{dtype} and \code{shape}.
 }
 \description{

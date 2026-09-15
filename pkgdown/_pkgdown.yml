@@ -83,6 +83,7 @@ reference:
       - nv_fill
       - nv_iota
       - nv_seq
+      - nv_linspace
       - nv_diag
       - nv_eye
       - as_anvl_array
@@ -91,10 +92,9 @@ reference:
     desc: Functions for querying array properties
     contents:
       - backend
-      - ambiguous
       - dtype
       - shape
-      - ndims
+      - naxes
       - device
       - starts_with("platform")
 
@@ -116,6 +116,14 @@ reference:
       - nv_serialize
       - nv_unserialize
 
+  - subtitle: Base R Generics
+    desc: >
+      Methods for base R generics that have no `nv_*` twin. Every other
+      generic is documented together with the `nv_*` function it delegates to.
+    contents:
+      - dim.AnvlArray
+      - length.AnvlArray
+
   - title: API Functions
     desc: User-facing `nv_*` functions for array operations
 
@@ -129,6 +137,13 @@ reference:
       - nv_broadcast_arrays
       - nv_broadcast_to
       - common_dtype
+      - promotion_common
+      - promotion_like
+      - promotion_dtype
+      - promotion_rdata_common
+      - promotion_grouped
+      - promotion_rule
+      - apply_promotion
 
   - subtitle: Array Manipulation
     desc: Functions for reshaping and rearranging arrays
@@ -159,6 +174,7 @@ reference:
       - nv_negate
       - nv_remainder
       - nv_mod
+      - nv_floor_div
 
   - subtitle: Comparison Operations
     desc: Element-wise comparison operations
@@ -186,6 +202,9 @@ reference:
       - nv_sin
       - nv_cos
       - nv_tan
+      - nv_sinpi
+      - nv_cospi
+      - nv_tanpi
       - nv_asin
       - nv_acos
       - nv_atan
@@ -205,7 +224,7 @@ reference:
       - nv_erf
       - nv_erfc
       - nv_erf_inv
-      - nv_dnorm
+      - nv_gamma
       - nv_digamma
       - nv_lgamma
       - nv_polygamma
@@ -214,17 +233,18 @@ reference:
       - nv_is_infinite
 
   - subtitle: Reduction Operations
-    desc: Operations that reduce array dimensions
+    desc: Operations that reduce array axes
     contents:
       - nv_reduce_sum
       - nv_reduce_prod
       - nv_reduce_max
       - nv_reduce_min
+      - nv_range
       - nv_reduce_any
       - nv_reduce_all
 
   - subtitle: Statistical Summaries
-    desc: Summary statistics over array dimensions
+    desc: Summary statistics over array axes
     contents:
       - nv_mean
       - nv_median
@@ -233,7 +253,7 @@ reference:
       - nv_sd
 
   - subtitle: Cumulative Operations
-    desc: Cumulative (scan) operations along a single dimension
+    desc: Cumulative (scan) operations along a single axis
     contents:
       - nv_cumsum
       - nv_cumprod
@@ -306,13 +326,18 @@ reference:
       - nv_while
       - nv_ifelse
 
-  - subtitle: Random Number Generation
-    desc: Functions for generating random numbers
+  - subtitle: Distributions
+    desc: Densities, distribution functions, and samplers for probability distributions
     contents:
+      - nv_normal
       - nv_runif
-      - nv_rnorm
       - nv_rbinom
-      - nv_rdunif
+      - nv_sample
+      - nv_sample_int
+
+  - subtitle: Utilities
+    desc: Helpers supporting the API functions
+    contents:
       - nv_rng_state
 
   - title: Transformations
@@ -331,16 +356,21 @@ reference:
     desc: Backend-related functionality and implementations
     contents:
       - backend
-      - default_backend
+      - active_backend
       - local_backend
       - with_backend
-      - device_arg
+      - default_dtypes
+      - default_float
+      - default_int
+      - local_default_dtypes
+      - with_dtypes
+      - install_anvl
       - nv_device
       - default_device
       - is_device
       - quickr_device
       - AnvlBackend
-      - AnvlBackendXla
+      - AnvlBackendPjrt
       - AnvlBackendQuickr
 
   - title: Miscellaneous
@@ -379,11 +409,9 @@ reference:
       - AbstractArray
       - ConcreteArray
       - LiteralArray
+      - RData
       - IotaArray
-      - dtype_abstract
-      - shape_abstract
-      - ndims_abstract
-      - ambiguous_abstract
+      - peek_dtype
       - to_abstract
       - arrayish
 
@@ -395,8 +423,7 @@ reference:
       - transform_gradient
       - rule_reverse
       - graph_to_quickr_r_function
-      - jit_eval
-      - compile_xla
+      - compile_pjrt
       - stablehlo
       - current_platform
       - local_platform

@@ -5,37 +5,32 @@
 \alias{nv_subset_assign}
 \title{Update Subset}
 \usage{
-\method{[}{AnvlArray}(x, ...) <- value
-
-nv_subset_assign(operand, ..., value)
+nv_subset_assign(x, ..., value)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+Input array.}
 
-\item{...}{Subset specifications, one per dimension. Omitted trailing
-dimensions select all elements.
+\item{...}{Subset specifications, one per axis. Omitted trailing
+axes select all elements.
 
 A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
 arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
-positions. A mask for one dimension must have as many elements as that
-dimension. A mask that is the only subscript and has the same shape as
-\code{operand} selects across the whole array, yielding a 1-D result. Masks
-whose values come from an array only work in eager mode, because the number
-of selected elements determines the output shape.
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+\code{x} selects across the whole array, yielding a 1-D result. Masks whose
+values come from an array only work in eager mode, because the number of
+selected elements determines the output shape.
 
 See \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
 Replacement values. Scalars are broadcast to the subset shape.
 Non-scalar values must match the subset shape.}
-
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
 }
 \value{
 \code{\link{arrayish}}\cr
-A new array with the same shape as \code{operand} and the subset replaced.
+A new array with the same shape as \code{x} and the subset replaced.
 }
 \description{
 Updates elements of an array at specified positions, returning a new array.
@@ -45,6 +40,7 @@ You can also use the \verb{[<-} operator.
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:12, nrow = 3)
 # Set row 1 to zeros
+nv_subset_assign(x, 1, value = nv_scalar(0L))
 x[1, ] <- nv_scalar(0L)
 x
 

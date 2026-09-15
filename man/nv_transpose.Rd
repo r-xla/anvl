@@ -5,27 +5,29 @@
 \alias{t.AnvlArray}
 \title{Transpose}
 \usage{
-nv_transpose(operand, permutation = NULL)
-
-\method{t}{AnvlArray}(x)
+nv_transpose(x, permutation = NULL)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
-New ordering of dimensions. If \code{NULL} (default), reverses the dimensions.}
-
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+New ordering of axes. If \code{NULL} (default), reverses the axes.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand} and shape \code{nv_shape(operand)[permutation]}.
+Has the same data type as \code{x} and shape \code{shape(x)[permutation]}.
 }
 \description{
-Permutes the dimensions of an array. You can also use \code{t()} for matrices.
+Permutes the axes of an array. You can also use \code{t()} for matrices.
 }
+\section{The \code{t()} generic}{
+
+\code{t()} requires a matrix, whereas \code{\link[base:t]{base::t()}} also transposes a vector (into
+a one-row matrix) and reverses the axes of a higher-rank array.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)

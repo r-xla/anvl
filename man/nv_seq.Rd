@@ -5,44 +5,31 @@
 \alias{nv_seq_like}
 \title{Sequence}
 \usage{
-nv_seq(
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = FALSE,
-  device = NULL
-)
+nv_seq(start, end, dtype = NULL, device = NULL)
 
-nv_seq_like(
-  like,
-  start,
-  end,
-  steps = NULL,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_seq_like(like, start, end, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{start, end}{(\code{numeric(1)})\cr
-Start and end values. When \code{steps} is \code{NULL}, must satisfy \code{start <= end}.}
+\item{start, end}{(\code{integer(1)})\cr
+Start and end values, which must satisfy \code{start <= end}.}
 
-\item{steps}{(\code{integer(1)} or \code{NULL})\cr
-Number of evenly spaced values to generate. Must be at least 1.
-When \code{NULL} (default), generates consecutive integer values from \code{start} to \code{end}.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type. \code{NULL} (default) uses the backend's default integer data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}). For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
 
-\item{dtype}{(\code{character(1)})\cr
-Data type. Default \code{"i32"} when \code{steps} is \code{NULL}, \code{"f32"} when \code{steps} is given.
-For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
 
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
-
-\item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr
-Device for data to live on.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
+named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
@@ -53,12 +40,10 @@ Existing array whose attributes are used as defaults
 1-D array of length \code{end - start + 1}.
 }
 \description{
-Creates a 1-D array with values from \code{start} to \code{end} (inclusive).
+Creates a 1-D array with the consecutive integer values from \code{start} to
+\code{end} (inclusive), like R's \code{seq(start, end)}.
 
-Without \code{steps}, behaves like R's \code{seq(start, end)} producing integer values.
-With \code{steps}, produces \code{steps} evenly spaced values (like \code{seq(start, end, length.out = steps)}).
-
-\code{nv_seq_like()} is a variant where \code{dtype}, \code{ambiguous}, and \code{device}
+\code{nv_seq_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.
 }
 \examples{
@@ -67,4 +52,8 @@ nv_seq(3, 7)
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 \dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=nv_linspace]{nv_linspace()}} for a given number of evenly spaced values,
+\code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }

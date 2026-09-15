@@ -5,38 +5,36 @@
 \alias{sort.AnvlArray}
 \title{Sort}
 \usage{
-nv_sort(operand, dim = NULL, decreasing = FALSE, stable = FALSE)
+nv_sort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 
-\method{sort}{AnvlArray}(x, decreasing = FALSE, ..., dim = NULL)
+\method{sort}{AnvlArray}(x, decreasing = FALSE, ..., axis = NULL)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
-\item{dim}{(\code{integer(1)} | \code{NULL})\cr
-Dimension along which to sort. If \code{NULL} (default), uses the last
-dimension.}
+\item{axis}{(\code{integer(1)} | \code{NULL})\cr
+Axis along which to sort. Negative values count from the end,
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses the last
+axis.}
 
 \item{decreasing}{(\code{logical(1)})\cr If \code{TRUE}, sort in decreasing order.}
 
 \item{stable}{(\code{logical(1)})\cr
 If \code{TRUE}, the sort is stable: equal values keep their original
-relative order along \code{dim}. Default \code{FALSE}. Stability is only
+relative order along \code{axis}. Default \code{FALSE}. Stability is only
 observable for floats when \code{-0} / \code{+0} or \code{-NaN} / \code{+NaN} are mixed
 (they compare equal under the total order used here); for distinct
 values the result is identical either way.}
-
-\item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
 
 \item{...}{No additional arguments.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Same shape and data type as \code{operand}.
+Same shape and data type as \code{x}.
 }
 \description{
-Sorts an array along a dimension.
+Sorts an array along an axis.
 
 You can also use \code{sort()} directly.
 }
@@ -44,6 +42,14 @@ You can also use \code{sort()} directly.
 
 \code{NaN} values sort to the \strong{end} (ascending) or \strong{beginning}
 (descending), regardless of sign. \code{+0} and \code{-0} compare equal.
+}
+
+\section{The \code{sort()} generic}{
+
+\code{\link[base:sort]{base::sort()}} flattens a multi-axis array into a vector, while
+\code{nv_sort()} (and \code{sort()} on an anvl array) sorts along a single axis, the
+last one by default, and keeps the shape. Flatten with \code{\link[=nv_flatten]{nv_flatten()}}
+first if you want a single sorted sequence.
 }
 
 \examples{
@@ -54,7 +60,7 @@ sort(x) # via the S3 generic
 nv_sort(x, decreasing = TRUE)
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_sort(m, dim = 2L)
+nv_sort(m, axis = 2L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

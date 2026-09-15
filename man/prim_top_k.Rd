@@ -4,28 +4,28 @@
 \alias{prim_top_k}
 \title{Primitive Top-K}
 \usage{
-prim_top_k(operand, k)
+prim_top_k(x, k)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.}
+\item{x}{(\code{\link{arrayish}})\cr
+Array of integer, unsigned integer, or floating-point dtype with rank >= 1.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements. Must satisfy
-\verb{1 <= k <= shape(operand)[ndims(operand)]}.}
+\verb{1 <= k <= shape(x)[naxes(x)]}.}
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
-The top-\code{k} values (same dtype as \code{operand}) and their indices along
-the last dimension (dtype \code{i32}, matching JAX). Both have the same
-shape as \code{operand} with the last dimension replaced by \code{k}. Ties are
-broken by lower index first.
+The top-\code{k} values (same dtype as \code{x}) and their indices along
+the last axis, of the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). Both have the same shape as \code{x} with the
+last axis replaced by \code{k}. Ties are broken by lower index first.
 }
 \description{
-Returns the \code{k} largest values along the last dimension, sorted in
-descending order, together with their indices into that dimension.
+Returns the \code{k} largest values along the last axis, sorted in
+descending order, together with their indices into that axis.
 
-For other dimensions, transpose so the target dimension is last, call
+For other axes, transpose so the target axis is last, call
 \code{prim_top_k()}, then transpose back. \code{\link[=nv_top_k]{nv_top_k()}} does this.
 }
 \section{Implemented Rules}{

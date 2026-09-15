@@ -4,16 +4,15 @@
 \alias{prim_sqrt}
 \title{Primitive Square Root}
 \usage{
-prim_sqrt(operand)
+prim_sqrt(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise square root.

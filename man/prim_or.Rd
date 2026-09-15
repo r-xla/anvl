@@ -14,10 +14,9 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
-Element-wise logical OR.
+Element-wise bitwise OR, which for a boolean array is the logical OR.
 }
 \section{Implemented Rules}{
 
@@ -41,5 +40,5 @@ prim_or(x, y)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_or]{nv_or()}}, \code{|}
+\code{\link[=nv_or]{nv_or()}}
 }

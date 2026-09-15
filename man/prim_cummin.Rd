@@ -4,23 +4,24 @@
 \alias{prim_cummin}
 \title{Primitive Cumulative Minimum}
 \usage{
-prim_cummin(operand, dim)
+prim_cummin(x, axis)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which to accumulate.}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which to accumulate.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{list} of two \code{\link{arrayish}} values:\cr
-The running minimum (same dtype as \code{operand}) and the
-running argmin (dtype \code{i32}, 1-based). Both have
-the same shape as \code{operand}.
+The running minimum (same dtype as \code{x}) and the
+running argmin (of the default integer data
+type -- see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the same shape as \code{x}.
 }
 \description{
-Running minimum of array elements along a single dimension along with
+Running minimum of array elements along a single axis along with
 the index of the last occurrence of the running minimum.
 At output position \code{j}, the values output is \code{min(input[1:j])} and the
 indices output is the largest \code{i} in \code{1:j} with
@@ -42,7 +43,7 @@ Lowers to a variadic \code{\link[stablehlo:hlo_reduce_window]{hlo_reduce_window(
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
-prim_cummin(x, dim = 1L)
+prim_cummin(x, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

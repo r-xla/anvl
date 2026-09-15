@@ -5,7 +5,7 @@
 \alias{nv_eye_like}
 \title{Identity Matrix}
 \usage{
-nv_eye(n, dtype = "f32", device = NULL)
+nv_eye(n, dtype = NULL, device = NULL)
 
 nv_eye_like(like, n, dtype = NULL, device = NULL)
 }
@@ -13,11 +13,23 @@ nv_eye_like(like, n, dtype = NULL, device = NULL)
 \item{n}{(\code{integer(1)})\cr
 Size of the identity matrix.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type. \code{NULL} (default) uses the backend's default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}).}
 
-\item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr
-Device for data to live on.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
+
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
+named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 
 \item{like}{(\code{\link{arrayish}})\cr
 Existing array whose attributes are used as defaults

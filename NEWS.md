@@ -2,73 +2,193 @@
 
 ## Breaking changes
 
-* `xla()` has been removed. Use `jit()` instead: it compiles through the same
-  pipeline, lazily on the first call. Warm a jitted function up by calling it
-  once with representative inputs.
+* The type system of {anvl} was changed to avoid the problems reported in issue #373.
+  Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
+  With it, also the promotion behavior of various primitives and API
+  functions was improved.
+* `jit_eval()` was removed as it is no longer needed.
+* `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
+  accumulate a boolean array at the default integer data type instead of returning a boolean.
+* `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
+  default) and errors for any other `mode`.
+* The `steps` argument of `nv_seq()` / `nv_seq_like()` was removed.
+* `default_backend()` is now called `active_backend()`.
+* There is now exactly one backend used at a time and it is configured via the
+  `anvl.backend` option.
+  With this change the `device_arg` parameter was removed from `jit()` as it is no longer needed.
+* A `Shape` is now represented as an integer vector.
+* The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
+  now require a boolean input array, improving consistency with base R.
+* The method for `round` was removed, as `digits` is currently not supported.
+* The `tensor_to_gval` argument of `GraphDescriptor()` is now called
+  `array_to_gval`.
 
 ## Features
 
 * `nv_subset()` and `nv_subset_assign()` (and hence `[` and `[<-`) support
-  boolean masks. A mask for a single dimension selects the `TRUE` positions of
-  that dimension (`x[arr(TRUE, FALSE, TRUE), ]`), while a mask with the shape of
-  the whole array selects across all dimensions and returns a 1-D result
+  boolean masks. A mask for a single axis selects the `TRUE` positions of
+  that axis (`x[arr(TRUE, FALSE, TRUE), ]`), while a mask with the shape of
+  the whole array selects across all axes and returns a 1-D result
   (`x[x > 6]`). Masks whose values come from an array only work in eager mode,
   because the number of selected elements determines the output shape; masks
   built from R logicals are known at compile time and also work under `jit()`.
 * Subsets that select no elements, such as an all-`FALSE` mask,
   `x[array(integer(0)), ]` or `x[1:0, ]`, now return a zero-sized array instead
   of failing inside `prim_gather()` / `prim_scatter()`.
+* The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
+  `nv_sample_int()`, `nv_sample()`) and `prim_rng_bit_generator()` return a
+  named list with elements `state` and `values` instead of an unnamed pair,
+  and `prim_top_k()`, `prim_cummax()` and `prim_cummin()` name theirs
+  `values` and `indices`.
+* The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
+  `all()`) now work with multiple data inputs.
+* The default data types for floating point numbers and integers can now be
+  configured via the `anvl.default_dtypes` field.
+  You can configure this for a specific scope via `local_default_dtypes()`
+  and `with_default_dtypes()`.
+  To convert a function to one running at a specified precision, use
+  `with_dtypes()`.
+* New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with
+  a provided `steps` argument.
+* `as.vector()` now returns a `bit64::integer64` for integer data types that
+  do not fit into R's 32 bit integers.
+* New `nv_floor_div()` for flooring (integer) division, and the `%/%` operator
+  now works on arrays.
+* Added support for more generics:
+  * Reversing an array via `rev`.
+  * Concatenating vectors via `c()`.
+  * Floor division via `nv_floor_div`/`%/%`.
+  * Trigonometric functions `sinpi`, `cospi` and `tanpi` and their corresponding `nv_*` functions.
+  * The `gamma` generic.
+* `log(x, base)` now accepts its second argument like in base R.
+* New `nv_range()` returns the minimum and the maximum of an array, stacked
+  along a new first axis, and is what the `range()` uses.
+* The `nv_*` functions that compute in floating point (`nv_sqrt()`,
+  `nv_log()`, `nv_atan2()`, ...) now compute an integer array at the default
+  float data type.
+* `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
+  integer array unchanged, like base R does.
+* Improved documentation of API functions and primitives.
+
+## Bug fixes
+
+* `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
+  hold a count or an index.
+* Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
+  error message, as `drop` is not supported.
+* `nv_quantile()` and `nv_median()` now compute at the default float data
+  type for a non-float input.
+* `as.vector()` now works correctly for `AnvlArray`s that are converted
+  to `bit64::integer64`. It used to drop that class along with the shape,
+  exposing the raw 64-bit pattern as a double.
+* The gradient of a conversion into a non-float data type is now zero instead
+  of one. `prim_convert()` / `nv_convert()` passed the cotangent through
+  whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
+  reported a gradient of 1 where `nv_floor()` -- the same function on the
+  reals -- correctly reported 0. Conversions between floats still pass the
+  gradient through.
+* `prim_scatter()` now checks that `update_computation` returns one value of
+  `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
+  combiner returning something else made type inference declare a data type
+  the call could not produce, and failed in the backend.
+* `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
+  `rhs`. They were passed by name, so `function(a, b)` failed with
+  `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
+  as `prim_scatter()` already matched its `update_computation`.
+* Improved the numerics for `nv_mod()`.
+* Every data type of the float category counts as a float, so `f16` and `bf16`
+  pass the checks that used to accept only `f32` and `f64`. `nv_pnorm()` and
+  `nv_qnorm()` keep the narrower requirement, as they carry one coefficient
+  set per width.
+* The gradient of `nv_gamma()` is now correct for positive whole numbers.
+* `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
+  `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
+  Type inference declared a `bool` output whatever the input was, so an
+  integer operand reached the lowering and failed with `Data types of inputs
+  and init_values must match`.
+* Printed graphs, arrays and error messages now spell a data type the way anvl
+  does, so `bool` no longer shows up as its MLIR spelling `i1`.
+* Improved the documentation and various error messages.
+* `nv_runif()` with `min == max` returns the `state` / `values` pair every
+  other sampler returns, instead of the filled array on its own.
+
+## Tests
+
+* Moved some of pjrt's dispatcher tests into anvl.
+
+# anvl 0.4.0
+
+## Breaking changes
+
+* Renamed `dim`/`dims` to `axis`/`axes` throughout the package (an axis is an
+  index, a dimension is a size); `ndims()` is now `naxes()`.
+* Renamed the primary array argument of `prim_*` / `nv_*` functions from
+  `operand` to `x`.
+* Renamed the `"xla"` backend to `"pjrt"`.
+* `xla()` has been removed; use `jit()` instead.
+* `nv_rdunif()` has been renamed to `nv_sample_int()`, mirroring R's
+  `sample.int()`.
+* `nv_runif()`'s `lower`/`upper` arguments are now `min`/`max`, `nv_rnorm()`'s
+  `mu`/`sigma` are now `mean`/`sd`, and `nv_rbinom()`'s `n` is now `size`,
+  matching the corresponding R functions.
+
+## Bug fixes
+
+* `nv_sample_int()` (formerly `nv_rdunif()`) was off by one: the first integer
+  was drawn twice as often as it should have been, and the last integer was
+  never drawn at all.
+
+## Features
+
+* New `nv_sample()` samples from an arbitrary population.
 * New `nv_lower_tri()` and `nv_upper_tri()` (with `nv_lower_tri_like()` /
   `nv_upper_tri_like()`) return a boolean triangular mask for a given shape,
-  mirroring base R's `lower.tri()` / `upper.tri()`. As in base R, the main
-  diagonal is excluded by default; pass `diagonal = 0L` to include it. Use
-  `nv_tril()` / `nv_triu()` to zero out a triangle of an existing array.
+  mirroring base R's `lower.tri()` / `upper.tri()`.
+* New functions for the normal distribution: `nv_dnorm()`, `nv_qnorm()`,
+  and `nv_pnorm()` thanks to Louis Aslett.
+  They are implemented to be accurate far into either tail.
+* `nv_rnorm()`'s `mean` and `sd` now accept arrayish inputs.
+* Dimension arguments (`dim`, `dims`, `dimension`, `permutation`) now accept
+  negative values that count from the end, so `-1` refers to the last
+  dimension.
+* Reshaping functions accept a single `-1` in shape indicating a dimension
+  to be inferred.
+* Added support for 1-3 dimensional convolutions, thanks to
+  Troy Hernandez.
+* `AnvlArray` constructors and converters have gained a `check` argument
+  that opts into scanning for `NA` values, see the "Gotchas" vignette
+  for more information.
+* `nv_var()` and `nv_sd()` now default to `dims = NULL`, which reduces
+  over all dimensions and returns a scalar, consistent with the other
+  reductions.
 * `trace_fn()` gained an `optimize` argument controlling which graph
   optimization passes run on the traced graph. `TRUE` runs all passes, `FALSE`
   (default) runs none, and a character vector (e.g.
   `c("inline_scalars", "remove_unused_constants")`) selects a subset. `jit()` always traces with all
   passes enabled.
-* New `nv_dnorm()` computes the normal distribution's probability density
-  function (or, with `log = TRUE`, its log-density).
-* `nv_array()`, `nv_scalar()`, `as_array()`, and the `as.integer()` /
-  `as.double()` / `as.logical()` / `as.vector()` methods for
-  `AnvlArray` gained a `check` argument that opts into scanning for
-  `NA` values during host -> device and device -> host transfers. See
-  the "Gotchas" vignette.
-* `nv_var()` and `nv_sd()` now default to `dims = NULL`, which reduces
-  over all dimensions and returns a scalar, consistent with the other
-  reductions.
-* Supports 1-3d convolutions.
+* Improved the installation vignette
 
 ## Performance
 
 * Most `nv_*()` API functions are now JIT-compiled internally (via a new
   `@jit` roxygen roclet), speeding up eager-mode execution.
 * Tracing (`trace_fn()`) performance has been improved.
-* Tracing now accumulates primitive calls in a `fastmap::fastqueue`
-  (amortised-O(1) append) instead of an R list grown with `c()`
-  (copy-on-modify, O(n^2)). Tracing large unrolled graphs is
-  substantially faster, e.g. ~1.36x for an 8000-op chain, with the gain
-  growing with graph size.
-* StableHLO lowering forwards the trace-time output types to the `hlo_*`
-  builders (via an `output_types` argument passed to the lowering rules), so
-  stablehlo skips redundant type inference when lowering the graph.
+* StableHLO lowering has been sped up.
 * Calling `jit()`ted functions is now significantly faster.
 
 ## Bug fixes
 
+* Reductions now reject dimensions that are out of range for the operand
+  instead of silently ignoring them.
 * `NULL` is now treated as an empty node when flattening and unflattening trees.
-  It contributes no leaves but is preserved structurally, so functions with
-  optional arguments (e.g. `function(x, y = NULL)`) round-trip correctly.
-
 * `nv_argmax()` / `nv_argmin()` and `nv_cummax()` / `nv_cummin()` now break
   ties order-independently, so they return the same result on GPU as on CPU
   (#368). `nv_argmax()` / `nv_argmin()` prefer the smallest index;
   `nv_cummax()` / `nv_cummin()` prefer the last occurrence.
-
 * `nv_diag()` now errors on non-1-D input instead of silently producing an
   incorrect result.
-
+* `jit()` now rejects static arguments with reference semantics.
+* Error messages now speak of arrays instead of tensors.
 
 # anvl 0.3.0
 

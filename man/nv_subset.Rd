@@ -5,47 +5,44 @@
 \alias{nv_subset}
 \title{Subset an Array}
 \usage{
-\method{[}{AnvlArray}(x, ...)
-
-nv_subset(operand, ...)
+nv_subset(x, ...)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Same as \code{operand}; this is the name used by the base R S3 generic.}
+Input array.}
 
-\item{...}{Subset specifications, one per dimension. Omitted trailing
-dimensions select all elements.
+\item{...}{Subset specifications, one per axis. Omitted trailing
+axes select all elements.
 
 A boolean mask (an R logical array such as \code{arr(TRUE, FALSE)}, or an
 arrayish value of dtype \code{bool}) selects the elements at the \code{TRUE}
-positions. A mask for one dimension must have as many elements as that
-dimension. A mask that is the only subscript and has the same shape as
-\code{operand} selects across the whole array, yielding a 1-D result. Masks
-whose values come from an array only work in eager mode, because the number
-of selected elements determines the output shape.
+positions. A mask for one axis must have as many elements as the size of
+that axis. A mask that is the only subscript and has the same shape as
+\code{x} selects across the whole array, yielding a 1-D result. Masks whose
+values come from an array only work in eager mode, because the number of
+selected elements determines the output shape.
 
 See \code{vignette("subsetting")} for details.}
-
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
 }
 \value{
 \code{\link{arrayish}}
 }
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.
-Supports R-style indexing including scalar indices (which drop dimensions),
-ranges (\code{a:b}), \code{array(c(...))} for selecting multiple elements along a
-dimension, and boolean masks.
+Supports R-style indexing including scalar indices (which drop axes),
+ranges (\code{a:b}), \code{array(c(...))} for selecting multiple elements along an
+axis, and boolean masks.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:12, nrow = 3)
 x
 # Select row 2
+nv_subset(x, 2)
 x[2, ]
 
 # Select rows 1 to 2, all columns
+nv_subset(x, 1:2)
 x[1:2, ]
 
 # Select rows 1 and 3 with a mask

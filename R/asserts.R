@@ -27,44 +27,194 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   as.integer(x)
 }
 
-# Convert `x` to a DataType via `as_dtype()` and assert it is a floating-point
-# dtype (f32 or f64). Returns the converted DataType.
-assert_float_dtype <- function(x, arg = rlang::caller_arg(x)) {
-  dt <- as_dtype(x)
-  if (!inherits(dt, "FloatType")) {
+# Normalize possibly-negative axis indices.
+#
+# Negative values count from the end: `-1` is the last axis, `-2` the
+# second-to-last. `max_axis` is the largest admissible axis. It is the rank
+# of the array for most operations, but `rank + 1` for operations that insert a
+# new axis (e.g. `nv_unsqueeze()`).
+# Returns the resolved (positive) axes as an integer vector.
+resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique = FALSE) {
+  if (!test_integerish(axes, any.missing = FALSE, null.ok = FALSE)) {
+    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(axes)}}")
+  }
+  original <- as.integer(axes)
+  resolved <- original
+  negative <- original < 0L
+  resolved[negative] <- max_axis + 1L + resolved[negative]
+  invalid <- resolved < 1L | resolved > max_axis
+  if (any(invalid)) {
+    if (max_axis < 1L) {
+      cli_abort(c(
+        "{.arg {arg}} cannot be used, there is no axis to select.",
+        x = "Got {.val {original[invalid]}}."
+      ))
+    }
     cli_abort(c(
-      "{.arg {arg}} must be a floating-point dtype (f32 or f64).",
-      "x" = "Got {.val {as.character(dt)}}."
+      "{.arg {arg}} must be between 1 and {max_axis}, or between {-max_axis} and -1 to count from the end.",
+      x = "Got {.val {original[invalid]}}."
+    ))
+  }
+  if (unique && anyDuplicated(resolved)) {
+    cli_abort(c(
+      "{.arg {arg}} must not contain duplicate axes.",
+      x = "Got {.val {original}}."
+    ))
+  }
+  resolved
+}
+
+# Like `resolve_axes()`, but for a single axis.
+resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
+  if (length(axis) != 1L) {
+    cli_abort("{.arg {arg}} must have length 1, not {length(axis)}")
+  }
+  resolve_axes(axis, max_axis, arg = arg)
+}
+
+# Resolve a `-1` placeholder in a reshape target shape by inferring the
+# corresponding extent from the total number of elements `nelts`.
+# Returns the resolved shape as an integer vector.
+resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
+  if (!test_integerish(shape, any.missing = FALSE, null.ok = FALSE)) {
+    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(shape)}}")
+  }
+  shape <- as.integer(shape)
+  invalid <- shape < -1L
+  if (any(invalid)) {
+    cli_abort(c(
+      "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
+      x = "Got {.val {shape[invalid]}}."
+    ))
+  }
+  inferred <- which(shape == -1L)
+  if (length(inferred) == 0L) {
+    return(shape)
+  }
+  if (length(inferred) > 1L) {
+    cli_abort(c(
+      "{.arg {arg}} must contain at most one {.val {-1L}}.",
+      x = "Got {length(inferred)} at positions {.val {inferred}}."
+    ))
+  }
+  known <- prod(shape[-inferred])
+  if (known <= 0 || nelts %% known != 0) {
+    cli_abort(c(
+      "Cannot infer the size of axis {inferred} of {.arg {arg}}.",
+      # The `-1` is the axis being asked for, so it is shown as `?` rather
+      # than as a size.
+      x = "{nelts} element{?s} cannot be divided evenly into shape {shape_repr(replace(shape, inferred, '?'))}." # nolint
+    ))
+  }
+  shape[inferred] <- as.integer(nelts / known)
+  shape
+}
+
+# Like `assert_float_dtype()`, but only the two widths the RNG is written for:
+# it assembles floats out of random bits, so it needs a 32- or 64-bit layout
+# and cannot serve `bf16` or `f16` even though those are float data types.
+# Returns the converted DataType.
+assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  if (!is_dtype_float(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
+    ))
+  }
+  if (!dtype_width(dt) %in% c(32L, 64L)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a 32- or 64-bit float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
     ))
   }
   dt
 }
 
-assert_linalg_matrix <- function(operand, arg, square = FALSE) {
-  s <- shape(operand)
+# Convert `x` to a DataType via `as_dtype()` and assert it is numeric in the
+# sense the documentation gives the word: integer or float, but not `bool`.
+# Returns the converted DataType.
+assert_numeric_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  if (is_dtype_bool(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a numeric data type.",
+      "x" = "Got {.val {as.character(dt)}}, which is boolean.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
+# Convert `x` to a DataType via `as_dtype()` and assert it belongs to the float
+# category. Returns the converted DataType.
+assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- as_dtype(x)
+  # The float category, so that this and `is_dtype_float()` agree on what
+  # counts as a float. A caller that needs a particular layout says so itself:
+  # `assert_rng_float_dtype()` is the 32/64-bit one.
+  if (!is_dtype_float(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a float data type.",
+      "x" = "Got {.val {as.character(dt)}}.",
+      "i" = hint
+    ))
+  }
+  dt
+}
+
+assert_linalg_matrix <- function(x, arg, square = FALSE) {
+  s <- shape(x)
   if (length(s) != 2L) {
     cli_abort(c(
       "{.arg {arg}} must be a 2-D matrix.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (any(s == 0L)) {
     cli_abort(c(
-      "{.arg {arg}} must not have any zero-sized dimension.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "{.arg {arg}} must not have any zero-sized axis.",
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
   if (square && s[[1L]] != s[[2L]]) {
     cli_abort(c(
       "{.arg {arg}} must be a square matrix.",
-      "x" = "Got shape {xlamisc::shapevec_repr(s)}."
+      "x" = "Got shape {shape_repr(s)}."
     ))
   }
-  if (!inherits(dtype(operand), "FloatType")) {
+  if (!is_dtype_float(peek_dtype(x))) {
     cli_abort(c(
-      "{.arg {arg}} must have a floating-point dtype.",
-      "x" = "Got dtype {.val {as.character(dtype(operand))}}."
+      "{.arg {arg}} must have a float data type.",
+      "x" = "Got dtype {.val {as.character(peek_dtype(x))}}."
     ))
   }
   invisible(NULL)
+}
+
+# Assert that `x` is a boolean array, or an R value that would become one.
+# `hint` is a character vector, each element shown as its own bullet.
+assert_boolean_array <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
+  dt <- peek_dtype(x)
+  if (!is_dtype_bool(dt)) {
+    cli_abort(c(
+      "{.arg {arg}} must be a boolean array.",
+      "x" = "Got data type {.val {as.character(dt)}}.",
+      info_bullets(hint)
+    ))
+  }
+  x
+}
+
+# Name each element "i" so cli shows it as its own info bullet. Naming a
+# multi-element vector as a whole would renumber the names to "i1", "i2", ...
+# and lose the bullets.
+info_bullets <- function(x) {
+  if (!length(x)) {
+    return(NULL)
+  }
+  names(x) <- rep("i", length(x))
+  x
 }

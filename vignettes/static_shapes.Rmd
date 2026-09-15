@@ -48,7 +48,7 @@ Because adding `0` does nothing, the masked-out positions don't contribute to th
 
 ```{r}
 sum_positive <- jit(function(x) {
-  nv_reduce_sum(nv_ifelse(x > 0, x, nv_fill_like(x, 0)), dims = 1L)
+  nv_reduce_sum(nv_ifelse(x > 0, x, nv_fill_like(x, 0)), axes = 1L)
 })
 
 sum_positive(x)
@@ -74,8 +74,8 @@ The matching count is a scalar, though, so we can compute it inside `jit()` by s
 ```{r}
 mean_positive <- jit(function(x) {
   mask <- x > 0
-  total <- nv_reduce_sum(nv_ifelse(mask, x, 0), dims = 1L)
-  n <- nv_reduce_sum(mask, dims = 1L)
+  total <- nv_reduce_sum(nv_ifelse(mask, x, 0), axes = 1L)
+  n <- nv_reduce_sum(mask, axes = 1L)
   total / n
 })
 

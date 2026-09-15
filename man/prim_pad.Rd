@@ -5,7 +5,7 @@
 \title{Primitive Pad}
 \usage{
 prim_pad(
-  operand,
+  x,
   padding_value,
   edge_padding_low,
   edge_padding_high,
@@ -13,26 +13,26 @@ prim_pad(
 )
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
-Scalar value to use for padding. Must have the same dtype as \code{operand}.}
+Scalar value to use for padding. An R value is built at \code{x}'s data type,
+within its own category; anything that already has one must have \code{x}'s.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
-Amount of padding to add at the start of each dimension.}
+Amount of padding to add at the start of each axis.}
 
 \item{edge_padding_high}{(\code{integer()})\cr
-Amount of padding to add at the end of each dimension.}
+Amount of padding to add at the end of each axis.}
 
 \item{interior_padding}{(\code{integer()})\cr
-Amount of padding to add between elements in each dimension.}
+Amount of padding to add between elements in each axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as \code{operand}.
+Has the same data type as \code{x}.
 For the output shape see the underlying stablehlo documentation (\code{\link[stablehlo:hlo_pad]{hlo_pad()}}).
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Pads an array with a given padding value.

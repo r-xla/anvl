@@ -5,21 +5,15 @@
 \alias{nv_iota_like}
 \title{Iota}
 \usage{
-nv_iota(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL)
+nv_iota(axis, dtype, shape, start = 1L, device = NULL)
 
-nv_iota_like(
-  like,
-  dim,
-  shape = NULL,
-  start = 1L,
-  dtype = NULL,
-  ambiguous = NULL,
-  device = NULL
-)
+nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
 }
 \arguments{
-\item{dim}{(\code{integer(1)})\cr
-Dimension along which values increase.}
+\item{axis}{(\code{integer(1)})\cr
+Axis along which values increase.
+Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
+last axis.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type.}
@@ -30,13 +24,19 @@ Shape.}
 \item{start}{(\code{integer(1)})\cr
 Starting value (default 1).}
 
-\item{ambiguous}{(\code{logical(1)})\cr
-Whether the type is ambiguous.
-Ambiguous types usually arise from R literals (e.g., \code{1L}, \code{1.0}) and follow special promotion rules.
-See the \code{vignette("type-promotion")} for more details.}
+\item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
+The device the data lives on, given either as:
+\itemize{
+\item a \emph{device string} naming the platform (e.g. \code{"cpu"}, \code{"cuda"},
+\code{"cuda:<n>"}), which is resolved against the backend in use, or
+\item a \emph{device object} as returned by \code{\link[=nv_device]{nv_device()}}: a
+\code{\link[pjrt:pjrt_device]{PJRTDevice}} for the \code{"pjrt"} backend or a
+\code{\link{quickr_device}} for the \code{"quickr"} backend. Because a device object
+is backend-specific, it also determines the backend.
+}
 
-\item{device}{( \code{character(1)} | \code{PJRTDevice} | \code{\link{quickr_device}} | \code{NULL})\cr
-Device for data to live on.}
+The default (\code{NULL}) uses \code{\link[=default_device]{default_device()}}: the CPU, or the platform
+named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} backend.}
 
 \item{like}{(\code{\link{AnvlArray}})\cr
 Existing array whose attributes are used as defaults
@@ -47,19 +47,20 @@ Existing array whose attributes are used as defaults
 Has the given \code{dtype} and \code{shape}.
 }
 \description{
-Creates an array with values increasing along the specified dimension,
+Creates an array with values increasing along the specified axis,
 starting from \code{start}.
 
-\code{nv_iota_like()} is a variant where \code{dtype}, \code{shape}, \code{ambiguous}, and
+\code{nv_iota_like()} is a variant where \code{dtype}, \code{shape}, and
 \code{device} default to those of \code{like}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_iota(dim = 1L, dtype = "i32", shape = 5L)
+nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 x <- nv_fill(0L, shape = c(2, 3))
-nv_iota_like(x, dim = 1L)
+nv_iota_like(x, axis = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_seq]{nv_seq()}} for a simpler 1-D sequence, \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
+\code{\link[=nv_seq]{nv_seq()}} for a simpler 1-D sequence, \code{\link[=nv_linspace]{nv_linspace()}} for evenly
+spaced values, \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }

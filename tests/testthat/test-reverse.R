@@ -77,7 +77,17 @@ test_that("constants work (scalar)", {
 })
 
 test_that("broadcasting works", {
-  # TODO
+  # A scalar operand auto-broadcasts against a non-scalar in elementwise ops.
+  # The reverse pass must reduce the broadcasted cotangent back to the scalar's
+  # shape.
+  f <- function(a, b) sum(nv_mul(a, b))
+  g <- jit(gradient(f))
+  res <- g(nv_scalar(2), nv_array(c(1, 2, 3), dtype = "f32"))
+  # d/da sum(a * b) = sum(b) = 6, reduced back to a scalar
+  expect_equal(res$a, nv_scalar(6))
+  expect_equal(shape(res$a), integer())
+  # d/db sum(a * b) = a broadcast over b's shape
+  expect_equal(res$b, nv_array(c(2, 2, 2), dtype = "f32"))
 })
 
 test_that("second order gradient (scalar)", {
@@ -241,6 +251,7 @@ test_that("wrt for non-array input: value_and_gradient", {
 })
 
 test_that("wrt for nested non-array input: gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -251,6 +262,7 @@ test_that("wrt for nested non-array input: gradient", {
 })
 
 test_that("wrt for nested non-array input: value_and_gradient", {
+  local_registered_default_dtypes()
   f <- function(x) {
     prim_mul(x[[1]], x[[2]])
   }
@@ -261,14 +273,15 @@ test_that("wrt for nested non-array input: value_and_gradient", {
 })
 
 test_that("can only compute gradient w.r.t. float arrays", {
+  local_registered_default_dtypes()
   expect_snapshot(error = TRUE, {
-    gradient(nv_floor, wrt = "operand")(nv_scalar(1L))
+    gradient(nv_floor, wrt = "x")(nv_scalar(1L))
   })
 })
 
 test_that("wrt arg passed as plain R literal errors clearly", {
   expect_snapshot(error = TRUE, {
-    jit(function() gradient(nv_log, wrt = "operand")(1))()
+    jit(function() gradient(nv_log, wrt = "x")(1))()
   })
   expect_snapshot(error = TRUE, {
     jit(function() gradient(function(x, y) prim_add(x, y))(1, 2))()
@@ -321,7 +334,7 @@ test_that("value_and_gradient with static (non-array) argument", {
   expect_equal(result_false$grad[[1L]], nv_scalar(7.0))
 })
 
-test_that("Can propagate ambiguous float32 through integer/bool functions", {
+test_that("Can propagate float32 through integer/bool functions", {
   f <- function(x) {
     x1 <- nv_convert(x, "i32")
     x2 <- nv_convert(x1, "bool")
@@ -330,7 +343,10 @@ test_that("Can propagate ambiguous float32 through integer/bool functions", {
     mean(x4)
   }
   grad <- jit(gradient(f))
-  grad(nv_scalar(1))
+  out <- grad(nv_scalar(1))
+  # the path runs entirely through integer/bool conversions, so no gradient
+  # flows back to the float input.
+  expect_equal(out$x, nv_scalar(0))
 })
 
 test_that("trace_fn matches args with formals", {
@@ -376,4 +392,168 @@ test_that("rule_reverse(forward = ...) emits multiple primitives and captures an
   g <- jit(gradient(f))
   out <- g(nv_array(c(0, 1), dtype = "f64"))
   expect_equal(out[[1L]], nv_array(c(exp(0), exp(1)), dtype = "f64"))
+})
+
+describe("rdata", {
+  # A value with no data type of its own cannot be differentiated with respect
+  # to: the gradient would come back at whatever data type the forward pass
+  # settled the value at, so the answer would depend on how the body used it
+  # rather than on what the caller passed. Everywhere *else* in a gradient an R
+  # value stays open exactly as it does under plain jit() -- as an argument
+  # outside `wrt`, and as a literal in the differentiated body.
+
+  it("refuses a value with no data type as the differentiated argument", {
+    expect_error(
+      jit(gradient(function(v) nv_mean(v * 2)))(array(c(1, 2, 3))),
+      "no data type"
+    )
+    # ... however it reaches the gradient: as the jitted call's own argument,
+    expect_error(jit(function(x) gradient(identity)(x))(1), "no data type")
+    # or as a literal written where the gradient is taken.
+    expect_error(jit(function() gradient(identity)(1))(), "no data type")
+  })
+
+  it("takes an argument that has one, at either width", {
+    expect_equal(as_array(jit(gradient(function(v) v * v))(nv_scalar(2))[[1L]]), 4)
+    expect_equal(
+      as_array(jit(gradient(function(v) v * v))(nv_scalar(2, dtype = "f64"))[[1L]]),
+      4
+    )
+    expect_equal(
+      jit(gradient(function(x) x * 2, wrt = "x"))(nv_scalar(1)),
+      list(x = nv_scalar(2))
+    )
+  })
+
+  it("keeps a bare R value outside wrt open", {
+    # n is an R integer used out of its category: it is supplied at i32 and the
+    # program converts, like everywhere else.
+    f <- jit(gradient(function(x, n) x * nv_convert(n, dtype = "f64"), wrt = "x"))
+    expect_identical(as_array(f(nv_scalar(2, dtype = "f64"), 3L)$x), 3)
+  })
+
+  it("keeps a bare R value outside wrt exact through the inline trace", {
+    # `k` is an R double used at f64. sqrt(2) is not representable at f32, so a
+    # materialize at the default would show up in the gradient.
+    f <- jit(gradient(function(v, k) v * k, wrt = "v"))
+    r <- f(nv_scalar(1, dtype = "f64"), sqrt(2))
+    expect_equal(dtype(r$v), as_dtype("f64"))
+    expect_identical(as_array(r$v), sqrt(2))
+  })
+
+  it("gives an unused bare R argument an input slot at its default", {
+    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a, wrt = "a"))
+    r <- f(nv_scalar(sqrt(2), dtype = "f64"), pi)
+    expect_identical(as_array(r$a), 2 * sqrt(2))
+  })
+
+  it("does not bake a bare R argument into the compiled gradient", {
+    f <- jit(gradient(function(a, b) nv_scalar(1, dtype = "f64") * a * a, wrt = "a"))
+    expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"), pi)$a), 2 * sqrt(2))
+    # same key, so this is a cache hit -- and it must return its own gradient
+    expect_identical(as_array(f(nv_scalar(pi, dtype = "f64"), 7)$a), 2 * pi)
+  })
+
+  it("takes an R value written in the enclosing body exactly", {
+    # The literal is not an input of any graph: it crosses the gradient boundary
+    # and the differentiated body builds it at the data type it meets there.
+    f <- jit(function(x) gradient(function(a, b) a * b, wrt = "a")(x, sqrt(2))$a)
+    r <- f(nv_scalar(1, dtype = "f64"))
+    expect_equal(dtype(r), as_dtype("f64"))
+    expect_identical(as_array(r), sqrt(2))
+  })
+
+  it("keeps an f64 argument exact through a nested gradient", {
+    # d/da (2a * a) = 4a, with the inner 2a itself a gradient
+    f <- jit(function(v) {
+      gradient(function(a) {
+        gradient(function(b) nv_scalar(1, dtype = "f64") * b * b)(a)[[1L]] * a
+      })(v)[[1L]]
+    })
+    r <- f(nv_scalar(sqrt(2), dtype = "f64"))
+    expect_equal(dtype(r), as_dtype("f64"))
+    expect_identical(as_array(r), 4 * sqrt(2))
+  })
+
+  it("shares an argument's value with the enclosing body", {
+    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
+    # the enclosing trace uses v before the gradient call ...
+    f <- jit(function(v) {
+      w <- v * nv_scalar(1, dtype = "f64")
+      w + gradient(q)(v)[[1L]]
+    })
+    v <- nv_scalar(sqrt(2), dtype = "f64")
+    expect_identical(as_array(f(v)), sqrt(2) + 2 * sqrt(2))
+    # ... and after it
+    g <- jit(function(v) gradient(q)(v)[[1L]] + v * nv_scalar(1, dtype = "f64"))
+    expect_identical(as_array(g(v)), 2 * sqrt(2) + sqrt(2))
+  })
+
+  it("agrees between two gradient calls on the same argument", {
+    q <- function(u) nv_scalar(1, dtype = "f64") * u * u
+    f <- jit(function(v) gradient(q)(v)[[1L]] + gradient(q)(v)[[1L]])
+    expect_identical(as_array(f(nv_scalar(sqrt(2), dtype = "f64"))), 4 * sqrt(2))
+  })
+})
+
+describe("a scoped override inside a differentiated body", {
+  # `gradient()` traces the reverse pass into its own descriptor, which inherits
+  # the active defaults where it is opened. A cotangent belongs to the primal
+  # it is with respect to, so it takes *that* array's data type whatever the
+  # literals inside the body materialized at. Upstream JAX does not support a
+  # scoped dtype override inside a traced body at all (jax-ml/jax#5982), so
+  # this is worth pinning rather than assuming.
+  x32 <- nv_array(c(1, 2, 3), dtype = "f32")
+
+  it("leaves the cotangent at the data type of the primal", {
+    f <- function(x) with_default_dtypes(c(float = "f64"), nv_reduce_sum(x * 2 + 0.5))
+    out <- jit(gradient(f))(x32)
+    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("holds when the override covers only part of the body", {
+    g <- function(x) {
+      a <- x * 2
+      nv_reduce_sum(with_default_dtypes(c(float = "f64"), a + 0.5))
+    }
+    out <- jit(gradient(g))(x32)
+    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("does not narrow a wider primal", {
+    # The scope makes the body's literals `f32`; the primal is `f64` and the
+    # cotangent stays there rather than following the scope down.
+    x64 <- nv_array(c(1, 2, 3), dtype = "f64")
+    h <- function(x) with_default_dtypes(c(float = "f32"), nv_reduce_sum(x * 2 + 0.5))
+    out <- jit(gradient(h))(x64)
+    expect_equal(dtype(out[[1L]]), as_dtype("f64"))
+    expect_equal(as.numeric(as_array(out[[1L]])), c(2, 2, 2))
+  })
+
+  it("agrees with the same override set outside the body", {
+    k <- function(x) nv_reduce_sum(x * 2 + 0.5)
+    scoped <- jit(gradient(function(x) with_default_dtypes(c(float = "f64"), k(x))))(x32)
+    outside <- with_default_dtypes(c(float = "f64"), jit(gradient(k))(x32))
+    expect_equal(dtype(scoped[[1L]]), dtype(outside[[1L]]))
+    expect_equal(as_array(scoped[[1L]]), as_array(outside[[1L]]))
+  })
+})
+
+describe("the float category", {
+  it("differentiates a function returning a narrower float", {
+    # The check on the output used to name `f32` and `f64` explicitly, so a
+    # function returning any other float was refused even though the gradient
+    # itself is well defined.
+    g <- jit(gradient(function(x) nv_convert(nv_reduce_sum(x), "bf16")))
+    out <- g(nv_array(c(1, 2), dtype = "f32"))
+    expect_equal(dtype(out[[1L]]), as_dtype("f32"))
+    expect_equal(as.vector(out[[1L]]), c(1, 1))
+  })
+
+  it("still refuses a non-float return", {
+    g <- jit(gradient(function(x) nv_convert(nv_reduce_sum(x), "i32")))
+    expect_error(g(nv_array(c(1, 2), dtype = "f32")), "return float scalar")
+  })
 })

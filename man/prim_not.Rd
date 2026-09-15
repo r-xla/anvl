@@ -4,19 +4,18 @@
 \alias{prim_not}
 \title{Primitive Not}
 \usage{
-prim_not(operand)
+prim_not(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type boolean, integer, or unsigned integer.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
-Element-wise logical NOT.
+Element-wise bitwise NOT, which for a boolean array is the logical NOT.
 }
 \section{Implemented Rules}{
 

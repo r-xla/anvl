@@ -1,6 +1,6 @@
 Package: anvl
 Title: Accelerated Array Computing and Automatic Differentiation
-Version: 0.3.0.9000
+Version: 0.4.0.9000
 Authors@R: c(
     person("Sebastian", "Fischer", , "seb.fischer@tutamail.com", role = c("cre", "aut"),
            comment = c(ORCID = "https://orcid.org/0000-0002-9609-3197")),
@@ -23,30 +23,33 @@ License: MIT + file LICENSE
 URL: https://r-xla.github.io/anvl/, https://github.com/r-xla/anvl
 BugReports: https://github.com/r-xla/anvl/issues
 Depends:
-    R (>= 4.2.0)
+    R (>= 4.4.0)
 Imports:
     checkmate,
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.4.0),
+    pjrt (>= 0.5.0.9000),
     rlang,
     safetensors (>= 0.2.0),
-    stablehlo (>= 0.3.0.901),
-    tengen (>= 0.2.0),
+    stablehlo (>= 0.4.0),
+    tengen (>= 0.3.0),
     withr,
-    xlamisc (>= 0.3.0)
+    xlamisc (>= 0.4.1)
 Suggests:
+    bit64,
     knitr,
     quarto,
     rmarkdown,
     quickr (>= 0.3.0),
     testthat (>= 3.0.0)
-Remotes:
-    r-xla/pjrt,
-    r-xla/stablehlo
 Additional_repositories:
     https://r-xla.r-universe.dev
+Remotes:
+    r-xla/pjrt,
+    r-xla/tengen,
+    r-xla/stablehlo,
+    r-xla/xlamisc
 VignetteBuilder:
     knitr
 Config/testthat/edition: 3
@@ -57,8 +60,10 @@ Collate:
     'api-distributions.R'
     'array.R'
     'device.R'
+    'default-dtypes.R'
     'backend.R'
     'jit.R'
+    'promotion.R'
     'primitive.R'
     'type-converters.R'
     'utils.R'
@@ -70,25 +75,25 @@ Collate:
     'api-subset.R'
     'api-utilities.R'
     'asserts.R'
+    'backend-pjrt.R'
     'backend-quickr.R'
-    'backend-xla.R'
     'bibentries.R'
     'box.R'
     'graph-passes.R'
     'graph.R'
+    'rdata.R'
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
     'jit-registry.R'
     'jit-roclet.R'
-    'promotion.R'
     'quickr.R'
     'reexports.R'
     'reverse.R'
+    'roxygen.R'
     'rules-reverse.R'
     'rules-stablehlo.R'
     'serialize.R'
     'stablehlo.R'
     'zzz.R'
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0

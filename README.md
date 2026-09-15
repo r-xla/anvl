@@ -13,7 +13,7 @@ Package website: [release](https://r-xla.github.io/anvl/) \|
 status](https://www.r-pkg.org/badges/version/anvl)](https://CRAN.R-project.org/package=anvl)
 [![codecov](https://codecov.io/gh/r-xla/anvl/branch/main/graph/badge.svg)](https://codecov.io/gh/r-xla/anvl)
 [![r-universe](https://r-xla.r-universe.dev/badges/anvl)](https://r-xla.r-universe.dev/anvl)
-![CUDA 12.8](https://img.shields.io/badge/CUDA-12.8-green.svg)
+![CUDA 13.3](https://img.shields.io/badge/CUDA-13.3-green.svg)
 <!-- badges: end -->
 
 Accelerated array computing and code transformations for R, allowing you
@@ -27,13 +27,13 @@ differentiation. Programs can run on CPU and NVIDIA GPU.
 install.packages("anvl", repos = c("https://r-xla.r-universe.dev", getOption("repos")))
 ```
 
-Install CUDA support on linux amd64:
+Afterwards, install the additional dependencies as follows:
 
 ``` r
-install.packages("cuda12.8", repos = "https://mlverse.r-universe.dev")
+anvl::install_anvl()
 ```
 
-See the [Installation
+See the [installation
 guide](https://r-xla.github.io/anvl/articles/installation.html) for more
 details, including prebuilt Docker images.
 
@@ -72,21 +72,21 @@ f <- function(a, b, x) {
   a * x + b
 }
 
-a <- nv_scalar(1.0, "f32")
-b <- nv_scalar(-2.0, "f32")
-x <- nv_scalar(3.0, "f32")
+a <- nv_scalar(1, "f32")
+b <- nv_scalar(2, "f32")
+x <- nv_scalar(3, "f32")
 
 # Eager mode
 f(a, b, x)
 #> AnvlArray
-#>  1
+#>  5
 #> [ CPUf32{} ]
 
 # JIT mode
 f_jit <- jit(f)
 f_jit(a, b, x)
 #> AnvlArray
-#>  1
+#>  5
 #> [ CPUf32{} ]
 ```
 
@@ -112,22 +112,23 @@ the package website.
 
 ## Platform Support
 
-| Platform              | CPU |        GPU         |
-|-----------------------|:---:|:------------------:|
-| Linux (x86_64)        |  ✓  |       ✓ CUDA       |
-| Linux (ARM)           |  ✓  |         ✗          |
-| Windows               |  ✓  | ◐ WSL2 only (CUDA) |
-| macOS (Apple Silicon) |  ✓  |         ✗          |
-| macOS (Intel)         |  ✗  |         ✗          |
+| OS      | Architecture | CPU | CUDA |
+|---------|--------------|:---:|:----:|
+| Linux   | x86_64       |  ✓  |  ✓   |
+| Linux   | arm64        |  ✓  |  ✓   |
+| Windows | x86_64       |  ✓  | WSL2 |
+| Windows | arm64        |  ✗  |  ✗   |
+| macOS   | x86_64       |  ✓  |  ✗   |
+| macOS   | arm64        |  ✓  |  ✗   |
 
-✓ fully supported  ·  ◐ limited support  ·  ✗ not supported
+✓ fully supported  ·  ✗ not supported
 
 ## Acknowledgments
 
 - This work is supported by [MaRDI](https://www.mardi4nfdi.de).
-- The design of this package was inspired by and borrows from:
-  - JAX, especially the [autodidax
-    tutorial](https://docs.jax.dev/en/latest/autodidax.html).
-  - The [microjax](https://github.com/joey00072/microjax) project.
-- For JIT compilation, we leverage the [OpenXLA](https://openxla.org/)
+- The design of this package is inspired by
+  [JAX](https://github.com/jax-ml/jax).
+- For JIT compilation, we build on the [OpenXLA](https://openxla.org/)
   project.
+- Most of the compiler binaries are downloaded from
+  [zml](https://github.com/zml/pjrt-artifacts/).

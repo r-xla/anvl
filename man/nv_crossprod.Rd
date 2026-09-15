@@ -11,7 +11,7 @@ nv_crossprod(lhs, rhs = NULL)
 }
 \arguments{
 \item{lhs}{(\code{\link{arrayish}})\cr
-An array with at least 2 dimensions.}
+An array with at least 2 axes.}
 
 \item{rhs}{(\code{\link{arrayish}} | \code{NULL})\cr
 Optional second array. If \code{NULL}, uses \code{lhs}.}

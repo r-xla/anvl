@@ -9,7 +9,6 @@ AnvlBackend(
   new_empty,
   dtype,
   shape,
-  ambiguous,
   as_array,
   as_raw,
   platform,
@@ -17,13 +16,14 @@ AnvlBackend(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 )
 }
 \arguments{
 \item{new_data}{(\code{function})\cr Constructs an AnvlArray from R data.
 This should be a \code{structure()} with at least a \verb{$data} field that contains the actual
-underlying data (\code{PJRTBuffer} for \code{"xla"} backend, \code{array()} for \code{"quickr"} backend).}
+underlying data (\code{PJRTBuffer} for \code{"pjrt"} backend, \code{array()} for \code{"quickr"} backend).}
 
 \item{new_empty}{(\code{function})\cr Constructs an AnvlArray of the given
 \code{dtype} and \code{shape} with unspecified contents. Called by \code{\link[=nv_empty]{nv_empty()}}.}
@@ -31,8 +31,6 @@ underlying data (\code{PJRTBuffer} for \code{"xla"} backend, \code{array()} for 
 \item{dtype}{(\code{function})\cr Extracts the dtype from an AnvlArray.}
 
 \item{shape}{(\code{function})\cr Extracts the shape from an AnvlArray.}
-
-\item{ambiguous}{(\code{function})\cr Extracts the ambiguous flag from an AnvlArray.}
 
 \item{as_array}{(\verb{function(x, check)})\cr Converts an AnvlArray to an R
 array. The \code{check} flag is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
@@ -55,6 +53,10 @@ object from a device type string (e.g. \code{"cpu"}). Called by \code{\link[=nv_
 \item{await_data}{(\code{function})\cr Blocks until the array's underlying data
 is ready. Called by \code{\link[=await]{await()}} for \code{AnvlArray}s; a no-op for backends
 without async execution.}
+
+\item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
+The default data types for this backend.
+Can be overwritten, see \code{\link[=default_dtypes]{default_dtypes()}}.}
 }
 \value{
 An \code{AnvlBackend} object.

@@ -14,12 +14,11 @@ Must have the same shape.}
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the inputs.
-It is ambiguous if both inputs are ambiguous.
 }
 \description{
-Element-wise remainder.
-Result has sign of the divident, which differs from base R's \code{\%\%}, which is available
-via \code{\link[=nv_mod]{nv_mod()}} and has sign of divisor.
+Element-wise remainder. The result has the sign of the dividend, which is
+what StableHLO's \code{remainder} does. Base R's \code{\%\%} takes the sign of the
+divisor instead and is available via \code{\link[=nv_mod]{nv_mod()}}.
 }
 \section{Implemented Rules}{
 

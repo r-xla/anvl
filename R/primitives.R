@@ -1,63 +1,70 @@
 #' @include utils.R
 #' @include type-converters.R
+#' @include promotion.R
 #' @include primitive.R
 #' @include jit.R
 
 make_binary_op <- function(stablehlo_infer) {
   force(stablehlo_infer)
   infer_fn <- function(lhs, rhs) {
-    both_ambiguous <- lhs$ambiguous && rhs$ambiguous
-    out <- stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]
-    out <- vt2at(out)
-    out$ambiguous <- both_ambiguous
-    list(out)
+    list(vt2at(stablehlo_infer(at2vt(lhs), at2vt(rhs))[[1L]]))
   }
   function(lhs, rhs) {
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
 
 make_unary_op <- function(stablehlo_infer) {
   force(stablehlo_infer)
-  infer_fn <- function(operand) {
-    out <- stablehlo_infer(at2vt(operand))[[1L]]
-    out <- vt2at(out)
-    out$ambiguous <- operand$ambiguous
-    list(out)
+  infer_fn <- function(x) {
+    list(vt2at(stablehlo_infer(at2vt(x))[[1L]]))
   }
-  function(operand) {
-    graph_desc_add(self, list(operand = operand), infer_fn = infer_fn)[[1L]]
+  function(x) {
+    graph_desc_add(self, list(x = x), infer_fn = infer_fn)[[1L]]
   }
 }
 
 
-infer_reduce <- function(operand, dims, drop) {
-  old_shape <- shape(operand)
+infer_reduce <- function(x, axes, drop) {
+  old_shape <- shape(x)
   if (drop) {
-    new_shape <- old_shape[-dims]
+    new_shape <- old_shape[-axes]
   } else {
     new_shape <- old_shape
-    new_shape[dims] <- 1L
+    new_shape[axes] <- 1L
   }
   list(AbstractArray(
-    dtype = dtype(operand),
-    shape = Shape(new_shape),
-    ambiguous = operand$ambiguous
+    dtype = dtype(x),
+    shape = Shape(new_shape)
   ))
 }
 
-infer_reduce_boolean <- function(operand, dims, drop) {
-  old_shape <- shape(operand)
+infer_reduce_boolean <- function(x, axes, drop) {
+  # The output is a `bool` whatever the input is, but the lowering reduces with
+  # `or` / `and` over an init value built at `bool`, so a non-boolean operand
+  # fails there with `Data types of inputs and init_values must match`. Say so
+  # here instead, where the argument still has a name.
+  if (!is_dtype_bool(dtype(x))) {
+    cli_abort(
+      c(
+        "{.arg x} must have a boolean data type.",
+        x = "Got {.val {as.character(dtype(x))}}.",
+        i = "Compare it first, e.g. {.code x != 0L}, or convert it with {.fn nv_convert}."
+      ),
+      call = NULL
+    )
+  }
+  old_shape <- shape(x)
   if (drop) {
-    new_shape <- old_shape[-dims]
+    new_shape <- old_shape[-axes]
   } else {
     new_shape <- old_shape
-    new_shape[dims] <- 1L
+    new_shape[axes] <- 1L
   }
   list(AbstractArray(
     dtype = "bool",
-    shape = Shape(new_shape),
-    ambiguous = FALSE
+    shape = Shape(new_shape)
   ))
 }
 
@@ -73,7 +80,6 @@ infer_reduce_boolean <- function(operand, dims, drop) {
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @template param_dtype
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and `dtype`.
@@ -87,19 +93,19 @@ infer_reduce_boolean <- function(operand, dims, drop) {
 #' @export
 prim_fill <- new_primitive(
   "fill",
-  function(value, shape, dtype, ambiguous = FALSE, device = NULL) {
-    infer_fill <- function(value, shape, dtype, ambiguous) {
-      list(AbstractArray(dtype = as_dtype(dtype), shape = shape, ambiguous = ambiguous))
+  function(value, shape, dtype, device = NULL) {
+    infer_fill <- function(value, shape, dtype) {
+      list(AbstractArray(dtype = as_dtype(dtype), shape = shape))
     }
     graph_desc_add(
       self,
       list(),
-      params = list(value = value, dtype = dtype, shape = shape, ambiguous = ambiguous),
-      infer_fn = infer_fill
+      params = list(value = value, dtype = dtype, shape = shape),
+      infer_fn = infer_fill,
+      device = device
     )[[1L]]
   },
-  static = 1:5,
-  device = device_arg("device")
+  static = 1:4
 )
 
 #' @title Primitive Addition
@@ -156,7 +162,7 @@ prim_sub <- new_primitive("sub", make_binary_op(stablehlo::infer_types_subtract)
 #' @title Primitive Negation
 #' @description
 #' Negates an array element-wise.
-#' @param operand ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Arrayish value of data type integer or floating-point.
 #' @template return_prim_unary
 #' @templateVar primitive_id negate
@@ -206,51 +212,49 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 
 #' @title Primitive Broadcast
 #' @description
-#' Broadcasts an array to a new shape by replicating the data along new or size-1 dimensions.
-#' @template param_prim_operand_any
+#' Broadcasts an array to a new shape by replicating the data along new or size-1 axes.
+#' @template param_prim_x_any
 #' @param shape (`integer()`)\cr
-#'   Target shape. Each mapped dimension must either match the corresponding
-#'   operand dimension or the operand dimension must be 1.
-#' @param broadcast_dimensions (`integer()`)\cr
-#'   Maps each dimension of `operand` to a dimension of the output.
-#'   Must have length equal to the number of dimensions of `operand`.
+#'   Target shape. The size of each mapped axis must either match the size of
+#'   the corresponding axis of `x`, or that axis of `x` must have size 1.
+#' @param broadcast_axes (`integer()`)\cr
+#'   Maps each axis of `x` to an axis of the output.
+#'   Must have length equal to the number of axes of `x`.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and the given `shape`.
-#'   It is ambiguous if the input is ambiguous.
 #' @importFrom stablehlo r_to_constant
-#' @templateVar primitive_id broadcast_in_dim
+#' @templateVar primitive_id broadcast_in_axes
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_broadcast_in_dim()].
 #' @seealso [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
-#' prim_broadcast_in_dim(x, shape = c(2, 3), broadcast_dimensions = 2L)
+#' prim_broadcast_in_axes(x, shape = c(2, 3), broadcast_axes = 2L)
 #' @export
-prim_broadcast_in_dim <- new_primitive(
-  "broadcast_in_dim",
-  function(operand, shape, broadcast_dimensions) {
-    infer_fn <- function(operand, shape, broadcast_dimensions) {
+prim_broadcast_in_axes <- new_primitive(
+  "broadcast_in_axes",
+  function(x, shape, broadcast_axes) {
+    infer_fn <- function(x, shape, broadcast_axes) {
       bd_attr <- r_to_constant(
-        as.integer(broadcast_dimensions - 1L),
+        as.integer(broadcast_axes - 1L),
         dtype = "i64",
-        shape = length(broadcast_dimensions)
+        shape = length(broadcast_axes)
       )
       out <- stablehlo::infer_types_broadcast_in_dim(
-        at2vt(operand),
+        at2vt(x),
         broadcast_dimensions = bd_attr,
         shape = shape
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       params = list(
         shape = shape,
-        broadcast_dimensions = broadcast_dimensions
+        broadcast_axes = broadcast_axes
       ),
       infer_fn = infer_fn
     )[[1L]]
@@ -261,21 +265,21 @@ prim_broadcast_in_dim <- new_primitive(
 #' @title Primitive Dot General
 #' @description
 #' General dot product of two arrays, supporting contraction over arbitrary
-#' dimensions and batching.
+#' axes and batching.
 #' @template params_lhs_rhs
-#' @param contracting_dims (`list(integer(), integer())`)\cr
-#'   A list of two integer vectors specifying which dimensions of `lhs` and
-#'   `rhs` to contract over. The contracted dimensions must have matching sizes.
-#' @param batching_dims (`list(integer(), integer())`)\cr
-#'   A list of two integer vectors specifying which dimensions of `lhs` and
-#'   `rhs` are batch dimensions. These must have matching sizes.
+#' @param contracting_axes (`list(integer(), integer())`)\cr
+#'   A list of two integer vectors specifying which axes of `lhs` and
+#'   `rhs` to contract over. The contracted axes must have matching sizes.
+#' @param batching_axes (`list(integer(), integer())`)\cr
+#'   A list of two integer vectors specifying which axes of `lhs` and
+#'   `rhs` are batch axes. These must have matching sizes.
 #' @param precision (`character(1)`)\cr
 #'   Controls the trade-off between speed and numerical accuracy of the
 #'   operation. One of `"highest"` (default), `"high"` or `"default"`.
 #'   Only the StableHLO backend honors this; it is ignored by the quickr backend.
 #' @return [`arrayish`]\cr
-#'   The output shape is the batch dimensions followed by the remaining
-#'   (non-contracted, non-batched) dimensions of `lhs`, then `rhs`.
+#'   The output shape is the batch axes followed by the remaining
+#'   (non-contracted, non-batched) axes of `lhs`, then `rhs`.
 #' @templateVar primitive_id dot_general
 #' @template section_rules
 #' @section StableHLO:
@@ -285,28 +289,29 @@ prim_broadcast_in_dim <- new_primitive(
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
 #' prim_dot_general(x, y,
-#'   contracting_dims = list(2L, 1L),
-#'   batching_dims = list(integer(0), integer(0))
+#'   contracting_axes = list(2L, 1L),
+#'   batching_axes = list(integer(0), integer(0))
 #' )
 #' @export
 prim_dot_general <- new_primitive(
   "dot_general",
-  function(lhs, rhs, contracting_dims, batching_dims, precision = "highest") {
+  function(lhs, rhs, contracting_axes, batching_axes, precision = "highest") {
     precision <- match.arg(precision, c("default", "high", "highest"))
-    infer_fn <- function(lhs, rhs, contracting_dims, batching_dims, precision) {
+    infer_fn <- function(lhs, rhs, contracting_axes, batching_axes, precision) {
       ddn <- stablehlo::DotDimensionNumbers(
-        contracting_dims = lapply(contracting_dims, \(x) x - 1L),
-        batching_dims = lapply(batching_dims, \(x) x - 1L)
+        contracting_dims = lapply(contracting_axes, \(x) x - 1L),
+        batching_dims = lapply(batching_axes, \(x) x - 1L)
       )
       out <- stablehlo::infer_types_dot_general(at2vt(lhs), at2vt(rhs), dot_dimension_numbers = ddn)[[1L]]
       list(vt2at(out))
     }
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(
       self,
-      list(lhs = lhs, rhs = rhs),
+      operands,
       list(
-        contracting_dims = contracting_dims,
-        batching_dims = batching_dims,
+        contracting_axes = contracting_axes,
+        batching_axes = batching_axes,
         precision = precision
       ),
       infer_fn = infer_fn
@@ -317,14 +322,14 @@ prim_dot_general <- new_primitive(
 
 #' @title Primitive Transpose
 #' @description
-#' Permutes the dimensions of an array.
-#' @template param_prim_operand_any
+#' Permutes the axes of an array.
+#' @template param_prim_x_any
 #' @param permutation (`integer()`)\cr
-#'   Specifies the new ordering of dimensions. Must be a permutation of
-#'   `seq_len(ndims)` where `ndims` is the number of dimensions of `operand`.
+#'   Specifies the new ordering of axes. Must be a permutation of
+#'   `seq_len(naxes(x))`, the axis indices of `x`.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as the input and shape `nv_shape(operand)[permutation]`.
-#'   It is ambiguous if the input is ambiguous.
+#'   Has the same data type as the input and shape `shape(x)[permutation]`.
 #' @templateVar primitive_id transpose
 #' @template section_rules
 #' @section StableHLO:
@@ -336,21 +341,21 @@ prim_dot_general <- new_primitive(
 #' @export
 prim_transpose <- new_primitive(
   "transpose",
-  function(operand, permutation) {
-    infer_fn <- function(operand, permutation) {
+  function(x, permutation) {
+    permutation <- resolve_axes(permutation, naxes(x), unique = TRUE)
+    infer_fn <- function(x, permutation) {
       perm_attr <- r_to_constant(
         as.integer(permutation - 1L),
         dtype = "i64",
         shape = length(permutation)
       )
-      out <- stablehlo::infer_types_transpose(at2vt(operand), permutation = perm_attr)[[1L]]
+      out <- stablehlo::infer_types_transpose(at2vt(x), permutation = perm_attr)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       list(permutation = permutation),
       infer_fn = infer_fn
     )[[1L]]
@@ -362,12 +367,13 @@ prim_transpose <- new_primitive(
 #' @description
 #' Reshapes an array to a new shape without changing the underlying data.
 #' Note that row-major order is used, which differs from R's column-major order.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param shape (`integer()`)\cr
-#'   Target shape. Must have the same number of elements as `operand`.
+#'   Target shape. Must have the same number of elements as `x`.
+#'   At most one entry may be `-1`, in which case its extent is inferred from
+#'   the remaining entries and the number of elements of `x`.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and the given `shape`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id reshape
 #' @template section_rules
 #' @section StableHLO:
@@ -379,16 +385,16 @@ prim_transpose <- new_primitive(
 #' @export
 prim_reshape <- new_primitive(
   "reshape",
-  function(operand, shape) {
-    infer_fn <- function(operand, shape) {
-      out <- stablehlo::infer_types_reshape(at2vt(operand), shape = shape)[[1L]]
+  function(x, shape) {
+    shape <- resolve_reshape_shape(shape, prod(shape(x)), arg = "shape")
+    infer_fn <- function(x, shape) {
+      out <- stablehlo::infer_types_reshape(at2vt(x), shape = shape)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       params = list(shape = shape),
       infer_fn = infer_fn
     )[[1L]]
@@ -398,17 +404,17 @@ prim_reshape <- new_primitive(
 
 #' @title Primitive Concatenate
 #' @description
-#' Concatenates arrays along a dimension.
+#' Concatenates arrays along an axis.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to concatenate. Must all have the same data type, ndims,
-#'   and shape except along `dimension`.
-#' @param dimension (`integer(1)`)\cr
-#'   Dimension along which to concatenate (1-indexed).
+#'   Arrays to concatenate. Must all have the same data type, naxes,
+#'   and shape except along `axis`.
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which to concatenate.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the inputs.
-#'   The output shape matches the inputs in all dimensions except `dimension`,
-#'   which is the sum of the input sizes along that dimension.
-#'   It is ambiguous if all inputs are ambiguous.
+#'   The output shape matches the inputs in all axes except `axis`,
+#'   which is the sum of the input sizes along that axis.
 #' @templateVar primitive_id concatenate
 #' @template section_rules
 #' @section StableHLO:
@@ -417,35 +423,37 @@ prim_reshape <- new_primitive(
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
-#' prim_concatenate(x, y, dimension = 1L)
+#' prim_concatenate(x, y, axis = 1L)
 #' @export
 prim_concatenate <- new_primitive(
   "concatenate",
-  function(..., dimension) {
+  function(..., axis) {
     dots <- list(...)
-    infer_fn <- function(..., dimension) {
-      operands <- list(...)
-      all_ambiguous <- all(vapply(operands, \(x) x$ambiguous, logical(1L)))
-      vts <- lapply(operands, at2vt)
-      # Convert dimension to Constant as required by stablehlo
-      dim_const <- stablehlo::r_to_constant(
-        as.integer(dimension - 1L),
+    if (!length(dots)) {
+      cli_abort("{.fn prim_concatenate} needs at least one array to concatenate.")
+    }
+    axis <- resolve_axis(axis, naxes(dots[[1L]]))
+    infer_fn <- function(..., axis) {
+      xs <- list(...)
+      vts <- lapply(xs, at2vt)
+      # Convert axis to Constant as required by stablehlo
+      axis_const <- stablehlo::r_to_constant(
+        as.integer(axis - 1L),
         dtype = "i64",
         shape = integer(0)
       )
-      out <- rlang::exec(stablehlo::infer_types_concatenate, !!!vts, dimension = dim_const)[[1L]]
+      out <- rlang::exec(stablehlo::infer_types_concatenate, !!!vts, dimension = axis_const)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- all_ambiguous
       list(out)
     }
     graph_desc_add(
       self,
-      args = dots,
-      params = list(dimension = dimension),
+      args = apply_promotion(dots, promotion_rdata_common()),
+      params = list(axis = axis),
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = "dimension"
+  static = "axis"
 )
 
 #' @title Primitive Static Slice
@@ -455,20 +463,19 @@ prim_concatenate <- new_primitive(
 #'
 #' Use [prim_dynamic_slice()] instead when the start position must be
 #' computed at runtime (e.g. depends on array values).
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param start_indices (`integer()`)\cr
-#'   Start indices (inclusive), one per dimension. Must satisfy
-#'   `1 <= start_indices <= limit_indices` per dimension.
+#'   Start indices (inclusive), one per axis. Must satisfy
+#'   `1 <= start_indices <= limit_indices` per axis.
 #' @param limit_indices (`integer()`)\cr
-#'   End indices (inclusive), one per dimension. Must satisfy
-#'   `limit_indices <= nv_shape(operand)` per dimension.
+#'   End indices (inclusive), one per axis. Must satisfy
+#'   `limit_indices <= shape(x)` per axis.
 #' @param strides (`integer()`)\cr
-#'   Step sizes, one per dimension. Must be `>= 1`. A stride of `1`
+#'   Step sizes, one per axis. Must be `>= 1`. A stride of `1`
 #'   selects every element; a stride of `2` selects every other element, etc.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape
 #'   `ceiling((limit_indices - start_indices + 1) / strides)`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id static_slice
 #' @template section_rules
 #' @section StableHLO:
@@ -493,20 +500,19 @@ prim_concatenate <- new_primitive(
 #' @export
 prim_static_slice <- new_primitive(
   "static_slice",
-  function(operand, start_indices, limit_indices, strides) {
-    infer_fn <- function(operand, start_indices, limit_indices, strides) {
+  function(x, start_indices, limit_indices, strides) {
+    infer_fn <- function(x, start_indices, limit_indices, strides) {
       start_attr <- r_to_constant(start_indices - 1L, dtype = "i64", shape = length(start_indices))
       limit_attr <- r_to_constant(limit_indices, dtype = "i64", shape = length(limit_indices))
       strides_attr <- r_to_constant(strides, dtype = "i64", shape = length(strides))
-      out <- stablehlo::infer_types_slice(at2vt(operand), start_attr, limit_attr, strides_attr)[[1L]]
+      out <- stablehlo::infer_types_slice(at2vt(x), start_attr, limit_attr, strides_attr)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
     graph_desc_add(
       self,
       args = list(
-        operand = operand
+        x = x
       ),
       params = list(
         start_indices = start_indices,
@@ -527,22 +533,21 @@ prim_static_slice <- new_primitive(
 #'
 #' Use [prim_static_slice()] instead when all indices are known at compile
 #' time and you need stride support.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per dimension. Each must be a
-#'   scalar array. Pass one scalar per dimension of `operand`.
+#'   Scalar start indices, one per axis. Each must be a
+#'   scalar array. Pass one scalar per axis of `x`.
 #' @param slice_sizes (`integer()`)\cr
-#'   Size of the slice in each dimension. Must have length equal to
-#'   `ndims(operand)` and satisfy `1 <= slice_sizes <= nv_shape(operand)`
-#'   per dimension.
-#' @section Out Of Bounds Behavior:
+#'   Size of the slice in each axis. Must have length equal to
+#'   `naxes(x)` and satisfy `1 <= slice_sizes <= shape(x)`
+#'   per axis.
+#' @section Out of Bounds Behavior:
 #' Start indices are clamped before the slice is extracted:
-#' `adjusted_start_indices = clamp(1, start_indices, nv_shape(operand) - slice_sizes + 1)`.
+#' `adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)`.
 #' This means that out-of-bounds indices will not cause an error, but
 #' the effective start position may differ from the requested one.
 #' @return [`arrayish`]\cr
 #'   Has the same data type as the input and shape `slice_sizes`.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id dynamic_slice
 #' @template section_rules
 #' @section StableHLO:
@@ -562,47 +567,48 @@ prim_static_slice <- new_primitive(
 #' @export
 prim_dynamic_slice <- new_primitive(
   "dynamic_slice",
-  function(operand, ..., slice_sizes) {
+  function(x, ..., slice_sizes) {
     start_indices <- list(...)
-    infer_fn <- function(operand, ..., slice_sizes) {
+    infer_fn <- function(x, ..., slice_sizes) {
       start_indices_avals <- list(...)
       for (i in seq_along(start_indices_avals)) {
         aval <- start_indices_avals[[i]]
         if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape(aval)}")
+          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
         }
       }
-      out <- AbstractArray(dtype = operand$dtype, shape = slice_sizes, ambiguous = operand$ambiguous)
+      out <- AbstractArray(dtype = x$dtype, shape = slice_sizes)
       list(out)
     }
     graph_desc_add(
       self,
-      args = c(list(operand = operand), start_indices),
+      args = c(list(x = x), start_indices),
       params = list(slice_sizes = slice_sizes),
       infer_fn = infer_fn
     )[[1L]]
   },
+  # No promotion: `x` is the only array, and the start indices are integers
+  # whatever `x` is.
   static = "slice_sizes"
 )
 
 #' @title Primitive Dynamic Update Slice
 #' @description
-#' Returns a copy of `operand` with a slice replaced by `update` at a
+#' Returns a copy of `x` with a slice replaced by `update` at a
 #' runtime-determined position. This is the write counterpart of
 #' [prim_dynamic_slice()]: dynamic slice reads a block from an array,
 #' while dynamic update slice writes a block into an array.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param update ([`arrayish`])\cr
 #'   The values to write at the specified position. Must have the same
-#'   data type and number of dimensions as `operand`, with
-#'   `nv_shape(update) <= nv_shape(operand)` per dimension.
+#'   data type and number of axes as `x`, with
+#'   `shape(update) <= shape(x)` per axis.
 #' @param ... ([`arrayish`] of integer type)\cr
-#'   Scalar start indices, one per dimension of `operand`.
+#'   Scalar start indices, one per axis of `x`.
 #'   Each must be a scalar array.
-#' @inheritSection prim_dynamic_slice Out Of Bounds Behavior
+#' @inheritSection prim_dynamic_slice Out of Bounds Behavior
 #' @return [`arrayish`]\cr
-#'   Has the same data type and shape as `operand`.
-#'   It is ambiguous if the input is ambiguous.
+#'   Has the same data type and shape as `x`.
 #' @templateVar primitive_id dynamic_update_slice
 #' @template section_rules
 #' @section StableHLO:
@@ -624,22 +630,23 @@ prim_dynamic_slice <- new_primitive(
 #' @export
 prim_dynamic_update_slice <- new_primitive(
   "dynamic_update_slice",
-  function(operand, update, ...) {
+  function(x, update, ...) {
     start_indices <- list(...)
-    infer_fn <- function(operand, update, ...) {
+    infer_fn <- function(x, update, ...) {
       start_indices_avals <- list(...)
       for (i in seq_along(start_indices_avals)) {
         aval <- start_indices_avals[[i]]
         if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape(aval)}")
+          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
         }
       }
-      out <- AbstractArray(dtype = operand$dtype, shape = shape(operand), ambiguous = operand$ambiguous)
+      out <- AbstractArray(dtype = x$dtype, shape = shape(x))
       list(out)
     }
+    operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     graph_desc_add(
       self,
-      args = c(list(operand = operand, update = update), start_indices),
+      args = c(operands, start_indices),
       params = list(),
       infer_fn = infer_fn
     )[[1L]]
@@ -651,11 +658,12 @@ prim_dynamic_update_slice <- new_primitive(
 
 make_reduce_op <- function(infer_fn = infer_reduce) {
   force(infer_fn)
-  function(operand, dims, drop = TRUE) {
+  function(x, axes, drop = TRUE) {
+    axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     graph_desc_add(
       self,
-      list(operand = operand),
-      params = list(dims = dims, drop = drop),
+      list(x = x),
+      params = list(axes = axes, drop = drop),
       infer_fn = infer_fn
     )[[1L]]
   }
@@ -663,14 +671,18 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 
 #' @title Primitive Sum Reduction
 #' @description
-#' Sums array elements along the specified dimensions.
-#' @template param_prim_operand_any
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reduce over.
+#' Sums array elements along the specified axes.
+#'
+#' A boolean input is reduced with a logical OR, so the result is a boolean
+#' rather than a count. [nv_reduce_sum()] counts instead.
+#' @template param_prim_x_any
+#' @param axes (`integer()`)\cr
+#'   Axes to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   Whether to drop the reduced dimensions from the output shape.
-#'   If `TRUE`, the reduced dimensions are removed.
-#'   If `FALSE`, the reduced dimensions are set to 1.
+#'   Whether to drop the reduced axes from the output shape.
+#'   If `TRUE`, the reduced axes are removed.
+#'   If `FALSE`, the reduced axes are set to 1.
 #' @template return_prim_reduce
 #' @templateVar primitive_id reduce_sum
 #' @template section_rules
@@ -679,20 +691,24 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_sum(x, dims = 1L)
+#' prim_reduce_sum(x, axes = 1L)
 #' @export
 prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Product Reduction
 #' @description
-#' Multiplies array elements along the specified dimensions.
-#' @template param_prim_operand_any
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reduce over.
+#' Multiplies array elements along the specified axes.
+#'
+#' A boolean input is reduced with a logical AND, so the result is a boolean.
+#' [nv_reduce_prod()] multiplies zeroes and ones instead.
+#' @template param_prim_x_any
+#' @param axes (`integer()`)\cr
+#'   Axes to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   Whether to drop the reduced dimensions from the output shape.
-#'   If `TRUE`, the reduced dimensions are removed.
-#'   If `FALSE`, the reduced dimensions are set to 1.
+#'   Whether to drop the reduced axes from the output shape.
+#'   If `TRUE`, the reduced axes are removed.
+#'   If `FALSE`, the reduced axes are set to 1.
 #' @template return_prim_reduce
 #' @templateVar primitive_id reduce_prod
 #' @template section_rules
@@ -701,20 +717,21 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @seealso [nv_reduce_prod()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_prod(x, dims = 1L)
+#' prim_reduce_prod(x, axes = 1L)
 #' @export
 prim_reduce_prod <- new_primitive("reduce_prod", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Max Reduction
 #' @description
-#' Finds the maximum of array elements along the specified dimensions.
-#' @template param_prim_operand_any
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reduce over.
+#' Finds the maximum of array elements along the specified axes.
+#' @template param_prim_x_any
+#' @param axes (`integer()`)\cr
+#'   Axes to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   Whether to drop the reduced dimensions from the output shape.
-#'   If `TRUE`, the reduced dimensions are removed.
-#'   If `FALSE`, the reduced dimensions are set to 1.
+#'   Whether to drop the reduced axes from the output shape.
+#'   If `TRUE`, the reduced axes are removed.
+#'   If `FALSE`, the reduced axes are set to 1.
 #' @template return_prim_reduce
 #' @templateVar primitive_id reduce_max
 #' @template section_rules
@@ -723,20 +740,21 @@ prim_reduce_prod <- new_primitive("reduce_prod", make_reduce_op(), static = 2:3)
 #' @seealso [nv_reduce_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_max(x, dims = 1L)
+#' prim_reduce_max(x, axes = 1L)
 #' @export
 prim_reduce_max <- new_primitive("reduce_max", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Min Reduction
 #' @description
-#' Finds the minimum of array elements along the specified dimensions.
-#' @template param_prim_operand_any
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reduce over.
+#' Finds the minimum of array elements along the specified axes.
+#' @template param_prim_x_any
+#' @param axes (`integer()`)\cr
+#'   Axes to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   Whether to drop the reduced dimensions from the output shape.
-#'   If `TRUE`, the reduced dimensions are removed.
-#'   If `FALSE`, the reduced dimensions are set to 1.
+#'   Whether to drop the reduced axes from the output shape.
+#'   If `TRUE`, the reduced axes are removed.
+#'   If `FALSE`, the reduced axes are set to 1.
 #' @template return_prim_reduce
 #' @templateVar primitive_id reduce_min
 #' @template section_rules
@@ -745,20 +763,21 @@ prim_reduce_max <- new_primitive("reduce_max", make_reduce_op(), static = 2:3)
 #' @seealso [nv_reduce_min()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_min(x, dims = 1L)
+#' prim_reduce_min(x, axes = 1L)
 #' @export
 prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Any Reduction
 #' @description
-#' Performs logical OR along the specified dimensions.
-#' @template param_prim_operand_boolean
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reduce over.
+#' Performs logical OR along the specified axes.
+#' @template param_prim_x_boolean
+#' @param axes (`integer()`)\cr
+#'   Axes to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   Whether to drop the reduced dimensions from the output shape.
-#'   If `TRUE`, the reduced dimensions are removed.
-#'   If `FALSE`, the reduced dimensions are set to 1.
+#'   Whether to drop the reduced axes from the output shape.
+#'   If `TRUE`, the reduced axes are removed.
+#'   If `FALSE`, the reduced axes are set to 1.
 #' @template return_prim_reduce_boolean
 #' @templateVar primitive_id reduce_any
 #' @template section_rules
@@ -767,20 +786,21 @@ prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 #' @seealso [nv_reduce_any()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' prim_reduce_any(x, dims = 1L)
+#' prim_reduce_any(x, axes = 1L)
 #' @export
 prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boolean), static = 2:3)
 
 #' @title Primitive All Reduction
 #' @description
-#' Performs logical AND along the specified dimensions.
-#' @template param_prim_operand_boolean
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reduce over.
+#' Performs logical AND along the specified axes.
+#' @template param_prim_x_boolean
+#' @param axes (`integer()`)\cr
+#'   Axes to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   Whether to drop the reduced dimensions from the output shape.
-#'   If `TRUE`, the reduced dimensions are removed.
-#'   If `FALSE`, the reduced dimensions are set to 1.
+#'   Whether to drop the reduced axes from the output shape.
+#'   If `TRUE`, the reduced axes are removed.
+#'   If `FALSE`, the reduced axes are set to 1.
 #' @template return_prim_reduce_boolean
 #' @templateVar primitive_id reduce_all
 #' @template section_rules
@@ -789,63 +809,65 @@ prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boole
 #' @seealso [nv_reduce_all()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' prim_reduce_all(x, dims = 1L)
+#' prim_reduce_all(x, axes = 1L)
 #' @export
 prim_reduce_all <- new_primitive("reduce_all", make_reduce_op(infer_reduce_boolean), static = 2:3)
 
 # cumulative (scan) primitives -------------------------------------------------
 
-infer_cum <- function(operand, dim) {
-  rank <- length(shape(operand))
+infer_cum <- function(x, axis) {
+  rank <- length(shape(x))
   if (rank == 0L) {
-    cli_abort("cumulative ops require at least a 1-dimensional operand, but operand is a scalar")
+    cli_abort("{.arg x} must have at least one axis to accumulate along, but it is a scalar.")
   }
-  if (!checkmate::test_integerish(dim, lower = 1, upper = rank, len = 1L)) {
-    cli_abort("{.arg dim} must be a single integer in 1:{rank}, but is {.val {dim}}")
+  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
+    cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
   }
   list(AbstractArray(
-    dtype = dtype(operand),
-    shape = Shape(shape(operand)),
-    ambiguous = operand$ambiguous
+    dtype = dtype(x),
+    shape = Shape(shape(x))
   ))
 }
 
-cum_op <- function(operand, dim) {
-  graph_desc_add(self, list(operand = operand), params = list(dim = dim), infer_fn = infer_cum)[[1L]]
+cum_op <- function(x, axis) {
+  axis <- resolve_axis(axis, naxes(x))
+  graph_desc_add(self, list(x = x), params = list(axis = axis), infer_fn = infer_cum)[[1L]]
 }
 
-infer_cum_extreme <- function(operand, dim) {
-  rank <- length(shape(operand))
+infer_cum_extreme <- function(x, axis) {
+  rank <- length(shape(x))
   if (rank == 0L) {
-    cli_abort("cumulative ops require at least a 1-dimensional operand, but operand is a scalar")
+    cli_abort("{.arg x} must have at least one axis to accumulate along, but it is a scalar.")
   }
-  if (!checkmate::test_integerish(dim, lower = 1, upper = rank, len = 1L)) {
-    cli_abort("{.arg dim} must be a single integer in 1:{rank}, but is {.val {dim}}")
+  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
+    cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
   }
   list(
-    AbstractArray(
-      dtype = dtype(operand),
-      shape = Shape(shape(operand)),
-      ambiguous = operand$ambiguous
+    values = AbstractArray(
+      dtype = dtype(x),
+      shape = Shape(shape(x))
     ),
-    AbstractArray(
-      dtype = "i32",
-      shape = Shape(shape(operand)),
-      ambiguous = FALSE
+    indices = AbstractArray(
+      dtype = default_int(),
+      shape = Shape(shape(x))
     )
   )
 }
 
-cum_extreme_op <- function(operand, dim) {
-  graph_desc_add(self, list(operand = operand), params = list(dim = dim), infer_fn = infer_cum_extreme)
+cum_extreme_op <- function(x, axis) {
+  axis <- resolve_axis(axis, naxes(x))
+  graph_desc_add(self, list(x = x), params = list(axis = axis), infer_fn = infer_cum_extreme)
 }
 
 #' @title Primitive Cumulative Sum
 #' @description
-#' Cumulative sum of array elements along a single dimension.
-#' Output position `j` along `dim` equals the sum of input positions `1:j`.
-#' @template param_prim_operand_any
-#' @template param_prim_cum_dim
+#' Cumulative sum of array elements along a single axis.
+#' Output position `j` along `axis` equals the sum of input positions `1:j`.
+#'
+#' A boolean input is accumulated with a logical OR, so the result is a running
+#' OR rather than a running count. [nv_cumsum()] counts instead.
+#' @template param_prim_x_any
+#' @template param_prim_cum_axis
 #' @template return_prim_unary
 #' @templateVar primitive_id cumsum
 #' @template section_rules
@@ -854,16 +876,19 @@ cum_extreme_op <- function(operand, dim) {
 #' @seealso [nv_cumsum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_cumsum(x, dim = 1L)
+#' prim_cumsum(x, axis = 1L)
 #' @export
 prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 
 #' @title Primitive Cumulative Product
 #' @description
-#' Cumulative product of array elements along a single dimension.
-#' Output position `j` along `dim` equals the product of input positions `1:j`.
-#' @template param_prim_operand_any
-#' @template param_prim_cum_dim
+#' Cumulative product of array elements along a single axis.
+#' Output position `j` along `axis` equals the product of input positions `1:j`.
+#'
+#' A boolean input is accumulated with a logical AND, so the result is a
+#' running AND. [nv_cumprod()] multiplies zeroes and ones instead.
+#' @template param_prim_x_any
+#' @template param_prim_cum_axis
 #' @template return_prim_unary
 #' @templateVar primitive_id cumprod
 #' @template section_rules
@@ -872,19 +897,19 @@ prim_cumsum <- new_primitive("cumsum", cum_op, static = 2L)
 #' @seealso [nv_cumprod()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_cumprod(x, dim = 1L)
+#' prim_cumprod(x, axis = 1L)
 #' @export
 prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L)
 
 #' @title Primitive Cumulative Maximum
 #' @description
-#' Running maximum of array elements along a single dimension along with
+#' Running maximum of array elements along a single axis along with
 #' the index of the last occurrence of the running maximum.
 #' At output position `j`, the values output is `max(input[1:j])` and the
 #' indices output is the largest `i` in `1:j` with
 #' `input[i] == values[j]` (last-occurrence tiebreak).
-#' @template param_prim_operand_any
-#' @template param_prim_cum_dim
+#' @template param_prim_x_any
+#' @template param_prim_cum_axis
 #' @templateVar cum_extreme_name maximum
 #' @templateVar cum_extreme_arg argmax
 #' @template return_prim_cum_extreme
@@ -895,19 +920,19 @@ prim_cumprod <- new_primitive("cumprod", cum_op, static = 2L)
 #' @seealso [nv_cummax()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
-#' prim_cummax(x, dim = 1L)
+#' prim_cummax(x, axis = 1L)
 #' @export
 prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L)
 
 #' @title Primitive Cumulative Minimum
 #' @description
-#' Running minimum of array elements along a single dimension along with
+#' Running minimum of array elements along a single axis along with
 #' the index of the last occurrence of the running minimum.
 #' At output position `j`, the values output is `min(input[1:j])` and the
 #' indices output is the largest `i` in `1:j` with
 #' `input[i] == values[j]` (last-occurrence tiebreak).
-#' @template param_prim_operand_any
-#' @template param_prim_cum_dim
+#' @template param_prim_x_any
+#' @template param_prim_cum_axis
 #' @templateVar cum_extreme_name minimum
 #' @templateVar cum_extreme_arg argmin
 #' @template return_prim_cum_extreme
@@ -918,13 +943,13 @@ prim_cummax <- new_primitive("cummax", cum_extreme_op, static = 2L)
 #' @seealso [nv_cummin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
-#' prim_cummin(x, dim = 1L)
+#' prim_cummin(x, axis = 1L)
 #' @export
 prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 
 #' @title Primitive Generic Reduce
 #' @description
-#' Reduces an array along the specified dimensions using a user-supplied
+#' Reduces an array along the specified axes using a user-supplied
 #' associative reducer.
 #' @section Associativity Requirement:
 #' The order in which `reductor` is applied across the reduction window is
@@ -935,20 +960,21 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #' the reduction can differ between backends (GPU, CPU), even if the underlying mathematical
 #' function (like `+`) is associative.
 #'
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param init ([`arrayish`])\cr
 #'   Scalar (0-dimensional) initial value. Must have the same data type as
-#'   `operand` and be the neutral element w.r.t. `reductor`.
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reduce over.
+#'   `x` and be the neutral element w.r.t. `reductor`.
+#' @param axes (`integer()`)\cr
+#'   Axes to reduce over.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   If `TRUE` (default) the reduced dimensions are removed; if `FALSE`
+#'   If `TRUE` (default) the reduced axes are removed; if `FALSE`
 #'   they are kept with size 1.
 #' @param reductor (`function(lhs, rhs)`)\cr
-#'   Binary reducer producing a scalar of the same dtype as `operand`.
+#'   Binary reducer producing a scalar of the same dtype as `x`.
 #'   Must be associative (see "Associativity Requirement").
 #' @return [`arrayish`]\cr
-#'   Same data type as `operand`. Shape is `operand` with `dims` removed
+#'   Same data type as `x`. Shape is `x` with `axes` removed
 #'   (or set to 1 if `drop = FALSE`).
 #' @templateVar primitive_id reduce
 #' @template section_rules
@@ -957,44 +983,47 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #' @seealso [prim_reduce_sum()], [prim_reduce_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4))
-#' prim_reduce(x, init = nv_scalar(0), dims = 1L, reductor = prim_add)
-#' prim_reduce(x, init = nv_scalar(1), dims = 1L, reductor = prim_mul)
+#' prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
+#' prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)
 #' @export
 prim_reduce <- new_primitive(
   "reduce",
-  function(operand, init, dims, drop = TRUE, reductor) {
-    force(operand)
+  function(x, init, axes, drop = TRUE, reductor) {
+    force(x)
     force(init)
     force(reductor)
+    # Settled before the reductor is traced below, which reads `dtype(init)`.
+    operands <- apply_promotion(list(x = x, init = init), promotion_rdata_common())
+    x <- operands$x
+    init <- operands$init
 
-    if (!checkmate::test_integerish(dims, lower = 1)) {
-      cli_abort("{.arg dims} must be a positive integer vector")
-    }
+    axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     if (!checkmate::test_flag(drop)) {
-      cli_abort("{.arg drop} must be a flag")
+      cli_abort("{.arg drop} must be a flag.")
     }
     if (!is.function(reductor)) {
-      cli_abort("{.arg reductor} must be a function")
+      cli_abort("{.arg reductor} must be a function.")
     }
 
-    op_dtype <- dtype(operand)
-    init_dtype <- dtype(init)
-    if (init_dtype != op_dtype) {
+    # `x` and `init` agree: the rule above brought them together or refused.
+    op_dtype <- dtype(x)
+    if (naxes(init) != 0L) {
       cli_abort(c(
-        "{.arg init} must have the same dtype as {.arg operand}.",
-        x = "Got operand dtype {.field {repr(op_dtype)}} and init dtype {.field {repr(init_dtype)}}."
+        "{.arg init} must be a scalar.",
+        x = "Got shape {shape_repr(shape(init))}."
       ))
-    }
-    if (ndims(init) != 0L) {
-      cli_abort("{.arg init} must be a scalar (0-dimensional)")
     }
 
     current_desc <- .current_descriptor(silent = TRUE)
     desc_red <- local_descriptor()
 
+    # Unnamed, so the two scalars are matched positionally and `reductor` may
+    # name its arguments whatever it likes -- `function(a, b)` as readily as
+    # `function(lhs, rhs)`. `prim_scatter()` traces `update_computation` the
+    # same way.
     dummy_args <- list(
-      lhs = nv_aval(op_dtype, integer()),
-      rhs = nv_aval(op_dtype, integer())
+      nv_aval(op_dtype, integer()),
+      nv_aval(op_dtype, integer())
     )
     reductor_graph <- trace_fn(reductor, dummy_args, desc = desc_red, mode = "subgraph")
 
@@ -1007,8 +1036,8 @@ prim_reduce <- new_primitive(
     out_aval <- reductor_graph$outputs[[1L]]$aval
     if (out_aval$dtype != op_dtype) {
       cli_abort(c(
-        "{.arg reductor} must return a value with the same dtype as {.arg operand}.",
-        x = "Got reductor output dtype {.field {repr(out_aval$dtype)}}."
+        "{.arg reductor} must return a value with the same data type as {.arg x}.",
+        x = "{.arg x} is {.val {as.character(op_dtype)}}, but {.arg reductor} returns {.val {as.character(out_aval$dtype)}}." # nolint
       ))
     }
 
@@ -1016,28 +1045,26 @@ prim_reduce <- new_primitive(
       get_box_or_register_const(current_desc, const)
     }
 
-    infer_fn <- function(operand, init, dims, drop, reductor_graph) {
+    infer_fn <- function(x, init, axes, drop, reductor_graph) {
       stub_body <- stablehlo(reductor_graph)[[1L]]
-      dims0 <- as.integer(dims) - 1L
+      axes0 <- as.integer(axes) - 1L
       vts <- stablehlo::infer_types_reduce(
-        inputs = list(at2vt(operand)),
+        inputs = list(at2vt(x)),
         init_values = list(at2vt(init)),
         body = stub_body,
         dimensions = stablehlo::r_to_constant(
-          dims0,
+          axes0,
           dtype = "i64",
-          shape = length(dims0)
+          shape = length(axes0)
         )
       )
       out <- vt2at(vts[[1L]])
-      out$ambiguous <- operand$ambiguous
       if (!drop) {
-        new_shape <- shape(operand)
-        new_shape[dims] <- 1L
+        new_shape <- shape(x)
+        new_shape[axes] <- 1L
         out <- AbstractArray(
           dtype = out$dtype,
-          shape = Shape(new_shape),
-          ambiguous = out$ambiguous
+          shape = Shape(new_shape)
         )
       }
       list(out)
@@ -1045,61 +1072,62 @@ prim_reduce <- new_primitive(
 
     graph_desc_add(
       self,
-      args = list(operand = operand, init = init),
-      params = list(dims = dims, drop = drop, reductor_graph = reductor_graph),
+      args = operands,
+      params = list(axes = axes, drop = drop, reductor_graph = reductor_graph),
       infer_fn = infer_fn,
       desc = current_desc
     )[[1L]]
   },
   subgraphs = "reductor_graph",
-  static = c("dims", "drop", "reductor")
+  static = c("axes", "drop", "reductor")
 )
 
-# Shared shape inference for prim_argmax / prim_argmin: operand -> i32
-# with `dim` dropped (or kept as size 1).
-infer_fn_arg_extreme <- function(operand, dim, drop) {
-  shp <- shape(operand)
-  if (dim > length(shp)) {
+# Shared shape inference for prim_argmax / prim_argmin: x -> the default
+# integer data type with `axis` dropped (or kept as size 1).
+infer_fn_arg_extreme <- function(x, axis, drop) {
+  shp <- shape(x)
+  if (axis > length(shp)) {
     cli_abort(c(
-      "{.arg dim} is out of bounds.",
-      x = "Operand has {length(shp)} dims, got {.arg dim} = {dim}."
+      "{.arg axis} is out of bounds.",
+      x = "{.arg x} has {length(shp)} axi{?s/es}, but {.arg axis} is {axis}."
     ))
   }
   # The reduction lowering uses `init_v = +/-Inf` and `init_i = 0`. Reducing
   # along a size-0 axis would silently emit those sentinels (i.e. index 1)
-  # rather than failing. Argmax/argmin of an empty axis is undefined, so
+  # rather than failing. The index of an extremum of nothing is undefined, so
   # reject it here at trace time.
-  if (shp[dim] == 0L) {
+  if (shp[axis] == 0L) {
     cli_abort(c(
-      "argmax/argmin is undefined for an empty axis.",
-      x = "Operand has shape {xlamisc::shapevec_repr(shp)}; {.arg dim} = {dim} has size 0."
+      "{.arg x} must have elements along the axis this reads.",
+      x = "{.arg x} has shape {shape_repr(shp)}; axis {axis} has size 0."
     ))
   }
   if (drop) {
-    new_shape <- shp[-dim]
+    new_shape <- shp[-axis]
   } else {
     new_shape <- shp
-    new_shape[dim] <- 1L
+    new_shape[axis] <- 1L
   }
   list(AbstractArray(
-    dtype = "i32",
-    shape = Shape(new_shape),
-    ambiguous = FALSE
+    dtype = default_int(),
+    shape = Shape(new_shape)
   ))
 }
 
 #' @title Primitive Argmax
 #' @description
-#' Returns the index of the maximum value along a single dimension. Ties
+#' Returns the index of the maximum value along a single axis. Ties
 #' are broken by returning the smallest index.
-#' @template param_prim_operand_any
-#' @param dim (`integer(1)`)\cr
-#'   Dimension along which to find the index of the maximum.
+#' @template param_prim_x_any
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which to find the index of the maximum.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it is
+#'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it is
 #'   kept with size 1.
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `operand` with `dim` removed (or set to 1 if
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
+#'   Same shape as `x` with `axis` removed (or set to 1 if
 #'   `drop = FALSE`).
 #' @templateVar primitive_id argmax
 #' @template section_rules
@@ -1108,17 +1136,17 @@ infer_fn_arg_extreme <- function(operand, dim, drop) {
 #' with a (value > value | (value == value & idx < idx)) selector.
 #' @seealso [prim_argmin()], [nv_argmax()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' prim_argmax(nv_array(c(3, 1, 4, 1, 5)), dim = 1L)
+#' prim_argmax(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_argmax <- new_primitive(
   "argmax",
-  function(operand, dim, drop = TRUE) {
-    assert_integerish(dim, lower = 1, len = 1L)
+  function(x, axis, drop = TRUE) {
+    axis <- resolve_axis(axis, naxes(x))
     assert_flag(drop)
     graph_desc_add(
       self,
-      args = list(operand = operand),
-      params = list(dim = dim, drop = drop),
+      args = list(x = x),
+      params = list(axis = axis, drop = drop),
       infer_fn = infer_fn_arg_extreme
     )[[1L]]
   },
@@ -1127,12 +1155,13 @@ prim_argmax <- new_primitive(
 
 #' @title Primitive Argmin
 #' @description
-#' Returns the index of the minimum value along a single dimension. Ties
+#' Returns the index of the minimum value along a single axis. Ties
 #' are broken by returning the smallest index.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @inheritParams prim_argmax
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `operand` with `dim` removed (or set to 1 if
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
+#'   Same shape as `x` with `axis` removed (or set to 1 if
 #'   `drop = FALSE`).
 #' @templateVar primitive_id argmin
 #' @template section_rules
@@ -1141,17 +1170,17 @@ prim_argmax <- new_primitive(
 #' with a (value < value | (value == value & idx < idx)) selector.
 #' @seealso [prim_argmax()], [nv_argmin()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' prim_argmin(nv_array(c(3, 1, 4, 1, 5)), dim = 1L)
+#' prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
 prim_argmin <- new_primitive(
   "argmin",
-  function(operand, dim, drop = TRUE) {
-    assert_integerish(dim, lower = 1, len = 1L)
+  function(x, axis, drop = TRUE) {
+    axis <- resolve_axis(axis, naxes(x))
     assert_flag(drop)
     graph_desc_add(
       self,
-      args = list(operand = operand),
-      params = list(dim = dim, drop = drop),
+      args = list(x = x),
+      params = list(axis = axis, drop = drop),
       infer_fn = infer_fn_arg_extreme
     )[[1L]]
   },
@@ -1171,7 +1200,6 @@ infer_compare <- function(lhs, rhs, comparison_direction) {
   }
   out <- stablehlo::infer_types_compare(at2vt(lhs), at2vt(rhs), comparison_direction, compare_type)[[1L]]
   out <- vt2at(out)
-  out$ambiguous <- lhs$ambiguous && rhs$ambiguous
   list(out)
 }
 
@@ -1179,7 +1207,8 @@ make_compare_op <- function(direction) {
   force(direction)
   infer_fn <- function(lhs, rhs) infer_compare(lhs, rhs, direction)
   function(lhs, rhs) {
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 }
 
@@ -1323,9 +1352,9 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 
 #' @title Primitive Remainder
 #' @description
-#' Element-wise remainder.
-#' Result has sign of the divident, which differs from base R's `%%`, which is available
-#' via [`nv_mod()`] and has sign of divisor.
+#' Element-wise remainder. The result has the sign of the dividend, which is
+#' what StableHLO's `remainder` does. Base R's `%%` takes the sign of the
+#' divisor instead and is available via [`nv_mod()`].
 #' @template params_prim_lhs_rhs_numeric
 #' @template return_prim_binary
 #' @templateVar primitive_id remainder
@@ -1337,18 +1366,21 @@ prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minim
 #' prim_remainder(1, -3)
 #' 1 %% -3
 #' @export
-prim_remainder <- new_primitive("remainder", make_binary_op(stablehlo::infer_types_remainder))
+prim_remainder <- new_primitive(
+  "remainder",
+  make_binary_op(stablehlo::infer_types_remainder)
+)
 
 #' @title Primitive And
 #' @description
-#' Element-wise logical AND.
+#' Element-wise bitwise AND, which for a boolean array is the logical AND.
 #' @template params_prim_lhs_rhs_intlike
 #' @template return_prim_binary
 #' @templateVar primitive_id and
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_and()].
-#' @seealso [nv_and()], `&`
+#' @seealso [nv_and()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
@@ -1358,8 +1390,8 @@ prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 
 #' @title Primitive Not
 #' @description
-#' Element-wise logical NOT.
-#' @param operand ([`arrayish`])\cr
+#' Element-wise bitwise NOT, which for a boolean array is the logical NOT.
+#' @param x ([`arrayish`])\cr
 #'   Arrayish value of data type boolean, integer, or unsigned integer.
 #' @template return_prim_unary
 #' @templateVar primitive_id not
@@ -1375,14 +1407,14 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 
 #' @title Primitive Or
 #' @description
-#' Element-wise logical OR.
+#' Element-wise bitwise OR, which for a boolean array is the logical OR.
 #' @template params_prim_lhs_rhs_intlike
 #' @template return_prim_binary
 #' @templateVar primitive_id or
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_or()].
-#' @seealso [nv_or()], `|`
+#' @seealso [nv_or()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(TRUE, FALSE, TRUE))
 #' y <- nv_array(c(TRUE, TRUE, FALSE))
@@ -1392,7 +1424,7 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 
 #' @title Primitive Xor
 #' @description
-#' Element-wise logical XOR.
+#' Element-wise bitwise XOR, which for a boolean array is the logical XOR.
 #' @template params_prim_lhs_rhs_intlike
 #' @template return_prim_binary
 #' @templateVar primitive_id xor
@@ -1408,10 +1440,8 @@ prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 prim_xor <- new_primitive("xor", make_binary_op(stablehlo::infer_types_xor))
 
 infer_shift <- function(lhs, rhs, shift_fn) {
-  both_ambiguous <- lhs$ambiguous && rhs$ambiguous
   out <- shift_fn(at2vt(lhs), at2vt(rhs))[[1L]]
   out <- vt2at(out)
-  out$ambiguous <- both_ambiguous
   list(out)
 }
 
@@ -1434,7 +1464,8 @@ prim_shift_left <- new_primitive(
   "shift_left",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_left)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
 
@@ -1457,7 +1488,8 @@ prim_shift_right_logical <- new_primitive(
   "shift_right_logical",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_logical)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
 
@@ -1480,7 +1512,8 @@ prim_shift_right_arithmetic <- new_primitive(
   "shift_right_arithmetic",
   function(lhs, rhs) {
     infer_fn <- function(lhs, rhs) infer_shift(lhs, rhs, stablehlo::infer_types_shift_right_arithmetic)
-    graph_desc_add(self, list(lhs = lhs, rhs = rhs), infer_fn = infer_fn)[[1L]]
+    operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
 
@@ -1501,15 +1534,15 @@ prim_shift_right_arithmetic <- new_primitive(
 #' @export
 prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2))
 
-#' @title Primitive Bitcast Convert
+#' @title Primitive Bitcast Conversion
 #' @description
 #' Reinterprets the bits of an array as a different data type without
 #' modifying the underlying data.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Target data type. If it has the same bit width as the input, the output
-#'   shape is unchanged. If narrower, an extra trailing dimension is added.
-#'   If wider, the last dimension is consumed.
+#'   shape is unchanged. If narrower, an extra trailing axis is added.
+#'   If wider, the last axis is consumed.
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype`.
 #' @templateVar primitive_id bitcast_convert
@@ -1525,11 +1558,11 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #' @export
 prim_bitcast_convert <- new_primitive(
   "bitcast_convert",
-  function(operand, dtype) {
-    infer_fn <- function(operand, dtype) {
-      lapply(stablehlo::infer_types_bitcast_convert(at2vt(operand), dtype), vt2at)
+  function(x, dtype) {
+    infer_fn <- function(x, dtype) {
+      lapply(stablehlo::infer_types_bitcast_convert(at2vt(x), dtype), vt2at)
     }
-    graph_desc_add(self, list(operand = operand), params = list(dtype = dtype), infer_fn = infer_fn)[[1L]]
+    graph_desc_add(self, list(x = x), params = list(dtype = dtype), infer_fn = infer_fn)[[1L]]
   },
   static = 2L
 )
@@ -1539,7 +1572,7 @@ prim_bitcast_convert <- new_primitive(
 #' @title Primitive Absolute Value
 #' @description
 #' Element-wise absolute value.
-#' @template param_prim_operand_signed_numeric
+#' @template param_prim_x_signed_numeric
 #' @template return_prim_unary
 #' @templateVar primitive_id abs
 #' @template section_rules
@@ -1555,7 +1588,7 @@ prim_abs <- new_primitive("abs", make_unary_op(stablehlo::infer_types_abs))
 #' @title Primitive Square Root
 #' @description
 #' Element-wise square root.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id sqrt
 #' @template section_rules
@@ -1571,7 +1604,7 @@ prim_sqrt <- new_primitive("sqrt", make_unary_op(stablehlo::infer_types_sqrt))
 #' @title Primitive Reciprocal Square Root
 #' @description
 #' Element-wise reciprocal square root.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id rsqrt
 #' @template section_rules
@@ -1587,7 +1620,7 @@ prim_rsqrt <- new_primitive("rsqrt", make_unary_op(stablehlo::infer_types_rsqrt)
 #' @title Primitive Logarithm
 #' @description
 #' Element-wise natural logarithm.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id log
 #' @template section_rules
@@ -1603,7 +1636,7 @@ prim_log <- new_primitive("log", make_unary_op(stablehlo::infer_types_log))
 #' @title Primitive Hyperbolic Tangent
 #' @description
 #' Element-wise hyperbolic tangent.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id tanh
 #' @template section_rules
@@ -1619,7 +1652,7 @@ prim_tanh <- new_primitive("tanh", make_unary_op(stablehlo::infer_types_tanh))
 #' @title Primitive Tangent
 #' @description
 #' Element-wise tangent.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id tan
 #' @template section_rules
@@ -1635,7 +1668,7 @@ prim_tan <- new_primitive("tan", make_unary_op(stablehlo::infer_types_tan))
 #' @title Primitive Sine
 #' @description
 #' Element-wise sine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id sine
 #' @template section_rules
@@ -1651,7 +1684,7 @@ prim_sin <- new_primitive("sine", make_unary_op(stablehlo::infer_types_sine))
 #' @title Primitive Cosine
 #' @description
 #' Element-wise cosine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id cosine
 #' @template section_rules
@@ -1667,7 +1700,7 @@ prim_cos <- new_primitive("cosine", make_unary_op(stablehlo::infer_types_cosine)
 #' @title Primitive Floor
 #' @description
 #' Element-wise floor.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id floor
 #' @template section_rules
@@ -1683,7 +1716,7 @@ prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor)
 #' @title Primitive Ceiling
 #' @description
 #' Element-wise ceiling.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id ceil
 #' @template section_rules
@@ -1699,7 +1732,7 @@ prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
 #' @title Primitive Sign
 #' @description
 #' Element-wise sign.
-#' @template param_prim_operand_signed_numeric
+#' @template param_prim_x_signed_numeric
 #' @template return_prim_unary
 #' @templateVar primitive_id sign
 #' @template section_rules
@@ -1715,7 +1748,7 @@ prim_sign <- new_primitive("sign", make_unary_op(stablehlo::infer_types_sign))
 #' @title Primitive Exponential
 #' @description
 #' Element-wise exponential.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id exp
 #' @template section_rules
@@ -1731,7 +1764,7 @@ prim_exp <- new_primitive("exp", make_unary_op(stablehlo::infer_types_exponentia
 #' @title Primitive Exponential Minus One
 #' @description
 #' Element-wise exp(x) - 1, more accurate for small x.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id expm1
 #' @template section_rules
@@ -1747,7 +1780,7 @@ prim_expm1 <- new_primitive("expm1", make_unary_op(stablehlo::infer_types_expone
 #' @title Primitive Log Plus One
 #' @description
 #' Element-wise log(1 + x), more accurate for small x.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id log1p
 #' @template section_rules
@@ -1763,7 +1796,7 @@ prim_log1p <- new_primitive("log1p", make_unary_op(stablehlo::infer_types_log_pl
 #' @title Primitive Cube Root
 #' @description
 #' Element-wise cube root.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id cbrt
 #' @template section_rules
@@ -1779,7 +1812,7 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
 #' @title Primitive Logistic (Sigmoid)
 #' @description
 #' Element-wise logistic sigmoid: 1 / (1 + exp(-x)).
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id logistic
 #' @template section_rules
@@ -1795,7 +1828,7 @@ prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_
 #' @title Primitive Arc Cosine
 #' @description
 #' Element-wise inverse cosine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id acos
 #' @template section_rules
@@ -1811,7 +1844,7 @@ prim_acos <- new_primitive("acos", make_unary_op(stablehlo::infer_types_acos))
 #' @title Primitive Inverse Hyperbolic Cosine
 #' @description
 #' Element-wise inverse hyperbolic cosine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id acosh
 #' @template section_rules
@@ -1827,7 +1860,7 @@ prim_acosh <- new_primitive("acosh", make_unary_op(stablehlo::infer_types_acosh)
 #' @title Primitive Arc Sine
 #' @description
 #' Element-wise inverse sine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id asin
 #' @template section_rules
@@ -1843,7 +1876,7 @@ prim_asin <- new_primitive("asin", make_unary_op(stablehlo::infer_types_asin))
 #' @title Primitive Inverse Hyperbolic Sine
 #' @description
 #' Element-wise inverse hyperbolic sine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id asinh
 #' @template section_rules
@@ -1859,7 +1892,7 @@ prim_asinh <- new_primitive("asinh", make_unary_op(stablehlo::infer_types_asinh)
 #' @title Primitive Arc Tangent
 #' @description
 #' Element-wise inverse tangent.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id atan
 #' @template section_rules
@@ -1875,7 +1908,7 @@ prim_atan <- new_primitive("atan", make_unary_op(stablehlo::infer_types_atan))
 #' @title Primitive Inverse Hyperbolic Tangent
 #' @description
 #' Element-wise inverse hyperbolic tangent.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id atanh
 #' @template section_rules
@@ -1891,7 +1924,7 @@ prim_atanh <- new_primitive("atanh", make_unary_op(stablehlo::infer_types_atanh)
 #' @title Primitive Hyperbolic Cosine
 #' @description
 #' Element-wise hyperbolic cosine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id cosh
 #' @template section_rules
@@ -1907,7 +1940,7 @@ prim_cosh <- new_primitive("cosh", make_unary_op(stablehlo::infer_types_cosh))
 #' @title Primitive Hyperbolic Sine
 #' @description
 #' Element-wise hyperbolic sine.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id sinh
 #' @template section_rules
@@ -1923,7 +1956,7 @@ prim_sinh <- new_primitive("sinh", make_unary_op(stablehlo::infer_types_sinh))
 #' @title Primitive Digamma
 #' @description
 #' Element-wise digamma function (logarithmic derivative of the gamma function).
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id digamma
 #' @template section_rules
@@ -1939,7 +1972,7 @@ prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_di
 #' @title Primitive Log-Gamma
 #' @description
 #' Element-wise natural logarithm of the absolute value of the gamma function.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id lgamma
 #' @template section_rules
@@ -1975,20 +2008,19 @@ prim_polygamma <- new_primitive(
   "polygamma",
   function(n, x) {
     infer_fn <- function(n, x) {
-      both_ambiguous <- n$ambiguous && x$ambiguous
       out <- stablehlo::infer_types_polygamma(at2vt(n), at2vt(x))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- both_ambiguous
       list(out)
     }
-    graph_desc_add(self, list(n = n, x = x), infer_fn = infer_fn)[[1L]]
+    operands <- apply_promotion(list(n = n, x = x), promotion_rdata_common())
+    graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
 
 #' @title Primitive Error Function
 #' @description
 #' Element-wise error function `erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^2) dt`.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id erf
 #' @template section_rules
@@ -2004,7 +2036,7 @@ prim_erf <- new_primitive("erf", make_unary_op(stablehlo::infer_types_erf))
 #' @title Primitive Inverse Error Function
 #' @description
 #' Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id erf_inv
 #' @template section_rules
@@ -2020,7 +2052,7 @@ prim_erf_inv <- new_primitive("erf_inv", make_unary_op(stablehlo::infer_types_er
 #' @title Primitive Complementary Error Function
 #' @description
 #' Element-wise complementary error function `erfc(x) = 1 - erf(x)`.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @template return_prim_unary
 #' @templateVar primitive_id erfc
 #' @template section_rules
@@ -2036,10 +2068,9 @@ prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
 #' @title Primitive Is Finite
 #' @description
 #' Element-wise check if values are finite (not Inf, -Inf, or NaN).
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @return [`arrayish`]\cr
 #'   Has the same shape as the input and boolean data type.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id is_finite
 #' @template section_rules
 #' @section StableHLO:
@@ -2051,19 +2082,19 @@ prim_erfc <- new_primitive("erfc", make_unary_op(stablehlo::infer_types_erfc))
 #' @export
 prim_is_finite <- new_primitive(
   "is_finite",
-  function(operand) {
-    infer_fn <- function(operand) {
-      out <- stablehlo::infer_types_is_finite(at2vt(operand))[[1L]]
+  function(x) {
+    infer_fn <- function(x) {
+      out <- stablehlo::infer_types_is_finite(at2vt(x))[[1L]]
       list(vt2at(out))
     }
-    graph_desc_add(self, list(operand = operand), list(), infer_fn = infer_fn)[[1L]]
+    graph_desc_add(self, list(x = x), list(), infer_fn = infer_fn)[[1L]]
   }
 )
 
 #' @title Primitive Population Count
 #' @description
 #' Element-wise population count (number of set bits).
-#' @param operand ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Arrayish value of data type integer or unsigned integer.
 #' @template return_prim_unary
 #' @templateVar primitive_id popcnt
@@ -2077,29 +2108,27 @@ prim_is_finite <- new_primitive(
 #' @export
 prim_popcnt <- new_primitive(
   "popcnt",
-  function(operand) {
-    infer_fn <- function(operand) {
-      out <- stablehlo::infer_types_popcnt(at2vt(operand))[[1L]]
+  function(x) {
+    infer_fn <- function(x) {
+      out <- stablehlo::infer_types_popcnt(at2vt(x))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
-    graph_desc_add(self, list(operand = operand), list(), infer_fn = infer_fn)[[1L]]
+    graph_desc_add(self, list(x = x), list(), infer_fn = infer_fn)[[1L]]
   }
 )
 
 #' @title Primitive Clamp
 #' @description
-#' Clamps every element of `operand` to the range `[min_val, max_val]`,
-#' i.e. `max(min_val, min(operand, max_val))`.
+#' Clamps every element of `x` to the range `[min_val, max_val]`,
+#' i.e. `max(min_val, min(x, max_val))`.
 #' @param min_val ([`arrayish`])\cr
-#'   Minimum value. Must be scalar or the same shape as `operand`.
-#' @template param_prim_operand_any
+#'   Minimum value. Must be scalar or the same shape as `x`.
+#' @template param_prim_x_any
 #' @param max_val ([`arrayish`])\cr
-#'   Maximum value. Must be scalar or the same shape as `operand`.
+#'   Maximum value. Must be scalar or the same shape as `x`.
 #' @return [`arrayish`]\cr
-#'   Has the same data type and shape as `operand`.
-#'   It is ambiguous if the input is ambiguous.
+#'   Has the same data type and shape as `x`.
 #' @templateVar primitive_id clamp
 #' @template section_rules
 #' @section StableHLO:
@@ -2111,16 +2140,16 @@ prim_popcnt <- new_primitive(
 #' @export
 prim_clamp <- new_primitive(
   "clamp",
-  function(min_val, operand, max_val) {
-    infer_fn <- function(min_val, operand, max_val) {
-      out <- stablehlo::infer_types_clamp(at2vt(min_val), at2vt(operand), at2vt(max_val))[[1L]]
+  function(min_val, x, max_val) {
+    infer_fn <- function(min_val, x, max_val) {
+      out <- stablehlo::infer_types_clamp(at2vt(min_val), at2vt(x), at2vt(max_val))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
+    operands <- apply_promotion(list(min_val = min_val, x = x, max_val = max_val), promotion_rdata_common())
     graph_desc_add(
       self,
-      list(min_val = min_val, operand = operand, max_val = max_val),
+      operands,
       list(),
       infer_fn = infer_fn
     )[[
@@ -2131,13 +2160,13 @@ prim_clamp <- new_primitive(
 
 #' @title Primitive Reverse
 #' @description
-#' Reverses the order of elements along specified dimensions.
-#' @template param_prim_operand_any
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reverse (1-indexed).
+#' Reverses the order of elements along specified axes.
+#' @template param_prim_x_any
+#' @param axes (`integer()`)\cr
+#'   Axes to reverse.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
-#'   Has the same data type and shape as `operand`.
-#'   It is ambiguous if the input is ambiguous.
+#'   Has the same data type and shape as `x`.
 #' @templateVar primitive_id reverse
 #' @template section_rules
 #' @section StableHLO:
@@ -2145,35 +2174,35 @@ prim_clamp <- new_primitive(
 #' @seealso [nv_reverse()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
-#' prim_reverse(x, dims = 1L)
+#' prim_reverse(x, axes = 1L)
 #' @export
 prim_reverse <- new_primitive(
   "reverse",
-  function(operand, dims) {
-    infer_fn <- function(operand, dims) {
+  function(x, axes) {
+    axes <- resolve_axes(axes, naxes(x), unique = TRUE)
+    infer_fn <- function(x, axes) {
       # stablehlo uses 0-based indexing
-      dims_attr <- r_to_constant(dims - 1L, dtype = "i64", shape = length(dims))
-      out <- stablehlo::infer_types_reverse(at2vt(operand), dimensions = dims_attr)[[1L]]
+      axes_attr <- r_to_constant(axes - 1L, dtype = "i64", shape = length(axes))
+      out <- stablehlo::infer_types_reverse(at2vt(x), dimensions = axes_attr)[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
-    graph_desc_add(self, list(operand = operand), list(dims = dims), infer_fn = infer_fn)[[1L]]
+    graph_desc_add(self, list(x = x), list(axes = axes), infer_fn = infer_fn)[[1L]]
   },
   static = 2L
 )
 
 #' @title Primitive Iota
 #' @description
-#' Creates an array with values increasing along the specified dimension.
-#' @param dim (`integer(1)`)\cr
-#'   Dimension along which values increase (1-indexed).
+#' Creates an array with values increasing along the specified axis.
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which values increase. Negative values count from the end
+#'   of `shape`, i.e. `-1` refers to the last axis.
 #' @template param_dtype
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param start (`integer(1)`)\cr
 #'   Starting value.
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and `shape`.
@@ -2183,53 +2212,54 @@ prim_reverse <- new_primitive(
 #' Lowers to [hlo_iota()].
 #' @seealso [nv_iota()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' prim_iota(dim = 1L, dtype = "i32", shape = 5L)
+#' prim_iota(axis = 1L, dtype = "i32", shape = 5L)
 #' @export
 prim_iota <- new_primitive(
   "iota",
-  function(dim, dtype, shape, start = 1L, ambiguous = FALSE, device = NULL) {
-    infer_fn <- function(dim, dtype, shape, start, ambiguous) {
+  function(axis, dtype, shape, start = 1L, device = NULL) {
+    axis <- resolve_axis(axis, length(shape))
+    infer_fn <- function(axis, dtype, shape, start) {
       # stablehlo uses 0-based indexing, anvl uses 1-based
-      # Convert dim to Constant as required by stablehlo
-      iota_dim_const <- stablehlo::r_to_constant(
-        as.integer(dim - 1L),
+      # Convert axis to Constant as required by stablehlo
+      iota_axis_const <- stablehlo::r_to_constant(
+        as.integer(axis - 1L),
         dtype = "i64",
         shape = integer(0)
       )
       # Just for the checks
-      stablehlo::infer_types_iota(iota_dimension = iota_dim_const, dtype = dtype, shape = shape)[[1L]]
+      stablehlo::infer_types_iota(iota_dimension = iota_axis_const, dtype = dtype, shape = shape)[[1L]]
 
-      list(IotaArray(shape = shape, dtype = dtype, dimension = dim, start = start, ambiguous = ambiguous))
+      list(IotaArray(shape = shape, dtype = dtype, axis = axis, start = start))
     }
     result <- graph_desc_add(
       self,
       list(),
-      list(dim = dim, dtype = dtype, shape = shape, start = start, ambiguous = ambiguous),
-      infer_fn = infer_fn
+      list(axis = axis, dtype = dtype, shape = shape, start = start),
+      infer_fn = infer_fn,
+      device = device
     )[[1L]]
 
     result
   },
-  static = 1:6,
-  device = device_arg("device")
+  static = 1:5
 )
 
 #' @title Primitive Pad
 #' @description
 #' Pads an array with a given padding value.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. Must have the same dtype as `operand`.
+#'   Scalar value to use for padding. An R value is built at `x`'s data type,
+#'   within its own category; anything that already has one must have `x`'s.
 #' @param edge_padding_low (`integer()`)\cr
-#'   Amount of padding to add at the start of each dimension.
+#'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
-#'   Amount of padding to add at the end of each dimension.
+#'   Amount of padding to add at the end of each axis.
 #' @param interior_padding (`integer()`)\cr
-#'   Amount of padding to add between elements in each dimension.
+#'   Amount of padding to add between elements in each axis.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as `operand`.
+#'   Has the same data type as `x`.
 #'   For the output shape see the underlying stablehlo documentation ([hlo_pad()]).
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id pad
 #' @template section_rules
 #' @section StableHLO:
@@ -2242,27 +2272,27 @@ prim_iota <- new_primitive(
 #' @export
 prim_pad <- new_primitive(
   "pad",
-  function(operand, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
-    infer_fn <- function(operand, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
-      rank <- ndims_abstract(operand)
+  function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
+    infer_fn <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding) {
+      rank <- naxes(x)
       low_attr <- r_to_constant(edge_padding_low, dtype = "i64", shape = rank)
       high_attr <- r_to_constant(edge_padding_high, dtype = "i64", shape = rank)
       interior_attr <- r_to_constant(interior_padding, dtype = "i64", shape = rank)
       out <- stablehlo::infer_types_pad(
-        at2vt(operand),
+        at2vt(x),
         at2vt(padding_value),
         edge_padding_low = low_attr,
         edge_padding_high = high_attr,
         interior_padding = interior_attr
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
 
+    operands <- apply_promotion(list(x = x, padding_value = padding_value), promotion_rdata_common())
     graph_desc_add(
       self,
-      list(operand = operand, padding_value = padding_value),
+      operands,
       list(
         edge_padding_low = edge_padding_low,
         edge_padding_high = edge_padding_high,
@@ -2277,13 +2307,12 @@ prim_pad <- new_primitive(
 #' @title Primitive Round
 #' @description
 #' Rounds the elements of an array to the nearest integer.
-#' @template param_prim_operand_float
+#' @template param_prim_x_float
 #' @param method (`character(1)`)\cr
 #'   Rounding method. `"nearest_even"` (default) rounds to the nearest even
 #'   integer on a tie, `"afz"` rounds away from zero on a tie.
 #' @return [`arrayish`]\cr
-#'   Has the same dtype and shape as `operand`.
-#'   It is ambiguous if the input is ambiguous.
+#'   Has the same dtype and shape as `x`.
 #' @templateVar primitive_id round
 #' @template section_rules
 #' @section StableHLO:
@@ -2296,19 +2325,16 @@ prim_pad <- new_primitive(
 #' @export
 prim_round <- new_primitive(
   "round",
-  function(operand, method = "nearest_even") {
-    if (!(method %in% c("nearest_even", "afz"))) {
-      cli_abort("method must be one of: 'nearest_even', 'afz', but is {method}")
-    }
-    infer_fn <- function(operand, method) {
+  function(x, method = "nearest_even") {
+    assert_choice(method, c("nearest_even", "afz"))
+    infer_fn <- function(x, method) {
       # both rounding functions have the same inference, so just pick one:
       stablehlo_infer <- stablehlo::infer_types_round_nearest_even
-      out <- stablehlo_infer(at2vt(operand))[[1L]]
+      out <- stablehlo_infer(at2vt(x))[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
-    graph_desc_add(self, list(operand = operand), list(method = method), infer_fn = infer_fn)[[1L]]
+    graph_desc_add(self, list(x = x), list(method = method), infer_fn = infer_fn)[[1L]]
   },
   static = 2L
 )
@@ -2318,13 +2344,11 @@ prim_round <- new_primitive(
 #' @title Primitive Convert
 #' @description
 #' Converts the elements of an array to a different data type.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Target data type.
-#' @template param_ambiguous
 #' @return [`arrayish`]\cr
-#'   Has the given `dtype` and the same shape as `operand`.
-#'   Ambiguity is controlled by the `ambiguous` parameter.
+#'   Has the given `dtype` and the same shape as `x`.
 #' @templateVar primitive_id convert
 #' @template section_rules
 #' @section StableHLO:
@@ -2336,23 +2360,28 @@ prim_round <- new_primitive(
 #' @export
 prim_convert <- new_primitive(
   "convert",
-  function(operand, dtype, ambiguous = FALSE) {
+  function(x, dtype) {
+    # We need to be careful w.r.t. to handling R inputs so we prim_convert(pi, "f64")
+    # is faithful and does not round-trip through f32
     dtype <- as_dtype(dtype)
-    infer_fn <- function(operand, dtype, ambiguous) {
-      list(AbstractArray(
-        dtype = dtype,
-        shape = Shape(shape(operand)),
-        ambiguous = ambiguous
-      ))
+    # Directly materialize
+    if (currently_tracing() && is_valid_r(x)) {
+      return(build_r_at(x, dtype))
+    }
+    if (is_rdata_box(x)) {
+      return(materialize_rdata(x, dtype))
+    }
+    infer_fn <- function(x, dtype) {
+      list(AbstractArray(dtype = dtype, shape = Shape(shape(x))))
     }
     graph_desc_add(
       self,
-      list(operand = operand),
-      params = list(dtype = dtype, ambiguous = ambiguous),
+      list(x = x),
+      params = list(dtype = dtype),
       infer_fn = infer_fn
     )[[1L]]
   },
-  static = 2:3
+  static = 2L
 )
 
 
@@ -2368,7 +2397,6 @@ prim_convert <- new_primitive(
 #'   Values to select from. Must have the same dtype and shape.
 #' @return [`arrayish`]\cr
 #'   Has the same dtype and shape as `true_value`.
-#'   It is ambiguous if both `true_value` and `false_value` are ambiguous.
 #' @templateVar primitive_id select
 #' @template section_rules
 #' @section StableHLO:
@@ -2382,19 +2410,19 @@ prim_ifelse <- new_primitive(
   "select",
   function(pred, true_value, false_value) {
     infer_fn <- function(pred, true_value, false_value) {
-      both_ambiguous <- true_value$ambiguous && false_value$ambiguous
       out <- stablehlo::infer_types_select(
         at2vt(pred),
         on_true = at2vt(true_value),
         on_false = at2vt(false_value)
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- both_ambiguous
       list(out)
     }
+    # `pred` is a bool and keeps out of it; the two branches must agree.
+    operands <- apply_promotion(list(true_value = true_value, false_value = false_value), promotion_rdata_common())
     graph_desc_add(
       self,
-      list(pred = pred, true_value = true_value, false_value = false_value),
+      c(list(pred = pred), operands),
       infer_fn = infer_fn
     )[[
       1L
@@ -2415,7 +2443,6 @@ prim_ifelse <- new_primitive(
 #'   Zero-argument functions for the true and false branches. Both must return outputs
 #'   with the same structure, dtypes, and shapes.
 #' @return Result of the executed branch.\cr
-#'   An output is ambiguous if it is ambiguous in both branches.
 #' @templateVar primitive_id if
 #' @template section_rules
 #' @section StableHLO:
@@ -2447,24 +2474,13 @@ prim_if <- new_primitive(
     register_consts(current_desc, desc_false$constants)
 
     if (!pjrt::tree_equal(true_graph$out_tree, false_graph$out_tree)) {
-      cli_abort("true and false branches must have the same output structure")
+      cli_abort("{.arg true} and {.arg false} must return the same structure.")
     }
 
     # TODO: Apply promotion rules to the outputs of the branches
 
     infer_fn <- function(pred, true_graph, false_graph) {
-      # The returned values might have different ambiguity, so we need to handle it.
-      # An output is ambiguous if its type is ambiguous in both branches.
-      lapply(seq_along(true_graph$outputs), function(i) {
-        aval_true <- true_graph$outputs[[i]]$aval
-        aval_false <- false_graph$outputs[[i]]$aval
-        if (aval_true$ambiguous && aval_false$ambiguous) {
-          return(aval_true)
-        }
-
-        aval_true$ambiguous <- FALSE
-        return(aval_true)
-      })
+      lapply(true_graph$outputs, function(out) out$aval)
     }
 
     out <- graph_desc_add(
@@ -2486,8 +2502,7 @@ prim_if <- new_primitive(
 #' `while` loop. The loop state is initialized with `init` and
 #' passed through each iteration.
 #' Otherwise, no state is maintained between iterations.
-#' @param init (`named list()`)\cr
-#'   Named list of initial state values.
+#' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function that receives the current state as arguments
 #'   and outputs whether to continue the loop.
@@ -2518,16 +2533,16 @@ prim_while <- new_primitive(
     # delayed promise evaluation can cause the value to be added to the wrong graph descriptor
     force(init)
     if (!is.function(body)) {
-      cli_abort("body must be a function")
+      cli_abort("{.arg body} must be a function.")
     }
     if (!is.function(cond)) {
-      cli_abort("cond must be a function")
+      cli_abort("{.arg cond} must be a function.")
     }
 
     state_names <- names(init)
 
     if (any(state_names == "")) {
-      cli_abort("init must have only named arguments")
+      cli_abort("{.arg init} must have only named arguments.")
     }
 
     current_desc <- .current_descriptor(silent = TRUE)
@@ -2558,14 +2573,57 @@ prim_while <- new_primitive(
       outs <- list(...)
       outs_body <- lapply(body_graph$outputs, \(out) out$aval)
       inputs_body <- lapply(body_graph$inputs, \(inp) inp$aval)
-      # ignore ambiguity when comparing dtypes
-      if (!all(sapply(seq_along(outs), \(i) eq_type(outs[[i]], outs_body[[i]], ambiguity = FALSE)))) {
-        cli_abort("outs must be have same type as outs_body")
+      # Names the state member that disagrees, since the usual cause is an R
+      # value in `init` that materialized at its default: the loop is built
+      # before its body runs, so the state cannot take a data type from it.
+      labels <- if (length(state_names) == length(outs)) {
+        state_names
+      } else {
+        sprintf("state %d", seq_along(outs))
       }
-      if (!all(sapply(seq_along(inputs_body), \(i) eq_type(inputs_body[[i]], outs_body[[i]], ambiguity = FALSE)))) {
-        cli_abort("inputs_body must be have same type as outs_body")
+      mismatch <- function(a, b) {
+        which(!vapply(seq_along(a), \(i) eq_type(a[[i]], b[[i]]), logical(1L)))
       }
-      # function might change the ambiguity, so we return the body outputs and not the inputs
+      describe <- function(idx, a, b, verb) {
+        vapply(
+          idx,
+          function(i) {
+            sprintf(
+              "`%s` %s %s and %s %s",
+              labels[[i]],
+              verb[[1L]],
+              repr(a[[i]]),
+              verb[[2L]],
+              repr(b[[i]])
+            )
+          },
+          character(1L)
+        )
+      }
+      bad <- mismatch(outs, outs_body)
+      if (length(bad)) {
+        described <- describe(bad, outs, outs_body, c("enters as", "comes back as"))
+        cli_abort(
+          c(
+            "{.arg init} and what {.arg body} returns must have the same type.",
+            x = "{described}.",
+            i = "An R value in {.arg init} materializes at its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
+          ),
+          call = NULL
+        )
+      }
+      bad <- mismatch(inputs_body, outs_body)
+      if (length(bad)) {
+        described <- describe(bad, inputs_body, outs_body, c("is", "is returned as"))
+        cli_abort(
+          c(
+            "{.arg body} must return the state it was given, unchanged in type.",
+            x = "{described}."
+          ),
+          call = NULL
+        )
+      }
+      # the body's outputs are what the loop carries, so we return those
       return(outs_body)
     }
 
@@ -2579,45 +2637,49 @@ prim_while <- new_primitive(
 
     unflatten(body_graph$out_tree, out)
   },
+  # No promotion: the loop-carried state is meant to be heterogeneous -- a
+  # counter and the values it iterates over -- so its members do not share a
+  # data type.
   subgraphs = c("cond_graph", "body_graph"),
   static = 2:3
 )
 
 #' @title Primitive Sort
 #' @description
-#' Sorts arrays along the given dimension.
+#' Sorts arrays along the given axis.
 #'
-#' Sorting is determined by the *first operand* only: it is the sort key,
-#' and any additional operands are reordered with the same permutation
+#' Sorting is determined by the *first array* only: it is the sort key,
+#' and any additional arrays are reordered with the same permutation
 #' that sorts the first. This enables idioms like *argsort* (sort `x`
 #' paired with an `iota` and read off the second output) and key-value
 #' sorts (sort `keys` paired with `values`).
 #'
-#' All operands must have the same shape; their dtypes may differ.
-#' 1-dimensional slices along `dim` are sorted independently; other
-#' dimensions are preserved.
-#' @param operands (`list` of [`arrayish`])\cr
+#' All arrays must have the same shape; their dtypes may differ.
+#' 1-dimensional slices along `axis` are sorted independently; other
+#' axes are preserved.
+#' @param xs (`list` of [`arrayish`])\cr
 #'   One or more arrays to sort. The first is the sort key; the rest are
 #'   carried along under the same permutation. All must share the same shape.
-#' @param dim (`integer(1)`)\cr
-#'   Dimension along which to sort.
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which to sort.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param descending (`logical(1)`)\cr
 #'   If `TRUE`, sort the key in descending order (largest first). Default
-#'   `FALSE`. Additional operands are reordered by the same permutation
+#'   `FALSE`. Additional arrays are reordered by the same permutation
 #'   regardless.
 #' @param is_stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: the relative order of equal *keys* is
 #'   preserved. Default `FALSE`.
 #' @return `list` of [`arrayish`]\cr
-#'   One sorted output per element of `operands`, in the same order. Each
-#'   output has the same shape, data type, and ambiguity as the
+#'   One sorted output per element of `xs`, in the same order. Each
+#'   output has the same shape and data type as the
 #'   corresponding input.
 #' @templateVar primitive_id sort
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_sort()] with a comparator that uses
 #' [hlo_compare()] (`LT` for ascending, `GT` for descending) on
-#' the first operand. For float keys the comparator uses
+#' the first array. For float keys the comparator uses
 #' `compare_type = "TOTALORDER"` and canonicalizes `-0`/`+0` and
 #' `-NaN`/`+NaN` to their positive form before comparing, so all `NaN`
 #' values land at one end of the result regardless of sign. Integer keys
@@ -2625,79 +2687,71 @@ prim_while <- new_primitive(
 #' @seealso [nv_sort()], [nv_argsort()], [nv_top_k()], [nv_median()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5))
-#' prim_sort(list(x), dim = 1L)[[1L]]
+#' prim_sort(list(x), axis = 1L)[[1L]]
 #'
 #' # Sort indices by the values (argsort): pair x with iota and read off
 #' # the second result.
-#' idx <- nv_iota(dim = 1L, dtype = "i64", shape = 5L)
-#' out <- prim_sort(list(x, idx), dim = 1L)
+#' idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
+#' out <- prim_sort(list(x, idx), axis = 1L)
 #' out[[1L]] # sorted x
 #' out[[2L]] # permutation indices
 #' @export
 prim_sort <- new_primitive(
   "sort",
-  function(operands, dim = 1L, descending = FALSE, is_stable = FALSE) {
-    assert_integerish(dim, lower = 1, len = 1)
+  function(xs, axis = 1L, descending = FALSE, is_stable = FALSE) {
     assert_flag(descending)
     assert_flag(is_stable)
-    if (!is.list(operands) || !length(operands)) {
-      cli_abort("{.arg operands} must be a non-empty list of arrayish values")
+    if (!is.list(xs) || !length(xs)) {
+      cli_abort("{.arg xs} must be a non-empty list of arrayish values")
     }
-    ref_shape <- shape(operands[[1L]])
-    for (i in seq_along(operands)[-1L]) {
-      if (!identical(shape(operands[[i]]), ref_shape)) {
+    ref_shape <- shape(xs[[1L]])
+    axis <- resolve_axis(axis, length(ref_shape))
+    for (i in seq_along(xs)[-1L]) {
+      if (!identical(shape(xs[[i]]), ref_shape)) {
         cli_abort(c(
-          "All operands of {.fn prim_sort} must have the same shape.",
-          x = "Operand 1 has shape {xlamisc::shapevec_repr(ref_shape)}, operand {i} has shape {xlamisc::shapevec_repr(shape(operands[[i]]))}."
+          "All elements of {.arg xs} must have the same shape.",
+          x = "Element 1 has shape {shape_repr(ref_shape)}, element {i} has shape {shape_repr(shape(xs[[i]]))}."
         ))
       }
     }
-    if (dim > length(ref_shape)) {
-      cli_abort(c(
-        "{.arg dim} not in valid range.",
-        x = "Operand has {length(ref_shape)} dim(s), got {.arg dim} = {dim}."
-      ))
-    }
 
-    # Output shape/dtype mirrors each input — sort only permutes along `dim`.
-    infer_fn <- function(..., dim, descending, is_stable) {
+    # Output shape/dtype mirrors each input — sort only permutes along `axis`.
+    infer_fn <- function(..., axis, descending, is_stable) {
       ops <- list(...)
       lapply(ops, function(op) {
-        AbstractArray(
-          dtype = dtype(op),
-          shape = Shape(shape(op)),
-          ambiguous = op$ambiguous
-        )
+        AbstractArray(dtype = dtype(op), shape = Shape(shape(op)))
       })
     }
 
     graph_desc_add(
       self,
-      args = operands,
-      params = list(dim = dim, descending = descending, is_stable = is_stable),
+      args = xs,
+      params = list(axis = axis, descending = descending, is_stable = is_stable),
       infer_fn = infer_fn
     )
   },
-  static = c("dim", "descending", "is_stable")
+  # No promotion: a key and its payloads are meant to differ in data type
+  # (nv_argsort() sorts a float key alongside an integer index).
+  static = c("axis", "descending", "is_stable")
 )
 
 #' @title Primitive Top-K
 #' @description
-#' Returns the `k` largest values along the last dimension, sorted in
-#' descending order, together with their indices into that dimension.
+#' Returns the `k` largest values along the last axis, sorted in
+#' descending order, together with their indices into that axis.
 #'
-#' For other dimensions, transpose so the target dimension is last, call
+#' For other axes, transpose so the target axis is last, call
 #' `prim_top_k()`, then transpose back. [nv_top_k()] does this.
-#' @param operand ([`arrayish`])\cr
-#'   Tensor of integer, unsigned integer, or floating-point dtype with rank >= 1.
+#' @param x ([`arrayish`])\cr
+#'   Array of integer, unsigned integer, or floating-point dtype with rank >= 1.
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
-#'   `1 <= k <= shape(operand)[ndims(operand)]`.
+#'   `1 <= k <= shape(x)[naxes(x)]`.
 #' @return `list` of two [`arrayish`] values:\cr
-#'   The top-`k` values (same dtype as `operand`) and their indices along
-#'   the last dimension (dtype `i32`, matching JAX). Both have the same
-#'   shape as `operand` with the last dimension replaced by `k`. Ties are
-#'   broken by lower index first.
+#'   The top-`k` values (same dtype as `x`) and their indices along
+#'   the last axis, of the default integer data type (see
+#'   [`default_dtypes()`]). Both have the same shape as `x` with the
+#'   last axis replaced by `k`. Ties are broken by lower index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
@@ -2709,27 +2763,29 @@ prim_sort <- new_primitive(
 #' @export
 prim_top_k <- new_primitive(
   "top_k",
-  function(operand, k) {
+  function(x, k) {
     assert_integerish(k, lower = 1L, len = 1L)
     k <- as.integer(k)
 
-    infer_fn <- function(operand, k) {
+    infer_fn <- function(x, k) {
       k_const <- stablehlo::r_to_constant(
         k,
         dtype = "i64",
         shape = integer()
       )
-      vts <- stablehlo::infer_types_top_k(at2vt(operand), k = k_const)
-      values <- vt2at(vts[[1L]])
-      values$ambiguous <- operand$ambiguous
+      vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
+      # `hlo_top_k` fixes its indices at `i32`; the lowering converts them to
+      # the default integer, which is what the caller sees.
       indices <- vt2at(vts[[2L]])
-      indices$ambiguous <- FALSE
-      list(values, indices)
+      list(
+        values = vt2at(vts[[1L]]),
+        indices = AbstractArray(dtype = default_int(), shape = Shape(shape(indices)))
+      )
     }
 
     graph_desc_add(
       self,
-      args = list(operand = operand),
+      args = list(x = x),
       params = list(k = k),
       infer_fn = infer_fn
     )
@@ -2742,9 +2798,9 @@ prim_top_k <- new_primitive(
 #' @description
 #' Prints an array value to the console during execution and returns the
 #' input unchanged. This is useful for debugging JIT-compiled code.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @return [`arrayish`]\cr
-#'   Returns `operand` as-is.
+#'   Returns `x` as-is.
 #' @templateVar primitive_id print
 #' @template section_rules
 #' @section StableHLO:
@@ -2756,16 +2812,46 @@ prim_top_k <- new_primitive(
 #' @export
 prim_print <- new_primitive(
   "print",
-  function(operand) {
-    # HACK: ambiguity is not available in stablehlo, so we need to pre-compute this
-    # and pass it as a "param", although it is not really one
+  function(x) {
+    # HACK: the footer is pre-computed here and passed as a "param", although
+    # it is not really one: stablehlo does not carry the dtype the way anvl
+    # prints it.
     # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
-    dtype_str <- paste0(as.character(dtype(operand)), if (ambiguous_abstract(operand)) "?")
-    footer <- sprintf("[ %s{%s} ]", dtype_str, paste0(shape(operand), collapse = ","))
-    # slig
-    graph_desc_add(self, list(operand = operand), list(footer = footer), infer_fn = function(operand, ...) {
-      list(operand)
-    })[[1L]]
+    #
+    # The footer is read off the operand *before* it is materialized, because a
+    # print is not a use site that should get to name a data type. An R value
+    # arrives here with none decided -- printing it is not what settles it, and
+    # whatever the program goes on to do with the value usually settles it
+    # elsewhere:
+    #
+    #   jit(\(x) {prim_print(x); x + nv_scalar(0.3, "f64")})(1)
+    #
+    # uploads `x` at `f64` for the addition. Reporting the `f32` this call
+    # materializes it at on the way in would name a data type nothing else in
+    # the program has. So the footer shows the R storage type in the data type's
+    # place -- `double`, `integer` and `logical` are never data type names, so
+    # there is nothing to confuse them with -- and names the data type the
+    # *rendering* used, since printing the value does have to build it at one
+    # and that is the default rather than whatever the program settles on.
+    aval <- to_abstract(x)
+    dims <- paste0(shape(aval), collapse = ",")
+    footer <- if (is_rdata(aval)) {
+      sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
+    } else {
+      sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
+    }
+    # `x` is printed, not consumed: the call takes a rendering of it and the
+    # original is handed straight back. Inserting a print therefore cannot
+    # change what the program computes -- an R value in particular stays
+    # unmaterialized, so `prim_print(x) * nv_scalar(1, "f64")` is still exact
+    # where materializing `x` at its default first would have rounded it through
+    # `f32`. The stablehlo rule threads the operand through the same way, and
+    # marks the custom call `has_side_effect` so it survives with its result
+    # unused.
+    graph_desc_add(self, list(x = as_anvl_array(x)), list(footer = footer), infer_fn = function(x, ...) {
+      list(x)
+    })
+    x
   }
 )
 
@@ -2780,9 +2866,9 @@ prim_print <- new_primitive(
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Data type of the generated random values.
 #' @template param_shape
-#' @return `list` of two [`arrayish`] values:\cr
-#'   The first element is the updated RNG state with the same dtype and shape
-#'   as `initial_state`. The second element is an array of random values with
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Element `state` is the updated RNG state with the same dtype and shape
+#'   as `initial_state`. Element `values` is an array of random values with
 #'   the given `dtype` and `shape`.
 #' @templateVar primitive_id rng_bit_generator
 #' @template section_rules
@@ -2797,7 +2883,8 @@ prim_rng_bit_generator <- new_primitive(
   "rng_bit_generator",
   function(initial_state, rng_algorithm = "THREE_FRY", dtype, shape) {
     infer_fn <- function(initial_state, rng_algorithm, dtype, shape) {
-      lapply(stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape), vt2at)
+      out <- stablehlo::infer_types_rng_bit_generator(at2vt(initial_state), rng_algorithm, dtype, shape)
+      list(state = vt2at(out[[1L]]), values = vt2at(out[[2L]]))
     }
     graph_desc_add(
       self,
@@ -2811,7 +2898,7 @@ prim_rng_bit_generator <- new_primitive(
 
 #' @title Primitive Scatter
 #' @description
-#' Produces a result array identical to `input` except that slices at
+#' Produces a result array identical to `x` except that slices at
 #' positions specified by `scatter_indices` are updated with values from
 #' the `update` array. When multiple indices point to the same location,
 #' the `update_computation` function determines how to combine the values
@@ -2820,35 +2907,35 @@ prim_rng_bit_generator <- new_primitive(
 #' This is the inverse of [prim_gather()]: gather reads slices from an array
 #' at given indices, while scatter writes slices into an array at given
 #' indices.
-#' @param input ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Arrayish value of any data type. The base array to scatter into.
 #' @param scatter_indices ([`arrayish`] of integer type)\cr
 #'   Array of indices. Contains index vectors that map to positions in
-#'   `input` via `scatter_dims_to_operand_dims`. The dimension specified
-#'   by `index_vector_dim` holds the index vectors.
+#'   `x` via `scatter_axes_to_x_axes`. The axis specified
+#'   by `index_vector_axis` holds the index vectors.
 #' @param update ([`arrayish`])\cr
-#'   Update values array. Must have the same data type as `input`.
-#' @param update_window_dims (`integer()`)\cr
-#'   Dimensions of `update` that are window dimensions, i.e. they
-#'   correspond to the slice being written into `input`.
-#' @param inserted_window_dims (`integer()`)\cr
-#'   Dimensions of `input` whose slices have size 1 and are inserted
+#'   Update values array. Must have the same data type as `x`.
+#' @param update_window_axes (`integer()`)\cr
+#'   Axes of `update` that are window axes, i.e. they
+#'   correspond to the slice being written into `x`.
+#' @param inserted_window_axes (`integer()`)\cr
+#'   Axes of `x` whose slices have size 1 and are inserted
 #'   (not present) in the `update` window. Together with
-#'   `update_window_dims` and `input_batching_dims`, these must account
-#'   for all dimensions of `input`.
-#' @param input_batching_dims (`integer()`)\cr
-#'   Dimensions of `input` that are batch dimensions.
-#'   Use `integer(0)` when there are no batch dimensions.
-#' @param scatter_indices_batching_dims (`integer()`)\cr
-#'   Dimensions of `scatter_indices` that correspond to batch
-#'   dimensions. Must have the same length as `input_batching_dims`.
-#' @param scatter_dims_to_operand_dims (`integer()`)\cr
-#'   Maps each component of the index vector to an `input` dimension.
-#'   For example, `scatter_dims_to_operand_dims = c(1L)` means each
-#'   index vector indexes into the first dimension of `input`.
-#' @param index_vector_dim (`integer(1)`)\cr
-#'   Dimension of `scatter_indices` that contains the index vectors.
-#'   If set to `ndims(scatter_indices) + 1`, each scalar element of
+#'   `update_window_axes` and `x_batching_axes`, these must account
+#'   for all axes of `x`.
+#' @param x_batching_axes (`integer()`)\cr
+#'   Axes of `x` that are batch axes.
+#'   Use `integer(0)` when there are no batch axes.
+#' @param scatter_indices_batching_axes (`integer()`)\cr
+#'   Axes of `scatter_indices` that correspond to batch
+#'   axes. Must have the same length as `x_batching_axes`.
+#' @param scatter_axes_to_x_axes (`integer()`)\cr
+#'   Maps each component of the index vector to an `x` axis.
+#'   For example, `scatter_axes_to_x_axes = c(1L)` means each
+#'   index vector indexes into the first axis of `x`.
+#' @param index_vector_axis (`integer(1)`)\cr
+#'   Axis of `scatter_indices` that contains the index vectors.
+#'   If set to `naxes(scatter_indices) + 1`, each scalar element of
 #'   `scatter_indices` is treated as a length-1 index vector.
 #' @param indices_are_sorted (`logical(1)`)\cr
 #'   Whether indices are guaranteed to be sorted. Setting to `TRUE`
@@ -2860,17 +2947,16 @@ prim_rng_bit_generator <- new_primitive(
 #'   behavior if the indices are not actually unique. Default `FALSE`.
 #' @param update_computation (`function`)\cr
 #'   Binary function `f(old, new)` that combines the existing value in
-#'   `input` with the value from `update`. The default (`NULL`) uses
+#'   `x` with the value from `update`. The default (`NULL`) uses
 #'   `function(old, new) new`, which replaces the old value.
 #' @return [`arrayish`]\cr
-#'   Has the same data type and shape as `input`.
-#'   It is ambiguous if `input` is ambiguous.
-#' @section Out Of Bounds Behavior:
-#' If a computed result index falls outside the bounds of `input`, the
+#'   Has the same data type and shape as `x`.
+#' @section Out of Bounds Behavior:
+#' If a computed result index falls outside the bounds of `x`, the
 #' update for that index is silently ignored.
 #' @section Update Order:
 #' When multiple indices in `scatter_indices` map to the same element
-#' of `input`, the order in which `update_computation` is applied is
+#' of `x`, the order in which `update_computation` is applied is
 #' implementation-defined and may vary between plugins ("cpu", "cuda").
 #' @templateVar primitive_id scatter
 #' @template section_rules
@@ -2879,39 +2965,45 @@ prim_rng_bit_generator <- new_primitive(
 #' @seealso [prim_gather()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Scatter values 10 and 30 into positions 1 and 3 of a zero vector
-#' input <- nv_array(c(0, 0, 0, 0, 0))
+#' x <- nv_array(c(0, 0, 0, 0, 0))
 #' indices <- nv_matrix(c(1L, 3L), ncol = 1)
 #' updates <- nv_array(c(10, 30))
 #' prim_scatter(
-#'   input, indices, updates,
-#'   update_window_dims = integer(0),
-#'   inserted_window_dims = 1L,
-#'   input_batching_dims = integer(0),
-#'   scatter_indices_batching_dims = integer(0),
-#'   scatter_dims_to_operand_dims = 1L,
-#'   index_vector_dim = 2L
+#'   x, indices, updates,
+#'   update_window_axes = integer(0),
+#'   inserted_window_axes = 1L,
+#'   x_batching_axes = integer(0),
+#'   scatter_indices_batching_axes = integer(0),
+#'   scatter_axes_to_x_axes = 1L,
+#'   index_vector_axis = 2L
 #' )
 #' @export
 prim_scatter <- new_primitive(
   "scatter",
   function(
-    input,
+    x,
     scatter_indices,
     update,
-    update_window_dims,
-    inserted_window_dims,
-    input_batching_dims,
-    scatter_indices_batching_dims,
-    scatter_dims_to_operand_dims,
-    index_vector_dim,
+    update_window_axes,
+    inserted_window_axes,
+    x_batching_axes,
+    scatter_indices_batching_axes,
+    scatter_axes_to_x_axes,
+    index_vector_axis,
     indices_are_sorted = FALSE,
     unique_indices = FALSE,
     update_computation = NULL
   ) {
     # otherwise, delayed promise evaluation means they might be added to the update_descriptor
-    force(input)
+    force(x)
     force(scatter_indices)
     force(update)
+    # Settled before `peek_dtype(x)` below builds the update computation's
+    # parameter slots. `scatter_indices` keeps out of it: it is an index array,
+    # not an operand `x` and `update` have to agree with.
+    operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
+    x <- operands$x
+    update <- operands$update
     if (is.null(update_computation)) {
       update_computation <- function(old, new) new
     } else if (!is.function(update_computation)) {
@@ -2925,51 +3017,67 @@ prim_scatter <- new_primitive(
     desc_update <- local_descriptor()
 
     # Create dummy arguments for tracing - use the input's dtype
-    input_dtype <- dtype_abstract(input)
-    update_dtype <- dtype_abstract(update)
-    if (input_dtype != update_dtype) {
-      cli_abort("input and update must have the same dtype")
-    }
+    # `x` and `update` agree: the rule above brought them together or refused.
+    x_dtype <- peek_dtype(x)
 
     dummy_args <- list(
-      AbstractArray(dtype = input_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(input)),
-      AbstractArray(dtype = input_dtype, shape = Shape(integer()), ambiguous = ambiguous_abstract(update))
+      AbstractArray(dtype = x_dtype, shape = Shape(integer())),
+      AbstractArray(dtype = x_dtype, shape = Shape(integer()))
     )
 
     update_computation_graph <- trace_fn(update_computation, dummy_args, desc = desc_update, mode = "subgraph")
+
+    # As `prim_reduce()` does for its reductor: the scattered element is what
+    # `update_computation` returns, so a different data type there makes the
+    # inferred output type a lie and the call fails in the backend instead.
+    if (length(update_computation_graph$outputs) != 1L) {
+      cli_abort(c(
+        "{.arg update_computation} must return exactly one value.",
+        x = "Got {length(update_computation_graph$outputs)} outputs."
+      ))
+    }
+    update_out_dtype <- update_computation_graph$outputs[[1L]]$aval$dtype
+    if (update_out_dtype != x_dtype) {
+      cli_abort(c(
+        "{.arg update_computation} must return a value with the same data type as {.arg x}.",
+        x = "{.arg x} is {.val {as.character(x_dtype)}} and {.arg update_computation} returns {.val {as.character(update_out_dtype)}}." # nolint
+      ))
+    }
 
     # Register constants from the update computation graph
     register_consts(current_desc, update_computation_graph$constants)
 
     infer_fn <- function(
-      input,
+      x,
       scatter_indices,
       update,
-      update_window_dims,
-      inserted_window_dims,
-      input_batching_dims,
-      scatter_indices_batching_dims,
-      scatter_dims_to_operand_dims,
-      index_vector_dim,
+      update_window_axes,
+      inserted_window_axes,
+      x_batching_axes,
+      scatter_indices_batching_axes,
+      scatter_axes_to_x_axes,
+      index_vector_axis,
       indices_are_sorted,
       unique_indices,
       update_computation_graph
     ) {
-      # Convert 1-based dimension numbers to 0-based
+      # Convert 1-based axis numbers to 0-based
+      # StableHLO's ScatterDimensionNumbers() follows the spec naming, so the
+      # anvl-side argument names are mapped back here.
       scatter_dimension_numbers <- stablehlo::ScatterDimensionNumbers(
-        update_window_dims = update_window_dims - 1L,
-        inserted_window_dims = inserted_window_dims - 1L,
-        input_batching_dims = input_batching_dims - 1L,
-        scatter_indices_batching_dims = scatter_indices_batching_dims - 1L,
-        scatter_dims_to_operand_dims = scatter_dims_to_operand_dims - 1L,
-        index_vector_dim = index_vector_dim - 1L
+        update_window_dims = update_window_axes - 1L,
+        inserted_window_dims = inserted_window_axes - 1L,
+        input_batching_dims = x_batching_axes - 1L,
+        scatter_indices_batching_dims = scatter_indices_batching_axes - 1L,
+        scatter_dims_to_operand_dims = scatter_axes_to_x_axes - 1L,
+        index_vector_dim = index_vector_axis - 1L
       )
 
       indices_sorted_attr <- r_to_constant(indices_are_sorted, dtype = "bool", shape = integer())
       unique_indices_attr <- r_to_constant(unique_indices, dtype = "bool", shape = integer())
 
       out <- stablehlo::infer_types_scatter(
-        inputs = list(at2vt(input)),
+        inputs = list(at2vt(x)),
         scatter_indices = at2vt(scatter_indices),
         updates = list(at2vt(update)),
         scatter_dimension_numbers = scatter_dimension_numbers,
@@ -2979,20 +3087,19 @@ prim_scatter <- new_primitive(
       )[[1L]]
 
       out <- vt2at(out)
-      out$ambiguous <- input$ambiguous
       list(out)
     }
 
     out <- graph_desc_add(
       self,
-      args = list(input = input, scatter_indices = scatter_indices, update = update),
+      args = list(x = x, scatter_indices = scatter_indices, update = update),
       params = list(
-        update_window_dims = update_window_dims,
-        inserted_window_dims = inserted_window_dims,
-        input_batching_dims = input_batching_dims,
-        scatter_indices_batching_dims = scatter_indices_batching_dims,
-        scatter_dims_to_operand_dims = scatter_dims_to_operand_dims,
-        index_vector_dim = index_vector_dim,
+        update_window_axes = update_window_axes,
+        inserted_window_axes = inserted_window_axes,
+        x_batching_axes = x_batching_axes,
+        scatter_indices_batching_axes = scatter_indices_batching_axes,
+        scatter_axes_to_x_axes = scatter_axes_to_x_axes,
+        index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices,
         update_computation_graph = update_computation_graph
@@ -3009,44 +3116,44 @@ prim_scatter <- new_primitive(
 
 #' @title Primitive Gather
 #' @description
-#' Gathers slices from the `operand` array at positions specified by
+#' Gathers slices from the `x` array at positions specified by
 #' `start_indices`. Each index vector in `start_indices` identifies a
-#' starting position in `operand`, and a slice of size `slice_sizes` is
+#' starting position in `x`, and a slice of size `slice_sizes` is
 #' extracted from that position. The gathered slices are assembled into
 #' the output array.
 #'
 #' This is the inverse of [prim_scatter()]: gather reads slices from a
 #' array at given indices, while scatter writes slices into an array at
 #' given indices.
-#' @template param_prim_operand_any
+#' @template param_prim_x_any
 #' @param start_indices ([`arrayish`] of integer type)\cr
 #'   Array of starting indices. Contains index vectors that map to
-#'   positions in `operand` via `start_index_map`. The dimension
-#'   specified by `index_vector_dim` holds the index vectors.
+#'   positions in `x` via `start_index_map`. The axis
+#'   specified by `index_vector_axis` holds the index vectors.
 #' @param slice_sizes (`integer()`)\cr
-#'   Size of the slice to gather from `operand` in each dimension.
-#'   Must have length equal to `ndims(operand)`.
-#' @param offset_dims (`integer()`)\cr
-#'   Dimensions in the output that correspond to the non-collapsed
-#'   slice dimensions of `operand`.
-#' @param collapsed_slice_dims (`integer()`)\cr
-#'   Dimensions of `operand` that are collapsed (removed) from the
+#'   Size of the slice to gather from `x` in each axis.
+#'   Must have length equal to `naxes(x)`.
+#' @param offset_axes (`integer()`)\cr
+#'   Axes in the output that correspond to the non-collapsed
+#'   slice axes of `x`.
+#' @param collapsed_slice_axes (`integer()`)\cr
+#'   Axes of `x` that are collapsed (removed) from the
 #'   slice. The corresponding entries in `slice_sizes` must be `1`.
-#'   Together with `offset_dims` and `operand_batching_dims`, these
-#'   must account for all dimensions of `operand`.
-#' @param operand_batching_dims (`integer()`)\cr
-#'   Dimensions of `operand` that are batch dimensions.
-#'   Use `integer(0)` when there are no batch dimensions.
-#' @param start_indices_batching_dims (`integer()`)\cr
-#'   Dimensions of `start_indices` that correspond to batch
-#'   dimensions. Must have the same length as `operand_batching_dims`.
+#'   Together with `offset_axes` and `x_batching_axes`, these
+#'   must account for all axes of `x`.
+#' @param x_batching_axes (`integer()`)\cr
+#'   Axes of `x` that are batch axes.
+#'   Use `integer(0)` when there are no batch axes.
+#' @param start_indices_batching_axes (`integer()`)\cr
+#'   Axes of `start_indices` that correspond to batch
+#'   axes. Must have the same length as `x_batching_axes`.
 #' @param start_index_map (`integer()`)\cr
-#'   Maps each component of the index vector to an `operand`
-#'   dimension. For example, `start_index_map = c(1L)` means each
-#'   index vector indexes into the first dimension of `operand`.
-#' @param index_vector_dim (`integer(1)`)\cr
-#'   Dimension of `start_indices` that contains the index vectors.
-#'   If set to `ndims(start_indices) + 1`, each scalar element of
+#'   Maps each component of the index vector to an `x`
+#'   axis. For example, `start_index_map = c(1L)` means each
+#'   index vector indexes into the first axis of `x`.
+#' @param index_vector_axis (`integer(1)`)\cr
+#'   Axis of `start_indices` that contains the index vectors.
+#'   If set to `naxes(start_indices) + 1`, each scalar element of
 #'   `start_indices` is treated as a length-1 index vector.
 #' @param indices_are_sorted (`logical(1)`)\cr
 #'   Whether indices are guaranteed to be sorted. Setting to `TRUE`
@@ -3057,13 +3164,13 @@ prim_scatter <- new_primitive(
 #'   Setting to `TRUE` may improve performance but produces undefined
 #'   behavior if the indices are not actually unique. Default `FALSE`.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as `operand`. The output shape is composed
-#'   of the offset dimensions (from the slice) and the remaining
-#'   dimensions from `start_indices`. See the underluing stableHLO function
+#'   Has the same data type as `x`. The output shape is composed
+#'   of the offset axes (from the slice) and the remaining
+#'   axes from `start_indices`. See the underlying StableHLO function
 #'   for more details.
-#' @section Out Of Bounds Behavior:
+#' @section Out of Bounds Behavior:
 #' Start indices are clamped before the slice is extracted:
-#' `clamp(1, start_index, nv_shape(operand) - slice_sizes + 1)`.
+#' `clamp(1, start_index, shape(x) - slice_sizes + 1)`.
 #' This means that out-of-bounds indices will not cause an error, but
 #' the effective start position may differ from the requested one.
 #' @templateVar primitive_id gather
@@ -3073,61 +3180,63 @@ prim_scatter <- new_primitive(
 #' @seealso [prim_scatter()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Gather rows 1 and 3 from a 3x3 matrix
-#' operand <- nv_matrix(1:9, nrow = 3)
+#' x <- nv_matrix(1:9, nrow = 3)
 #' indices <- nv_matrix(c(1L, 3L), ncol = 1)
 #' prim_gather(
-#'   operand, indices,
+#'   x, indices,
 #'   slice_sizes = c(1L, 3L),
-#'   offset_dims = 2L,
-#'   collapsed_slice_dims = 1L,
-#'   operand_batching_dims = integer(0),
-#'   start_indices_batching_dims = integer(0),
+#'   offset_axes = 2L,
+#'   collapsed_slice_axes = 1L,
+#'   x_batching_axes = integer(0),
+#'   start_indices_batching_axes = integer(0),
 #'   start_index_map = 1L,
-#'   index_vector_dim = 2L
+#'   index_vector_axis = 2L
 #' )
 #' @export
 prim_gather <- new_primitive(
   "gather",
   function(
-    operand,
+    x,
     start_indices,
     slice_sizes,
-    offset_dims,
-    collapsed_slice_dims,
-    operand_batching_dims,
-    start_indices_batching_dims,
+    offset_axes,
+    collapsed_slice_axes,
+    x_batching_axes,
+    start_indices_batching_axes,
     start_index_map,
-    index_vector_dim,
+    index_vector_axis,
     indices_are_sorted = FALSE,
     unique_indices = FALSE
   ) {
     infer_fn <- function(
-      operand,
+      x,
       start_indices,
       slice_sizes,
-      offset_dims,
-      collapsed_slice_dims,
-      operand_batching_dims,
-      start_indices_batching_dims,
+      offset_axes,
+      collapsed_slice_axes,
+      x_batching_axes,
+      start_indices_batching_axes,
       start_index_map,
-      index_vector_dim,
+      index_vector_axis,
       indices_are_sorted,
       unique_indices
     ) {
+      # StableHLO's GatherDimensionNumbers() follows the spec naming, so the
+      # anvl-side `x_batching_axes` is mapped back here.
       gather_dimension_numbers <- stablehlo::GatherDimensionNumbers(
-        offset_dims = offset_dims - 1L,
-        collapsed_slice_dims = collapsed_slice_dims - 1L,
-        operand_batching_dims = operand_batching_dims - 1L,
-        start_indices_batching_dims = start_indices_batching_dims - 1L,
+        offset_dims = offset_axes - 1L,
+        collapsed_slice_dims = collapsed_slice_axes - 1L,
+        operand_batching_dims = x_batching_axes - 1L,
+        start_indices_batching_dims = start_indices_batching_axes - 1L,
         start_index_map = start_index_map - 1L,
-        index_vector_dim = index_vector_dim - 1L
+        index_vector_dim = index_vector_axis - 1L
       )
 
       slice_sizes_attr <- r_to_constant(slice_sizes, dtype = "i64", shape = length(slice_sizes))
       indices_sorted_attr <- r_to_constant(indices_are_sorted, dtype = "bool", shape = integer())
 
       out <- stablehlo::infer_types_gather(
-        at2vt(operand),
+        at2vt(x),
         at2vt(start_indices),
         gather_dimension_numbers = gather_dimension_numbers,
         slice_sizes = slice_sizes_attr,
@@ -3135,46 +3244,46 @@ prim_gather <- new_primitive(
       )[[1L]]
 
       out <- vt2at(out)
-      out$ambiguous <- operand$ambiguous
       list(out)
     }
     graph_desc_add(
       self,
-      args = list(operand = operand, start_indices = start_indices),
+      args = list(x = x, start_indices = start_indices),
       params = list(
         slice_sizes = slice_sizes,
-        offset_dims = offset_dims,
-        collapsed_slice_dims = collapsed_slice_dims,
-        operand_batching_dims = operand_batching_dims,
-        start_indices_batching_dims = start_indices_batching_dims,
+        offset_axes = offset_axes,
+        collapsed_slice_axes = collapsed_slice_axes,
+        x_batching_axes = x_batching_axes,
+        start_indices_batching_axes = start_indices_batching_axes,
         start_index_map = start_index_map,
-        index_vector_dim = index_vector_dim,
+        index_vector_axis = index_vector_axis,
         indices_are_sorted = indices_are_sorted,
         unique_indices = unique_indices
       ),
       infer_fn = infer_fn
     )[[1L]]
   },
+  # No promotion: `x` is the only array, and the start indices are integers
+  # whatever `x` is.
   static = 3:11
 )
 
 #' @title Primitive Cholesky Decomposition
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-#' Dimensions before the last two are batch dimensions.
-#' @param operand ([`arrayish`])\cr
-#'   Arrayish value of data type floating-point with at least 2 dimensions.
-#'   The last two dimensions must be equal (square matrix); any leading
-#'   dimensions are batch dimensions.
+#' Axes before the last two are batch axes.
+#' @param x ([`arrayish`])\cr
+#'   Arrayish value of data type floating-point with at least 2 axes.
+#'   The last two axes must be equal (square matrix); any leading
+#'   axes are batch axes.
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
-#'   upper triangular factor `U` such that `operand = t(U) %*% U`. If
+#'   upper triangular factor `U` such that `x = t(U) %*% U`. If
 #'   `TRUE`, compute the lower triangular factor `L` such that
-#'   `operand = L %*% t(L)`.
+#'   `x = L %*% t(L)`.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as the input.
 #'   The values in the triangle not specified by `lower` are implementation-defined.
-#'   It is ambiguous if the input is ambiguous.
 #' @templateVar primitive_id cholesky
 #' @template section_rules
 #' @section StableHLO:
@@ -3187,18 +3296,17 @@ prim_gather <- new_primitive(
 #' @export
 prim_chol <- new_primitive(
   "cholesky",
-  function(operand, lower = FALSE) {
-    infer_fn <- function(operand, lower) {
+  function(x, lower = FALSE) {
+    infer_fn <- function(x, lower) {
       # Output has same shape and dtype as input (square matrix)
       list(AbstractArray(
-        dtype = dtype(operand),
-        shape = Shape(shape(operand)),
-        ambiguous = operand$ambiguous
+        dtype = dtype(x),
+        shape = Shape(shape(x))
       ))
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       list(lower = lower),
       infer_fn = infer_fn
     )[[1L]]
@@ -3211,18 +3319,18 @@ prim_chol <- new_primitive(
 #' Solves a system of linear equations with a triangular coefficient matrix.
 #' When `left_side` is `TRUE`, solves `op(a) %*% x = b` for `x`.
 #' When `left_side` is `FALSE`, solves `x %*% op(a) = b` for `x`.
-#' Dimensions before the last two are batch dimensions and must match
+#' Axes before the last two are batch axes and must match
 #' between `a` and `b` (no broadcasting).
 #' Here `op` is `A` or `A^T` depending on `transpose_a`.
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix of data type floating-point with at least 2
-#'   dimensions. The last two dimensions must be equal (square matrix); any
-#'   leading dimensions are batch dimensions.
+#'   axes. The last two axes must be equal (square matrix); any
+#'   leading axes are batch axes.
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side. Same data type and rank as `a` (rank >= 2), with
-#'   matching leading batch dimensions. The size of `a`'s last two (square)
-#'   dimensions must equal `b`'s second-to-last dimension when
-#'   `left_side = TRUE`, or `b`'s last dimension when `left_side = FALSE`.
+#'   matching leading batch axes. The size of `a`'s last two (square)
+#'   axes must equal `b`'s second-to-last axis when
+#'   `left_side = TRUE`, or `b`'s last axis when `left_side = FALSE`.
 #' @param left_side (`logical(1)`)\cr
 #'   If `TRUE`, solve `op(a) %*% x = b`. If `FALSE`, solve `x %*% op(a) = b`.
 #' @param lower (`logical(1)`)\cr
@@ -3233,7 +3341,6 @@ prim_chol <- new_primitive(
 #'   If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `b`.
-#'   It is ambiguous if both `a` and `b` are ambiguous.
 #' @templateVar primitive_id triangular_solve
 #' @template section_rules
 #' @section StableHLO:
@@ -3241,7 +3348,7 @@ prim_chol <- new_primitive(
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # Solve L %*% x = b where L is lower triangular
-#' L <- nv_matrix(c(2, 0, 1, 3), nrow = 2, dtype = "f32")
+#' L <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
 #' b <- nv_matrix(c(4, 3), nrow = 2, dtype = "f32")
 #' prim_triangular_solve(L, b,
 #'   left_side = TRUE, lower = TRUE,
@@ -3264,12 +3371,12 @@ prim_triangular_solve <- new_primitive(
         transpose_a = if (transpose_a) "TRANSPOSE" else "NO_TRANSPOSE"
       )[[1L]]
       out <- vt2at(out)
-      out$ambiguous <- a$ambiguous && b$ambiguous
       list(out)
     }
+    operands <- apply_promotion(list(a = a, b = b), promotion_rdata_common())
     graph_desc_add(
       self,
-      list(a = a, b = b),
+      operands,
       list(
         left_side = left_side,
         lower = lower,
@@ -3284,17 +3391,17 @@ prim_triangular_solve <- new_primitive(
 
 #' @title Primitive QR Decomposition
 #' @description
-#' Computes the reduced QR decomposition of a matrix `operand`:
+#' Computes the reduced QR decomposition of a matrix `x`:
 #' \deqn{A = Q R,}
 #' where \eqn{Q} has orthonormal columns (\eqn{Q^\top Q = I}) and
 #' \eqn{R} is upper triangular.
 #' For an \eqn{m \times n} input with \eqn{k = \min(m, n)}, \eqn{Q} has
 #' shape \eqn{m \times k} and \eqn{R} has shape \eqn{k \times n}.
-#' @param operand ([`arrayish`])\cr
-#'   Matrix of data type floating-point with exactly 2 dimensions.
+#' @param x ([`arrayish`])\cr
+#'   Matrix of data type floating-point with exactly 2 axes.
 #' @return Named `list` with elements `Q` (shape `(m, k)`) and `R`
-#'   (shape `(k, n)`), where `(m, n) = shape(operand)` and
-#'   `k = min(m, n)`. Both have the same data type as `operand`.
+#'   (shape `(k, n)`), where `(m, n) = shape(x)` and
+#'   `k = min(m, n)`. Both have the same data type as `x`.
 #' @templateVar primitive_id qr
 #' @template section_rules
 #' @section StableHLO:
@@ -3307,11 +3414,11 @@ prim_triangular_solve <- new_primitive(
 #' @export
 prim_qr <- new_primitive(
   "qr",
-  function(operand) {
-    infer_fn <- function(operand) {
-      assert_linalg_matrix(operand, "operand")
-      dt <- dtype(operand)
-      s <- shape(operand)
+  function(x) {
+    infer_fn <- function(x) {
+      assert_linalg_matrix(x, "x")
+      dt <- dtype(x)
+      s <- shape(x)
       m <- s[1L]
       n <- s[2L]
       k <- min(m, n)
@@ -3322,7 +3429,7 @@ prim_qr <- new_primitive(
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       params = list(),
       infer_fn = infer_fn
     )
@@ -3331,7 +3438,7 @@ prim_qr <- new_primitive(
 
 #' @title Primitive LU Decomposition
 #' @description
-#' Computes the partial-pivoted LU decomposition of a matrix `operand`:
+#' Computes the partial-pivoted LU decomposition of a matrix `x`:
 #' \deqn{P A = L U,}
 #' where \eqn{P} is a permutation matrix, \eqn{L} is unit lower triangular,
 #' and \eqn{U} is upper triangular. `L` (with implicit unit diagonal) and
@@ -3340,14 +3447,15 @@ prim_qr <- new_primitive(
 #' sequential row-swap encoding) and `permutation` (an explicit
 #' permutation vector).
 #'
-#' @param operand ([`arrayish`])\cr
-#'   Matrix of data type floating-point with exactly 2 dimensions.
+#' @param x ([`arrayish`])\cr
+#'   Matrix of data type floating-point with exactly 2 axes.
 #' @return `list` of three [`arrayish`] values: `LU` `(m, n)` with the same
-#'   dtype as the input; `pivots` `(k,)` of dtype `i32` with
-#'   `k = min(m, n)` (1-based row swaps such that row `i` was exchanged
-#'   with row `pivots[i]` during elimination step `i`); and `permutation`
-#'   `(m,)` of dtype `i32`, a 1-based permutation vector for \eqn{P} such
-#'   that `(P %*% A)[i, ]` equals `A[permutation[i], ]`.
+#'   dtype as the input; `pivots` `(k,)` of the default integer data type
+#'   (see [`default_dtypes()`]) with `k = min(m, n)` (1-based row swaps such
+#'   that row `i` was exchanged with row `pivots[i]` during elimination step
+#'   `i`); and `permutation` `(m,)` of the same data type, a 1-based
+#'   permutation vector for \eqn{P} such that `(P %*% A)[i, ]` equals
+#'   `A[permutation[i], ]`.
 #' @templateVar primitive_id lu
 #' @template section_rules
 #' @section StableHLO:
@@ -3362,23 +3470,24 @@ prim_qr <- new_primitive(
 #' @export
 prim_lu <- new_primitive(
   "lu",
-  function(operand) {
-    infer_fn <- function(operand) {
-      assert_linalg_matrix(operand, "operand")
-      dt <- dtype(operand)
-      s <- shape(operand)
+  function(x) {
+    infer_fn <- function(x) {
+      assert_linalg_matrix(x, "x")
+      dt <- dtype(x)
+      s <- shape(x)
       m <- s[1L]
       n <- s[2L]
       k <- min(m, n)
+      index_dt <- default_int()
       list(
         LU = AbstractArray(dtype = dt, shape = Shape(c(m, n))),
-        pivots = AbstractArray(dtype = "i32", shape = Shape(k)),
-        permutation = AbstractArray(dtype = "i32", shape = Shape(m))
+        pivots = AbstractArray(dtype = index_dt, shape = Shape(k)),
+        permutation = AbstractArray(dtype = index_dt, shape = Shape(m))
       )
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       params = list(),
       infer_fn = infer_fn
     )
@@ -3388,7 +3497,7 @@ prim_lu <- new_primitive(
 #' @title Primitive Singular Value Decomposition
 #' @description
 #' Computes the reduced ("economy") singular value decomposition of a
-#' matrix `operand` of shape `(m, n)`:
+#' matrix `x` of shape `(m, n)`:
 #' \deqn{A = u \, \mathrm{diag}(d) \, vt,}
 #' where `u` has orthonormal columns, `vt` has orthonormal rows, and `d`
 #' is the length-`k` (`k = min(m, n)`) vector of non-negative singular
@@ -3403,8 +3512,8 @@ prim_lu <- new_primitive(
 #' Supports any matrix shape on both the host (LAPACK `gesdd`) and CUDA
 #' (cuSOLVER `gesvd`) backends. cuSOLVER's `m >= n` requirement is handled
 #' transparently via a layout flip for wide matrices.
-#' @param operand ([`arrayish`])\cr
-#'   Matrix of data type floating-point with exactly 2 dimensions.
+#' @param x ([`arrayish`])\cr
+#'   Matrix of data type floating-point with exactly 2 axes.
 #' @return Named `list` with elements `d` (length `k`), `u` (shape
 #'   `(m, k)`), and `vt` (shape `(k, n)`). All have the same dtype as
 #'   the input.
@@ -3419,11 +3528,11 @@ prim_lu <- new_primitive(
 #' @export
 prim_svd <- new_primitive(
   "svd",
-  function(operand) {
-    infer_fn <- function(operand) {
-      assert_linalg_matrix(operand, "operand")
-      dt <- dtype(operand)
-      s <- shape(operand)
+  function(x) {
+    infer_fn <- function(x) {
+      assert_linalg_matrix(x, "x")
+      dt <- dtype(x)
+      s <- shape(x)
       m <- s[1L]
       n <- s[2L]
       k <- min(m, n)
@@ -3435,7 +3544,7 @@ prim_svd <- new_primitive(
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       params = list(),
       infer_fn = infer_fn
     )
@@ -3444,15 +3553,15 @@ prim_svd <- new_primitive(
 
 #' @title Primitive Symmetric Eigendecomposition
 #' @description
-#' Computes the eigendecomposition of a symmetric matrix `operand` of
+#' Computes the eigendecomposition of a symmetric matrix `x` of
 #' shape `(n, n)`:
 #' \deqn{A = \mathrm{vectors} \, \mathrm{diag}(\mathrm{values}) \,
 #'   \mathrm{vectors}^\top.}
-#' Only the lower triangle of `operand` is read. The columns of `vectors`
+#' Only the lower triangle of `x` is read. The columns of `vectors`
 #' are the (orthonormal) eigenvectors and `values` is the length-`n`
 #' vector of (real) eigenvalues in ascending order. Output names and
 #' order match [base::eigen()].
-#' @param operand ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Symmetric square matrix of floating-point data type.
 #' @return Named `list` with elements `values` (length `n`) and `vectors`
 #'   (shape `(n, n)`). Both have the same dtype as the input.
@@ -3467,11 +3576,11 @@ prim_svd <- new_primitive(
 #' @export
 prim_eigh <- new_primitive(
   "eigh",
-  function(operand) {
-    infer_fn <- function(operand) {
-      assert_linalg_matrix(operand, "operand", square = TRUE)
-      dt <- dtype(operand)
-      s <- shape(operand)
+  function(x) {
+    infer_fn <- function(x) {
+      assert_linalg_matrix(x, "x", square = TRUE)
+      dt <- dtype(x)
+      s <- shape(x)
       n <- s[1L]
       # Names + order mirror `base::eigen()`: list(values, vectors).
       list(
@@ -3481,7 +3590,7 @@ prim_eigh <- new_primitive(
     }
     graph_desc_add(
       self,
-      list(operand = operand),
+      list(x = x),
       params = list(),
       infer_fn = infer_fn
     )
@@ -3491,24 +3600,22 @@ prim_eigh <- new_primitive(
 #' @title Primitive Convolution
 #' @description
 #' General N-D windowed convolution, lowering to StableHLO's
-#' `convolution` op. Dimension numbers are given 1-based (anvl
-#' convention) and converted to StableHLO's 0-based layout internally.
-#' Most users want [nv_conv1d()] / [nv_conv2d()] / [nv_conv3d()] instead.
-#' @param lhs ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
-#' @param rhs ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
-#' @param input_batch_dimension,input_feature_dimension (`integer(1)`)\cr
-#'   1-based batch/feature dimension of `lhs`.
-#' @param input_spatial_dimensions (`integer()`)\cr 1-based spatial dims of `lhs`.
-#' @param kernel_input_feature_dimension,kernel_output_feature_dimension (`integer(1)`)\cr
-#'   1-based input/output feature dimension of `rhs`.
-#' @param kernel_spatial_dimensions (`integer()`)\cr 1-based spatial dims of `rhs`.
-#' @param output_batch_dimension,output_feature_dimension (`integer(1)`)\cr
-#'   1-based batch/feature dimension of the output.
-#' @param output_spatial_dimensions (`integer()`)\cr
-#'   1-based spatial dims of the output.
-#' @param window_strides (`integer()`)\cr Stride per spatial dim.
+#' `convolution` op.
+#' @param x ([`arrayish`])\cr Input, e.g. `[batch, channels, *spatial]`.
+#' @param kernel ([`arrayish`])\cr Kernel, e.g. `[out_ch, in_ch/groups, *spatial]`.
+#' @param input_batch_axis,input_feature_axis (`integer(1)`)\cr
+#'   batch/feature axis of `x`.
+#' @param input_spatial_axes (`integer()`)\cr Spatial axes of `x`.
+#' @param kernel_input_feature_axis,kernel_output_feature_axis (`integer(1)`)\cr
+#'   Input and output feature axis of `kernel`.
+#' @param kernel_spatial_axes (`integer()`)\cr Spatial axes of `kernel`.
+#' @param output_batch_axis,output_feature_axis (`integer(1)`)\cr
+#'   batch/feature axis of the output.
+#' @param output_spatial_axes (`integer()`)\cr
+#'   Spatial axes of the output.
+#' @param window_strides (`integer()`)\cr Stride per spatial axis.
 #' @param padding (`matrix`)\cr `[n_spatial, 2]` of `(low, high)` padding.
-#' @param lhs_dilation,rhs_dilation (`integer()`)\cr Input/kernel dilation.
+#' @param x_dilation,kernel_dilation (`integer()`)\cr Input/kernel dilation.
 #' @param feature_group_count,batch_group_count (`integer(1)`)\cr Grouping.
 #' @param precision (`character(1)`)\cr One of `"highest"`, `"high"`,
 #'   `"default"`.
@@ -3517,91 +3624,92 @@ prim_eigh <- new_primitive(
 prim_convolution <- new_primitive(
   "convolution",
   function(
-    lhs,
-    rhs,
-    input_batch_dimension,
-    input_feature_dimension,
-    input_spatial_dimensions,
-    kernel_input_feature_dimension,
-    kernel_output_feature_dimension,
-    kernel_spatial_dimensions,
-    output_batch_dimension,
-    output_feature_dimension,
-    output_spatial_dimensions,
+    x,
+    kernel,
+    input_batch_axis,
+    input_feature_axis,
+    input_spatial_axes,
+    kernel_input_feature_axis,
+    kernel_output_feature_axis,
+    kernel_spatial_axes,
+    output_batch_axis,
+    output_feature_axis,
+    output_spatial_axes,
     window_strides,
     padding,
-    lhs_dilation,
-    rhs_dilation,
+    x_dilation,
+    kernel_dilation,
     feature_group_count = 1L,
     batch_group_count = 1L,
     precision = "highest"
   ) {
     infer_fn <- function(
-      lhs,
-      rhs,
-      input_batch_dimension,
-      input_feature_dimension,
-      input_spatial_dimensions,
-      kernel_input_feature_dimension,
-      kernel_output_feature_dimension,
-      kernel_spatial_dimensions,
-      output_batch_dimension,
-      output_feature_dimension,
-      output_spatial_dimensions,
+      x,
+      kernel,
+      input_batch_axis,
+      input_feature_axis,
+      input_spatial_axes,
+      kernel_input_feature_axis,
+      kernel_output_feature_axis,
+      kernel_spatial_axes,
+      output_batch_axis,
+      output_feature_axis,
+      output_spatial_axes,
       window_strides,
       padding,
-      lhs_dilation,
-      rhs_dilation,
+      x_dilation,
+      kernel_dilation,
       feature_group_count,
       batch_group_count,
       precision
     ) {
       shlo_dn <- stablehlo::ConvDimensionNumbers(
-        input_batch_dimension = input_batch_dimension - 1L,
-        input_feature_dimension = input_feature_dimension - 1L,
-        input_spatial_dimensions = input_spatial_dimensions - 1L,
-        kernel_input_feature_dimension = kernel_input_feature_dimension - 1L,
-        kernel_output_feature_dimension = kernel_output_feature_dimension - 1L,
-        kernel_spatial_dimensions = kernel_spatial_dimensions - 1L,
-        output_batch_dimension = output_batch_dimension - 1L,
-        output_feature_dimension = output_feature_dimension - 1L,
-        output_spatial_dimensions = output_spatial_dimensions - 1L
+        input_batch_dimension = input_batch_axis - 1L,
+        input_feature_dimension = input_feature_axis - 1L,
+        input_spatial_dimensions = input_spatial_axes - 1L,
+        kernel_input_feature_dimension = kernel_input_feature_axis - 1L,
+        kernel_output_feature_dimension = kernel_output_feature_axis - 1L,
+        kernel_spatial_dimensions = kernel_spatial_axes - 1L,
+        output_batch_dimension = output_batch_axis - 1L,
+        output_feature_dimension = output_feature_axis - 1L,
+        output_spatial_dimensions = output_spatial_axes - 1L
       )
-      n <- length(input_spatial_dimensions)
+      n <- length(input_spatial_axes)
       pad <- padding
       storage.mode(pad) <- "integer"
       out <- stablehlo::infer_types_convolution(
-        at2vt(lhs),
-        at2vt(rhs),
+        at2vt(x),
+        at2vt(kernel),
         dimension_numbers = shlo_dn,
         precision_config = rep(toupper(precision), 2L),
         window_strides = r_to_constant(as.integer(window_strides), dtype = "i64", shape = length(window_strides)),
         padding = r_to_constant(pad, dtype = "i64", shape = dim(pad)),
-        lhs_dilation = r_to_constant(as.integer(lhs_dilation), dtype = "i64", shape = length(lhs_dilation)),
-        rhs_dilation = r_to_constant(as.integer(rhs_dilation), dtype = "i64", shape = length(rhs_dilation)),
+        lhs_dilation = r_to_constant(as.integer(x_dilation), dtype = "i64", shape = length(x_dilation)),
+        rhs_dilation = r_to_constant(as.integer(kernel_dilation), dtype = "i64", shape = length(kernel_dilation)),
         window_reversal = r_to_constant(rep(FALSE, n), dtype = "i1", shape = n),
         feature_group_count = r_to_constant(as.integer(feature_group_count), dtype = "i64", shape = integer()),
         batch_group_count = r_to_constant(as.integer(batch_group_count), dtype = "i64", shape = integer())
       )[[1L]]
       list(vt2at(out))
     }
+    operands <- apply_promotion(list(x = x, kernel = kernel), promotion_rdata_common())
     graph_desc_add(
       self,
-      list(lhs = lhs, rhs = rhs),
+      operands,
       list(
-        input_batch_dimension = input_batch_dimension,
-        input_feature_dimension = input_feature_dimension,
-        input_spatial_dimensions = input_spatial_dimensions,
-        kernel_input_feature_dimension = kernel_input_feature_dimension,
-        kernel_output_feature_dimension = kernel_output_feature_dimension,
-        kernel_spatial_dimensions = kernel_spatial_dimensions,
-        output_batch_dimension = output_batch_dimension,
-        output_feature_dimension = output_feature_dimension,
-        output_spatial_dimensions = output_spatial_dimensions,
+        input_batch_axis = input_batch_axis,
+        input_feature_axis = input_feature_axis,
+        input_spatial_axes = input_spatial_axes,
+        kernel_input_feature_axis = kernel_input_feature_axis,
+        kernel_output_feature_axis = kernel_output_feature_axis,
+        kernel_spatial_axes = kernel_spatial_axes,
+        output_batch_axis = output_batch_axis,
+        output_feature_axis = output_feature_axis,
+        output_spatial_axes = output_spatial_axes,
         window_strides = window_strides,
         padding = padding,
-        lhs_dilation = lhs_dilation,
-        rhs_dilation = rhs_dilation,
+        x_dilation = x_dilation,
+        kernel_dilation = kernel_dilation,
         feature_group_count = feature_group_count,
         batch_group_count = batch_group_count,
         precision = precision

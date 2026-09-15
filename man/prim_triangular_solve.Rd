@@ -9,14 +9,14 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
 Triangular coefficient matrix of data type floating-point with at least 2
-dimensions. The last two dimensions must be equal (square matrix); any
-leading dimensions are batch dimensions.}
+axes. The last two axes must be equal (square matrix); any
+leading axes are batch axes.}
 
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side. Same data type and rank as \code{a} (rank >= 2), with
-matching leading batch dimensions. The size of \code{a}'s last two (square)
-dimensions must equal \code{b}'s second-to-last dimension when
-\code{left_side = TRUE}, or \code{b}'s last dimension when \code{left_side = FALSE}.}
+matching leading batch axes. The size of \code{a}'s last two (square)
+axes must equal \code{b}'s second-to-last axis when
+\code{left_side = TRUE}, or \code{b}'s last axis when \code{left_side = FALSE}.}
 
 \item{left_side}{(\code{logical(1)})\cr
 If \code{TRUE}, solve \code{op(a) \%*\% x = b}. If \code{FALSE}, solve \code{x \%*\% op(a) = b}.}
@@ -33,13 +33,12 @@ If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{F
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as \code{b}.
-It is ambiguous if both \code{a} and \code{b} are ambiguous.
 }
 \description{
 Solves a system of linear equations with a triangular coefficient matrix.
 When \code{left_side} is \code{TRUE}, solves \code{op(a) \%*\% x = b} for \code{x}.
 When \code{left_side} is \code{FALSE}, solves \code{x \%*\% op(a) = b} for \code{x}.
-Dimensions before the last two are batch dimensions and must match
+Axes before the last two are batch axes and must match
 between \code{a} and \code{b} (no broadcasting).
 Here \code{op} is \code{A} or \code{A^T} depending on \code{transpose_a}.
 }
@@ -59,7 +58,7 @@ Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # Solve L \%*\% x = b where L is lower triangular
-L <- nv_matrix(c(2, 0, 1, 3), nrow = 2, dtype = "f32")
+L <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
 b <- nv_matrix(c(4, 3), nrow = 2, dtype = "f32")
 prim_triangular_solve(L, b,
   left_side = TRUE, lower = TRUE,
@@ -68,7 +67,7 @@ prim_triangular_solve(L, b,
 \dontshow{\}) # examplesIf}
 }
 \references{
-Giles, Mike (2008).
+Giles M (2008).
 \dQuote{An extended collection of matrix derivative results for forward and reverse mode automatic differentiation.}
 Oxford University Computing Laboratory.
 }

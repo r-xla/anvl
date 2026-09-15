@@ -4,11 +4,11 @@
 \alias{nv_extract_diag}
 \title{Extract Diagonal}
 \usage{
-nv_extract_diag(operand)
+nv_extract_diag(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 \code{\link{arrayish}}\cr

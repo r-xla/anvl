@@ -4,11 +4,11 @@
 \alias{nv_tril}
 \title{Lower Triangular Matrix}
 \usage{
-nv_tril(operand, diagonal = 0L)
+nv_tril(x, diagonal = 0L)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset. \code{0} (default) is the main diagonal, positive values
@@ -16,7 +16,7 @@ include diagonals above, negative values exclude diagonals below.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as \code{operand}.
+Has the same shape and data type as \code{x}.
 }
 \description{
 Returns the lower triangular part of a 2-D array, setting elements above

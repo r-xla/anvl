@@ -4,11 +4,11 @@
 \alias{nv_bitcast_convert}
 \title{Bitcast Conversion}
 \usage{
-nv_bitcast_convert(operand, dtype)
+nv_bitcast_convert(x, dtype)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Target data type.}
@@ -20,7 +20,7 @@ Has the given \code{dtype}.
 \description{
 Reinterprets the bits of an array as a different data type without modifying
 the underlying data. If the target type is narrower, an extra trailing
-dimension is added; if wider, the last dimension is consumed.
+axis is added; if wider, the last axis is consumed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

@@ -4,15 +4,15 @@
 \alias{prim_print}
 \title{Primitive Print}
 \usage{
-prim_print(operand)
+prim_print(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of any data type.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Returns \code{operand} as-is.
+Returns \code{x} as-is.
 }
 \description{
 Prints an array value to the console during execution and returns the

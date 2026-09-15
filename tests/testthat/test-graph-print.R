@@ -1,4 +1,5 @@
 test_that("literals", {
+  local_registered_default_dtypes()
   f <- function(x) {
     x * 1L
   }
@@ -10,14 +11,6 @@ test_that("literals", {
     nv_fill(1, shape = c(2, 1))
   }
   graph <- trace_fn(f, list())
-  expect_snapshot(graph)
-})
-
-test_that("ambiguity is printed via ?", {
-  f <- function(x) {
-    x * 1
-  }
-  graph <- trace_fn(f, list(x = nv_scalar(TRUE)))
   expect_snapshot(graph)
 })
 
@@ -49,9 +42,29 @@ test_that("sub-graphs (while)", {
 })
 
 test_that("params", {
+  local_registered_default_dtypes()
   f <- function(x) {
-    nv_reduce_max(x, dims = 1, drop = TRUE)
+    nv_reduce_max(x, axes = 1, drop = TRUE)
   }
   graph <- trace_fn(f, list(x = nv_array(1:10)))
   expect_snapshot(graph)
+})
+
+test_that("an input the caller supplies as bare R data names its R type", {
+  f <- function(x, y) x + y
+  graph <- trace_fn(
+    f,
+    list(x = nv_scalar(1, dtype = "f64"), y = nv_aval("double", integer()))
+  )
+  expect_snapshot(graph)
+
+  graph <- trace_fn(f, list(x = nv_aval("f32", integer()), y = nv_aval("integer", 2L)))
+  expect_snapshot(graph)
+})
+
+test_that("a data type prints under its anvl name, not its MLIR spelling", {
+  f <- function(x) x
+  graph <- trace_fn(f, list(x = nv_aval("bool", 2L)))
+  expect_match(format(graph), "bool[2]", fixed = TRUE)
+  expect_no_match(format(graph), "i1", fixed = TRUE)
 })

@@ -22,7 +22,7 @@ describe("nv_subset and nv_subset_assign", {
     })
 
     args <- lapply(r_args, \(a) a[[1L]])
-    drop_dims <- vapply(r_args, \(a) a[[2L]], logical(1L))
+    drop_axes <- vapply(r_args, \(a) a[[2L]], logical(1L))
 
     value_shape <- subset_spec_to_shape(spec)
 
@@ -71,11 +71,11 @@ describe("nv_subset and nv_subset_assign", {
     check(c(10L), array(c(1L, 4L, 7L)))
   })
 
-  it("1D: array(i) keeps the dimension", {
+  it("1D: array(i) keeps the axis", {
     check(c(10L), array(3L))
   })
 
-  it("2D: single element in both dims", {
+  it("2D: single element in both axes", {
     check(c(4L, 5L), 2L, 3L)
   })
 
@@ -83,19 +83,19 @@ describe("nv_subset and nv_subset_assign", {
     check(c(6L, 4L), 2:4, )
   })
 
-  it("2D: single in first dim, range in second", {
+  it("2D: single in first axis, range in second", {
     check(c(5L, 8L), 3L, 2:6)
   })
 
-  it("2D: single in first dim, full second", {
+  it("2D: single in first axis, full second", {
     check(c(4L, 5L), 2L, )
   })
 
-  it("2D: range in both dims", {
+  it("2D: range in both axes", {
     check(c(6L, 8L), 2:4, 3:6)
   })
 
-  it("2D: full first dim, range in second", {
+  it("2D: full first axis, range in second", {
     check(c(3L, 6L), , 2:4)
   })
 
@@ -103,23 +103,23 @@ describe("nv_subset and nv_subset_assign", {
     check(c(2, 3, 2), 1:2, array(c(1L, 3L)), 1)
   })
 
-  it("2D: gather in first dim, full second", {
+  it("2D: gather in first axis, full second", {
     check(c(6L, 4L), array(c(1L, 3L, 5L)), )
   })
 
-  it("2D: gather in both dims", {
+  it("2D: gather in both axes", {
     check(c(5L, 6L), array(c(1L, 3L, 5L)), array(c(2L, 4L)))
   })
 
-  it("2D: gather in one dim, single in the other", {
+  it("2D: gather in one axis, single in the other", {
     check(c(5L, 6L), array(c(2L, 4L)), 3L)
   })
 
-  it("2D: single-element array preserves dim", {
+  it("2D: single-element array preserves axis", {
     check(c(4L, 3L), array(2L), )
   })
 
-  it("2D: trailing dim unspecified (defaults to full)", {
+  it("2D: trailing axis unspecified (defaults to full)", {
     check(c(4L, 3L), 2:3)
   })
 
@@ -131,11 +131,11 @@ describe("nv_subset and nv_subset_assign", {
     check(c(3L, 4L, 2L), , , )
   })
 
-  it("3D: gather in two dims, scalar in third", {
+  it("3D: gather in two axes, scalar in third", {
     check(c(4L, 5L, 6L), array(c(1L, 3L)), array(c(2L, 5L)), 1L)
   })
 
-  it("3D: gather in first two dims, range in third", {
+  it("3D: gather in first two axes, range in third", {
     check(c(4L, 5L, 6L), array(c(1L, 3L)), array(c(2L, 4L, 5L)), 2:4)
   })
 
@@ -170,7 +170,7 @@ describe("nv_subset and nv_subset_assign", {
     check(c(8L), 8L)
   })
 
-  it("1D: length-1 range preserves dim", {
+  it("1D: length-1 range preserves axis", {
     check(c(10L), 3:3)
   })
 
@@ -189,26 +189,26 @@ describe("nv_subset and nv_subset_assign", {
     check(c(6L), array(c(2L, 2L, 4L)))
   })
 
-  it("2D: dimension of size 1", {
+  it("2D: axis of size 1", {
     check(c(1L, 5L), 1L, 2:4)
   })
 
-  it("3D: all dims dropped (scalar result)", {
+  it("3D: all axes dropped (scalar result)", {
     check(c(4L, 5L, 3L), 2L, 3L, 1L)
   })
 
-  it("3D: trailing dims unspecified with drop", {
+  it("3D: trailing axes unspecified with drop", {
     check(c(4L, 5L, 3L), 2L)
   })
 
   # TODO: duplicate destination indices — stablehlo.scatter is non-deterministic
   # on GPU. Improve check() to verify membership rather than last-wins equality.
-  it("2D: gather with duplicates in both dims", {
+  it("2D: gather with duplicates in both axes", {
     skip_if(is_cuda())
     check(c(4L, 5L), array(c(1L, 1L, 3L)), array(c(2L, 2L)))
   })
 
-  it("2D: boundary indices in both dims", {
+  it("2D: boundary indices in both axes", {
     check(c(3L, 4L), 1:3, 1:4)
   })
 
@@ -218,8 +218,8 @@ describe("nv_subset and nv_subset_assign", {
   it("scatter with all-colliding destination indices yields a valid write", {
     x <- nv_array(1:100)
     result <- as_array(nv_subset_assign(x, array(rep(1L, 100)), value = nv_array(101:200)))
-    expect_true(as.vector(result)[1L] %in% 101:200)
-    expect_equal(as.vector(result)[-1L], 2:100)
+    expect_true(as.integer(result)[1L] %in% 101:200)
+    expect_equal(as.integer(result)[-1L], 2:100)
   })
 
   it("subset errors on R vector of length > 1", {
@@ -292,7 +292,7 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[0:5], "out of bounds")
   })
 
-  it("errors on out-of-bounds range (end > dim_size)", {
+  it("errors on out-of-bounds range (end > axis_size)", {
     x <- nv_array(1:10)
     expect_error(x[5:11], "out of bounds")
   })
@@ -302,7 +302,7 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[0L], "out of bounds")
   })
 
-  it("errors on out-of-bounds single index (> dim_size)", {
+  it("errors on out-of-bounds single index (> axis_size)", {
     x <- nv_array(1:10)
     expect_error(x[11L], "out of bounds")
   })
@@ -402,7 +402,7 @@ describe("subset_specs_start_indices", {
     expect_equal(dtype(result), as_dtype("i32"))
   })
 
-  it("works with a single dimension", {
+  it("works with a single axis", {
     subsets <- list(SubsetRange(2L, 7L))
     result <- subset_specs_start_indices(subsets)
     expect_equal(dtype(result), as_dtype("i32"))
@@ -423,14 +423,14 @@ describe("subset_specs_start_indices", {
 })
 
 describe("zero-sized subsets", {
-  it("empty index array yields a zero-sized dimension", {
+  it("empty index array yields a zero-sized axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(shape(x[array(integer(0)), ]), c(0L, 4L))
     expect_equal(as_array(x[array(integer(0)), ]), r_arr[integer(0), , drop = FALSE])
   })
 
-  it("empty range yields a zero-sized dimension", {
+  it("empty range yields a zero-sized axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(shape(x[1:0, ]), c(0L, 4L))
@@ -451,21 +451,21 @@ describe("boolean masks", {
     expect_equal(as_array(x[m]), r_arr[as.vector(m)])
   })
 
-  it("2D: mask on the first dimension", {
+  it("2D: mask on the first axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m <- arr(TRUE, FALSE, TRUE)
     expect_equal(as_array(x[m, ]), r_arr[as.vector(m), , drop = FALSE])
   })
 
-  it("2D: mask on the second dimension", {
+  it("2D: mask on the second axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m <- arr(FALSE, TRUE, TRUE, FALSE)
     expect_equal(as_array(x[, m]), r_arr[, as.vector(m), drop = FALSE])
   })
 
-  it("2D: masks on both dimensions", {
+  it("2D: masks on both axes", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m1 <- arr(TRUE, FALSE, TRUE)
@@ -480,7 +480,7 @@ describe("boolean masks", {
     expect_equal(as_array(x[m, 2:3]), r_arr[as.vector(m), 2:3, drop = FALSE])
   })
 
-  it("3D: masks in all three dimensions", {
+  it("3D: masks on all three axes", {
     r_arr <- array(1:24, dim = c(2L, 3L, 4L))
     x <- nv_array(r_arr)
     m1 <- arr(TRUE, FALSE)
@@ -492,7 +492,7 @@ describe("boolean masks", {
     )
   })
 
-  it("subset_assign with masks on both dimensions", {
+  it("subset_assign with masks on both axes", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     m1 <- arr(TRUE, FALSE, TRUE)
     m2 <- arr(FALSE, TRUE, TRUE, FALSE)
@@ -508,23 +508,23 @@ describe("boolean masks", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     m <- arr(TRUE, FALSE, TRUE)
-    # the scalar index drops the second dimension, so the result is 1-D
+    # the scalar index drops the second axis, so the result is 1-D
     expect_equal(as_array(x[m, 2L]), array(r_arr[as.vector(m), 2L]))
   })
 
-  it("all-TRUE mask keeps the dimension size", {
+  it("all-TRUE mask keeps the axis size", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(as_array(x[arr(TRUE, TRUE, TRUE), ]), r_arr)
   })
 
-  it("all-FALSE mask yields a zero-sized dimension", {
+  it("all-FALSE mask yields a zero-sized axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
     expect_equal(shape(x[arr(FALSE, FALSE, FALSE), ]), c(0L, 4L))
   })
 
-  it("subset_assign with a mask on the first dimension", {
+  it("subset_assign with a mask on the first axis", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     m <- arr(TRUE, FALSE, TRUE)
     r_expected <- r_arr
@@ -573,8 +573,8 @@ describe("boolean masks from arrays", {
   it("2D: anvl masks in both dimensions", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     x <- nv_array(r_arr)
-    row_mask <- nv_reduce_sum(x, dims = 2L) > 20L
-    col_mask <- nv_reduce_sum(x, dims = 1L) > 10L
+    row_mask <- nv_reduce_sum(x, axes = 2L) > 20L
+    col_mask <- nv_reduce_sum(x, axes = 1L) > 10L
     expect_equal(
       as_array(x[row_mask, col_mask]),
       r_arr[rowSums(r_arr) > 20L, colSums(r_arr) > 10L, drop = FALSE]
@@ -592,9 +592,9 @@ describe("boolean masks from arrays", {
     expect_error(x[arr(TRUE, NA, TRUE)], "must not contain missing values")
   })
 
-  it("errors on a mask whose length does not match the dimension", {
+  it("errors on a mask whose length does not match the axis", {
     x <- nv_array(1:3)
-    expect_error(x[arr(TRUE, FALSE)], "does not match dimension of size 3")
+    expect_error(x[arr(TRUE, FALSE)], "does not match an axis of size 3")
   })
 })
 
@@ -611,7 +611,7 @@ describe("whole-array boolean masks", {
     expect_equal(as_array(x[x > 6L]), array(r_arr[r_arr > 6L]))
   })
 
-  it("2D: works with an R logical mask of the operand's shape", {
+  it("2D: works with an R logical mask of the array's shape", {
     r_arr <- array(1:12, dim = c(3L, 4L))
     r_mask <- array(rep(c(TRUE, FALSE), 6L), dim = c(3L, 4L))
     x <- nv_array(r_arr)
@@ -658,7 +658,7 @@ describe("whole-array boolean masks", {
 
   it("errors when a whole-array mask is combined with another subscript", {
     x <- nv_array(array(1:12, dim = c(3L, 4L)))
-    expect_error(x[x > 6L, 1L], "must be 1D, but got 2D")
+    expect_error(x[x > 6L, 1L], "must have exactly one axis")
   })
 
   it("subset_assign errors when the update length does not match", {

@@ -1,13 +1,15 @@
+#' @include default-dtypes.R
+NULL
+
 #' Create a backend
 #'
 #' @param new_data (`function`)\cr Constructs an AnvlArray from R data.
 #' This should be a `structure()` with at least a `$data` field that contains the actual
-#' underlying data (`PJRTBuffer` for `"xla"` backend, `array()` for `"quickr"` backend).
+#' underlying data (`PJRTBuffer` for `"pjrt"` backend, `array()` for `"quickr"` backend).
 #' @param new_empty (`function`)\cr Constructs an AnvlArray of the given
 #' `dtype` and `shape` with unspecified contents. Called by [`nv_empty()`].
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
 #' @param shape (`function`)\cr Extracts the shape from an AnvlArray.
-#' @param ambiguous (`function`)\cr Extracts the ambiguous flag from an AnvlArray.
 #' @param as_array (`function(x, check)`)\cr Converts an AnvlArray to an R
 #'   array. The `check` flag is forwarded from [`as_array()`]; backends may use
 #'   it to abort when materialization would lose information (e.g. ui64 values
@@ -22,6 +24,9 @@
 #' @param await_data (`function`)\cr Blocks until the array's underlying data
 #'   is ready. Called by [`await()`] for `AnvlArray`s; a no-op for backends
 #'   without async execution.
+#' @param default_dtypes (`NULL` | `list(float, int)`)\cr
+#'   The default data types for this backend.
+#'   Can be overwritten, see [`default_dtypes()`].
 #' @return An `AnvlBackend` object.
 #' @keywords internal
 #' @export
@@ -30,7 +35,6 @@ AnvlBackend <- function(
   new_empty,
   dtype,
   shape,
-  ambiguous,
   as_array,
   as_raw,
   platform,
@@ -38,15 +42,21 @@ AnvlBackend <- function(
   new_device,
   print_data,
   jit,
-  await_data
+  await_data,
+  default_dtypes
 ) {
+  if (!is.null(default_dtypes)) {
+    default_dtypes <- list(
+      float = as_dtype(default_dtypes$float),
+      int = as_dtype(default_dtypes$int)
+    )
+  }
   structure(
     list(
       new_data = new_data,
       new_empty = new_empty,
       dtype = dtype,
       shape = shape,
-      ambiguous = ambiguous,
       as_array = as_array,
       as_raw = as_raw,
       platform = platform,
@@ -54,13 +64,17 @@ AnvlBackend <- function(
       new_device = new_device,
       print_data = print_data,
       jit = jit,
-      await_data = await_data
+      await_data = await_data,
+      default_dtypes = default_dtypes
     ),
     class = "AnvlBackend"
   )
 }
 
 register_backend <- function(name, backend) {
+  if (name %in% c("float", "int")) {
+    cli_abort("A backend must not be named after a data type category ({.val float} or {.val int}).")
+  }
   globals$backends[[name]] <- backend
 }
 
@@ -79,7 +93,7 @@ eq_device <- function(x, y) {
 check_single_backend <- function(graph, arg_devices, expected) {
   const_backends <- vapply(
     graph$constants,
-    function(const) if (is_concrete_tensor(const$aval)) backend(const$aval$data) else NA_character_,
+    function(const) if (is_concrete_array(const$aval)) backend(const$aval$data) else NA_character_,
     character(1)
   )
   arg_backends <- vapply(arg_devices, backend, character(1))
@@ -115,10 +129,7 @@ globals$backends <- list()
 register_backend(
   "plain",
   AnvlBackend(
-    new_data = function(data, dtype, shape, device, ambiguous) {
-      if (is.null(dtype)) {
-        dtype <- default_dtype(data)
-      }
+    new_data = function(data, dtype, shape, device) {
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
@@ -141,11 +152,11 @@ register_backend(
         as.double(data)
       )
       structure(
-        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "plain"),
+        list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"
       )
     },
-    new_empty = function(dtype, shape, device, ambiguous) {
+    new_empty = function(dtype, shape, device) {
       if (!is_dtype(dtype)) {
         dtype <- as_dtype(dtype)
       }
@@ -159,13 +170,12 @@ register_backend(
       )
       data <- array(vector(storage_mode, prod(shape)), dim = shape)
       structure(
-        list(data = data, dtype = dtype, shape = shape, ambiguous = ambiguous, backend = "plain"),
+        list(data = data, dtype = dtype, shape = shape, backend = "plain"),
         class = "AnvlArray"
       )
     },
     dtype = function(x) x$dtype,
     shape = function(x) x$shape,
-    ambiguous = function(x) x$ambiguous,
     as_array = function(x, check) x$data,
     as_raw = function(x, row_major) cli_abort("as_raw not supported for plain backend"),
     platform = function(x) "cpu",
@@ -180,51 +190,91 @@ register_backend(
     jit = function(f, static, cache_size, ...) {
       cli_abort("JIT compilation is not supported for the {.val plain} backend.")
     },
-    await_data = function(x) invisible(NULL)
+    await_data = function(x) invisible(NULL),
+    default_dtypes = NULL
   )
 )
 
-#' Get the default backend
+#' Get Active Backend
 #'
-#' Returns the current default backend from `getOption("anvl.default_backend", "xla")`.
+#' Retrieves the active backend (option `anvl.backend`), falling back to the default `"pjrt"`
+#' backend.
 #'
-#' @return `character(1)` — the backend name (e.g. `"xla"`, `"quickr"`).
-#' @seealso [local_backend()]
+#' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
+#' @seealso [local_backend()], [with_backend()], [default_dtypes()]
 #' @export
-default_backend <- function() {
-  getOption("anvl.default_backend", "xla")
+active_backend <- function() {
+  getOption("anvl.backend", "pjrt")
 }
 
 assert_backend <- function(backend) {
   assert_choice(backend, names(globals$backends))
 }
 
-#' Temporarily set the default backend
+#' Temporarily set the backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' calling scope. This affects `nv_array()`, `nv_scalar()`, and `jit()`.
+#' Sets the `anvl.backend` option for the duration of the calling scope. Every
+#' array built and every operation run in that scope uses the backend, and R
+#' values materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use (`"xla"` or `"quickr"`).
+#'   Backend to use (`"pjrt"` or `"quickr"`).
 #' @param envir The environment to scope the change to.
 #' @return The previous value of the option (invisibly).
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
-  withr::local_options(anvl.default_backend = backend, .local_envir = envir)
+  withr::local_options(anvl.backend = backend, .local_envir = envir)
 }
 
 #' Run code with a specific backend
 #'
-#' Sets the `anvl.default_backend` option for the duration of the
-#' expression. This affects [`jit()`] and data construction (e.g. via [`nv_array`]).
+#' Sets the `anvl.backend` option for the duration of the expression. Every
+#' array built and every operation run in `code` uses the backend, and R values
+#' materialize at its default data types (see [`default_dtypes()`]).
 #'
 #' @param backend (`character(1)`)\cr
-#'   Backend to use (`"xla"` or `"quickr"`).
+#'   Backend to use (`"pjrt"` or `"quickr"`).
 #' @param code An expression to evaluate with the given backend.
 #' @return The result of evaluating `code`.
 #' @export
 with_backend <- function(backend, code) {
   backend <- assert_backend(backend)
-  withr::with_options(list(anvl.default_backend = backend), code)
+  withr::with_options(list(anvl.backend = backend), code)
+}
+
+#' Install what a backend needs to run
+#'
+#' A backend needs more than the packages anvl declares as dependencies: the
+#' `"pjrt"` backend runs on PJRT plugins that are downloaded rather than shipped
+#' with the package, and the `"quickr"` backend needs \CRANpkg{quickr}, which is only
+#' suggested. This installs whichever of the two the given backend is missing.
+#'
+#' The PJRT plugins are downloaded on demand, but not silently: the first time a
+#' plugin is needed, an interactive session asks for confirmation, while a
+#' non-interactive session does not download at all. Call this to make the
+#' download an explicit step instead, for instance in a `Dockerfile` layer of its
+#' own or at the start of a script that later runs unattended. The `PJRT_INSTALL`
+#' environment variable overrides the prompt: `"1"` always downloads without
+#' asking, `"0"` never downloads.
+#'
+#' Which plugins you get -- and whether CUDA is available at all -- is decided
+#' by the repository anvl was installed from, not by this call. See the
+#' installation vignette: `vignette("installation", package = "anvl")`.
+#'
+#' @param backend (`character(1)`)\cr
+#'   Backend to install for. Defaults to [active_backend()]. The `"plain"`
+#'   backend has nothing to install and is not accepted.
+#' @param ... Passed to the underlying installer: [pjrt::install_pjrt()] for
+#'   `"pjrt"`, [utils::install.packages()] for `"quickr"`.
+#' @return `NULL`, invisibly. Called for its side effect.
+#' @export
+install_anvl <- function(backend = active_backend(), ...) {
+  backend <- assert_choice(backend, c("pjrt", "quickr"))
+  switch(
+    backend,
+    pjrt = pjrt::install_pjrt(...),
+    quickr = install.packages("quickr", ...)
+  )
+  invisible(NULL)
 }

@@ -15,8 +15,8 @@ nv_triangular_solve(
 }
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
-Triangular coefficient matrix with at least 2 dimensions. The last two
-dimensions must be equal; any leading dimensions are batch dimensions.}
+Triangular coefficient matrix with at least 2 axes. The last two
+axes must be equal; any leading axes are batch axes.}
 
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side. For \code{a} of shape \verb{(B..., n, n)}, \code{b} may be either:
@@ -29,7 +29,7 @@ is reshaped internally and the reshape is undone on the result so
 the output rank matches \code{b}.
 }
 
-\code{b}'s batch dimensions (\code{B...}) must match \code{a}'s exactly.}
+\code{b}'s batch axes (\code{B...}) must match \code{a}'s exactly.}
 
 \item{left_side}{(\code{logical(1)})\cr
 If \code{TRUE} (default), solve \code{op(a) \%*\% x = b}; if \code{FALSE},
@@ -56,7 +56,7 @@ returns \code{x} such that \code{x \%*\% op(a) = b}. Here \code{op} is \code{a} 
 depending on \code{transpose_a}.
 }
 \details{
-As a convenience, \code{b} may have one fewer dimension than \code{a} (a single
+As a convenience, \code{b} may have one fewer axis than \code{a} (a single
 right-hand side per batch, shape \verb{(B..., n)} for \code{a} of shape
 \verb{(B..., n, n)}). It is reshaped internally to a column (\code{left_side = TRUE}) or row (\code{left_side = FALSE}) and reshaped back on the way out.
 Because we don't broadcast, this is not ambiguous (as it would be for NumPy).

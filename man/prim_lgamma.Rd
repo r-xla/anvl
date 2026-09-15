@@ -4,16 +4,15 @@
 \alias{prim_lgamma}
 \title{Primitive Log-Gamma}
 \usage{
-prim_lgamma(operand)
+prim_lgamma(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 Arrayish value of data type floating-point.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
-It is ambiguous if the input is ambiguous.
 }
 \description{
 Element-wise natural logarithm of the absolute value of the gamma function.

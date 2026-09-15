@@ -2,13 +2,13 @@
 % Please edit documentation in R/api.R
 \name{nv_flatten}
 \alias{nv_flatten}
-\title{Flatte}
+\title{Flatten}
 \usage{
-nv_flatten(operand)
+nv_flatten(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array.}
 }
 \value{
 (\code{\link{arrayish}})\cr

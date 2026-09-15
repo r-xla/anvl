@@ -4,15 +4,17 @@
 \alias{nv_erf_inv}
 \title{Inverse Error Function}
 \usage{
-nv_erf_inv(operand)
+nv_erf_inv(x)
 }
 \arguments{
-\item{operand}{(\code{\link{arrayish}})\cr
-Operand.}
+\item{x}{(\code{\link{arrayish}})\cr
+Input array. An integer array is converted to the default floating point type
+(see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+Has the same shape as the input, and its data type -- or the default float
+data type if the input was an integer array.
 }
 \description{
 Element-wise inverse error function (the inverse of \code{erf} on \verb{(-1, 1)}).

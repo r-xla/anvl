@@ -34,7 +34,7 @@ We will start with subsetting and then move on to subset-assignment.
 ### Subsetting 1D arrays
 
 Let's start with some simple examples of selecting individual elements from a 1-dimensional array.
-The index can be either static or dynamic and we can drop or keep the dimension:
+The index can be either static or dynamic and we can drop or keep the axis:
 
 ```{r}
 library(anvl)
@@ -65,7 +65,7 @@ x
 * Dynamic & Keep:
 
   Below, we perform almost the same operation as above, except that we use an array of shape `(1)` instead of a scalar with shape `()`.
-  The difference is that subsetting with the former will preserve the dimension, while the latter will drop it, as we have seen above.
+  The difference is that subsetting with the former will preserve the axis, while the latter will drop it, as we have seen above.
   This ensures that the dimensionality of the result is the same for any 1D subset specification, and does not suddenly "simplify" the result to 0D.
 
   ```{r}
@@ -86,7 +86,7 @@ Next, we subset multiple elements, where we only have to distinguish between sta
   x[nv_array(c(2L, 4L, 6L))]
   ```
 
-We use `arr()` (or equivalently `array()`) instead of a bare R vector, because otherwise the case where we use a length-1 vector would be ambiguous (do we drop or keep the dimension?).
+We use `arr()` (or equivalently `array()`) instead of a bare R vector, because otherwise the case where we use a length-1 vector would be ambiguous (do we drop or keep the axis?).
 This allows us to do without a `drop` parameter.
 
 We can also use a range that can be specified either canonically via `a:b` or using `nv_seq()`.
@@ -131,7 +131,7 @@ x[arr(2, 2)]
 
 A boolean mask selects the elements at the `TRUE` positions.
 Masks must be arrays -- plain R logical vectors are rejected, just like plain numeric vectors -- so use `arr()` to write one out.
-A mask for a single dimension must have exactly as many elements as that dimension, and never drops it.
+A mask for a single axis must have exactly as many elements as the size of that axis, and never drops the axis.
 
 ```{r}
 x <- nv_matrix(1:12, nrow = 3, byrow = TRUE)
@@ -147,7 +147,7 @@ x[x > 6]
 ```
 
 The elements come back in the same order as in R, i.e. column-major.
-Note that a single subscript that is *not* shaped like the whole array still refers to the first dimension, as everywhere else in {anvl}:
+Note that a single subscript that is *not* shaped like the whole array still refers to the first axis, as everywhere else in {anvl}:
 
 ```{r}
 x[arr(TRUE, FALSE, TRUE)]
@@ -181,7 +181,7 @@ x[x > 100]
 ### Out-of-bounds Handling
 
 If one specifies out-of-bounds indices, we can only throw an error if the indices are static (and therefore known at compile time).
-The XLA backend that {anvl} compiles to does not throw errors for out-of-bounds dynamic indices, but instead clamps them to the valid range:
+The PJRT backend that {anvl} compiles to does not throw errors for out-of-bounds dynamic indices, but instead clamps them to the valid range:
 
 ```{r}
 x[nv_array(-1L), nv_array(100L)]

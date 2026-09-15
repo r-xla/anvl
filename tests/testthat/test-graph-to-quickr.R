@@ -261,7 +261,7 @@ test_that("graph_to_quickr_function errors on mismatched flattened input structu
   )
 })
 
-test_that("graph_to_quickr_function preserves 1D output dims", {
+test_that("graph_to_quickr_function preserves 1D output axes", {
   skip_if_no_quickr_or_pjrt()
 
   graph <- trace_fn(
@@ -276,7 +276,7 @@ test_that("graph_to_quickr_function preserves 1D output dims", {
   expect_identical(dim(out$out_quick), c(3L))
 })
 
-test_that("graph_to_quickr_function preserves empty 1D output dims without wrapper", {
+test_that("graph_to_quickr_function preserves empty 1D output axes without wrapper", {
   skip_if_no_quickr_or_pjrt()
 
   graph <- trace_fn(
@@ -298,7 +298,7 @@ test_that("graph_to_quickr_function preserves empty 1D output dims without wrapp
   expect_identical(as_array(f_quick(x)), out_pjrt)
 })
 
-test_that("graph_to_quickr_function preserves rank-1 dims for direct quickr outputs", {
+test_that("graph_to_quickr_function preserves rank-1 axes for direct quickr outputs", {
   skip_if_no_quickr_or_pjrt()
 
   graph <- trace_fn(
@@ -320,7 +320,7 @@ test_that("graph_to_quickr_function preserves rank-1 dims for direct quickr outp
   expect_equal(as_array(f_quick(x)), out_pjrt, tolerance = 1e-12)
 })
 
-test_that("graph_to_quickr_function preserves rank-1 dims for wrapped quickr outputs", {
+test_that("graph_to_quickr_function preserves rank-1 axes for wrapped quickr outputs", {
   skip_if_no_quickr_or_pjrt()
 
   graph <- trace_fn(

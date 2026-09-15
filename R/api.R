@@ -8,7 +8,7 @@
 #' Creates an array filled with a scalar value. More memory-efficient than
 #' `nv_array(value, shape = shape)` for large arrays.
 #'
-#' `nv_fill_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
+#' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with.
@@ -19,7 +19,6 @@
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_fill_like()`).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and `dtype`.
@@ -29,7 +28,7 @@
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_fill_like(x, 0)
 #' @export
-nv_fill <- function(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL) {
+nv_fill <- function(value, shape, dtype = NULL, device = NULL) {
   if (!is_valid_r_lit(value)) {
     cli_abort(
       "{.arg value} must be an R vector of length 1 of type double, integer, or logical, not {.cls {class(value)[1]}}."
@@ -40,12 +39,16 @@ nv_fill <- function(value, shape, dtype = NULL, ambiguous = FALSE, device = NULL
   } else {
     as_dtype(dtype)
   }
-  prim_fill(value, shape, dtype, ambiguous, device = device)
+  prim_fill(value, shape, dtype, device = device)
 }
 
 ## Conversion ------------------------------------------------------------------
 
 broadcast_shapes <- function(shape_lhs, shape_rhs) {
+  # Kept for the message: the two are padded below, and reporting the padded
+  # shapes back would name axes the caller never wrote.
+  given_lhs <- shape_lhs
+  given_rhs <- shape_rhs
   if (length(shape_lhs) > length(shape_rhs)) {
     shape_rhs <- c(rep(1L, length(shape_lhs) - length(shape_rhs)), shape_rhs)
   } else if (length(shape_lhs) < length(shape_rhs)) {
@@ -58,19 +61,22 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
     d_lhs <- shape_lhs[i]
     d_rhs <- shape_rhs[i]
     if (d_lhs != d_rhs && d_lhs != 1L && d_rhs != 1L) {
-      cli_abort("lhs and rhs are not broadcastable")
+      cli_abort(c(
+        "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
+        x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
+      ))
     }
     shape_out[i] <- max(d_lhs, d_rhs)
   }
   shape_out
 }
 
-make_broadcast_dimensions <- function(shape_in, shape_out) {
+make_broadcast_axes <- function(shape_in, shape_out) {
   rank_in <- length(shape_in)
   rank_out <- length(shape_out)
   if (rank_in == rank_out) {
-    # When ranks match, each input dimension maps to the same output dimension
-    # StableHLO expects a mapping for every input dim
+    # When ranks match, each input axis maps to the same output axis
+    # StableHLO expects a mapping for every input axis
     return(seq_along(shape_out))
   }
   tail(seq_len(rank_out), rank_in)
@@ -90,6 +96,7 @@ make_broadcast_dimensions <- function(shape_in, shape_out) {
 #' # scalar 1 is broadcast to shape [3]
 #' nv_broadcast_scalars(x, nv_scalar(1))
 #' @export
+#' @jit
 nv_broadcast_scalars <- function(...) {
   args <- as_anvl_arrays(...)
   shapes <- lapply(args, shape)
@@ -101,7 +108,7 @@ nv_broadcast_scalars <- function(...) {
 
   target_shape <- non_scalar_shapes[[1L]]
   if (!all(vapply(non_scalar_shapes, identical, logical(1L), target_shape))) {
-    shapes <- paste0(sapply(shapes, shape2string), collapse = ", ")
+    shapes <- shapes_repr(shapes)
     cli_abort(
       "All non-scalar arrays must have the same shape, but got {shapes}. Use {.fn nv_broadcast_arrays} for general broadcasting." # nolint
     )
@@ -128,19 +135,14 @@ nv_broadcast_scalars <- function(...) {
 #' # integer is promoted to float
 #' nv_promote_to_common(x, y)
 #' @export
+#' @jit
 nv_promote_to_common <- function(...) {
-  args <- as_anvl_arrays(...)
-  tmp <- do.call(common_type_info, args)
-  cdt <- tmp[[1L]]
-  ambiguous <- tmp[[2L]]
-  out <- lapply(seq_along(args), \(i) {
-    if (cdt == dtype(args[[i]])) {
-      args[[i]]
-    } else {
-      prim_convert(args[[i]], dtype = cdt, ambiguous = ambiguous)
-    }
-  })
-  return(out)
+  # An R value has no dtype to convert *from*: it is built at the common one
+  # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
+  # converting an f32 `sqrt(2)` would only widen a number that had already lost
+  # its digits. So the values are aligned first and built afterwards, once the
+  # common dtype is known. `promotion_common()` is that sequence.
+  as_anvl_arrays(..., .promote = promotion_common())
 }
 
 #' @title Broadcast Arrays to a Common Shape
@@ -148,9 +150,9 @@ nv_promote_to_common <- function(...) {
 #' Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
 #'
 #' @section Broadcasting Rules:
-#' 1. If the arrays have different numbers of dimensions, prepend size-1
-#'    dimensions to the shorter shape.
-#' 2. For each dimension: if the sizes match, keep them; if one is 1, expand
+#' 1. If the arrays have different numbers of axes, prepend size-1
+#'    axes to the shorter shape.
+#' 2. For each axis: if the sizes match, keep them; if one is 1, expand
 #'    it to the other's size; otherwise raise an error.
 #'
 #' @param ... ([`arrayish`])\cr
@@ -173,25 +175,25 @@ nv_broadcast_arrays <- function(...) {
 #' @title Broadcast to Shape
 #' @description
 #' Broadcasts an array to a target shape using NumPy-style broadcasting rules.
-#' @template param_operand
+#' @template param_x
 #' @param shape (`integer()`)\cr
-#'   Target shape. Each existing dimension must either match or be 1.
+#'   Target shape. Each existing axis must either match or be 1.
 #' @return [`arrayish`]\cr
-#'   Has the given `shape` and the same data type as `operand`.
+#'   Has the given `shape` and the same data type as `x`.
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
-#'   [prim_broadcast_in_dim()] for the underlying primitive.
+#'   [prim_broadcast_in_axes()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' nv_broadcast_to(x, shape = c(2, 3))
 #' @export
-nv_broadcast_to <- function(operand, shape) {
-  operand <- as_anvl_array(operand)
-  shape_op <- shape(operand)
+nv_broadcast_to <- function(x, shape) {
+  x <- as_anvl_array(x)
+  shape_op <- shape(x)
   if (!identical(shape_op, shape)) {
-    broadcast_dimensions <- make_broadcast_dimensions(shape_op, shape)
-    prim_broadcast_in_dim(operand, shape, broadcast_dimensions)
+    broadcast_axes <- make_broadcast_axes(shape_op, shape)
+    prim_broadcast_in_axes(x, shape, broadcast_axes)
   } else {
-    operand
+    x
   }
 }
 
@@ -199,31 +201,43 @@ nv_broadcast_to <- function(operand, shape) {
 #' @description
 #' Converts the elements of an array to a different data type.
 #' Returns the input unchanged if it already has the target type.
-#' @template param_operand
+#' @template param_x
 #' @template param_dtype
 #' @return [`arrayish`]\cr
-#'   Has the given `dtype` and the same shape as `operand`.
+#'   Has the given `dtype` and the same shape as `x`.
 #' @seealso [prim_convert()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1L, 2L, 3L))
 #' nv_convert(x, dtype = "f32")
 #' @export
-nv_convert <- function(operand, dtype) {
-  operand <- as_anvl_array(operand)
-  if (dtype(operand) != as_dtype(dtype)) {
-    prim_convert(operand, dtype = as_dtype(dtype), ambiguous = FALSE)
-  } else {
-    operand
+nv_convert <- function(x, dtype) {
+  if (!is_arrayish(x)) {
+    cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
+  # `materialize_at()` rather than canonicalizing first: an R value is *built*
+  # at the target dtype, keeping every digit it had, where converting it from
+  # its own default would round through `f32` on the way.
+  materialize_at(x, as_dtype(dtype))
 }
 
-#' @rdname nv_transpose
-#' @template param_operand
+#' @title Transpose
+#' @description
+#' Permutes the axes of an array. You can also use `t()` for matrices.
+#' @template param_x
+#' @param permutation (`integer()` | `NULL`)\cr
+#'   New ordering of axes. If `NULL` (default), reverses the axes.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
+#' @return [`arrayish`]\cr
+#'   Has the same data type as `x` and shape `shape(x)[permutation]`.
+#' @seealso [prim_transpose()] for the underlying primitive.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_matrix(1:6, nrow = 2)
+#' t(x)
 #' @export
-nv_transpose <- function(operand, permutation = NULL) {
-  operand <- as_anvl_array(operand)
-  permutation <- permutation %||% rev(seq_len(ndims(operand)))
-  prim_transpose(operand, permutation)
+nv_transpose <- function(x, permutation = NULL) {
+  x <- as_anvl_array(x)
+  permutation <- permutation %||% rev(seq_len(naxes(x)))
+  prim_transpose(x, permutation)
 }
 
 
@@ -233,119 +247,136 @@ nv_transpose <- function(operand, permutation = NULL) {
 #' Returns the input unchanged if it already has the target shape.
 #' @details
 #' Note that row-major order is used, which differs from R's column-major order.
-#' @template param_operand
+#' @template param_x
 #' @param shape (`integer()`)\cr
-#'   Target shape. Must have the same number of elements as `operand`.
+#'   Target shape. Must have the same number of elements as `x`.
+#'   At most one entry may be `-1`, in which case its extent is inferred from
+#'   the remaining entries and the number of elements of `x`.
 #' @return [`arrayish`]\cr
-#'   Has the given `shape` and the same data type as `operand`.
+#'   Has the given `shape` and the same data type as `x`.
 #' @seealso [prim_reshape()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:6)
 #' nv_reshape(x, c(2, 3))
+#' nv_reshape(x, c(2, -1)) # infer the second dimension
+#' nv_reshape(x, -1) # flatten
 #' @export
-nv_reshape <- function(operand, shape) {
-  operand <- as_anvl_array(operand)
-  if (!identical(shape(operand), shape)) {
-    prim_reshape(operand, shape)
+nv_reshape <- function(x, shape) {
+  x <- as_anvl_array(x)
+  # `prim_reshape()` resolves `-1` itself; resolving here too keeps the
+  # identity shortcut below able to recognize a no-op reshape.
+  shape <- resolve_reshape_shape(shape, prod(shape(x)), arg = "shape")
+  if (!identical(shape(x), shape)) {
+    prim_reshape(x, shape)
   } else {
-    operand
+    x
   }
 }
 
-#' @title Flatte
+#' @title Flatten
 #' @description
 #' Flattens an N-dimensional array into a 1-dimensional array.
 #' Fails with scalar inputs.
-#' @template param_operand
+#' @template param_x
 #' @return ([`arrayish`])\cr
 #'   1-D array.
 #' @export
 #' @examples
 #' nv_flatten(matrix(1:4, nrow = 2))
-nv_flatten <- function(operand) {
-  operand <- as_anvl_array(operand)
-  if (ndims(operand) == 0) {
+nv_flatten <- function(x) {
+  x <- as_anvl_array(x)
+  if (naxes(x) == 0) {
     cli_abort("Cannot flatten a scalar array.")
   }
-  nv_reshape(operand, prod(shape(operand)))
+  nv_reshape(x, prod(shape(x)))
 }
 
 #' @title Concatenate
 #' @description
-#' Concatenates arrays along a dimension. Operands are promoted to a common
+#' Concatenates arrays along an axis. Operands are promoted to a common
 #' data type and scalars are broadcast before concatenation.
+#'
+#' You can also use `c()`, which flattens its arguments first, like base R.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to concatenate. Must have the same shape except along `dimension`.
-#' @param dimension (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to concatenate.
-#'   If `NULL` (default), assumes all inputs are at most 1-D and concatenates along dimension 1.
+#'   Arrays to concatenate. Must have the same shape except along `axis`.
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to concatenate.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
+#'   If `NULL` (default), assumes all inputs are at most 1-D and concatenates along axis 1.
 #' @return [`arrayish`]\cr
 #'   Has the common data type and a shape matching the inputs in all
-#'   dimensions except `dimension`, which is the sum of input sizes.
+#'   axes except `axis`, which is the sum of input sizes.
 #' @seealso [prim_concatenate()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
 #' nv_concatenate(x, y)
 #' @export
-#' @jit static "dimension"
-nv_concatenate <- function(..., dimension = NULL) {
+#' @jit static "axis"
+nv_concatenate <- function(..., axis = NULL) {
   args <- do.call(nv_promote_to_common, list(...))
   shapes <- lapply(args, shape)
   ranks <- lengths(shapes)
   non_scalar_shapes <- shapes[ranks > 0L]
   n_scalars <- sum(ranks == 0L)
-  assert_int(dimension, lower = 1L, upper = max(max(ranks), 1L), null.ok = max(ranks) <= 1L)
-  dimension <- dimension %||% 1L
+  max_axis <- max(max(ranks), 1L)
+  if (is.null(axis)) {
+    if (max(ranks) > 1L) {
+      cli_abort("{.arg axis} must be provided when concatenating arrays with more than one axis.")
+    }
+    axis <- 1L
+  } else {
+    axis <- resolve_axis(axis, max_axis)
+  }
 
-  non_scalar_shapes_without_dim <- lapply(non_scalar_shapes, \(shape) {
-    shape[-dimension]
+  non_scalar_shapes_without_axis <- lapply(non_scalar_shapes, \(shape) {
+    shape[-axis]
   })
-  if (length(non_scalar_shapes) && length(unique(non_scalar_shapes_without_dim)) != 1L) {
+  if (length(non_scalar_shapes) && length(unique(non_scalar_shapes_without_axis)) != 1L) {
     cli_abort(c(
-      "All non-scalar arrays must have the same shape (except for the concatenation dimension)",
-      x = "Got shapes {shapes2string(shapes)} and dimension {dimension}"
+      "All non-scalar arrays must have the same shape apart from axis {axis}, the one they are joined along.", # nolint
+      x = "Got shapes {shapes_repr(shapes)}."
     ))
   }
-  size_out_dimension <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[dimension], integer(1L)))
+  size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
 
   out_shape <- if (length(non_scalar_shapes)) {
     x <- non_scalar_shapes[[1L]]
-    x[dimension] <- size_out_dimension
+    x[axis] <- size_out_axis
   } else {
     n_scalars
   }
-  out_shape_dim_is_one <- out_shape
-  out_shape_dim_is_one[dimension] <- 1L
+  out_shape_axis_is_one <- out_shape
+  out_shape_axis_is_one[axis] <- 1L
   args <- lapply(args, \(arg) {
-    if (ndims(arg) == 0L) {
-      nv_broadcast_to(arg, out_shape_dim_is_one)
+    if (naxes(arg) == 0L) {
+      nv_broadcast_to(arg, out_shape_axis_is_one)
     } else {
       arg
     }
   })
-  rlang::exec(prim_concatenate, !!!args, dimension = dimension)
+  rlang::exec(prim_concatenate, !!!args, axis = axis)
 }
 
 #' @title Combine arrays by rows or columns
 #' @name nv_bind
 #' @description
-#' Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) dimension.
+#' Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
 #' Arguments are first promoted to a common data type
 #' (see [nv_promote_to_common()]).
 #'
 #' Each input is then handled according to its rank:
 #'
-#' * 0-D: broadcast to match the non-stacked dimensions of the other inputs.
+#' * 0-D: broadcast to match the non-stacked axes of the other inputs.
 #' * 1-D: treated as a single row/column.
 #' * Other: used as-is.
 #'
 #' # Differences from base R
 #'
-#' [base::rbind()] and [base::cbind()] applied to an [array()] of rank > 2
-#' flatten the trailing dimensions into the column axis (so a `c(2, 3, 4)`
+#' [base::rbind()] and [base::cbind()] applied to an [`array()`][base::array] of rank > 2
+#' flatten the trailing axes into the column axis (so a `c(2, 3, 4)`
 #' array becomes a `2 x 12` matrix). `nv_rbind` and `nv_cbind` instead
-#' preserve all non-stacked dimensions: combining two `c(2, 3, 4)` arrays
+#' preserve all non-stacked axes: combining two `c(2, 3, 4)` arrays
 #' with `nv_rbind` produces a `c(4, 3, 4)` array, and with `nv_cbind` a
 #' `c(2, 6, 4)` array.
 #'
@@ -361,17 +392,17 @@ nv_concatenate <- function(..., dimension = NULL) {
 #' # Scalar broadcasting
 #' nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #'
-#' # Rank-3 arrays preserve trailing dimensions
+#' # Rank-3 arrays preserve trailing axes
 #' a <- nv_array(1:24, shape = c(2, 3, 4))
 #' shape(nv_rbind(a, a)) # c(4, 3, 4)
 NULL
 
 # Find the broadcast target shape for scalar (rank 0) inputs and verify
 # that all non-scalar inputs are compatible (same rank and same size in
-# every non-stacked dimension). Rank-1 args are conceptually reshaped to
+# every non-stacked axis). Rank-1 args are conceptually reshaped to
 # a row/column for the comparison. Returns NULL when every arg is a
 # scalar.
-bind_target_shape <- function(args, stack_dim, fn_name) {
+bind_target_shape <- function(args, stack_axis, fn_name) {
   shapes <- lapply(args, shape)
   non_scalar_idx <- which(lengths(shapes) > 0L)
   if (!length(non_scalar_idx)) {
@@ -380,7 +411,7 @@ bind_target_shape <- function(args, stack_dim, fn_name) {
 
   reshape_for_compare <- function(s) {
     if (length(s) == 1L) {
-      if (stack_dim == 1L) c(1L, s) else c(s, 1L)
+      if (stack_axis == 1L) c(1L, s) else c(s, 1L)
     } else {
       s
     }
@@ -391,27 +422,27 @@ bind_target_shape <- function(args, stack_dim, fn_name) {
   if (length(unique(ranks)) != 1L) {
     cli_abort(c(
       "{.fn {fn_name}} inputs must all have the same rank (treating rank-1 inputs as a row or column)", # nolint
-      x = "Got shapes {shapes2string(shapes)}"
+      x = "Got shapes {shapes_repr(shapes)}"
     ))
   }
-  non_stack <- lapply(reshaped, \(s) s[-stack_dim])
+  non_stack <- lapply(reshaped, \(s) s[-stack_axis])
   if (length(unique(non_stack)) != 1L) {
     cli_abort(c(
-      "{.fn {fn_name}} inputs must agree on every non-stacked dimension",
-      x = "Got shapes {shapes2string(shapes)}"
+      "{.fn {fn_name}} inputs must agree on every non-stacked axis",
+      x = "Got shapes {shapes_repr(shapes)}"
     ))
   }
   reshaped[[1L]]
 }
 
-bind_reshape <- function(arg, stack_dim, target_shape) {
+bind_reshape <- function(arg, stack_axis, target_shape) {
   s <- shape(arg)
   if (length(s) == 0L) {
     target <- target_shape %||% c(1L, 1L)
-    target[stack_dim] <- 1L
+    target[stack_axis] <- 1L
     nv_broadcast_to(arg, target)
   } else if (length(s) == 1L) {
-    nv_reshape(arg, if (stack_dim == 1L) c(1L, s) else c(s, 1L))
+    nv_reshape(arg, if (stack_axis == 1L) c(1L, s) else c(s, 1L))
   } else {
     arg
   }
@@ -421,35 +452,38 @@ bind_reshape <- function(arg, stack_dim, target_shape) {
 #' @export
 #' @jit
 nv_rbind <- function(...) {
-  args <- as_anvl_arrays(...)
-  target_shape <- bind_target_shape(args, stack_dim = 1L, fn_name = "nv_rbind")
-  args <- lapply(args, bind_reshape, stack_dim = 1L, target_shape = target_shape)
-  rlang::exec(nv_concatenate, !!!args, dimension = 1L)
+  # Promoted here rather than in `nv_concatenate()` below: an R value has to be
+  # built at the common dtype directly, where materializing it first would round
+  # it through its default on the way there.
+  args <- as_anvl_arrays(..., .promote = promotion_common())
+  target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
+  args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
+  rlang::exec(nv_concatenate, !!!args, axis = 1L)
 }
 
 #' @rdname nv_bind
 #' @export
 #' @jit
 nv_cbind <- function(...) {
-  args <- as_anvl_arrays(...)
-  target_shape <- bind_target_shape(args, stack_dim = 2L, fn_name = "nv_cbind")
-  args <- lapply(args, bind_reshape, stack_dim = 2L, target_shape = target_shape)
-  rlang::exec(nv_concatenate, !!!args, dimension = 2L)
+  args <- as_anvl_arrays(..., .promote = promotion_common())
+  target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
+  args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
+  rlang::exec(nv_concatenate, !!!args, axis = 2L)
 }
 
 #' @title Static Slice
 #' @description
 #' Extracts a slice from an array using static (compile-time) indices.
 #' For dynamic indexing, use [nv_subset()] instead.
-#' @template param_operand
+#' @template param_x
 #' @param start_indices (`integer()`)\cr
-#'   Start indices (inclusive), one per dimension.
+#'   Start indices (inclusive), one per axis.
 #' @param limit_indices (`integer()`)\cr
-#'   End indices (inclusive), one per dimension.
+#'   End indices (inclusive), one per axis.
 #' @param strides (`integer()`)\cr
-#'   Step sizes, one per dimension. A stride of 1 selects every element.
+#'   Step sizes, one per axis. A stride of 1 selects every element.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as `operand`.
+#'   Has the same data type as `x`.
 #' @seealso [nv_subset()], [prim_static_slice()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:10)
@@ -461,9 +495,9 @@ nv_static_slice <- prim_static_slice
 #' @description
 #' Prints an array value to the console during JIT execution and returns the
 #' input unchanged. Useful for debugging.
-#' @template param_operand
+#' @template param_x
 #' @return [`arrayish`]\cr
-#'   Returns `operand` unchanged.
+#'   Returns `x` unchanged.
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
@@ -496,13 +530,16 @@ nv_print <- prim_print
 #' @export
 #' @jit
 nv_ifelse <- function(pred, true_value, false_value) {
-  # Canonicalize all three inputs together so an R literal `true_value` /
-  # `false_value` inherits the device of `pred` (and vice versa). Doing the
-  # `nv_promote_to_common` step first would convert literals on the default
-  # device and then conflict with a non-default-device `pred`.
-  args <- as_anvl_arrays(pred, true_value, false_value)
-  promoted <- nv_promote_to_common(args[[2L]], args[[3L]])
-  args <- nv_broadcast_scalars(args[[1L]], promoted[[1L]], promoted[[2L]])
+  # All three are aligned together -- so an R literal branch is built on the
+  # device of `pred` rather than on the default one and then conflicting with it
+  # -- but only the two branches are promoted, `pred` staying a bool.
+  args <- as_anvl_arrays(
+    pred = pred,
+    true_value = true_value,
+    false_value = false_value,
+    .promote = promotion_common(on = c("true_value", "false_value"))
+  )
+  args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
 }
 
@@ -525,6 +562,7 @@ make_do_binary <- function(f) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
+#' nv_add(x, y)
 #' x + y
 #' @export
 #' @jit
@@ -539,6 +577,7 @@ nv_add <- make_do_binary(prim_add)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
+#' nv_mul(x, y)
 #' x * y
 #' @export
 #' @jit
@@ -553,6 +592,7 @@ nv_mul <- make_do_binary(prim_mul)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(4, 5, 6))
 #' y <- nv_array(c(1, 2, 3))
+#' nv_sub(x, y)
 #' x - y
 #' @export
 #' @jit
@@ -567,6 +607,7 @@ nv_sub <- make_do_binary(prim_sub)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(10, 20, 30))
 #' y <- nv_array(c(2, 5, 10))
+#' nv_div(x, y)
 #' x / y
 #' @export
 #' @jit
@@ -581,7 +622,8 @@ nv_div <- make_do_binary(prim_div)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(2, 3, 4))
 #' y <- nv_array(c(3, 2, 1))
-#' x ^ y
+#' nv_pow(x, y)
+#' x^y
 #' @export
 #' @jit
 nv_pow <- make_do_binary(prim_pow)
@@ -595,6 +637,7 @@ nv_pow <- make_do_binary(prim_pow)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(1, 3, 2))
+#' nv_eq(x, y)
 #' x == y
 #' @export
 #' @jit
@@ -609,6 +652,7 @@ nv_eq <- make_do_binary(prim_eq)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(1, 3, 2))
+#' nv_ne(x, y)
 #' x != y
 #' @export
 #' @jit
@@ -623,6 +667,7 @@ nv_ne <- make_do_binary(prim_ne)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
+#' nv_gt(x, y)
 #' x > y
 #' @export
 #' @jit
@@ -637,6 +682,7 @@ nv_gt <- make_do_binary(prim_gt)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
+#' nv_ge(x, y)
 #' x >= y
 #' @export
 #' @jit
@@ -651,6 +697,7 @@ nv_ge <- make_do_binary(prim_ge)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
+#' nv_lt(x, y)
 #' x < y
 #' @export
 #' @jit
@@ -665,6 +712,7 @@ nv_lt <- make_do_binary(prim_lt)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(3, 2, 1))
+#' nv_le(x, y)
 #' x <= y
 #' @export
 #' @jit
@@ -721,13 +769,14 @@ nv_remainder <- make_do_binary(prim_remainder)
 #'
 #' @template params_lhs_rhs
 #' @template return_binary
-#' @seealso [nv_remainder()] for truncating remainder, [prim_remainder()] for
-#'   the underlying primitive.
+#' @seealso [nv_remainder()] for truncating remainder, [nv_floor_div()] for the
+#'   matching division, [prim_remainder()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1L, -1L))
 #' y <- nv_array(c(-3L, 3L))
 #' nv_mod(x, y)
-#' as.vector(x) %% as.vector(y)
+#' x %% y
+#' as.vector(x) %% as.vector(y) # the same in base R
 #' @export
 #' @jit
 nv_mod <- function(lhs, rhs) {
@@ -735,47 +784,94 @@ nv_mod <- function(lhs, rhs) {
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   lhs <- args[[1L]]
   rhs <- args[[2L]]
-  nv_remainder(nv_remainder(lhs, rhs) + rhs, rhs)
+  rest <- nv_remainder(lhs, rhs)
+  if (is_dtype_uint(peek_dtype(lhs))) {
+    # Neither operand can be negative, so the truncating remainder already
+    # floors and there is nothing to shift. `nv_abs()` below has no unsigned
+    # lowering either.
+    return(rest)
+  }
+  shifted <- nv_ifelse((rest != 0L) & ((rest < 0L) != (rhs < 0L)), rest + rhs, rest)
+  nv_ifelse(nv_abs(shifted) >= nv_abs(rhs), 0L, shifted)
 }
 
-#' @title Logical And
+#' @title Flooring Division
 #' @description
-#' Element-wise logical AND. You can also use the `&` operator.
+#' Element-wise flooring division.
+#' You can also call this via the `%/%` operator.
+#' The result is the largest whole number that does not exceed `lhs / rhs`.
+#'
+#' @template params_lhs_rhs
+#' @template return_binary
+#' @seealso [nv_mod()] for the matching remainder, [nv_div()] for the
+#'   division itself.
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(7L, -7L))
+#' y <- nv_array(c(2L, 2L))
+#' nv_floor_div(x, y)
+#' x %/% y
+#' @export
+#' @jit
+nv_floor_div <- function(lhs, rhs) {
+  args <- nv_promote_to_common(lhs, rhs)
+  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  lhs <- args[[1L]]
+  rhs <- args[[2L]]
+  dt <- peek_dtype(lhs)
+  if (is_dtype_float(dt)) {
+    return(nv_floor(nv_div(lhs, rhs)))
+  }
+  if (is_dtype_uint(dt)) {
+    # Unsigned division cannot be negative, so there is nothing to floor.
+    return(nv_div(lhs, rhs))
+  }
+  # Integer division truncates towards zero, so subtract the flooring
+  # remainder first to make the division exact.
+  nv_div(nv_sub(lhs, nv_mod(lhs, rhs)), rhs)
+}
+
+#' @title Bitwise AND
+#' @description
+#' Element-wise bitwise AND of two integer arrays, which for a boolean array
+#' is the logical AND.
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_and()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' x & y
+#' nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
+#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
 #' @export
 #' @jit
 nv_and <- make_do_binary(prim_and)
 
-#' @title Logical Or
+#' @title Bitwise OR
 #' @description
-#' Element-wise logical OR. You can also use the `|` operator.
+#' Element-wise bitwise OR of two integer arrays, which for a boolean array
+#' is the logical OR.
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_or()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' x | y
+#' nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
+#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
 #' @export
 #' @jit
 nv_or <- make_do_binary(prim_or)
 
-#' @title Logical Xor
+#' @title Bitwise XOR
 #' @description
-#' Element-wise logical XOR.
+#' Element-wise bitwise XOR of two integer arrays, which for a boolean array
+#' is the logical XOR.
+#' For *logical* inputs, you can also use `xor`.
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_xor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' y <- nv_array(c(TRUE, TRUE, FALSE))
-#' nv_xor(x, y)
+#' nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
+#' nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
+#' xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
 #' @export
 #' @jit
 nv_xor <- make_do_binary(prim_xor)
@@ -826,7 +922,7 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' @description
 #' Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive
 #' x-axis and the point `(rhs, lhs)`.
-#' @template params_lhs_rhs
+#' @template params_lhs_rhs_float
 #' @template return_binary
 #' @seealso [prim_atan2()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -835,7 +931,11 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' nv_atan2(y, x)
 #' @export
 #' @jit
-nv_atan2 <- make_do_binary(prim_atan2)
+nv_atan2 <- function(lhs, rhs) {
+  args <- nv_promote_to_common(int_to_float(lhs), int_to_float(rhs))
+  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  prim_atan2(args[[1L]], args[[2L]])
+}
 
 
 #' @title Bitcast Conversion
@@ -843,8 +943,8 @@ nv_atan2 <- make_do_binary(prim_atan2)
 #' @description
 #' Reinterprets the bits of an array as a different data type without modifying
 #' the underlying data. If the target type is narrower, an extra trailing
-#' dimension is added; if wider, the last dimension is consumed.
-#' @template param_operand
+#' axis is added; if wider, the last axis is consumed.
+#' @template param_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Target data type.
 #' @return [`arrayish`]\cr
@@ -859,10 +959,18 @@ nv_bitcast_convert <- prim_bitcast_convert
 
 ## Unary ops ------------------------------------------------------------------
 
+# A unary `nv_*` function that computes in floating point: an int-like array is
+# converted to the default float first, the way base R's `sqrt(1L)` returns a
+# double. Everything else reaches the primitive unchanged, so a boolean array
+# is rejected there rather than silently computed on.
+make_float_unary <- function(f) {
+  function(x) f(int_to_float(x))
+}
+
 #' @title Negation
 #' @description
 #' Negates an array element-wise. You can also use the unary `-` operator.
-#' @template param_operand
+#' @template param_x
 #' @template return_unary
 #' @seealso [prim_negate()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -871,22 +979,24 @@ nv_bitcast_convert <- prim_bitcast_convert
 #' @export
 nv_negate <- prim_negate
 
-#' @title Logical Not
+#' @title Bitwise Not
 #' @description
-#' Element-wise logical NOT. You can also use the `!` operator.
-#' @template param_operand
+#' Element-wise bitwise NOT of an integer array, which for a boolean array is
+#' the logical NOT.
+#' @template param_x
 #' @template return_unary
 #' @seealso [prim_not()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(TRUE, FALSE, TRUE))
-#' !x
+#' nv_not(nv_array(c(TRUE, FALSE, TRUE)))
+#' nv_not(nv_array(12L)) # bitwise: -13
+#' !nv_array(c(TRUE, FALSE)) # logical
 #' @export
 nv_not <- prim_not
 
 #' @title Absolute Value
 #' @description
 #' Element-wise absolute value. You can also use `abs()`.
-#' @template param_operand
+#' @template param_x
 #' @template return_unary
 #' @seealso [prim_abs()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -898,131 +1008,193 @@ nv_abs <- prim_abs
 #' @title Square Root
 #' @description
 #' Element-wise square root. You can also use `sqrt()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_sqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 4, 9))
 #' sqrt(x)
 #' @export
-nv_sqrt <- prim_sqrt
+nv_sqrt <- make_float_unary(prim_sqrt)
 
 #' @title Reciprocal Square Root
 #' @description
 #' Element-wise reciprocal square root, i.e. `1 / sqrt(x)`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_rsqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 4, 9))
 #' nv_rsqrt(x)
 #' @export
-nv_rsqrt <- prim_rsqrt
+nv_rsqrt <- make_float_unary(prim_rsqrt)
 
 #' @title Natural Logarithm
 #' @description
 #' Element-wise natural logarithm. You can also use `log()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_log()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' log(x)
 #' @export
-nv_log <- prim_log
+nv_log <- make_float_unary(prim_log)
 
 #' @title Hyperbolic Tangent
 #' @description
 #' Element-wise hyperbolic tangent. You can also use `tanh()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_tanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' tanh(x)
 #' @export
-nv_tanh <- prim_tanh
+nv_tanh <- make_float_unary(prim_tanh)
 
 #' @title Tangent
 #' @description
 #' Element-wise tangent. You can also use `tan()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_tan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.5, 1))
 #' tan(x)
 #' @export
-nv_tan <- prim_tan
+nv_tan <- make_float_unary(prim_tan)
 
 #' @title Sine
 #' @description
 #' Element-wise sine. You can also use `sin()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_sin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, pi / 2, pi))
 #' sin(x)
 #' @export
-nv_sin <- prim_sin
+nv_sin <- make_float_unary(prim_sin)
 
 #' @title Cosine
 #' @description
 #' Element-wise cosine. You can also use `cos()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_cos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, pi / 2, pi))
 #' cos(x)
 #' @export
-nv_cos <- prim_cos
+nv_cos <- make_float_unary(prim_cos)
+
+#' @title Sine of a Multiple of Pi
+#' @description
+#' Element-wise `sin(pi * x)`. You can also use `sinpi()`.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_cospi()], [nv_tanpi()], [nv_sin()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' sinpi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @export
+#' @jit
+nv_sinpi <- function(x) {
+  x <- as_anvl_array(int_to_float(x))
+  n <- nv_round(x, method = "nearest_even")
+  reduced <- nv_sin((x - n) * pi)
+  # The sine of `pi * n` alternates in sign with the parity of `n`.
+  nv_ifelse(nv_mod(n, 2) == 0, reduced, -reduced)
+}
+
+#' @title Cosine of a Multiple of Pi
+#' @description
+#' Element-wise `cos(pi * x)`. You can also use `cospi()`.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_sinpi()], [nv_tanpi()], [nv_cos()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' cospi(nv_array(c(0, 0.5, 1, 1.5)))
+#' @export
+#' @jit
+nv_cospi <- function(x) {
+  # cos(pi * x) == sin(pi * (x + 1/2))
+  nv_sinpi(as_anvl_array(int_to_float(x)) + 0.5)
+}
+
+#' @title Tangent of a Multiple of Pi
+#' @description
+#' Element-wise `tan(pi * x)`. You can also use `tanpi()`.
+#' Like base R's [base::tanpi()], it is exact for a whole argument and `NaN` at
+#' the half integers, where the tangent has its poles.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_sinpi()], [nv_cospi()], [nv_tan()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' tanpi(nv_array(c(0, 0.25, 0.5, 1)))
+#' @export
+#' @jit
+nv_tanpi <- function(x) {
+  x <- as_anvl_array(int_to_float(x))
+  denominator <- nv_cospi(x)
+  # Otherwise we get (+-)inf depending on which side we land, which is bad
+  nv_ifelse(denominator == 0, NaN, nv_sinpi(x) / denominator)
+}
 
 #' @title Floor
 #' @description
 #' Element-wise floor (round toward negative infinity). You can also use `floor()`.
-#' @template param_operand
+#' @template param_x_round
 #' @template return_unary
 #' @seealso [prim_floor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' floor(x)
+#' floor(nv_array(1:3)) # an integer array is already whole
 #' @export
-nv_floor <- prim_floor
+nv_floor <- function(x) {
+  if (is_intlike(x)) as_anvl_array(x) else prim_floor(x)
+}
 
 #' @title Ceiling
 #' @description
 #' Element-wise ceiling (round toward positive infinity). You can also use `ceiling()`.
-#' @template param_operand
+#' @template param_x_round
 #' @template return_unary
 #' @seealso [prim_ceil()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' ceiling(x)
+#' ceiling(nv_array(1:3)) # an integer array is already whole
 #' @export
-nv_ceiling <- prim_ceil
+nv_ceiling <- function(x) {
+  if (is_intlike(x)) as_anvl_array(x) else prim_ceil(x)
+}
 
 #' @title Truncate
 #' @description
 #' Element-wise truncation (round toward zero). You can also use `trunc()`.
-#' @template param_operand
+#' @template param_x_round
 #' @template return_unary
 #' @seealso [nv_floor()], [nv_ceiling()], [nv_round()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' trunc(x)
+#' trunc(nv_array(1:3)) # an integer array is already whole
 #' @export
 #' @jit
-nv_trunc <- function(operand) {
-  operand <- as_anvl_array(operand)
-  nv_mul(nv_sign(operand), nv_floor(nv_abs(operand)))
+nv_trunc <- function(x) {
+  x <- as_anvl_array(x)
+  if (is_intlike(x)) {
+    return(x)
+  }
+  nv_mul(nv_sign(x), nv_floor(nv_abs(x)))
 }
 
 #' @title Sign
 #' @description
 #' Element-wise sign function. You can also use `sign()`.
-#' @template param_operand
+#' @template param_x
 #' @template return_unary
 #' @seealso [prim_sign()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1034,184 +1206,209 @@ nv_sign <- prim_sign
 #' @title Exponential
 #' @description
 #' Element-wise exponential. You can also use `exp()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_exp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 1, 2))
 #' exp(x)
 #' @export
-nv_exp <- prim_exp
+nv_exp <- make_float_unary(prim_exp)
 
 #' @title Exponential Minus One
 #' @description
 #' Element-wise `exp(x) - 1`, more accurate for small `x`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_expm1()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_expm1(x)
 #' @export
-nv_expm1 <- prim_expm1
+nv_expm1 <- make_float_unary(prim_expm1)
 
 #' @title Log Plus One
 #' @description
 #' Element-wise `log(1 + x)`, more accurate for small `x`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_log1p()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_log1p(x)
 #' @export
-nv_log1p <- prim_log1p
+nv_log1p <- make_float_unary(prim_log1p)
 
 #' @title Cube Root
 #' @description
 #' Element-wise cube root.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_cbrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 8, 27))
 #' nv_cbrt(x)
 #' @export
-nv_cbrt <- prim_cbrt
+nv_cbrt <- make_float_unary(prim_cbrt)
 
 #' @title Logistic (Sigmoid)
 #' @description
 #' Element-wise logistic sigmoid: `1 / (1 + exp(-x))`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_logistic()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-2, 0, 2))
 #' nv_logistic(x)
 #' @export
-nv_logistic <- prim_logistic
+nv_logistic <- make_float_unary(prim_logistic)
 
 #' @title Arc Cosine
 #' @description
 #' Element-wise inverse cosine. You can also use `acos()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_acos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' acos(x)
 #' @export
-nv_acos <- prim_acos
+nv_acos <- make_float_unary(prim_acos)
 
 #' @title Inverse Hyperbolic Cosine
 #' @description
 #' Element-wise inverse hyperbolic cosine. You can also use `acosh()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_acosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 10))
 #' acosh(x)
 #' @export
-nv_acosh <- prim_acosh
+nv_acosh <- make_float_unary(prim_acosh)
 
 #' @title Arc Sine
 #' @description
 #' Element-wise inverse sine. You can also use `asin()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_asin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' asin(x)
 #' @export
-nv_asin <- prim_asin
+nv_asin <- make_float_unary(prim_asin)
 
 #' @title Inverse Hyperbolic Sine
 #' @description
 #' Element-wise inverse hyperbolic sine. You can also use `asinh()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_asinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' asinh(x)
 #' @export
-nv_asinh <- prim_asinh
+nv_asinh <- make_float_unary(prim_asinh)
 
 #' @title Arc Tangent
 #' @description
 #' Element-wise inverse tangent. You can also use `atan()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_atan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' atan(x)
 #' @export
-nv_atan <- prim_atan
+nv_atan <- make_float_unary(prim_atan)
 
 #' @title Inverse Hyperbolic Tangent
 #' @description
 #' Element-wise inverse hyperbolic tangent. You can also use `atanh()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_atanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' atanh(x)
 #' @export
-nv_atanh <- prim_atanh
+nv_atanh <- make_float_unary(prim_atanh)
 
 #' @title Hyperbolic Cosine
 #' @description
 #' Element-wise hyperbolic cosine. You can also use `cosh()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_cosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' cosh(x)
 #' @export
-nv_cosh <- prim_cosh
+nv_cosh <- make_float_unary(prim_cosh)
 
 #' @title Hyperbolic Sine
 #' @description
 #' Element-wise hyperbolic sine. You can also use `sinh()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_sinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' sinh(x)
 #' @export
-nv_sinh <- prim_sinh
+nv_sinh <- make_float_unary(prim_sinh)
 
 #' @title Digamma
 #' @description
 #' Element-wise digamma function (logarithmic derivative of the gamma
 #' function). You can also use `digamma()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_digamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' digamma(x)
 #' @export
-nv_digamma <- prim_digamma
+nv_digamma <- make_float_unary(prim_digamma)
 
 #' @title Log-Gamma
 #' @description
 #' Element-wise natural logarithm of the absolute value of the gamma
 #' function. You can also use `lgamma()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_lgamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' lgamma(x)
 #' @export
-nv_lgamma <- prim_lgamma
+nv_lgamma <- make_float_unary(prim_lgamma)
+
+#' @title Gamma Function
+#' @description
+#' Element-wise gamma function. You can also use `gamma()`.
+#' @template param_x_float
+#' @template return_unary_float
+#' @seealso [nv_lgamma()], which is what the hardware computes.
+#' @examplesIf pjrt::plugins_downloaded()
+#' gamma(nv_array(c(0.5, 1, 5, -1.5)))
+#' @export
+#' @jit
+nv_gamma <- function(x) {
+  x <- as_anvl_array(int_to_float(x))
+  positive <- nv_exp(nv_lgamma(x))
+  # lgamma() is the log of the *absolute* gamma, so for a negative argument use
+  # Euler's reflection formula gamma(x) * gamma(1 - x) = pi / sin(pi * x),
+  # whose right-hand side is evaluated at 1 - x > 1. Where the reflection is
+  # not selected it is evaluated at a regular point: at a positive whole
+  # number sin(pi * x) * gamma(1 - x) is 0 * Inf, and the cotangent that
+  # nv_ifelse() sends into the discarded branch would pick the NaN up.
+  x_reflect <- nv_ifelse(x < 0, x, -0.5)
+  reflected <- pi / (nv_sinpi(x_reflect) * nv_exp(nv_lgamma(1 - x_reflect)))
+  out <- nv_ifelse(x < 0, reflected, positive)
+  nv_ifelse((x <= 0) & (x == nv_floor(x)), NaN, out)
+}
 
 #' @title Polygamma
 #' @description
@@ -1226,9 +1423,9 @@ nv_lgamma <- prim_lgamma
 #' [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar
 #' arguments.
 #' @param n,x ([`arrayish`])\cr
-#'   Floating-point arrayish values. After promotion and broadcasting,
-#'   `n` and `x` must have the same shape; `n` typically holds
-#'   non-negative integer values.
+#'   Floating-point arrayish values; an integer `x` is computed at the default
+#'   float data type. After promotion and broadcasting, `n` and `x` must have
+#'   the same shape; `n` typically holds non-negative integer values.
 #' @template return_binary
 #' @seealso [prim_polygamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1237,7 +1434,7 @@ nv_lgamma <- prim_lgamma
 #' @export
 #' @jit static 1L
 nv_polygamma <- function(n, x) {
-  args <- nv_promote_to_common(n, x)
+  args <- nv_promote_to_common(n, int_to_float(x))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   do.call(prim_polygamma, args)
 }
@@ -1245,43 +1442,43 @@ nv_polygamma <- function(n, x) {
 #' @title Error Function
 #' @description
 #' Element-wise error function `erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^2) dt`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_erf()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erf(x)
 #' @export
-nv_erf <- prim_erf
+nv_erf <- make_float_unary(prim_erf)
 
 #' @title Inverse Error Function
 #' @description
 #' Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_erf_inv()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' nv_erf_inv(x)
 #' @export
-nv_erf_inv <- prim_erf_inv
+nv_erf_inv <- make_float_unary(prim_erf_inv)
 
 #' @title Complementary Error Function
 #' @description
 #' Element-wise complementary error function `erfc(x) = 1 - erf(x)`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [prim_erfc()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erfc(x)
 #' @export
-nv_erfc <- prim_erfc
+nv_erfc <- make_float_unary(prim_erfc)
 
 #' @title Is Finite
 #' @description
 #' Element-wise check if values are finite (not `Inf`, `-Inf`, or `NaN`).
-#' @template param_operand
+#' @template param_x
 #' @template return_unary_boolean
 #' @seealso [prim_is_finite()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1293,7 +1490,7 @@ nv_is_finite <- prim_is_finite
 #' @title Population Count
 #' @description
 #' Element-wise population count (number of set bits).
-#' @template param_operand
+#' @template param_x
 #' @template return_unary
 #' @seealso [prim_popcnt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1304,13 +1501,13 @@ nv_popcnt <- prim_popcnt
 
 #' @title Clamp
 #' @description
-#' Element-wise clamp: `max(min_val, min(operand, max_val))`.
-#' Converts `min_val` and `max_val` to the data type of `operand`.
+#' Element-wise clamp: `max(min_val, min(x, max_val))`.
+#' Converts `min_val` and `max_val` to the data type of `x`.
 #' @details
-#' The underlying stableHLO function already broadcasts scalars, so no need to broadcast manually.
+#' The underlying StableHLO function already broadcasts scalars, so no need to broadcast manually.
 #' @param min_val,max_val ([`arrayish`])\cr
-#'   Minimum and maximum values (scalar or same shape as `operand`).
-#' @template param_operand
+#'   Minimum and maximum values (scalar or same shape as `x`).
+#' @template param_x
 #' @template return_unary
 #' @seealso [prim_clamp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1318,41 +1515,39 @@ nv_popcnt <- prim_popcnt
 #' nv_clamp(nv_scalar(0), x, nv_scalar(1))
 #' @export
 #' @jit
-nv_clamp <- function(min_val, operand, max_val) {
-  args <- as_anvl_arrays(min_val, operand, max_val)
-  min_val <- args[[1L]]
-  operand <- args[[2L]]
-  max_val <- args[[3L]]
-  op_dtype <- dtype(operand)
-  min_val <- nv_convert(min_val, op_dtype)
-  max_val <- nv_convert(max_val, op_dtype)
-  prim_clamp(min_val, operand, max_val)
+nv_clamp <- function(min_val, x, max_val) {
+  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
+  prim_clamp(args$min_val, args$x, args$max_val)
 }
 
 #' @title Reverse
 #' @description
-#' Reverses the order of elements along specified dimensions.
-#' @template param_operand
-#' @param dims (`integer()`)\cr
-#'   Dimensions to reverse.
+#' Reverses the order of elements along specified axes.
+#' You can also use `rev()`, which reverses along every axis.
+#' @template param_x
+#' @param axes (`integer()`)\cr
+#'   Axes to reverse.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @return [`arrayish`]\cr
-#'   Has the same shape and data type as `operand`.
+#'   Has the same shape and data type as `x`.
 #' @seealso [prim_reverse()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_reverse(x, dims = 1L)
+#' nv_reverse(x, axes = 1L)
 #' @export
 nv_reverse <- prim_reverse
 
 #' @title Iota
 #' @description
-#' Creates an array with values increasing along the specified dimension,
+#' Creates an array with values increasing along the specified axis,
 #' starting from `start`.
 #'
-#' `nv_iota_like()` is a variant where `dtype`, `shape`, `ambiguous`, and
+#' `nv_iota_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
-#' @param dim (`integer(1)`)\cr
-#'   Dimension along which values increase.
+#' @param axis (`integer(1)`)\cr
+#'   Axis along which values increase.
+#'   Negative values count from the end of `shape`, i.e. `-1` refers to the
+#'   last axis.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_iota_like()`).
@@ -1360,107 +1555,157 @@ nv_reverse <- prim_reverse
 #' @template param_shape
 #' @param start (`integer(1)`)\cr
 #'   Starting value (default 1).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   Has the given `dtype` and `shape`.
-#' @seealso [nv_seq()] for a simpler 1-D sequence, [prim_iota()] for the underlying primitive.
+#' @seealso [nv_seq()] for a simpler 1-D sequence, [nv_linspace()] for evenly
+#'   spaced values, [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' nv_iota(dim = 1L, dtype = "i32", shape = 5L)
+#' nv_iota(axis = 1L, dtype = "i32", shape = 5L)
 #' x <- nv_fill(0L, shape = c(2, 3))
-#' nv_iota_like(x, dim = 1L)
+#' nv_iota_like(x, axis = 1L)
 #' @export
 nv_iota <- prim_iota
 
 #' @title Sequence
 #' @description
-#' Creates a 1-D array with values from `start` to `end` (inclusive).
+#' Creates a 1-D array with the consecutive integer values from `start` to
+#' `end` (inclusive), like R's `seq(start, end)`.
 #'
-#' Without `steps`, behaves like R's `seq(start, end)` producing integer values.
-#' With `steps`, produces `steps` evenly spaced values (like `seq(start, end, length.out = steps)`).
-#'
-#' `nv_seq_like()` is a variant where `dtype`, `ambiguous`, and `device`
+#' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
-#' @param start,end (`numeric(1)`)\cr
-#'   Start and end values. When `steps` is `NULL`, must satisfy `start <= end`.
-#' @param steps (`integer(1)` or `NULL`)\cr
-#'   Number of evenly spaced values to generate. Must be at least 1.
-#'   When `NULL` (default), generates consecutive integer values from `start` to `end`.
-#' @param dtype (`character(1)`)\cr
-#'   Data type. Default `"i32"` when `steps` is `NULL`, `"f32"` when `steps` is given.
-#'   For `nv_seq_like()`, `NULL` uses `dtype(like)`.
+#' @param start,end (`integer(1)`)\cr
+#'   Start and end values, which must satisfy `start <= end`.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type. `NULL` (default) uses the backend's default integer data type
+#'   (see [`default_dtypes()`]). For `nv_seq_like()`, `NULL` uses `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
-#' @template param_ambiguous
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   1-D array of length `end - start + 1`.
+#' @seealso [nv_linspace()] for a given number of evenly spaced values,
+#'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
-#' @jit static 1:6
-nv_seq <- function(start, end, steps = NULL, dtype = NULL, ambiguous = FALSE, device = NULL) {
-  if (is.null(steps)) {
-    dtype <- dtype %||% "i32"
-    assert_int(start)
-    assert_int(end)
-    assert(start <= end)
-    return(nv_iota(
-      shape = end - start + 1,
-      dtype = dtype,
-      ambiguous = ambiguous,
-      dim = 1L,
-      start = start,
-      device = device
+#' @jit static 1:4
+nv_seq <- function(start, end, dtype = NULL, device = NULL) {
+  dtype <- dtype %||% default_int()
+  assert_int(start)
+  assert_int(end)
+  if (start > end) {
+    cli_abort(c(
+      "{.arg start} must not be greater than {.arg end}.",
+      x = "Got {.val {start}} and {.val {end}}."
     ))
   }
-  dtype <- dtype %||% "f32"
+  nv_iota(
+    shape = end - start + 1,
+    dtype = dtype,
+    axis = 1L,
+    start = start,
+    device = device
+  )
+}
+
+#' @title Evenly Spaced Sequence
+#' @description
+#' Creates a 1-D array with `steps` evenly spaced values from `start` to `end`
+#' (both inclusive), like R's `seq(start, end, length.out = steps)`.
+#'
+#' The spacing `(end - start) / (steps - 1)` is generally not a whole number, so
+#' the result is floating-point and `dtype` must name a float data type. Convert
+#' the result with [`nv_convert()`] to obtain integers, which leaves the
+#' rounding yours to choose.
+#'
+#' `nv_linspace_like()` is a variant where `dtype` and `device`
+#' default to those of `like`.
+#' @param start,end (`numeric(1)`)\cr
+#'   First and last value of the sequence. `end` may lie below `start`, in
+#'   which case the values decrease.
+#' @param steps (`integer(1)`)\cr
+#'   Number of values to generate. Must be at least 1; for `steps = 1` the
+#'   result is `start`.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Floating-point data type. `NULL` (default) uses the backend's default
+#'   float data type (see [`default_dtypes()`]).
+#'   For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must then be a
+#'   floating-point data type.
+#' @param like ([`AnvlArray`])\cr
+#'   Existing array whose attributes are used as defaults
+#'   (only for `nv_linspace_like()`).
+#' @template param_device
+#' @return [`arrayish`]\cr
+#'   1-D array of length `steps`.
+#' @seealso [nv_seq()] for consecutive integers.
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_linspace(0, 1, steps = 5L)
+#' x <- nv_array(c(1, 2, 3), dtype = "f64")
+#' nv_linspace_like(x, 0, 1, steps = 3L)
+#' @export
+#' @jit static 1:5
+nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
+  assert_number(start)
+  assert_number(end)
   assert_int(steps, lower = 1L)
+  dtype <- assert_float_dtype(
+    dtype %||% default_float(),
+    arg = "dtype",
+    hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
+  )
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
   }
-  indices <- nv_iota(dim = 1L, shape = steps, dtype = dtype, start = 0L, device = device)
+  indices <- nv_iota(axis = 1L, shape = steps, dtype = dtype, start = 0L, device = device)
   indices * ((end - start) / (steps - 1L)) + start
 }
 
 #' @title Pad
 #' @description
 #' Pads an array with a given value at the edges and optionally between elements.
-#' @template param_operand
+#' @template param_x
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. Must have the same dtype as `operand`.
+#'   Scalar value to use for padding. It is brought to `x`'s data type: an R
+#'   value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as well),
+#'   and a value that already has one is converted, unless `x`'s data type
+#'   cannot hold it -- an `f64` padding value for an `f32` array is an error
+#'   rather than a silent narrowing.
 #' @param edge_padding_low (`integer()`)\cr
-#'   Amount of padding to add at the start of each dimension.
+#'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
-#'   Amount of padding to add at the end of each dimension.
+#'   Amount of padding to add at the end of each axis.
 #' @param interior_padding (`integer()` | `NULL`)\cr
-#'   Amount of padding to add between elements in each dimension.
+#'   Amount of padding to add between elements in each axis.
 #'   If `NULL` (default), no interior padding is applied.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as `operand`.
+#'   Has the same data type as `x`.
 #' @seealso [prim_pad()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
-nv_pad <- function(operand, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  args <- as_anvl_arrays(operand, padding_value)
-  operand <- args[[1L]]
-  padding_value <- args[[2L]]
-  rank <- ndims(operand)
+nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
+  # `promotion_like("x")` rather than the primitive's own rule: crossing a
+  # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
+  # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promotion_like("x"))
+  x <- args$x
+  padding_value <- args$padding_value
+  rank <- naxes(x)
   if (is.null(interior_padding)) {
     interior_padding <- rep(0L, rank)
   }
-  prim_pad(operand, padding_value, edge_padding_low, edge_padding_high, interior_padding)
+  prim_pad(x, padding_value, edge_padding_low, edge_padding_high, interior_padding)
 }
 
 #' @title Round
 #' @description
-#' Element-wise rounding. You can also use the `round()` generic.
-#' @template param_operand
+#' Element-wise rounding to a whole number.
+#' @template param_x_round
 #' @param method (`character(1)`)\cr
 #'   Rounding method.
 #'   Either `"nearest_even"` (default) or `"afz"` (away from zero).
@@ -1468,22 +1713,25 @@ nv_pad <- function(operand, padding_value, edge_padding_low, edge_padding_high, 
 #' @seealso [prim_round()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.4, 2.5, 3.6))
-#' round(x)
+#' nv_round(x)
+#' nv_round(nv_array(1:3)) # an integer array is already whole
 #' @export
-nv_round <- prim_round
+nv_round <- function(x, method = "nearest_even") {
+  if (is_intlike(x)) as_anvl_array(x) else prim_round(x, method = method)
+}
 
 ## Other operations -----------------------------------------------------------
 
 #' @title Matrix Multiplication
 #' @description
 #' Matrix multiplication of two arrays. You can also use the `%*%` operator.
-#' Supports batched matrix multiplication when inputs have more than 2 dimensions.
+#' Supports batched matrix multiplication when inputs have more than 2 axes.
 #' @section Shapes:
 #' - `lhs`: `(b1, ..., bk, m, n)`
 #' - `rhs`: `(b1, ..., bk, n, p)`
 #' - output: `(b1, ..., bk, m, p)`
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   Arrays with at least 2 dimensions.
+#'   Arrays with at least 2 axes.
 #'   Operands are [promoted to a common data type][nv_promote_to_common()].
 #' @param precision (`character(1)`)\cr
 #'   Controls the trade-off between speed and numerical accuracy of the
@@ -1494,6 +1742,7 @@ nv_round <- prim_round
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
+#' nv_matmul(x, y)
 #' x %*% y
 #' @export
 #' @jit static "precision"
@@ -1501,18 +1750,18 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   args <- nv_promote_to_common(lhs, rhs)
   lhs <- args[[1L]]
   rhs <- args[[2L]]
-  if (ndims(lhs) < 2L) {
-    cli_abort("lhs of matmul must have at least 2 dimensions")
+  if (naxes(lhs) < 2L) {
+    cli_abort("{.arg lhs} must have at least 2 axes, but it has {naxes(lhs)}.")
   }
-  if (ndims(rhs) < 2L) {
-    cli_abort("rhs of matmul must have at least 2 dimensions")
+  if (naxes(rhs) < 2L) {
+    cli_abort("{.arg rhs} must have at least 2 axes, but it has {naxes(rhs)}.")
   }
-  nbatch <- ndims(lhs) - 2L
+  nbatch <- naxes(lhs) - 2L
   prim_dot_general(
     lhs,
     rhs,
-    contracting_dims = list(ndims(lhs), ndims(rhs) - 1L),
-    batching_dims = list(seq_len(nbatch), seq_len(nbatch)),
+    contracting_axes = list(naxes(lhs), naxes(rhs) - 1L),
+    batching_axes = list(seq_len(nbatch), seq_len(nbatch)),
     precision = precision
   )
 }
@@ -1520,16 +1769,16 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
 #' @title Cholesky Decomposition
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
-#' Supports batched inputs: dimensions before the last two are batch dimensions.
-#' @param operand ([`arrayish`])\cr
-#'   Symmetric positive-definite matrix with at least 2 dimensions.
-#'   The last two dimensions form the square matrix; any leading dimensions
-#'   are batch dimensions.
+#' Supports batched inputs: axes before the last two are batch axes.
+#' @param x ([`arrayish`])\cr
+#'   Symmetric positive-definite matrix with at least 2 axes.
+#'   The last two axes form the square matrix; any leading axes
+#'   are batch axes.
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
-#'   upper triangular factor `U` such that `operand = t(U) %*% U`. If
+#'   upper triangular factor `U` such that `x = t(U) %*% U`. If
 #'   `TRUE`, compute the lower triangular factor `L` such that
-#'   `operand = L %*% t(L)`.
+#'   `x = L %*% t(L)`.
 #' @return [`arrayish`]\cr
 #'   Triangular matrix with the same shape and data type as the input.
 #' @seealso [nv_solve()], [prim_chol()]
@@ -1570,9 +1819,12 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # `a` and `b` must agree, and neither is widened to meet the other: an R
+  # matrix yields to `a`'s data type, two typed arrays that disagree are
+  # rejected.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
+  a <- args$a
+  b <- args$b
   a_shape <- shape(a)
   if (length(a_shape) != 2L || a_shape[1L] != a_shape[2L]) {
     cli_abort("{.arg a} must be a square 2-D matrix")
@@ -1592,7 +1844,7 @@ nv_solve <- function(a, b) {
 
   # Apply the row permutation P encoded by `permutation`: gather rows of b
   # so that (P b)[i, ...] == b[permutation[i], ...].
-  pb <- nv_select(b, dim = 1L, index = permutation)
+  pb <- nv_select(b, axis = 1L, index = permutation)
 
   # Forward then back solve via nv_triangular_solve, which handles a
   # vector `b` internally by reshaping to a column matrix and back.
@@ -1607,14 +1859,14 @@ nv_solve <- function(a, b) {
 #' returns `x` such that `x %*% op(a) = b`. Here `op` is `a` or `t(a)`
 #' depending on `transpose_a`.
 #' @details
-#' As a convenience, `b` may have one fewer dimension than `a` (a single
+#' As a convenience, `b` may have one fewer axis than `a` (a single
 #' right-hand side per batch, shape `(B..., n)` for `a` of shape
 #' `(B..., n, n)`). It is reshaped internally to a column (`left_side =
 #' TRUE`) or row (`left_side = FALSE`) and reshaped back on the way out.
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
 #' @param a ([`arrayish`])\cr
-#'   Triangular coefficient matrix with at least 2 dimensions. The last two
-#'   dimensions must be equal; any leading dimensions are batch dimensions.
+#'   Triangular coefficient matrix with at least 2 axes. The last two
+#'   axes must be equal; any leading axes are batch axes.
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
 #'   * full rank — shape `(B..., n, k)` when `left_side = TRUE`, or
@@ -1624,7 +1876,7 @@ nv_solve <- function(a, b) {
 #'     is reshaped internally and the reshape is undone on the result so
 #'     the output rank matches `b`.
 #'
-#'   `b`'s batch dimensions (`B...`) must match `a`'s exactly.
+#'   `b`'s batch axes (`B...`) must match `a`'s exactly.
 #' @param left_side (`logical(1)`)\cr
 #'   If `TRUE` (default), solve `op(a) %*% x = b`; if `FALSE`,
 #'   solve `x %*% op(a) = b`.
@@ -1652,16 +1904,17 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  args <- as_anvl_arrays(a, b)
-  a <- args[[1L]]
-  b <- args[[2L]]
+  # As in `nv_solve()`: the two must agree, and neither is widened.
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
+  a <- args$a
+  b <- args$b
 
   a_shape <- shape(a)
   b_shape <- shape(b)
   rank_a <- length(a_shape)
   rank_b <- length(b_shape)
   if (rank_a < 2L) {
-    cli_abort("{.arg a} must have at least 2 dimensions, got rank {rank_a}.")
+    cli_abort("{.arg a} must have at least 2 axes, got rank {rank_a}.")
   }
   if (rank_b < rank_a - 1L || rank_b > rank_a) {
     cli_abort(c(
@@ -1673,14 +1926,14 @@ nv_triangular_solve <- function(
   # Convenience: accept a `b` whose rank is one less than `a`'s. The
   # primitive requires rank(b) == rank(a); for left_side = TRUE we append
   # a trailing 1 (column vector per batch), for left_side = FALSE we
-  # insert a 1 before the last dim (row vector per batch). The shape is
-  # restored on the way out. There's no ambiguity from broadcasting since
-  # we require exact shape match for the batch dims.
+  # insert a 1 before the last axis (row vector per batch). The shape is
+  # restored on the way out. Nothing is ambiguous about the broadcast since
+  # we require exact shape match for the batch axes.
   b_is_vector <- rank_b == rank_a - 1L
   if (b_is_vector) {
     n <- if (left_side) a_shape[rank_a - 1L] else a_shape[rank_a]
     if (b_shape[length(b_shape)] != n) {
-      cli_abort("{.arg b} must have length {n} in its last dimension to match {.arg a}")
+      cli_abort("{.arg b} must have size {n} in its last axis to match {.arg a}")
     }
     b <- if (left_side) {
       prim_reshape(b, shape = c(b_shape, 1L))
@@ -1711,23 +1964,23 @@ lu_pivot_sign <- function(pivots, n, dt) {
   iota <- nv_seq_like(pivots, 1L, n)
   # Should be simpler after: https://github.com/r-xla/anvl/issues/343
   flips <- nv_ifelse(pivots != iota, nv_fill_like(pivots, -1L), nv_fill_like(pivots, 1L))
-  nv_convert(nv_reduce_prod(flips, dims = 1L), dtype = dt)
+  nv_convert(nv_reduce_prod(flips, axes = 1L), dtype = dt)
 }
 
 #' @title Determinant
 #' @description
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
-#' @param operand ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Square matrix of floating-point data type.
-#' @return Scalar [`arrayish`] with the same dtype as `operand`.
+#' @return Scalar [`arrayish`] with the same dtype as `x`.
 #' @seealso [nv_determinant()], [nv_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_det(a)
 #' @export
 #' @jit
-nv_det <- function(operand) {
-  d <- nv_determinant(operand, logarithm = FALSE)
+nv_det <- function(x) {
+  d <- nv_determinant(x, logarithm = FALSE)
   prim_mul(d$sign, d$modulus)
 }
 
@@ -1746,13 +1999,13 @@ nv_det <- function(operand) {
 #' Matching base R's `det_ge_real`, the magnitude is computed in log
 #' space when `logarithm = TRUE` (\eqn{\sum_i \log|U_{ii}|}) and as a
 #' direct product when `logarithm = FALSE` (\eqn{\prod_i |U_{ii}|}).
-#' @param operand ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Square matrix of floating-point data type.
 #' @param logarithm (`logical(1)`)\cr
 #'   If `TRUE` (default, matching base R), `modulus` is
-#'   `log(abs(det(operand)))`. If `FALSE`, `modulus` is `abs(det(operand))`.
+#'   `log(abs(det(x)))`. If `FALSE`, `modulus` is `abs(det(x))`.
 #' @return Named `list` with elements `modulus` and `sign`, both scalar
-#'   [`arrayish`] with the same dtype as `operand`. The full determinant
+#'   [`arrayish`] with the same dtype as `x`. The full determinant
 #'   is `sign * exp(modulus)` (with `logarithm = TRUE`) or
 #'   `sign * modulus` (with `logarithm = FALSE`).
 #' @seealso [nv_det()], [nv_solve()], [prim_lu()]
@@ -1762,24 +2015,24 @@ nv_det <- function(operand) {
 #' nv_determinant(a, logarithm = FALSE)
 #' @export
 #' @jit static 2L
-nv_determinant <- function(operand, logarithm = TRUE) {
-  operand <- as_anvl_array(operand)
+nv_determinant <- function(x, logarithm = TRUE) {
+  x <- as_anvl_array(x)
   # Adopted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
-  shp <- shape(operand)
+  shp <- shape(x)
   if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
-    cli_abort("{.arg operand} must be a square 2-D matrix")
+    cli_abort("{.arg x} must be a square 2-D matrix")
   }
   n <- shp[[1L]]
-  dt <- dtype(operand)
+  dt <- dtype(x)
   # Empty matrix: det of the 0x0 matrix is the empty product = 1, so
   # log|det| = 0 and sign(det) = +1. This matches `base::determinant()`
   # and short-circuits since prim_lu rejects zero-sized inputs.
   if (n == 0L) {
-    one <- nv_scalar_like(operand, 1)
-    modulus <- if (logarithm) nv_scalar_like(operand, 0) else one
+    one <- nv_scalar_like(x, 1)
+    modulus <- if (logarithm) nv_scalar_like(x, 0) else one
     return(list(modulus = modulus, sign = one))
   }
-  factored <- prim_lu(operand)
+  factored <- prim_lu(x)
   LU <- factored$LU
   pivots <- factored$pivots
   diag_U <- nv_extract_diag(LU)
@@ -1788,12 +2041,12 @@ nv_determinant <- function(operand, logarithm = TRUE) {
   if (logarithm) {
     # log|x| discards the sign of each diagonal entry, so accumulate
     # it separately as prod(sign(diag(U))).
-    diag_sign <- nv_reduce_prod(nv_sign(diag_U), dims = 1L)
+    diag_sign <- nv_reduce_prod(nv_sign(diag_U), axes = 1L)
     sign <- prim_mul(pivot_sign, diag_sign)
-    modulus <- nv_reduce_sum(prim_log(prim_abs(diag_U)), dims = 1L)
+    modulus <- nv_reduce_sum(prim_log(prim_abs(diag_U)), axes = 1L)
   } else {
     # The signed product carries both magnitude and sign; split at the end.
-    signed_prod <- nv_reduce_prod(diag_U, dims = 1L)
+    signed_prod <- nv_reduce_prod(diag_U, axes = 1L)
     sign <- prim_mul(pivot_sign, nv_sign(signed_prod))
     modulus <- prim_abs(signed_prod)
   }
@@ -1803,36 +2056,36 @@ nv_determinant <- function(operand, logarithm = TRUE) {
 
 #' @title Matrix Inverse
 #' @description
-#' Computes `operand^-1`, the inverse of a square non-singular matrix, by
-#' solving `operand %*% x = I`.
+#' Computes `x^-1`, the inverse of a square non-singular matrix `x`, by
+#' solving `x %*% y = I` for `y`.
 #'
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
 #' a right-hand side.
-#' @param operand ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   Square non-singular matrix.
 #' @return [`arrayish`]\cr
-#'   The inverse, same shape and dtype as `operand`.
+#'   The inverse, same shape and dtype as `x`.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_inv(a)
 #' @export
 #' @jit
-nv_inv <- function(operand) {
-  operand <- as_anvl_array(operand)
-  shp <- shape(operand)
+nv_inv <- function(x) {
+  x <- as_anvl_array(x)
+  shp <- shape(x)
   if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
-    cli_abort("{.arg operand} must be a square 2-D matrix")
+    cli_abort("{.arg x} must be a square 2-D matrix")
   }
   n <- shp[[1L]]
   # The inverse of the 0x0 matrix is itself; short-circuit since prim_lu
   # rejects zero-sized inputs.
   if (n == 0L) {
-    return(operand)
+    return(x)
   }
-  identity <- nv_eye_like(operand, n, dtype = dtype(operand))
-  nv_solve(operand, identity)
+  identity <- nv_eye_like(x, n, dtype = dtype(x))
+  nv_solve(x, identity)
 }
 
 #' @title QR Decomposition
@@ -1846,7 +2099,7 @@ nv_qr <- prim_qr
 
 #' @title LU Decomposition
 #' @description
-#' Computes the partial-pivoted LU decomposition of a matrix `operand`:
+#' Computes the partial-pivoted LU decomposition of a matrix `x`:
 #' \deqn{P A = L U,}
 #' where \eqn{P} is a permutation matrix, \eqn{L} is unit lower
 #' triangular, and \eqn{U} is upper triangular.
@@ -1856,27 +2109,28 @@ nv_qr <- prim_qr
 #' @inheritParams prim_lu
 #' @return Named `list`:
 #'   * `L` -- unit lower-triangular factor of shape `(m, k)`, where
-#'     `(m, n) = shape(operand)` and `k = min(m, n)`.
+#'     `(m, n) = shape(x)` and `k = min(m, n)`.
 #'   * `U` -- upper-triangular factor of shape `(k, n)`.
-#'   * `pivots` -- length `k`, dtype `i32`. LAPACK-style sequential
-#'     1-based row swaps as returned by `getrf`.
-#'   * `permutation` -- length `m`, dtype `i32`. A 1-based permutation
-#'     vector representing \eqn{P}.
+#'   * `pivots` -- length `k`, of the default integer data type (see
+#'     [`default_dtypes()`]). LAPACK-style sequential 1-based row swaps as
+#'     returned by `getrf`.
+#'   * `permutation` -- length `m`, of the default integer data type. A
+#'     1-based permutation vector representing \eqn{P}.
 #' @seealso [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_lu(x)
 #' @export
 #' @jit
-nv_lu <- function(operand) {
-  operand <- as_anvl_array(operand)
-  out <- prim_lu(operand)
+nv_lu <- function(x) {
+  x <- as_anvl_array(x)
+  out <- prim_lu(x)
   LU <- out$LU
   shp <- shape(LU)
   m <- shp[[1L]]
   n <- shp[[2L]]
   k <- min(m, n)
-  dt <- dtype(operand)
+  dt <- dtype(x)
 
   # L = strict lower triangle of LU (shape (m, k)) + unit diagonal.
   L_strict_full <- nv_tril(LU, diagonal = -1L) # (m, n)
@@ -1885,10 +2139,10 @@ nv_lu <- function(operand) {
   } else {
     L_strict_full
   }
-  rows <- nv_iota_like(operand, dim = 1L, shape = c(m, k), dtype = "i32")
-  cols <- nv_iota_like(operand, dim = 2L, shape = c(m, k), dtype = "i32")
-  one <- nv_fill_like(operand, 1L, shape = c(m, k), dtype = dt)
-  zero <- nv_fill_like(operand, 0L, shape = c(m, k), dtype = dt)
+  rows <- nv_iota_like(x, axis = 1L, shape = c(m, k), dtype = "i32")
+  cols <- nv_iota_like(x, axis = 2L, shape = c(m, k), dtype = "i32")
+  one <- nv_fill_like(x, 1L, shape = c(m, k), dtype = dt)
+  zero <- nv_fill_like(x, 0L, shape = c(m, k), dtype = dt)
   L <- L_strict + nv_ifelse(rows == cols, one, zero)
 
   # U = upper triangle of the first k rows of LU.
@@ -1923,7 +2177,7 @@ nv_eigh <- prim_eigh
 #' @title Diagonal Matrix
 #' @description
 #' Creates a diagonal matrix from a 1-D array.
-#' @param operand ([`arrayish`])\cr
+#' @param x ([`arrayish`])\cr
 #'   A 1-D array of length `n` whose elements become the diagonal entries.
 #' @return [`arrayish`]\cr
 #'   An `n x n` matrix with `x` on the diagonal and zeros elsewhere.
@@ -1931,28 +2185,28 @@ nv_eigh <- prim_eigh
 #' nv_diag(nv_array(c(1, 2, 3)))
 #' @export
 #' @jit
-nv_diag <- function(operand) {
-  operand <- as_anvl_array(operand)
-  if (ndims(operand) != 1L) {
+nv_diag <- function(x) {
+  x <- as_anvl_array(x)
+  if (naxes(x) != 1L) {
     cli_abort(c(
-      "{.arg operand} must be a 1-D array.",
-      x = "Got shape {xlamisc::shapevec_repr(shape(operand))}."
+      "{.arg x} must be a 1-D array.",
+      x = "Got shape {shape_repr(shape(x))}."
     ))
   }
-  n <- shape(operand)[1L]
-  zeros <- nv_fill_like(operand, 0, shape = c(n, n))
-  idx <- prim_reshape(nv_iota_like(operand, dim = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
-  indices <- nv_concatenate(idx, idx, dimension = 2L)
+  n <- shape(x)[1L]
+  zeros <- nv_fill_like(x, 0, shape = c(n, n))
+  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
+  indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
     zeros,
     indices,
-    operand,
-    update_window_dims = integer(0),
-    inserted_window_dims = c(1L, 2L),
-    input_batching_dims = integer(0),
-    scatter_indices_batching_dims = integer(0),
-    scatter_dims_to_operand_dims = c(1L, 2L),
-    index_vector_dim = 2L,
+    x,
+    update_window_axes = integer(0),
+    inserted_window_axes = c(1L, 2L),
+    x_batching_axes = integer(0),
+    scatter_indices_batching_axes = integer(0),
+    scatter_axes_to_x_axes = c(1L, 2L),
+    index_vector_axis = 2L,
     unique_indices = TRUE
   )
 }
@@ -1968,7 +2222,9 @@ nv_diag <- function(operand) {
 #' @param like ([`arrayish`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_eye_like()`).
-#' @template param_dtype
+#' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
+#'   Data type. `NULL` (default) uses the backend's default float data type
+#'   (see [`default_dtypes()`]).
 #' @template param_device
 #' @return [`arrayish`]\cr
 #'   An `n x n` identity matrix.
@@ -1979,132 +2235,150 @@ nv_diag <- function(operand) {
 #' nv_eye_like(x, 3L)
 #' @export
 #' @jit static 1:3
-nv_eye <- function(n, dtype = "f32", device = NULL) {
+nv_eye <- function(n, dtype = NULL, device = NULL) {
+  dtype <- dtype %||% default_float()
   nv_diag(nv_fill(1, n, dtype = dtype, device = device))
 }
 
-.resolve_reduce_dims <- function(operand, dims) {
-  as.integer(dims %||% seq_len(ndims(operand)))
+# Expand `axes = NULL` to "all axes". Negative axes are resolved here
+# (not just in the primitive) because `nv_mean()` / `nv_var()` / `nv_sd()`
+# index `shape(x)[axes]` to compute the number of reduced elements.
+.resolve_reduce_axes <- function(x, axes) {
+  if (is.null(axes)) {
+    return(seq_len(naxes(x)))
+  }
+  resolve_axes(axes, naxes(x), arg = "axes", unique = TRUE)
+}
+
+.count_bool <- function(x) {
+  if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int()) else x
 }
 
 #' @title Sum Reduction
 #' @description
-#' Sums array elements along the specified dimensions.
-#' @template param_operand
+#' Sums array elements along the specified axes.
+#' A boolean array is counted, like [base::sum()] does.
+#' @template param_x
 #' @template params_reduce
-#' @template return_reduce
+#' @template return_reduce_accumulate
 #' @template param_nan_rm
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_sum(x)            # all dims -> scalar
-#' nv_reduce_sum(x, dims = 1L)
+#' nv_reduce_sum(x)            # all axes -> scalar
+#' nv_reduce_sum(x, axes = 1L)
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)))
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
+#' nv_reduce_sum(nv_array(c(TRUE, FALSE, TRUE))) # counts: 2
 #' @export
-nv_reduce_sum <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  dims <- .resolve_reduce_dims(operand, dims)
-  if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    operand <- nv_ifelse(nv_is_nan(operand), 0, operand)
+#' @jit static 2:4
+nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  x <- .count_bool(as_anvl_array(x))
+  axes <- .resolve_reduce_axes(x, axes)
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
-  prim_reduce_sum(operand, dims = dims, drop = drop)
+  prim_reduce_sum(x, axes = axes, drop = drop)
 }
 
 #' @title Mean
 #' @description
-#' Computes the arithmetic mean along the specified dimensions. You can also
+#' Computes the arithmetic mean along the specified axes. You can also
 #' use `mean()`.
-#' @template param_operand
+#' @template param_x
 #' @template params_reduce
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_mean(x)            # all dims -> scalar
-#' nv_mean(x, dims = 1L)
+#' nv_mean(x)            # all axes -> scalar
+#' nv_mean(x, axes = 1L)
 #' nv_mean(nv_array(c(1, NaN, 3)))
 #' nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
 #' @jit static 2:4
-nv_mean <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  dims <- .resolve_reduce_dims(operand, dims)
-  if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    is_nan <- nv_is_nan(operand)
-    total <- prim_reduce_sum(nv_ifelse(is_nan, 0, operand), dims = dims, drop = drop)
-    count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), dims = dims, drop = drop)
+nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  x <- as_anvl_array(x)
+  axes <- .resolve_reduce_axes(x, axes)
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    is_nan <- nv_is_nan(x)
+    total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
+    count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
     return(total / count)
   }
-  nelts <- prod(shape(operand)[dims])
-  nv_reduce_sum(operand, dims, drop) / nelts
+  nelts <- prod(shape(x)[axes])
+  nv_reduce_sum(x, axes, drop) / nelts
 }
 
 #' @title Product Reduction
 #' @description
-#' Multiplies array elements along the specified dimensions.
-#' @template param_operand
+#' Multiplies array elements along the specified axes.
+#' A boolean array is multiplied as zeroes and ones, like [base::prod()] does.
+#' @template param_x
 #' @template params_reduce
-#' @template return_reduce
+#' @template return_reduce_accumulate
 #' @template param_nan_rm
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_prod(x)            # all dims -> scalar
-#' nv_reduce_prod(x, dims = 1L)
+#' nv_reduce_prod(x)            # all axes -> scalar
+#' nv_reduce_prod(x, axes = 1L)
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)))
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_prod <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  dims <- .resolve_reduce_dims(operand, dims)
-  if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    operand <- nv_ifelse(nv_is_nan(operand), 1, operand)
+#' @jit static 2:4
+nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  x <- .count_bool(as_anvl_array(x))
+  axes <- .resolve_reduce_axes(x, axes)
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
-  prim_reduce_prod(operand, dims = dims, drop = drop)
+  prim_reduce_prod(x, axes = axes, drop = drop)
 }
 
 #' @title Max Reduction
 #' @description
-#' Finds the maximum of array elements along the specified dimensions.
-#' @template param_operand
+#' Finds the maximum of array elements along the specified axes.
+#' @template param_x
 #' @template params_reduce
 #' @template param_nan_rm
 #' @template return_reduce
 #' @seealso [prim_reduce_max()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_max(x)            # all dims -> scalar
-#' nv_reduce_max(x, dims = 1L)
+#' nv_reduce_max(x)            # all axes -> scalar
+#' nv_reduce_max(x, axes = 1L)
 #' nv_reduce_max(nv_array(c(1, NaN, 3)))
 #' nv_reduce_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_max <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  dims <- .resolve_reduce_dims(operand, dims)
-  .nv_reduce_extreme(operand, dims, drop, nan_rm, -Inf, prim_reduce_max)
+#' @jit static 2:4
+nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  x <- as_anvl_array(x)
+  axes <- .resolve_reduce_axes(x, axes)
+  .nv_reduce_extreme(x, axes, drop, nan_rm, -Inf, prim_reduce_max)
 }
 
 #' @title Min Reduction
 #' @description
-#' Finds the minimum of array elements along the specified dimensions.
-#' @template param_operand
+#' Finds the minimum of array elements along the specified axes.
+#' @template param_x
 #' @template params_reduce
 #' @template param_nan_rm
 #' @template return_reduce
 #' @seealso [prim_reduce_min()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_min(x)            # all dims -> scalar
-#' nv_reduce_min(x, dims = 1L)
+#' nv_reduce_min(x)            # all axes -> scalar
+#' nv_reduce_min(x, axes = 1L)
 #' nv_reduce_min(nv_array(c(1, NaN, 3)))
 #' nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_reduce_min <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  dims <- .resolve_reduce_dims(operand, dims)
-  .nv_reduce_extreme(operand, dims, drop, nan_rm, Inf, prim_reduce_min)
+#' @jit static 2:4
+nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  x <- as_anvl_array(x)
+  axes <- .resolve_reduce_axes(x, axes)
+  .nv_reduce_extreme(x, axes, drop, nan_rm, Inf, prim_reduce_min)
 }
 
 # Shared NaN-aware reduction for max/min. Unlike sum/prod (which lower to
@@ -2112,124 +2386,160 @@ nv_reduce_min <- function(operand, dims = NULL, drop = TRUE, nan_rm = FALSE) {
 # and silently drop NaN, so `nan_rm = FALSE` needs an explicit any-NaN mask
 # to re-inject NaN — no input substitution can coax the kernel into emitting
 # NaN on output.
-.nv_reduce_extreme <- function(operand, dims, drop, nan_rm, identity_val, prim_reduce) {
-  if (!inherits(dtype(operand), "FloatType")) {
-    return(prim_reduce(operand, dims = dims, drop = drop))
+.nv_reduce_extreme <- function(x, axes, drop, nan_rm, identity_val, prim_reduce) {
+  if (!is_dtype_float(peek_dtype(x))) {
+    return(prim_reduce(x, axes = axes, drop = drop))
   }
-  is_nan <- nv_is_nan(operand)
+  is_nan <- nv_is_nan(x)
   if (nan_rm) {
-    operand <- nv_ifelse(is_nan, identity_val, operand)
-    return(prim_reduce(operand, dims = dims, drop = drop))
+    x <- nv_ifelse(is_nan, identity_val, x)
+    return(prim_reduce(x, axes = axes, drop = drop))
   }
-  any_nan <- prim_reduce_any(is_nan, dims = dims, drop = drop)
-  result <- prim_reduce(operand, dims = dims, drop = drop)
+  any_nan <- prim_reduce_any(is_nan, axes = axes, drop = drop)
+  result <- prim_reduce(x, axes = axes, drop = drop)
   nv_ifelse(any_nan, NaN, result)
+}
+
+#' @title Range Reduction
+#' @description
+#' The smallest and the largest element along the specified axes, stacked along
+#' a new first axis. You can also use the `range()` generic.
+#' @template param_x
+#' @param axes (`integer()` | `NULL`)\cr
+#'   Axes to reduce over. `NULL` (default) reduces over all of them, which
+#'   makes the result a length-2 array like [base::range()]. Negative values
+#'   count from the end.
+#' @template param_nan_rm
+#' @return [`arrayish`]\cr
+#'   Has the same data type as `x` and the shape of the reduced array with a
+#'   leading axis of size 2 added: element 1 is the minimum, element 2 the
+#'   maximum.
+#' @seealso [nv_reduce_min()], [nv_reduce_max()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' nv_range(nv_array(c(3, 1, 4)))
+#' nv_range(nv_matrix(1:6, nrow = 2), axes = 1L)
+#' @export
+#' @jit static 2:3
+nv_range <- function(x, axes = NULL, nan_rm = FALSE) {
+  stack_min_max(
+    nv_reduce_min(x, axes = axes, nan_rm = nan_rm),
+    nv_reduce_max(x, axes = axes, nan_rm = nan_rm)
+  )
+}
+
+# The minimum and the maximum next to each other, which is what base R's
+# range() returns. A new leading axis keeps the reduced axes intact, so a
+# scalar minimum and maximum become a length-2 array.
+stack_min_max <- function(lo, hi) {
+  nv_concatenate(nv_unsqueeze(lo, 1L), nv_unsqueeze(hi, 1L), axis = 1L)
 }
 
 #' @title Any Reduction
 #' @description
-#' Performs logical OR along the specified dimensions.
+#' Performs logical OR along the specified axes.
 #' Returns `TRUE` if any element is `TRUE`.
-#' @template param_operand
+#' @template param_x
 #' @template params_reduce
 #' @template return_reduce_boolean
 #' @seealso [prim_reduce_any()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' nv_reduce_any(x)            # all dims -> scalar
-#' nv_reduce_any(x, dims = 1L)
+#' nv_reduce_any(x)            # all axes -> scalar
+#' nv_reduce_any(x, axes = 1L)
 #' @export
-nv_reduce_any <- function(operand, dims = NULL, drop = TRUE) {
-  operand <- as_anvl_array(operand)
-  prim_reduce_any(operand, dims = .resolve_reduce_dims(operand, dims), drop = drop)
+nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
+  x <- as_anvl_array(x)
+  prim_reduce_any(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
 }
 
 #' @title All Reduction
 #' @description
-#' Performs logical AND along the specified dimensions.
+#' Performs logical AND along the specified axes.
 #' Returns `TRUE` only if all elements are `TRUE`.
-#' @template param_operand
+#' @template param_x
 #' @template params_reduce
 #' @template return_reduce_boolean
 #' @seealso [prim_reduce_all()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' nv_reduce_all(x)            # all dims -> scalar
-#' nv_reduce_all(x, dims = 1L)
+#' nv_reduce_all(x)            # all axes -> scalar
+#' nv_reduce_all(x, axes = 1L)
 #' @export
-nv_reduce_all <- function(operand, dims = NULL, drop = TRUE) {
-  operand <- as_anvl_array(operand)
-  prim_reduce_all(operand, dims = .resolve_reduce_dims(operand, dims), drop = drop)
+nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
+  x <- as_anvl_array(x)
+  prim_reduce_all(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
 }
 
 #' @title Cumulative Sum
 #' @description
-#' Cumulative sum, optionally along a single dimension.
-#' @template param_operand
+#' Cumulative sum, optionally along a single axis.
+#' A boolean array is counted, like [base::cumsum()] does.
+#' @template param_x
 #' @templateVar cum_base_fn cumsum
-#' @template param_nv_cum_dim
+#' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
-#' @template return_unary
+#' @template return_cum_accumulate
 #' @templateVar cum_nv_name nv_cumsum
 #' @template section_nv_cum_relation
 #' @seealso [prim_cumsum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_cumsum(x)              # row-major flatten, then accumulate
-#' nv_cumsum(x, dim = 1L)    # accumulate along rows
+#' nv_cumsum(x, axis = 1L)    # accumulate along rows
 #' nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 #' @export
 #' @jit static 2:3
-nv_cumsum <- function(operand, dim = NULL, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  if (is.null(dim)) {
-    operand <- nv_reshape(operand, prod(shape(operand)))
-    dim <- 1L
+nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
+  x <- .count_bool(as_anvl_array(x))
+  if (is.null(axis)) {
+    x <- nv_reshape(x, prod(shape(x)))
+    axis <- 1L
   }
-  if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    operand <- nv_ifelse(nv_is_nan(operand), 0, operand)
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    x <- nv_ifelse(nv_is_nan(x), 0, x)
   }
-  prim_cumsum(operand, dim = as.integer(dim))
+  prim_cumsum(x, axis = axis)
 }
 
 #' @title Cumulative Product
 #' @description
-#' Cumulative product, optionally along a single dimension.
-#' @template param_operand
+#' Cumulative product, optionally along a single axis.
+#' A boolean array is multiplied as zeroes and ones, like [base::cumprod()] does.
+#' @template param_x
 #' @templateVar cum_base_fn cumprod
-#' @template param_nv_cum_dim
+#' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
-#' @template return_unary
+#' @template return_cum_accumulate
 #' @templateVar cum_nv_name nv_cumprod
 #' @template section_nv_cum_relation
 #' @seealso [prim_cumprod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_cumprod(x)              # row-major flatten, then accumulate
-#' nv_cumprod(x, dim = 1L)    # accumulate along rows
+#' nv_cumprod(x, axis = 1L)    # accumulate along rows
 #' nv_cumprod(nv_array(c(2, NaN, 3)))                # NaN propagates
 #' nv_cumprod(nv_array(c(2, NaN, 3)), nan_rm = TRUE) # NaN treated as 1
 #' @export
 #' @jit static 2:3
-nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  if (is.null(dim)) {
-    operand <- nv_reshape(operand, prod(shape(operand)))
-    dim <- 1L
+nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
+  x <- .count_bool(as_anvl_array(x))
+  if (is.null(axis)) {
+    x <- nv_reshape(x, prod(shape(x)))
+    axis <- 1L
   }
-  if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    operand <- nv_ifelse(nv_is_nan(operand), 1, operand)
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    x <- nv_ifelse(nv_is_nan(x), 1, x)
   }
-  prim_cumprod(operand, dim = as.integer(dim))
+  prim_cumprod(x, axis = axis)
 }
 
 #' @title Cumulative Maximum
 #' @description
-#' Running maximum, optionally along a single dimension.
-#' @template param_operand
+#' Running maximum, optionally along a single axis.
+#' @template param_x
 #' @templateVar cum_base_fn cummax
-#' @template param_nv_cum_dim
+#' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name maximum
 #' @template param_nv_cum_with_indices
 #' @template return_nv_cum_extreme
@@ -2240,22 +2550,22 @@ nv_cumprod <- function(operand, dim = NULL, nan_rm = FALSE) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummax(x)
-#' nv_cummax(x, dim = 1L)
-#' nv_cummax(x, dim = 1L, with_indices = TRUE)
+#' nv_cummax(x, axis = 1L)
+#' nv_cummax(x, axis = 1L, with_indices = TRUE)
 #' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
 #' @jit static 2:4
-nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
-  .nv_cum_extreme(operand, dim, with_indices, nan_rm, -Inf, prim_cummax)
+nv_cummax <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
+  .nv_cum_extreme(x, axis, with_indices, nan_rm, -Inf, prim_cummax)
 }
 
 #' @title Cumulative Minimum
 #' @description
-#' Running minimum, optionally along a single dimension.
-#' @template param_operand
+#' Running minimum, optionally along a single axis.
+#' @template param_x
 #' @templateVar cum_base_fn cummin
-#' @template param_nv_cum_dim
+#' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name minimum
 #' @template param_nv_cum_with_indices
 #' @template return_nv_cum_extreme
@@ -2266,30 +2576,30 @@ nv_cummax <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummin(x)
-#' nv_cummin(x, dim = 1L)
-#' nv_cummin(x, dim = 1L, with_indices = TRUE)
+#' nv_cummin(x, axis = 1L)
+#' nv_cummin(x, axis = 1L, with_indices = TRUE)
 #' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
 #' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
 #' @jit static 2:4
-nv_cummin <- function(operand, dim = NULL, with_indices = FALSE, nan_rm = FALSE) {
-  .nv_cum_extreme(operand, dim, with_indices, nan_rm, Inf, prim_cummin)
+nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
+  .nv_cum_extreme(x, axis, with_indices, nan_rm, Inf, prim_cummin)
 }
 
 # NaN propagation for the default `nan_rm = FALSE` path is now handled in
 # `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
 # sanitize NaN → identity for `nan_rm = TRUE`.
-.nv_cum_extreme <- function(operand, dim, with_indices, nan_rm, identity_val, prim_cum) {
-  operand <- as_anvl_array(operand)
-  if (is.null(dim)) {
-    operand <- nv_reshape(operand, prod(shape(operand)))
-    dim <- 1L
+.nv_cum_extreme <- function(x, axis, with_indices, nan_rm, identity_val, prim_cum) {
+  x <- as_anvl_array(x)
+  if (is.null(axis)) {
+    x <- nv_reshape(x, prod(shape(x)))
+    axis <- 1L
   }
-  if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    operand <- nv_ifelse(nv_is_nan(operand), identity_val, operand)
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
-  out <- prim_cum(operand, dim = as.integer(dim))
-  if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
+  out <- prim_cum(x, axis = axis)
+  if (with_indices) out else out$values
 }
 
 # Higher order primitives
@@ -2317,8 +2627,7 @@ nv_if <- prim_if
 #' @title While Loop
 #' @description
 #' Executes a functional while loop.
-#' @param init (`list()`)\cr
-#'   Named list of initial state values.
+#' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function returning a scalar boolean.
 #'   Receives the state values as arguments.
@@ -2344,39 +2653,39 @@ nv_while <- prim_while
 #' @title Base-2 Logarithm
 #' @description
 #' Element-wise base-2 logarithm. You can also use `log2()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [nv_log()], [nv_log10()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 4, 8))
 #' nv_log2(x)
 #' @export
 #' @jit
-nv_log2 <- function(operand) {
-  operand <- as_anvl_array(operand)
-  nv_log(operand) / log(2)
+nv_log2 <- function(x) {
+  x <- as_anvl_array(x)
+  nv_log(x) / log(2)
 }
 
 #' @title Base-10 Logarithm
 #' @description
 #' Element-wise base-10 logarithm. You can also use `log10()`.
-#' @template param_operand
-#' @template return_unary
+#' @template param_x_float
+#' @template return_unary_float
 #' @seealso [nv_log()], [nv_log2()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 10, 100, 1000))
 #' nv_log10(x)
 #' @export
 #' @jit
-nv_log10 <- function(operand) {
-  operand <- as_anvl_array(operand)
-  nv_log(operand) / log(10)
+nv_log10 <- function(x) {
+  x <- as_anvl_array(x)
+  nv_log(x) / log(10)
 }
 
 #' @title Is NaN
 #' @description
 #' Element-wise check if values are NaN. You can also use `is.nan()`.
-#' @template param_operand
+#' @template param_x
 #' @template return_unary_boolean
 #' @seealso [nv_is_finite()], [nv_is_infinite()]
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2384,36 +2693,37 @@ nv_log10 <- function(operand) {
 #' nv_is_nan(x)
 #' @export
 #' @jit
-nv_is_nan <- function(operand) {
-  operand <- as_anvl_array(operand)
-  operand != operand
+nv_is_nan <- function(x) {
+  x <- as_anvl_array(x)
+  x != x
 }
 
 #' @title Is Infinite
 #' @description
 #' Element-wise check if values are infinite (`Inf` or `-Inf`).
 #' You can also use `is.infinite()`.
-#' @template param_operand
+#' @template param_x
 #' @template return_unary_boolean
 #' @seealso [nv_is_finite()], [nv_is_nan()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 #' nv_is_infinite(x)
 #' @export
-nv_is_infinite <- function(operand) {
-  operand <- as_anvl_array(operand)
-  !nv_is_finite(operand) & (operand == operand)
+#' @jit
+nv_is_infinite <- function(x) {
+  x <- as_anvl_array(x)
+  !nv_is_finite(x) & (x == x)
 }
 
 ## Reduction operations --------------------------------------------------------
 
-#' @title Variance Reduction
+#' @title Variance
 #' @description
-#' Computes the variance along the specified dimensions.
+#' Computes the variance along the specified axes.
 #' @details
 #' Uses Bessel's correction by default (`correction = 1`), matching R's [var()].
 #' Set `correction = 0` for population variance.
-#' @template param_operand
+#' @template param_x
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
@@ -2422,39 +2732,45 @@ nv_is_infinite <- function(operand) {
 #' @seealso [nv_sd()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_var(x)             # all dims -> scalar
-#' nv_var(x, dims = 1L)
-#' nv_var(nv_array(c(1, NaN, 3, 5)), dims = 1L, nan_rm = TRUE)
+#' nv_var(x)             # all axes -> scalar
+#' nv_var(x, axes = 1L)
+#' nv_var(nv_array(c(1, NaN, 3, 5)), axes = 1L, nan_rm = TRUE)
 #' @export
 #' @jit static 2:5
-nv_var <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  assert_int(correction)
-  dims <- .resolve_reduce_dims(operand, dims)
+nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
+  x <- as_anvl_array(x)
+  correction <- assert_int(correction, coerce = TRUE)
+  axes <- .resolve_reduce_axes(x, axes)
   mean_bc <- nv_broadcast_to(
-    nv_mean(operand, dims, drop = FALSE, nan_rm = nan_rm),
-    shape(operand)
+    nv_mean(x, axes, drop = FALSE, nan_rm = nan_rm),
+    shape(x)
   )
-  diff <- operand - mean_bc
-  ssum <- nv_reduce_sum(diff * diff, dims, drop, nan_rm = nan_rm)
-  if (nan_rm && inherits(dtype(operand), "FloatType")) {
-    count <- nv_reduce_sum(nv_convert(!nv_is_nan(operand), "i32"), dims, drop)
+  diff <- x - mean_bc
+  ssum <- nv_reduce_sum(diff * diff, axes, drop, nan_rm = nan_rm)
+  if (nan_rm && is_dtype_float(peek_dtype(x))) {
+    # Counted at `ssum`'s data type, not at an integer one: the divisor then
+    # stays there, because `0` and `correction` are R values meeting a float
+    # array of their own or a narrower category and so yield to it. Counting
+    # into an integer instead would make the R double `0` cross categories and
+    # pull the result to the default float, so `nan_rm` alone would change the
+    # data type -- which is why the `nan_rm = FALSE` branch below is right.
+    count <- nv_reduce_sum(nv_convert(!nv_is_nan(x), dtype(ssum)), axes, drop)
     # When count <= correction the divisor clamps to 0 and ssum is 0
     # (single non-NaN point has zero deviation, all-NaN slice contributes
     # nothing), so 0/0 = NaN propagates naturally — no explicit mask needed.
     return(ssum / nv_max(0, count - correction))
   }
-  nelts <- prod(shape(operand)[dims])
+  nelts <- prod(shape(x)[axes])
   ssum / max(0L, nelts - correction)
 }
 
-#' @title Standard Deviation Reduction
+#' @title Standard Deviation
 #' @description
-#' Computes the standard deviation along the specified dimensions.
+#' Computes the standard deviation along the specified axes.
 #' @details
 #' Uses Bessel's correction by default (`correction = 1`), matching R's [sd()].
 #' Set `correction = 0` for population standard deviation.
-#' @template param_operand
+#' @template param_x
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
@@ -2463,68 +2779,73 @@ nv_var <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = 
 #' @seealso [nv_var()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_sd(x)              # all dims -> scalar
-#' nv_sd(x, dims = 1L)
+#' nv_sd(x)              # all axes -> scalar
+#' nv_sd(x, axes = 1L)
 #' @export
 #' @jit static 2:5
-nv_sd <- function(operand, dims = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
-  nv_sqrt(nv_var(operand, dims, drop, correction, nan_rm = nan_rm))
+nv_sd <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
+  nv_sqrt(nv_var(x, axes, drop, correction, nan_rm = nan_rm))
 }
 
 ## Array manipulation ----------------------------------------------------------
 
 #' @title Squeeze
 #' @description
-#' Removes dimensions of size 1 from an array.
-#' @template param_operand
-#' @param dims (`integer()` | `NULL`)\cr
-#'   Dimensions to squeeze. If `NULL` (default), all dimensions of size 1 are removed.
+#' Removes axes of size 1 from an array.
+#' @template param_x
+#' @param axes (`integer()` | `NULL`)\cr
+#'   Axes to squeeze. Negative values count from the end, i.e. `-1`
+#'   refers to the last axis.
+#'   If `NULL` (default), all axes of size 1 are removed.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as `operand` with the specified dimensions removed.
+#'   Has the same data type as `x` with the specified axes removed.
 #' @seealso [nv_unsqueeze()], [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:6, shape = c(1, 6, 1))
 #' nv_squeeze(x)
 #' @export
-nv_squeeze <- function(operand, dims = NULL) {
-  operand <- as_anvl_array(operand)
-  shp <- shape(operand)
-  if (is.null(dims)) {
+nv_squeeze <- function(x, axes = NULL) {
+  x <- as_anvl_array(x)
+  shp <- shape(x)
+  if (is.null(axes)) {
     new_shape <- shp[shp != 1L]
   } else {
-    assert_integerish(dims, lower = 1L, upper = length(shp), unique = TRUE, any.missing = FALSE)
-    for (d in dims) {
+    axes <- resolve_axes(axes, length(shp), unique = TRUE)
+    for (d in axes) {
       if (shp[d] != 1L) {
-        cli_abort("Cannot squeeze dimension {d} with size {shp[d]} (must be 1)")
+        cli_abort("Cannot squeeze axis {d}: its size is {shp[d]}, but must be 1")
       }
     }
-    new_shape <- shp[-dims]
+    new_shape <- shp[-axes]
   }
   if (length(new_shape) == 0L) {
     new_shape <- integer(0)
   }
-  nv_reshape(operand, new_shape)
+  nv_reshape(x, new_shape)
 }
 
 #' @title Unsqueeze
 #' @description
-#' Inserts a dimension of size 1 at the specified position.
-#' @template param_operand
-#' @param dim (`integer(1)`)\cr
-#'   Position at which to insert the new dimension.
+#' Inserts an axis of size 1 at the specified position.
+#' @template param_x
+#' @param axis (`integer(1)`)\cr
+#'   Position at which to insert the new axis. Valid positions range from
+#'   1 to `naxes(x) + 1`. Negative values count from the end of the
+#'   *result*, i.e. `-1` appends the new axis at the end.
 #' @return [`arrayish`]\cr
-#'   Has the same data type as `operand` with an extra dimension of size 1.
+#'   Has the same data type as `x` with an extra axis of size 1.
 #' @seealso [nv_squeeze()], [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
-#' nv_unsqueeze(x, dim = 1L)
+#' nv_unsqueeze(x, axis = 1L)
+#' nv_unsqueeze(x, axis = -1L)
 #' @export
-nv_unsqueeze <- function(operand, dim) {
-  operand <- as_anvl_array(operand)
-  shp <- shape(operand)
-  assert_int(dim, lower = 1L, upper = length(shp) + 1L)
-  new_shape <- append(shp, 1L, after = dim - 1L)
-  nv_reshape(operand, new_shape)
+nv_unsqueeze <- function(x, axis) {
+  x <- as_anvl_array(x)
+  shp <- shape(x)
+  axis <- resolve_axis(axis, length(shp) + 1L)
+  new_shape <- append(shp, 1L, after = axis - 1L)
+  nv_reshape(x, new_shape)
 }
 
 ## Linear algebra --------------------------------------------------------------
@@ -2546,14 +2867,14 @@ nv_outer <- function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
   lhs <- args[[1L]]
   rhs <- args[[2L]]
-  if (ndims(lhs) != 1L) {
-    cli_abort("lhs must be a 1-D array")
+  if (naxes(lhs) != 1L) {
+    cli_abort("{.arg lhs} must be a 1-D array, but it has {naxes(lhs)} axes.")
   }
-  if (ndims(rhs) != 1L) {
-    cli_abort("rhs must be a 1-D array")
+  if (naxes(rhs) != 1L) {
+    cli_abort("{.arg rhs} must be a 1-D array, but it has {naxes(rhs)} axes.")
   }
-  lhs_exp <- nv_unsqueeze(lhs, dim = 2L)
-  rhs_exp <- nv_unsqueeze(rhs, dim = 1L)
+  lhs_exp <- nv_unsqueeze(lhs, axis = 2L)
+  rhs_exp <- nv_unsqueeze(rhs, axis = 1L)
   bcast <- nv_broadcast_arrays(lhs_exp, rhs_exp)
   prim_mul(bcast[[1L]], bcast[[2L]])
 }
@@ -2561,7 +2882,7 @@ nv_outer <- function(lhs, rhs) {
 #' @title Extract Diagonal
 #' @description
 #' Extracts the diagonal elements from a 2-D array.
-#' @template param_operand
+#' @template param_x
 #' @return [`arrayish`]\cr
 #'   A 1-D array of length `min(nrow, ncol)` containing the diagonal elements.
 #' @seealso [nv_diag()] for creating a diagonal matrix, [nv_trace()]
@@ -2570,24 +2891,24 @@ nv_outer <- function(lhs, rhs) {
 #' nv_extract_diag(x)
 #' @export
 #' @jit
-nv_extract_diag <- function(operand) {
-  operand <- as_anvl_array(operand)
-  if (ndims(operand) != 2L) {
-    cli_abort("operand must be a 2-D array")
+nv_extract_diag <- function(x) {
+  x <- as_anvl_array(x)
+  if (naxes(x) != 2L) {
+    cli_abort("{.arg x} must be a 2-D array")
   }
-  shp <- shape(operand)
+  shp <- shape(x)
   n <- min(shp)
-  idx <- prim_reshape(nv_iota_like(operand, dim = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
-  indices <- nv_concatenate(idx, idx, dimension = 2L)
+  idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
+  indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_gather(
-    operand,
+    x,
     start_indices = indices,
-    offset_dims = integer(0),
-    collapsed_slice_dims = c(1L, 2L),
-    operand_batching_dims = integer(0),
-    start_indices_batching_dims = integer(0),
+    offset_axes = integer(0),
+    collapsed_slice_axes = c(1L, 2L),
+    x_batching_axes = integer(0),
+    start_indices_batching_axes = integer(0),
     start_index_map = c(1L, 2L),
-    index_vector_dim = 2L,
+    index_vector_axis = 2L,
     slice_sizes = c(1L, 1L)
   )
 }
@@ -2595,26 +2916,26 @@ nv_extract_diag <- function(operand) {
 #' @title Matrix Trace
 #' @description
 #' Computes the trace (sum of diagonal elements) of a 2-D array.
-#' @template param_operand
+#' @template param_x
 #' @return [`arrayish`]\cr
-#'   A scalar with the same data type as `operand`.
+#'   A scalar with the same data type as `x`.
 #' @seealso [nv_extract_diag()], [nv_diag()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 0, 0, 0, 2, 0, 0, 0, 3), shape = c(3, 3))
 #' nv_trace(x)
 #' @export
 #' @jit
-nv_trace <- function(operand) {
-  operand <- as_anvl_array(operand)
-  diag_vals <- nv_extract_diag(operand)
-  nv_reduce_sum(diag_vals, dims = 1L, drop = TRUE)
+nv_trace <- function(x) {
+  x <- as_anvl_array(x)
+  diag_vals <- nv_extract_diag(x)
+  nv_reduce_sum(diag_vals, axes = 1L, drop = TRUE)
 }
 
 # Boolean triangular mask for a 2-D `shape`. `diagonal` must already be a
 # scalar integer; `lower` selects the lower (TRUE) or upper (FALSE) triangle.
 tri_mask <- function(shape, diagonal, lower, device = NULL) {
-  rows <- prim_iota(dim = 1L, dtype = "i32", shape = shape, start = 1L, device = device)
-  cols <- prim_iota(dim = 2L, dtype = "i32", shape = shape, start = 1L, device = device)
+  rows <- prim_iota(axis = 1L, dtype = "i32", shape = shape, start = 1L, device = device)
+  cols <- prim_iota(axis = 2L, dtype = "i32", shape = shape, start = 1L, device = device)
   if (lower) rows >= cols - diagonal else rows <= cols - diagonal
 }
 
@@ -2690,55 +3011,55 @@ nv_upper_tri <- function(shape, diagonal = 1L, device = NULL) {
 #' @description
 #' Returns the lower triangular part of a 2-D array, setting elements above
 #' the specified diagonal to zero.
-#' @template param_operand
+#' @template param_x
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset. `0` (default) is the main diagonal, positive values
 #'   include diagonals above, negative values exclude diagonals below.
 #' @return [`arrayish`]\cr
-#'   Has the same shape and data type as `operand`.
+#'   Has the same shape and data type as `x`.
 #' @seealso [nv_triu()], [nv_lower_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_fill(1, c(3, 3))
 #' nv_tril(x)
 #' @export
 #' @jit static 2L
-nv_tril <- function(operand, diagonal = 0L) {
-  operand <- as_anvl_array(operand)
-  if (ndims(operand) != 2L) {
-    cli_abort("operand must be a 2-D array")
+nv_tril <- function(x, diagonal = 0L) {
+  x <- as_anvl_array(x)
+  if (naxes(x) != 2L) {
+    cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_lower_tri_like(operand, diagonal), operand, nv_fill_like(operand, 0))
+  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
 }
 
 #' @title Upper Triangular Matrix
 #' @description
 #' Returns the upper triangular part of a 2-D array, setting elements below
 #' the specified diagonal to zero.
-#' @template param_operand
+#' @template param_x
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset. `0` (default) is the main diagonal, positive values
 #'   exclude diagonals above, negative values include diagonals below.
 #' @return [`arrayish`]\cr
-#'   Has the same shape and data type as `operand`.
+#'   Has the same shape and data type as `x`.
 #' @seealso [nv_tril()], [nv_upper_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_fill(1, c(3, 3))
 #' nv_triu(x)
 #' @export
 #' @jit static 2L
-nv_triu <- function(operand, diagonal = 0L) {
-  operand <- as_anvl_array(operand)
-  if (ndims(operand) != 2L) {
-    cli_abort("operand must be a 2-D array")
+nv_triu <- function(x, diagonal = 0L) {
+  x <- as_anvl_array(x)
+  if (naxes(x) != 2L) {
+    cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_upper_tri_like(operand, diagonal), operand, nv_fill_like(operand, 0))
+  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
 }
 
 #' @title Cross Product (Matrix)
 #' @description
 #' Computes `t(lhs) %*% rhs`. If `rhs` is missing, computes `t(lhs) %*% lhs`.
 #' @param lhs ([`arrayish`])\cr
-#'   An array with at least 2 dimensions.
+#'   An array with at least 2 axes.
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
 #' @return [`arrayish`]
@@ -2753,7 +3074,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promotion_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -2764,7 +3085,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
 #' @description
 #' Computes `lhs %*% t(rhs)`. If `rhs` is missing, computes `lhs %*% t(lhs)`.
 #' @param lhs ([`arrayish`])\cr
-#'   An array with at least 2 dimensions.
+#'   An array with at least 2 axes.
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
 #' @return [`arrayish`]
@@ -2779,7 +3100,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs)
+    args <- as_anvl_arrays(lhs, rhs, .promote = promotion_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -2788,98 +3109,103 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
 
 # Sorting and searching --------------------------------------------------------
 
-#' @title Select Elements Along a Dimension
+#' @title Select Elements Along an Axis
 #' @description
-#' Picks one or more elements along dimension `dim` of `operand`.
+#' Picks one or more elements along axis `axis` of `x`.
 #' Use this instead of `[` or `nv_subset` when the index to select is provided
 #' programmatically.
-#' @template param_operand
-#' @param dim (`integer(1)`)\cr
-#'   Dimension to index into.
+#' @template param_x
+#' @param axis (`integer(1)`)\cr
+#'   Axis to index into.
+#'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param index ([`arrayish`])\cr
 #'   Scalar or 1D arrayish input (integer).
 #' @return [`arrayish`]\cr
-#'   Same data type as `operand`. `dim` is dropped if `index` was scalar.
+#'   Same data type as `x`. `axis` is dropped if `index` was scalar.
 #' @seealso [nv_subset()] for general subsetting, [prim_static_slice()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' m <- nv_matrix(1:6, nrow = 2)
-#' nv_select(m, dim = 2L, index = 2L)
-#' nv_select(m, dim = 1L, index = 1L)
-#' nv_select(m, dim = 2L, index = array(c(1L, 3L)))
+#' nv_select(m, axis = 2L, index = 2L)
+#' nv_select(m, axis = 1L, index = 1L)
+#' nv_select(m, axis = 2L, index = array(c(1L, 3L)))
 #' @export
-nv_select <- function(operand, dim, index) {
-  operand <- as_anvl_array(operand)
-  rank <- ndims(operand)
+nv_select <- function(x, axis, index) {
+  x <- as_anvl_array(x)
+  rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot select along a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to select along, but it is a scalar.")
   }
-  dim <- as.integer(dim)
-  shp <- shape(operand)
-  assert_int(dim, lower = 1L, upper = rank)
+  axis <- resolve_axis(axis, rank)
 
   args <- rep(list(quote(expr = )), rank)
-  args[[dim]] <- index
-  do.call(nv_subset, c(list(operand), args))
+  args[[axis]] <- index
+  do.call(nv_subset, c(list(x), args))
 }
 
-# Per-slice gather along `dim`. `index` has the same rank as `operand`,
-# matching shape on every non-`dim` axis. Returns shape `shape(index)`.
+# Per-slice gather along `axis`. `index` has the same rank as `x`,
+# matching shape on every non-`axis` axis. Returns shape `shape(index)`.
 # Used internally by nv_quantile; not exposed as part of nv_select.
-.gather_along_dim <- function(operand, index, dim, rank, shp) {
+.gather_along_axis <- function(x, index, axis, rank, shp) {
   idx_shape <- shape(index)
-  if (!identical(shp[-dim], idx_shape[-dim])) {
+  if (!identical(shp[-axis], idx_shape[-axis])) {
     cli_abort(
-      "Per-slice {.arg index} must match {.arg operand}'s shape on every dimension except {.arg dim}"
+      "Per-slice {.arg index} must match {.arg x}'s shape on every axis except {.arg axis}"
     )
   }
   axis_idx <- function(d) {
-    raw <- if (d == dim) {
+    raw <- if (d == axis) {
       nv_convert(index, "i32")
     } else {
-      nv_iota_like(operand, dim = d, shape = idx_shape, dtype = "i32")
+      nv_iota_like(x, axis = d, shape = idx_shape, dtype = "i32")
     }
     prim_reshape(raw, c(idx_shape, 1L))
   }
   start_indices <- do.call(
     nv_concatenate,
-    c(lapply(seq_len(rank), axis_idx), list(dimension = rank + 1L))
+    c(lapply(seq_len(rank), axis_idx), list(axis = rank + 1L))
   )
   prim_gather(
-    operand,
+    x,
     start_indices = start_indices,
     slice_sizes = rep(1L, rank),
-    offset_dims = integer(0),
-    collapsed_slice_dims = seq_len(rank),
-    operand_batching_dims = integer(0),
-    start_indices_batching_dims = integer(0),
+    offset_axes = integer(0),
+    collapsed_slice_axes = seq_len(rank),
+    x_batching_axes = integer(0),
+    start_indices_batching_axes = integer(0),
     start_index_map = seq_len(rank),
-    index_vector_dim = rank + 1L
+    index_vector_axis = rank + 1L
   )
 }
 
 #' @title Sort
 #' @name nv_sort
 #' @description
-#' Sorts an array along a dimension.
+#' Sorts an array along an axis.
 #'
 #' You can also use `sort()` directly.
-#' @template param_operand
-#' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to sort. If `NULL` (default), uses the last
-#'   dimension.
+#' @template param_x
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to sort. Negative values count from the end,
+#'   i.e. `-1` refers to the last axis. If `NULL` (default), uses the last
+#'   axis.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, sort in decreasing order. Default `FALSE`.
 #' @param stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: equal values keep their original
-#'   relative order along `dim`. Default `FALSE`. Stability is only
+#'   relative order along `axis`. Default `FALSE`. Stability is only
 #'   observable for floats when `-0` / `+0` or `-NaN` / `+NaN` are mixed
 #'   (they compare equal under the total order used here); for distinct
 #'   values the result is identical either way.
 #' @return [`arrayish`]\cr
-#'   Same shape and data type as `operand`.
+#'   Same shape and data type as `x`.
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
+#' @section The `sort()` generic:
+#' [base::sort()] flattens a multi-axis array into a vector, while
+#' `nv_sort()` (and `sort()` on an anvl array) sorts along a single axis, the
+#' last one by default, and keeps the shape. Flatten with [nv_flatten()]
+#' first if you want a single sorted sequence.
 #' @seealso [prim_sort()] for the underlying primitive,
 #'   [nv_argsort()], [nv_top_k()], [nv_median()],
 #'   [nv_argmax()], [nv_argmin()].
@@ -2890,34 +3216,35 @@ nv_select <- function(operand, dim, index) {
 #' nv_sort(x, decreasing = TRUE)
 #'
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-#' nv_sort(m, dim = 2L)
+#' nv_sort(m, axis = 2L)
 #' @export
-nv_sort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
-  operand <- as_anvl_array(operand)
-  if (ndims(operand) == 0L) {
-    cli_abort("Cannot sort a 0-dimensional array")
+nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
+  x <- as_anvl_array(x)
+  if (naxes(x) == 0L) {
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
   }
-  dim <- dim %||% ndims(operand)
-  prim_sort(list(operand), dim = as.integer(dim), descending = decreasing, is_stable = stable)[[1L]]
+  prim_sort(list(x), axis = axis %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
 }
 
 #' @title Argsort
 #' @description
-#' Returns the indices that would sort the array along a dimension.
-#' @template param_operand
-#' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to compute the sort permutation. If `NULL`
-#'   (default), uses the last dimension.
+#' Returns the indices that would sort the array along an axis.
+#' @template param_x
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to compute the sort permutation. Negative values
+#'   count from the end, i.e. `-1` refers to the last axis. If `NULL`
+#'   (default), uses the last axis.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, returns indices that produce a decreasing sort. Default
 #'   `FALSE`.
 #' @param stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: indices for equal values keep their
 #'   original relative order. Default `FALSE`.
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `operand`. For a size-0 axis, the output is an empty `i32`
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
+#'   Same shape as `x`. For a size-0 axis, the output is an empty
 #'   array of the same shape (a valid empty permutation).
-#'   `as_array(operand)[as_array(nv_argsort(operand))]` reproduces the sorted
+#'   `as_array(x)[as_array(nv_argsort(x))]` reproduces the sorted
 #'   array (for 1-D inputs).
 #' @inheritSection nv_sort NaN handling
 #' @seealso [nv_sort()], [prim_sort()].
@@ -2926,33 +3253,35 @@ nv_sort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
 #' nv_argsort(x)
 #' @export
 #' @jit static 2:4
-nv_argsort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) {
-  operand <- as_anvl_array(operand)
-  if (ndims(operand) == 0L) {
-    cli_abort("Cannot argsort a 0-dimensional array")
+nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
+  x <- as_anvl_array(x)
+  if (naxes(x) == 0L) {
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
   }
-  dim <- as.integer(dim %||% ndims(operand))
-  idx <- nv_iota_like(operand, dim = dim, dtype = "i32")
-  prim_sort(list(operand, idx), dim = dim, descending = decreasing, is_stable = stable)[[2L]]
+  axis <- axis %||% naxes(x)
+  idx <- nv_iota_like(x, axis = axis, dtype = default_int())
+  prim_sort(list(x, idx), axis = axis, descending = decreasing, is_stable = stable)[[2L]]
 }
 
 #' @title Top-K Elements
 #' @description
-#' Returns the `k` largest values along a dimension, sorted in decreasing order.
-#' @template param_operand
+#' Returns the `k` largest values along an axis, sorted in decreasing order.
+#' @template param_x
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements to return. Must satisfy
-#'   `1 <= k <= shape(operand)[dim]`.
-#' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to take the top `k`. If `NULL` (default),
-#'   uses the last dimension.
+#'   `1 <= k <= shape(x)[axis]`.
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to take the top `k`. Negative values count from the
+#'   end, i.e. `-1` refers to the last axis. If `NULL` (default),
+#'   uses the last axis.
 #' @param with_indices (`logical(1)`)\cr
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
 #'   returns `list(values = ..., indices = ...)` where `indices` is the
-#'   1-based position of each top-`k` value along `dim` (dtype `i32`).
+#'   1-based position of each top-`k` value along `axis`, of the default
+#'   integer data type (see [`default_dtypes()`]).
 #' @return [`arrayish`] (when `with_indices = FALSE`) or named list of two
-#'   arrays (when `with_indices = TRUE`). Output shape matches `operand` with
-#'   `dim` resized to `k`; values are sorted decreasing along `dim`.
+#'   arrays (when `with_indices = TRUE`). Output shape matches `x` with
+#'   `axis` resized to `k`; values are sorted decreasing along `axis`.
 #' @section NaN handling:
 #' `NaN` ranks larger than any finite value (so it appears first in the
 #' top-`k` output); `-NaN` ranks smaller. Unlike [nv_sort()], the sign
@@ -2964,51 +3293,54 @@ nv_argsort <- function(operand, dim = NULL, decreasing = FALSE, stable = FALSE) 
 #' nv_top_k(x, k = 3L, with_indices = TRUE)
 #'
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-#' nv_top_k(m, k = 2L, dim = 2L)
+#' nv_top_k(m, k = 2L, axis = 2L)
 #' @export
 #' @jit static 2:4
-nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
-  operand <- as_anvl_array(operand)
-  rank <- ndims(operand)
+nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
+  x <- as_anvl_array(x)
+  rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot take top-k of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
   }
-  dim <- as.integer(dim %||% rank)
+  axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
   k <- as.integer(k)
-  assert_int(k, lower = 1L, upper = shape(operand)[dim])
+  assert_int(k, lower = 1L, upper = shape(x)[axis])
 
-  # prim_top_k operates on the last dim; transpose dim to last and back.
-  if (dim != rank) {
+  # prim_top_k operates on the last axis; transpose axis to last and back.
+  if (axis != rank) {
     perm <- seq_len(rank)
-    perm[c(dim, rank)] <- c(rank, dim)
-    out <- prim_top_k(prim_transpose(operand, permutation = perm), k = k)
-    values <- prim_transpose(out[[1L]], permutation = perm)
+    perm[c(axis, rank)] <- c(rank, axis)
+    out <- prim_top_k(prim_transpose(x, permutation = perm), k = k)
+    values <- prim_transpose(out$values, permutation = perm)
     if (with_indices) {
-      indices <- prim_transpose(out[[2L]], permutation = perm)
+      indices <- prim_transpose(out$indices, permutation = perm)
       list(values = values, indices = indices)
     } else {
       values
     }
   } else {
-    out <- prim_top_k(operand, k = k)
-    if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
+    out <- prim_top_k(x, k = k)
+    if (with_indices) out else out$values
   }
 }
 
 #' @title Quantile
 #' @description
-#' Computes the `probs` quantile(s) of an array along a dimension.
+#' Computes the `probs` quantile(s) of an array along an axis.
 #'
 #' `probs` follows the same scalar-vs-array convention as [nv_select()]'s
 #' `index`:
 #'
 #' * a length-1 numeric (e.g. `0.5`) treats `probs` as scalar — the output
-#'   has `dim` removed, like a reduction;
+#'   has `axis` removed, like a reduction;
 #' * a 1-D R array (e.g. `array(c(0.25, 0.5, 0.75))`) prepends a leading
-#'   dimension of size `length(probs)`.
+#'   axis of size `length(probs)`.
 #'
 #' Plain length-K (K > 1) vectors are rejected; wrap with `array()` to
 #' make the array intent explicit.
+#'
+#' A quantile generally falls between two elements, so a non-float `x` is
+#' computed (and returned) at the default float data type.
 #' @section Interpolation modes:
 #' Let `h = (n - 1) * q` be the 0-based fractional index for an axis of
 #' length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
@@ -3019,23 +3351,25 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #' * `"higher"`: `sorted[hi]` — the upper bracket of `linear`.
 #' * `"nearest"`: `sorted[lo]` if `frac < 0.5` else `sorted[hi]`.
 #' * `"midpoint"`: `(sorted[lo] + sorted[hi]) / 2`.
-#' @template param_operand
+#' @template param_x
 #' @param probs (`numeric(1)` | 1-D `array`)\cr
 #'   One or more probabilities in `[0, 1]`. Either a length-1 numeric
-#'   (scalar; `dim` is dropped) or a 1-D `array` (a leading dim of size
+#'   (scalar; `axis` is dropped) or a 1-D `array` (a leading axis of size
 #'   `length(probs)` is prepended). Plain length-K (K > 1) vectors are
 #'   rejected — wrap with `array()`.
-#' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to compute the quantile. If `NULL` (default),
-#'   uses the last dimension.
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to compute the quantile. Negative values count from
+#'   the end, i.e. `-1` refers to the last axis. If `NULL` (default),
+#'   uses the last axis.
 #' @param interpolation (`character(1)`)\cr
 #'   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
 #'   `"midpoint"`. See "Interpolation modes".
 #' @template param_nan_rm
 #' @return [`arrayish`]\cr
-#'   For scalar `probs`: same shape as `x` with `dim` removed. For
-#'   array `probs`: a **leading** dimension of size `length(probs)` is
-#'   prepended.
+#'   For scalar `probs`: same shape as `x` with `axis` removed. For
+#'   array `probs`: a **leading** axis of size `length(probs)` is
+#'   prepended. The data type is that of `x`, or the default float for a
+#'   non-float `x`.
 #' @seealso [nv_median()], [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -3046,11 +3380,17 @@ nv_top_k <- function(operand, k, dim = NULL, with_indices = FALSE) {
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
 #' @export
 #' @jit static 2:5
-nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  rank <- ndims(operand)
+nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+  x <- as_anvl_array(x)
+  # A quantile lies between two elements, so -- like base R's quantile() --
+  # a non-float array is computed at the default float instead of rounding the
+  # interpolation weights down to whole numbers.
+  if (!is_dtype_float(peek_dtype(x))) {
+    x <- nv_convert(x, default_float())
+  }
+  rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot compute quantile of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to take quantiles along, but it is a scalar.")
   }
   assert_choice(interpolation, c("linear", "lower", "higher", "nearest", "midpoint"))
   if (!is_valid_r(probs)) {
@@ -3059,33 +3399,37 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
   checkmate::assert_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)
 
   is_probs_array <- !is.null(dim(probs))
-  dim <- as.integer(dim %||% rank)
-  shp <- shape(operand)
+  axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+  shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- inherits(dtype(operand), "FloatType")
-  shp_kd <- replace(shp, dim, 1L)
-  shp_K <- replace(shp, dim, K)
+  is_float <- is_dtype_float(peek_dtype(x))
+  shp_kd <- replace(shp, axis, 1L)
+  shp_K <- replace(shp, axis, K)
 
   # For float input, find NaN positions: nan_rm = TRUE sanitizes them to +Inf
   # so they sort to the end; nan_rm = FALSE uses them post-hoc to propagate.
   if (is_float) {
-    nan_mask <- nv_is_nan(operand)
-    to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, operand) else operand
+    nan_mask <- nv_is_nan(x)
+    to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
     n_valid_kd <- if (nan_rm) {
-      prim_reduce_sum(nv_convert(!nan_mask, "i32"), dims = dim, drop = FALSE)
+      # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
+      # rather than crossing categories out of an integer count and
+      # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
+      # default float.
+      prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
     } else {
-      nv_broadcast_to(nv_array_like(operand, shp[dim], shape = integer()), shp_kd)
+      nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
     }
   } else {
-    to_sort <- operand
-    n_valid_kd <- nv_broadcast_to(nv_array_like(operand, shp[dim], shape = integer()), shp_kd)
+    to_sort <- x
+    n_valid_kd <- nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
   }
-  sorted <- prim_sort(list(to_sort), dim = dim)[[1L]]
+  sorted <- prim_sort(list(to_sort), axis = axis)[[1L]]
 
-  # Broadcast `(K,) probs` along `dim` and `(shp_kd,) n_valid_kd` across
-  # `dim` → both shaped `shp_K`, with K varying along `dim`.
-  probs_shape <- replace(rep(1L, rank), dim, K)
+  # Broadcast `(K,) probs` along `axis` and `(shp_kd,) n_valid_kd` across
+  # `axis` → both shaped `shp_K`, with K varying along `axis`.
+  probs_shape <- replace(rep(1L, rank), axis, K)
   probs_b <- nv_broadcast_to(
     prim_reshape(nv_array_like(sorted, probs, shape = K), probs_shape),
     shp_K
@@ -3096,8 +3440,8 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
   hi_f <- nv_ceiling(h)
   frac <- h - lo_f
 
-  lo_val <- .gather_along_dim(sorted, nv_convert(lo_f + 1, "i32"), dim, rank, shp)
-  hi_val <- .gather_along_dim(sorted, nv_convert(hi_f + 1, "i32"), dim, rank, shp)
+  lo_val <- .gather_along_axis(sorted, nv_convert(lo_f + 1, "i32"), axis, rank, shp)
+  hi_val <- .gather_along_axis(sorted, nv_convert(hi_f + 1, "i32"), axis, rank, shp)
 
   out <- switch(
     interpolation,
@@ -3112,16 +3456,16 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
   # nan_rm = FALSE produces NaN for any slice that contained a NaN (XLA's
   # sort places NaN unpredictably, so we can't rely on the gather hitting it).
   if (is_float) {
-    bad <- if (nan_rm) n_valid_kd == 0 else prim_reduce_any(nan_mask, dims = dim, drop = FALSE)
+    bad <- if (nan_rm) n_valid_kd == 0 else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
   }
 
-  # For scalar probs, drop the (now size-1) reduced dim. For array probs,
-  # move the K axis (currently at `dim`) to the front.
+  # For scalar probs, drop the (now size-1) reduced axis. For array probs,
+  # move the K axis (currently at `axis`) to the front.
   if (is_probs_array) {
-    prim_transpose(out, permutation = c(dim, seq_len(rank)[-dim]))
+    prim_transpose(out, permutation = c(axis, seq_len(rank)[-axis]))
   } else {
-    prim_reshape(out, shp[-dim])
+    prim_reshape(out, shp[-axis])
   }
 }
 
@@ -3129,30 +3473,38 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
 #' @title Median
 #' @name nv_median
 #' @description
-#' Computes the median along a dimension. Equivalent to
-#' `nv_quantile(operand, 0.5, dim, interpolation)`; for an even-length axis
+#' Computes the median along an axis. Equivalent to
+#' `nv_quantile(x, 0.5, axis, interpolation)`; for an even-length axis
 #' with the default `"linear"` interpolation, the average of the two middle
 #' values is returned, matching base R's `median()`.
 #'
 #' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
 #' extra arguments (e.g. `interpolation`) are forwarded via `...`.
-#' @template param_operand
-#' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to compute the median. If `NULL` (default),
-#'   uses the last dimension.
+#' @section The `median()` generic:
+#' [stats::median()] flattens a multi-axis array, while `nv_median()` (and
+#' `median()` on an anvl array) reduces a single axis, the last one by
+#' default. Pass `axis` explicitly, or flatten first with [nv_flatten()], to
+#' say which you mean. A non-float `x` is computed at the default float, like
+#' base R returns a double.
+#' @template param_x
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to compute the median. Negative values count from
+#'   the end, i.e. `-1` refers to the last axis. If `NULL` (default),
+#'   uses the last axis.
 #' @param interpolation (`character(1)`)\cr
 #'   Forwarded to [nv_quantile()]. One of `"linear"` (default), `"lower"`,
 #'   `"higher"`, `"nearest"`, `"midpoint"`.
 #' @param nan_rm (`logical(1)`)\cr
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
-#'   Same shape as `operand` with `dim` removed.
+#'   Same shape as `x` with `axis` removed. The data type is that of `x`, or
+#'   the default float for a non-float `x`.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' nv_median(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-#'   dim = 2L
+#'   axis = 2L
 #' )
 #' # forwards through the S3 generic via `...`
 #' median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")
@@ -3160,24 +3512,26 @@ nv_quantile <- function(operand, probs, dim = NULL, interpolation = "linear", na
 #' nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
 #' @jit static 2:4
-nv_median <- function(operand, dim = NULL, interpolation = "linear", nan_rm = FALSE) {
-  nv_quantile(operand, probs = 0.5, dim = dim, interpolation = interpolation, nan_rm = nan_rm)
+nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+  nv_quantile(x, probs = 0.5, axis = axis, interpolation = interpolation, nan_rm = nan_rm)
 }
 
 #' @title Index of the Maximum
 #' @description
-#' Returns the index of the maximum value along a dimension. Ties are broken
+#' Returns the index of the maximum value along an axis. Ties are broken
 #' by returning the smallest index.
-#' @template param_operand
-#' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to find the index. If `NULL` (default), uses
-#'   the last dimension.
+#' @template param_x
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to find the index. Negative values count from the
+#'   end, i.e. `-1` refers to the last axis. If `NULL` (default), uses
+#'   the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
+#'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
 #'   is kept with size 1.
 #' @template param_nan_rm
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `operand` with `dim` removed (or set to 1 if `drop = FALSE`).
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
+#'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 #' @section NaN handling:
 #' With `nan_rm = FALSE` (default), if any entry along the reduced axis is
 #' `NaN`, the returned index points at the first such `NaN`. With
@@ -3186,31 +3540,37 @@ nv_median <- function(operand, dim = NULL, interpolation = "linear", nan_rm = FA
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-#'   dim = 2L
+#'   axis = 2L
 #' )
 #' nv_argmax(nv_array(c(1, NaN, 3)))
 #' nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
-nv_argmax <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  dim <- as.integer(dim %||% ndims(operand))
-  .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmax)
+#' @jit static 2:4
+nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+  x <- as_anvl_array(x)
+  if (naxes(x) == 0L) {
+    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
+  }
+  axis <- axis %||% naxes(x)
+  .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmax)
 }
 
 #' @title Index of the Minimum
 #' @description
-#' Returns the index of the minimum value along a dimension. Ties are broken
+#' Returns the index of the minimum value along an axis. Ties are broken
 #' by returning the smallest index.
-#' @template param_operand
-#' @param dim (`integer(1)` | `NULL`)\cr
-#'   Dimension along which to find the index. If `NULL` (default), uses
-#'   the last dimension.
+#' @template param_x
+#' @param axis (`integer(1)` | `NULL`)\cr
+#'   Axis along which to find the index. Negative values count from the
+#'   end, i.e. `-1` refers to the last axis. If `NULL` (default), uses
+#'   the last axis.
 #' @param drop (`logical(1)`)\cr
-#'   If `TRUE` (default) the reduced dimension is removed; if `FALSE` it
+#'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
 #'   is kept with size 1.
 #' @template param_nan_rm
-#' @return [`arrayish`] of dtype `i32`\cr
-#'   Same shape as `operand` with `dim` removed (or set to 1 if `drop = FALSE`).
+#' @return [`arrayish`] of the default integer data type (see
+#'   [`default_dtypes()`])\cr
+#'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -3218,10 +3578,14 @@ nv_argmax <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)))
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 #' @export
-nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
-  operand <- as_anvl_array(operand)
-  dim <- as.integer(dim %||% ndims(operand))
-  .nv_arg_extreme(operand, dim, drop, nan_rm, prim_argmin)
+#' @jit static 2:4
+nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+  x <- as_anvl_array(x)
+  if (naxes(x) == 0L) {
+    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
+  }
+  axis <- axis %||% naxes(x)
+  .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmin)
 }
 
 # Shared NaN-aware argmax/argmin. The XLA arg-reduction kernels are
@@ -3230,33 +3594,33 @@ nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 # mirroring `.nv_reduce_extreme`'s contract; there's no NaN in i32, so we
 # surface "a NaN was here" by returning the first NaN's index instead.
 #
-.nv_arg_extreme <- function(operand, dim, drop, nan_rm, prim_arg) {
-  result <- prim_arg(operand, dim = dim, drop = drop)
-  if (nan_rm || !inherits(dtype(operand), "FloatType")) {
+.nv_arg_extreme <- function(x, axis, drop, nan_rm, prim_arg) {
+  result <- prim_arg(x, axis = axis, drop = drop)
+  if (nan_rm || !is_dtype_float(peek_dtype(x))) {
     return(result)
   }
   # argmax on the bool mask returns the index of the first TRUE (tie-break:
   # smallest index) — exactly the first NaN's position — or 1 if no NaN
   # exists. `any_nan` disambiguates those two cases.
-  nan_mask <- nv_is_nan(operand)
-  any_nan <- prim_reduce_any(nan_mask, dims = dim, drop = drop)
-  first_nan_idx <- prim_argmax(nan_mask, dim = dim, drop = drop)
+  nan_mask <- nv_is_nan(x)
+  any_nan <- prim_reduce_any(nan_mask, axes = axis, drop = drop)
+  first_nan_idx <- prim_argmax(nan_mask, axis = axis, drop = drop)
   nv_ifelse(any_nan, first_nan_idx, result)
 }
 
-# Build the NCHW/NC(D)HW dimension numbers (1-based) for nv_conv*.
-.nv_conv_dim_numbers <- function(n_spatial) {
+# Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.
+.nv_conv_axis_numbers <- function(n_spatial) {
   spatial <- 3:(2 + n_spatial)
   list(
-    input_batch_dimension = 1L,
-    input_feature_dimension = 2L,
-    input_spatial_dimensions = spatial,
-    kernel_output_feature_dimension = 1L,
-    kernel_input_feature_dimension = 2L,
-    kernel_spatial_dimensions = spatial,
-    output_batch_dimension = 1L,
-    output_feature_dimension = 2L,
-    output_spatial_dimensions = spatial
+    input_batch_axis = 1L,
+    input_feature_axis = 2L,
+    input_spatial_axes = spatial,
+    kernel_output_feature_axis = 1L,
+    kernel_input_feature_axis = 2L,
+    kernel_spatial_axes = spatial,
+    output_batch_axis = 1L,
+    output_feature_axis = 2L,
+    output_spatial_axes = spatial
   )
 }
 
@@ -3274,11 +3638,11 @@ nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 
 #' @title 1D Convolution
 #' @description
-#' Torch-style 1D convolution in NCW layout: `input` is
+#' Torch-style 1D convolution in NCW layout: `x` is
 #' `[batch, in_channels, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kW]`, output is
 #' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param input ([`arrayish`])\cr `[N, C_in, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, W]`.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
@@ -3286,17 +3650,17 @@ nv_argmin <- function(operand, dim = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @return [`arrayish`] `[N, C_out, out_W]`.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
 #' @export
-nv_conv1d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
-  .nv_convnd(input, weight, 1L, stride, padding, dilation, groups, precision)
+nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(x, weight, 1L, stride, padding, dilation, groups, precision)
 }
 
 #' @title 2D Convolution
 #' @description
-#' Torch-style 2D convolution in NCHW layout: `input` is
+#' Torch-style 2D convolution in NCHW layout: `x` is
 #' `[batch, in_channels, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kh, kw]`, output is
 #' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param input ([`arrayish`])\cr `[N, C_in, H, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
 #' @param stride (`integer()`)\cr Length 1 or 2.
 #' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
@@ -3306,13 +3670,13 @@ nv_conv1d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, g
 #' @return [`arrayish`] `[N, C_out, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
 #' @export
-nv_conv2d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
-  .nv_convnd(input, weight, 2L, stride, padding, dilation, groups, precision)
+nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(x, weight, 2L, stride, padding, dilation, groups, precision)
 }
 
 #' @title 3D Convolution
 #' @description
-#' Torch-style 3D convolution in NCDHW layout. `input` is
+#' Torch-style 3D convolution in NCDHW layout. `x` is
 #' `[batch, in_channels, depth, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
 #' padding (e.g. causal temporal padding) is available via
@@ -3322,12 +3686,12 @@ nv_conv2d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, g
 #' @return [`arrayish`] `[N, C_out, out_D, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
 #' @export
-nv_conv3d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
-  .nv_convnd(input, weight, 3L, stride, padding, dilation, groups, precision)
+nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
+  .nv_convnd(x, weight, 3L, stride, padding, dilation, groups, precision)
 }
 
-.nv_convnd <- function(input, weight, n, stride, padding, dilation, groups, precision) {
-  # `input`/`weight` are left as raw arrayish; prim_convolution's machinery
+.nv_convnd <- function(x, weight, n, stride, padding, dilation, groups, precision) {
+  # `x`/`weight` are left as raw arrayish; prim_convolution's machinery
   # (graph_desc_add -> maybe_box_arrayish) coerces them.
   stride <- .nv_conv_vec(stride, n, "stride")
   pad <- .nv_conv_vec(padding, n, "padding")
@@ -3335,13 +3699,13 @@ nv_conv3d <- function(input, weight, stride = 1L, padding = 0L, dilation = 1L, g
   do.call(
     prim_convolution,
     c(
-      list(input, weight),
-      .nv_conv_dim_numbers(n), # individual 1-based dim params
+      list(x, weight),
+      .nv_conv_axis_numbers(n), # individual 1-based axis params
       list(
         window_strides = stride,
         padding = cbind(pad, pad), # symmetric [n, 2]
-        lhs_dilation = rep(1L, n),
-        rhs_dilation = dilation,
+        x_dilation = rep(1L, n),
+        kernel_dilation = dilation,
         feature_group_count = as.integer(groups),
         batch_group_count = 1L,
         precision = precision

@@ -5,7 +5,7 @@
 \title{1D Convolution}
 \usage{
 nv_conv1d(
-  input,
+  x,
   weight,
   stride = 1L,
   padding = 0L,
@@ -15,7 +15,7 @@ nv_conv1d(
 )
 }
 \arguments{
-\item{input}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}.}
 
 \item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.}
 
@@ -29,7 +29,7 @@ nv_conv1d(
 \code{\link{arrayish}} \verb{[N, C_out, out_W]}.
 }
 \description{
-Torch-style 1D convolution in NCW layout: \code{input} is
+Torch-style 1D convolution in NCW layout: \code{x} is
 \verb{[batch, in_channels, width]}, \code{weight} is
 \verb{[out_channels, in_channels / groups, kW]}, output is
 \verb{[batch, out_channels, out_w]}. Symmetric zero padding.

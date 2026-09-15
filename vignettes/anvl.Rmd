@@ -17,7 +17,7 @@ It is essentially like an R array, with some differences:
 
 1. It supports more data types, such as different precisions or unsigned integers.
 2. The array is managed by a specific backend (which we will ignore for now) and can live on different *device*s, such as CPU (aka host) or a GPU.
-3. 0-dimensional arrays can be used to represent scalars.
+3. 0-dimensional arrays are used to represent scalars.
 
 We can create an `AnvlArray` from R objects using `nv_array()`.
 Below, we create a 0-dimensional array (i.e., a scalar) that holds a 16-bit integer living on the CPU.
@@ -36,11 +36,22 @@ x
 ```
 
 We can also create higher-dimensional arrays, for example a `2x3` array with single-precision floating-point numbers.
-Without specifying the data type, it will default to `"f32"` for R doubles, `"i32"` for integers, and `"bool"` for logicals.
 
 ```{r}
-y <- nv_array(1:6, shape = c(2, 3))
+y <- nv_array(c(1, 2, 3, 4, 5, 6), shape = c(2, 3))
 y
+```
+
+Without specifying the data type, it will default to the data types of the active backend: `"f32"` for R doubles and `"i32"` for integers on pjrt, and `"bool"` for logicals everywhere.
+We chose this default, because on modern accelerators such as GPUs, single-precision floating point operations are considerably faster than when working in double precision.
+It is possible to change this default via the `anvl.default_dtypes` option.
+Below, `with_default_dtypes()` modifies this option temporarily:
+
+```{r}
+with_default_dtypes(c(float = "f64", int = "i64"), {
+  print(nv_scalar(2L))
+  print(nv_scalar(pi))
+})
 ```
 
 You can extract the object's properties using getter methods.
@@ -64,7 +75,7 @@ Note that such subset assignment always copies -- unlike plain R, where `y[i] <-
 This only applies to *eager* execution. Inside a jit-compiled function (covered later), the compiler can optimize reallocations away, similar to R's copy-on-write.
 
 The `as_array()` function allows to convert `AnvlArray`s back to R objects, which involves copying the data.
-Note that for 0-dimensional arrays, the result is an R vector of length 1, as R arrays cannot have 0 dimensions.
+Note that for 0-dimensional arrays, the result is an R vector of length 1, as R arrays cannot have 0 axes.
 
 ```{r}
 as_array(y)
@@ -157,8 +168,7 @@ This applies to both `nv_*` calls and your own `jit()`-compiled functions:
 nv_add(1, array(2:3))
 ```
 
-Note the `?` after the dtype in the printed output (`f32?`): it marks the dtype as *ambiguous*.
-A dtype is ambiguous when it was inferred from an auto-converted R value rather than pinned by the user (e.g. via `nv_array(..., dtype = "f32")`), so the type-promotion rules are allowed to coerce it more freely when combining it with a non-ambiguous operand.
+An R value does not carry a data type of its own -- `1` is neither an `f32` nor an `f64` -- so it takes the one of the array it is combined with, and falls back to a default (on pjrt `f32` for doubles and `i32` for integers, and `bool` for logicals) when it meets nothing else.
 See `vignette("type-promotion")` for the full rules.
 
 Note that we only auto-convert `double`/`integer`/`logical`s that are

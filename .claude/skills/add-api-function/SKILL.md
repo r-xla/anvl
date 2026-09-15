@@ -15,10 +15,11 @@ See `vignettes/extending_api.Rmd` for the in-depth explanation of the patterns b
 
 ### Work with any backend
 
-API functions shipped with {anvl} must work with **both** the xla and quickr backends. In practice this means:
+API functions shipped with {anvl} must work with **both** the pjrt and quickr backends. There is one active backend at a time (`active_backend()`), every jitted function runs on it, and an array of another backend is an error. In practice this means:
 
-- If the function internally `jit()`s a helper, set `backend = "auto"` on that `jit()` call so it adapts to the caller's backend.
-- If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's backend/device. Do **not** call `device()` on a traced input -- it fails under `jit()`.
+- Never name a backend in an API function: no `backend =` arguments, no `with_backend()` calls. The caller chooses the backend.
+- If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's device. Do **not** call `device()` on a traced input -- it fails under `jit()`.
+- Never hardcode `"f32"` / `"i32"` as a default data type; take `dtype = NULL` and resolve it with `default_float()` / `default_int()`, which read the active defaults (see `default_dtypes()`).
 
 ### Follow R semantics
 
@@ -37,11 +38,11 @@ API functions shipped with {anvl} must work with **both** the xla and quickr bac
 
 The exact convenience a wrapper should add varies by operation. **Propose a wrapper to the user but ask them to confirm** the semantic differences before implementing. Common patterns include:
 
-- **Type promotion:** auto-promote inputs to a common dtype via `nv_promote_to_common()`
+- **Type promotion:** bring the inputs to one dtype with a rule, `as_anvl_arrays(..., .promote = promotion_common())`
 - **Broadcasting:** broadcast scalars to match array shapes via `nv_broadcast_scalars()`
 - **Default arguments:** infer `dtype` from the input when not provided
-- **Idempotency:** skip no-op cases (return operand unchanged if already correct dtype/shape)
-- **Input coercion:** convert auxiliary arguments to match the operand's dtype
+- **Idempotency:** skip no-op cases (return the input unchanged if already correct dtype/shape)
+- **Input coercion:** bring auxiliary arguments to the input's dtype with `promotion_like("x")`
 
 ## Implementation
 
@@ -68,14 +69,16 @@ For ops needing custom logic, write a function that normalizes its array inputs 
 - `as_anvl_array(x)` for a single array input.
 - `as_anvl_arrays(...)` for multiple array inputs (infers a common device, errors on mismatched backends/devices).
 
-After conversion, use `shape()`, `ndims()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`.
+A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value materializes at its default (the active float default, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
+
+After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` which data type it would take.
 
 ### Constants and the `_like` pattern
 
 If the function creates a constant inside its body (via `nv_fill`, `nv_iota`, `nv_seq`, `nv_scalar`, `nv_eye`, ...), the constant must be placed on the same backend/device as the input.
-Under `jit()` this happens automatically (if `backend = "auto"` is set on the outer `jit()` call), but in **eager mode** you are responsible:
+Under `jit()` this happens automatically, but in **eager mode** you are responsible:
 
-- Use the `nv_<op>_like(x, ...)` variants, which default `dtype`, `shape`, `ambiguous`, and `device` from `x`.
+- Use the `nv_<op>_like(x, ...)` variants, which default `dtype`, `shape`, and `device` from `x`.
 - Example: `nv_fill_like(x, 0)` gives a zeros array matching `x`'s backend/device/dtype.
 
 If you are adding a new array-creator function (`nv_foo` that allocates data rather than transforming an input), also add a `nv_foo_like(like, ...)` variant next to it.
@@ -86,20 +89,41 @@ Any dispatch-on-input constants inside other API functions should go through `_l
 For element-wise binary primitives, use the `make_do_binary()` factory -- it already composes `nv_promote_to_common()` + `nv_broadcast_scalars()` before calling the primitive:
 
 ```r
-nv_<name> <- make_do_binary(nvl_<name>)
+nv_<name> <- make_do_binary(prim_<name>)
 ```
 
-For full NumPy-style broadcasting (not just scalar-against-tensor), use `nv_broadcast_arrays()` after promotion (see `nv_outer()` for an example).
+For full NumPy-style broadcasting (not just scalar-against-array), use `nv_broadcast_arrays()` after promotion (see `nv_outer()` for an example).
 
-### Converting auxiliary arguments
+### Bringing auxiliary arguments to the input's dtype
 
-If the underlying primitive requires all its inputs to share a dtype (e.g. `nvl_clamp`, `nvl_pad`), convert the helper arguments to the operand dtype via `nv_convert(aux, dtype(operand))`. `nv_convert()` is a no-op when the dtype already matches, so the extra calls are free.
+If the underlying primitive requires all its inputs to share a dtype (e.g. `prim_clamp`, `prim_pad`), say so with a rule at the top rather than converting afterwards:
+
+```r
+args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
+```
+
+`promotion_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have materialized the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
 
 ### Static arguments
 
-Any argument the function body *inspects* -- branches on, validates with `assert_*`, uses to compute shape/dims -- must be declared `static =` on the outer `jit()` call (and forwarded via `static =` to `check_eager()` in tests).
-Typical candidates: `dims`, `shape`, `dim`, flags, mode strings, dtype specifiers.
+An API function is not wrapped in `jit()` by hand -- it is tagged with the
+`@jit` roclet, and `R/zzz.R` rebinds it to `jit(f, static = <static>)` at build
+time (see `?jit_roclet`):
+
+```r
+#' @export
+#' @jit static "axis"        # or: @jit static 2:4, or a bare @jit for none
+nv_foo <- function(x, axis) { ... }
+```
+
+Any argument the function body *inspects* -- branches on, validates with
+`assert_*`, uses to compute shape/axes -- must be named (or positioned) in that
+`static` list.
+Typical candidates: `axes`, `shape`, `axis`, flags, mode strings, dtype specifiers.
 Arrayish inputs (the actual data) should never be static.
+
+After adding or changing a `@jit` tag, run `devtools::document()` so
+`R/jit-registry.R` is regenerated. Never edit that file by hand.
 
 ## Roxygen2 Documentation
 
@@ -112,11 +136,11 @@ If no proper template for a parameter or the return value exist, write the docum
 #' @title <Short Title>
 #' @description
 #' <One-sentence description.> You can also use `<R operator or generic>()`.
-#' @template param_operand              # or @template params_lhs_rhs, etc.
+#' @template param_x                    # or @template params_lhs_rhs, etc.
 #' @param <custom_param> (<type>)\cr    # for params not covered by templates
 #'   <Description.>
 #' @template return_unary               # or return_binary, return_reduce, etc.
-#' @seealso [nvl_<name>()] for the underlying primitive.
+#' @seealso [prim_<name>()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' <example code>
 #' @export
@@ -127,14 +151,14 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@title`**: short, e.g. "Absolute Value", "Addition", "Transpose"
 - **`@description`**: one sentence describing what the function does. If an R operator or generic dispatches to this function, mention it: "You can also use `abs()`.", "You can also use the `+` operator."
 - **`@template`**: use templates for common parameter/return patterns:
-  - `param_operand` — single operand
+  - `param_x` — single input array
   - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
-  - `param_dtype`, `param_shape`, `param_ambiguous` — common params
+  - `param_dtype`, `param_shape`, `param_device` — common params
   - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
-  - `params_reduce` — dims + drop params for reductions
+  - `params_reduce` — axes + drop params for reductions
 - **`@param`**: write inline for parameters not covered by templates
-- **`@seealso`**: always link to the underlying `nvl_*` primitive. Optionally link to related `nv_*` functions.
-- **`@examplesIf pjrt::plugins_downloaded()`**: wrap examples in this guard. Since all `nvl_*` functions are auto-jitted and `nv_*` functions call into `nvl_*` functions, examples can call them directly.
+- **`@seealso`**: always link to the underlying `prim_*` primitive. Optionally link to related `nv_*` functions.
+- **`@examplesIf pjrt::plugins_downloaded()`**: wrap examples in this guard. Since all `prim_*` functions are auto-jitted and `nv_*` functions call into `prim_*` functions, examples can call them directly.
 - **`@family`**: use for groups of related functions (e.g. `@family rng` for all RNG functions)
 
 ### S3 methods for R generics
@@ -159,14 +183,6 @@ The `nv_*` function must be added to the appropriate semantic section in `_pkgdo
 
 Add a **forward-pass-only** test for the `nv_*` wrapper. **Only test functionality not already covered by the primitive tests** — the convenience the wrapper adds on top of the primitive (e.g. type promotion, scalar broadcasting, default-arg behavior, R-operator dispatch). Do not re-test core correctness of the operation, edge cases like empty axes, dtype handling, or gradients — those belong with the primitive. If the wrapper is a thin alias (`nv_foo <- prim_foo`), a single sanity test is enough; often a default-argument check is the only thing worth asserting.
 
-Every API function also needs a `check_eager()` entry in the "cross-device eager (check_eager)" `describe` block at the bottom of `test-api.R`. `check_eager()` (defined in `tests/testthat/helper.R`) runs the function both in eager mode on `cpu:1` and jit-compiled on `cpu:0`, and asserts:
-
-1. The eager output lives on `cpu:1`.
-2. The jitted output lives on `cpu:0`.
-3. The two outputs agree value-wise (tolerance defaults to `1e-6`).
-
-This is what catches bugs where constants end up on the wrong device, or where eager vs jit diverge.
-
 ```r
 describe("nv_foo", {
   it("promotes dtypes automatically", {
@@ -183,16 +199,6 @@ describe("nv_foo", {
     out <- nv_array(c(1, 2)) + nv_array(c(3, 4))
     expect_equal(as_array(out), array(c(4, 6), dim = 2L))
   })
-})
-
-# In the "cross-device eager (check_eager)" describe block:
-it("nv_foo", {
-  check_eager(nv_foo, vec_f, vec_f2)
-})
-
-# For a function with a static argument, forward it via `static =`:
-it("nv_reduce_foo", {
-  check_eager(nv_reduce_foo, vec_f, dims = 1L, static = "dims")
 })
 ```
 
@@ -211,13 +217,12 @@ devtools::test()
 - [ ] `nv_<name>` implemented with roxygen docs and `@export`
 - [ ] Array inputs normalized at the top via `as_anvl_array()` / `as_anvl_arrays()`
 - [ ] Binary element-wise ops built with `make_do_binary()` (or equivalent `nv_promote_to_common()` + `nv_broadcast_scalars()` pipeline)
-- [ ] Auxiliary arguments converted to the operand dtype via `nv_convert()` where the primitive requires it
+- [ ] Auxiliary arguments converted to the input dtype via `nv_convert()` where the primitive requires it
 - [ ] No-op shortcuts return the input unchanged (e.g. identity reshape / convert / broadcast)
 - [ ] Constants created inside the function use `nv_<op>_like()` so they live on the right backend/device
 - [ ] If the function is an array creator, a matching `nv_<name>_like()` variant is provided
-- [ ] Arguments that the body inspects (shape, dims, flags, mode strings, dtype specifiers) are declared `static =` on every `jit()` / `check_eager()` call
+- [ ] Arguments that the body inspects (shape, axes, flags, mode strings, dtype specifiers) are listed in the function's `#' @jit static ...` tag, and `devtools::document()` has regenerated `R/jit-registry.R`
 - [ ] `_pkgdown.yml`: added to appropriate semantic section
 - [ ] Forward-pass test in `tests/testthat/test-api.R` covers the wrapper's convenience behavior
-- [ ] `check_eager()` entry in the "cross-device eager (check_eager)" `describe` block, with any `static =` arguments forwarded
 - [ ] `devtools::document()` run
 - [ ] `devtools::test()` passes
