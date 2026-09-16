@@ -51,10 +51,7 @@
           %c1: f32[]
           %c2: f32[]
         Body:
-          %1: f32[] = if [
-            true_graph = graph[0 -> 1],
-            false_graph = graph[0 -> 1]
-          ] (%x1)
+          %1: f32[] = if [true_graph = graph[0 -> 1], false_graph = graph[0 -> 1]] (%x1)
         Outputs:
           %1: f32[] 
 
@@ -70,10 +67,7 @@
           %c1: f32[]
           %c2: f32[]
         Body:
-          %1: f32[] = while [
-            cond_graph = graph[1 -> 1],
-            body_graph = graph[1 -> 1]
-          ] (%c2)
+          %1: f32[] = while [cond_graph = graph[1 -> 1], body_graph = graph[1 -> 1]] (%c2)
         Outputs:
           %1: f32[] 
 
@@ -230,10 +224,7 @@
           %x2: i32[2] <- integer
         Body:
           %1: f32[2] = convert [dtype = f32] (%x2)
-          %2: f32[2] = broadcast_in_axes [
-            shape = 2,
-            broadcast_axes = integer(0)
-          ] (%x1)
+          %2: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = integer(0)] (%x1)
           %3: f32[2] = add(%2, %1)
         Outputs:
           %3: f32[2] 
@@ -284,12 +275,53 @@
         Inputs:
           %x1: f32[]
         Body:
-          %1: f32[] = mul(%x1, 2:f32[])
-          2:f32[]: f32[] = fill [value = 2:f32[], dtype = f32, shape = integer(0)] ()
+          %1: f32[] = mul(%x1, %2)
+          %2: f32[] = fill [value = 2:f32[], dtype = f32, shape = integer(0)] ()
         Outputs:
           %1: f32[] 
 
-# a call whose parameters do not fit the width wraps them
+# format_param_value: a partially named vector names only what has a name
+
+    Code
+      format_param_value(c(a = 1, 2))
+    Output
+      [1] "c(a = 1, 2)"
+    Code
+      format_param_value(stats::setNames(c(1, 2), c("", "b")))
+    Output
+      [1] "c(1, b = 2)"
+    Code
+      format_param_value(stats::setNames(1, ""))
+    Output
+      [1] "1"
+
+# format_param_value: a partially named list names only what has a name
+
+    Code
+      format_param_value(list(a = 1, 2))
+    Output
+      [1] "[a = 1, 2]"
+    Code
+      format_param_parts(list(a = 1, 2))
+    Output
+      [1] "a = 1" "2"    
+
+# format_param_value: each element of a vector is formatted on its own
+
+    Code
+      format_param_value(c(1, 2.5))
+    Output
+      [1] "c(1, 2.5)"
+    Code
+      format_param_value(c(1, 1e+10))
+    Output
+      [1] "c(1, 1e+10)"
+    Code
+      format_param_value(c(0.1, 1e-20))
+    Output
+      [1] "c(0.1, 1e-20)"
+
+# a call whose parameters do not fit the width fills them over further lines
 
     Code
       graph
@@ -302,17 +334,9 @@
         Body:
           %1: i64[1] = reshape [shape = 1] (%x1)
           %2: i64[1] = concatenate [axis = 1] (%1)
-          %3: f32[] = gather [
-            slice_sizes = 1,
-            offset_axes = integer(0),
-            collapsed_slice_axes = 1,
-            x_batching_axes = integer(0),
-            start_indices_batching_axes = integer(0),
-            start_index_map = 1,
-            index_vector_axis = 1,
-            indices_are_sorted = TRUE,
-            unique_indices = TRUE
-          ] (%c1, %2)
+          %3: f32[] = gather [slice_sizes = 1, offset_axes = integer(0), collapsed_slice_axes = 1,
+            x_batching_axes = integer(0), start_indices_batching_axes = integer(0), start_index_map = 1,
+            index_vector_axis = 1, indices_are_sorted = TRUE, unique_indices = TRUE] (%c1, %2)
         Outputs:
           %3: f32[] 
 

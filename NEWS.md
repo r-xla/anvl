@@ -62,16 +62,24 @@
 * The graph printer renders a call's parameters more faithfully: a `NULL`
   inside a list prints as `NULL`, an empty vector as `integer(0)` /
   `character(0)` / `logical(0)` rather than `<any>` or `""`, character values
-  are quoted and escaped, named vectors keep their names, an array parameter
-  prints as `f32[3]`, and an unknown object falls back to its deparsed form.
-  A call whose parameters do not fit the console width (`gather`, `scatter`)
-  now prints them one per line instead of running off the screen.
+  are quoted and escaped, named vectors keep their names (a partially named one
+  names only the entries that have one), each element of a vector is formatted
+  on its own so that `c(1, 2.5)` does not become `c(1.0, 2.5)`, an array
+  parameter prints as `f32[3]`, and an unknown object falls back to its
+  deparsed form.
+  A call whose parameters are what overruns the line (`gather`, `scatter`) now
+  fills them over as few further lines as they take, instead of running off the
+  screen. Calls are laid out for at least 120 columns, so shorter parameter
+  lists stay on one line.
 * A literal in a graph now always shows its shape, so a one-element array is
   not mistaken for a scalar: `2:f32[]` rather than `2:f32`, and `1:f32[1, 1]`
   rather than `1:f32[(1,1)]`.
 
 ## Bug fixes
 
+* The graph printer refers to a node a call produces by its `%n` id everywhere.
+  The `fill` that a folded scalar constant becomes printed the constant's value
+  on both ends of the edge, which hid the edge and made the `fill` look unused.
 * `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
   hold a count or an index.
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better

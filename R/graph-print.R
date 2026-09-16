@@ -1,14 +1,20 @@
 #' @include graph.R
 
+# A node that a call produces has an id, whatever kind of node it is:
+# `inline_scalarish_constants()` makes a literal the output of the `fill` it
+# adds, so asking the id map first is what keeps that `fill` and the calls
+# consuming it joined by a `%n` rather than each showing the literal's value.
+# Only a literal no call produces -- an inlined constant operand -- falls
+# through to its value.
 format_node_id <- function(node, node_ids) {
+  id <- node_ids[[node]]
+  if (!is.null(id)) {
+    return(sprintf("%%%s", id))
+  }
   if (is_graph_literal(node)) {
     return(format_literal(node))
   }
-  id <- node_ids[[node]]
-  if (is.null(id)) {
-    return("???")
-  }
-  sprintf("%%%s", id)
+  "???"
 }
 
 format_literal <- function(node) {
@@ -85,9 +91,16 @@ format_param_value <- function(p) {
     if (length(p) == 0L) {
       return(sprintf("%s(0)", typeof(p)))
     }
-    elts <- if (is.character(p)) encodeString(p, quote = '"') else format(p, trim = TRUE)
-    if (!is.null(names(p))) {
-      elts <- paste0(names(p), " = ", elts)
+    # One element at a time: `format()` on a whole vector picks a single format
+    # for all of it, which turns `c(1, 2.5)` into `c(1.0, 2.5)` and `c(0.1,
+    # 1e-20)` into `c(1e-01, 1e-20)`. A parameter is worth showing as written.
+    elts <- if (is.character(p)) {
+      encodeString(p, quote = '"')
+    } else {
+      vapply(p, format, character(1), USE.NAMES = FALSE)
+    }
+    if (any_named(p)) {
+      elts <- name_parts(elts, names(p))
     } else if (length(p) == 1L) {
       return(elts)
     }
@@ -115,17 +128,80 @@ format_param_parts <- function(params) {
   if (!is.list(params)) {
     return(format_param_value(params))
   }
-  parts <- vapply(params, format_param_value, character(1))
-  if (!is.null(names(params))) {
-    parts <- paste0(names(params), " = ", parts)
+  parts <- vapply(params, format_param_value, character(1), USE.NAMES = FALSE)
+  if (any_named(params)) {
+    parts <- name_parts(parts, names(params))
   }
   parts
 }
 
-# A call whose parameters would push the line past `width` puts them one per
-# line instead -- `gather` and `scatter` carry enough of them to otherwise run
-# far off the screen.
-format_call <- function(call, node_ids, indent = "  ", width = getOption("width", 80L)) {
+# Which entries of `nms` are a name worth printing. A partially named vector or
+# list has "" for the entries that have none, which is not a name.
+is_name <- function(nms) {
+  !is.na(nms) & nzchar(nms)
+}
+
+any_named <- function(x) {
+  nms <- names(x)
+  !is.null(nms) && any(is_name(nms))
+}
+
+# "<name> = <part>" for the entries that have a name, the bare part for the
+# rest -- a partially named parameter would otherwise read as `c(a = 1,  = 2)`.
+name_parts <- function(parts, nms) {
+  named <- is_name(nms)
+  parts[named] <- paste0(nms[named], " = ", parts[named])
+  parts
+}
+
+# How many columns a line takes up on the console, which is what the layout has
+# to budget: a CJK character is one character but two columns wide.
+display_width <- function(x) {
+  nchar(x, type = "width")
+}
+
+# The narrowest a call is ever laid out for. A parameter list is worth breaking
+# up when it is really long -- `gather` and `scatter` carry nine or ten
+# parameters and run far off any screen -- but a scalar broadcast is 85
+# characters, so at an 80-column console every `x + 1` would cost four lines.
+# Taking 120 as the floor keeps those on one line while `gather` still wraps.
+CALL_WIDTH_MIN <- 120L
+
+# As many parameters to a line as fit, rather than one per line -- a `gather`
+# then reads as three lines instead of eleven. `head` opens the first line and
+# `tail` closes the last one, and a line always takes at least one parameter,
+# however wide that parameter is.
+fill_parts <- function(parts, head, tail, cont_indent, width) {
+  tokens <- parts
+  if (length(tokens) > 1L) {
+    tokens[-length(tokens)] <- paste0(tokens[-length(tokens)], ",")
+  }
+  lines <- character()
+  cur <- head
+  fresh <- TRUE
+  for (i in seq_along(tokens)) {
+    # The last parameter has to leave room for `tail` on the same line.
+    reserve <- if (i == length(tokens)) display_width(tail) else 0L
+    candidate <- paste0(cur, if (fresh) "" else " ", tokens[[i]])
+    if (fresh || display_width(candidate) + reserve <= width) {
+      cur <- candidate
+      fresh <- FALSE
+    } else {
+      lines <- c(lines, cur)
+      cur <- paste0(cont_indent, tokens[[i]])
+    }
+  }
+  c(lines, paste0(cur, tail))
+}
+
+# A call whose parameters would push the line past `width` fills them over as
+# few further lines as they take.
+format_call <- function(
+  call,
+  node_ids,
+  indent = "  ",
+  width = max(getOption("width", 80L), CALL_WIDTH_MIN)
+) {
   input_ids <- vapply(call$inputs, format_node_id, character(1), node_ids = node_ids)
   inputs_str <- paste(input_ids, collapse = ", ")
 
@@ -146,15 +222,26 @@ format_call <- function(call, node_ids, indent = "  ", width = getOption("width"
     return(paste0(prefix, suffix))
   }
   one_line <- sprintf("%s [%s] %s", prefix, paste(parts, collapse = ", "), suffix)
-  if (nchar(one_line) <= width) {
+  if (display_width(one_line) <= width) {
     return(one_line)
   }
-  sprintf(
-    "%s [\n%s\n%s] %s",
-    prefix,
-    paste0(indent, "  ", parts, collapse = ",\n"),
-    indent,
-    suffix
+  # Wrapping moves the parameters off the line and nothing else, so it only
+  # pays when the parameters are what pushed the line over. A `concatenate` of
+  # a dozen arrays overruns on its inputs alone and would still overrun wrapped,
+  # so it keeps the compact form rather than spending three lines on an
+  # `axis = 1` that was never the problem.
+  if (display_width(prefix) + display_width(suffix) > width) {
+    return(one_line)
+  }
+  paste(
+    fill_parts(
+      parts,
+      head = sprintf("%s [", prefix),
+      tail = sprintf("] %s", suffix),
+      cont_indent = paste0(indent, "  "),
+      width = width
+    ),
+    collapse = "\n"
   )
 }
 
@@ -214,7 +301,9 @@ format_graph_body <- function(inputs, constants, calls, outputs, title = "Graph"
     output_strs <- vapply(
       outputs,
       function(node) {
-        if (is_graph_literal(node)) {
+        if (is_graph_literal(node) && is.null(node_ids[[node]])) {
+          # A literal no call produces: its value already carries the data type
+          # and the shape, so there is nothing to put after a "%n:".
           sprintf("    %s", format_literal(node))
         } else {
           sprintf("    %s: %s", format_node_id(node, node_ids), format_aval_short(node$aval))

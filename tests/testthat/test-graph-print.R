@@ -170,14 +170,122 @@ test_that("a folded constant prints its value in the `fill` it becomes", {
   expect_snapshot(graph)
 })
 
-test_that("a call whose parameters do not fit the width wraps them", {
+test_that("a literal a call produces is referred to by its node id", {
+  local_registered_default_dtypes()
+  y <- nv_scalar(2, dtype = "f32")
+  graph <- inline_scalarish_constants(
+    trace_fn(function(x) x * y, list(x = nv_scalar(1, dtype = "f32")))
+  )
+  # The `fill` the pass adds writes to a literal. It is still an output of a
+  # call, so it gets an id, and the `mul` consuming it points at that id --
+  # otherwise both ends print the value and the edge between them disappears.
+  out <- format(graph)
+  expect_match(out, "%2: f32[] = fill", fixed = TRUE)
+  expect_match(out, "mul(%x1, %2)", fixed = TRUE)
+  expect_no_match(out, "2:f32[]: ", fixed = TRUE)
+})
+
+test_that("a literal no call produces still prints its value", {
+  local_registered_default_dtypes()
+  graph <- trace_fn(function(x) x + 1, list(x = nv_scalar(1, dtype = "f32")))
+  expect_match(format(graph), "add(%x1, 1:f32[])", fixed = TRUE)
+})
+
+test_that("a node no call produces and no id prints as `???`", {
+  graph <- trace_fn(function(x) x + x, list(x = nv_aval("f32", 2L)))
+  graph$outputs <- c(graph$outputs, list(GraphValue(AbstractArray(as_dtype("f32"), 5L))))
+  expect_match(format(graph), "???: f32[5]", fixed = TRUE)
+})
+
+test_that("format_param_value: a partially named vector names only what has a name", {
+  expect_snapshot({
+    format_param_value(c(a = 1, 2))
+    format_param_value(stats::setNames(c(1, 2), c("", "b")))
+    format_param_value(stats::setNames(1, ""))
+  })
+})
+
+test_that("format_param_value: a partially named list names only what has a name", {
+  expect_snapshot({
+    format_param_value(list(a = 1, 2))
+    format_param_parts(list(a = 1, 2))
+  })
+})
+
+test_that("format_param_value: each element of a vector is formatted on its own", {
+  # `format()` on a whole vector picks one format for all of it, which would
+  # print these as `c(1.0, 2.5)`, `c(1e+00, 1e+10)` and `c(1e-01, 1e-20)`.
+  expect_snapshot({
+    format_param_value(c(1, 2.5))
+    format_param_value(c(1, 1e10))
+    format_param_value(c(0.1, 1e-20))
+  })
+})
+
+test_that("a call whose parameters do not fit the width fills them over further lines", {
   local_registered_default_dtypes()
   f <- function(x) nv_array(c(1, 2, 3))[x]
   graph <- trace_fn(f, list(x = nv_scalar(1L, dtype = "i64")))
-  # `expect_snapshot()` fixes the width at 80, which `gather` overruns.
+  # `gather` carries nine parameters and overruns even the `CALL_WIDTH_MIN`
+  # floor the layout never goes below.
   expect_snapshot(graph)
+  # Every line takes as many parameters as fit, so the list opens on the call's
+  # own line and closes on the line the inputs follow.
+  out <- format(graph)
+  expect_true(all(nchar(strsplit(out, "\n")[[1L]]) <= 120L))
+  expect_match(out, "gather [slice_sizes = 1, offset_axes = integer(0),", fixed = TRUE)
+  expect_match(out, "unique_indices = TRUE] (%c1, %2)", fixed = TRUE)
   # Given room, the same call stays on one line.
   wide <- withr::with_options(list(width = 300L), format(graph))
   expect_match(wide, "gather [slice_sizes = 1,", fixed = TRUE)
-  expect_no_match(wide, "gather [\n", fixed = TRUE)
+  expect_no_match(wide, "\n      x_batching_axes", fixed = TRUE)
+})
+
+test_that("a narrow console does not wrap a short parameter list", {
+  local_registered_default_dtypes()
+  graph <- trace_fn(function(x) x + 1, list(x = nv_aval("f32", 3L)))
+  # A scalar broadcast is 85 characters, so at the console's own width it would
+  # cost four lines in every graph that adds a number to an array.
+  narrow <- withr::with_options(list(width = 40L), format(graph))
+  expect_match(narrow, "broadcast_in_axes [shape = 3, broadcast_axes = integer(0)]", fixed = TRUE)
+  expect_no_match(narrow, "broadcast_in_axes [\n", fixed = TRUE)
+})
+
+test_that("a call that overruns on its inputs alone is not wrapped", {
+  local_registered_default_dtypes()
+  args <- stats::setNames(
+    replicate(12L, nv_aval("f32", 2L), simplify = FALSE),
+    paste0("a", seq_len(12L))
+  )
+  graph <- trace_fn(function(...) nv_concatenate(..., axis = 1), args)
+  # Wrapping moves the parameters off the line and leaves the dozen inputs
+  # where they were, so it would buy three lines and no room.
+  out <- withr::with_options(list(width = 40L), format(graph))
+  expect_match(out, "concatenate [axis = 1] (%x1,", fixed = TRUE)
+  expect_no_match(out, "concatenate [\n", fixed = TRUE)
+})
+
+test_that("fill_parts: an empty parameter list is just the head and the tail", {
+  expect_identical(fill_parts(character(), "op [", "] (%x1)", "  ", 120L), "op [] (%x1)")
+})
+
+test_that("fill_parts: a line always takes at least one parameter", {
+  # Nothing can split a single parameter wider than the budget, so it overruns
+  # on a line of its own rather than looping or dropping out.
+  wide <- strrep("x", 60L)
+  expect_identical(
+    fill_parts(c(wide, "a = 1"), "op [", "] (%x1)", "  ", 20L),
+    c(sprintf("op [%s,", wide), "  a = 1] (%x1)")
+  )
+})
+
+test_that("fill_parts: the budget counts console columns, not characters", {
+  # A CJK character is one character but two columns, so counting characters
+  # would leave the line half again as wide as the budget allows.
+  wide <- sprintf('lab = "%s"', strrep("中", 20L))
+  expect_length(fill_parts(c(wide, "a = 1"), "op [", "] (%x1)", "  ", 50L), 2L)
+})
+
+test_that("format_param_value: an NA name is not a name", {
+  expect_identical(format_param_value(stats::setNames(c(1, 2), c("a", NA))), "c(a = 1, 2)")
 })
