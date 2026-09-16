@@ -126,7 +126,7 @@ nv_broadcast_scalars <- function(...) {
   })
 }
 
-#' @title Promote Arrays to a Common Dtype
+#' @title Promote Arrays to a Common Data Type
 #' @description
 #' Promote arrays to a common data type, see [`common_dtype`] for more details.
 #' @param ... ([`arrayish`])\cr
@@ -364,7 +364,7 @@ nv_concatenate <- function(..., axis = NULL) {
   rlang::exec(prim_concatenate, !!!args, axis = axis)
 }
 
-#' @title Combine arrays by rows or columns
+#' @title Combine Arrays by Rows or Columns
 #' @name nv_bind
 #' @description
 #' Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
@@ -391,14 +391,14 @@ nv_concatenate <- function(..., axis = NULL) {
 #' @return [`arrayish`]\cr
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Vectors as rows / columns
+#' # vectors as rows / columns
 #' nv_rbind(nv_array(1:3), nv_array(4:6))
 #' nv_cbind(nv_array(1:3), nv_array(4:6))
 #'
-#' # Scalar broadcasting
+#' # scalar broadcasting
 #' nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #'
-#' # Rank-3 arrays preserve trailing axes
+#' # rank-3 arrays preserve trailing axes
 #' a <- nv_array(1:24, shape = c(2, 3, 4))
 #' shape(nv_rbind(a, a)) # c(4, 3, 4)
 NULL
@@ -1988,7 +1988,7 @@ nv_det <- function(x) {
   prim_mul(d$sign, d$modulus)
 }
 
-#' @title Determinant in modulus/sign form
+#' @title Determinant in Modulus/Sign Form
 #' @description
 #' Computes the determinant of a square matrix in the modulus / sign
 #' decomposition matching base R's [base::determinant()]. For the plain

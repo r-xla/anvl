@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_argmax}
 \alias{prim_argmax}
-\title{Primitive Argmax}
+\title{Primitive Index of the Maximum}
 \usage{
 prim_argmax(x, axis, drop = TRUE)
 }

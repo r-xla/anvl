@@ -87,7 +87,7 @@ promotion_common <- function(on = NULL, fallback = NULL) {
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
-#' # Without `coerce`, a target the input cannot hold is refused.
+#' # without `coerce`, a target the input cannot hold is refused.
 #' try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 promotion_like <- function(arg, on = NULL, coerce = FALSE) {
   assert_arg_ref(arg, "arg", len = 1L)
@@ -222,7 +222,7 @@ assert_disjoint_rules <- function(rules) {
 #'   What the rule is, for printing: it shows as `<{kind}>`, so give it the
 #'   name of the function that builds it.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Every input at the widest float in the call, and never below f32.
+#' # every input at the widest float in the call, and never below f32.
 #' widest_float <- promotion_rule(
 #'   function(args) {
 #'     widths <- vapply(args, function(a) {
@@ -388,7 +388,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   `operands`, each materialized at the data type the rule named for it.
 #' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # An R value takes the data type of the operand it meets.
+#' # an R value takes the data type of the operand it meets.
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 #' dtype(operands$rhs)
 #' @export

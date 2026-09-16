@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_argmin}
 \alias{prim_argmin}
-\title{Primitive Argmin}
+\title{Primitive Index of the Minimum}
 \usage{
 prim_argmin(x, axis, drop = TRUE)
 }

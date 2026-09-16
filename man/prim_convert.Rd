@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_convert}
 \alias{prim_convert}
-\title{Primitive Convert}
+\title{Primitive Convert Data Type}
 \usage{
 prim_convert(x, dtype)
 }

@@ -28,7 +28,6 @@ final state after the loop terminates.
 Repeatedly executes \code{body} while \code{cond} returns \code{TRUE}, like R's
 \code{while} loop. The loop state is initialized with \code{init} and
 passed through each iteration.
-Otherwise, no state is maintained between iterations.
 }
 \section{Implemented Rules}{
 

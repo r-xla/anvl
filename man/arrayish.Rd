@@ -40,7 +40,7 @@ Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayi
 # AnvlArrays are arrayish
 is_arrayish(nv_array(1:4))
 
-# Scalar R literals are arrayish by default
+# scalar R literals are arrayish by default
 is_arrayish(1.5)
 # R arrays are arrayish by default
 is_arrayish(array(1.5))
@@ -49,7 +49,7 @@ is_arrayish(array(1.5))
 is_arrayish(array(1:4), convert_ok = TRUE)
 is_arrayish(array(1:4), convert_ok = FALSE)
 
-# Length 1 vectors
+# length 1 vectors
 is_arrayish(1.5, convert_ok = FALSE)
 is_arrayish(1.5, convert_ok = TRUE)
 \dontshow{\}) # examplesIf}

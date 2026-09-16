@@ -118,7 +118,7 @@ Lowers to \code{\link[stablehlo:hlo_scatter]{hlo_scatter()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Scatter values 10 and 30 into positions 1 and 3 of a zero vector
+# scatter values 10 and 30 into positions 1 and 3 of a zero vector
 x <- nv_array(c(0, 0, 0, 0, 0))
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 updates <- nv_array(c(10, 30))
