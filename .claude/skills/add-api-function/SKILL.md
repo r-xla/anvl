@@ -155,6 +155,13 @@ If no proper template for a parameter or the return value exist, write the docum
   - `param_unary_x` — the input of an elementwise unary function: states the accepted data types
     and that an R value materializes at its default. Needs `@templateVar dtypes <phrase>` above it,
     from the same vocabulary as below. Shared with the `prim_*` layer, which behaves identically.
+  - `param_unary_x_tofloat` + `return_unary_tofloat` — the input of an `nv_*` function that
+    converts an integer operand with `int_to_float()` before reaching its float-only primitive,
+    so the result is a float whatever the input was. Takes no `@templateVar dtypes`, since the
+    accepted group is fixed. `params_lhs_rhs_tofloat` is the binary form (`nv_atan2()`)
+  - `param_unary_x_round` — the input of a rounding function (`nv_floor()`, `nv_ceiling()`,
+    `nv_trunc()`, `nv_round()`), which returns an integer input unchanged rather than
+    converting it; pair it with the plain `return_unary`
   - A function whose `x` is promoted with a sibling (`nv_clamp()`, `nv_pad()`,
     `nv_subset_assign()`) writes `x` inline: it names the accepted data types and points at the
     sibling, whose own `@param` carries the promotion sentence

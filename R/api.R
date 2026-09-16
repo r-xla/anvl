@@ -1148,6 +1148,11 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' @export
 #' @jit
 nv_atan2 <- function(lhs, rhs) {
+  # `int_to_float()` leaves a boolean alone so the primitive can refuse it, but
+  # the promotion below pairs it away against any numeric operand and the
+  # primitive never sees it. Refuse it here, per *numeric* on the page.
+  assert_numeric_dtype(peek_dtype(lhs), arg = "lhs")
+  assert_numeric_dtype(peek_dtype(rhs), arg = "rhs")
   args <- nv_promote_to_common(int_to_float(lhs), int_to_float(rhs))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   prim_atan2(args[[1L]], args[[2L]])
@@ -1359,6 +1364,9 @@ nv_cos <- make_float_unary(prim_cos)
 #' @export
 #' @jit
 nv_sinpi <- function(x) {
+  # So the three `*pi` functions refuse a boolean in the same words; left to
+  # the primitive this one would report it as a missing float instead.
+  assert_numeric_dtype(peek_dtype(x), arg = "x")
   x <- as_anvl_array(int_to_float(x))
   n <- nv_round(x, method = "nearest_even")
   reduced <- nv_sin((x - n) * pi)
@@ -1377,7 +1385,10 @@ nv_sinpi <- function(x) {
 #' @export
 #' @jit
 nv_cospi <- function(x) {
-  # cos(pi * x) == sin(pi * (x + 1/2))
+  # cos(pi * x) == sin(pi * (x + 1/2)). The half would promote a boolean to a
+  # float before `nv_sinpi()` ever sees it, so refuse it here instead -- as
+  # `nv_sinpi()` and `nv_tanpi()` do, and as *numeric* on the page says.
+  assert_numeric_dtype(peek_dtype(x), arg = "x")
   nv_sinpi(as_anvl_array(int_to_float(x)) + 0.5)
 }
 
@@ -1403,7 +1414,7 @@ nv_tanpi <- function(x) {
 #' @title Floor
 #' @description
 #' Element-wise floor (round toward negative infinity). You can also use `floor()`.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @template return_unary
 #' @seealso [prim_floor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1419,7 +1430,7 @@ nv_floor <- function(x) {
 #' @title Ceiling
 #' @description
 #' Element-wise ceiling (round toward positive infinity). You can also use `ceiling()`.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @template return_unary
 #' @seealso [prim_ceil()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -1435,7 +1446,7 @@ nv_ceiling <- function(x) {
 #' @title Truncate
 #' @description
 #' Element-wise truncation (round toward zero). You can also use `trunc()`.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @template return_unary
 #' @seealso [nv_floor()], [nv_ceiling()], [nv_round()].
 #' @examplesIf pjrt::plugins_downloaded()
@@ -2100,7 +2111,7 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @title Round
 #' @description
 #' Element-wise rounding to a whole number.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @param method (`character(1)`)\cr
 #'   Rounding method.
 #'   Either `"nearest_even"` (default) or `"afz"` (away from zero).

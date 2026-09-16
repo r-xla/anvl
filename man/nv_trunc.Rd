@@ -11,7 +11,10 @@ nv_trunc(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is returned unchanged.}
+One input. Can be any numeric data type: a float is rounded and
+keeps its own, and an integer one is already whole and is returned
+unchanged. An R value materializes at its
+\link[=default_dtypes]{default data type} and is treated in the same way.}
 
 \item{...}{Further arguments of \code{\link[=nv_trunc]{nv_trunc()}}.}
 }

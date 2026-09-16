@@ -477,6 +477,14 @@ describe("nv_cospi", {
   it("is exact at the half integers, like base R", {
     expect_identical(as.vector(nv_cospi(nv_array(c(0.5, 1.5, -0.5)))), c(0, 0, 0))
   })
+
+  it("refuses a boolean, like its two siblings", {
+    # The `+ 1/2` inside used to promote it to a float first.
+    expect_error(nv_cospi(nv_array(TRUE)), "must be a numeric data type")
+    expect_error(nv_cospi(TRUE), "must be a numeric data type")
+    expect_error(nv_sinpi(nv_array(TRUE)))
+    expect_error(nv_tanpi(nv_array(TRUE)))
+  })
 })
 
 describe("nv_tanpi", {
@@ -528,6 +536,18 @@ describe("nv_atan2", {
     out <- nv_atan2(nv_array(1L), nv_array(2L))
     expect_dtype(out, default_float())
     expect_equal(as.vector(out), atan2(1, 2), tolerance = 1e-6)
+  })
+
+  it("keeps the wider float when only one operand is converted", {
+    expect_dtype(nv_atan2(nv_array(1, dtype = "f64"), nv_array(2L)), "f64")
+    expect_dtype(nv_atan2(nv_array(1L), nv_array(2, dtype = "f64")), "f64")
+  })
+
+  it("refuses a boolean operand, even beside a numeric one", {
+    # The promotion used to pair the boolean away before `prim_atan2()` saw it.
+    expect_error(nv_atan2(nv_array(TRUE), nv_array(1)), "must be a numeric data type")
+    expect_error(nv_atan2(nv_array(1), nv_array(TRUE)), "must be a numeric data type")
+    expect_error(nv_atan2(TRUE, nv_array(1)), "must be a numeric data type")
   })
 })
 
