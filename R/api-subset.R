@@ -311,6 +311,22 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
 
 # Helper functions for subset operations ======================================
 
+# `[` and `[<-` count subscripts with nargs(), because it sees the trailing
+# missing args that rlang::enquos() drops, while parse_subset_specs() counts
+# the quosures it was handed. All three report the same way through this.
+abort_too_many_subsets <- function(n, x_shape, call = rlang::caller_env()) {
+  rank <- length(x_shape)
+  cli_abort(
+    c(
+      "Too many subset specifications.",
+      x = "Got {n} for an array of shape {shape_repr(x_shape)}, which has
+           {rank} {cli::qty(rank)}ax{?is/es}.",
+      i = "Trailing axes can be left out; they select all elements."
+    ),
+    call = call
+  )
+}
+
 #' Parse subset specifications and fill unspecified axes
 #' @param quos List of quosures (from enquos)
 #' @param x_shape Shape of the input array
@@ -320,11 +336,14 @@ parse_subset_specs <- function(quos, x_shape) {
   rank <- length(x_shape)
 
   if (length(quos) > rank) {
-    cli_abort("Too many subset specifications: got {length(quos)}, expected at most {rank}")
+    abort_too_many_subsets(length(quos), x_shape)
   }
 
+  # The axis is passed down so that every error names the subscript it came
+  # from: on an array of several axes, which one was rejected is the first
+  # thing the reader needs.
   subsets <- lapply(seq_along(quos), function(i) {
-    parse_subset_spec(quos[[i]], x_shape[i])
+    parse_subset_spec(quos[[i]], x_shape[i], axis = i)
   })
 
   # Trailing subsets don't need to be specified, so we fill them with full selections
@@ -340,9 +359,13 @@ parse_subset_specs <- function(quos, x_shape) {
 #' Parse a single subset specification
 #' @param quo Quosure to parse
 #' @param axis_size Size of the axis being indexed
+#' @param axis Axis the subset applies to, used to name it in errors
 #' @return A SubsetSpec object (SubsetFull, SubsetRange, or SubsetIndices)
 #' @noRd
-parse_subset_spec <- function(quo, axis_size) {
+parse_subset_spec <- function(quo, axis_size, axis) {
+  # Every out-of-bounds message ends with this, so that the reader is told the
+  # range that would have worked rather than only the size it was compared to.
+  in_bounds <- "Axis {axis} has size {axis_size}, so indices must be between 1 and {axis_size}."
   is_integerish <- function(x) {
     is.null(dim(x)) && test_integerish(x, len = 1L, any.missing = FALSE)
   }
@@ -361,14 +384,29 @@ parse_subset_spec <- function(quo, axis_size) {
     end <- rlang::eval_tidy(e[[3]], env = env)
 
     if (!is_integerish(start) || !is_integerish(end)) {
-      cli_abort("Range indices must be scalar integers")
+      bad <- if (!is_integerish(start)) start else end
+      side <- if (!is_integerish(start)) "start" else "end"
+      cli_abort(c(
+        "The {side} of a range subset must be a single whole number.",
+        x = "For axis {axis}, got {.obj_type_friendly {bad}}."
+      ))
     }
 
     start <- as.integer(start)
     end <- as.integer(end)
 
-    if (start < 1L || end > axis_size) {
-      cli_abort("Range {start}:{end} is out of bounds for axis of size {axis_size}")
+    # Either end may be the larger one, since a range is allowed to count down.
+    if (min(start, end) < 1L || max(start, end) > axis_size) {
+      cli_abort(c(
+        "The range subset {start}:{end} is out of bounds for axis {axis}.",
+        x = in_bounds
+      ))
+    }
+
+    # A range that counts down selects in reverse, as in base R. There is no
+    # descending slice to lower it to, so it becomes explicit indices.
+    if (end < start) {
+      return(SubsetIndices(seq.int(start, end)))
     }
 
     return(SubsetRange(start, end))
@@ -382,7 +420,10 @@ parse_subset_spec <- function(quo, axis_size) {
   if (is_integerish(e)) {
     idx <- as.integer(e)
     if (idx < 1L || idx > axis_size) {
-      cli_abort("Index {idx} is out of bounds for axis of size {axis_size}")
+      cli_abort(c(
+        "The index {idx} is out of bounds for axis {axis}.",
+        x = in_bounds
+      ))
     }
     return(SubsetIndex(idx))
   }
@@ -391,7 +432,8 @@ parse_subset_spec <- function(quo, axis_size) {
   if (is.numeric(e) && length(e) > 1L && is.null(dim(e))) {
     cli_abort(c(
       "Vectors of length > 1 are not allowed as subset indices.",
-      "i" = "Use {.code array()} to select multiple elements, e.g. {.code x[array(c(1L, 3L)), ]}."
+      x = "Got one of length {length(e)} for axis {axis}.",
+      i = "Use {.code array()} to select multiple elements, e.g. {.code x[array(c(1L, 3L)), ]}."
     ))
   }
 
@@ -400,27 +442,34 @@ parse_subset_spec <- function(quo, axis_size) {
     if (length(dim(e)) != 1L) {
       cli_abort(c(
         "An array of indices must have exactly one axis.",
-        x = "Got {length(dim(e))} axes."
+        x = "The array given for axis {axis} has {length(dim(e))} axes."
       ))
     }
     indices <- as.integer(e)
     oob <- indices < 1L | indices > axis_size
     if (any(oob)) {
-      bad <- indices[oob][1L] # nolint
-      cli_abort("Index {bad} is out of bounds for an axis of size {axis_size}.")
+      bad <- unique(indices[oob])
+      # Each `{?}` gets its own quantity: left to infer one from `{.val {bad}}`,
+      # cli reads the index *values* as the count.
+      nbad <- length(bad)
+      cli_abort(c(
+        "{cli::qty(nbad)}The ind{?ex/ices} {.val {bad}} {cli::qty(nbad)}{?is/are}
+         out of bounds for axis {axis}.",
+        x = in_bounds
+      ))
     }
     return(SubsetIndices(indices))
   }
 
-  # AnvlRange (dynamic range) - not supported
+  # A dynamic range is not supported. This used to build a SubsetRange from
+  # `e$end`, which an IotaArray does not have, so the call failed further down
+  # with a length-0 slice size instead of saying what was wrong.
   if (inherits(e, "IotaArray")) {
-    if (length(shape) != 1L) {
-      cli_abort(c(
-        "A range index must have exactly one axis.",
-        x = "Got {length(shape)} axes."
-      ))
-    }
-    return(SubsetRange(e$start, e$end))
+    cli_abort(c(
+      "A dynamic range is not supported as a subset index.",
+      x = "Got {.cls IotaArray} for axis {axis}.",
+      i = "Use a literal range such as {.code 2:4}, or an array of indices."
+    ))
   }
 
   # Array indices (AnvlArray or GraphBox)
@@ -429,7 +478,7 @@ parse_subset_spec <- function(quo, axis_size) {
     if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
       cli_abort(c(
         "An array of indices must have an integer data type.",
-        x = "Got {.val {as.character(dt)}}.",
+        x = "The array given for axis {axis} has data type {.val {as.character(dt)}}.",
         i = "Convert it with {.fn nv_convert}."
       ))
     }
@@ -437,7 +486,7 @@ parse_subset_spec <- function(quo, axis_size) {
     if (nd > 1L) {
       cli_abort(c(
         "An array of indices must have at most one axis.",
-        x = "Got {nd} axes."
+        x = "The array given for axis {axis} has {nd} axes."
       ))
     }
     # Scalar array drops axis, 1D array preserves
@@ -448,13 +497,14 @@ parse_subset_spec <- function(quo, axis_size) {
   }
 
   detail <- if (is.numeric(e) && length(e) == 1L && is.finite(e)) {
-    "Got {.val {e}}, which is not whole."
+    "For axis {axis}, got {.val {e}}, which is not whole."
   } else {
-    "Got {.obj_type_friendly {e}}."
+    "For axis {axis}, got {.obj_type_friendly {e}}."
   }
   cli_abort(c(
     "Each subset must be missing, a whole number, a range, or an array of an integer data type.",
-    x = detail
+    x = detail,
+    i = "See {.code vignette(\"subsetting\")}."
   ))
 }
 

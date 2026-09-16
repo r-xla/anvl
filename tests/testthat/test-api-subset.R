@@ -313,6 +313,81 @@ describe("nv_subset and nv_subset_assign", {
     expect_error(x[array(c(0, 5))], "out of bounds")
   })
 
+  it("names the axis a rejected subset came from", {
+    x <- nv_array(array(1:24, dim = c(2, 3, 4)))
+    expect_error(x[1, 99, 1], "out of bounds for axis 2")
+    expect_error(x[1, 1:99, 1], "out of bounds for axis 2")
+    expect_error(x[1, array(c(9L)), 1], "out of bounds for axis 2")
+    expect_error(x[1, 1, 99], "out of bounds for axis 3")
+    expect_error(x[1, 2.5, 1], "For axis 2")
+    expect_error(x[1, c(1, 2), 1], "for axis 2")
+    expect_error(x[1, nv_array(c(1.5, 2.5)), 1], "for axis 2")
+    expect_error(x[1, array(1:4, dim = c(2, 2)), 1], "for axis 2 has 2 axes")
+    # The same is true of the assignment path.
+    expect_error(
+      {
+        x[1, 99, 1] <- 0L
+      },
+      "out of bounds for axis 2"
+    )
+  })
+
+  it("lists every out-of-bounds index, once", {
+    x <- nv_array(1:3)
+    expect_error(x[array(c(0L, 9L, 9L))], "indices 0 and 9 are out of bounds")
+    expect_error(x[array(c(9L))], "index 9 is out of bounds")
+  })
+
+  it("selects in reverse for a range that counts down", {
+    # Used to reach prim_gather() and fail there on a negative slice size.
+    r <- 1:10
+    x <- nv_array(r)
+    # A range keeps the axis, so the result is a 1-D array where base R has a
+    # dimensionless vector; compare the values.
+    expect_equal(as.vector(as_array(x[3:1])), r[3:1])
+    expect_equal(as.vector(as_array(x[10:1])), r[10:1])
+    expect_equal(as.vector(as_array(x[2:2])), r[2:2])
+
+    m <- array(1:12, dim = c(3, 4))
+    y <- nv_array(m)
+    expect_equal(as_array(y[3:1, 2:1]), m[3:1, 2:1])
+
+    # Assignment follows the same order as base R.
+    rr <- 1:5
+    rr[4:2] <- c(100L, 200L, 300L)
+    xx <- nv_array(1:5)
+    xx[4:2] <- nv_array(c(100L, 200L, 300L))
+    expect_equal(as.vector(as_array(xx)), rr)
+
+    # Bounds are checked whichever way the range runs.
+    expect_error(x[11:1], "out of bounds for axis 1")
+    expect_error(x[3:0], "out of bounds for axis 1")
+  })
+
+  it("reports too many subsets the same way from every path", {
+    x <- nv_array(array(1:24, dim = c(2, 3, 4)))
+    msg <- "Got 4 for an array of shape \\(2x3x4\\), which has 3 axes"
+    expect_error(x[1, 1, 1, 1], msg)
+    expect_error(nv_subset(x, 1, 1, 1, 1), msg)
+    expect_error(
+      {
+        x[1, 1, 1, 1] <- 0L
+      },
+      msg
+    )
+    # A rank-1 array is singular.
+    expect_error(nv_array(1:10)[1, 1], "which has 1 axis")
+  })
+
+  it("errors on a dynamic range index", {
+    # Used to build a SubsetRange from a field IotaArray does not have.
+    x <- nv_array(1:10)
+    expect_error(
+      x[IotaArray(shape = 3L, dtype = "i32", axis = 1L)],
+      "dynamic range is not supported"
+    )
+  })
+
   it("works with all-static indices via [", {
     r_arr <- array(1:24, dim = c(2, 3, 4))
     x <- nv_array(r_arr)

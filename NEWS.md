@@ -71,6 +71,12 @@
 
 ## Bug fixes
 
+* A range that counts down (`x[3:1]`) now selects in reverse, like base R,
+  instead of failing inside the gather with a negative slice size.
+* Errors from subsetting now name the axis whose subscript was rejected, report
+  every out-of-bounds index rather than the first, and spell out the range of
+  indices the axis accepts. A dynamic range index is rejected where it is
+  written instead of failing later with a length-0 slice size.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
   `as.numeric()`, `as.character()` and friends -- now aborts with an
   explanation instead of falling through to the base R generic. Some of those

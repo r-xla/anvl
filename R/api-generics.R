@@ -956,7 +956,7 @@ sort.AnvlBox <- sort.AnvlArray
     ))
   }
   if (n_args > rank) {
-    cli_abort("Too many subset specifications: got {n_args}, expected at most {rank}")
+    abort_too_many_subsets(n_args, shape(x))
   }
   rlang::inject(nv_subset(x, !!!quos))
 }
@@ -973,7 +973,7 @@ sort.AnvlBox <- sort.AnvlArray
   n_args <- nargs() - 2L
   rank <- naxes(x)
   if (n_args > rank) {
-    cli_abort("Too many subset specifications: got {n_args}, expected at most {rank}")
+    abort_too_many_subsets(n_args, shape(x))
   }
   quos <- rlang::enquos(...)
   rlang::inject(nv_subset_assign(x, !!!quos, value = value))
