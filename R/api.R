@@ -421,7 +421,7 @@ nv_concatenate <- function(..., axis = NULL) {
 #' * 1-D: treated as a single row/column.
 #' * Other: used as-is.
 #'
-#' # differences from base R
+#' # Differences from base R
 #'
 #' [base::rbind()] and [base::cbind()] applied to an [`array()`][base::array] of rank > 2
 #' flatten the trailing axes into the column axis (so a `c(2, 3, 4)`

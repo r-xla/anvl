@@ -1151,7 +1151,7 @@ is_shape <- function(x) {
 #' @name arrayish
 #' @seealso [AnvlArray], [GraphBox]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # anvlArrays are arrayish
+#' # AnvlArray objects are arrayish
 #' is_arrayish(nv_array(1:4))
 #'
 #' # scalar R literals are arrayish by default

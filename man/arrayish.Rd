@@ -59,7 +59,7 @@ a backend supports.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# anvlArrays are arrayish
+# AnvlArray objects are arrayish
 is_arrayish(nv_array(1:4))
 
 # scalar R literals are arrayish by default
