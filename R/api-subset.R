@@ -2,8 +2,11 @@ SubsetFull <- function(size) {
   structure(list(size = size), class = "SubsetFull")
 }
 
-SubsetRange <- function(start, end) {
-  structure(list(start = start, size = end - start + 1L), class = "SubsetRange")
+SubsetRange <- function(start, end, reversed = FALSE) {
+  structure(
+    list(start = start, size = end - start + 1L, reversed = reversed),
+    class = "SubsetRange"
+  )
 }
 
 SubsetIndex <- function(index) {
@@ -34,6 +37,15 @@ is_subset_full <- function(x) inherits(x, "SubsetFull")
 is_subset_range <- function(x) inherits(x, "SubsetRange")
 is_subset_index <- function(x) inherits(x, "SubsetIndex")
 is_subset_indices <- function(x) inherits(x, "SubsetIndices")
+
+# Output axes carrying a decreasing range. A range always survives into the
+# output, so its output axis is its position among the axes that no scalar
+# index drops.
+subset_reversed_axes <- function(subsets) {
+  surviving <- !vapply(subsets, is_subset_index, logical(1L))
+  reversed <- vapply(subsets, function(s) isTRUE(s$reversed), logical(1L))
+  which(reversed[surviving])
+}
 
 subset_spec_to_shape <- function(specs) {
   shp <- integer()
@@ -396,9 +408,10 @@ parse_subset_spec <- function(quo, axis_size, axis) {
     }
 
     # A range that counts down selects in reverse, as in base R. There is no
-    # descending slice to lower it to, so it becomes explicit indices.
+    # descending slice, so it becomes the ascending one plus a reverse of the
+    # output axis -- far cheaper than a gather over explicit indices.
     if (end < start) {
-      return(SubsetIndices(seq.int(start, end)))
+      return(SubsetRange(end, start, reversed = TRUE))
     }
 
     return(SubsetRange(start, end))
@@ -550,6 +563,11 @@ nv_subset <- function(x, ...) {
     unique_indices = params$unique_indices
   )
 
+  reversed_axes <- subset_reversed_axes(subsets)
+  if (length(reversed_axes)) {
+    out <- prim_reverse(out, axes = reversed_axes)
+  }
+
   out
 }
 
@@ -654,6 +672,13 @@ nv_subset_assign <- function(x, ..., value) {
 
   subsets <- parse_subset_specs(quos, lhs_shape)
   params <- subset_specs_to_scatter(subsets, like = x)
+
+  # The scatter writes the ascending slice, so a decreasing range means the
+  # value goes in back to front. A scalar value broadcasts either way.
+  reversed_axes <- subset_reversed_axes(subsets)
+  if (length(reversed_axes) && naxes(value)) {
+    value <- prim_reverse(value, axes = reversed_axes)
+  }
 
   subset_scatter_core(
     x = x,

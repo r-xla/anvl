@@ -9,7 +9,10 @@ describe("nv_subset and nv_subset_assign", {
       arg <- if (is_subset_full(spec[[i]])) {
         seq(shape[i])
       } else if (is_subset_range(spec[[i]])) {
-        (spec[[i]]$start):(spec[[i]]$start + spec[[i]]$size - 1L)
+        # A decreasing range is stored ascending plus a `reversed` flag, so the
+        # base R argument has to be turned back around to match.
+        rng <- (spec[[i]]$start):(spec[[i]]$start + spec[[i]]$size - 1L)
+        if (spec[[i]]$reversed) rev(rng) else rng
       } else if (is_subset_index(spec[[i]])) {
         drop <- TRUE
         spec[[i]]$index
@@ -176,6 +179,18 @@ describe("nv_subset and nv_subset_assign", {
 
   it("1D: full-length range (equivalent to full)", {
     check(c(6L), 1:6)
+  })
+
+  it("1D: range that counts down", {
+    check(c(10L), 8:3)
+  })
+
+  it("2D: ranges that count down in both axes", {
+    check(c(6L, 8L), 4:2, 6:3)
+  })
+
+  it("3D: range that counts down next to a gather and a scalar", {
+    check(c(4L, 5L, 6L), array(c(1L, 3L)), 2L, 5:2)
   })
 
   it("1D: gather with non-ascending indices", {
@@ -366,6 +381,34 @@ describe("nv_subset and nv_subset_assign", {
     # Bounds are checked whichever way the range runs.
     expect_error(x[11:1], "out of bounds for axis 1")
     expect_error(x[3:0], "out of bounds for axis 1")
+  })
+
+  it("reverses the right output axis when other axes are dropped or gathered", {
+    # A decreasing range lowers to the ascending slice plus a reverse, so the
+    # axis to reverse has to be found in the *output*, after scalar indices
+    # have dropped theirs and gather axes have taken their places.
+    vals <- function(v) as.integer(as_array(v))
+    m <- array(1:12, dim = c(3, 4))
+    y <- nv_array(m)
+
+    expect_equal(vals(y[2, 4:1]), as.integer(m[2, 4:1]))
+    expect_equal(vals(y[3:1, 2]), as.integer(m[3:1, 2]))
+    expect_equal(vals(y[3:1, array(c(1L, 3L))]), as.integer(m[3:1, c(1, 3)]))
+    expect_equal(vals(y[array(c(1L, 3L)), 4:1]), as.integer(m[c(1, 3), 4:1]))
+
+    # Assignment has to reverse the value along the same output axis.
+    expected <- m
+    expected[3:1, 2] <- c(10L, 20L, 30L)
+    yy <- nv_array(m)
+    yy[3:1, 2] <- nv_array(c(10L, 20L, 30L))
+    expect_equal(vals(yy), as.integer(expected))
+  })
+
+  it("differentiates through a range that counts down", {
+    m <- array(as.double(1:12), dim = c(3, 4))
+    y <- nv_array(m)
+    f <- function(y) nv_reduce_sum(y[3:1, ] * nv_array(m))
+    expect_equal(as_array(jit(gradient(f))(y)[[1L]]), m[3:1, ])
   })
 
   it("reports too many subsets the same way from every path", {
