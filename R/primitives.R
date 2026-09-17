@@ -241,6 +241,44 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 prim_broadcast_in_axes <- new_primitive(
   "broadcast_in_axes",
   function(x, shape, broadcast_axes) {
+    shape <- assert_shapevec(shape)
+    # stablehlo's inference reports these as `broadcast_dimensions` out of
+    # range, naming its own argument and a 0-based half-open interval.
+    ok_axes <- checkmate::test_integerish(
+      broadcast_axes,
+      lower = 1L,
+      upper = length(shape),
+      any.missing = FALSE
+    )
+    if (!ok_axes) {
+      cli_abort(c(
+        "{.arg broadcast_axes} must be axes of the result, between 1 and {length(shape)}.",
+        x = "Got {.val {broadcast_axes}}."
+      ))
+    }
+    broadcast_axes <- as.integer(broadcast_axes)
+    if (anyDuplicated(broadcast_axes)) {
+      cli_abort(c(
+        "{.arg broadcast_axes} must not name the same axis twice.",
+        x = "Got {.val {broadcast_axes}}."
+      ))
+    }
+    if (length(broadcast_axes) != naxes(x)) {
+      cli_abort(c(
+        "{.arg broadcast_axes} must name one axis of the result per axis of {.arg x}.",
+        x = "{.arg x} has {naxes(x)} ax{?is/es}, but {.arg broadcast_axes} has {length(broadcast_axes)} entr{?y/ies}." # nolint
+      ))
+    }
+    # `x`'s own axis size must be 1 or already match the target. stablehlo
+    # reports this against `result`, which is not an argument here.
+    bad <- which(shape(x) != 1L & shape(x) != shape[broadcast_axes])
+    if (length(bad)) {
+      j <- bad[[1L]]
+      cli_abort(c(
+        "{.arg x} can only broadcast into an axis whose size it already matches, or where its own size is 1.",
+        x = "Axis {j} of {.arg x} has size {shape(x)[j]}, but {.arg shape} asks for {shape[broadcast_axes[j]]} at axis {broadcast_axes[j]}." # nolint
+      ))
+    }
     infer_fn <- function(x, shape, broadcast_axes) {
       bd_attr <- r_to_constant(
         as.integer(broadcast_axes - 1L),
@@ -302,7 +340,12 @@ prim_broadcast_in_axes <- new_primitive(
 prim_dot_general <- new_primitive(
   "dot_general",
   function(lhs, rhs, contracting_axes, batching_axes, precision = "highest") {
-    precision <- match.arg(precision, c("default", "high", "highest"))
+    if (!checkmate::test_choice(precision, c("default", "high", "highest"))) {
+      cli_abort(c(
+        "{.arg precision} must be one of {.val {c('default', 'high', 'highest')}}.",
+        x = "Got {.val {precision}}."
+      ))
+    }
     infer_fn <- function(lhs, rhs, contracting_axes, batching_axes, precision) {
       ddn <- stablehlo::DotDimensionNumbers(
         contracting_dims = lapply(contracting_axes, \(x) x - 1L),
@@ -312,6 +355,46 @@ prim_dot_general <- new_primitive(
       list(vt2at(out))
     }
     operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
+    # stablehlo reports every one of these as `contracting_dims` /
+    # `batching_dims` with 0-based numbers, which no caller wrote.
+    if (!is.list(contracting_axes) || length(contracting_axes) != 2L) {
+      cli_abort("{.arg contracting_axes} must be a list of two axis vectors, one for each operand.")
+    }
+    if (!is.list(batching_axes) || length(batching_axes) != 2L) {
+      cli_abort("{.arg batching_axes} must be a list of two axis vectors, one for each operand.")
+    }
+    sides <- c("lhs", "rhs")
+    for (i in 1:2) {
+      side <- sides[[i]]
+      n <- naxes(operands[[side]])
+      contracting_axes[[i]] <- resolve_axes(contracting_axes[[i]], n, arg = "contracting_axes")
+      batching_axes[[i]] <- resolve_axes(batching_axes[[i]], n, arg = "batching_axes")
+      if (anyDuplicated(c(contracting_axes[[i]], batching_axes[[i]]))) {
+        cli_abort(c(
+          "An axis of {.arg {side}} cannot be both contracted and batched.",
+          x = "Got {.val {contracting_axes[[i]]}} contracted and {.val {batching_axes[[i]]}} batched."
+        ))
+      }
+    }
+    if (length(contracting_axes[[1L]]) != length(contracting_axes[[2L]])) {
+      cli_abort("{.arg contracting_axes} must name as many axes of {.arg lhs} as of {.arg rhs}.")
+    }
+    if (length(batching_axes[[1L]]) != length(batching_axes[[2L]])) {
+      cli_abort("{.arg batching_axes} must name as many axes of {.arg lhs} as of {.arg rhs}.")
+    }
+    for (kind in c("contracting", "batching")) {
+      axes <- if (kind == "contracting") contracting_axes else batching_axes
+      sl <- shape(operands$lhs)[axes[[1L]]]
+      sr <- shape(operands$rhs)[axes[[2L]]]
+      bad <- which(sl != sr)
+      if (length(bad)) {
+        j <- bad[[1L]]
+        cli_abort(c(
+          "The {kind} axes of {.arg lhs} and {.arg rhs} must have the same sizes.",
+          x = "Axis {axes[[1L]][j]} of {.arg lhs} has size {sl[j]}, but axis {axes[[2L]][j]} of {.arg rhs} has size {sr[j]}." # nolint
+        ))
+      }
+    }
     graph_desc_add(
       self,
       operands,
@@ -393,6 +476,12 @@ prim_reshape <- new_primitive(
   "reshape",
   function(x, shape) {
     shape <- resolve_reshape_shape(shape, prod(shape(x)), arg = "shape")
+    if (prod(shape) != prod(shape(x))) {
+      cli_abort(c(
+        "{.arg shape} must hold as many elements as {.arg x}.",
+        x = "{.arg x} is {shape_repr(shape(x))} with {prod(shape(x))} element{?s}, but {.arg shape} is {shape_repr(shape)} with {prod(shape)}." # nolint
+      ))
+    }
     infer_fn <- function(x, shape) {
       out <- stablehlo::infer_types_reshape(at2vt(x), shape = shape)[[1L]]
       out <- vt2at(out)
@@ -439,6 +528,22 @@ prim_concatenate <- new_primitive(
       cli_abort("{.fn prim_concatenate} needs at least one array to concatenate.")
     }
     axis <- resolve_axis(axis, naxes(dots[[1L]]))
+    ranks <- vapply(dots, naxes, integer(1L))
+    if (length(unique(ranks)) != 1L) {
+      cli_abort(c(
+        "All arrays must have the same number of axes.",
+        x = "Got {.val {ranks}}."
+      ))
+    }
+    shapes <- lapply(dots, shape)
+    off_axis <- lapply(shapes, function(s) s[-axis])
+    same <- vapply(off_axis[-1L], identical, logical(1L), off_axis[[1L]])
+    if (!all(same)) {
+      cli_abort(c(
+        "All arrays must have the same shape apart from axis {axis}.",
+        x = "Got {paste0(vapply(shapes, shape_repr, character(1L)), collapse = ' and ')}."
+      ))
+    }
     infer_fn <- function(..., axis) {
       xs <- list(...)
       vts <- lapply(xs, at2vt)
@@ -507,6 +612,30 @@ prim_concatenate <- new_primitive(
 prim_static_slice <- new_primitive(
   "static_slice",
   function(x, start_indices, limit_indices, strides) {
+    # A stride of 0 used to reach the backend, where it fails with a raw
+    # message plus an R coercion warning.
+    assert_integerish(strides, lower = 1L, any.missing = FALSE)
+    assert_integerish(start_indices, lower = 1L, any.missing = FALSE)
+    assert_integerish(limit_indices, lower = 1L, any.missing = FALSE)
+    # `infer_fn` shifts `start_indices` to 0-based but not `limit_indices`
+    # (stablehlo's limit is exclusive, so the 1-based inclusive-start /
+    # inclusive-limit pair maps to `start - 1` and `limit`). stablehlo then
+    # re-adds 1 when it formats a violation, so its numbers are not the ones
+    # the caller typed. Check here, in the caller's terms.
+    bad <- which(limit_indices > shape(x))
+    if (length(bad)) {
+      cli_abort(c(
+        "{.arg limit_indices} must be at most the size of each axis of {.arg x}.",
+        x = "Axis {bad[[1L]]} has size {shape(x)[bad[[1L]]]}, but {.arg limit_indices} asks for {limit_indices[bad[[1L]]]}." # nolint
+      ))
+    }
+    bad <- which(start_indices > limit_indices)
+    if (length(bad)) {
+      cli_abort(c(
+        "{.arg start_indices} must not be past {.arg limit_indices} on any axis.",
+        x = "On axis {bad[[1L]]} the slice starts at {start_indices[bad[[1L]]]} and stops at {limit_indices[bad[[1L]]]}." # nolint
+      ))
+    }
     infer_fn <- function(x, start_indices, limit_indices, strides) {
       start_attr <- r_to_constant(start_indices - 1L, dtype = "i64", shape = length(start_indices))
       limit_attr <- r_to_constant(limit_indices, dtype = "i64", shape = length(limit_indices))
@@ -662,6 +791,7 @@ prim_dynamic_update_slice <- new_primitive(
 make_reduce_op <- function(infer_fn = infer_reduce) {
   force(infer_fn)
   function(x, axes, drop = TRUE) {
+    assert_flag(drop)
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
     graph_desc_add(
       self,
@@ -1007,6 +1137,14 @@ prim_reduce <- new_primitive(
     if (!is.function(reductor)) {
       cli_abort("{.arg reductor} must be a function.")
     }
+    # Traced below with two positional arguments; anything else dies inside the
+    # trace with an internal aval in the message.
+    if (length(formals(reductor)) != 2L) {
+      cli_abort(c(
+        "{.arg reductor} must take exactly two arguments.",
+        x = "Got {length(formals(reductor))}."
+      ))
+    }
 
     # `x` and `init` agree: the rule above brought them together or refused.
     op_dtype <- dtype(x)
@@ -1041,6 +1179,13 @@ prim_reduce <- new_primitive(
       cli_abort(c(
         "{.arg reductor} must return a value with the same data type as {.arg x}.",
         x = "{.arg x} is {.val {as.character(op_dtype)}}, but {.arg reductor} returns {.val {as.character(out_aval$dtype)}}." # nolint
+      ))
+    }
+    # stablehlo reports a non-scalar here as `body` outputs must be 0-D.
+    if (length(shape(out_aval))) {
+      cli_abort(c(
+        "{.arg reductor} must return a scalar.",
+        x = "Got shape {shape_repr(shape(out_aval))}."
       ))
     }
 
@@ -1098,7 +1243,8 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
   # The reduction lowering uses `init_v = +/-Inf` and `init_i = 0`. Reducing
   # along a size-0 axis would silently emit those sentinels (i.e. index 1)
   # rather than failing. The index of an extremum of nothing is undefined, so
-  # reject it here at trace time.
+  # reject it here at trace time. The primitives check this in their bodies,
+  # where the caller's own argument is still in scope; this is the backstop.
   if (shp[axis] == 0L) {
     cli_abort(c(
       "{.arg x} must have elements along the axis this reads.",
@@ -2016,6 +2162,9 @@ prim_polygamma <- new_primitive(
       list(out)
     }
     operands <- apply_promotion(list(n = n, x = x), promotion_rdata_common())
+    # Both operands agree by now, so one check names the pair; stablehlo would
+    # report this as `lhs`.
+    assert_float_dtype(dtype(operands$x), arg = "x")
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -2150,6 +2299,18 @@ prim_clamp <- new_primitive(
       list(out)
     }
     operands <- apply_promotion(list(min_val = min_val, x = x, max_val = max_val), promotion_rdata_common())
+    # Each bound is a scalar or exactly `x`'s shape -- not "all non-scalars
+    # agree", which would let a non-scalar bound past a scalar `x`. stablehlo
+    # reports the violation as `min` / `max`, which are not arguments here.
+    for (bound in c("min_val", "max_val")) {
+      b <- operands[[bound]]
+      if (naxes(b) != 0L && !identical(shape(b), shape(operands$x))) {
+        cli_abort(c(
+          "{.arg {bound}} must be a scalar or have {.arg x}'s shape.",
+          x = "{.arg x} is {shape_repr(shape(operands$x))} and {.arg {bound}} is {shape_repr(shape(b))}." # nolint
+        ))
+      }
+    }
     graph_desc_add(
       self,
       operands,
@@ -2220,7 +2381,10 @@ prim_reverse <- new_primitive(
 prim_iota <- new_primitive(
   "iota",
   function(axis, dtype, shape, start = 1L, device = NULL) {
+    shape <- assert_shapevec(shape)
     axis <- resolve_axis(axis, length(shape))
+    # stablehlo reports this as "must have a int, uint, or float dtype".
+    assert_numeric_dtype(as_dtype(dtype), arg = "dtype")
     infer_fn <- function(axis, dtype, shape, start) {
       # stablehlo uses 0-based indexing, anvl uses 1-based
       # Convert axis to Constant as required by stablehlo
@@ -2423,6 +2587,7 @@ prim_ifelse <- new_primitive(
     }
     # `pred` is a bool and keeps out of it; the two branches must agree.
     operands <- apply_promotion(list(true_value = true_value, false_value = false_value), promotion_rdata_common())
+    if (naxes(pred) != 0L) {}
     graph_desc_add(
       self,
       c(list(pred = pred), operands),
@@ -2481,6 +2646,27 @@ prim_if <- new_primitive(
     }
 
     # TODO: Apply promotion rules to the outputs of the branches
+
+    # Nothing promotes here, so the two branches must already agree. Without
+    # this the mismatch survives to the lowering, where stablehlo reports it as
+    # `output_types(true_branch)[0]` in 0-based MLIR types.
+    avals_true <- lapply(true_graph$outputs, function(out) out$aval)
+    avals_false <- lapply(false_graph$outputs, function(out) out$aval)
+    for (i in seq_along(avals_true)) {
+      a <- avals_true[[i]]
+      b <- avals_false[[i]]
+      if (a$dtype != b$dtype || !identical(shape(a), shape(b))) {
+        which_out <- if (length(avals_true) > 1L) " output {i} of" else ""
+        cli_abort(c(
+          paste0(
+            "{.arg true} and {.arg false} must return the same data type and shape, but",
+            which_out,
+            " the two disagree."
+          ), # nolint
+          x = "{.arg true} gives {.val {as.character(a$dtype)}} {shape_repr(shape(a))} and {.arg false} gives {.val {as.character(b$dtype)}} {shape_repr(shape(b))}." # nolint
+        ))
+      }
+    }
 
     infer_fn <- function(pred, true_graph, false_graph) {
       lapply(true_graph$outputs, function(out) out$aval)
@@ -2541,9 +2727,16 @@ prim_while <- new_primitive(
       cli_abort("{.arg cond} must be a function.")
     }
 
+    # An `AnvlArray` is not a list but has a `[[` method, and a fully unnamed
+    # list has `names()` of `NULL` -- so neither reached the check below, and
+    # the call died further in blaming `body` for a bad `init`.
+    if (is_arrayish(init) || !is.list(init) || !length(init)) {
+      cli_abort("{.arg init} must be a non-empty named list of arrays.")
+    }
+
     state_names <- names(init)
 
-    if (any(state_names == "")) {
+    if (is.null(state_names) || any(state_names == "")) {
       cli_abort("{.arg init} must have only named arguments.")
     }
 
@@ -2703,7 +2896,7 @@ prim_sort <- new_primitive(
   function(xs, axis = 1L, descending = FALSE, is_stable = FALSE) {
     assert_flag(descending)
     assert_flag(is_stable)
-    if (!is.list(xs) || !length(xs)) {
+    if (is_arrayish(xs) || !is.list(xs) || !length(xs)) {
       cli_abort("{.arg xs} must be a non-empty list of arrayish values")
     }
     ref_shape <- shape(xs[[1L]])
@@ -3085,7 +3278,11 @@ prim_scatter <- new_primitive(
         scatter_dimension_numbers = scatter_dimension_numbers,
         indices_are_sorted = indices_sorted_attr,
         unique_indices = unique_indices_attr,
-        update_computation = stablehlo(update_computation_graph, id = "", constants_as_inputs = FALSE)[[1L]]
+        # As `prim_reduce()`'s stub does: with `constants_as_inputs = FALSE`
+        # every constant the computation closed over has to already have a
+        # `GraphValue` in the environment, which it does not at inference time,
+        # so a closed-over array failed with "GraphValue not found".
+        update_computation = stablehlo(update_computation_graph, id = "")[[1L]]
       )[[1L]]
 
       out <- vt2at(out)
@@ -3210,6 +3407,19 @@ prim_gather <- new_primitive(
     indices_are_sorted = FALSE,
     unique_indices = FALSE
   ) {
+    assert_flag(indices_are_sorted)
+    assert_flag(unique_indices)
+    slice_sizes <- assert_shapevec(slice_sizes)
+    # `start_indices` selects positions, so it must be integral; a float one
+    # reaches the PJRT compiler and comes back as a raw MLIR dump.
+    idx_dtype <- peek_dtype(start_indices)
+    if (!is_dtype_int(idx_dtype) && !is_dtype_uint(idx_dtype)) {
+      cli_abort(c(
+        "{.arg start_indices} must have an integer data type.",
+        x = "Got {.val {as.character(idx_dtype)}}.",
+        i = "Convert it with {.fn nv_convert}."
+      ))
+    }
     infer_fn <- function(
       x,
       start_indices,
@@ -3299,6 +3509,8 @@ prim_gather <- new_primitive(
 prim_chol <- new_primitive(
   "cholesky",
   function(x, lower = FALSE) {
+    assert_flag(lower)
+    assert_linalg_matrix(x, "x", square = TRUE, batched = TRUE)
     infer_fn <- function(x, lower) {
       # Output has same shape and dtype as input (square matrix)
       list(AbstractArray(
@@ -3360,6 +3572,10 @@ prim_chol <- new_primitive(
 prim_triangular_solve <- new_primitive(
   "triangular_solve",
   function(a, b, left_side, lower, unit_diagonal, transpose_a) {
+    assert_flag(left_side)
+    assert_flag(lower)
+    assert_flag(unit_diagonal)
+    assert_flag(transpose_a)
     infer_fn <- function(a, b, left_side, lower, unit_diagonal, transpose_a) {
       left_side_attr <- r_to_constant(as.logical(left_side), dtype = "bool", shape = integer())
       lower_attr <- r_to_constant(as.logical(lower), dtype = "bool", shape = integer())
@@ -3645,6 +3861,58 @@ prim_convolution <- new_primitive(
     batch_group_count = 1L,
     precision = "highest"
   ) {
+    if (!checkmate::test_choice(precision, c("default", "high", "highest"))) {
+      cli_abort(c(
+        "{.arg precision} must be one of {.val {c('default', 'high', 'highest')}}.",
+        x = "Got {.val {precision}}."
+      ))
+    }
+    # stablehlo names its own spec fields here -- `lhs`, `rhs`,
+    # `kernel_input_feature_dimension`, `feature_group_count` -- and reports
+    # them 0-based. Check in anvl's terms first.
+    if (naxes(x) != naxes(kernel)) {
+      cli_abort(c(
+        "{.arg x} and {.arg kernel} must have the same number of axes.",
+        x = "{.arg x} has {naxes(x)} and {.arg kernel} has {naxes(kernel)}."
+      ))
+    }
+    n <- naxes(x)
+    input_batch_axis <- resolve_axis(input_batch_axis, n)
+    input_feature_axis <- resolve_axis(input_feature_axis, n)
+    input_spatial_axes <- resolve_axes(input_spatial_axes, n, unique = TRUE)
+    kernel_input_feature_axis <- resolve_axis(kernel_input_feature_axis, n)
+    kernel_output_feature_axis <- resolve_axis(kernel_output_feature_axis, n)
+    kernel_spatial_axes <- resolve_axes(kernel_spatial_axes, n, unique = TRUE)
+    output_batch_axis <- resolve_axis(output_batch_axis, n)
+    output_feature_axis <- resolve_axis(output_feature_axis, n)
+    output_spatial_axes <- resolve_axes(output_spatial_axes, n, unique = TRUE)
+    assert_int(feature_group_count, lower = 1L)
+    assert_int(batch_group_count, lower = 1L)
+    in_features <- shape(x)[input_feature_axis]
+    if (in_features %% feature_group_count != 0L) {
+      cli_abort(c(
+        "{.arg feature_group_count} must divide the number of input features of {.arg x}.",
+        x = "{.arg x} has {in_features} input feature{?s} on axis {input_feature_axis}, and {.arg feature_group_count} is {feature_group_count}." # nolint
+      ))
+    }
+    want <- in_features / feature_group_count
+    got <- shape(kernel)[kernel_input_feature_axis]
+    if (got != want) {
+      cli_abort(c(
+        "{.arg kernel}'s input-feature axis must hold {.arg x}'s input features divided by {.arg feature_group_count}.", # nolint
+        x = "Expected {want}, but axis {kernel_input_feature_axis} of {.arg kernel} has size {got}."
+      ))
+    }
+    n_spatial <- length(input_spatial_axes)
+    for (nm in c("window_strides", "x_dilation", "kernel_dilation")) {
+      value <- get(nm)
+      if (length(value) != n_spatial) {
+        cli_abort(c(
+          "{.arg {nm}} must have one entry per spatial axis.",
+          x = "There {?is/are} {n_spatial} spatial ax{?is/es}, but {.arg {nm}} has {length(value)} entr{?y/ies}." # nolint
+        ))
+      }
+    }
     infer_fn <- function(
       x,
       kernel,

@@ -73,6 +73,19 @@
 
 ## Bug fixes
 
+* The `nv_*` and `prim_*` layers check their own arguments instead of letting
+  a stablehlo or base R message through. `prim_broadcast_in_axes()` names
+  `broadcast_axes` rather than `broadcast_dimensions`, `nv_matmul()` reports
+  two non-conformable shapes rather than a `dot_general` failure, and the
+  `nan_rm` / `drop` / `with_indices` flags and `precision` are checked where
+  they are passed.
+* `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
+  inputs again: axes before the last two are batch axes.
+* `nv_inv()` names `x`, and the solves name `a`, instead of reporting
+  `prim_lu()`'s operands.
+* A constructor that fills internally (`nv_eye()`, `nv_tril()`, `nv_triu()`,
+  `nv_determinant()`) now passes a literal its data type can hold, so it works
+  at every data type.
 * `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
   to a common data type.
 * The floating-point `nv_*` functions refuse a boolean.

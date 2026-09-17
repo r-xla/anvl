@@ -335,6 +335,15 @@ nv_concatenate <- function(..., axis = NULL) {
     axis <- resolve_axis(axis, max_axis)
   }
 
+  # A rank mismatch and a size mismatch are different mistakes; reported
+  # together the diagnosis reads as if the sizes were the problem.
+  non_scalar_ranks <- unique(lengths(non_scalar_shapes))
+  if (length(non_scalar_ranks) > 1L) {
+    cli_abort(c(
+      "All non-scalar arrays must have the same number of axes.",
+      x = "Got shapes {shapes_repr(shapes)}."
+    ))
+  }
   non_scalar_shapes_without_axis <- lapply(non_scalar_shapes, \(shape) {
     shape[-axis]
   })
@@ -940,6 +949,11 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' @export
 #' @jit
 nv_atan2 <- function(lhs, rhs) {
+  # `int_to_float()` leaves a boolean alone so the primitive can refuse it, but
+  # the promotion below pairs it away against any numeric operand and the
+  # primitive never sees it. Refuse it here, per *numeric* on the page.
+  assert_numeric_dtype(peek_dtype(lhs), arg = "lhs")
+  assert_numeric_dtype(peek_dtype(rhs), arg = "rhs")
   args <- nv_promote_to_common(int_to_float(lhs), int_to_float(rhs))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
   prim_atan2(args[[1L]], args[[2L]])
@@ -1678,7 +1692,7 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
   dtype <- assert_float_dtype(
     dtype %||% default_float(),
     arg = "dtype",
-    hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
+    hint = "Convert the result instead, e.g. {.code nv_convert(x, default_int())}."
   )
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
@@ -1779,7 +1793,32 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   if (naxes(rhs) < 2L) {
     cli_abort("{.arg rhs} must have at least 2 axes, but it has {naxes(rhs)}.")
   }
+  # The commonest shape mistake in the package. Left to `prim_dot_general()` it
+  # would be reported in terms of `contracting_axes`, which `nv_matmul()` does
+  # not have.
+  if (naxes(lhs) != naxes(rhs)) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have the same number of axes.",
+      x = "{.arg lhs} is {shape_repr(shape(lhs))} and {.arg rhs} is {shape_repr(shape(rhs))}." # nolint
+    ))
+  }
+  inner_lhs <- shape(lhs)[naxes(lhs)]
+  inner_rhs <- shape(rhs)[naxes(rhs) - 1L]
+  if (inner_lhs != inner_rhs) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} are not conformable.",
+      x = "The last axis of {.arg lhs} has size {inner_lhs}, but the second-to-last axis of {.arg rhs} has size {inner_rhs}." # nolint
+    ))
+  }
   nbatch <- naxes(lhs) - 2L
+  batch_lhs <- shape(lhs)[seq_len(nbatch)]
+  batch_rhs <- shape(rhs)[seq_len(nbatch)]
+  if (!identical(batch_lhs, batch_rhs)) {
+    cli_abort(c(
+      "{.arg lhs} and {.arg rhs} must have the same batch axes -- the axes before the last two.",
+      x = "{.arg lhs} has {shape_repr(batch_lhs)} and {.arg rhs} has {shape_repr(batch_rhs)}." # nolint
+    ))
+  }
   prim_dot_general(
     lhs,
     rhs,
@@ -1845,6 +1884,13 @@ nv_solve <- function(a, b) {
   args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
+  # After promotion both carry the common data type, so one check covers them
+  # and names an argument the caller passed.
+  assert_float_dtype(
+    dtype(a),
+    arg = "a",
+    hint = "`a` and `b` are promoted together, so the common data type must be a float."
+  )
   a_shape <- shape(a)
   if (length(a_shape) != 2L || a_shape[1L] != a_shape[2L]) {
     cli_abort("{.arg a} must be a square 2-D matrix")
@@ -1927,6 +1973,11 @@ nv_triangular_solve <- function(
   args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
+  assert_float_dtype(
+    dtype(a),
+    arg = "a",
+    hint = "`a` and `b` are promoted together, so the common data type must be a float."
+  )
 
   a_shape <- shape(a)
   b_shape <- shape(b)
@@ -2097,6 +2148,11 @@ nv_inv <- function(x) {
   if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
     cli_abort("{.arg x} must be a square 2-D matrix")
   }
+  assert_float_dtype(
+    dtype(x),
+    arg = "x",
+    hint = "The inverse is computed through an LU decomposition, which needs a float."
+  )
   n <- shp[[1L]]
   # The inverse of the 0x0 matrix is itself; short-circuit since prim_lu
   # rejects zero-sized inputs.
@@ -2213,7 +2269,7 @@ nv_diag <- function(x) {
     ))
   }
   n <- shape(x)[1L]
-  zeros <- nv_fill_like(x, 0, shape = c(n, n))
+  zeros <- nv_fill_like(x, fill_literal(0, dtype(x)), shape = c(n, n))
   idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
   indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
@@ -2255,8 +2311,9 @@ nv_diag <- function(x) {
 #' @export
 #' @jit static 1:3
 nv_eye <- function(n, dtype = NULL, device = NULL) {
+  assert_int(n, lower = 0L)
   dtype <- dtype %||% default_float()
-  nv_diag(nv_fill(1, n, dtype = dtype, device = device))
+  nv_diag(nv_fill(fill_literal(1, dtype), as.integer(n), dtype = dtype, device = device))
 }
 
 # Expand `axes = NULL` to "all axes". Negative axes are resolved here
@@ -2292,6 +2349,7 @@ nv_eye <- function(n, dtype = NULL, device = NULL) {
 #' @export
 #' @jit static 2:4
 nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
@@ -2318,6 +2376,7 @@ nv_reduce_sum <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
@@ -2348,6 +2407,7 @@ nv_mean <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- .count_bool(as_anvl_array(x))
   axes <- .resolve_reduce_axes(x, axes)
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
@@ -2373,6 +2433,7 @@ nv_reduce_prod <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
   .nv_reduce_extreme(x, axes, drop, nan_rm, -Inf, prim_reduce_max)
@@ -2395,6 +2456,7 @@ nv_reduce_max <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_reduce_min <- function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- as_anvl_array(x)
   axes <- .resolve_reduce_axes(x, axes)
   .nv_reduce_extreme(x, axes, drop, nan_rm, Inf, prim_reduce_min)
@@ -2512,6 +2574,7 @@ nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
 #' @export
 #' @jit static 2:3
 nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
@@ -2544,6 +2607,7 @@ nv_cumsum <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:3
 nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- .count_bool(as_anvl_array(x))
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
@@ -2578,6 +2642,8 @@ nv_cumprod <- function(x, axis = NULL, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_cummax <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
+  assert_flag(with_indices)
+  assert_flag(nan_rm)
   .nv_cum_extreme(x, axis, with_indices, nan_rm, -Inf, prim_cummax)
 }
 
@@ -2604,6 +2670,8 @@ nv_cummax <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
+  assert_flag(with_indices)
+  assert_flag(nan_rm)
   .nv_cum_extreme(x, axis, with_indices, nan_rm, Inf, prim_cummin)
 }
 
@@ -2759,6 +2827,7 @@ nv_is_infinite <- function(x) {
 #' @export
 #' @jit static 2:5
 nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- as_anvl_array(x)
   correction <- assert_int(correction, coerce = TRUE)
   axes <- .resolve_reduce_axes(x, axes)
@@ -2805,6 +2874,7 @@ nv_var <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE)
 #' @export
 #' @jit static 2:5
 nv_sd <- function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   nv_sqrt(nv_var(x, axes, drop, correction, nan_rm = nan_rm))
 }
 
@@ -3049,7 +3119,7 @@ nv_tril <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, fill_literal(0, dtype(x))))
 }
 
 #' @title Upper Triangular Matrix
@@ -3073,7 +3143,7 @@ nv_triu <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, fill_literal(0, dtype(x))))
 }
 
 #' @title Cross Product (Matrix)
@@ -3099,6 +3169,8 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
+  # `nv_transpose()` reverses every axis, so anything above rank 2 would put a
+  # batch axis into the contraction slot.
   nv_matmul(nv_transpose(lhs), rhs)
 }
 
@@ -3125,6 +3197,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
+  # As in `nv_crossprod()`: `nv_transpose()` reverses every axis.
   nv_matmul(lhs, nv_transpose(rhs))
 }
 
@@ -3320,6 +3393,7 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
+  assert_flag(with_indices)
   x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
@@ -3411,6 +3485,7 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
 #' @export
 #' @jit static 2:5
 nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- as_anvl_array(x)
   # A quantile lies between two elements, so -- like base R's quantile() --
   # a non-float array is computed at the default float instead of rounding the
@@ -3426,9 +3501,20 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   if (!is_valid_r(probs)) {
     cli_abort("{.arg probs} must either be a length-1 numeric or 1-D R array.")
   }
-  checkmate::assert_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)
+  if (!checkmate::test_numeric(probs, lower = 0, upper = 1, any.missing = FALSE, min.len = 1L)) {
+    cli_abort(c(
+      "{.arg probs} must be probabilities: numbers between 0 and 1, none missing.",
+      x = "Got {.val {as.vector(probs)}}."
+    ))
+  }
 
   is_probs_array <- !is.null(dim(probs))
+  if (is_probs_array && length(dim(probs)) != 1L) {
+    cli_abort(c(
+      "{.arg probs} must be a length-1 numeric or a 1-D array.",
+      x = "Got an array with {length(dim(probs))} axes."
+    ))
+  }
   axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
   shp <- shape(x)
   K <- length(probs)
@@ -3436,9 +3522,20 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   is_float <- is_dtype_float(peek_dtype(x))
   shp_kd <- replace(shp, axis, 1L)
   shp_K <- replace(shp, axis, K)
+  # A quantile interpolates, so the whole computation -- `probs`, the
+  # fractional index and the values gathered around it -- happens at a float
+  # data type, which is also what the result is documented to have. At an
+  # integer one `probs` would round to 0 and every quantile would come back as
+  # the smallest element.
+  out_dtype <- if (is_float) peek_dtype(x) else default_float()
 
   # For float input, find NaN positions: nan_rm = TRUE sanitizes them to +Inf
   # so they sort to the end; nan_rm = FALSE uses them post-hoc to propagate.
+  # The count of valid elements is kept at `i32`, since it is a count.
+  count_kd <- nv_broadcast_to(
+    nv_fill_like(x, shp[axis], shape = integer(), dtype = "i32"),
+    shp_kd
+  )
   if (is_float) {
     nan_mask <- nv_is_nan(x)
     to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
@@ -3449,22 +3546,26 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
       # default float.
       prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
     } else {
-      nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
+      count_kd
     }
   } else {
     to_sort <- x
-    n_valid_kd <- nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
+    n_valid_kd <- count_kd
   }
   sorted <- prim_sort(list(to_sort), axis = axis)[[1L]]
+  sorted <- nv_convert(sorted, out_dtype)
 
   # Broadcast `(K,) probs` along `axis` and `(shp_kd,) n_valid_kd` across
   # `axis` → both shaped `shp_K`, with K varying along `axis`.
   probs_shape <- replace(rep(1L, rank), axis, K)
   probs_b <- nv_broadcast_to(
-    prim_reshape(nv_array_like(sorted, probs, shape = K), probs_shape),
+    prim_reshape(
+      nv_array_like(sorted, probs, shape = K, dtype = out_dtype),
+      probs_shape
+    ),
     shp_K
   )
-  n_valid_b <- nv_broadcast_to(n_valid_kd, shp_K)
+  n_valid_b <- nv_convert(nv_broadcast_to(n_valid_kd, shp_K), out_dtype)
   h <- (n_valid_b - 1) * probs_b
   lo_f <- nv_floor(h)
   hi_f <- nv_ceiling(h)
@@ -3486,7 +3587,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   # nan_rm = FALSE produces NaN for any slice that contained a NaN (XLA's
   # sort places NaN unpredictably, so we can't rely on the gather hitting it).
   if (is_float) {
-    bad <- if (nan_rm) n_valid_kd == 0 else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
+    bad <- if (nan_rm) n_valid_kd == 0L else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
   }
 
@@ -3543,6 +3644,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
 #' @export
 #' @jit static 2:4
 nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+  assert_flag(nan_rm)
   nv_quantile(x, probs = 0.5, axis = axis, interpolation = interpolation, nan_rm = nan_rm)
 }
 
@@ -3577,6 +3679,7 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 #' @export
 #' @jit static 2:4
 nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
     cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
@@ -3610,6 +3713,7 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @export
 #' @jit static 2:4
 nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+  assert_flag(nan_rm)
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
     cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
@@ -3730,6 +3834,37 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
   args <- as_anvl_arrays(x = x, weight = weight, .promote = promotion_common())
   x <- args$x
   weight <- args$weight
+  assert_int(groups, lower = 1L)
+  # `prim_convolution()` and stablehlo below both speak of `lhs`, `rhs` and
+  # `kernel_input_feature_dimension`; none of those is an argument here.
+  for (nm in c("x", "weight")) {
+    value <- get(nm)
+    if (naxes(value) != n + 2L) {
+      cli_abort(c(
+        "{.arg {nm}} must have {n + 2L} axes for a {n}-D convolution.",
+        x = "Got shape {shape_repr(shape(value))}."
+      ))
+    }
+  }
+  in_channels <- shape(x)[2L]
+  if (in_channels %% groups != 0L) {
+    cli_abort(c(
+      "{.arg groups} must divide the number of input channels of {.arg x}.",
+      x = "{.arg x} has {in_channels} input channel{?s}, and {.arg groups} is {groups}."
+    ))
+  }
+  if (shape(weight)[2L] != in_channels / groups) {
+    cli_abort(c(
+      "{.arg weight}'s second axis must be {.arg x}'s input channels divided by {.arg groups}.",
+      x = "Expected {in_channels / groups}, but {.arg weight} is {shape_repr(shape(weight))}."
+    ))
+  }
+  if (shape(weight)[1L] %% groups != 0L) {
+    cli_abort(c(
+      "{.arg groups} must divide the number of output channels of {.arg weight}.",
+      x = "{.arg weight} has {shape(weight)[1L]} output channel{?s}, and {.arg groups} is {groups}."
+    ))
+  }
   stride <- .nv_conv_vec(stride, n, "stride")
   pad <- .nv_conv_vec(padding, n, "padding")
   dilation <- .nv_conv_vec(dilation, n, "dilation")
