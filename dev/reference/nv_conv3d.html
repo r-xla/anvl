@@ -109,11 +109,13 @@ padding (e.g. causal temporal padding) is available via
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[N, C_in, H, W]</code>.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[N, C_in, H, W]</code>. <code>x</code> and <code>weight</code> are
+<a href="nv_promote_to_common.html">promoted to a common data type</a>.</p></dd>
 
 
 <dt id="arg-weight">weight<a class="anchor" aria-label="anchor" href="#arg-weight"></a></dt>
-<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[C_out, C_in / groups, kH, kW]</code>.</p></dd>
+<dd><p>(<code><a href="arrayish.html">arrayish</a></code>)<br><code>[C_out, C_in / groups, kH, kW]</code>.
+Promoted together with <code>x</code>.</p></dd>
 
 
 <dt id="arg-stride-padding-dilation">stride, padding, dilation<a class="anchor" aria-label="anchor" href="#arg-stride-padding-dilation"></a></dt>

@@ -137,6 +137,16 @@
 
 ### Bug fixes
 
+- [`nv_conv1d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv1d.md)
+  /
+  [`nv_conv2d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv2d.md)
+  /
+  [`nv_conv3d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv3d.md)
+  now promote `x` and `weight` to a common data type.
+- The floating-point `nv_*` functions refuse a boolean.
+- [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md)
+  checks `k` before coercing it, so a fractional or logical `k` is
+  refused rather than silently truncated.
 - A range that counts down (`x[3:1]`) now selects in reverse instead of
   failing.
 - Coercing a traced array to R inside

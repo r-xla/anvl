@@ -95,8 +95,9 @@ Input array.</p></dd>
 
 <dt id="arg-k">k<a class="anchor" aria-label="anchor" href="#arg-k"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Number of top elements to return. Must satisfy
-<code>1 &lt;= k &lt;= shape(x)[axis]</code>.</p></dd>
+Number of top elements to return. Must be a whole number satisfying
+<code>1 &lt;= k &lt;= shape(x)[axis]</code>; a fractional or logical <code>k</code> is refused
+rather than truncated.</p></dd>
 
 
 <dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>

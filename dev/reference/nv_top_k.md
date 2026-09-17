@@ -19,8 +19,9 @@ nv_top_k(x, k, axis = NULL, with_indices = FALSE)
 - k:
 
   (`integer(1)`)  
-  Number of top elements to return. Must satisfy
-  `1 <= k <= shape(x)[axis]`.
+  Number of top elements to return. Must be a whole number satisfying
+  `1 <= k <= shape(x)[axis]`; a fractional or logical `k` is refused
+  rather than truncated.
 
 - axis:
 

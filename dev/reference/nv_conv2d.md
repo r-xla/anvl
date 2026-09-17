@@ -24,12 +24,13 @@ nv_conv2d(
 - x:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[N, C_in, H, W]`.
+  `[N, C_in, H, W]`. `x` and `weight` are [promoted to a common data
+  type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
 
 - weight:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  `[C_out, C_in / groups, kH, kW]`.
+  `[C_out, C_in / groups, kH, kW]`. Promoted together with `x`.
 
 - stride:
 
