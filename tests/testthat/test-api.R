@@ -529,6 +529,14 @@ describe("nv_atan2", {
     expect_dtype(out, default_float())
     expect_equal(as.vector(out), atan2(1, 2), tolerance = 1e-6)
   })
+
+  it("converts an integer operand to the float the other one brings", {
+    # Converting to the default float first and promoting afterwards would
+    # round the `i32` through `f32`, which cannot hold 2^24 + 1.
+    out <- nv_atan2(nv_array(1, dtype = "f64"), nv_array(16777217L, dtype = "i32"))
+    expect_dtype(out, as_dtype("f64"))
+    expect_equal(as.vector(out), atan2(1, 16777217), tolerance = 1e-12)
+  })
 })
 
 describe("nv_floor", {
@@ -1491,6 +1499,13 @@ describe("nv_crossprod", {
       tolerance = 1e-5
     )
   })
+  it("transposes only the matrix axes of a batched array", {
+    a <- array(as.numeric(1:12), c(2, 3, 2))
+    out <- as_array(nv_crossprod(nv_array(a, dtype = "f64")))
+    expect_equal(dim(out), c(2L, 2L, 2L))
+    expect_equal(out[1, , ], crossprod(a[1, , ]))
+    expect_equal(out[2, , ], crossprod(a[2, , ]))
+  })
 })
 
 describe("nv_tcrossprod", {
@@ -1524,6 +1539,13 @@ describe("nv_tcrossprod", {
       nv_array(as.numeric(tcrossprod(matrix(1:6, 2, 3))), shape = c(2, 2), dtype = "f32"),
       tolerance = 1e-5
     )
+  })
+  it("transposes only the matrix axes of a batched array", {
+    a <- array(as.numeric(1:12), c(2, 3, 2))
+    out <- as_array(nv_tcrossprod(nv_array(a, dtype = "f64")))
+    expect_equal(dim(out), c(2L, 3L, 3L))
+    expect_equal(out[1, , ], tcrossprod(a[1, , ]))
+    expect_equal(out[2, , ], tcrossprod(a[2, , ]))
   })
 })
 
@@ -2456,6 +2478,15 @@ test_that("the floating-point nv_* functions refuse a boolean", {
   expect_error(nv_tanpi(nv_array(TRUE)), "`x` must be a numeric data type")
   expect_error(nv_sin(nv_array(TRUE)), "`x` must be a numeric data type")
   expect_error(nv_atan2(nv_array(TRUE), nv_array(1)), "`lhs` must be a numeric data type")
+  expect_error(nv_polygamma(nv_array(TRUE), nv_array(1)), "`n` must be a numeric data type")
+  # A boolean meets a float at the float, so a check on the promoted operands
+  # alone would let one into the linear algebra functions.
+  bool_mat <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
+  rhs <- nv_array(c(1, 2), shape = c(2L, 1L), dtype = "f32")
+  expect_error(nv_solve(bool_mat, rhs), "`a` must be a numeric data type")
+  expect_error(nv_triangular_solve(bool_mat, rhs), "`a` must be a numeric data type")
+  expect_error(nv_matmul(bool_mat, bool_mat), "`lhs` must be a numeric data type")
+  expect_error(nv_crossprod(bool_mat, bool_mat), "`lhs` must be a numeric data type")
   # An integer is still accepted and converted to a float.
   expect_equal(as.vector(as_array(nv_cospi(nv_array(1L)))), -1, tolerance = 1e-6)
   expect_equal(dtype(nv_sin(nv_array(1L))), default_float())

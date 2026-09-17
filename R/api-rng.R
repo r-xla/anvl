@@ -82,8 +82,6 @@ nv_runif <- function(
   shape <- assert_shapevec(shape)
 
   if (max == min) {
-    # A degenerate interval draws nothing, so the state comes back unchanged --
-    # but in the same shape as every other sampler's return.
     return(list(
       state = initial_state,
       values = nv_fill_like(initial_state, max, shape = shape, dtype = dtype)

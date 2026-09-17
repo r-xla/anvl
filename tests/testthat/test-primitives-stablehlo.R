@@ -1378,17 +1378,17 @@ test_that("the dynamic slicing primitives go through stablehlo's inference", {
   )
 })
 
-test_that("prim_broadcast_in_axes names its own arguments when they do not fit", {
-  # stablehlo reports both of these as `broadcast_dimensions`, in 0-based
-  # half-open notation, which is not what the caller wrote.
+test_that("prim_broadcast_in_axes goes through stablehlo's inference", {
+  # The wording is stablehlo's -- `broadcast_dimensions` -- but the axis
+  # numbers are anvl's, `to_one_based()` converting them on the way out.
   x <- nv_array(c(1, 2, 3))
   expect_error(
     prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = 3L),
-    "`broadcast_axes` must be axes of the result, between 1 and 2"
+    "valid range is \\[1, 3\\)"
   )
   expect_error(
     prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = c(1L, 2L)),
-    "one axis of the result per axis of `x`"
+    "must equal rank"
   )
 })
 

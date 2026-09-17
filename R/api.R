@@ -335,8 +335,6 @@ nv_concatenate <- function(..., axis = NULL) {
     axis <- resolve_axis(axis, max_axis)
   }
 
-  # A rank mismatch and a size mismatch are different mistakes; reported
-  # together the diagnosis reads as if the sizes were the problem.
   non_scalar_ranks <- unique(lengths(non_scalar_shapes))
   if (length(non_scalar_ranks) > 1L) {
     cli_abort(c(
@@ -949,13 +947,8 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' @export
 #' @jit
 nv_atan2 <- function(lhs, rhs) {
-  # `int_to_float()` leaves a boolean alone so the primitive can refuse it, but
-  # the promotion below pairs it away against any numeric operand and the
-  # primitive never sees it. Refuse it here, per *numeric* on the page.
-  assert_numeric_dtype(peek_dtype(lhs), arg = "lhs")
-  assert_numeric_dtype(peek_dtype(rhs), arg = "rhs")
-  args <- nv_promote_to_common(int_to_float(lhs), int_to_float(rhs))
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  args <- promote_to_common_float(lhs = lhs, rhs = rhs)
+  args <- nv_broadcast_scalars(args$lhs, args$rhs)
   prim_atan2(args[[1L]], args[[2L]])
 }
 
@@ -1456,8 +1449,8 @@ nv_gamma <- function(x) {
 #' @export
 #' @jit
 nv_polygamma <- function(n, x) {
-  args <- nv_promote_to_common(n, int_to_float(x))
-  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  args <- promote_to_common_float(n = n, x = x)
+  args <- nv_broadcast_scalars(args$n, args$x)
   do.call(prim_polygamma, args)
 }
 
@@ -1692,7 +1685,7 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
   dtype <- assert_float_dtype(
     dtype %||% default_float(),
     arg = "dtype",
-    hint = "Convert the result instead, e.g. {.code nv_convert(x, default_int())}."
+    hint = "Convert the result instead, e.g. {.code nv_convert(x, \"i32\")}."
   )
   if (steps == 1L) {
     return(nv_fill(start, 1L, dtype = dtype, device = device))
@@ -1768,7 +1761,7 @@ nv_round <- function(x, method = "nearest_even") {
 #' - `rhs`: `(b1, ..., bk, n, p)`
 #' - output: `(b1, ..., bk, m, p)`
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   Arrays with at least 2 axes.
+#'   Numeric arrays with at least 2 axes.
 #'   Operands are [promoted to a common data type][nv_promote_to_common()].
 #' @param precision (`character(1)`)\cr
 #'   Controls the trade-off between speed and numerical accuracy of the
@@ -1784,9 +1777,9 @@ nv_round <- function(x, method = "nearest_even") {
 #' @export
 #' @jit static "precision"
 nv_matmul <- function(lhs, rhs, precision = "highest") {
-  args <- nv_promote_to_common(lhs, rhs)
-  lhs <- args[[1L]]
-  rhs <- args[[2L]]
+  args <- promote_numeric_operands(lhs = lhs, rhs = rhs)
+  lhs <- args$lhs
+  rhs <- args$rhs
   if (naxes(lhs) < 2L) {
     cli_abort("{.arg lhs} must have at least 2 axes, but it has {naxes(lhs)}.")
   }
@@ -1881,16 +1874,13 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
-  a <- args$a
-  b <- args$b
-  # After promotion both carry the common data type, so one check covers them
-  # and names an argument the caller passed.
-  assert_float_dtype(
-    dtype(a),
-    arg = "a",
+  args <- promote_float_operands(
+    a = a,
+    b = b,
     hint = "`a` and `b` are promoted together, so the common data type must be a float."
   )
+  a <- args$a
+  b <- args$b
   a_shape <- shape(a)
   if (length(a_shape) != 2L || a_shape[1L] != a_shape[2L]) {
     cli_abort("{.arg a} must be a square 2-D matrix")
@@ -1970,14 +1960,13 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
-  a <- args$a
-  b <- args$b
-  assert_float_dtype(
-    dtype(a),
-    arg = "a",
+  args <- promote_float_operands(
+    a = a,
+    b = b,
     hint = "`a` and `b` are promoted together, so the common data type must be a float."
   )
+  a <- args$a
+  b <- args$b
 
   a_shape <- shape(a)
   b_shape <- shape(b)
@@ -2144,15 +2133,15 @@ nv_determinant <- function(x, logarithm = TRUE) {
 #' @jit
 nv_inv <- function(x) {
   x <- as_anvl_array(x)
-  shp <- shape(x)
-  if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
-    cli_abort("{.arg x} must be a square 2-D matrix")
-  }
   assert_float_dtype(
     dtype(x),
     arg = "x",
     hint = "The inverse is computed through an LU decomposition, which needs a float."
   )
+  shp <- shape(x)
+  if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
+    cli_abort("{.arg x} must be a square 2-D matrix")
+  }
   n <- shp[[1L]]
   # The inverse of the 0x0 matrix is itself; short-circuit since prim_lu
   # rejects zero-sized inputs.
@@ -2269,7 +2258,7 @@ nv_diag <- function(x) {
     ))
   }
   n <- shape(x)[1L]
-  zeros <- nv_fill_like(x, fill_literal(0, dtype(x)), shape = c(n, n))
+  zeros <- nv_fill_like(x, 0, shape = c(n, n))
   idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
   indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
@@ -2313,7 +2302,7 @@ nv_diag <- function(x) {
 nv_eye <- function(n, dtype = NULL, device = NULL) {
   assert_int(n, lower = 0L)
   dtype <- dtype %||% default_float()
-  nv_diag(nv_fill(fill_literal(1, dtype), as.integer(n), dtype = dtype, device = device))
+  nv_diag(nv_fill(1, as.integer(n), dtype = dtype, device = device))
 }
 
 # Expand `axes = NULL` to "all axes". Negative axes are resolved here
@@ -3119,7 +3108,7 @@ nv_tril <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, fill_literal(0, dtype(x))))
+  nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
 }
 
 #' @title Upper Triangular Matrix
@@ -3143,12 +3132,14 @@ nv_triu <- function(x, diagonal = 0L) {
   if (naxes(x) != 2L) {
     cli_abort("{.arg x} must be a 2-D array")
   }
-  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, fill_literal(0, dtype(x))))
+  nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
 }
 
 #' @title Cross Product (Matrix)
 #' @description
 #' Computes `t(lhs) %*% rhs`. If `rhs` is missing, computes `t(lhs) %*% lhs`.
+#' Above rank 2 the last two axes are the matrix and the leading ones are batch
+#' axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param lhs ([`arrayish`])\cr
 #'   An array with at least 2 axes.
 #' @param rhs ([`arrayish`] | `NULL`)\cr
@@ -3169,14 +3160,14 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
-  # `nv_transpose()` reverses every axis, so anything above rank 2 would put a
-  # batch axis into the contraction slot.
-  nv_matmul(nv_transpose(lhs), rhs)
+  nv_matmul(transpose_matrix_axes(lhs), rhs)
 }
 
 #' @title Transpose Cross Product (Matrix)
 #' @description
 #' Computes `lhs %*% t(rhs)`. If `rhs` is missing, computes `lhs %*% t(lhs)`.
+#' Above rank 2 the last two axes are the matrix and the leading ones are batch
+#' axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param lhs ([`arrayish`])\cr
 #'   An array with at least 2 axes.
 #' @param rhs ([`arrayish`] | `NULL`)\cr
@@ -3197,8 +3188,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
-  # As in `nv_crossprod()`: `nv_transpose()` reverses every axis.
-  nv_matmul(lhs, nv_transpose(rhs))
+  nv_matmul(lhs, transpose_matrix_axes(rhs))
 }
 
 # Sorting and searching --------------------------------------------------------
@@ -3519,41 +3509,29 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   shp <- shape(x)
   K <- length(probs)
   probs <- as.numeric(probs)
-  is_float <- is_dtype_float(peek_dtype(x))
   shp_kd <- replace(shp, axis, 1L)
   shp_K <- replace(shp, axis, K)
-  # A quantile interpolates, so the whole computation -- `probs`, the
-  # fractional index and the values gathered around it -- happens at a float
-  # data type, which is also what the result is documented to have. At an
-  # integer one `probs` would round to 0 and every quantile would come back as
-  # the smallest element.
-  out_dtype <- if (is_float) peek_dtype(x) else default_float()
+  out_dtype <- dtype(x)
 
-  # For float input, find NaN positions: nan_rm = TRUE sanitizes them to +Inf
-  # so they sort to the end; nan_rm = FALSE uses them post-hoc to propagate.
+  # Find the NaN positions: nan_rm = TRUE sanitizes them to +Inf so they sort
+  # to the end; nan_rm = FALSE uses them post-hoc to propagate.
   # The count of valid elements is kept at `i32`, since it is a count.
   count_kd <- nv_broadcast_to(
     nv_fill_like(x, shp[axis], shape = integer(), dtype = "i32"),
     shp_kd
   )
-  if (is_float) {
-    nan_mask <- nv_is_nan(x)
-    to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
-    n_valid_kd <- if (nan_rm) {
-      # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
-      # rather than crossing categories out of an integer count and
-      # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
-      # default float.
-      prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
-    } else {
-      count_kd
-    }
+  nan_mask <- nv_is_nan(x)
+  to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
+  n_valid_kd <- if (nan_rm) {
+    # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
+    # rather than crossing categories out of an integer count and
+    # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
+    # default float.
+    prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
   } else {
-    to_sort <- x
-    n_valid_kd <- count_kd
+    count_kd
   }
   sorted <- prim_sort(list(to_sort), axis = axis)[[1L]]
-  sorted <- nv_convert(sorted, out_dtype)
 
   # Broadcast `(K,) probs` along `axis` and `(shp_kd,) n_valid_kd` across
   # `axis` → both shaped `shp_K`, with K varying along `axis`.
@@ -3586,10 +3564,8 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   # Propagate NaN: nan_rm = TRUE produces NaN only for all-NaN slices;
   # nan_rm = FALSE produces NaN for any slice that contained a NaN (XLA's
   # sort places NaN unpredictably, so we can't rely on the gather hitting it).
-  if (is_float) {
-    bad <- if (nan_rm) n_valid_kd == 0L else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
-    out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
-  }
+  bad <- if (nan_rm) n_valid_kd == 0L else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
+  out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
 
   # For scalar probs, drop the (now size-1) reduced axis. For array probs,
   # move the K axis (currently at `axis`) to the front.

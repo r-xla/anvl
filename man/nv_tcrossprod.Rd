@@ -25,6 +25,8 @@ Optional second array. If \code{NULL}, uses \code{lhs}.}
 }
 \description{
 Computes \code{lhs \%*\% t(rhs)}. If \code{rhs} is missing, computes \code{lhs \%*\% t(lhs)}.
+Above rank 2 the last two axes are the matrix and the leading ones are batch
+axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

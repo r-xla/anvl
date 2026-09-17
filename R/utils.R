@@ -141,29 +141,15 @@ shapes_repr <- function(shapes) {
   paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
-# `value` (0 or 1) written in the category `dtype` belongs to. A fill only
-# takes a literal its data type can hold, so a boolean data type needs a
-# logical and an integer one a whole number.
-fill_literal <- function(value, dtype) {
-  dt <- as_dtype(dtype)
-  if (is_dtype_bool(dt)) {
-    as.logical(value)
-  } else if (is_dtype_float(dt)) {
-    as.double(value)
-  } else {
-    as.integer(value)
-  }
-}
-
-# `value` (0 or 1) written in the category `dtype` belongs to. A fill only
-# takes a literal its data type can hold, so a boolean data type needs a
-# logical and an integer one a whole number.
+# `prim_fill()` takes a whole number at any data type -- `0` builds at `bool`,
+# at an integer one and at a float one alike -- so the fills that do not know
+# their data type statically write a plain `0` / `1`.
 zeros <- function(dtype, shape) {
-  prim_fill(fill_literal(0, dtype), dtype = dtype, shape = shape)
+  prim_fill(0L, dtype = dtype, shape = shape)
 }
 
 ones <- function(dtype, shape) {
-  prim_fill(fill_literal(1, dtype), dtype = dtype, shape = shape)
+  prim_fill(1L, dtype = dtype, shape = shape)
 }
 
 
@@ -283,4 +269,17 @@ col_major_layout <- function(naxes) {
 
 col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
+}
+
+# Transpose the matrix an array's last two axes form, leaving any leading batch
+# axes in place -- what `t()` means for the batched operands `nv_matmul()`
+# takes. `nv_transpose()` reverses *every* axis, which would put a batch axis
+# into the contraction slot. An array with fewer than two axes is handed on
+# unchanged, for `nv_matmul()` to report.
+transpose_matrix_axes <- function(x) {
+  n <- naxes(x)
+  if (n < 2L) {
+    return(x)
+  }
+  nv_transpose(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
 }

@@ -729,3 +729,42 @@ int_to_float <- function(x, arg = rlang::caller_arg(x)) {
   assert_numeric_dtype(peek_dtype(x), arg = arg)
   if (is_intlike(x)) nv_convert(x, default_float()) else x
 }
+
+# The operands of an `nv_*` function that computes on numbers: each is refused
+# if it is a boolean, reported under the name the caller wrote, and they are
+# then brought to their common data type.
+#
+# The boolean is refused before the promotion rather than after it: a `bool`
+# meets every numeric data type at that data type, so a check on the promoted
+# operands would let one past and the primitive that would refuse it never sees
+# it.
+promote_numeric_operands <- function(..., .fallback = NULL) {
+  args <- list(...)
+  Map(
+    function(x, arg) assert_numeric_dtype(peek_dtype(x), arg = arg),
+    args,
+    rlang::names2(args)
+  )
+  do.call(as_anvl_arrays, c(args, list(.promote = promotion_common(fallback = .fallback))))
+}
+
+# The same, brought to the float data type they *compute* at: their common data
+# type where that is a float, and the default float where they are all
+# integers. The binary counterpart of `int_to_float()`.
+#
+# Promoting before converting is what keeps the values exact: an `i32` meeting
+# an `f64` is built at `f64` directly, where converting it to the default float
+# first would round it through `f32` on the way.
+promote_to_common_float <- function(...) {
+  args <- promote_numeric_operands(..., .fallback = default_float())
+  lapply(args, function(x) if (is_dtype_float(dtype(x))) x else nv_convert(x, default_float()))
+}
+
+# The operands of an `nv_*` function that only *accepts* floats -- the linear
+# algebra ones, whose primitives have no integer implementation. They are
+# promoted together, so one check on the first covers them all.
+promote_float_operands <- function(..., hint = NULL) {
+  args <- promote_numeric_operands(...)
+  assert_float_dtype(dtype(args[[1L]]), arg = rlang::names2(args)[[1L]], hint = hint)
+  args
+}
