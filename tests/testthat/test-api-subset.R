@@ -343,21 +343,25 @@ describe("nv_subset and nv_subset_assign", {
     r <- 1:10
     x <- nv_array(r)
     # A range keeps the axis, so the result is a 1-D array where base R has a
-    # dimensionless vector; compare the values.
-    expect_equal(as.vector(as_array(x[3:1])), r[3:1])
-    expect_equal(as.vector(as_array(x[10:1])), r[10:1])
-    expect_equal(as.vector(as_array(x[2:2])), r[2:2])
+    # dimensionless vector. Compare the values via as.integer(): at int = i64
+    # the array comes back as a bit64::integer64, whose storage is a double, so
+    # as.vector() would strip the class and expose the bit pattern.
+    vals <- function(v) as.integer(as_array(v))
+    expect_equal(vals(x[3:1]), r[3:1])
+    expect_equal(vals(x[10:1]), r[10:1])
+    expect_equal(vals(x[2:2]), r[2:2])
 
     m <- array(1:12, dim = c(3, 4))
     y <- nv_array(m)
-    expect_equal(as_array(y[3:1, 2:1]), m[3:1, 2:1])
+    expect_equal(vals(y[3:1, 2:1]), as.integer(m[3:1, 2:1]))
+    expect_equal(shape(y[3:1, 2:1]), c(3L, 2L))
 
     # Assignment follows the same order as base R.
     rr <- 1:5
     rr[4:2] <- c(100L, 200L, 300L)
     xx <- nv_array(1:5)
     xx[4:2] <- nv_array(c(100L, 200L, 300L))
-    expect_equal(as.vector(as_array(xx)), rr)
+    expect_equal(vals(xx), rr)
 
     # Bounds are checked whichever way the range runs.
     expect_error(x[11:1], "out of bounds for axis 1")
