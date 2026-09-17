@@ -25,6 +25,10 @@
     Output
       [1] "c(1, 2, 3)"
     Code
+      format_param(c(1, 1e+06))
+    Output
+      [1] "c(1, 1e+06)"
+    Code
       format_param(c("a", "b"))
     Output
       [1] "c(\"a\", \"b\")"
@@ -110,8 +114,7 @@
         Body:
           %1: f32[3] = convert [dtype = f32] (%x2)
           %2: f32[3] = broadcast_in_axes [
-            shape = 3,
-            broadcast_axes = integer(0)
+            shape = 3, broadcast_axes = integer(0)
           ] (%x1)
           %3: f32[3] = add(%2, %1)
         Outputs:
@@ -160,6 +163,13 @@
       cat(format(graph$calls[[1L]]))
     Output
       reduce_max(i32[10]) [axes = 1, drop = TRUE] -> i32[]
+
+# format.PrimitiveCall() / keeps a sub-graph param to its signature, having no graph to name it against
+
+    Code
+      cat(format(call))
+    Output
+      while(f32[]) [cond_graph = graph(f32[]) -> bool[], body_graph = graph(f32[]) -> f32[]] -> f32[]
 
 # format.AnvlGraph() / shows literals, constants, params, captures and nested sub-graphs
 
@@ -223,8 +233,7 @@
             }
           ] (%c2)
           %4: f32[2, 1] = broadcast_in_axes [
-            shape = c(2, 1),
-            broadcast_axes = integer(0)
+            shape = c(2, 1), broadcast_axes = integer(0)
           ] (%3)
         Outputs:
           %4: f32[2, 1]
@@ -247,7 +256,7 @@
         Outputs:
           %4: f64[2]
 
-# format.AnvlGraph() / breaks a call line too long for the width at the param boundaries
+# format.AnvlGraph() / breaks a call line too long for the width into filled param rows
 
     Code
       cat(format(gather_graph(), width = 80L))
@@ -260,25 +269,43 @@
           %c1: i32[1]
         Body:
           %1: i32[2, 1] = broadcast_in_axes [
-            shape = c(2, 1),
-            broadcast_axes = 1
+            shape = c(2, 1), broadcast_axes = 1
           ] (%x2)
           %2: i32[2, 1] = broadcast_in_axes [
-            shape = c(2, 1),
-            broadcast_axes = 2
+            shape = c(2, 1), broadcast_axes = 2
           ] (%c1)
           %3: i32[2, 2] = concatenate [axis = 2] (%1, %2)
           %4: f32[2, 4] = gather [
-            slice_sizes = c(1, 4),
-            offset_axes = 2,
-            collapsed_slice_axes = 1,
-            x_batching_axes = integer(0),
-            start_indices_batching_axes = integer(0),
-            start_index_map = c(1, 2),
-            index_vector_axis = 2,
-            indices_are_sorted = FALSE,
-            unique_indices = FALSE
+            slice_sizes = c(1, 4), offset_axes = 2, collapsed_slice_axes = 1,
+            x_batching_axes = integer(0), start_indices_batching_axes = integer(0),
+            start_index_map = c(1, 2), index_vector_axis = 2,
+            indices_are_sorted = FALSE, unique_indices = FALSE
           ] (%x1, %3)
         Outputs:
           %4: f32[2, 4]
+
+# format.AnvlGraph() / breaks a call's operand list, which is as much a list as its params
+
+    Code
+      cat(body_section(graph, width = 80L), sep = "\n")
+    Output
+        Body:
+          %1: f32[90] = concatenate [axis = 1] (
+            %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12, %x13, %x14,
+            %x15, %x16, %x17, %x18, %x19, %x20, %x21, %x22, %x23, %x24, %x25, %x26,
+            %x27, %x28, %x29, %x30
+          )
+
+# format.AnvlGraph() / breaks the ids and the types of a call with more outputs than fit
+
+    Code
+      cat(body_section(graph, width = 80L), sep = "\n")
+    Output
+        Body:
+          (%1, %2, %3, %4, %5, %6, %7, %8, %9, %10, %11, %12): (
+            f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3],
+            f32[3], f32[3], f32[3]
+          ) = sort [axis = 1, descending = FALSE, is_stable = FALSE] (
+            %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12
+          )
 

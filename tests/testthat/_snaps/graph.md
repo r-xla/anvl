@@ -52,8 +52,7 @@
           %c1: f32[2, 2]
         Body:
           %1: f32[2, 2] = broadcast_in_axes [
-            shape = c(2, 2),
-            broadcast_axes = integer(0)
+            shape = c(2, 2), broadcast_axes = integer(0)
           ] (2:f32)
           %2: f32[2, 2] = mul(%x1, %1)
           %3: f32[2, 2] = add(%x1, %c1)

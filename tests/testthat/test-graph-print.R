@@ -38,6 +38,20 @@ gather_graph <- function() {
   )
 }
 
+# `n` arrays into one call, so that the operand list -- and, for `sort`, the
+# ids and types of the outputs -- outgrow a line on their own.
+wide_graph <- function(f, n = 30L) {
+  args <- rep_len(list(nv_array(as.numeric(1:3), dtype = "f32")), n)
+  trace_fn(f, setNames(args, paste0("a", seq_len(n))))
+}
+
+# The Body section of a formatted graph, so that a snapshot of one call's layout
+# is not buried under thirty lines of Inputs.
+body_section <- function(graph, width) {
+  lines <- strsplit(format(graph, width = width), "\n")[[1L]]
+  lines[seq(match("  Body:", lines), match("  Outputs:", lines) - 1L)]
+}
+
 describe("format_param()", {
   it("prints NULL and atomic vectors in R syntax", {
     expect_snapshot({
@@ -47,6 +61,7 @@ describe("format_param()", {
       format_param(TRUE)
       format_param("abc")
       format_param(c(1L, 2L, 3L))
+      format_param(c(1, 1e6))
       format_param(c("a", "b"))
       format_param(c(TRUE, FALSE))
       format_param(integer())
@@ -111,6 +126,11 @@ describe("format.PrimitiveCall()", {
     graph <- trace_fn(function(x) nv_reduce_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
     expect_snapshot(cat(format(graph$calls[[1L]])))
   })
+
+  it("keeps a sub-graph param to its signature, having no graph to name it against", {
+    call <- Filter(\(cl) cl$primitive$name == "while", nested_graph()$calls)[[1L]]
+    expect_snapshot(cat(format(call)))
+  })
 })
 
 describe("format.AnvlGraph()", {
@@ -163,12 +183,23 @@ describe("format.AnvlGraph()", {
     expect_no_match(format(graph), "i1", fixed = TRUE)
   })
 
-  it("breaks a call line too long for the width at the param boundaries", {
+  it("breaks a call line too long for the width into filled param rows", {
     expect_snapshot(cat(format(gather_graph(), width = 80L)))
   })
 
   it("keeps a call line that fits within the width on one line", {
     expect_match(format(gather_graph(), width = 300L), "= gather [slice_sizes", fixed = TRUE)
+  })
+
+  it("breaks a call's operand list, which is as much a list as its params", {
+    graph <- wide_graph(\(...) nv_concatenate(..., axis = 1L))
+    expect_true(all(nchar(strsplit(format(graph, width = 80L), "\n")[[1L]]) <= 80L))
+    expect_snapshot(cat(body_section(graph, width = 80L), sep = "\n"))
+  })
+
+  it("breaks the ids and the types of a call with more outputs than fit", {
+    graph <- wide_graph(\(...) prim_sort(list(...), axis = 1L), n = 12L)
+    expect_snapshot(cat(body_section(graph, width = 80L), sep = "\n"))
   })
 
   it("shrinks the width budget with nesting, so no line exceeds it", {

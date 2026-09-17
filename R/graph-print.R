@@ -90,12 +90,12 @@ name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
 # anything else is named by its class rather than deparsed, so that an S3 list
 # (`AnvlArray`) reads as `<AnvlArray>` instead of printing its internals,
 # pointers and all.
-format_param <- function(p, node_ids = NULL, width = getOption("width", 80L)) {
+format_param <- function(p, node_ids = NULL, width = getOption("width", 80L), expand_graphs = TRUE) {
   if (is.null(p)) {
     return("NULL")
   }
   if (is_graph(p)) {
-    return(format_graph_param(p, node_ids, width))
+    return(if (expand_graphs) format_graph_param(p, node_ids, width) else format_graph_signature(p))
   }
   if (is_dtype(p)) {
     return(as.character(p))
@@ -107,18 +107,28 @@ format_param <- function(p, node_ids = NULL, width = getOption("width", 80L)) {
     if (length(p) == 0L) {
       return(sprintf("%s(0)", typeof(p)))
     }
-    elts <- if (is.character(p)) sprintf('"%s"', p) else format(p, trim = TRUE)
+    # `as.character()` renders each element on its own; `format()` would pick one
+    # representation for the whole vector, spelling `c(1, 1e6)` as `c(1e+00, 1e+06)`.
+    elts <- if (is.character(p)) sprintf('"%s"', p) else as.character(p)
     return(if (length(p) == 1L) elts else sprintf("c(%s)", paste(elts, collapse = ", ")))
   }
   if (is.list(p) && is.null(attr(p, "class"))) {
-    return(sprintf("list(%s)", paste(format_param_parts(p, node_ids, width), collapse = ", ")))
+    parts <- format_param_parts(p, node_ids, width, expand_graphs = expand_graphs)
+    return(sprintf("list(%s)", paste(parts, collapse = ", ")))
   }
   sprintf("<%s>", class(p)[[1L]])
 }
 
 # The elements of a param list, each prefixed with `name = ` where it has a name.
-format_param_parts <- function(params, node_ids = NULL, width = getOption("width", 80L)) {
-  parts <- vapply(params, format_param, character(1), node_ids = node_ids, width = width)
+format_param_parts <- function(params, node_ids = NULL, width = getOption("width", 80L), expand_graphs = TRUE) {
+  parts <- vapply(
+    params,
+    format_param,
+    character(1),
+    node_ids = node_ids,
+    width = width,
+    expand_graphs = expand_graphs
+  )
   nms <- names(params)
   if (!is.null(nms)) {
     named <- nzchar(nms)
@@ -136,6 +146,17 @@ format_array_param <- function(x) {
   } else {
     sprintf("%s[%s]", dt, paste(shape(x), collapse = ", "))
   }
+}
+
+# A sub-graph as a single line: the data types it takes and returns. This is
+# what a sub-graph comes to where the whole graph cannot go -- printing one
+# outside the graph holding it would name its captures after a node table the
+# reader never sees.
+format_graph_signature <- function(g) {
+  avals <- function(nodes) {
+    paste(vapply(nodes, \(node) format_aval_short(node$aval), character(1)), collapse = ", ")
+  }
+  sprintf("graph(%s) -> %s", avals(g$inputs), avals(g$outputs))
 }
 
 # A sub-graph param, printed in full -- its Inputs and Outputs sections are its
@@ -156,44 +177,114 @@ format_graph_param <- function(g, node_ids = NULL, width = getOption("width", 80
   paste(c("graph {", sections, "}"), collapse = "\n")
 }
 
-# A call line, wrapped to `width` by putting each param on its own line -- the
-# param boundaries are the only place a break does not split a value in half. A
-# param that is itself multi-line (a sub-graph) always forces the broken form.
-# A line that is one unbreakable unit -- a single long param, a wide output
-# type -- overflows `width`, since the only way to shorten it is to split a
-# value.
+# One comma-separated list inside a call line: its params, its operands, or the
+# ids and types of a multi-output call. `open` / `close` are the delimiters that
+# surround it, and `parts` the already-formatted elements. A list holding a
+# multi-line part (a sub-graph) can never be laid out inline.
+call_chunk <- function(open, close, parts) {
+  multi <- any(grepl("\n", parts, fixed = TRUE))
+  list(open = open, close = close, parts = parts, multi = multi, breakable = multi || length(parts) > 1L)
+}
+
+inline_chunk <- function(chunk) {
+  paste0(chunk$open, paste(chunk$parts, collapse = ", "), chunk$close)
+}
+
+# Packs `parts` into rows no wider than `width`, breaking only at the commas
+# between them -- filling the rows rather than giving each part one of its own,
+# so a call with thirty operands costs a few rows instead of thirty. A part that
+# is itself multi-line (a sub-graph) takes a row alone, since nothing can share
+# a row with a last line that is not the row's own.
+fill_parts <- function(parts, width) {
+  pieces <- paste0(parts, c(rep(",", length(parts) - 1L), ""))
+  rows <- character()
+  cur <- character()
+  for (piece in pieces) {
+    if (grepl("\n", piece, fixed = TRUE)) {
+      rows <- c(rows, cur, piece)
+      cur <- character()
+    } else if (!length(cur)) {
+      cur <- piece
+    } else if (nchar(cur) + 1L + nchar(piece) <= width) {
+      cur <- paste(cur, piece)
+    } else {
+      rows <- c(rows, cur)
+      cur <- piece
+    }
+  }
+  c(rows, cur)
+}
+
+# Lays out a call from its chunks -- plain strings kept verbatim, lists either
+# inline or, where `broken` says so, opened at the end of the running line,
+# filled at `indent + 2`, and closed on a line that the chunks after it continue.
+layout_call <- function(chunks, broken, indent, width) {
+  inner <- paste0(indent, "  ")
+  lines <- character()
+  cur <- indent
+  for (i in seq_along(chunks)) {
+    chunk <- chunks[[i]]
+    if (is.character(chunk)) {
+      cur <- paste0(cur, chunk)
+    } else if (!broken[[i]]) {
+      cur <- paste0(cur, inline_chunk(chunk))
+    } else {
+      rows <- fill_parts(chunk$parts, width - nchar(inner))
+      lines <- c(
+        lines,
+        paste0(cur, chunk$open),
+        paste0(inner, gsub("\n", paste0("\n", inner), rows, fixed = TRUE))
+      )
+      cur <- paste0(indent, chunk$close)
+    }
+  }
+  c(lines, cur)
+}
+
+# The width of the widest line the layout itself is answerable for. A line
+# holding a sub-graph is left out: its inner lines were laid out against their
+# own budget, and breaking anything here would not shorten them.
+layout_width <- function(lines) {
+  own <- lines[!grepl("\n", lines, fixed = TRUE)]
+  if (!length(own)) 0L else max(nchar(own))
+}
+
+# A call line, laid out to `width`. Everything on one line where it fits;
+# otherwise the widest of its comma-separated lists is broken into a filled
+# block, and the next widest after that, until the line fits. A list holding a
+# sub-graph always starts out broken. A line that is one unbreakable unit -- a
+# single long param, a wide output type -- overflows `width`, since the only way
+# to shorten it is to split a value.
 format_call <- function(call, node_ids, indent = "  ", width = getOption("width", 80L)) {
   input_ids <- vapply(call$inputs, format_node_id, character(1), node_ids = node_ids)
-  inputs_str <- sprintf("(%s)", paste(input_ids, collapse = ", "))
-
   output_ids <- vapply(call$outputs, format_node_id, character(1), node_ids = node_ids)
   output_types <- vapply(call$outputs, \(x) format_aval_short(x$aval), character(1))
 
-  outputs_str <- if (length(call$outputs) == 1L) {
-    sprintf("%s: %s", output_ids, output_types)
+  chunks <- if (length(call$outputs) == 1L) {
+    list(sprintf("%s: %s", output_ids, output_types))
   } else {
-    sprintf("(%s): (%s)", paste(output_ids, collapse = ", "), paste(output_types, collapse = ", "))
+    list(call_chunk("(", ")", output_ids), ": ", call_chunk("(", ")", output_types))
   }
+  chunks <- c(chunks, sprintf(" = %s", call$primitive$name))
+  parts <- format_param_parts(call$params, node_ids, width = width - nchar(indent) - 2L)
+  if (length(parts) > 0L) {
+    chunks <- c(chunks, list(call_chunk(" [", "] ", parts)))
+  }
+  chunks <- c(chunks, list(call_chunk("(", ")", input_ids)))
 
-  header <- sprintf("%s%s = %s", indent, outputs_str, call$primitive$name)
-  part_indent <- paste0(indent, "  ")
-  parts <- format_param_parts(call$params, node_ids, width = width - nchar(part_indent))
-  if (length(parts) == 0L) {
-    return(paste0(header, inputs_str))
+  flag <- function(name) vapply(chunks, \(ch) is.list(ch) && ch[[name]], logical(1))
+  breakable <- flag("breakable")
+  broken <- flag("multi")
+  repeat {
+    lines <- layout_call(chunks, broken, indent, width)
+    todo <- which(breakable & !broken)
+    if (layout_width(lines) <= width || !length(todo)) {
+      break
+    }
+    widest <- vapply(chunks[todo], \(ch) nchar(inline_chunk(ch)), integer(1))
+    broken[[todo[[which.max(widest)]]]] <- TRUE
   }
-  one_line <- sprintf("%s [%s] %s", header, paste(parts, collapse = ", "), inputs_str)
-  if (!any(grepl("\n", parts, fixed = TRUE)) && nchar(one_line) <= width) {
-    return(one_line)
-  }
-  commas <- c(rep(",", length(parts) - 1L), "")
-  paste(
-    c(
-      paste0(header, " ["),
-      paste0(part_indent, gsub("\n", paste0("\n", part_indent), parts, fixed = TRUE), commas),
-      sprintf("%s] %s", indent, inputs_str)
-    ),
-    collapse = "\n"
-  )
+  paste(lines, collapse = "\n")
 }
 
 # The Inputs / Constants / Body / Outputs sections of a graph, without the
@@ -310,7 +401,7 @@ format.PrimitiveCall <- function(x, ...) {
   )
   outputs <- paste(vapply(x$outputs, \(out) format_aval_short(out$aval), character(1)), collapse = ", ")
   params_str <- if (length(x$params) > 0L) {
-    sprintf(" [%s]", paste(format_param_parts(x$params), collapse = ", "))
+    sprintf(" [%s]", paste(format_param_parts(x$params, expand_graphs = FALSE), collapse = ", "))
   } else {
     ""
   }
