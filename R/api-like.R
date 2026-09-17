@@ -89,16 +89,16 @@ nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, dev
 #' @rdname nv_seq
 #' @export
 nv_seq_like <- jit(
-  function(like, start, end, dtype = NULL, device = NULL) {
+  function(like, start, end, by = NULL, dtype = NULL, device = NULL) {
     do.call(
       nv_seq,
       c(
-        list(start = start, end = end),
+        list(start = start, end = end, by = by),
         like_defaults(like, dtype = dtype, device = device)
       )
     )
   },
-  static = 2:5
+  static = 2:6
 )
 
 #' @rdname nv_linspace
