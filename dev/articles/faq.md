@@ -58,7 +58,7 @@ system.time(mul_n(x, 20))
 ```
 
     ##    user  system elapsed 
-    ##   1.699   0.551   1.107
+    ##   1.732   0.401   1.049
 
 ``` r
 
@@ -70,7 +70,7 @@ system.time(await(mul_n(x, 20)))
 ```
 
     ##    user  system elapsed 
-    ##   0.762   0.555   0.571
+    ##   0.981   0.455   0.655
 
 ## How do I control the number of threads used by XLA?
 
