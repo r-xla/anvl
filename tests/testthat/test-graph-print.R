@@ -189,6 +189,15 @@ describe("format.AnvlGraph()", {
     expect_snapshot(graph)
   })
 
+  it("returns every output of a graph that has more than one", {
+    graph <- trace_fn(
+      # The out tree's names do not survive into the graph, so the list is bare.
+      function(x) list(x + 1, x * 2),
+      list(x = nv_array(c(1, 2), dtype = "f32"))
+    )
+    expect_snapshot(graph)
+  })
+
   it("does not spill the internals of an array an optimization pass inlined", {
     out <- format(inline_scalarish_constants(nested_graph()))
     expect_match(out, "value = 0.5:f32", fixed = TRUE)

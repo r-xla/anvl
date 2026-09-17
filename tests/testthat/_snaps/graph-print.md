@@ -215,6 +215,23 @@
         return %1
       }
 
+# format.AnvlGraph() / returns every output of a graph that has more than one
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: f32[2]) {
+        %1: f32[2] = broadcast_in_axes [
+          shape = 2, broadcast_axes = integer(0)
+        ] (1:f32)
+        %2: f32[2] = add(%x1, %1)
+        %3: f32[2] = broadcast_in_axes [
+          shape = 2, broadcast_axes = integer(0)
+        ] (2:f32)
+        %4: f32[2] = mul(%x1, %3)
+        return (%2, %4)
+      }
+
 # format.AnvlGraph() / names the R type of an input the caller supplies as bare R data
 
     Code
