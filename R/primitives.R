@@ -3690,58 +3690,6 @@ prim_convolution <- new_primitive(
     batch_group_count = 1L,
     precision = "highest"
   ) {
-    if (!checkmate::test_choice(precision, c("default", "high", "highest"))) {
-      cli_abort(c(
-        "{.arg precision} must be one of {.val {c('default', 'high', 'highest')}}.",
-        x = "Got {.val {precision}}."
-      ))
-    }
-    # stablehlo names its own spec fields here -- `lhs`, `rhs`,
-    # `kernel_input_feature_dimension`, `feature_group_count` -- and reports
-    # them 0-based. Check in anvl's terms first.
-    if (naxes(x) != naxes(kernel)) {
-      cli_abort(c(
-        "{.arg x} and {.arg kernel} must have the same number of axes.",
-        x = "{.arg x} has {naxes(x)} and {.arg kernel} has {naxes(kernel)}."
-      ))
-    }
-    n <- naxes(x)
-    input_batch_axis <- resolve_axis(input_batch_axis, n)
-    input_feature_axis <- resolve_axis(input_feature_axis, n)
-    input_spatial_axes <- resolve_axes(input_spatial_axes, n, unique = TRUE)
-    kernel_input_feature_axis <- resolve_axis(kernel_input_feature_axis, n)
-    kernel_output_feature_axis <- resolve_axis(kernel_output_feature_axis, n)
-    kernel_spatial_axes <- resolve_axes(kernel_spatial_axes, n, unique = TRUE)
-    output_batch_axis <- resolve_axis(output_batch_axis, n)
-    output_feature_axis <- resolve_axis(output_feature_axis, n)
-    output_spatial_axes <- resolve_axes(output_spatial_axes, n, unique = TRUE)
-    assert_int(feature_group_count, lower = 1L)
-    assert_int(batch_group_count, lower = 1L)
-    in_features <- shape(x)[input_feature_axis]
-    if (in_features %% feature_group_count != 0L) {
-      cli_abort(c(
-        "{.arg feature_group_count} must divide the number of input features of {.arg x}.",
-        x = "{.arg x} has {in_features} input feature{?s} on axis {input_feature_axis}, and {.arg feature_group_count} is {feature_group_count}." # nolint
-      ))
-    }
-    want <- in_features / feature_group_count
-    got <- shape(kernel)[kernel_input_feature_axis]
-    if (got != want) {
-      cli_abort(c(
-        "{.arg kernel}'s input-feature axis must hold {.arg x}'s input features divided by {.arg feature_group_count}.", # nolint
-        x = "Expected {want}, but axis {kernel_input_feature_axis} of {.arg kernel} has size {got}."
-      ))
-    }
-    n_spatial <- length(input_spatial_axes)
-    for (nm in c("window_strides", "x_dilation", "kernel_dilation")) {
-      value <- get(nm)
-      if (length(value) != n_spatial) {
-        cli_abort(c(
-          "{.arg {nm}} must have one entry per spatial axis.",
-          x = "There {?is/are} {n_spatial} spatial ax{?is/es}, but {.arg {nm}} has {length(value)} entr{?y/ies}." # nolint
-        ))
-      }
-    }
     infer_fn <- function(
       x,
       kernel,
