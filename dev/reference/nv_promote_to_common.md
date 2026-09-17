@@ -1,4 +1,4 @@
-# Promote Arrays to a Common Dtype
+# Promote Arrays to a Common Data Type
 
 Promote arrays to a common data type, see
 [`common_dtype`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)

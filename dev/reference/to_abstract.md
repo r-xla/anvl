@@ -46,7 +46,7 @@ to_abstract(nv_array(1:4))
 #>  4
 #> [ CPUi32{4} ] 
 
-# Use pure = TRUE to strip subclass info
+# use pure = TRUE to strip subclass info
 to_abstract(nv_array(1:4), pure = TRUE)
 #> AbstractArray(dtype=i32, shape=4) 
 ```

@@ -1,4 +1,4 @@
-# Primitive Greater Equal
+# Primitive Greater Than or Equal
 
 Element-wise greater than or equal comparison.
 

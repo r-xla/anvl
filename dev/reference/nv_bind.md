@@ -1,4 +1,4 @@
-# Combine arrays by rows or columns
+# Combine Arrays by Rows or Columns
 
 Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
 Arguments are first promoted to a common data type (see
@@ -60,7 +60,7 @@ produces a `c(4, 3, 4)` array, and with `nv_cbind` a `c(2, 6, 4)` array.
 ## Examples
 
 ``` r
-# Vectors as rows / columns
+# vectors as rows / columns
 nv_rbind(nv_array(1:3), nv_array(4:6))
 #> AnvlArray
 #>  1 2 3
@@ -73,7 +73,7 @@ nv_cbind(nv_array(1:3), nv_array(4:6))
 #>  3 6
 #> [ CPUi32{3,2} ] 
 
-# Scalar broadcasting
+# scalar broadcasting
 nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #> AnvlArray
 #>  1 3 5
@@ -81,7 +81,7 @@ nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #>  0 0 0
 #> [ CPUf32{3,3} ] 
 
-# Rank-3 arrays preserve trailing axes
+# rank-3 arrays preserve trailing axes
 a <- nv_array(1:24, shape = c(2, 3, 4))
 shape(nv_rbind(a, a)) # c(4, 3, 4)
 #> [1] 4 3 4

@@ -60,7 +60,7 @@ naxes(x)
 #> [1] 1
 dtype(x)
 #> <i32>
-# How it appears during tracing:
+# how it appears during tracing:
 graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 graph
 #> <AnvlGraph>

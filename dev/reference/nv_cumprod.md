@@ -45,11 +45,11 @@ boolean input, which is accumulated at the default integer data type
 ## Relation to base R
 
 Both `nv_cumprod()` (with `axis = NULL`) and
-[`base::cumprod()`](https://rdrr.io/r/base/cumsum.html) flatten a
-multi-dimensional input to 1-D before accumulating, but the flatten
-order differs: anvl arrays are row-major (C order), so the flattened
-sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. The two agree on 1-D inputs.
+[`base::cumprod()`](https://rdrr.io/r/base/cumsum.html) flatten inputs
+to a single axis before accumulating, but the flatten order differs:
+anvl arrays are row-major (C order), so the flattened sequence iterates
+the last axis fastest, whereas base R uses column-major (Fortran) order.
+The two agree on 1-D inputs.
 
 ## See also
 

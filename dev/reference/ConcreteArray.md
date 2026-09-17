@@ -42,7 +42,7 @@ naxes(x)
 dtype(x)
 #> <f32>
 
-# How it appears during tracing
+# how it appears during tracing
 graph <- trace_fn(function() y, list())
 graph
 #> <AnvlGraph>

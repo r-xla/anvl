@@ -2,7 +2,7 @@
 
 Repeatedly executes `body` while `cond` returns `TRUE`, like R's `while`
 loop. The loop state is initialized with `init` and passed through each
-iteration. Otherwise, no state is maintained between iterations.
+iteration.
 
 ## Usage
 

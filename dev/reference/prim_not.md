@@ -1,4 +1,4 @@
-# Primitive Not
+# Primitive Bitwise Not
 
 Element-wise bitwise NOT, which for a boolean array is the logical NOT.
 

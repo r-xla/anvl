@@ -1,4 +1,4 @@
-# Primitive And
+# Primitive Bitwise And
 
 Element-wise bitwise AND, which for a boolean array is the logical AND.
 

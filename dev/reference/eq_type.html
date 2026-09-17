@@ -116,15 +116,15 @@ Second array to compare. Must not be an <code><a href="RData.html">RData</a></co
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Same dtype and shape</span></span></span>
+<span class="r-in"><span><span class="co"># same dtype and shape</span></span></span>
 <span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="va">b</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Different dtype</span></span></span>
+<span class="r-in"><span><span class="co"># different dtype</span></span></span>
 <span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"i32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Different shape</span></span></span>
+<span class="r-in"><span><span class="co"># different shape</span></span></span>
 <span class="r-in"><span><span class="fu">eq_type</span><span class="op">(</span><span class="va">a</span>, <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3L</span>, <span class="fl">2L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
 <span class="r-in"><span></span></span>

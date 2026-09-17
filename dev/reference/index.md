@@ -111,7 +111,7 @@ Functions for type conversion, promotion, and broadcasting
 - [`nv_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_bitcast_convert.md)
   : Bitcast Conversion
 - [`nv_promote_to_common()`](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md)
-  : Promote Arrays to a Common Dtype
+  : Promote Arrays to a Common Data Type
 - [`nv_broadcast_scalars()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_scalars.md)
   : Broadcast Scalars to Common Shape
 - [`nv_broadcast_arrays()`](https://r-xla.github.io/anvl/dev/reference/nv_broadcast_arrays.md)
@@ -146,7 +146,7 @@ Functions for reshaping and rearranging arrays
   [`nv_cbind()`](https://r-xla.github.io/anvl/dev/reference/nv_bind.md)
   [`rbind(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_bind.md)
   [`cbind(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_bind.md)
-  : Combine arrays by rows or columns
+  : Combine Arrays by Rows or Columns
 - [`nv_static_slice()`](https://r-xla.github.io/anvl/dev/reference/nv_static_slice.md)
   : Static Slice
 - [`nv_select()`](https://r-xla.github.io/anvl/dev/reference/nv_select.md)
@@ -373,7 +373,7 @@ Linear algebra operations
   Determinant
 - [`nv_determinant()`](https://r-xla.github.io/anvl/dev/reference/nv_determinant.md)
   [`determinant(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_determinant.md)
-  : Determinant in modulus/sign form
+  : Determinant in Modulus/Sign Form
 - [`nv_crossprod()`](https://r-xla.github.io/anvl/dev/reference/nv_crossprod.md)
   [`crossprod(`*`<AnvlArray>`*`)`](https://r-xla.github.io/anvl/dev/reference/nv_crossprod.md)
   : Cross Product (Matrix)
@@ -693,11 +693,11 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_add()`](https://r-xla.github.io/anvl/dev/reference/prim_add.md)
   : Primitive Addition
 - [`prim_and()`](https://r-xla.github.io/anvl/dev/reference/prim_and.md)
-  : Primitive And
+  : Primitive Bitwise And
 - [`prim_argmax()`](https://r-xla.github.io/anvl/dev/reference/prim_argmax.md)
   : Primitive Argmax
 - [`prim_argmin()`](https://r-xla.github.io/anvl/dev/reference/prim_argmin.md)
-  : Primitive Argmin
+  : Primitive Index of the Minimum
 - [`prim_asin()`](https://r-xla.github.io/anvl/dev/reference/prim_asin.md)
   : Primitive Arc Sine
 - [`prim_asinh()`](https://r-xla.github.io/anvl/dev/reference/prim_asinh.md)
@@ -705,7 +705,7 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_atan()`](https://r-xla.github.io/anvl/dev/reference/prim_atan.md)
   : Primitive Arc Tangent
 - [`prim_atan2()`](https://r-xla.github.io/anvl/dev/reference/prim_atan2.md)
-  : Primitive Atan2
+  : Primitive Arctangent 2
 - [`prim_atanh()`](https://r-xla.github.io/anvl/dev/reference/prim_atanh.md)
   : Primitive Inverse Hyperbolic Tangent
 - [`prim_bitcast_convert()`](https://r-xla.github.io/anvl/dev/reference/prim_bitcast_convert.md)
@@ -769,7 +769,7 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_gather()`](https://r-xla.github.io/anvl/dev/reference/prim_gather.md)
   : Primitive Gather
 - [`prim_ge()`](https://r-xla.github.io/anvl/dev/reference/prim_ge.md) :
-  Primitive Greater Equal
+  Primitive Greater Than or Equal
 - [`prim_gt()`](https://r-xla.github.io/anvl/dev/reference/prim_gt.md) :
   Primitive Greater Than
 - [`prim_if()`](https://r-xla.github.io/anvl/dev/reference/prim_if.md) :
@@ -781,7 +781,7 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_is_finite()`](https://r-xla.github.io/anvl/dev/reference/prim_is_finite.md)
   : Primitive Is Finite
 - [`prim_le()`](https://r-xla.github.io/anvl/dev/reference/prim_le.md) :
-  Primitive Less Equal
+  Primitive Less Than or Equal
 - [`prim_lgamma()`](https://r-xla.github.io/anvl/dev/reference/prim_lgamma.md)
   : Primitive Log-Gamma
 - [`prim_log()`](https://r-xla.github.io/anvl/dev/reference/prim_log.md)
@@ -805,9 +805,9 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_negate()`](https://r-xla.github.io/anvl/dev/reference/prim_negate.md)
   : Primitive Negation
 - [`prim_not()`](https://r-xla.github.io/anvl/dev/reference/prim_not.md)
-  : Primitive Not
+  : Primitive Bitwise Not
 - [`prim_or()`](https://r-xla.github.io/anvl/dev/reference/prim_or.md) :
-  Primitive Or
+  Primitive Bitwise Or
 - [`prim_pad()`](https://r-xla.github.io/anvl/dev/reference/prim_pad.md)
   : Primitive Pad
 - [`prim_polygamma()`](https://r-xla.github.io/anvl/dev/reference/prim_polygamma.md)
@@ -883,7 +883,7 @@ Low-level primitive operations (prim\_\* functions)
 - [`prim_while()`](https://r-xla.github.io/anvl/dev/reference/prim_while.md)
   : Primitive While Loop
 - [`prim_xor()`](https://r-xla.github.io/anvl/dev/reference/prim_xor.md)
-  : Primitive Xor
+  : Primitive Bitwise Xor
 
 ## Package
 

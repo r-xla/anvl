@@ -1,4 +1,4 @@
-# Primitive Argmin
+# Primitive Index of the Minimum
 
 Returns the index of the minimum value along a single axis. Ties are
 broken by returning the smallest index.

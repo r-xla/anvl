@@ -19,8 +19,8 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 - init:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Scalar (0-dimensional) initial value. Must have the same data type as
-  `x` and be the neutral element w.r.t. `reductor`.
+  Scalar (0 axes) initial value. Must have the same data type as `x` and
+  be the neutral element w.r.t. `reductor`.
 
 - axes:
 

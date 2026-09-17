@@ -42,7 +42,7 @@ are various scenarios:
 
     2.  It cannot be expressed or can only expressed inefficiently:
 
-        \\\rightarrow\\ You can implement a stableHLO custom call, see
+        \\\rightarrow\\ You can implement a StableHLO custom call, see
         the custom print operation in
         [pjrt](https://github.com/r-xla/pjrt). The {pjrt} package has a
         dedicated [“Adding Custom
@@ -420,7 +420,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x563c6bebf148>
+#> <environment: 0x55d6164c4bd8>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")

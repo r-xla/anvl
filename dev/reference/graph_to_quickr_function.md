@@ -52,7 +52,7 @@ function returns the same structure by rebuilding the output tree in R.
 For a list of supported primitives see
 [`vignette("primitives")`](https://r-xla.github.io/anvl/dev/articles/primitives.md).
 
-Supported dtypes are `f64`, `i32`, and `pred`. The code generator
+Supported data types are `f64`, `i32` and `bool`. The code generator
 currently supports arrays up to rank 5. Some primitives are more
 restricted (e.g. `transpose` currently only handles rank-2 arrays).
 

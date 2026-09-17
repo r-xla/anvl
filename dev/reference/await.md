@@ -45,7 +45,7 @@ await a tree of outputs)
 x <- nv_array(1:4, dtype = "f32")
 await(x)
 
-# Await all leaves of a (possibly nested) list of arrays.
+# await all leaves of a (possibly nested) list of arrays.
 map_tree(list(x, list(y = x)), await)
 #> [[1]]
 #> AnvlArray

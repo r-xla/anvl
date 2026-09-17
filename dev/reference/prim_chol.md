@@ -59,7 +59,7 @@ design*. Ph.D. thesis, Mathematisch-Naturwissenschaftliche Fakult"at II.
 ## Examples
 
 ``` r
-# Create a positive-definite matrix
+# create a positive-definite matrix
 x <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f32")
 prim_chol(x, lower = TRUE)
 #> AnvlArray

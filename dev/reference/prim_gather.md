@@ -141,7 +141,7 @@ Lowers to
 ## Examples
 
 ``` r
-# Gather rows 1 and 3 from a 3x3 matrix
+# gather rows 1 and 3 from a 3x3 matrix
 x <- nv_matrix(1:9, nrow = 3)
 indices <- nv_matrix(c(1L, 3L), ncol = 1)
 prim_gather(

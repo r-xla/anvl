@@ -12,7 +12,7 @@ that sorts the first. This enables idioms like argsort (sort x
 paired with an iota and read off the second output) and key-value
 sorts (sort keys paired with values).
 All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along axis are sorted independently; other
+1-D slices along axis are sorted independently; other
 axes are preserved."><meta property="og:description" content="Sorts arrays along the given axis.
 Sorting is determined by the first array only: it is the sort key,
 and any additional arrays are reordered with the same permutation
@@ -20,7 +20,7 @@ that sorts the first. This enables idioms like argsort (sort x
 paired with an iota and read off the second output) and key-value
 sorts (sort keys paired with values).
 All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along axis are sorted independently; other
+1-D slices along axis are sorted independently; other
 axes are preserved."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -99,7 +99,7 @@ that sorts the first. This enables idioms like <em>argsort</em> (sort <code>x</c
 paired with an <code>iota</code> and read off the second output) and key-value
 sorts (sort <code>keys</code> paired with <code>values</code>).</p>
 <p>All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along <code>axis</code> are sorted independently; other
+1-D slices along <code>axis</code> are sorted independently; other
 axes are preserved.</p>
     </div>
 
@@ -180,7 +180,7 @@ use <code>SIGNED</code> / <code>UNSIGNED</code> as appropriate.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{5} ] </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Sort indices by the values (argsort): pair x with iota and read off</span></span></span>
+<span class="r-in"><span><span class="co"># sort indices by the values (argsort): pair x with iota and read off</span></span></span>
 <span class="r-in"><span><span class="co"># the second result.</span></span></span>
 <span class="r-in"><span><span class="va">idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="nv_iota.html">nv_iota</a></span><span class="op">(</span>axis <span class="op">=</span> <span class="fl">1L</span>, dtype <span class="op">=</span> <span class="st">"i64"</span>, shape <span class="op">=</span> <span class="fl">5L</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu">prim_sort</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">idx</span><span class="op">)</span>, axis <span class="op">=</span> <span class="fl">1L</span><span class="op">)</span></span></span>

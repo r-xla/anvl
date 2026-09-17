@@ -61,7 +61,7 @@ Other rng:
 
 ``` r
 state <- nv_rng_state(42L)
-# Roll 6 dice
+# roll 6 dice
 result <- nv_sample_int(6, state, 6L)
 result$values
 #> AnvlArray

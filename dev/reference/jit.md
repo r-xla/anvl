@@ -162,7 +162,7 @@ f(nv_array(1), nv_array(2))
 #>  3
 #> [ CPUf32{1} ] 
 
-# Static arguments enable data-dependent control flow
+# static arguments enable data-dependent control flow
 g <- jit(function(x, flag) {
   if (flag) x + 1 else x * 2
 }, static = "flag")
@@ -174,7 +174,7 @@ g(nv_array(3), FALSE)
 #> AnvlArray
 #>  6
 #> [ CPUf32{1} ] 
-# The same function runs on whichever backend is active when it is called
+# the same function runs on whichever backend is active when it is called
 with_backend("quickr", f(nv_array(1), nv_array(2)))
 #> AnvlArray
 #> [1] 3

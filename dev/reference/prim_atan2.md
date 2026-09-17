@@ -1,4 +1,4 @@
-# Primitive Atan2
+# Primitive Arctangent 2
 
 Element-wise atan2 operation.
 

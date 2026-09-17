@@ -54,7 +54,7 @@ overrides the defaults configured by `with_dtypes()`.
 
 ``` r
 add_f64 <- with_dtypes(nv_add, c(float = "f64"))
-# An `f32` argument is converted, and the result comes back as `f64`
+# an `f32` argument is converted, and the result comes back as `f64`
 dtype(add_f64(nv_array(1, dtype = "f32"), 2.5))
 #> <f64>
 # A category that is not named is untouched

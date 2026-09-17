@@ -60,7 +60,7 @@ g(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #> [ CPUf32{2} ] 
 #> 
 
-# Differentiate with respect to a single argument
+# differentiate with respect to a single argument
 g_x <- jit(gradient(f, wrt = "x"))
 g_x(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #> $x
@@ -70,7 +70,7 @@ g_x(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #> [ CPUf32{2} ] 
 #> 
 
-# Static (non-array) arguments are passed through but cannot be in wrt
+# static (non-array) arguments are passed through but cannot be in wrt
 f2 <- function(x, power) sum(x^power)
 g2 <- jit(gradient(f2, wrt = "x"), static = "power")
 g2(nv_array(c(1, 2, 3), dtype = "f32"), power = 2L)

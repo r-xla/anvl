@@ -51,7 +51,7 @@ naxes(x)
 #> [1] 0
 dtype(x)
 #> <i32>
-# How it appears during tracing:
+# how it appears during tracing:
 # 1. via R literals
 graph <- trace_fn(function() 1, list())
 graph

@@ -123,7 +123,7 @@ values when <code>unwrap = TRUE</code>.</p>
 <p>If the graph returns multiple outputs (e.g. a nested list), the compiled
 function returns the same structure by rebuilding the output tree in R.</p>
 <p>For a list of supported primitives see <code><a href="../articles/primitives.html">vignette("primitives")</a></code>.</p>
-<p>Supported dtypes are <code>f64</code>, <code>i32</code>, and <code>pred</code>.
+<p>Supported data types are <code>f64</code>, <code>i32</code> and <code>bool</code>.
 The code generator currently supports arrays up to rank 5. Some primitives
 are more restricted (e.g. <code>transpose</code> currently only handles rank-2 arrays).</p>
 <p>Most users will prefer <code><a href="jit.html">jit()</a></code> under <code>with_backend("quickr", ...)</code>. This function is

@@ -40,15 +40,15 @@ neq_type(e1, e2)
 a <- nv_aval("f32", c(2L, 3L))
 b <- nv_aval("f32", c(2L, 3L))
 
-# Same dtype and shape
+# same dtype and shape
 eq_type(a, b)
 #> [1] TRUE
 
-# Different dtype
+# different dtype
 eq_type(a, nv_aval("i32", c(2L, 3L)))
 #> [1] FALSE
 
-# Different shape
+# different shape
 eq_type(a, nv_aval("f32", c(3L, 2L)))
 #> [1] FALSE
 

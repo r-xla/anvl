@@ -214,7 +214,7 @@ nv_array(1:4)
 #>  4
 #> [ CPUi32{4} ] 
 
-# Specify a dtype
+# specify a dtype
 nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #> AnvlArray
 #>  1.5000
@@ -222,14 +222,14 @@ nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #>  3.5000
 #> [ CPUf64{3} ] 
 
-# A 2x3 matrix
+# a 2x3 matrix
 nv_array(1:6, shape = c(2L, 3L))
 #> AnvlArray
 #>  1 3 5
 #>  2 4 6
 #> [ CPUi32{2,3} ] 
 
-# A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+# a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 #> AnvlArray
 #>  1 2 3
@@ -242,11 +242,11 @@ nv_scalar(3.14)
 #>  3.1400
 #> [ CPUf32{} ] 
 
-# An uninitialized 2x3 array (contents are unspecified)
+# an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  4.1681e+12 3.0855e-41 1.2636e+14
-#>  3.0855e-41 4.1684e+12 3.0855e-41
+#>  1.6773e+14 3.0777e-41 1.4619e+14
+#>  3.0777e-41 1.4441e+14 3.0777e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

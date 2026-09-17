@@ -58,7 +58,7 @@ is_arrayish(x, convert_ok = TRUE)
 is_arrayish(nv_array(1:4))
 #> [1] TRUE
 
-# Scalar R literals are arrayish by default
+# scalar R literals are arrayish by default
 is_arrayish(1.5)
 #> [1] TRUE
 # R arrays are arrayish by default
@@ -71,7 +71,7 @@ is_arrayish(array(1:4), convert_ok = TRUE)
 is_arrayish(array(1:4), convert_ok = FALSE)
 #> [1] FALSE
 
-# Length 1 vectors
+# length 1 vectors
 is_arrayish(1.5, convert_ok = FALSE)
 #> [1] FALSE
 is_arrayish(1.5, convert_ok = TRUE)

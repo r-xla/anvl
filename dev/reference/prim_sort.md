@@ -8,9 +8,8 @@ the first. This enables idioms like *argsort* (sort `x` paired with an
 `iota` and read off the second output) and key-value sorts (sort `keys`
 paired with `values`).
 
-All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along `axis` are sorted independently; other axes
-are preserved.
+All arrays must have the same shape; their dtypes may differ. 1-D slices
+along `axis` are sorted independently; other axes are preserved.
 
 ## Usage
 
@@ -92,7 +91,7 @@ prim_sort(list(x), axis = 1L)[[1L]]
 #>  5
 #> [ CPUf32{5} ] 
 
-# Sort indices by the values (argsort): pair x with iota and read off
+# sort indices by the values (argsort): pair x with iota and read off
 # the second result.
 idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
 out <- prim_sort(list(x, idx), axis = 1L)

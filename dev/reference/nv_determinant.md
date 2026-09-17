@@ -1,4 +1,4 @@
-# Determinant in modulus/sign form
+# Determinant in Modulus/Sign Form
 
 Computes the determinant of a square matrix in the modulus / sign
 decomposition matching base R's

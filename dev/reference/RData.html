@@ -134,9 +134,9 @@ The R storage type: <code>"double"</code>, <code>"integer"</code> or <code>"logi
 <span class="r-in"><span><span class="co"># is equivalent to</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> RData(double, (2,3)) </span>
-<span class="r-in"><span><span class="co"># Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input</span></span></span>
+<span class="r-in"><span><span class="co"># below, the `RData` input is materialized in 32 and 64-bit precisions, so the input</span></span></span>
 <span class="r-in"><span><span class="co"># dtype becomes f64.</span></span></span>
-<span class="r-in"><span><span class="co"># By NOT converting RData to their default data type we prevent loss of precision</span></span></span>
+<span class="r-in"><span><span class="co"># by NOT converting RData to their default data type we prevent loss of precision</span></span></span>
 <span class="r-in"><span><span class="co"># (double -&gt; f32 -&gt; f64 roundrips)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
@@ -158,12 +158,12 @@ The R storage type: <code>"double"</code>, <code>"integer"</code> or <code>"logi
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f64[]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     %3: f32[] </span>
-<span class="r-in"><span><span class="co"># The actual inputs to the compiled program</span></span></span>
+<span class="r-in"><span><span class="co"># the actual inputs to the compiled program</span></span></span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">inputs</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> GraphValue(AbstractArray(dtype=f64, shape=)) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span><span class="co"># The data types of the R values; AnvlArrays get NA here</span></span></span>
+<span class="r-in"><span><span class="co"># the data types of the R values; AnvlArrays get NA here</span></span></span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">rdata_types</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "double"</span>
 </code></pre></div>

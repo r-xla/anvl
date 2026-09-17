@@ -148,12 +148,12 @@ promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f
 #> [[2]]
 #> <f32>
 #> 
-# Without `coerce`, a target the input cannot hold is refused.
+# without `coerce`, a target the input cannot hold is refused.
 try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 #> Error : Cannot bring argument 2 to data type "f32".
 #> ✖ "f64" is not promotable to "f32".
 #> ℹ Convert it explicitly with `nv_convert()`.
-# Every input at the widest float in the call, and never below f32.
+# every input at the widest float in the call, and never below f32.
 widest_float <- promotion_rule(
   function(args) {
     widths <- vapply(args, function(a) {

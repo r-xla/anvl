@@ -1,4 +1,4 @@
-# Primitive Or
+# Primitive Bitwise Or
 
 Element-wise bitwise OR, which for a boolean array is the logical OR.
 
