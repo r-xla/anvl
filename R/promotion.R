@@ -17,9 +17,8 @@
 #'   The narrowest common data type: the wider of the two among the signed
 #'   integers or among the floats, the higher category where the categories
 #'   differ, and a wider *signed* integer where a signed and an unsigned
-#'   integer meet (`ui8` and `i8` give `i16`). That last rule saturates at
-#'   `i64`, which cannot hold the upper half of `ui64` -- `common_dtype("ui64",
-#'   "i8")` is `i64`, so convert explicitly where those values matter.
+#'   integer meet (`ui8` and `i8` give `i16`). A `ui64` meeting a signed
+#'   integer has no common data type at all and is an error.
 #'
 #'   Floats are ordered by width alone, which leaves `f16` and `bf16` -- the
 #'   same width, but neither one's range and precision covering the other's --
