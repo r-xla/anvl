@@ -155,6 +155,13 @@
     Output
       reduce_max(i32[10]) [axes = 1, drop = TRUE] -> i32[]
 
+# format.PrimitiveCall() / leaves out the bracket list of a call that carries no params
+
+    Code
+      cat(format(graph$calls[[1L]]))
+    Output
+      add(f32[], f32[]) -> f32[]
+
 # format.PrimitiveCall() / keeps a sub-graph param to its signature, having no graph to name it against
 
     Code
@@ -212,6 +219,31 @@
             return %3
           }
         ] (%x1)
+        return %1
+      }
+
+# format.AnvlGraph() / has nothing between the signature and the return when there are no calls
+
+    Code
+      trace_fn(identity, list(x = nv_scalar(1, dtype = "f32")))
+    Output
+      <AnvlGraph> (%x1: f32[]) {
+        return %x1
+      }
+
+# format.AnvlGraph() / gives a sub-graph param its own rows and fills the short ones around it
+
+    Code
+      cat(format(graph, width = 80L))
+    Output
+      <AnvlGraph> (%x1: f32[6]) {
+        %1: f32[] = reduce [
+          axes = 1, drop = TRUE,
+          reductor_graph = (%x2: f32[], %x3: f32[]) {
+            %2: f32[] = add(%x2, %x3)
+            return %2
+          }
+        ] (%x1, 0:f32)
         return %1
       }
 
@@ -306,6 +338,16 @@
         %1: f32[3,2] = reshape [
           shape = c(3, 2)
         ] (%x1)
+        return %1
+      }
+
+# format.GraphDescriptor() / prints the graph a trace has built so far
+
+    Code
+      descriptor
+    Output
+      <GraphDescriptor> (%x1: f32[]) {
+        %1: f32[] = add(%x1, 1:f32)
         return %1
       }
 

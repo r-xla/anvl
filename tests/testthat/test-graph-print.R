@@ -63,6 +63,13 @@ body_section <- function(graph, width) {
   lines[seq(match(") {", lines) + 1L, grep("^  return ", lines) - 1L)]
 }
 
+describe("format_node_id()", {
+  it("marks a node the table does not name, rather than failing", {
+    graph <- trace_fn(function(x) x + 1, list(x = nv_scalar(1, dtype = "f32")))
+    expect_equal(format_node_id(graph$inputs[[1L]], hashtab()), "???")
+  })
+})
+
 describe("format_param()", {
   it("prints NULL and atomic vectors in R syntax", {
     expect_snapshot({
@@ -140,6 +147,14 @@ describe("format.PrimitiveCall()", {
     expect_snapshot(cat(format(graph$calls[[1L]])))
   })
 
+  it("leaves out the bracket list of a call that carries no params", {
+    graph <- trace_fn(
+      function(x, y) x + y,
+      list(x = nv_scalar(1, dtype = "f32"), y = nv_scalar(2, dtype = "f32"))
+    )
+    expect_snapshot(cat(format(graph$calls[[1L]])))
+  })
+
   it("keeps a sub-graph param to its signature, having no graph to name it against", {
     call <- Filter(\(cl) cl$primitive$name == "while", nested_graph()$calls)[[1L]]
     expect_snapshot(cat(format(call)))
@@ -187,6 +202,18 @@ describe("format.AnvlGraph()", {
       list(x = nv_scalar(2, dtype = "f32"))
     )
     expect_snapshot(graph)
+  })
+
+  it("has nothing between the signature and the return when there are no calls", {
+    expect_snapshot(trace_fn(identity, list(x = nv_scalar(1, dtype = "f32"))))
+  })
+
+  it("gives a sub-graph param its own rows and fills the short ones around it", {
+    graph <- trace_fn(
+      function(x) prim_reduce(x, init = 0, axes = 1L, reductor = \(a, b) a + b),
+      list(x = nv_array(as.numeric(1:6), dtype = "f32"))
+    )
+    expect_snapshot(cat(format(graph, width = 80L)))
   })
 
   it("returns every output of a graph that has more than one", {
@@ -307,5 +334,19 @@ describe("format.AnvlGraph()", {
     expect_true(any(nchar(lines) > 30L))
     # The param that overruns stays whole on its line.
     expect_true(any(grepl("start_indices_batching_axes = integer(0)", lines, fixed = TRUE)))
+  })
+})
+
+describe("format.GraphDescriptor()", {
+  it("prints the graph a trace has built so far", {
+    descriptor <- NULL
+    trace_fn(
+      function(x) {
+        descriptor <<- .current_descriptor()
+        x + 1
+      },
+      list(x = nv_scalar(1, dtype = "f32"))
+    )
+    expect_snapshot(descriptor)
   })
 })
