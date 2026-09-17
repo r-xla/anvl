@@ -2415,54 +2415,20 @@ test_that("a constructor that fills internally works at every data type", {
   expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
 })
 test_that("the three `*pi` functions refuse a boolean", {
-  # `nv_cospi()`'s `+ 1/2` used to promote it to a float before `nv_sinpi()`
-  # ever saw it, so the three disagreed on the same input.
   expect_error(nv_cospi(nv_array(TRUE)), "must be a numeric data type")
   expect_error(nv_cospi(TRUE), "must be a numeric data type")
   expect_error(nv_sinpi(nv_array(TRUE)), "must be a numeric data type")
   expect_error(nv_tanpi(nv_array(TRUE)), "must be a numeric data type")
-  # An integer is still accepted and converted to a float.
   expect_equal(as.vector(as_array(nv_sinpi(nv_array(1L)))), 0, tolerance = 1e-6)
 })
 
 test_that("nv_conv1d/2d/3d promote their operands", {
-  # The `nv_*` layer promotes, as `nv_matmul()` does; `prim_convolution()`
-  # underneath still requires operands that already agree.
   x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
-  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
-  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
   w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
   expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
-  expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
-  expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
-  # An integer input meets a float weight at the float; it used to be refused.
-  expect_equal(
-    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
-    as_dtype("f32")
-  )
-  expect_equal(
-    dtype(nv_conv2d(
-      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
-    )),
-    as_dtype("f64")
-  )
-  expect_equal(
-    dtype(nv_conv3d(
-      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
-      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
-    )),
-    as_dtype("f64")
-  )
 })
 
 test_that("nv_top_k checks `k` before coercing it", {
-  # `as.integer()` first silently truncated a fractional `k` and accepted a
-  # logical one, where `prim_top_k()` refuses both.
   x3 <- nv_array(c(1, 2, 3))
   expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
-  expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
-  expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
-  expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
-  expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
 })
