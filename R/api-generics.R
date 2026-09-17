@@ -2,13 +2,23 @@
 NULL
 
 # Base R's generics on an `AnvlArray` mean what they mean in base R, so every
-# method here defers to the `nv_*` function that does the work and is documented
-# on its help page. Where the generic takes exactly the arguments that function
-# takes, the method *is* that function rather than a wrapper around it; where
-# the two differ -- an extra `...`, base R's argument names, or options the
-# generic has no way to pass on -- the method is a thin delegate that bridges
-# them. A method only carries its own documentation where there is no such twin
-# (`dim()` and `length()`).
+# method here is a thin delegate to the `nv_*` function that does the work and
+# is documented on its help page. A method only carries its own documentation
+# where there is no such twin (`dim()` and `length()`).
+#
+# The delegate is not redundant where the generic takes exactly the arguments
+# the `nv_*` function takes, so do not collapse it into an alias: write
+# `sqrt.AnvlArray <- function(x) nv_sqrt(x)` rather than
+# `sqrt.AnvlArray <- nv_sqrt`. A jitted function rebuilds its arguments from
+# `match.call()` and evaluates them in the caller's frame, and S3 dispatch has
+# already evaluated the first one to pick the method -- so a jitted function
+# used *as* the method evaluates its argument a second time, and nesting
+# doubles that with every level: `abs(sign(x))` would evaluate `sign(x)` twice,
+# `abs(sign(sqrt(x)))` would evaluate `sqrt(x)` four times. The delegate
+# absorbs it, because what it passes on is the bare symbol `x`, whose promise
+# dispatch has already forced. Only some `nv_*` functions are jitted (a
+# primitive, or anything wrapped in `jit()`) and which ones is invisible from
+# here, so every method delegates.
 #
 # The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
 # functions, registered for the second class.
@@ -225,7 +235,9 @@ bitwise_hint <- function(fn) {
 #' @rdname nv_abs
 #' @usage NULL
 #' @export
-abs.AnvlArray <- nv_abs
+abs.AnvlArray <- function(x) {
+  nv_abs(x)
+}
 
 #' @export
 abs.AnvlBox <- abs.AnvlArray
@@ -233,7 +245,9 @@ abs.AnvlBox <- abs.AnvlArray
 #' @rdname nv_sign
 #' @usage NULL
 #' @export
-sign.AnvlArray <- nv_sign
+sign.AnvlArray <- function(x) {
+  nv_sign(x)
+}
 
 #' @export
 sign.AnvlBox <- sign.AnvlArray
@@ -241,7 +255,9 @@ sign.AnvlBox <- sign.AnvlArray
 #' @rdname nv_sqrt
 #' @usage NULL
 #' @export
-sqrt.AnvlArray <- nv_sqrt
+sqrt.AnvlArray <- function(x) {
+  nv_sqrt(x)
+}
 
 #' @export
 sqrt.AnvlBox <- sqrt.AnvlArray
@@ -249,7 +265,9 @@ sqrt.AnvlBox <- sqrt.AnvlArray
 #' @rdname nv_exp
 #' @usage NULL
 #' @export
-exp.AnvlArray <- nv_exp
+exp.AnvlArray <- function(x) {
+  nv_exp(x)
+}
 
 #' @export
 exp.AnvlBox <- exp.AnvlArray
@@ -257,7 +275,9 @@ exp.AnvlBox <- exp.AnvlArray
 #' @rdname nv_expm1
 #' @usage NULL
 #' @export
-expm1.AnvlArray <- nv_expm1
+expm1.AnvlArray <- function(x) {
+  nv_expm1(x)
+}
 
 #' @export
 expm1.AnvlBox <- expm1.AnvlArray
@@ -282,7 +302,9 @@ log.AnvlBox <- log.AnvlArray
 #' @rdname nv_log2
 #' @usage NULL
 #' @export
-log2.AnvlArray <- nv_log2
+log2.AnvlArray <- function(x) {
+  nv_log2(x)
+}
 
 #' @export
 log2.AnvlBox <- log2.AnvlArray
@@ -290,7 +312,9 @@ log2.AnvlBox <- log2.AnvlArray
 #' @rdname nv_log10
 #' @usage NULL
 #' @export
-log10.AnvlArray <- nv_log10
+log10.AnvlArray <- function(x) {
+  nv_log10(x)
+}
 
 #' @export
 log10.AnvlBox <- log10.AnvlArray
@@ -298,7 +322,9 @@ log10.AnvlBox <- log10.AnvlArray
 #' @rdname nv_log1p
 #' @usage NULL
 #' @export
-log1p.AnvlArray <- nv_log1p
+log1p.AnvlArray <- function(x) {
+  nv_log1p(x)
+}
 
 #' @export
 log1p.AnvlBox <- log1p.AnvlArray
@@ -306,7 +332,9 @@ log1p.AnvlBox <- log1p.AnvlArray
 #' @rdname nv_cos
 #' @usage NULL
 #' @export
-cos.AnvlArray <- nv_cos
+cos.AnvlArray <- function(x) {
+  nv_cos(x)
+}
 
 #' @export
 cos.AnvlBox <- cos.AnvlArray
@@ -314,7 +342,9 @@ cos.AnvlBox <- cos.AnvlArray
 #' @rdname nv_sin
 #' @usage NULL
 #' @export
-sin.AnvlArray <- nv_sin
+sin.AnvlArray <- function(x) {
+  nv_sin(x)
+}
 
 #' @export
 sin.AnvlBox <- sin.AnvlArray
@@ -322,7 +352,9 @@ sin.AnvlBox <- sin.AnvlArray
 #' @rdname nv_tan
 #' @usage NULL
 #' @export
-tan.AnvlArray <- nv_tan
+tan.AnvlArray <- function(x) {
+  nv_tan(x)
+}
 
 #' @export
 tan.AnvlBox <- tan.AnvlArray
@@ -330,7 +362,9 @@ tan.AnvlBox <- tan.AnvlArray
 #' @rdname nv_acos
 #' @usage NULL
 #' @export
-acos.AnvlArray <- nv_acos
+acos.AnvlArray <- function(x) {
+  nv_acos(x)
+}
 
 #' @export
 acos.AnvlBox <- acos.AnvlArray
@@ -338,7 +372,9 @@ acos.AnvlBox <- acos.AnvlArray
 #' @rdname nv_asin
 #' @usage NULL
 #' @export
-asin.AnvlArray <- nv_asin
+asin.AnvlArray <- function(x) {
+  nv_asin(x)
+}
 
 #' @export
 asin.AnvlBox <- asin.AnvlArray
@@ -346,7 +382,9 @@ asin.AnvlBox <- asin.AnvlArray
 #' @rdname nv_atan
 #' @usage NULL
 #' @export
-atan.AnvlArray <- nv_atan
+atan.AnvlArray <- function(x) {
+  nv_atan(x)
+}
 
 #' @export
 atan.AnvlBox <- atan.AnvlArray
@@ -354,7 +392,9 @@ atan.AnvlBox <- atan.AnvlArray
 #' @rdname nv_cosh
 #' @usage NULL
 #' @export
-cosh.AnvlArray <- nv_cosh
+cosh.AnvlArray <- function(x) {
+  nv_cosh(x)
+}
 
 #' @export
 cosh.AnvlBox <- cosh.AnvlArray
@@ -362,7 +402,9 @@ cosh.AnvlBox <- cosh.AnvlArray
 #' @rdname nv_sinh
 #' @usage NULL
 #' @export
-sinh.AnvlArray <- nv_sinh
+sinh.AnvlArray <- function(x) {
+  nv_sinh(x)
+}
 
 #' @export
 sinh.AnvlBox <- sinh.AnvlArray
@@ -370,7 +412,9 @@ sinh.AnvlBox <- sinh.AnvlArray
 #' @rdname nv_tanh
 #' @usage NULL
 #' @export
-tanh.AnvlArray <- nv_tanh
+tanh.AnvlArray <- function(x) {
+  nv_tanh(x)
+}
 
 #' @export
 tanh.AnvlBox <- tanh.AnvlArray
@@ -378,7 +422,9 @@ tanh.AnvlBox <- tanh.AnvlArray
 #' @rdname nv_acosh
 #' @usage NULL
 #' @export
-acosh.AnvlArray <- nv_acosh
+acosh.AnvlArray <- function(x) {
+  nv_acosh(x)
+}
 
 #' @export
 acosh.AnvlBox <- acosh.AnvlArray
@@ -386,7 +432,9 @@ acosh.AnvlBox <- acosh.AnvlArray
 #' @rdname nv_asinh
 #' @usage NULL
 #' @export
-asinh.AnvlArray <- nv_asinh
+asinh.AnvlArray <- function(x) {
+  nv_asinh(x)
+}
 
 #' @export
 asinh.AnvlBox <- asinh.AnvlArray
@@ -394,7 +442,9 @@ asinh.AnvlBox <- asinh.AnvlArray
 #' @rdname nv_atanh
 #' @usage NULL
 #' @export
-atanh.AnvlArray <- nv_atanh
+atanh.AnvlArray <- function(x) {
+  nv_atanh(x)
+}
 
 #' @export
 atanh.AnvlBox <- atanh.AnvlArray
@@ -403,7 +453,9 @@ atanh.AnvlBox <- atanh.AnvlArray
 #' @usage NULL
 #' @method sinpi AnvlArray
 #' @export
-sinpi.AnvlArray <- nv_sinpi
+sinpi.AnvlArray <- function(x) {
+  nv_sinpi(x)
+}
 
 #' @method sinpi AnvlBox
 #' @export
@@ -413,7 +465,9 @@ sinpi.AnvlBox <- sinpi.AnvlArray
 #' @usage NULL
 #' @method cospi AnvlArray
 #' @export
-cospi.AnvlArray <- nv_cospi
+cospi.AnvlArray <- function(x) {
+  nv_cospi(x)
+}
 
 #' @method cospi AnvlBox
 #' @export
@@ -423,7 +477,9 @@ cospi.AnvlBox <- cospi.AnvlArray
 #' @usage NULL
 #' @method tanpi AnvlArray
 #' @export
-tanpi.AnvlArray <- nv_tanpi
+tanpi.AnvlArray <- function(x) {
+  nv_tanpi(x)
+}
 
 #' @method tanpi AnvlBox
 #' @export
@@ -432,7 +488,9 @@ tanpi.AnvlBox <- tanpi.AnvlArray
 #' @rdname nv_lgamma
 #' @usage NULL
 #' @export
-lgamma.AnvlArray <- nv_lgamma
+lgamma.AnvlArray <- function(x) {
+  nv_lgamma(x)
+}
 
 #' @export
 lgamma.AnvlBox <- lgamma.AnvlArray
@@ -440,7 +498,9 @@ lgamma.AnvlBox <- lgamma.AnvlArray
 #' @rdname nv_digamma
 #' @usage NULL
 #' @export
-digamma.AnvlArray <- nv_digamma
+digamma.AnvlArray <- function(x) {
+  nv_digamma(x)
+}
 
 #' @export
 digamma.AnvlBox <- digamma.AnvlArray
@@ -461,7 +521,9 @@ trigamma.AnvlBox <- trigamma.AnvlArray
 #' @usage NULL
 #' @method gamma AnvlArray
 #' @export
-gamma.AnvlArray <- nv_gamma
+gamma.AnvlArray <- function(x) {
+  nv_gamma(x)
+}
 
 #' @method gamma AnvlBox
 #' @export
@@ -472,7 +534,9 @@ gamma.AnvlBox <- gamma.AnvlArray
 #' @rdname nv_floor
 #' @usage NULL
 #' @export
-floor.AnvlArray <- nv_floor
+floor.AnvlArray <- function(x) {
+  nv_floor(x)
+}
 
 #' @export
 floor.AnvlBox <- floor.AnvlArray
@@ -480,7 +544,9 @@ floor.AnvlBox <- floor.AnvlArray
 #' @rdname nv_ceiling
 #' @usage NULL
 #' @export
-ceiling.AnvlArray <- nv_ceiling
+ceiling.AnvlArray <- function(x) {
+  nv_ceiling(x)
+}
 
 #' @export
 ceiling.AnvlBox <- ceiling.AnvlArray
@@ -749,7 +815,9 @@ mean.AnvlBox <- mean.AnvlArray
 #' @usage NULL
 #' @method is.nan AnvlArray
 #' @export
-is.nan.AnvlArray <- nv_is_nan
+is.nan.AnvlArray <- function(x) {
+  nv_is_nan(x)
+}
 
 #' @method is.nan AnvlBox
 #' @export
@@ -759,7 +827,9 @@ is.nan.AnvlBox <- is.nan.AnvlArray
 #' @usage NULL
 #' @method is.infinite AnvlArray
 #' @export
-is.infinite.AnvlArray <- nv_is_infinite
+is.infinite.AnvlArray <- function(x) {
+  nv_is_infinite(x)
+}
 
 #' @method is.infinite AnvlBox
 #' @export
@@ -769,7 +839,9 @@ is.infinite.AnvlBox <- is.infinite.AnvlArray
 #' @usage NULL
 #' @method is.finite AnvlArray
 #' @export
-is.finite.AnvlArray <- nv_is_finite
+is.finite.AnvlArray <- function(x) {
+  nv_is_finite(x)
+}
 
 #' @method is.finite AnvlBox
 #' @export
