@@ -787,13 +787,6 @@ trace_fn(\(x) {
 }, list(nv_aval("double", c())))
 ```
 
-    ## Warning: Converting an R double to "i32" brings "f64" into the program.
-    ## ✖ An R double cannot be built at "i32" directly, so it is built at "f64" and
-    ##   the program converts.
-    ## ℹ To keep it out, convert in its own category first: `nv_convert(nv_convert(x,
-    ##   "f32"), "i32")`. The result differs for values its data type cannot hold
-    ##   exactly.
-
     ## <AnvlGraph>
     ##   Inputs:
     ##     %x1: f64[] <- double
@@ -802,11 +795,13 @@ trace_fn(\(x) {
     ##   Outputs:
     ##     %1: i32[]
 
-Because of its possibly problematic implications, a warning message is
-thrown when this happens. In the future, we might also implement a
-better solution to this problem. One idea would be to convert the
-`double` input directly to an `i32` before passing it to the compiled
-program.
+This brings an `f64` into a program that never asked for one, which a
+backend without `f64` support cannot run. We accept this for now,
+because such an `f64` is only ever an intermediate for a conversion and
+never feeds float math. In the future, we might also implement a better
+solution to this problem. One idea would be to let a single R argument
+enter the compiled program at several data types, so that the `double`
+input is converted to an `i32` on the host before the program runs.
 
 This is why API functions and primitives should always canonicalize the
 inputs right at the beginning, so this problem rarely happens.
