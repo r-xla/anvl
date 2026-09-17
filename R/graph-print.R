@@ -106,7 +106,11 @@ format_param_value <- function(p) {
     }
     sprintf("c(%s)", paste(elts, collapse = ", "))
   } else if (is.list(p)) {
-    sprintf("[%s]", paste(format_param_parts(p), collapse = ", "))
+    # Spelled `list(...)`, not `[...]`: the brackets already delimit the call's
+    # parameter group and an aval's shape, so a list in `[...]` reads as a
+    # vector -- `dot_general`'s `contracting_axes = [2, 1]` is in fact one axis
+    # per operand, not the pair `c(2, 1)`.
+    sprintf("list(%s)", paste(format_param_parts(p), collapse = ", "))
   } else {
     out <- try(deparse(p, nlines = 1L), silent = TRUE)
     if (inherits(out, "try-error") || length(out) != 1L) {

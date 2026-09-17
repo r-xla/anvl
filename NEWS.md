@@ -64,9 +64,9 @@
   `character(0)` / `logical(0)` rather than `<any>` or `""`, character values
   are quoted and escaped, named vectors keep their names (a partially named one
   names only the entries that have one), each element of a vector is formatted
-  on its own so that `c(1, 2.5)` does not become `c(1.0, 2.5)`, an array
-  parameter prints as `f32[3]`, and an unknown object falls back to its
-  deparsed form.
+  on its own so that `c(1, 2.5)` does not become `c(1.0, 2.5)`, a list as
+  `list(...)` so that the brackets stay the call's own, an array parameter as
+  `f32[3]`, and an unknown object falls back to its deparsed form.
   A call whose parameters are what overruns the line (`gather`, `scatter`) now
   fills them over as few further lines as they take, instead of running off the
   screen. Calls are laid out for at least 120 columns, so shorter parameter

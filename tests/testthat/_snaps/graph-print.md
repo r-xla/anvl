@@ -149,37 +149,37 @@
     Code
       format_param_value(list(1, 2))
     Output
-      [1] "[1, 2]"
+      [1] "list(1, 2)"
     Code
       format_param_value(list(a = 1, b = 2))
     Output
-      [1] "[a = 1, b = 2]"
+      [1] "list(a = 1, b = 2)"
 
 # format_param_value: NULL nested in a list is printed as NULL
 
     Code
       format_param_value(list(NULL, 1))
     Output
-      [1] "[NULL, 1]"
+      [1] "list(NULL, 1)"
     Code
       format_param_value(list(a = NULL, b = 1))
     Output
-      [1] "[a = NULL, b = 1]"
+      [1] "list(a = NULL, b = 1)"
 
 # format_param_value: nested lists
 
     Code
       format_param_value(list(list(x = 1), 2))
     Output
-      [1] "[[x = 1], 2]"
+      [1] "list(list(x = 1), 2)"
     Code
       format_param_value(list(list(c(1, 2, 3))))
     Output
-      [1] "[[c(1, 2, 3)]]"
+      [1] "list(list(c(1, 2, 3)))"
     Code
       format_param_value(list(a = list(b = c(2, 3, 4))))
     Output
-      [1] "[a = [b = c(2, 3, 4)]]"
+      [1] "list(a = list(b = c(2, 3, 4)))"
 
 # format_param_value: dtype prints under its anvl name
 
@@ -300,7 +300,7 @@
     Code
       format_param_value(list(a = 1, 2))
     Output
-      [1] "[a = 1, 2]"
+      [1] "list(a = 1, 2)"
     Code
       format_param_parts(list(a = 1, 2))
     Output

@@ -289,3 +289,16 @@ test_that("fill_parts: the budget counts console columns, not characters", {
 test_that("format_param_value: an NA name is not a name", {
   expect_identical(format_param_value(stats::setNames(c(1, 2), c("a", NA))), "c(a = 1, 2)")
 })
+
+test_that("a list parameter is spelled list(), so brackets stay the call's own", {
+  # `[...]` delimits the parameter group and an aval's shape, so a list in
+  # brackets would read as a vector.
+  expect_identical(format_param_value(list(a = list(1))), "list(a = list(1))")
+  expect_identical(format_param_value(list()), "list()")
+  graph <- trace_fn(
+    function(x, y) nv_matmul(x, y),
+    list(x = nv_aval("f32", c(2L, 3L)), y = nv_aval("f32", c(3L, 4L)))
+  )
+  # `dot_general` takes one contracting axis per operand, not the pair c(2, 1).
+  expect_match(format(graph), "[contracting_axes = list(2, 1),", fixed = TRUE)
+})
