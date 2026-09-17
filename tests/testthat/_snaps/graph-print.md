@@ -297,3 +297,15 @@
           %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12
         )
 
+# format.AnvlGraph() / breaks a list of one element, which is a list like any other
+
+    Code
+      cat(format(graph, width = 40L))
+    Output
+      <AnvlGraph> (%x1: f32[2,3]) {
+        %1: f32[3,2] = reshape [
+          shape = c(3, 2)
+        ] (%x1)
+        return %1
+      }
+

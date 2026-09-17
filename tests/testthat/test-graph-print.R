@@ -267,6 +267,14 @@ describe("format.AnvlGraph()", {
     expect_snapshot(cat(body_section(graph, width = 80L), sep = "\n"))
   })
 
+  it("breaks a list of one element, which is a list like any other", {
+    graph <- trace_fn(
+      function(x) nv_reshape(x, c(3, 2)),
+      list(x = nv_array(matrix(1:6, nrow = 2), dtype = "f32"))
+    )
+    expect_snapshot(cat(format(graph, width = 40L)))
+  })
+
   it("shrinks the width budget with nesting, so no line exceeds it", {
     # The `name = ` a sub-graph param carries comes out of its budget too, so
     # the graph here captures enough to overflow a narrow width without it.
