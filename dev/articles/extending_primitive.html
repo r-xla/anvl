@@ -500,12 +500,20 @@ machinery, so no separate registration step is needed:</p>
 <code class="sourceCode R"><span><span class="va">prim_repeat_along</span></span>
 <span><span class="co">#&gt; function (x, times, axis) </span></span>
 <span><span class="co">#&gt; {</span></span>
+<span><span class="co">#&gt;     .jit_env &lt;- environment()</span></span>
+<span><span class="co">#&gt;     .jit_given &lt;- intersect(.jit_names, as.character(names(match.call())))</span></span>
 <span><span class="co">#&gt;     if (currently_tracing()) {</span></span>
-<span><span class="co">#&gt;         .jit_cl &lt;- match.call()</span></span>
-<span><span class="co">#&gt;         .jit_cl[[1L]] &lt;- .jit_cfg$f</span></span>
-<span><span class="co">#&gt;         return(eval.parent(.jit_cl))</span></span>
+<span><span class="co">#&gt;         .jit_fwd &lt;- lapply(.jit_given, as.name)</span></span>
+<span><span class="co">#&gt;         names(.jit_fwd) &lt;- .jit_given</span></span>
+<span><span class="co">#&gt;         if (.jit_dots) {</span></span>
+<span><span class="co">#&gt;             .jit_fwd &lt;- c(.jit_fwd, list(quote(...)))</span></span>
+<span><span class="co">#&gt;         }</span></span>
+<span><span class="co">#&gt;         return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))</span></span>
 <span><span class="co">#&gt;     }</span></span>
-<span><span class="co">#&gt;     .jit_args &lt;- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())</span></span>
+<span><span class="co">#&gt;     .jit_args &lt;- mget(.jit_given, envir = .jit_env)</span></span>
+<span><span class="co">#&gt;     if (.jit_dots) {</span></span>
+<span><span class="co">#&gt;         .jit_args &lt;- c(.jit_args, list(...))</span></span>
+<span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_be &lt;- active_backend()</span></span>
 <span><span class="co">#&gt;     .jit_run &lt;- .jit_runs[[.jit_be]]</span></span>
 <span><span class="co">#&gt;     if (is.null(.jit_run)) {</span></span>
@@ -524,7 +532,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x564c6c84cc30&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x55616bd50dc8&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>

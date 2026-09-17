@@ -4,6 +4,9 @@
 
 ### Breaking changes
 
+- The `@jit` roxygen tag was removed; wrap functions in
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) at the
+  definition instead.
 - The type system of {anvl} was changed to avoid the problems reported
   in issue [\#373](https://github.com/r-xla/anvl/issues/373).
   Specifically, the ambiguity system was replaced with the `RData`
@@ -137,6 +140,14 @@
 
 ### Bug fixes
 
+- A function returned by
+  [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) no longer
+  evaluates its arguments a second time. It used to rebuild the call
+  with [`match.call()`](https://rdrr.io/r/base/match.call.html) and
+  evaluate the argument expressions again in the caller’s frame, which
+  computed them twice whenever something had evaluated them already –
+  most visibly under S3 dispatch, which evaluates the first argument to
+  choose a method.
 - [`nv_conv1d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv1d.md)
   /
   [`nv_conv2d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv2d.md)

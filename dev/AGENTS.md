@@ -223,20 +223,21 @@ Interpretation rules are accessed via `prim_<name>[["<rule_type>"]]`:
 - **`quickr`** – R-native lowering rules in `R/rules-quickr.R` for the
   quickr backend.
 
-## `@jit` Roclet
+## Jit-wrapping
 
-`R/jit-registry.R` is **generated** by
-[`anvl::jit_roclet`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)
-(activated in the `Roxygen` field of `DESCRIPTION`): tagging a function
-with `#' @jit [static = ...]` makes
-[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
-add it to the registry, and `R/zzz.R` rebinds those functions to their
-jitted versions at build time. Never edit `R/jit-registry.R` by hand;
-because the roclet lives in anvl itself, documenting requires an
-installed anvl that already exports it.
+API functions are wrapped in
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) at the
+definition itself, with `static` after the function so the signature
+reads on its own line:
 
-Tag every function whose body issues **more than one operation** with
-`@jit`.
+``` r
+
+nv_foo <- jit(function(x, axis) {
+  ...
+}, static = "axis")
+```
+
+Wrap every function whose body issues **more than one operation**.
 
 ## Broadcasting
 

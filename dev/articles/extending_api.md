@@ -16,8 +16,9 @@ The general guidelines are:
 4.  The function should (unless there are specific reasons) work in
     eager and jit mode.
 5.  Use static arguments when you require data-dependent input checks.
-6.  Tag the function with `#' @jit` so it is jit-wrapped at package
-    build time (see *Jit-wrapping API Functions* below).
+6.  Wrap the function in
+    [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) (see
+    *Jit-wrapping API Functions* below).
 
 ## Pure Functions
 
@@ -161,21 +162,18 @@ nv_rbernoulli(nv_rng_state(1), 0.2)[[2L]]
 
 Most user-facing API functions in anvl are wrapped in `jit(f, ...)` so
 that calling them traces and compiles a single program instead of
-executing each operation eagerly. The wrapping is driven by the `@jit`
-roclet (see
-[`?jit_roclet`](https://r-xla.github.io/anvl/dev/reference/jit_roclet.md)).
-
-In `R/api*.R`, tag any function that performs more than one primitive
-operation with `#' @jit`:
+executing each operation eagerly. In `R/api*.R`, wrap any function that
+performs more than one primitive operation in
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) at the
+definition itself:
 
 ``` r
 
 #' @export
-#' @jit
-nv_log2 <- function(x) {
+nv_log2 <- jit(function(x) {
   x <- as_anvl_array(x)
   nv_log(x) / log(2)
-}
+})
 ```
 
 If the function has static arguments (anything that is not an arrayish
@@ -186,34 +184,28 @@ argument names:
 ``` r
 
 #' @export
-#' @jit static = c(2L, 3L)
-nv_mean <- function(x, axes = NULL, drop = TRUE) {
+nv_mean <- jit(function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
   ...
-}
+}, static = 2:4)
 
 #' @export
-#' @jit static = c("axis")
-nv_concatenate <- function(..., axis = NULL) {
+nv_concatenate <- jit(function(..., axis = NULL) {
   ...
-}
+}, static = "axis")
 ```
 
-Use names rather than positions whenever an argument lives after `...`,
-since `...` has no fixed position.
+Put `static` after the function, so that the signature reads on its own
+line. Use names rather than positions whenever an argument lives after
+`...`, since `...` has no fixed position.
 
-**When to skip `#' @jit`.** Don’t tag a function whose body is
-essentially a single primitive call – direct aliases
-(`nv_log <- prim_log`), `make_do_binary(prim_X)` factories, or thin
-wrappers that just validate and forward to one primitive. The underlying
-primitive is already jit-wrapped, so adding another
+**When to skip
+[`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md).** Don’t
+wrap a function whose body is essentially a single primitive call –
+direct aliases (`nv_log <- prim_log`) or thin wrappers that just
+validate and forward to one primitive. The underlying primitive is
+already jit-wrapped, so adding another
 [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) layer adds
 tracing overhead without fusing anything new. Also skip pure I/O
 (`nv_save`, `nv_serialize`), backend constructors (`nv_array`,
 `nv_scalar`, `nv_matrix`), and device/state objects (`nv_device`,
 `nv_rng_state`).
-
-The roclet writes the list of tagged functions to `R/jit-registry.R` on
-every
-[`devtools::document()`](https://devtools.r-lib.org/reference/document.html)
-run, and `R/zzz.R` applies that registry at package source time so the
-wrapped functions are byte-compiled with the rest of the package.

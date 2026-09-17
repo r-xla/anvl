@@ -46,7 +46,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/Shape-constructor.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/active_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/anvl-package.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/apply_jit_registry.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/apply_promotion.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/arr.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/arrayish.html</loc></url>
@@ -79,7 +78,6 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/is_dtype.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/jit_cache_size.html</loc></url>
-<url><loc>https://r-xla.github.io/anvl/dev/reference/jit_roclet.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/length.AnvlArray.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_backend.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.html</loc></url>

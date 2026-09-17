@@ -78,7 +78,8 @@
 <h2 class="pkg-version" data-toc-text="development version" id="anvl-development-version">anvl (development version)<a class="anchor" aria-label="anchor" href="#anvl-development-version"></a></h2>
 <div class="section level3">
 <h3 id="breaking-changes-development-version">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-development-version"></a></h3>
-<ul><li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
+<ul><li>The <code>@jit</code> roxygen tag was removed; wrap functions in <code><a href="../reference/jit.html">jit()</a></code> at the definition instead.</li>
+<li>The type system of {anvl} was changed to avoid the problems reported in issue <a href="https://github.com/r-xla/anvl/issues/373" class="external-link">#373</a>. Specifically, the ambiguity system was replaced with the <code>RData</code> system and a new system of rules for type promotions. With it, also the promotion behavior of various primitives and API functions was improved.</li>
 <li>
 <code><a href="../reference/common_dtype.html">common_dtype()</a></code> now errors for <code>ui64</code> and a signed integer instead of returning <code>i64</code>, which could not hold every <code>ui64</code> value. Convert one of them with <code><a href="../reference/nv_convert.html">nv_convert()</a></code>.</li>
 <li>
@@ -127,7 +128,8 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>
+<ul><li>A function returned by <code><a href="../reference/jit.html">jit()</a></code> no longer evaluates its arguments a second time. It used to rebuild the call with <code><a href="https://rdrr.io/r/base/match.call.html" class="external-link">match.call()</a></code> and evaluate the argument expressions again in the caller’s frame, which computed them twice whenever something had evaluated them already – most visibly under S3 dispatch, which evaluates the first argument to choose a method.</li>
+<li>
 <code><a href="../reference/nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="../reference/nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="../reference/nv_conv3d.html">nv_conv3d()</a></code> now promote <code>x</code> and <code>weight</code> to a common data type.</li>
 <li>The floating-point <code>nv_*</code> functions refuse a boolean.</li>
 <li>

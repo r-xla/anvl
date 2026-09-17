@@ -150,10 +150,13 @@ Don’t reach for a synonym (<em>commit</em>, <em>realize</em>, <em>standardize<
 <strong><code>quickr</code></strong> – R-native lowering rules in <code>R/rules-quickr.R</code> for the quickr backend.</li>
 </ul></div>
 <div class="section level2">
-<h2 id="jit-roclet">
-<code>@jit</code> Roclet<a class="anchor" aria-label="anchor" href="#jit-roclet"></a></h2>
-<p><code>R/jit-registry.R</code> is <strong>generated</strong> by <code><a href="reference/jit_roclet.html">anvl::jit_roclet</a></code> (activated in the <code>Roxygen</code> field of <code>DESCRIPTION</code>): tagging a function with <code>#' @jit [static = ...]</code> makes <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code> add it to the registry, and <code>R/zzz.R</code> rebinds those functions to their jitted versions at build time. Never edit <code>R/jit-registry.R</code> by hand; because the roclet lives in anvl itself, documenting requires an installed anvl that already exports it.</p>
-<p>Tag every function whose body issues <strong>more than one operation</strong> with <code>@jit</code>.</p>
+<h2 id="jit-wrapping">Jit-wrapping<a class="anchor" aria-label="anchor" href="#jit-wrapping"></a></h2>
+<p>API functions are wrapped in <code><a href="reference/jit.html">jit()</a></code> at the definition itself, with <code>static</code> after the function so the signature reads on its own line:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">nv_foo</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/jit.html">jit</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">axis</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">}</span>, static <span class="op">=</span> <span class="st">"axis"</span><span class="op">)</span></span></code></pre></div>
+<p>Wrap every function whose body issues <strong>more than one operation</strong>.</p>
 </div>
 <div class="section level2">
 <h2 id="broadcasting">Broadcasting<a class="anchor" aria-label="anchor" href="#broadcasting"></a></h2>

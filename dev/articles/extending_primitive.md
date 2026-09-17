@@ -396,12 +396,20 @@ registration step is needed:
 prim_repeat_along
 #> function (x, times, axis) 
 #> {
+#>     .jit_env <- environment()
+#>     .jit_given <- intersect(.jit_names, as.character(names(match.call())))
 #>     if (currently_tracing()) {
-#>         .jit_cl <- match.call()
-#>         .jit_cl[[1L]] <- .jit_cfg$f
-#>         return(eval.parent(.jit_cl))
+#>         .jit_fwd <- lapply(.jit_given, as.name)
+#>         names(.jit_fwd) <- .jit_given
+#>         if (.jit_dots) {
+#>             .jit_fwd <- c(.jit_fwd, list(quote(...)))
+#>         }
+#>         return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
 #>     }
-#>     .jit_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+#>     .jit_args <- mget(.jit_given, envir = .jit_env)
+#>     if (.jit_dots) {
+#>         .jit_args <- c(.jit_args, list(...))
+#>     }
 #>     .jit_be <- active_backend()
 #>     .jit_run <- .jit_runs[[.jit_be]]
 #>     if (is.null(.jit_run)) {
@@ -420,7 +428,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x564c6c84cc30>
+#> <environment: 0x55616bd50dc8>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")
