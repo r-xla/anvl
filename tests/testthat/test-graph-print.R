@@ -204,6 +204,31 @@ describe("format.AnvlGraph()", {
     expect_no_match(out, "pointer", fixed = TRUE)
   })
 
+  it("names the fill an optimization pass makes of a constant", {
+    seven <- nv_scalar(7, dtype = "f32")
+    graph <- trace_fn(
+      function(x) x + seven,
+      list(x = nv_scalar(2, dtype = "f32")),
+      optimize = TRUE
+    )
+    expect_snapshot(graph)
+  })
+
+  it("tells apart two constants of equal value that the pass inlined", {
+    # Two nodes, so two `fill` calls; without a name each they print alike.
+    # Which of them the pass emits first is not fixed, so only compare the two.
+    one <- nv_scalar(1, dtype = "f32")
+    other <- nv_scalar(1, dtype = "f32")
+    graph <- trace_fn(
+      function(x) (x + one) * other,
+      list(x = nv_scalar(2, dtype = "f32")),
+      optimize = TRUE
+    )
+    fills <- grep("= fill ", strsplit(format(graph), "\n")[[1L]], value = TRUE)
+    expect_length(fills, 2L)
+    expect_equal(anyDuplicated(fills), 0L)
+  })
+
   it("names the R type of an input the caller supplies as bare R data", {
     graph <- trace_fn(
       function(x, y, z) x + y + z,
@@ -246,7 +271,7 @@ describe("format.AnvlGraph()", {
     # The `name = ` a sub-graph param carries comes out of its budget too, so
     # the graph here captures enough to overflow a narrow width without it.
     graph <- capture_heavy_graph()
-    widths <- c(60L, 80L, 120L)
+    widths <- c(40L, 60L, 80L, 120L)
     longest <- vapply(
       widths,
       function(width) max(nchar(strsplit(format(graph, width = width), "\n")[[1L]])),

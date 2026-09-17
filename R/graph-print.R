@@ -1,14 +1,19 @@
 #' @include graph.R
 
+# A node's name, or -- for a literal that no call defines -- its value, which
+# is what puts `2:i32` straight into the operand list instead of a name the
+# reader would have to look up. An optimization pass can make a literal the
+# output of a `fill`, and that one is named like any other value: two constants
+# of equal value are two nodes, and one name each is what tells them apart.
 format_node_id <- function(node, node_ids) {
+  id <- node_ids[[node]]
+  if (!is.null(id)) {
+    return(sprintf("%%%s", id))
+  }
   if (is_graph_literal(node)) {
     return(format_literal(node))
   }
-  id <- node_ids[[node]]
-  if (is.null(id)) {
-    return("???")
-  }
-  sprintf("%%%s", id)
+  "???"
 }
 
 format_literal <- function(node) {
@@ -58,8 +63,8 @@ build_node_ids <- function(inputs, constants, calls) {
 # graph around it, so letting them keep the name they already have is what shows
 # the capture. Every node is named by the outermost graph that reaches it.
 name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
-  name_node <- function(node, counter, prefix) {
-    if (is_graph_literal(node) || !is.null(node_ids[[node]])) {
+  name_node <- function(node, counter, prefix, name_literals = FALSE) {
+    if (!is.null(node_ids[[node]]) || (is_graph_literal(node) && !name_literals)) {
       return(invisible(NULL))
     }
     counters[[counter]] <- counters[[counter]] + 1L
@@ -74,7 +79,8 @@ name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
   }
   for (call in calls) {
     for (node in call$outputs) {
-      name_node(node, "v", "")
+      # A call defines its outputs, literal or not, so each gets a name here.
+      name_node(node, "v", "", name_literals = TRUE)
     }
   }
   # Sub-graphs come after the whole graph holding them, so that a graph's own
@@ -194,7 +200,7 @@ format_graph_param <- function(g, node_ids = NULL, width = getOption("width", 80
 # multi-line part (a sub-graph) can never be laid out inline.
 call_chunk <- function(open, close, parts) {
   multi <- any(grepl("\n", parts, fixed = TRUE))
-  list(open = open, close = close, parts = parts, multi = multi, breakable = multi || length(parts) > 1L)
+  list(open = open, close = close, parts = parts, multi = multi, breakable = length(parts) > 0L)
 }
 
 inline_chunk <- function(chunk) {

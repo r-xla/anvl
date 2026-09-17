@@ -232,6 +232,17 @@
         return (%2, %4)
       }
 
+# format.AnvlGraph() / names the fill an optimization pass makes of a constant
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: f32[]) {
+        %1: f32[] = add(%x1, %2)
+        %2: f32[] = fill [value = 7:f32, dtype = f32, shape = integer(0)] ()
+        return %1
+      }
+
 # format.AnvlGraph() / names the R type of an input the caller supplies as bare R data
 
     Code
