@@ -737,6 +737,7 @@ prim_scan[["stablehlo"]] <- function(..., body_graph, length, reverse, n_carry, 
     dt <- aval$dtype
     # Key on the dtype category, not the first letter of its name: `bf16`
     # would otherwise take the boolean branch and build an `i1` buffer.
+    # REVIEW: Can't we use 0L by now with latest stablehlo?
     zero <- if (is_dtype_bool(dt)) {
       FALSE
     } else if (is_dtype_float(dt)) {
@@ -744,8 +745,10 @@ prim_scan[["stablehlo"]] <- function(..., body_graph, length, reverse, n_carry, 
     } else {
       0L
     }
+    # REVIEW: Can't we initialize a garbage tensor in stablehlo?
     hlo_tensor(
       zero,
+      # REVIEW: Does dtype not take dt as well?
       dtype = as.character(dt),
       shape = as.integer(c(n, shape(aval))),
       func = outer

@@ -2697,6 +2697,7 @@ prim_scan <- new_primitive(
       cli_abort("{.arg body} must be a function.")
     }
     length <- as.integer(length)
+    # REVIEW: Use checkmate
     if (base::length(length) != 1L || is.na(length) || length < 1L) {
       cli_abort("{.arg length} must be a positive integer.")
     }
@@ -2714,6 +2715,9 @@ prim_scan <- new_primitive(
 
     # The body is traced once, seeing each `xs` leaf with its leading axis
     # dropped; the lowering slices the real arrays inside the loop.
+    # REVIEW(QUESTION): Why can't we just use trace_fn() like prim_while()
+    # i.e., why is it more complicated here? the other higher order primitives don't need aval_of
+    # Is it because we need to access the shapes?
     aval_of <- function(x) {
       if (is_graph_box(x)) {
         materialize_rdata_box(x)$gnode$aval
@@ -2753,6 +2757,7 @@ prim_scan <- new_primitive(
 
     desc_body <- local_descriptor()
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
+    # REVIEW(QUESTION): Why do we need this?
     register_consts(current_desc, body_graph$constants)
 
     infer_fn <- function(..., body_graph, length, reverse, n_carry, n_xs) {
