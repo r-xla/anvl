@@ -10,6 +10,25 @@ index_dtype_of <- function(output_types, i) {
   as.character(output_types[[i]]$type$dtype)
 }
 
+# Declare a block argument of the region func currently being built.
+#
+# A region's block arguments live in the SSA namespace of the function the
+# region is nested in, so a fixed name (`hlo_input("i", ...)`) collides with
+# the same name in an enclosing region. Auto value ids are numbered across
+# the whole program at repr time, which keeps them unique wherever the
+# region ends up. This is what `stablehlo()` does for the regions it builds
+# from a traced graph; hand-built regions go through here.
+region_input <- function(dtype, shape = integer()) {
+  func <- stablehlo::.current_func()
+  vt <- stablehlo::ValueType(dtype, shape = shape)
+  id <- stablehlo::ValueId()
+  func$inputs <- stablehlo::FuncInputs(c(
+    func$inputs,
+    list(stablehlo::FuncInput(id, vt))
+  ))
+  stablehlo::FuncValue(id, vt, func)
+}
+
 prim_fill[["stablehlo"]] <- function(value, shape, dtype) {
   list(hlo_tensor(value, shape = shape, dtype = dtype))
 }
@@ -981,8 +1000,8 @@ pivots_to_permutation <- function(pivots, n) {
   init_i <- hlo_scalar(0L, dtype = "i32", func = func)
 
   cond_func <- stablehlo::local_func("")
-  i <- hlo_input("i", "i32")
-  hlo_input("perm", "i32", n) # unused in cond; declared to match state shape
+  i <- region_input("i32")
+  region_input("i32", n) # unused in cond; declared to match state shape
   cond_func <- hlo_return(hlo_compare(
     i,
     hlo_scalar(k, dtype = "i32"),
@@ -995,8 +1014,8 @@ pivots_to_permutation <- function(pivots, n) {
   # perm[j], where j = pivots[i] - 1 converts pivots' 1-based value to a
   # 0-based index.
   body_func <- stablehlo::local_func("")
-  i <- hlo_input("i", "i32")
-  perm <- hlo_input("perm", "i32", n)
+  i <- region_input("i32")
+  perm <- region_input("i32", n)
   # constant in the region
   pivots_in_body <- stablehlo::FuncValue(
     pivots$value_id,
