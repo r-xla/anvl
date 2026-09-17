@@ -2762,6 +2762,22 @@ describe("nv_quantile selection fast path", {
       expect_equal(out[2L], quantile(c(3, 1), q, names = FALSE), info = sprintf("q = %s", q))
     }
   })
+  it("matches the sort path when the device index rounds past the window", {
+    # The window is sized here in R doubles, but `h` is computed on device at
+    # `dtype(x)`. At n = 22 and q = 1/7 that is 3 exactly in a double and
+    # 3.0000002 in `f32`, so the device asks for the 5th smallest while a window
+    # sized without slack holds 4 -- and the gather clamps to the 4th.
+    # `"higher"` reads the upper index directly, where the clamp is visible;
+    # under `"linear"` it is hidden by a `frac` of 2e-7.
+    withr::local_seed(3)
+    v <- runif(22)
+    q <- 1 / 7
+    sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, interpolation = "higher")))
+    srt <- as.numeric(as_array(
+      nv_quantile(nv_array(v), array(c(0.1, 0.9, q)), interpolation = "higher")
+    ))[3L]
+    expect_identical(sel, srt)
+  })
   it("integer inputs still work", {
     x <- nv_array(c(5L, 1L, 9L, 3L), dtype = "i32")
     expect_equal(as.numeric(as_array(nv_quantile(x, 0.25, interpolation = "lower"))), 1)

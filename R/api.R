@@ -3625,10 +3625,27 @@ nv_quantile <- jit(
     # NaNs rank to the front of the window instead of the back, but any slice
     # containing NaN has its output forced to NaN below, so the gathered values
     # never surface.
+    #
+    # The window is sized here in R doubles while the gather index is computed
+    # on device, so the two agree only if the device arithmetic matches R's. At
+    # `dtype(x)` it does not: `21 * (1/7)` is 3 exactly in a double and
+    # 3.0000002 in `f32`, so the index lands past the window, where the gather
+    # clamps and quietly returns a neighbouring order statistic. The index
+    # arithmetic therefore runs at `f64`, which is bit-for-bit what R does, and
+    # the window keeps one element of slack in case XLA contracts
+    # `(n_valid - 1) * probs` into a single rounding. Only `frac` returns to
+    # `out_dtype`, so the result keeps its data type.
+    #
+    # TODO(metal): Metal has no `f64`, so a program that reaches here cannot run
+    # on it at all. Supporting Metal means making the two sides agree the other
+    # way round -- rounding the host-side window computation through the
+    # device's data type -- instead of widening the device to R's.
+    idx_dtype <- "f64"
+
     n_axis <- shp[axis]
     budget <- ceiling(n_axis / 2) + 1
-    k_lo <- as.integer(ceiling((n_axis - 1) * max(probs)) + 1)
-    k_hi <- as.integer(ceiling((n_axis - 1) * (1 - min(probs))) + 1)
+    k_lo <- as.integer(min(ceiling((n_axis - 1) * max(probs)) + 2, n_axis))
+    k_hi <- as.integer(min(ceiling((n_axis - 1) * (1 - min(probs))) + 2, n_axis))
     path <- if (n_axis > 0L && k_lo <= budget) {
       "low"
     } else if (n_axis > 0L && k_hi <= budget) {
@@ -3649,11 +3666,9 @@ nv_quantile <- jit(
     nan_fill <- if (path == "high") -Inf else Inf
     to_sort <- if (nan_rm) nv_ifelse(nan_mask, nan_fill, x) else x
     n_valid_kd <- if (nan_rm) {
-      # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
-      # rather than crossing categories out of an integer count and
-      # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
-      # default float.
-      prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
+      # At `idx_dtype`, the data type the index arithmetic below runs at; the
+      # `i32` count the other branch takes is converted to it as well.
+      prim_reduce_sum(nv_convert(!nan_mask, idx_dtype), axes = axis, drop = FALSE)
     } else {
       count_kd
     }
@@ -3669,16 +3684,16 @@ nv_quantile <- jit(
     probs_shape <- replace(rep(1L, rank), axis, K)
     probs_b <- nv_broadcast_to(
       prim_reshape(
-        nv_array_like(sorted, probs, shape = K, dtype = out_dtype),
+        nv_array_like(sorted, probs, shape = K, dtype = idx_dtype),
         probs_shape
       ),
       shp_K
     )
-    n_valid_b <- nv_convert(nv_broadcast_to(n_valid_kd, shp_K), out_dtype)
+    n_valid_b <- nv_convert(nv_broadcast_to(n_valid_kd, shp_K), idx_dtype)
     h <- (n_valid_b - 1) * probs_b
     lo_f <- nv_floor(h)
     hi_f <- nv_ceiling(h)
-    frac <- h - lo_f
+    frac <- nv_convert(h - lo_f, out_dtype)
 
     # `sorted` is ascending, except the high window, which top_k returns in
     # descending order: ascending position j of the slice's n_valid values is

@@ -1087,6 +1087,39 @@ describe("prim_top_k", {
     expect_no_match(cpu, "stablehlo.sort", fixed = TRUE)
   })
 
+  it("ranks awkward floats on the CUDA path exactly as chlo top_k does", {
+    # The CUDA lowering builds the sort itself, so its comparator has to rank
+    # -0, +-Inf and a signed NaN where `chlo.top_k` ranks them. Compiling the
+    # CUDA program on whatever plugin is present keeps this honest without a
+    # GPU. A canonicalizing comparator folds `-NaN` into `+NaN` and ranks it
+    # top, which shows up as soon as `k` reaches past the first NaN.
+    neg_nan <- as.numeric(readBin(as.raw(c(0, 0, 0, 0, 0, 0, 0xf8, 0xff)), "double", 1L))
+    cases <- list(
+      c(3, neg_nan, 4, NaN, 1, 2),
+      c(Inf, -Inf, 3, Inf, -Inf, 0),
+      c(0, -0, 1, -1, 0, -0)
+    )
+    run_on_cpu <- function(func, v) {
+      program <- pjrt::pjrt_program(src = stablehlo::repr(func), format = "mlir")
+      exec <- pjrt::pjrt_compile(program)
+      buf <- pjrt::pjrt_buffer(v, "f32", shape = length(v))
+      as_array(pjrt::pjrt_execute(exec, buf, simplify = FALSE)[[1L]])
+    }
+    for (v in cases) {
+      for (k in seq_along(v)) {
+        g <- trace_fn(
+          function(x) prim_top_k(x, k = k, indices = FALSE)$values,
+          list(nv_aval("f32", shape = length(v)))
+        )
+        expect_equal(
+          run_on_cpu(stablehlo(g, platform = "cuda")[[1L]], v),
+          run_on_cpu(stablehlo(g, platform = "cpu")[[1L]], v),
+          info = sprintf("k = %s, v = %s", k, paste(format(v), collapse = " "))
+        )
+      }
+    }
+  })
+
   it("rejects k larger than the last axis", {
     expect_error(prim_top_k(nv_array(c(1, 2, 3)), k = 5L))
   })

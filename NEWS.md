@@ -93,7 +93,8 @@
 
 * `nv_quantile()` and `nv_median()` select the needed order statistics with
   `top_k` instead of a full sort when every requested quantile lies in the
-  same half of the axis. Results are unchanged.
+  same half of the axis. Results are unchanged: the interpolation index is
+  computed at `f64`, so it agrees with the window the host sizes.
 * `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
   unstable sort of the values and a slice instead of the CHLO op, which
   costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`

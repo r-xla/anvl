@@ -817,31 +817,10 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
 # comparing so stable sort treats IEEE-equal values as equal — this keeps
 # all NaNs at one end and stops -0/+0 from being silently reordered.
 # Mirrors JAX _sort_lt_comparator, _canonicalize_float_for_sort).
-.hlo_top_k_values <- function(x, k) {
-  # Only the values are wanted, so ties may come out in any order. The CHLO
-  # top_k expands on GPU to a *stable* sort of (values, iota) plus a slice,
-  # and the stability is what it charges for: an unstable sort of the values
-  # alone is never slower than a full sort there. XLA's CPU backend lowers
-  # the CHLO op to a dedicated partial-sort kernel that beats any sort, so it
-  # keeps it.
-  if (!identical(current_platform(), "cuda")) {
-    return(hlo_top_k(x, k = k)[[1L]])
-  }
-  shp <- shape(x$value_type)
-  rank <- length(shp)
-  sorted <- hlo_sort(
-    x,
-    dimension = rank - 1L,
-    is_stable = FALSE,
-    comparator = .build_sort_comparator(list(x), descending = TRUE)
-  )
-  if (!inherits(sorted, "FuncValue")) {
-    sorted <- sorted[[1L]]
-  }
-  hlo_slice(sorted, rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
-}
-
-.build_sort_comparator <- function(ops, descending) {
+# `canonicalize = FALSE` drops the -0/-NaN folding, giving the raw TOTALORDER
+# that `chlo.top_k` compares with. Only `.hlo_top_k_values()` passes it, so that
+# its result does not depend on which lowering the platform took.
+.build_sort_comparator <- function(ops, descending, canonicalize = TRUE) {
   key_dtype <- ops[[1L]]$value_type$type$dtype
   key_is_float <- is_dtype_float(key_dtype)
   direction <- if (descending) "GT" else "LT"
@@ -863,8 +842,10 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
   }
 
   if (key_is_float) {
-    a <- .canonicalize_float_for_sort(a, key_dtype)
-    b <- .canonicalize_float_for_sort(b, key_dtype)
+    if (canonicalize) {
+      a <- .canonicalize_float_for_sort(a, key_dtype)
+      b <- .canonicalize_float_for_sort(b, key_dtype)
+    }
     result <- hlo_compare(a, b, comparison_direction = direction, compare_type = "TOTALORDER")
   } else {
     ct <- if (is_dtype_int(key_dtype)) "SIGNED" else "UNSIGNED"
@@ -881,6 +862,31 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
   is_zero <- hlo_compare(x, zero, comparison_direction = "EQ", compare_type = "FLOAT")
   is_nan <- hlo_compare(x, x, comparison_direction = "NE", compare_type = "FLOAT")
   hlo_select(is_nan, canonical_nan, hlo_select(is_zero, zero, x))
+}
+
+# The values-only lowering. Ties may come out in any order, so on CUDA we can
+# drop the stability that `chlo.top_k` charges for: it expands there to a
+# *stable* sort of (values, iota) plus a slice, and an unstable sort of the
+# values alone is never slower than a full sort. XLA's CPU backend lowers the
+# CHLO op to a dedicated partial-sort kernel that beats any sort, so it keeps
+# it.
+#
+# The comparator is `chlo.top_k`'s (`canonicalize = FALSE`), not `prim_sort()`'s,
+# so the result does not depend on which lowering the platform took -- a
+# negative NaN ranks below `-Inf` on both, as `?nv_top_k` documents.
+.hlo_top_k_values <- function(x, k) {
+  if (!identical(current_platform(), "cuda")) {
+    return(hlo_top_k(x, k = k)[[1L]])
+  }
+  shp <- shape(x$value_type)
+  rank <- length(shp)
+  sorted <- hlo_sort(
+    x,
+    dimension = rank - 1L,
+    is_stable = FALSE,
+    comparator = .build_sort_comparator(list(x), descending = TRUE, canonicalize = FALSE)
+  )
+  hlo_slice(sorted[[1L]], rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
 }
 
 prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
