@@ -1344,22 +1344,22 @@ test_that("prim_fill() takes a whole number at an integer data type", {
   expect_equal(as.integer(nv_fill(1, shape = 2L, dtype = "i32")), c(1L, 1L))
 })
 
-test_that("the dynamic slicing primitives go through stablehlo's inference", {
+test_that("the dynamic slicing primitives check their arguments", {
   v <- nv_array(c(10, 20, 30))
-  # These built their output aval by hand, so nothing stablehlo checks was
-  # checked: the mistakes below reached the PJRT compiler and came back as raw
-  # MLIR dumps.
+  # These built their output aval by hand, so none of the constraints below was
+  # checked: the mistakes reached the PJRT compiler and came back as raw MLIR
+  # dumps.
   expect_error(
     prim_dynamic_slice(v, nv_scalar(1.5), slice_sizes = 1L),
     "must have dtype int or uint"
   )
   expect_error(
     prim_dynamic_slice(v, nv_scalar(1L), nv_scalar(1L), slice_sizes = 1L),
-    "must equal rank"
+    "one start index per axis"
   )
   expect_error(
     prim_dynamic_slice(v, nv_scalar(1L), slice_sizes = 9L),
-    "must not be greater than"
+    "must not exceed the shape"
   )
   expect_error(
     prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1.5)),
@@ -1367,7 +1367,7 @@ test_that("the dynamic slicing primitives go through stablehlo's inference", {
   )
   expect_error(
     prim_dynamic_update_slice(v, nv_array(c(1, 2, 3, 4), shape = c(2, 2)), nv_scalar(1L)),
-    "must equal rank"
+    "must have as many axes as"
   )
 
   # The valid calls still give what they always did.

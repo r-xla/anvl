@@ -12,7 +12,7 @@
     Condition
       Error in `prim_ceil()`:
       ! `x` must have dtype float.
-      x Got i32.
+      x Got "i32".
 
 ---
 

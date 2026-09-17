@@ -848,6 +848,9 @@ infer_top_k <- function(x, k) {
 # The shape a reduction leaves behind: `axes` dropped, or kept at size 1.
 reduced_shape <- function(x, axes, drop) {
   new_shape <- shape(x)
+  if (!length(axes)) {
+    return(new_shape)
+  }
   if (drop) {
     new_shape <- new_shape[-axes]
   } else {
@@ -1416,6 +1419,17 @@ infer_convolution <- function(
   kernel_dil <- as.integer(kernel_dilation)
   fg_count <- as.integer(feature_group_count)
   bg_count <- as.integer(batch_group_count)
+  pad_dim <- dim(padding)
+  if (is.null(pad_dim) || !identical(as.integer(pad_dim), c(n_spatial, 2L))) {
+    cli_abort(c(
+      "{.arg padding} must be a matrix of shape {shape_repr(c(n_spatial, 2L))}.",
+      x = if (is.null(pad_dim)) {
+        "Got a vector of length {length(padding)}."
+      } else {
+        "Got {shape_repr(pad_dim)}."
+      }
+    ))
+  }
   pad <- matrix(as.integer(padding), nrow = n_spatial, ncol = 2L)
 
   # (C2) - (C9) Each per-spatial-axis vector has one entry per spatial axis,
@@ -1434,14 +1448,6 @@ infer_convolution <- function(
         x = "Got {vec_repr(val)}."
       ))
     }
-  }
-
-  # (C4)
-  if (!identical(dim(pad), c(n_spatial, 2L))) {
-    cli_abort(c(
-      "{.arg padding} must have shape {shape_repr(c(n_spatial, 2L))}.",
-      x = "Got {shape_repr(dim(as.matrix(padding)))}."
-    ))
   }
 
   # (C21) - (C23)

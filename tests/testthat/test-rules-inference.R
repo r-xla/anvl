@@ -199,6 +199,54 @@ describe("infer_pad()", {
   })
 })
 
+describe("reduced_shape()", {
+  it("leaves the shape alone when no axes are reduced", {
+    # `x[-integer(0)]` is `integer(0)`, not `x`, so an empty `axes` has to be a
+    # special case: it once collapsed the result to a scalar while the emitted
+    # program still produced the full shape.
+    x <- infer_at("f32", c(2L, 3L))
+    expect_equal(reduced_shape(x, integer(0), drop = TRUE), c(2L, 3L))
+    expect_equal(reduced_shape(x, integer(0), drop = FALSE), c(2L, 3L))
+    expect_equal(reduced_shape(x, 1L, drop = TRUE), 3L)
+    expect_equal(reduced_shape(x, 1L, drop = FALSE), c(1L, 3L))
+  })
+
+  it("reduces nothing, through the primitives, when axes is empty", {
+    x <- nv_array(matrix(1:6, 2, 3), dtype = "f32")
+    expect_equal(shape(prim_reduce_sum(x, axes = integer(0), drop = TRUE)), c(2L, 3L))
+    expect_equal(
+      as_array(prim_reduce(
+        x,
+        nv_scalar(0, "f32"),
+        axes = integer(0),
+        drop = TRUE,
+        reductor = prim_add
+      )),
+      as_array(x)
+    )
+  })
+})
+
+describe("infer_convolution()", {
+  it("refuses a padding that is not an (n_spatial, 2) matrix", {
+    # `matrix(padding, nrow = n_spatial, ncol = 2L)` recycles or truncates to
+    # that shape, so this has to be checked before the matrix is built.
+    conv <- function(padding) {
+      infer_convolution(
+        infer_at("f32", c(1L, 1L, 5L)),
+        infer_at("f32", c(1L, 1L, 3L)),
+        1L, 2L, 3L, 2L, 1L, 3L, 1L, 2L, 3L,
+        window_strides = 1L, padding = padding, x_dilation = 1L,
+        kernel_dilation = 1L, feature_group_count = 1L,
+        batch_group_count = 1L, precision = "highest"
+      )
+    }
+    expect_equal(conv(matrix(0L, 1L, 2L)), list(infer_at("f32", c(1L, 1L, 3L))))
+    expect_error(conv(matrix(0L, 3L, 2L)), "must be a matrix of shape")
+    expect_error(conv(c(1L, 2L)), "Got a vector of length 2")
+  })
+})
+
 describe("infer_top_k()", {
   it("returns the values at the input's type and the indices at the default integer", {
     out <- infer_top_k(infer_at("f32", c(2L, 8L)), k = 3L)
