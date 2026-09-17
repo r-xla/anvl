@@ -73,6 +73,9 @@
 
 * `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
   to a common data type.
+* The floating-point `nv_*` functions refuse a boolean in anvl, naming the
+  argument. `nv_cospi()` used to compute on one: its `+ 1/2` promoted the
+  boolean to a float before the primitive could reject it.
 * `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
   is refused rather than silently truncated.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,

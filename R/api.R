@@ -1108,9 +1108,6 @@ nv_cos <- make_float_unary(prim_cos)
 #' @export
 #' @jit
 nv_sinpi <- function(x) {
-  # So the three `*pi` functions refuse a boolean in the same words; left to
-  # the primitive this one would report it as a missing float instead.
-  assert_numeric_dtype(peek_dtype(x), arg = "x")
   x <- as_anvl_array(int_to_float(x))
   n <- nv_round(x, method = "nearest_even")
   reduced <- nv_sin((x - n) * pi)
@@ -1129,10 +1126,7 @@ nv_sinpi <- function(x) {
 #' @export
 #' @jit
 nv_cospi <- function(x) {
-  # cos(pi * x) == sin(pi * (x + 1/2)). The half would promote a boolean to a
-  # float before `nv_sinpi()` ever sees it, so refuse it here instead -- as
-  # `nv_sinpi()` and `nv_tanpi()` do, and as *numeric* on the page says.
-  assert_numeric_dtype(peek_dtype(x), arg = "x")
+  # cos(pi * x) == sin(pi * (x + 1/2))
   nv_sinpi(as_anvl_array(int_to_float(x)) + 0.5)
 }
 

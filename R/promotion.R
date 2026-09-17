@@ -721,10 +721,11 @@ is_intlike <- function(x) {
   is_dtype_int(dt) || is_dtype_uint(dt)
 }
 
-# Convert an int-like array to the default float and leave everything else
-# alone: this is the step a floating-point `nv_*` function takes before it
-# reaches its primitive. A boolean array passes through untouched, so the
-# primitive rejects it rather than computing on it.
-int_to_float <- function(x) {
+# Convert an int-like array to the default float and leave a float alone: the
+# step a floating-point `nv_*` function takes before it reaches its primitive.
+# A boolean is refused here rather than left to the primitive, which may never
+# see it -- `nv_cospi()`'s `+ 1/2` promotes it to a float on the way.
+int_to_float <- function(x, arg = rlang::caller_arg(x)) {
+  assert_numeric_dtype(peek_dtype(x), arg = arg)
   if (is_intlike(x)) nv_convert(x, default_float()) else x
 }

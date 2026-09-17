@@ -2414,15 +2414,19 @@ test_that("a constructor that fills internally works at every data type", {
   expect_equal(as.vector(nv_tril(b)), c(TRUE, TRUE, FALSE, TRUE))
   expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
 })
-test_that("the three `*pi` functions refuse a boolean", {
-  # `nv_cospi()`'s `+ 1/2` used to promote it to a float before `nv_sinpi()`
-  # ever saw it, so the three disagreed on the same input.
-  expect_error(nv_cospi(nv_array(TRUE)), "must be a numeric data type")
-  expect_error(nv_cospi(TRUE), "must be a numeric data type")
-  expect_error(nv_sinpi(nv_array(TRUE)), "must be a numeric data type")
-  expect_error(nv_tanpi(nv_array(TRUE)), "must be a numeric data type")
+test_that("the floating-point nv_* functions refuse a boolean", {
+  # `int_to_float()` used to pass a boolean through and leave the rejection to
+  # the primitive, which `nv_cospi()` never reached: its `+ 1/2` promoted the
+  # boolean to a float first.
+  expect_error(nv_cospi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_cospi(TRUE), "`x` must be a numeric data type")
+  expect_error(nv_sinpi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_tanpi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_sin(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_atan2(nv_array(TRUE), nv_array(1)), "`lhs` must be a numeric data type")
   # An integer is still accepted and converted to a float.
-  expect_equal(as.vector(as_array(nv_sinpi(nv_array(1L)))), 0, tolerance = 1e-6)
+  expect_equal(as.vector(as_array(nv_cospi(nv_array(1L)))), -1, tolerance = 1e-6)
+  expect_equal(dtype(nv_sin(nv_array(1L))), default_float())
 })
 
 test_that("nv_conv1d/2d/3d promote their operands", {
