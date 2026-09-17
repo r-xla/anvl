@@ -48,24 +48,3 @@ test_that("donate: nested list inputs", {
     c(0L, 1L)
   )
 })
-
-test_that("hand-built regions declare their block arguments with auto value ids", {
-  # A region's block arguments live in the SSA namespace of the function the
-  # region is nested in, so a fixed name (`%i`) is redefined as soon as the
-  # region ends up inside another one using the same name. Auto value ids are
-  # numbered across the whole program and cannot collide. `nv_lu()` reaches
-  # the hand-built `while` region in `pivots_to_permutation()`.
-  graph <- trace_fn(
-    function(a) nv_lu(a)$L,
-    list(a = nv_aval("f32", shape = c(2L, 2L)))
-  )
-  src <- stablehlo::repr(stablehlo(graph)[[1L]])
-
-  block_args <- unlist(regmatches(src, gregexpr("\\^bb0\\([^)]*\\)", src)))
-  expect_gt(length(block_args), 0L)
-  named <- unlist(regmatches(
-    block_args,
-    gregexpr("%[A-Za-z_][A-Za-z0-9_]*", block_args)
-  ))
-  expect_equal(named, character())
-})

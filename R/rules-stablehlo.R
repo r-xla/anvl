@@ -10,14 +10,6 @@ index_dtype_of <- function(output_types, i) {
   as.character(output_types[[i]]$type$dtype)
 }
 
-# Declare a block argument of the region func currently being built.
-#
-# A region's block arguments live in the SSA namespace of the function the
-# region is nested in, so a fixed name (`hlo_input("i", ...)`) collides with
-# the same name in an enclosing region. Auto value ids are numbered across
-# the whole program at repr time, which keeps them unique wherever the
-# region ends up. This is what `stablehlo()` does for the regions it builds
-# from a traced graph; hand-built regions go through here.
 region_input <- function(dtype, shape = integer()) {
   func <- stablehlo::.current_func()
   vt <- stablehlo::ValueType(dtype, shape = shape)
