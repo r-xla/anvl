@@ -113,15 +113,46 @@ jit <- function(
   .jit_cfg <- list(f = f, static = static, cache_size = cache_size, device = device, dots = list(...))
   .jit_fns <- list()
   .jit_runs <- list()
+  .jit_formals <- formals2(f)
+  .jit_dots <- "..." %in% names(.jit_formals)
+  .jit_names <- setdiff(names(.jit_formals), "...")
 
   wrapper <- function() {
-    # Inside tracing: pass through to unwrapped function
+    # The arguments are read off this frame rather than rebuilt from the call
+    # and evaluated again in the caller's. Both reach the same values, but an
+    # expression the caller already evaluated must not be computed a second
+    # time -- and S3 dispatch evaluates the first argument to choose a method,
+    # so a jitted function registered as a method would otherwise evaluate it
+    # twice, and `abs(sign(x))` would evaluate `sign(x)` twice over.
+    #
+    # `missing()` distinguishes an argument the caller supplied from one left
+    # at its default, which stays out of the list so that `f` applies the
+    # default itself.
+    .jit_env <- environment()
+    .jit_given <- .jit_names[!vapply(
+      .jit_names,
+      function(.jit_nm) eval(substitute(missing(.v), list(.v = as.name(.jit_nm))), .jit_env),
+      logical(1)
+    )]
+
+    # Inside tracing: pass through to unwrapped function. The arguments are
+    # forwarded as the names they are bound to here, so `f` gets a promise per
+    # argument and one it never uses is never evaluated.
     if (currently_tracing()) {
-      .jit_cl <- match.call()
-      .jit_cl[[1L]] <- .jit_cfg$f
-      return(eval.parent(.jit_cl))
+      .jit_fwd <- lapply(.jit_given, as.name)
+      names(.jit_fwd) <- .jit_given
+      if (.jit_dots) {
+        .jit_fwd <- c(.jit_fwd, list(quote(...)))
+      }
+      return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
     }
-    .jit_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+    .jit_args <- mget(.jit_given, envir = .jit_env)
+    if (.jit_dots) {
+      .jit_args <- c(.jit_args, list(...))
+    }
+    if (length(.jit_args) && !any(nzchar(names(.jit_args)))) {
+      names(.jit_args) <- NULL
+    }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]
     if (is.null(.jit_run)) {
@@ -148,10 +179,10 @@ jit <- function(
       .jit_runs[[.jit_be]] <<- .jit_run
     }
     # The args are already evaluated; the fast entry skips the inner
-    # closure's match.call() + eval() re-capture (and do.call()).
+    # closure's argument re-capture (and do.call()).
     .jit_run(.jit_args)
   }
-  formals(wrapper) <- formals2(f)
+  formals(wrapper) <- .jit_formals
   class(wrapper) <- "JitFunction"
   wrapper
 }

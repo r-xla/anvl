@@ -6,20 +6,6 @@ NULL
 # is documented on its help page. A method only carries its own documentation
 # where there is no such twin (`dim()` and `length()`).
 #
-# The delegate is not redundant where the generic takes exactly the arguments
-# the `nv_*` function takes, so do not collapse it into an alias: write
-# `sqrt.AnvlArray <- function(x) nv_sqrt(x)` rather than
-# `sqrt.AnvlArray <- nv_sqrt`. A jitted function rebuilds its arguments from
-# `match.call()` and evaluates them in the caller's frame, and S3 dispatch has
-# already evaluated the first one to pick the method -- so a jitted function
-# used *as* the method evaluates its argument a second time, and nesting
-# doubles that with every level: `abs(sign(x))` would evaluate `sign(x)` twice,
-# `abs(sign(sqrt(x)))` would evaluate `sqrt(x)` four times. The delegate
-# absorbs it, because what it passes on is the bare symbol `x`, whose promise
-# dispatch has already forced. Only some `nv_*` functions are jitted (a
-# primitive, or anything wrapped in `jit()`) and which ones is invisible from
-# here, so every method delegates.
-#
 # The methods for `AnvlBox` -- the traced values inside `jit()` -- are the same
 # functions, registered for the second class.
 

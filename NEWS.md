@@ -73,6 +73,12 @@
 
 ## Bug fixes
 
+* A function returned by `jit()` no longer evaluates its arguments a second
+  time. It used to rebuild the call with `match.call()` and evaluate the
+  argument expressions again in the caller's frame, which computed them twice
+  whenever something had evaluated them already -- most visibly under S3
+  dispatch, which evaluates the first argument to choose a method.
+
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
   `as.numeric()`, `as.character()` and friends -- now aborts with an
   explanation instead of falling through to the base R generic. Some of those
