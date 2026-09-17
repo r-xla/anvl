@@ -8,15 +8,18 @@ prim_triangular_solve(a, b, left_side, lower, unit_diagonal, transpose_a)
 }
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
-Triangular coefficient matrix of data type floating-point with at least 2
-axes. The last two axes must be equal (square matrix); any
-leading axes are batch axes.}
+Triangular coefficient matrix with at least 2 axes. The last two axes must
+be equal (square matrix); any leading axes are batch axes. Can be any
+float data type. \code{a} and \code{b} must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
-Right-hand side. Same data type and rank as \code{a} (rank >= 2), with
+Right-hand side. Same rank as \code{a} (rank >= 2), with
 matching leading batch axes. The size of \code{a}'s last two (square)
 axes must equal \code{b}'s second-to-last axis when
-\code{left_side = TRUE}, or \code{b}'s last axis when \code{left_side = FALSE}.}
+\code{left_side = TRUE}, or \code{b}'s last axis when \code{left_side = FALSE}.
+Shares \code{a}'s data type -- see \code{a}.}
 
 \item{left_side}{(\code{logical(1)})\cr
 If \code{TRUE}, solve \code{op(a) \%*\% x = b}. If \code{FALSE}, solve \code{x \%*\% op(a) = b}.}
@@ -28,11 +31,11 @@ If \code{TRUE}, \code{a} is lower triangular. If \code{FALSE}, \code{a} is upper
 If \code{TRUE}, assume diagonal elements of \code{a} are 1.}
 
 \item{transpose_a}{(\code{logical(1)})\cr
-If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{FALSE}.}
+If \code{TRUE}, solve with \code{t(a)} in place of \code{a}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as \code{b}.
+(\code{\link{arrayish}})\cr
+Has \code{b}'s shape and the data type \code{a} and \code{b} agreed on.
 }
 \description{
 Solves a system of linear equations with a triangular coefficient matrix.
@@ -41,6 +44,10 @@ When \code{left_side} is \code{FALSE}, solves \code{x \%*\% op(a) = b} for \code
 Axes before the last two are batch axes and must match
 between \code{a} and \code{b} (no broadcasting).
 Here \code{op} is \code{A} or \code{A^T} depending on \code{transpose_a}.
+}
+\details{
+Differentiation is only implemented for a single system: the \code{reverse} rule
+errors on batched operands (operands with more than 2 axes).
 }
 \section{Implemented Rules}{
 
@@ -52,7 +59,8 @@ Here \code{op} is \code{A} or \code{A^T} depending on \code{transpose_a}.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}.
+Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}, specified under
+\href{https://openxla.org/stablehlo/spec#triangular_solve}{triangular_solve}.
 }
 
 \examples{

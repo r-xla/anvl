@@ -19,7 +19,7 @@ API functions shipped with {anvl} must work with **both** the pjrt and quickr ba
 
 - Never name a backend in an API function: no `backend =` arguments, no `with_backend()` calls. The caller chooses the backend.
 - If the function creates a constant inside its body, use the `nv_<op>_like()` variant (see below) so the constant inherits the input's device. Do **not** call `device()` on a traced input -- it fails under `jit()`.
-- Never hardcode `"f32"` / `"i32"` as a default data type; take `dtype = NULL` and resolve it with `default_float()` / `default_int()`, which read the active defaults (see `default_dtypes()`).
+- Never hardcode `"f32"` / `"i32"` as a default data type; take `dtype = NULL` and resolve it with `default_float()` / `default_int()`, which read the active backend's defaults (see `default_dtypes()`).
 
 ### Follow R semantics
 
@@ -69,9 +69,9 @@ For ops needing custom logic, write a function that normalizes its array inputs 
 - `as_anvl_array(x)` for a single array input.
 - `as_anvl_arrays(...)` for multiple array inputs (infers a common device, errors on mismatched backends/devices).
 
-A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value materializes at its default (the active float default, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
+A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value materializes at its default (the active backend's float default, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
 
-After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` which data type it would take.
+After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` what it *would* materialize at.
 
 ### Constants and the `_like` pattern
 
@@ -136,7 +136,8 @@ If no proper template for a parameter or the return value exist, write the docum
 #' @title <Short Title>
 #' @description
 #' <One-sentence description.> You can also use `<R operator or generic>()`.
-#' @template param_x                    # or @template params_lhs_rhs, etc.
+#' @templateVar dtypes any data type    # the phrase the operand accepts
+#' @template param_unary_x              # or @template params_lhs_rhs, etc.
 #' @param <custom_param> (<type>)\cr    # for params not covered by templates
 #'   <Description.>
 #' @template return_unary               # or return_binary, return_reduce, etc.
@@ -151,10 +152,28 @@ If no proper template for a parameter or the return value exist, write the docum
 - **`@title`**: short, e.g. "Absolute Value", "Addition", "Transpose"
 - **`@description`**: one sentence describing what the function does. If an R operator or generic dispatches to this function, mention it: "You can also use `abs()`.", "You can also use the `+` operator."
 - **`@template`**: use templates for common parameter/return patterns:
-  - `param_x` — single input array
-  - `params_lhs_rhs` — binary operands (includes promotion/broadcasting note)
-  - `param_dtype`, `param_shape`, `param_device` — common params
-  - `return_unary`, `return_binary`, `return_reduce`, `return_reduce_boolean`
+  - `param_unary_x` — the input of an elementwise unary function: states the accepted data types
+    and that an R value materializes at its default. Needs `@templateVar dtypes <phrase>` above it,
+    from the same vocabulary as below. Shared with the `prim_*` layer, which behaves identically.
+  - `param_unary_x_tofloat` + `return_unary_tofloat` — the input of an `nv_*` function that
+    converts an integer operand with `int_to_float()` before reaching its float-only primitive,
+    so the result is a float whatever the input was. Takes no `@templateVar dtypes`, since the
+    accepted group is fixed. `params_lhs_rhs_tofloat` is the binary form (`nv_atan2()`)
+  - `param_unary_x_round` — the input of a rounding function (`nv_floor()`, `nv_ceiling()`,
+    `nv_trunc()`, `nv_round()`), which returns an integer input unchanged rather than
+    converting it; pair it with the plain `return_unary`
+  - A function whose `x` is promoted with a sibling (`nv_clamp()`, `nv_pad()`,
+    `nv_subset_assign()`) writes `x` inline: it names the accepted data types and points at the
+    sibling, whose own `@param` carries the promotion sentence
+  - `params_lhs_rhs` — binary operands: states the promotion, the scalar broadcasting and how R
+    values take a data type. Needs `@templateVar dtypes <phrase>` above it, from the vocabulary
+    defined in `?dtypes` (`any data type`, `any numeric data type`, `any integerish data type`,
+    `any float data type`). Its stricter `prim_*` counterpart is `params_prim_lhs_rhs`.
+  - `param_shape`, `param_device` — common params. A `dtype` parameter is written inline,
+    since what it accepts and what it does with the other arguments differs per function
+  - `return_unary`, `return_binary`; for a reduction `@templateVar dtype_out <phrase>` +
+    `@template return_reduce`, plus `@templateVar axes_all` + `@template params_reduce` so `axes`
+    documents its `NULL` default
   - `params_reduce` — axes + drop params for reductions
 - **`@param`**: write inline for parameters not covered by templates
 - **`@seealso`**: always link to the underlying `prim_*` primitive. Optionally link to related `nv_*` functions.

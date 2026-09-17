@@ -9,10 +9,10 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       }
 
       if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
+        # `repr()` on a data type gives stablehlo's spelling (`i1` for a
+        # boolean); the pages speak anvl's, which `as.character()` gives.
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          # `repr()` on a data type gives stablehlo's spelling (`i1` for a
-          # boolean); the pages speak anvl's, which `as.character()` gives.
           x = "Got {.val {as.character(peek_dtype(args_flat[[i]]))}}."
         ))
       }
@@ -26,7 +26,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
         cli_abort(c(
           "Cannot compute gradient with respect to a value that has no data type.",
           x = "It is an R {peek_r_type(args_flat[[i]])}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-          i = "Give it one first, e.g. {.code nv_array(x, \"f32\")} or {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
+          i = "Give it one first, e.g. {.code nv_array(x, default_float())} or an explicit {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
         ))
       }
     }
@@ -70,7 +70,7 @@ prepare_gradient_args <- function(args, wrt) {
 #'   Backward hook for default case.
 #' @param forward (`function`)\cr
 #'   Alternative-forward hook that returns both primals and backward closure.
-#' @return An `anvl_rule_reverse` object.
+#' @return (`anvl_rule_reverse`)
 #' @seealso [`transform_gradient()`]
 #' @export
 rule_reverse <- function(backward = NULL, forward = NULL) {
@@ -108,7 +108,8 @@ rule_reverse <- function(backward = NULL, forward = NULL) {
 #'   The graph to transform. Must produce a single scalar float output.
 #' @param wrt (`character`)\cr
 #'   Names of the graph inputs to differentiate with respect to.
-#' @return An [`AnvlGraph`] whose outputs are the requested gradients.
+#' @return ([`AnvlGraph`])\cr
+#'   Its outputs are the requested gradients.
 #' @seealso [`gradient()`], [`value_and_gradient()`], [`rule_reverse()`]
 #' @export
 #' @examples
@@ -428,7 +429,7 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #'   must not appear in `wrt`.
 #'   If `NULL` (the default), the gradient is computed with respect to all
 #'   arguments (which must all be arrayish in that case).
-#' @return `function`
+#' @return (`function`)
 #' @seealso [`value_and_gradient()`] to get both the output and gradients,
 #'   [`transform_gradient()`] for the low-level graph transformation.
 #' @export
@@ -484,7 +485,8 @@ gradient <- function(f, wrt = NULL) {
 #' original return value of `f`) and `grad` (the gradients, structured like the inputs or
 #' the `wrt` subset).
 #' @inheritParams gradient
-#' @return A function with the same formals as `f` that returns
+#' @return (`function`)\cr
+#'   Has the same formals as `f` and returns
 #'   `list(value = ..., grad = ...)`.
 #' @seealso [`gradient()`]
 #' @export

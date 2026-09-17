@@ -20,6 +20,61 @@
   `anvl.backend` option.
   With this change the `device_arg` parameter was removed from `jit()` as it is no longer needed.
 * A `Shape` is now represented as an integer vector.
+* `prim_top_k()`, `prim_cummax()`, `prim_cummin()`,
+  `prim_rng_bit_generator()` and the `nv_*` samplers (`nv_runif()`,
+  `nv_rnorm()`, `nv_rbinom()`, `nv_sample()`, `nv_sample_int()`) now return
+  *named* lists -- `values` / `indices` for the first three, `state` /
+  `values` for the rest -- as `prim_qr()` and `prim_svd()` already did.
+  Positional indexing keeps working.
+* `nv_chol()` / `prim_chol()` accept batched inputs again -- axes before the
+  last two are batch axes, as their pages say and as the lowering has always
+  handled. A check added earlier in this cycle had narrowed them to exactly two
+  axes.
+* `nv_inv()` names `x` when its input is not a float, instead of reporting
+  `nv_solve()`'s `a` and `b`; `gradient()` accepts any float output data type,
+  matching its own message, and its hint no longer suggests an `f32` array that
+  the `"quickr"` backend refuses; and the quickr lowering's messages say `bool`
+  rather than stablehlo's `pred`.
+* `nv_solve()`, `nv_triangular_solve()` and `nv_conv1d()` / `nv_conv2d()` /
+  `nv_conv3d()` now promote their operands to a common data type, like every
+  other `nv_*` function: `nv_solve(a_f32, b_f64)` gives `f64` where it used to
+  refuse the pair, and an integer input meets a float weight at the float. They
+  used to apply `promotion_rdata_common()`, the primitive layer's rule, so a
+  mismatch was rejected -- with a hint telling the caller to use an operation
+  that promotes, which is what they were already calling. The solves still
+  require the common data type to be a float, and now say so naming `a`
+  instead of leaking `prim_lu()`'s operand name.
+* `nv_quantile()` and `nv_median()` now interpolate at a float data type, so
+  they are correct for a non-float input: `nv_median(nv_array(1:4))` was `1`
+  and is now `2.5`. `probs` used to be built at the input's data type, where
+  `0.5` rounds to `0` and every quantile came back as the smallest element.
+  `interpolation = "lower"` / `"higher"` / `"nearest"` now also return a float,
+  as documented.
+* `nv_crossprod()` and `nv_tcrossprod()` now require a matrix, like
+  [base::crossprod()]. They transpose every axis, so an input above rank 2
+  silently contracted the wrong pair.
+* `x %/% y` on an `AnvlArray` now performs flooring division instead of
+  returning `NULL`, and an unimplemented member of a group generic errors.
+* `nv_rbinom()`, `nv_sample_int()`, `nv_seq()`, the twelve functions taking
+  `nan_rm`, the reductions' `drop`, `prim_chol()`'s and
+  `prim_triangular_solve()`'s flags, `prim_static_slice()`'s `strides`,
+  `prim_sort()`'s `xs`, `prim_fill()`'s `shape`, `nv_eye()`'s `n`,
+  `nv_quantile()`'s `probs`, the six variadic functions' empty `...` and the
+  `_like` functions' `like` are now all checked in anvl, with a message naming
+  the argument. Several of these used to reach the backend, or produced a
+  base-R warning or `NULL`.
+* A cumulative operation or a quantile over a zero-size axis is now refused
+  with an anvl error; the reductions still define the empty case and keep it.
+* `nv_serialize()` now returns `NULL` invisibly when it writes to a connection,
+  as its documentation says (it returned the connection).
+* `prim_fill()` (and so `nv_fill()` / `nv_fill_like()`) now checks that
+  `value` is something `dtype` can hold: a number for a float, a whole number
+  for an integer, a non-negative whole number for an unsigned integer and a
+  logical for `bool`, with `NA` rejected. These used to reach the backend.
+* Every data type of the float category now counts as a float, so `f16` and
+  `bf16` pass the checks that used to accept only `f32` and `f64` (and the
+  error message is now "must be a float data type"). The RNG, which assembles
+  floats out of random bits, still requires a 32- or 64-bit float and says so.
 * The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
   now require a boolean input array, improving consistency with base R.
 * The method for `round` was removed, as `digits` is currently not supported.
@@ -47,7 +102,10 @@
   and `with_default_dtypes()`.
   To convert a function to one running at a specified precision, use
   `with_dtypes()`.
-* New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with
+* `nv_polygamma()`'s `n` is now an ordinary arrayish argument rather than a
+  static one, so it accepts an array and not just a plain R value, matching
+  `prim_polygamma()` and JAX's `jax.scipy.special.polygamma()`.
+* New `nv_linspace()` and `nv_linspace_like()`, replacing `nv_seq()` with 
   a provided `steps` argument.
 * `as.vector()` now returns a `bit64::integer64` for integer data types that
   do not fit into R's 32 bit integers.
@@ -80,17 +138,13 @@
   hold a count or an index.
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
   error message, as `drop` is not supported.
-* `nv_quantile()` and `nv_median()` now compute at the default float data
-  type for a non-float input.
 * `as.vector()` now works correctly for `AnvlArray`s that are converted
   to `bit64::integer64`. It used to drop that class along with the shape,
   exposing the raw 64-bit pattern as a double.
-* The gradient of a conversion into a non-float data type is now zero instead
-  of one. `prim_convert()` / `nv_convert()` passed the cotangent through
-  whatever the data types were, so `nv_convert(nv_convert(x, "i32"), "f64")`
-  reported a gradient of 1 where `nv_floor()` -- the same function on the
-  reals -- correctly reported 0. Conversions between floats still pass the
-  gradient through.
+* Fixed the reverse rule of `prim_convert`.
+* The quickr lowering no longer emits an elementwise operation for a result
+  with a zero-size axis, which the development version of quickr rejects even
+  where both operand shapes agree. An empty result is emitted directly.
 * `prim_scatter()` now checks that `update_computation` returns one value of
   `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
   combiner returning something else made type inference declare a data type
@@ -136,8 +190,105 @@
 * Printed graphs, arrays and error messages now spell a data type the way anvl
   does, so `bool` no longer shows up as its MLIR spelling `i1`.
 * Improved the documentation and various error messages.
-* `nv_runif()` with `min == max` returns the `state` / `values` pair every
+* `nv_runif()` with `min == max` now returns the `state` / `values` list every
   other sampler returns, instead of the filled array on its own.
+* `nv_qnorm()` now returns `p`'s data type whatever the default float is. Its
+  tail coefficients and its infinities were plain R numbers with nothing typed
+  to yield to, so they materialized at the default and dragged the result up with
+  them.
+* `prim_while()` now names every state member whose data type or shape changes
+  across the body; it used to report the first label repeated once per mismatch,
+  without the data types.
+* `nv_array()` of a zero-length vector gives a length-0 array instead of
+  failing inside pjrt.
+* The staging warning (`anvl_staging_widens_warning`) no longer fires where the
+  caller has no way to avoid the staging -- under a default integer narrower
+  than `i32`, where converting in its own category first would stage through
+  `i32` too, or under a default float no backend can materialize. Its hint used
+  to name a remedy that could not work.
+* `prim_scatter()`'s `update_computation` may close over an array again. The
+  inference stub asked for the sub-graph's constants to already be bound, which
+  they are not at inference time, so a closed-over array failed with
+  `GraphValue not found in environment` where `prim_reduce()`'s `reductor`
+  accepted one.
+* `nv_serialize()` and `nv_save()` given a single array now say so, instead of
+  failing inside `nv_subset()`: `checkmate::assert_list(types = )` subsets its
+  input, and an `AnvlArray` has a `[` method.
+* `nv_subset()` accepts a plain R array, as its page says.
+* `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k` is
+  refused rather than silently truncated, and it validates `with_indices`.
+* `assert_shapevec()` -- and so every `shape` argument -- rejects a fractional
+  axis size instead of truncating it, and one above `.Machine$integer.max`
+  instead of turning it into `NA`.
+* `prim_while()` names `init` when it is not a named list. A fully unnamed list
+  slipped past the check (`names()` is `NULL`) and the call died blaming `body`.
+* `nv_pnorm()` and `nv_qnorm()` refuse `f16` / `bf16`, which their page already
+  said they do not accept; a narrower float silently took the `f64`
+  coefficients.
+
+## Documentation
+
+* Corrections found by auditing every page against the running package:
+  `prim_clamp()`'s formula (`min(max(min_val, x), max_val)`, which differs from
+  what was documented when `min_val > max_val`), `nv_tril()`'s and
+  `nv_triu()`'s `diagonal`, the six shift pages' accepted data types (*integer*,
+  not *integerish* -- `bool` is refused), `prim_bitcast_convert()`'s `bool`
+  exclusion, `common_dtype()`'s promotion rule (a signed and an unsigned
+  integer meet at a wider *signed* type), the `axis = NULL` shape of
+  `nv_cumsum()` / `nv_cumprod()` / `nv_cummax()` / `nv_cummin()`,
+  `nv_transpose()`'s `NULL` permutation, `prim_triangular_solve()`'s
+  `transpose_a` and its example matrix, and the CHLO specification links for
+  `prim_erf_inv()` and `prim_top_k()`.
+* Every `prim_*` and `nv_*` help page now states, in its parameters and its
+  return value, which data types it accepts, what an R value among them
+  materializes at, whether operands are promoted and whether scalars are broadcast.
+  The group names (*numeric*, *integerish*, *float*, ...) are defined once on
+  the new `?dtypes` page, which also documents the default data type an R
+  value takes, and are shown on `?arrayish`.
+* Primitives modelled on a StableHLO or CHLO op now link that op's
+  specification instead of restating it.
+* `prim_chol()` / `nv_chol()` and `prim_triangular_solve()` /
+  `nv_triangular_solve()` say that differentiation is only implemented for a
+  single matrix, not a batch, which is what their `reverse` rules do.
+* `?dtypes` says that `f16` and `bf16` count as float data types everywhere
+  anvl reasons about data types but are not materialized by any backend today,
+  and `?common_dtype` that the two have no true common type (they give `f16`).
+* `?AnvlBackendQuickr` and `vignette("primitives")` no longer claim the boolean
+  reductions have an integer form on pjrt -- `prim_reduce_any()` /
+  `prim_reduce_all()` take a boolean operand on every backend.
+* `vignette("random-numbers")` had the promotion direction backwards: `mean` and
+  `sd` decide what the sample is drawn at when `dtype` is unset, not the other
+  way around.
+* `vignette("internals")` no longer implies that a use site asking for `f32`
+  demonstrates the default float, and says when the staging warning fires.
+* `vignette("logistic-regression")` follows the configured default float instead
+  of pinning `f32` for the data and the default for the learning rate, which did
+  not agree under an `f64` default.
+* These operations now validate their arguments themselves, so the message
+  names the argument the caller passed and its shape or data type:
+  `prim_clamp()`, `prim_ifelse()`, `prim_polygamma()`,
+  `prim_broadcast_in_axes()`, `prim_pad()`, `prim_reduce()`, `prim_if()`,
+  `prim_static_slice()`, `prim_dynamic_slice()`,
+  `prim_dynamic_update_slice()`, `prim_gather()`, `prim_reshape()`,
+  `prim_concatenate()`, `prim_iota()`, `prim_dot_general()`, `nv_matmul()`,
+  `nv_concatenate()`, `nv_quantile()` and `nv_conv1d()` / `2d` / `3d`.
+  `prim_dynamic_slice()` and `prim_dynamic_update_slice()` in particular now
+  check that each start index is an integer scalar and that there is one per
+  axis of `x`, and `prim_gather()` that `start_indices` is integral.
+* `?nv_quantile`'s interpolation formula is stated in 1-based terms, so it
+  gives the number the function returns.
+* `?nv_convert` says what happens to a value the target cannot hold: an
+  integer narrowing wraps, a float reaching an integer truncates toward zero
+  and saturates, a float narrowing rounds.
+* Corrected: `?LiteralArray` (a `nv_fill()` is a recorded operation, not a
+  constant), `?to_abstract` (an R value becomes `RData`), `?nv_eye`'s `like`,
+  `?nv_if`'s branches (data types must agree too, since nothing is promoted),
+  `?nv_concatenate`'s `axis = NULL`, `?nv_polygamma`'s promotion sentence,
+  `?assert_shapevec`'s `min_len` and return value, and the `shape` argument of
+  `?nv_iota` / `?nv_lower_tri` / `?nv_upper_tri`, which cannot be `integer()`.
+* `vignette("jit")` no longer credits the default float for a literal that took
+  its data type from the array it met, and `vignette("anvl")` no longer lists
+  `bool` among what `default_dtypes()` reports.
 
 ## Tests
 

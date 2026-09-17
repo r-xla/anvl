@@ -8,7 +8,7 @@ NULL
 #'
 #' @param x (`character(1)`)\cr
 #'   Device type. Currently only supports `"cpu"`.
-#' @return A `QuickrDevice` object.
+#' @return (`QuickrDevice`)
 #' @seealso [`nv_device()`], [`AnvlBackendQuickr()`].
 #' @export
 quickr_device <- function(x = "cpu") {
@@ -154,6 +154,13 @@ compile_quickr <- function(
 #' @section Supported data types:
 #' `f64`, `i32` and `bool` -- the three R storage types.
 #'
+#' One family is narrower still: the bitwise primitives (`prim_and()`,
+#' `prim_or()`, `prim_xor()`, `prim_not()`) lower only for `bool` here, so
+#' their integer forms -- which the pjrt backend runs -- are refused with a
+#' `cli` error rather than silently mis-lowered. (`prim_reduce_any()` and
+#' `prim_reduce_all()` take a boolean operand on every backend, so they lose
+#' nothing here.)
+#'
 #' @section Quickr JIT arguments:
 #'
 #' * `unwrap` (`logical(1)`, default `FALSE`): if `TRUE`, the compiled function
@@ -161,7 +168,8 @@ compile_quickr <- function(
 #'   function's output is consumed by non-anvl R code and the extra wrapping
 #'   would only get stripped again.
 #'
-#' @return An [`AnvlBackend`] object with subclass `"AnvlBackendQuickr"`.
+#' @return ([`AnvlBackend`])\cr
+#'   With subclass `"AnvlBackendQuickr"`.
 #' @seealso [`AnvlBackend()`], [`AnvlBackendPjrt()`], [`local_backend()`], [`jit()`].
 #' @export
 AnvlBackendQuickr <- function() {

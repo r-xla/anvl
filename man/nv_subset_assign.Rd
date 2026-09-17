@@ -9,18 +9,23 @@ nv_subset_assign(x, ..., value)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+The array to update. Can be any data type; \code{value} is brought to it --
+see \code{value}.}
 
 \item{...}{Subset specifications, one per axis. See
 \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
-Replacement values. Scalars are broadcast to the subset shape.
-Non-scalar values must match the subset shape.}
+Replacement values. Scalars are broadcast to the subset shape; non-scalar
+values must match it. Brought to \code{x}'s data type: an R value is built at it
+when its category can reach it (\code{0L} serves an integer and a float \code{x}
+alike, \code{0} only a float one), and a value that already has a data type is
+converted unless that would narrow it -- an \code{f64} value for an \code{f32} \code{x} is
+an error rather than a silent narrowing.}
 }
 \value{
-\code{\link{arrayish}}\cr
-A new array with the same shape as \code{x} and the subset replaced.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type and shape, with the subset replaced.
 }
 \description{
 Updates elements of an array at specified positions, returning a new array.

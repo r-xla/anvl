@@ -52,7 +52,8 @@
 #' Anything other than a `static = ...` argument is rejected.
 #'
 #' @seealso [`apply_jit_registry()`], [`jit()`]
-#' @return A roxygen2 roclet object.
+#' @return (`roclet`)\cr
+#'   A roxygen2 roclet object.
 #' @export
 jit_roclet <- function() {
   roclet <- tryCatch(

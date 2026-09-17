@@ -13,6 +13,7 @@ An object with an \code{\link[=await]{await()}} method.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
+(\code{any})\cr
 \code{x}, invisibly.
 }
 \description{
@@ -29,7 +30,7 @@ asynchronous execution (e.g. \code{"quickr"}), this is a no-op.
 x <- nv_array(1:4, dtype = "f32")
 await(x)
 
-# await all leaves of a (possibly nested) list of arrays.
+# await all leaves of a (possibly nested) list of arrays
 map_tree(list(x, list(y = x)), await)
 \dontshow{\}) # examplesIf}
 }

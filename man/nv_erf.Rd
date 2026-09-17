@@ -8,21 +8,27 @@ nv_erf(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array. An integer array is converted to the default floating point type
-(see \code{\link[=default_dtypes]{default_dtypes()}}).}
+One input. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the input, and its data type -- or the default float
-data type if the input was an integer array.
+(\code{\link{arrayish}})\cr
+Has the input's shape, and its data type -- or the default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
 }
 \description{
 Element-wise error function \verb{erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^2) dt}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 0, 1))
 nv_erf(x)
+
+# an R value materializes at its default data type
+nv_erf(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

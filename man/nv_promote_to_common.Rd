@@ -8,10 +8,12 @@ nv_promote_to_common(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to promote.}
+Arrays to promote. Can be of any data types; an R value among them
+contributes its category rather than a data type of its own.}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})
+(\code{list()} of \code{\link{arrayish}})\cr
+The inputs, each at their common data type and with its own shape.
 }
 \description{
 Promote arrays to a common data type, see \code{\link{common_dtype}} for more details.

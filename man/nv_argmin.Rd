@@ -8,7 +8,8 @@ nv_argmin(x, axis = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to find the index. Negative values count from the
@@ -20,13 +21,14 @@ If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it
 is kept with size 1.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}} of the default integer data type (see
-\code{\link[=default_dtypes]{default_dtypes()}})\cr
-Same shape as \code{x} with \code{axis} removed (or set to 1 if \code{drop = FALSE}).
+(\code{\link{arrayish}})\cr
+Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
+the input's, and the input's shape with \code{axis} removed (\code{drop = TRUE}) or
+set to 1 (\code{drop = FALSE}).
 }
 \description{
 Returns the index of the minimum value along an axis. Ties are broken
@@ -41,6 +43,7 @@ With \code{nan_rm = FALSE} (default), if any entry along the reduced axis is
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the index comes out at the default integer data type
 nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 nv_argmin(nv_array(c(2, NaN, 1, 3)))
 nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)

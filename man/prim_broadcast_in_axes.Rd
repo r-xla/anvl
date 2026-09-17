@@ -8,7 +8,8 @@ prim_broadcast_in_axes(x, shape, broadcast_axes)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. The size of each mapped axis must either match the size of
@@ -19,7 +20,7 @@ Maps each axis of \code{x} to an axis of the output.
 Must have length equal to the number of axes of \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type as the input and the given \code{shape}.
 }
 \description{
@@ -36,11 +37,13 @@ Broadcasts an array to a new shape by replicating the data along new or size-1 a
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_broadcast_in_dim]{hlo_broadcast_in_dim()}}.
+Lowers to \code{\link[stablehlo:hlo_broadcast_in_dim]{hlo_broadcast_in_dim()}}, specified under
+\href{https://openxla.org/stablehlo/spec#broadcast_in_dim}{broadcast_in_dim}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# axis 1 of the input becomes axis 2 of the result, which repeats it
 x <- nv_array(c(1, 2, 3))
 prim_broadcast_in_axes(x, shape = c(2, 3), broadcast_axes = 2L)
 \dontshow{\}) # examplesIf}

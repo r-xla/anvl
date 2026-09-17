@@ -11,7 +11,7 @@ quickr_device(x = "cpu")
 Device type. Currently only supports \code{"cpu"}.}
 }
 \value{
-A \code{QuickrDevice} object.
+(\code{QuickrDevice})
 }
 \description{
 Device descriptor for the quickr backend. The only supported \code{type} is

@@ -10,15 +10,23 @@ nv_solve(a, b)
 \method{solve}{AnvlArray}(a, b, ...)
 }
 \arguments{
-\item{a}{(\code{\link{arrayish}})\cr Coefficient matrix.}
+\item{a}{(\code{\link{arrayish}})\cr
+Square non-singular matrix with exactly 2 axes. Can be any float data
+type; \code{a} and \code{b} are
+\link[=nv_promote_to_common]{promoted to a common data type}, which must come
+out a float. An R value assumes the other operand's data type, and commits
+to its \link[=default_dtypes]{default data type} when that has none either.}
 
-\item{b}{(\code{\link{arrayish}})\cr Right-hand side. If missing, returns \code{\link[=nv_inv]{nv_inv()}} of \code{a}.}
+\item{b}{(\code{\link{arrayish}})\cr
+Right-hand side, vector of length \code{n} or matrix with \code{n} rows. Promoted
+together with \code{a} -- see \code{a}.}
 
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
-The solution \code{x} such that \code{a \%*\% x = b}.
+(\code{\link{arrayish}})\cr
+The solution \code{x} such that \code{a \%*\% x = b}, with \code{b}'s shape and the
+operands' common data type.
 }
 \description{
 Solves the linear system \code{a \%*\% x = b} for \code{x}. Uses LU decomposition
@@ -43,6 +51,7 @@ non-singular.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the solution has `b`'s shape and the operands' common data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 b <- nv_matrix(c(1, 2), nrow = 2, dtype = "f64")
 nv_solve(a, b)
