@@ -997,6 +997,29 @@ describe("prim_top_k", {
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
   })
 
+  it("returns only the values with indices = FALSE", {
+    x <- nv_matrix(c(3, 1, 5, 2, 4, 0, 5, 5, 1), nrow = 3, byrow = TRUE)
+    out <- prim_top_k(x, k = 2L, indices = FALSE)
+    expect_length(out, 1L)
+    expect_named(out, "values")
+    expect_equal(as_array(out$values), as_array(prim_top_k(x, k = 2L)$values))
+    expect_equal(as_array(jit(function(x) prim_top_k(x, k = 2L, indices = FALSE)$values)(x)), as_array(out$values))
+  })
+
+  it("lowers values-only top_k to a sort and slice on CUDA and to chlo top_k elsewhere", {
+    g <- trace_fn(
+      function(x) prim_top_k(x, k = 2L, indices = FALSE)$values,
+      list(nv_aval("f32", shape = c(3L, 5L)))
+    )
+    cuda <- repr(stablehlo(g, platform = "cuda")[[1L]])
+    expect_match(cuda, "stablehlo.sort", fixed = TRUE)
+    expect_match(cuda, "stablehlo.slice", fixed = TRUE)
+    expect_no_match(cuda, "top_k", fixed = TRUE)
+    cpu <- repr(stablehlo(g, platform = "cpu")[[1L]])
+    expect_match(cpu, "top_k", fixed = TRUE)
+    expect_no_match(cpu, "stablehlo.sort", fixed = TRUE)
+  })
+
   it("rejects k larger than the last axis", {
     expect_error(prim_top_k(nv_array(c(1, 2, 3)), k = 5L))
   })

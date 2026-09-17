@@ -737,6 +737,30 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
 # comparing so stable sort treats IEEE-equal values as equal — this keeps
 # all NaNs at one end and stops -0/+0 from being silently reordered.
 # Mirrors JAX _sort_lt_comparator, _canonicalize_float_for_sort).
+.hlo_top_k_values <- function(x, k) {
+  # Only the values are wanted, so ties may come out in any order. The CHLO
+  # top_k expands on GPU to a *stable* sort of (values, iota) plus a slice,
+  # and the stability is what it charges for: an unstable sort of the values
+  # alone is never slower than a full sort there. XLA's CPU backend lowers
+  # the CHLO op to a dedicated partial-sort kernel that beats any sort, so it
+  # keeps it.
+  if (!identical(current_platform(), "cuda")) {
+    return(hlo_top_k(x, k = k)[[1L]])
+  }
+  shp <- shape(x$value_type)
+  rank <- length(shp)
+  sorted <- hlo_sort(
+    x,
+    dimension = rank - 1L,
+    is_stable = FALSE,
+    comparator = .build_sort_comparator(list(x), descending = TRUE)
+  )
+  if (!inherits(sorted, "FuncValue")) {
+    sorted <- sorted[[1L]]
+  }
+  hlo_slice(sorted, rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
+}
+
 .build_sort_comparator <- function(ops, descending) {
   key_dtype <- ops[[1L]]$value_type$type$dtype
   key_is_float <- is_dtype_float(key_dtype)
@@ -779,7 +803,10 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
   hlo_select(is_nan, canonical_nan, hlo_select(is_zero, zero, x))
 }
 
-prim_top_k[["stablehlo"]] <- function(x, k, output_types) {
+prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
+  if (!indices) {
+    return(list(.hlo_top_k_values(x, k)))
+  }
   out <- hlo_top_k(x, k = k)
   values <- out[[1L]]
   indices <- out[[2L]]

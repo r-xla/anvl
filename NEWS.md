@@ -69,6 +69,16 @@
   integer array unchanged, like base R does.
 * Improved documentation of API functions and primitives.
 
+## Performance
+
+* `nv_quantile()` and `nv_median()` select the needed order statistics with
+  `top_k` instead of a full sort when every requested quantile lies in the
+  same half of the axis. Results are unchanged.
+* `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
+  unstable sort of the values and a slice instead of the CHLO op, which
+  costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`
+  and the quantile fast path use it.
+
 ## Bug fixes
 
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,

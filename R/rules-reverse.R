@@ -809,39 +809,48 @@ prim_sort[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
 # than recomputing a permutation) is correct by construction even when
 # `x` has duplicate values — top-k indices are pairwise unique along
 # the last axis.
-prim_top_k[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, required) {
-  if (!required[[1L]]) {
-    return(list(NULL))
-  }
+# The forward always runs with indices, even when the call asked for the values
+# only, so the backward has them without a second top_k.
+prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
   x <- inputs[[1L]]
-  grad_values <- grads[[1L]]
-  indices <- outputs[[2L]]
-  full_shape <- shape(x)
-  rank <- length(full_shape)
-  batching <- seq_len(rank - 1L)
+  out <- prim_top_k(x, k = params$k, indices = TRUE)
+  indices <- out[[2L]]
 
-  zero_input <- prim_fill(
-    0,
-    dtype = dtype(grad_values),
-    shape = full_shape
+  list(
+    outputs = if (params$indices) out else out[1L],
+    backward = function(inputs, outputs, grads, params, required) {
+      if (!required[[1L]]) {
+        return(list(NULL))
+      }
+      grad_values <- grads[[1L]]
+      full_shape <- shape(x)
+      rank <- length(full_shape)
+      batching <- seq_len(rank - 1L)
+
+      zero_input <- prim_fill(
+        0,
+        dtype = dtype(grad_values),
+        shape = full_shape
+      )
+
+      # All axes are iteration axes and we have a single index vector axis that
+      # indicates the position to write to (in the last axis of the input)
+      list(prim_scatter(
+        x = zero_input,
+        # index vectors selecting positions along the last axis of `x`
+        scatter_indices = indices,
+        update = grad_values,
+        update_window_axes = integer(0),
+        inserted_window_axes = rank,
+        x_batching_axes = batching,
+        scatter_indices_batching_axes = batching,
+        scatter_axes_to_x_axes = rank,
+        # we sort along a single axis -> all axes are iteration axes
+        index_vector_axis = rank + 1L,
+        unique_indices = TRUE
+      ))
+    }
   )
-
-  # All axes are iteration axes and we have a single index vector axis that
-  # indicates the position to write to (in the last axis of the input)
-  list(prim_scatter(
-    x = zero_input,
-    # index vectors selecting positions along the last axis of `x`
-    scatter_indices = indices,
-    update = grad_values,
-    update_window_axes = integer(0),
-    inserted_window_axes = rank,
-    x_batching_axes = batching,
-    scatter_indices_batching_axes = batching,
-    scatter_axes_to_x_axes = rank,
-    # we sort along a single axis -> all axes are iteration axes
-    index_vector_axis = rank + 1L,
-    unique_indices = TRUE
-  ))
 })
 
 # concatenate reverse: split the gradient back along the concatenation axis
