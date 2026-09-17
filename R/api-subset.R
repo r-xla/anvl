@@ -473,11 +473,11 @@ parse_subset_spec <- function(quo, axis_size) {
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
 #' x
-#' # Select row 2
+#' # select row 2
 #' nv_subset(x, 2)
 #' x[2, ]
 #'
-#' # Select rows 1 to 2, all columns
+#' # select rows 1 to 2, all columns
 #' nv_subset(x, 1:2)
 #' x[1:2, ]
 #' @export
@@ -584,7 +584,7 @@ subset_scatter_core <- jit(
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)
-#' # Set row 1 to zeros
+#' # set row 1 to zeros
 #' nv_subset_assign(x, 1, value = nv_scalar(0L))
 #' x[1, ] <- nv_scalar(0L)
 #' x

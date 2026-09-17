@@ -40,7 +40,7 @@ paired with an \code{iota} and read off the second output) and key-value
 sorts (sort \code{keys} paired with \code{values}).
 
 All arrays must have the same shape; their dtypes may differ.
-1-dimensional slices along \code{axis} are sorted independently; other
+1-D slices along \code{axis} are sorted independently; other
 axes are preserved.
 }
 \section{Implemented Rules}{
@@ -67,7 +67,7 @@ use \code{SIGNED} / \code{UNSIGNED} as appropriate.
 x <- nv_array(c(3, 1, 4, 1, 5))
 prim_sort(list(x), axis = 1L)[[1L]]
 
-# Sort indices by the values (argsort): pair x with iota and read off
+# sort indices by the values (argsort): pair x with iota and read off
 # the second result.
 idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
 out <- prim_sort(list(x, idx), axis = 1L)

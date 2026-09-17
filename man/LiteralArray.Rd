@@ -34,7 +34,7 @@ x
 shape(x)
 naxes(x)
 dtype(x)
-# How it appears during tracing:
+# how it appears during tracing:
 # 1. via R literals
 graph <- trace_fn(function() 1, list())
 graph

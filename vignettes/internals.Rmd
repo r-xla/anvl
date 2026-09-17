@@ -397,9 +397,10 @@ trace_fn(\(x) {
 }, list(nv_aval("double", c())))
 ```
 
-Because of its possibly problematic implications, a warning message is thrown when this happens.
+This brings an `f64` into a program that never asked for one, which a backend without `f64` support cannot run.
+We accept this for now, because such an `f64` is only ever an intermediate for a conversion and never feeds float math.
 In the future, we might also implement a better solution to this problem.
-One idea would be to convert the `double` input directly to an `i32` before passing it to the compiled program.
+One idea would be to let a single R argument enter the compiled program at several data types, so that the `double` input is converted to an `i32` on the host before the program runs.
 
 This is why API functions and primitives should always canonicalize the inputs right at the beginning, so this problem rarely happens.
 
