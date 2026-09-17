@@ -642,9 +642,7 @@ describe("as_anvl_arrays", {
     expect_equal(as.integer(out$y), 1L)
     # ... and the same for an R value crossing its own category, which is the
     # other thing `coerce` allows.
-    out <- suppressWarnings(
-      as_anvl_arrays(x = nv_array(1L), y = 1.9, .promote = promotion_like("x", coerce = TRUE))
-    )
+    out <- as_anvl_arrays(x = nv_array(1L), y = 1.9, .promote = promotion_like("x", coerce = TRUE))
     expect_equal(as.integer(out$y), 1L)
   })
 

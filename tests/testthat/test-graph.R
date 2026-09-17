@@ -336,10 +336,7 @@ describe("how an R value is built into a graph", {
     # An R double built at an integer data type is built at f64 -- where it is
     # exact -- and converted by the program, so narrowing follows XLA.
     f <- function(x) nv_add(x, nv_convert(1.5, "i32"))
-    # The f64 the staging brings in is what `anvl_staging_widens_warning`
-    # reports; here the point is the graph it produces.
-    expect_warning(trace_fn(f, list(x = nv_aval("i32", integer()))))
-    graph <- suppressWarnings(trace_fn(f, list(x = nv_aval("i32", integer()))))
+    graph <- trace_fn(f, list(x = nv_aval("i32", integer())))
     expect_snapshot(graph)
   })
 
