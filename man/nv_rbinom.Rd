@@ -8,25 +8,31 @@ nv_rbinom(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
+A plain R vector built into the program, not an array.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned \code{state} has them too.}
 
 \item{size}{(\code{integer(1)})\cr
-Number of trials.}
+Number of trials. A plain R number rather than \code{\link{arrayish}}, as is \code{prob},
+so nothing is promoted.}
 
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled values. Must be numeric.
-\code{NULL} (default) uses the backend's
-default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Data type of the sample. Can be any numeric data type; the successes are
+counted and converted to it. Boolean is not one, and is rejected: it
+cannot hold a count. \code{NULL} (default) uses the default integer
+data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
-Elements \code{state}, the updated RNG state, and \code{values}, the sampled values.
+Elements \code{state}, the updated RNG state, and \code{values}, the sample of shape
+\code{shape} and data type \code{dtype}.
 }
 \description{
 Samples from a binomial distribution with \eqn{n} trials and success probability \eqn{p}.
@@ -34,8 +40,8 @@ When \code{size = 1} (the default), this is a Bernoulli distribution.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# Bernoulli samples; `state` is the updated RNG state
 state <- nv_rng_state(42L)
-# Bernoulli samples
 result <- nv_rbinom(c(2, 3), state)
 result$values
 \dontshow{\}) # examplesIf}

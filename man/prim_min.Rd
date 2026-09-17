@@ -8,12 +8,14 @@ prim_min(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of any data type.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise minimum of two arrays.
@@ -29,14 +31,17 @@ Element-wise minimum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_minimum]{hlo_minimum()}}.
+Lowers to \code{\link[stablehlo:hlo_minimum]{hlo_minimum()}}, specified under
+\href{https://openxla.org/stablehlo/spec#minimum}{minimum}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 5, 3))
-y <- nv_array(c(4, 2, 6))
-prim_min(x, y)
+# two R values: both take an R double's default data type
+prim_min(1, 5)
+
+# the R value is built at the array's data type instead
+prim_min(1, nv_scalar(5, "f64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

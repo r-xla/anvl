@@ -9,15 +9,17 @@ nv_transpose(x, permutation = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{permutation}{(\code{integer()} | \code{NULL})\cr
 New ordering of axes. If \code{NULL} (default), reverses the axes.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{x} and shape \code{shape(x)[permutation]}.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type and shape \code{shape(x)[permutation]}, or \code{rev(shape(x))}
+when \code{permutation} is \code{NULL}.
 }
 \description{
 Permutes the axes of an array. You can also use \code{t()} for matrices.
@@ -30,6 +32,7 @@ a one-row matrix) and reverses the axes of a higher-rank array.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the 2x3 becomes a 3x2, keeping its data type
 x <- nv_matrix(1:6, nrow = 2)
 t(x)
 \dontshow{\}) # examplesIf}

@@ -12,7 +12,8 @@ Identifier for the device (e.g. \code{"cpu"}, \code{"cuda"}, \code{"cuda:<n>"}),
 or an existing device object of the active backend (returned as-is).}
 }
 \value{
-A backend-specific device object (e.g. \code{PJRTDevice} for \code{"pjrt"},
+(device object)\cr
+Backend-specific (e.g. \code{PJRTDevice} for \code{"pjrt"},
 \code{\link{quickr_device}} for \code{"quickr"}).
 }
 \description{

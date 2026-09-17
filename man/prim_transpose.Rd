@@ -8,7 +8,8 @@ prim_transpose(x, permutation)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{permutation}{(\code{integer()})\cr
 Specifies the new ordering of axes. Must be a permutation of
@@ -16,8 +17,8 @@ Specifies the new ordering of axes. Must be a permutation of
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as the input and shape \code{shape(x)[permutation]}.
+(\code{\link{arrayish}})\cr
+Has the input's data type and shape \code{shape(x)[permutation]}.
 }
 \description{
 Permutes the axes of an array.
@@ -33,11 +34,13 @@ Permutes the axes of an array.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}}.
+Lowers to \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}}, specified under
+\href{https://openxla.org/stablehlo/spec#transpose}{transpose}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the 2x3 becomes a 3x2, keeping its data type
 x <- nv_matrix(1:6, nrow = 2)
 prim_transpose(x, permutation = c(2L, 1L))
 \dontshow{\}) # examplesIf}

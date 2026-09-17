@@ -9,15 +9,19 @@ nv_concatenate(..., axis = NULL)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to concatenate. Must have the same shape except along \code{axis}.}
+Arrays to concatenate. Can be of any data type; they are
+\link[=nv_promote_to_common]{promoted to a common data type} and scalars are
+\link[=nv_broadcast_scalars]{broadcast}. Must have the same shape except
+along \code{axis}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to concatenate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.
-If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along axis 1.}
+If \code{NULL} (default), concatenates along axis 1, which requires every
+input to be at most 1-D.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the common data type and a shape matching the inputs in all
 axes except \code{axis}, which is the sum of input sizes.
 }
@@ -38,6 +42,7 @@ those along an explicit \code{axis} instead.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the operands are promoted to a common data type; axis 1 grows to 6
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
 nv_concatenate(x, y)

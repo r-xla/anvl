@@ -8,9 +8,8 @@ prim_chol(x, lower = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of data type floating-point with at least 2 axes.
-The last two axes must be equal (square matrix); any leading
-axes are batch axes.}
+One input, with at least 2 axes, the last two of equal size (a square matrix); any leading axes are batch axes. Can be any float data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{lower}{(\code{logical(1)})\cr
 If \code{FALSE} (default, matching base R's \code{\link[base:chol]{base::chol()}}), compute the
@@ -19,13 +18,17 @@ upper triangular factor \code{U} such that \code{x = t(U) \%*\% U}. If
 \code{x = L \%*\% t(L)}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape and data type as the input.
 The values in the triangle not specified by \code{lower} are implementation-defined.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 Axes before the last two are batch axes.
+}
+\details{
+Differentiation is only implemented for a single matrix: the \code{reverse} rule
+errors on a batched input (an input with more than 2 axes).
 }
 \section{Implemented Rules}{
 
@@ -37,7 +40,8 @@ Axes before the last two are batch axes.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}.
+Lowers to \code{\link[stablehlo:hlo_cholesky]{hlo_cholesky()}}, specified under
+\href{https://openxla.org/stablehlo/spec#cholesky}{cholesky}.
 }
 
 \examples{

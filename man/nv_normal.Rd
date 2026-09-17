@@ -19,14 +19,21 @@ nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
 \arguments{
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
-function (\code{q}).}
+function (\code{q}). \code{x} can be any float data type; \code{q} must be \code{f32} or \code{f64}
+(see "Details"). \code{mean} and \code{sd} are brought to it. An R value materializes at
+its \link[=default_dtypes]{default data type}.}
 
 \item{mean}{(\code{\link{arrayish}})\cr
-Mean of the distribution (scalar or same shape as \code{x}/\code{q}/\code{p}).}
+Mean of the distribution, scalar or the same shape as \code{x}/\code{q}/\code{p}; a scalar
+is broadcast. Brought to that argument's data type: an R value is built at
+it, and a value that already has a data type is converted unless that would
+narrow it -- an \code{f64} mean for an \code{f32} \code{x} is an error rather than a silent
+narrowing.}
 
 \item{sd}{(\code{\link{arrayish}})\cr
-Standard deviation of the distribution (scalar or same shape as
-\code{x}/\code{q}/\code{p}). Must be positive, otherwise results are invalid.}
+Standard deviation of the distribution, scalar or the same shape as
+\code{x}/\code{q}/\code{p}; a scalar is broadcast, and it is brought to that argument's
+data type like \code{mean}. Must be positive, otherwise results are invalid.}
 
 \item{log, log_p}{(\code{logical(1)})\cr
 If \code{TRUE}, the densities/probabilities are given as logarithms. For
@@ -38,26 +45,35 @@ If \code{TRUE} (default), probabilities are \eqn{P(X \le x)}; otherwise,
 
 \item{p}{(\code{\link{arrayish}})\cr
 Probabilities at which to evaluate the quantile function. Values outside
-\eqn{[0, 1]} give \code{NaN}.}
+\eqn{[0, 1]} give \code{NaN}. Must be \code{f32} or \code{f64} (see "Details"); \code{mean}
+and \code{sd} are brought to it. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: one axis size per axis, and \code{integer()} for a scalar.
+A plain R vector built into the program, not an array.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sample: a 32- or 64-bit float.
-\code{NULL} (default) takes it from \code{mean} and \code{sd} where either is a
-real array, and falls back to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}})
-where both are bare R values, which have none.}
+Data type of the sample: a 32- or 64-bit float, as the sample is assembled
+from random bits. \code{mean} and \code{sd} are brought to it, widening but never
+narrowing -- an \code{f64} \code{mean} for an \code{f32} sample is an error. \code{NULL}
+(default) takes the data type from \code{mean} and \code{sd} instead, promoting them
+to a common one, and falls back to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}) where both are bare R values, which have none.}
 }
 \value{
-\code{nv_dnorm()} and \code{nv_pnorm()} return an \code{\link{arrayish}} with the same shape and
-data type as \code{x}/\code{q}.
+(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+\code{nv_dnorm()}, \code{nv_pnorm()} and \code{nv_qnorm()} return an \code{\link{arrayish}} with the
+shape and data type of \code{x}/\code{q}/\code{p}.
 
-\code{nv_rnorm()} returns a \code{list()} of two \code{\link{arrayish}} elements: the updated
-RNG state and the sampled values.
+\code{nv_rnorm()} returns a named \code{list} of two \code{\link{arrayish}}: \code{state}, the updated
+RNG state with \code{initial_state}'s data type and shape, and \code{values}, the
+sample of shape \code{shape} and the data type described under \code{dtype}.
 }
 \description{
 Density (\code{nv_dnorm}), distribution function (\code{nv_pnorm}),
@@ -70,7 +86,6 @@ The Normal distribution has probability density function:
 \deqn{f(x) = \frac{1}{\sigma\sqrt{2\pi}}
   \exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)}
 where \eqn{\mu} is the mean and \eqn{\sigma} is the standard deviation.
-The \code{mean} and \code{sd} are converted to the data type of \code{x}/\code{q}/\code{p}.
 
 \code{nv_pnorm} uses the asymptotic expansion from
 Abramowitz & Stegun (1964), equation 26.2.12, in the
@@ -82,7 +97,9 @@ library as used by JAX) for \code{f64}, and uses a new lower degree Remez minima
 rational approximation on the same intervals for \code{f32}.
 
 The thresholds and coefficients of \code{nv_pnorm()} and \code{nv_qnorm()} are written
-for \code{f32} and \code{f64}, so those two are the only data types they accept.
+for \code{f32} and \code{f64}, one set per width, so those two are the only data types
+they accept: a narrower float (\code{f16}, \code{bf16}) is refused rather than served
+by the wrong set. \code{nv_dnorm()} has no coefficients and takes any float.
 }
 \section{Random generation}{
 
@@ -113,6 +130,7 @@ nv_qnorm(p, lower_tail = FALSE)
 nv_qnorm(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `state` is the updated RNG state, `values` the sample
 state <- nv_rng_state(42L)
 result <- nv_rnorm(c(2, 3), state)
 result$values

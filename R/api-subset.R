@@ -371,6 +371,7 @@ parse_subset_specs <- function(quos, x_shape) {
 #' Parse a single subset specification
 #' @param quo Quosure to parse
 #' @param axis_size Size of the axis being indexed
+#' @param axis Axis the subset applies to, used to name it in errors
 #' @return (`SubsetSpec`)\cr
 #'   One of `SubsetFull`, `SubsetRange` or `SubsetIndices`.
 #' @noRd
@@ -524,7 +525,8 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #' Extracts a subset from an array. You can also use the `[` operator.
 #' Supports R-style indexing including scalar indices (which drop axes),
 #' ranges (`a:b`), and `array(c(...))` for selecting multiple elements along a
-#' axis.
+#' axis. A range that counts down (`b:a` with `b` above `a`) selects in
+#' reverse, as it does in base R.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
@@ -641,7 +643,8 @@ subset_scatter_core <- jit(
 #' @title Update Subset
 #' @description
 #' Updates elements of an array at specified positions, returning a new array.
-#' You can also use the `[<-` operator.
+#' You can also use the `[<-` operator. A range that counts down selects in
+#' reverse, as in [nv_subset()], so a non-scalar `value` goes in back to front.
 #' @param x ([`arrayish`])\cr
 #'   The array to update. Can be any data type; `value` is brought to it --
 #'   see `value`.

@@ -1108,7 +1108,10 @@ nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 #' Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive x-axis
 #' and the point `(rhs, lhs)`.
 #' @template params_lhs_rhs_tofloat
-#' @template return_binary
+#' @return ([`arrayish`])\cr
+#'   Has the inputs' broadcast shape, and their common data type -- or the
+#'   default float data type (see [`default_dtypes()`]) where that was an
+#'   integer one.
 #' @seealso [prim_atan2()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' y <- nv_array(c(1, 0, -1))
@@ -1715,15 +1718,19 @@ nv_gamma <- jit(function(x) {
 #' `trigamma()` dispatches here.
 #' @param n,x ([`arrayish`])\cr
 #'   Order of the polygamma function and the value to evaluate it at. `n`
-#'   typically holds non-negative whole numbers. The two are
-#'   [promoted to a common data type][nv_promote_to_common()], which must come
-#'   out a float, since that is all [prim_polygamma()] takes: an integer or
-#'   boolean operand is converted where the other side is a float (or an R
-#'   double, which becomes one), and a call in which neither side is a float
-#'   is refused.
+#'   typically holds non-negative whole numbers. Can be any numeric data type:
+#'   the two are [promoted to a common data type][nv_promote_to_common()] and
+#'   that is then converted to the default float data type (see
+#'   [`default_dtypes()`]) where it is not a float already, since a float is
+#'   all [prim_polygamma()] takes. An R value assumes the other operand's data
+#'   type within its [data type category][dtypes], and settles on the default
+#'   float when neither has one.
 #'   Scalars are [broadcast][nv_broadcast_scalars()] to the shape of the other,
 #'   so `nv_polygamma(1, x)` works for any float `x`.
-#' @template return_binary
+#' @return ([`arrayish`])\cr
+#'   Has the inputs' broadcast shape, and their common data type -- or the
+#'   default float data type (see [`default_dtypes()`]) where that was an
+#'   integer one.
 #' @seealso [prim_polygamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the R `1` is built at `x`'s float data type and broadcast
@@ -1903,14 +1910,20 @@ nv_iota <- prim_iota
 
 #' @title Sequence
 #' @description
-#' Creates a 1-D array with the consecutive integer values from `start` to
-#' `end` (inclusive), like R's `seq(start, end)`.
+#' Creates a 1-D array with the values from `start` to `end` in steps of `by`,
+#' like R's `seq(start, end, by)`. The sequence counts down when `end` lies
+#' below `start`, and stops before `end` when `end` is not reachable in whole
+#' steps: `nv_seq(0, 9, by = 2)` ends at `8`.
 #'
 #' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
 #' @param start,end (`integer(1)`)\cr
-#'   Start and end values, which must satisfy `start <= end`. Both are plain R
-#'   values built into the program, not arrays.
+#'   First value and upper (or, when counting down, lower) limit of the
+#'   sequence. Both are plain R values built into the program, not arrays.
+#' @param by (`NULL` | `integer(1)`)\cr
+#'   Step size, which must be a non-zero whole number pointing from `start`
+#'   towards `end`. `NULL` (default) uses `-1` if `start > end` and `1`
+#'   otherwise. A plain R value built into the program, not an array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Can be any numeric data type; boolean is not one,
 #'   and is rejected. `NULL` (default) uses the default integer data
@@ -1921,12 +1934,18 @@ nv_iota <- prim_iota
 #'   (only for `nv_seq_like()`).
 #' @template param_device
 #' @return ([`arrayish`])\cr
-#'   Has `dtype` and shape `end - start + 1`.
+#'   Has `dtype` and shape `(end - start) %/% by + 1`.
 #' @seealso [nv_linspace()] for a given number of evenly spaced values,
 #'   [nv_iota()] for values increasing along an axis of any shape,
 #'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
+#'
+#' # a range that counts down needs no `by`
+#' nv_seq(7, 3)
+#'
+#' # `end` is only reached where a whole number of steps lands on it
+#' nv_seq(0, 9, by = 2)
 #'
 #' # a float data type gives the same values as floats
 #' nv_seq(3, 7, dtype = "f32")
@@ -1975,10 +1994,11 @@ nv_seq <- jit(
 #' default to those of `like`.
 #' @param start,end (`numeric(1)`)\cr
 #'   First and last value of the sequence. `end` may lie below `start`, in
-#'   which case the values decrease.
+#'   which case the values decrease. Both are plain R values built into the
+#'   program, not arrays.
 #' @param steps (`integer(1)`)\cr
 #'   Number of values to generate. Must be at least 1; for `steps = 1` the
-#'   result is `start`.
+#'   result is `start`. A plain R value built into the program, not an array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type of the result. Must be a float data type; `NULL` (default) uses
 #'   the default float data type (see [`default_dtypes()`]), since
@@ -2104,7 +2124,7 @@ nv_round <- function(x, method = "nearest_even") {
 #' - `rhs`: `(b1, ..., bk, n, p)`
 #' - output: `(b1, ..., bk, m, p)`
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   Arrays with at least 2 axes. Can be of any data type; the two are
+#'   Arrays with at least 2 axes. Can be any numeric data type; the two are
 #'   [promoted to a common data type][nv_promote_to_common()]. An R value
 #'   assumes the data type of the other operand, and materializes at its
 #'   [default data type][default_dtypes] when that has none either.
@@ -3711,8 +3731,10 @@ nv_triu <- jit(
 #' @title Cross Product (Matrix)
 #' @description
 #' Computes `t(lhs) %*% rhs`. If `rhs` is missing, computes `t(lhs) %*% lhs`.
+#' Above rank 2 the last two axes are the matrix and the leading ones are batch
+#' axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param lhs ([`arrayish`])\cr
-#'   A matrix with exactly 2 axes, as for [base::crossprod()]. Can be of any
+#'   An array with at least 2 axes, as for [base::crossprod()]. Can be any numeric
 #'   data type; `lhs` and `rhs` are
 #'   [promoted to a common data type][nv_promote_to_common()].
 #' @param rhs ([`arrayish`] | `NULL`)\cr
@@ -3740,8 +3762,10 @@ nv_crossprod <- jit(function(lhs, rhs = NULL) {
 #' @title Transpose Cross Product (Matrix)
 #' @description
 #' Computes `lhs %*% t(rhs)`. If `rhs` is missing, computes `lhs %*% t(lhs)`.
+#' Above rank 2 the last two axes are the matrix and the leading ones are batch
+#' axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param lhs ([`arrayish`])\cr
-#'   A matrix with exactly 2 axes, as for [base::tcrossprod()]. Can be of any
+#'   An array with at least 2 axes, as for [base::tcrossprod()]. Can be any numeric
 #'   data type; `lhs` and `rhs` are
 #'   [promoted to a common data type][nv_promote_to_common()].
 #' @param rhs ([`arrayish`] | `NULL`)\cr
@@ -3943,8 +3967,9 @@ nv_argsort <- jit(
 #' @templateVar shapes with at least 1 axis
 #' @template param_unary_x
 #' @param k (`integer(1)`)\cr
-#'   Number of top elements to return. Must satisfy
-#'   `1 <= k <= shape(x)[axis]`.
+#'   Number of top elements to return. Must be a whole number satisfying
+#'   `1 <= k <= shape(x)[axis]`; a fractional or logical `k` is refused
+#'   rather than truncated.
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to take the top `k`. Negative values count from the
 #'   end, i.e. `-1` refers to the last axis. If `NULL` (default),

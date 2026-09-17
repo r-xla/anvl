@@ -160,6 +160,44 @@
 * `nv_runif()` with `min == max` returns the `state` / `values` pair every
   other sampler returns, instead of the filled array on its own.
 
+## Documentation
+
+* Every `prim_*` and `nv_*` page now states, in its parameters and its return
+  value, which data types it accepts, what an R value among them materializes
+  at, whether operands are promoted and whether scalars are broadcast.
+* The group words those pages use (*numeric*, *integerish*, *float*, ...) are
+  defined once on the new `?dtypes` page, which also documents the default data
+  type an R value takes, and are shown on `?arrayish`.
+* Primitives modelled on a StableHLO or CHLO op now link that op's
+  specification instead of restating it.
+* `?dtypes` says that `f16` and `bf16` count as float data types everywhere
+  anvl reasons about data types but are materialized by no backend today, and
+  `?common_dtype` that the two have no true common data type.
+* Corrections found by auditing every page against the running package:
+  `prim_clamp()`'s formula, `nv_tril()`'s and `nv_triu()`'s `diagonal`, the
+  shift pages' accepted data types, `prim_bitcast_convert()`'s `bool`
+  exclusion, `common_dtype()`'s promotion rule, the `axis = NULL` shape of the
+  cumulative reductions, `nv_transpose()`'s `NULL` permutation,
+  `prim_triangular_solve()`'s `transpose_a`, and the CHLO links of
+  `prim_erf_inv()` and `prim_top_k()`.
+* `prim_chol()` / `nv_chol()` and `prim_triangular_solve()` /
+  `nv_triangular_solve()` say that differentiation is only implemented for a
+  single matrix, not a batch.
+* `?nv_quantile`'s interpolation formula is stated in 1-based terms, and
+  `?nv_convert` says what happens to a value the target data type cannot hold.
+* `?AnvlBackendQuickr` and `vignette("primitives")` no longer claim the boolean
+  reductions have an integer form on pjrt.
+* `vignette("random-numbers")` had the promotion direction backwards: `mean`
+  and `sd` decide what the sample is drawn at when `dtype` is unset, not the
+  other way around.
+* `vignette("anvl")`, `vignette("jit")`, `vignette("internals")` and
+  `vignette("logistic-regression")` follow the configured default data types
+  instead of naming `f32`.
+* Corrected: `?LiteralArray`, `?to_abstract`, `?nv_eye`'s `like`, `?nv_if`'s
+  branches, `?nv_concatenate`'s `axis = NULL`, `?nv_polygamma`'s promotion,
+  `?assert_shapevec`'s `min_len` and return value, and the `shape` argument of
+  `?nv_iota` / `?nv_lower_tri` / `?nv_upper_tri`.
+
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.

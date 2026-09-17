@@ -8,25 +8,33 @@ nv_while(init, cond, body)
 }
 \arguments{
 \item{init}{(\verb{named list()})\cr
-Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs. R values are materialized at their default data type.}
+Named list of initial state values, a tree in the sense of pjrt's
+\code{\link[pjrt:build_tree]{RTree}}. Each leaf becomes a parameter of the loop's
+sub-graphs. R values are materialized at their
+\link[=default_dtypes]{default data type}.}
 
 \item{cond}{(\code{function})\cr
 Condition function returning a scalar boolean.
 Receives the state values as arguments.}
 
 \item{body}{(\code{function})\cr
-Body function returning the updated state as a named list
-with the same structure as \code{init}.}
+Body function returning the updated state as a named list with the same
+structure, data types and shapes as \code{init}. Nothing is promoted: a
+loop-carried state is meant to be heterogeneous, so each member keeps its
+own data type across iterations.}
 }
 \value{
-Final state after the loop terminates (same structure as \code{init}).
+(named \code{list})\cr
+A tree of the loop-carried arrays -- see \code{\link[pjrt:build_tree]{RTree}} -- in its
+final state after the loop terminates, with \code{init}'s structure, data
+types and shapes.
 }
 \description{
 Executes a functional while loop.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the loop state is a named list, and each member keeps its data type
 nv_while(
   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
   cond = function(i, total) i < 5L,

@@ -8,7 +8,8 @@ nv_top_k(x, k, axis = NULL, with_indices = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input, with at least 1 axis. Can be any numeric data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements to return. Must be a whole number satisfying
@@ -22,14 +23,16 @@ uses the last axis.}
 
 \item{with_indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns just the top-\code{k} values. If \code{TRUE},
-returns \code{list(values = ..., indices = ...)} where \code{indices} is the
-1-based position of each top-\code{k} value along \code{axis}, of the default
-integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+returns \code{list(values = ..., indices = ...)} where \code{indices} holds the
+position of each top-\code{k} value along \code{axis}.}
 }
 \value{
-\code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
-arrays (when \code{with_indices = TRUE}). Output shape matches \code{x} with
-\code{axis} resized to \code{k}; values are sorted decreasing along \code{axis}.
+(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+One array when \code{with_indices = FALSE}, a named \code{list} when
+\code{with_indices = TRUE}. The values have the input's data type and the
+indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both
+have the input's shape with \code{axis} resized to \code{k}; values are sorted
+decreasing along \code{axis}.
 }
 \description{
 Returns the \code{k} largest values along an axis, sorted in decreasing order.
@@ -43,6 +46,7 @@ bit is not canonicalized.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the values keep the input's data type, the indices the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_top_k(x, k = 3L)
 nv_top_k(x, k = 3L, with_indices = TRUE)

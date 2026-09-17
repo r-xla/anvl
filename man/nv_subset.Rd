@@ -9,19 +9,23 @@ nv_subset(x, ...)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{...}{Subset specifications, one per axis. Omitted trailing
 axes select all elements. See \code{vignette("subsetting")} for details.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the input's data type, and the shape the specifications select --
+a scalar index drops its axis, a range or an index array keeps it.
 }
 \description{
 Extracts a subset from an array. You can also use the \code{[} operator.
 Supports R-style indexing including scalar indices (which drop axes),
 ranges (\code{a:b}), and \code{array(c(...))} for selecting multiple elements along a
-axis.
+axis. A range that counts down (\code{b:a} with \code{b} above \code{a}) selects in
+reverse, as it does in base R.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

@@ -8,11 +8,12 @@ nv_print(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Returns \code{x} unchanged.
+(\code{\link{arrayish}})\cr
+Returns the input unchanged, data type and shape included.
 }
 \description{
 Prints an array value to the console during JIT execution and returns the
@@ -20,6 +21,7 @@ input unchanged. Useful for debugging.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the value is printed and handed back unchanged
 x <- nv_array(c(1, 2, 3))
 nv_print(x)
 \dontshow{\}) # examplesIf}
