@@ -28,6 +28,8 @@
 
 ## Features
 
+* `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
+  when `start > end`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
@@ -71,6 +73,12 @@
 
 ## Bug fixes
 
+* `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
+  to a common data type.
+* The floating-point `nv_*` functions refuse a boolean.
+* `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
+  is refused rather than silently truncated.
+* A range that counts down (`x[3:1]`) now selects in reverse instead of failing.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
   `as.numeric()`, `as.character()` and friends -- now aborts with an
   explanation instead of falling through to the base R generic. Some of those

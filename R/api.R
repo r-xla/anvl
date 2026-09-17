@@ -1577,13 +1577,20 @@ nv_iota <- prim_iota
 
 #' @title Sequence
 #' @description
-#' Creates a 1-D array with the consecutive integer values from `start` to
-#' `end` (inclusive), like R's `seq(start, end)`.
+#' Creates a 1-D array with the values from `start` to `end` in steps of `by`,
+#' like R's `seq(start, end, by)`. The sequence counts down when `end` lies
+#' below `start`, and stops before `end` when `end` is not reachable in whole
+#' steps: `nv_seq(0, 9, by = 2)` ends at `8`.
 #'
 #' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
 #' @param start,end (`integer(1)`)\cr
-#'   Start and end values, which must satisfy `start <= end`.
+#'   First value and upper (or, when counting down, lower) limit of the
+#'   sequence.
+#' @param by (`NULL` | `integer(1)`)\cr
+#'   Step size, which must be a non-zero whole number pointing from `start`
+#'   towards `end`. `NULL` (default) uses `-1` if `start > end` and `1`
+#'   otherwise.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type. `NULL` (default) uses the backend's default integer data type
 #'   (see [`default_dtypes()`]). For `nv_seq_like()`, `NULL` uses `dtype(like)`.
@@ -1592,32 +1599,40 @@ nv_iota <- prim_iota
 #'   (only for `nv_seq_like()`).
 #' @template param_device
 #' @return [`arrayish`]\cr
-#'   1-D array of length `end - start + 1`.
+#'   1-D array of length `(end - start) %/% by + 1`.
 #' @seealso [nv_linspace()] for a given number of evenly spaced values,
 #'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
+#' nv_seq(7, 3)
+#' nv_seq(0, 10, by = 2)
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
-#' @jit static 1:4
-nv_seq <- function(start, end, dtype = NULL, device = NULL) {
+#' @jit static 1:5
+nv_seq <- function(start, end, by = NULL, dtype = NULL, device = NULL) {
   dtype <- dtype %||% default_int()
   assert_int(start)
   assert_int(end)
-  if (start > end) {
+  by <- by %||% if (start > end) -1L else 1L
+  assert_int(by)
+  if (by == 0) {
+    cli_abort("{.arg by} must not be 0.")
+  }
+  if (start != end && sign(by) != sign(end - start)) {
     cli_abort(c(
-      "{.arg start} must not be greater than {.arg end}.",
-      x = "Got {.val {start}} and {.val {end}}."
+      "Wrong sign in {.arg by} argument.",
+      x = "Cannot go from {.val {start}} to {.val {end}} in steps of {.val {by}}."
     ))
   }
-  nv_iota(
-    shape = end - start + 1,
-    dtype = dtype,
-    axis = 1L,
-    start = start,
-    device = device
-  )
+  n <- as.integer((end - start) %/% by) + 1L
+  if (by == 1) {
+    return(nv_iota(shape = n, dtype = dtype, axis = 1L, start = start, device = device))
+  }
+  # prim_iota has no step, so scale a 0-based iota; the literals are integers so
+  # that they take the data type of the array instead of promoting it to float
+  indices <- nv_iota(shape = n, dtype = dtype, axis = 1L, start = 0L, device = device)
+  indices * as.integer(by) + as.integer(start)
 }
 
 #' @title Evenly Spaced Sequence
@@ -3275,8 +3290,9 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' Returns the `k` largest values along an axis, sorted in decreasing order.
 #' @template param_x
 #' @param k (`integer(1)`)\cr
-#'   Number of top elements to return. Must satisfy
-#'   `1 <= k <= shape(x)[axis]`.
+#'   Number of top elements to return. Must be a whole number satisfying
+#'   `1 <= k <= shape(x)[axis]`; a fractional or logical `k` is refused
+#'   rather than truncated.
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to take the top `k`. Negative values count from the
 #'   end, i.e. `-1` refers to the last axis. If `NULL` (default),
@@ -3310,8 +3326,15 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
     cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
   }
   axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+  # Check before coercing: `as.integer()` first would silently truncate a
+  # fractional `k` and accept a logical one, where `prim_top_k()` refuses both.
+  if (!checkmate::test_int(k, lower = 1L, upper = shape(x)[axis])) {
+    cli_abort(c(
+      "{.arg k} must be a single whole number between 1 and the size of {.arg axis}.",
+      x = "Axis {axis} has size {shape(x)[axis]}, and {.arg k} is {.val {k}}."
+    ))
+  }
   k <- as.integer(k)
-  assert_int(k, lower = 1L, upper = shape(x)[axis])
 
   # prim_top_k operates on the last axis; transpose axis to last and back.
   if (axis != rank) {
@@ -3649,8 +3672,10 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' `[batch, in_channels, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kW]`, output is
 #' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, W]`. `x` and `weight` are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
+#'   Promoted together with `x`.
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
@@ -3667,8 +3692,10 @@ nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' `[batch, in_channels, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kh, kw]`, output is
 #' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. `x` and `weight` are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
+#'   Promoted together with `x`.
 #' @param stride (`integer()`)\cr Length 1 or 2.
 #' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
 #' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
@@ -3698,8 +3725,11 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 }
 
 .nv_convnd <- function(x, weight, n, stride, padding, dilation, groups, precision) {
-  # `x`/`weight` are left as raw arrayish; prim_convolution's machinery
-  # (graph_desc_add -> maybe_box_arrayish) coerces them.
+  # The `nv_*` layer promotes across data types; `prim_convolution()` would
+  # require `x` and `weight` to agree already, and would name its own operand.
+  args <- as_anvl_arrays(x = x, weight = weight, .promote = promotion_common())
+  x <- args$x
+  weight <- args$weight
   stride <- .nv_conv_vec(stride, n, "stride")
   pad <- .nv_conv_vec(padding, n, "padding")
   dilation <- .nv_conv_vec(dilation, n, "dilation")

@@ -5,13 +5,19 @@
 \alias{nv_seq_like}
 \title{Sequence}
 \usage{
-nv_seq(start, end, dtype = NULL, device = NULL)
+nv_seq(start, end, by = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(like, start, end, dtype = NULL, device = NULL)
+nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
 }
 \arguments{
 \item{start, end}{(\code{integer(1)})\cr
-Start and end values, which must satisfy \code{start <= end}.}
+First value and upper (or, when counting down, lower) limit of the
+sequence.}
+
+\item{by}{(\code{NULL} | \code{integer(1)})\cr
+Step size, which must be a non-zero whole number pointing from \code{start}
+towards \code{end}. \code{NULL} (default) uses \code{-1} if \code{start > end} and \code{1}
+otherwise.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type. \code{NULL} (default) uses the backend's default integer data type
@@ -37,11 +43,13 @@ Existing array whose attributes are used as defaults
 }
 \value{
 \code{\link{arrayish}}\cr
-1-D array of length \code{end - start + 1}.
+1-D array of length \code{(end - start) \%/\% by + 1}.
 }
 \description{
-Creates a 1-D array with the consecutive integer values from \code{start} to
-\code{end} (inclusive), like R's \code{seq(start, end)}.
+Creates a 1-D array with the values from \code{start} to \code{end} in steps of \code{by},
+like R's \code{seq(start, end, by)}. The sequence counts down when \code{end} lies
+below \code{start}, and stops before \code{end} when \code{end} is not reachable in whole
+steps: \code{nv_seq(0, 9, by = 2)} ends at \code{8}.
 
 \code{nv_seq_like()} is a variant where \code{dtype} and \code{device}
 default to those of \code{like}.
@@ -49,6 +57,8 @@ default to those of \code{like}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_seq(3, 7)
+nv_seq(7, 3)
+nv_seq(0, 10, by = 2)
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 \dontshow{\}) # examplesIf}

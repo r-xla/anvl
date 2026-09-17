@@ -1243,6 +1243,31 @@ describe("nv_seq", {
   it("no longer takes steps", {
     expect_error(nv_seq(0, 1, steps = 5L), "unused argument")
   })
+  it("counts down when start is greater than end", {
+    expect_equal(nv_seq(7, 3), nv_array(7:3))
+  })
+  it("steps by `by`", {
+    expect_equal(nv_seq(0, 10, by = 2), nv_array(seq(0L, 10L, by = 2L)))
+    expect_equal(nv_seq(10, 0, by = -3), nv_array(seq(10L, 0L, by = -3L)))
+  })
+  it("stops before end when end is not reachable", {
+    expect_equal(nv_seq(0, 9, by = 2), nv_array(seq(0L, 9L, by = 2L)))
+  })
+  it("returns a single value when start equals end", {
+    expect_equal(nv_seq(3, 3), nv_array(3L))
+    expect_equal(nv_seq(3, 3, by = -2), nv_array(3L))
+  })
+  it("keeps the default integer dtype when stepping", {
+    expect_dtype(nv_seq(0, 10, by = 2), default_int())
+    with_default_dtypes(c(int = "i64"), expect_dtype(nv_seq(0, 10, by = 2), "i64"))
+    expect_dtype(nv_seq(0, 10, by = 2, dtype = "i16"), "i16")
+  })
+  it("errors for a zero, fractional or wrongly signed `by`", {
+    expect_error(nv_seq(0, 10, by = 0), "must not be 0")
+    expect_error(nv_seq(0, 10, by = 2.5), "by")
+    expect_error(nv_seq(0, 10, by = -2), "Wrong sign")
+    expect_error(nv_seq(10, 0, by = 2), "Wrong sign")
+  })
 })
 
 describe("nv_outer", {
@@ -1556,6 +1581,13 @@ describe("nv_seq_like", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
     out <- nv_seq_like(like, 1, 5, dtype = "f32")
     expect_dtype(out, "f32")
+  })
+
+  it("passes `by` through", {
+    like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
+    out <- nv_seq_like(like, 0, 10, by = 5)
+    expect_dtype(out, "i16")
+    expect_equal(as.integer(out), c(0L, 5L, 10L))
   })
 })
 
@@ -2413,4 +2445,60 @@ test_that("a constructor that fills internally works at every data type", {
   b <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
   expect_equal(as.vector(nv_tril(b)), c(TRUE, TRUE, FALSE, TRUE))
   expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
+})
+test_that("the floating-point nv_* functions refuse a boolean", {
+  # `int_to_float()` used to pass a boolean through and leave the rejection to
+  # the primitive, which `nv_cospi()` never reached: its `+ 1/2` promoted the
+  # boolean to a float first.
+  expect_error(nv_cospi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_cospi(TRUE), "`x` must be a numeric data type")
+  expect_error(nv_sinpi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_tanpi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_sin(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_atan2(nv_array(TRUE), nv_array(1)), "`lhs` must be a numeric data type")
+  # An integer is still accepted and converted to a float.
+  expect_equal(as.vector(as_array(nv_cospi(nv_array(1L)))), -1, tolerance = 1e-6)
+  expect_equal(dtype(nv_sin(nv_array(1L))), default_float())
+})
+
+test_that("nv_conv1d/2d/3d promote their operands", {
+  # The `nv_*` layer promotes, as `nv_matmul()` does; `prim_convolution()`
+  # underneath still requires operands that already agree.
+  x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
+  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+  w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
+  expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
+  # An integer input meets a float weight at the float; it used to be refused.
+  expect_equal(
+    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
+    as_dtype("f32")
+  )
+  expect_equal(
+    dtype(nv_conv2d(
+      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+  expect_equal(
+    dtype(nv_conv3d(
+      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+})
+
+test_that("nv_top_k checks `k` before coercing it", {
+  # `as.integer()` first silently truncated a fractional `k` and accepted a
+  # logical one, where `prim_top_k()` refuses both.
+  x3 <- nv_array(c(1, 2, 3))
+  expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
+  expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
 })
