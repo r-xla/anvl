@@ -418,8 +418,6 @@ reference:
 
   - subtitle: Transformations
     contents:
-      - jit_roclet
-      - apply_jit_registry
       - trace_fn
       - transform_gradient
       - rule_reverse

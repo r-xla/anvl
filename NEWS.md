@@ -2,6 +2,8 @@
 
 ## Breaking changes
 
+* The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
+  definition instead.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
@@ -73,6 +75,11 @@
 
 ## Bug fixes
 
+* A function returned by `jit()` no longer evaluates its arguments a second
+  time. It used to rebuild the call with `match.call()` and evaluate the
+  argument expressions again in the caller's frame, which computed them twice
+  whenever something had evaluated them already -- most visibly under S3
+  dispatch, which evaluates the first argument to choose a method.
 * `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
   to a common data type.
 * The floating-point `nv_*` functions refuse a boolean.
