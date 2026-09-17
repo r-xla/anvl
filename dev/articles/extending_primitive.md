@@ -420,7 +420,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x55f9a43eafd0>
+#> <environment: 0x55e1f4c92040>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")

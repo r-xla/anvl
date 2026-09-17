@@ -8,7 +8,7 @@
 <!-- Anvil silhouette — three shapes: face+horn, waist, base -->
 <g transform="translate(300,263) scale(1.1)" fill="#000000">
 <!-- Face with horn tapering left -->
-<path d="M-92,-32 L128,-32 L128,-8 L-92,-8 L-128,-14 L-128,-26 Z"/>
+<path d="M-92,-32 L110,-32 L110,-8 L-92,-8 L-128,-14 L-128,-26 Z"/>
 <!-- Waist -->
 <path d="M-55,-4 L55,-4 L72,52 L-72,52 Z"/>
 <!-- Base -->
