@@ -49,6 +49,10 @@
 
 ### Features
 
+- [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md) /
+  [`nv_seq_like()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
+  gained a `by` argument and now count down when `start > end`, like
+  [`seq()`](https://rdrr.io/r/base/seq.html).
 - New
   [`jit_cache_size()`](https://r-xla.github.io/anvl/dev/reference/jit_cache_size.md)
   reports how many compiled programs a jitted function currently holds
@@ -133,6 +137,8 @@
 
 ### Bug fixes
 
+- A range that counts down (`x[3:1]`) now selects in reverse instead of
+  failing.
 - Coercing a traced array to R inside
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) –
   [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md),

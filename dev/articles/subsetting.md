@@ -185,6 +185,20 @@ Note that the `a:b` syntax works via Non-Standard Evaluation (NSE), so
 we can distinguish it from the actual vector `2:5`. Internally, it is
 translated to `nv_seq(a, b)`.
 
+A range that counts down selects in reverse, as it does in base R.
+
+``` r
+
+x[5:2]
+```
+
+    ## AnvlArray
+    ##  5
+    ##  4
+    ##  3
+    ##  2
+    ## [ CPUi32{4} ]
+
 It is also possible to select the whole range by omitting the
 specification altogether.
 

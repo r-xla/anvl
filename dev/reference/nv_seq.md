@@ -1,7 +1,9 @@
 # Sequence
 
-Creates a 1-D array with the consecutive integer values from `start` to
-`end` (inclusive), like R's `seq(start, end)`.
+Creates a 1-D array with the values from `start` to `end` in steps of
+`by`, like R's `seq(start, end, by)`. The sequence counts down when
+`end` lies below `start`, and stops before `end` when `end` is not
+reachable in whole steps: `nv_seq(0, 9, by = 2)` ends at `8`.
 
 `nv_seq_like()` is a variant where `dtype` and `device` default to those
 of `like`.
@@ -9,9 +11,9 @@ of `like`.
 ## Usage
 
 ``` r
-nv_seq(start, end, dtype = NULL, device = NULL)
+nv_seq(start, end, by = NULL, dtype = NULL, device = NULL)
 
-nv_seq_like(like, start, end, dtype = NULL, device = NULL)
+nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
 ```
 
 ## Arguments
@@ -19,7 +21,15 @@ nv_seq_like(like, start, end, dtype = NULL, device = NULL)
 - start, end:
 
   (`integer(1)`)  
-  Start and end values, which must satisfy `start <= end`.
+  First value and upper (or, when counting down, lower) limit of the
+  sequence.
+
+- by:
+
+  (`NULL` \| `integer(1)`)  
+  Step size, which must be a non-zero whole number pointing from `start`
+  towards `end`. `NULL` (default) uses `-1` if `start > end` and `1`
+  otherwise.
 
 - dtype:
 
@@ -62,7 +72,7 @@ nv_seq_like(like, start, end, dtype = NULL, device = NULL)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-1-D array of length `end - start + 1`.
+1-D array of length `(end - start) %/% by + 1`.
 
 ## See also
 
@@ -82,6 +92,23 @@ nv_seq(3, 7)
 #>  6
 #>  7
 #> [ CPUi32{5} ] 
+nv_seq(7, 3)
+#> AnvlArray
+#>  7
+#>  6
+#>  5
+#>  4
+#>  3
+#> [ CPUi32{5} ] 
+nv_seq(0, 10, by = 2)
+#> AnvlArray
+#>   0
+#>   2
+#>   4
+#>   6
+#>   8
+#>  10
+#> [ CPUi32{6} ] 
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 #> AnvlArray
