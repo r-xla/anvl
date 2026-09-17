@@ -2706,6 +2706,7 @@ nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
   }
   # Validated before it is compared against `xs`, so that a malformed value
   # reports itself rather than tripping the comparison.
+  # REVIEW: Use checkmate for this.
   if (!is.null(length)) {
     length <- suppressWarnings(as.integer(length))
     if (base::length(length) != 1L || is.na(length) || length < 1L) {
