@@ -11,7 +11,7 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 Arrayish value of any data type.}
 
 \item{init}{(\code{\link{arrayish}})\cr
-Scalar initial value, with no axes. Must have the same data type as
+Scalar (0 axes) initial value. Must have the same data type as
 \code{x} and be the neutral element w.r.t. \code{reductor}.}
 
 \item{axes}{(\code{integer()})\cr

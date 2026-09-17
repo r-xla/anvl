@@ -965,7 +965,7 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #'
 #' @template param_prim_x_any
 #' @param init ([`arrayish`])\cr
-#'   Scalar initial value, with no axes. Must have the same data type as
+#'   Scalar (0 axes) initial value. Must have the same data type as
 #'   `x` and be the neutral element w.r.t. `reductor`.
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -1117,7 +1117,7 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
   ))
 }
 
-#' @title Primitive Index of the Maximum
+#' @title Primitive Argmax
 #' @description
 #' Returns the index of the maximum value along a single axis. Ties
 #' are broken by returning the smallest index.
@@ -2344,7 +2344,7 @@ prim_round <- new_primitive(
 
 # dtype conversion ----------------------------------------------------------------
 
-#' @title Primitive Convert Data Type
+#' @title Primitive Convert
 #' @description
 #' Converts the elements of an array to a different data type.
 #' @template param_prim_x_any
@@ -2388,7 +2388,7 @@ prim_convert <- new_primitive(
 )
 
 
-#' @title Primitive Conditional Element Selection
+#' @title Primitive Ifelse
 #' @description
 #' Element-wise selection based on a boolean predicate, like R's [ifelse()].
 #' For each element, returns the corresponding element from `true_value` where
