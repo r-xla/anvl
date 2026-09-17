@@ -139,14 +139,6 @@
 * `nv_runif()` with `min == max` returns the `state` / `values` pair every
   other sampler returns, instead of the filled array on its own.
 
-## Documentation
-
-* The help pages of the binary primitives now have a *Data Types* section
-  saying how their operands reach one data type: an operand that has a data
-  type keeps it, and an R value is built at the one the others have, within
-  its own category. The text comes from a shared roxygen2 template
-  (`man-roxygen/section_dtypes.R`), so it is written once for all of them.
-
 ## Tests
 
 * Moved some of pjrt's dispatcher tests into anvl.
