@@ -159,22 +159,23 @@ format_graph_signature <- function(g) {
   sprintf("graph(%s) -> %s", avals(g$inputs), avals(g$outputs))
 }
 
-# A sub-graph param, printed in full -- its Inputs and Outputs sections are its
-# signature. `node_ids` is the enclosing graph's table, which is what lets a
-# captured node keep its outer name; a graph formatted on its own gets a table
-# of its own.
+# A sub-graph param, printed in full. `node_ids` is the enclosing graph's table,
+# which is what lets a captured node keep its outer name; a graph formatted on
+# its own gets a table -- and typed captures -- of its own, there being no
+# enclosing graph to read them from.
 format_graph_param <- function(g, node_ids = NULL, width = getOption("width", 80L)) {
+  alone <- is.null(node_ids)
   node_ids <- node_ids %||% build_node_ids(g$inputs, g$constants, g$calls)
-  sections <- format_graph_sections(
+  lines <- format_graph_lines(
     inputs = g$inputs,
     constants = g$constants,
     calls = g$calls,
     outputs = g$outputs,
     node_ids = node_ids,
     width = width,
-    constants_label = "Captures"
+    typed_captures = alone
   )
-  paste(c("graph {", sections, "}"), collapse = "\n")
+  paste(lines, collapse = "\n")
 }
 
 # One comma-separated list inside a call line: its params, its operands, or the
@@ -215,10 +216,10 @@ fill_parts <- function(parts, width) {
   c(rows, cur)
 }
 
-# Lays out a call from its chunks -- plain strings kept verbatim, lists either
+# Lays out one row from its chunks -- plain strings kept verbatim, lists either
 # inline or, where `broken` says so, opened at the end of the running line,
 # filled at `indent + 2`, and closed on a line that the chunks after it continue.
-layout_call <- function(chunks, broken, indent, width) {
+render_row <- function(chunks, broken, indent, width) {
   inner <- paste0(indent, "  ")
   lines <- character()
   cur <- indent
@@ -249,12 +250,29 @@ layout_width <- function(lines) {
   if (!length(own)) 0L else max(nchar(own))
 }
 
-# A call line, laid out to `width`. Everything on one line where it fits;
-# otherwise the widest of its comma-separated lists is broken into a filled
-# block, and the next widest after that, until the line fits. A list holding a
-# sub-graph always starts out broken. A line that is one unbreakable unit -- a
-# single long param, a wide output type -- overflows `width`, since the only way
-# to shorten it is to split a value.
+# A row of chunks laid out to `width`: everything on one line where it fits,
+# otherwise the widest of its comma-separated lists broken into a filled block,
+# and the next widest after that, until the row fits. A list holding a sub-graph
+# always starts out broken. A row that is one unbreakable unit -- a single long
+# param, a wide output type -- overflows `width`, since the only way to shorten
+# it is to split a value.
+layout_row <- function(chunks, indent, width) {
+  flag <- function(name) vapply(chunks, \(ch) is.list(ch) && ch[[name]], logical(1))
+  breakable <- flag("breakable")
+  broken <- flag("multi")
+  repeat {
+    lines <- render_row(chunks, broken, indent, width)
+    todo <- which(breakable & !broken)
+    if (layout_width(lines) <= width || !length(todo)) {
+      break
+    }
+    widest <- vapply(chunks[todo], \(ch) nchar(inline_chunk(ch)), integer(1))
+    broken[[todo[[which.max(widest)]]]] <- TRUE
+  }
+  lines
+}
+
+# One call of a graph body: `%1: f32[3] = add [params] (operands)`.
 format_call <- function(call, node_ids, indent = "  ", width = getOption("width", 80L)) {
   input_ids <- vapply(call$inputs, format_node_id, character(1), node_ids = node_ids)
   output_ids <- vapply(call$outputs, format_node_id, character(1), node_ids = node_ids)
@@ -271,96 +289,69 @@ format_call <- function(call, node_ids, indent = "  ", width = getOption("width"
     chunks <- c(chunks, list(call_chunk(" [", "] ", parts)))
   }
   chunks <- c(chunks, list(call_chunk("(", ")", input_ids)))
-
-  flag <- function(name) vapply(chunks, \(ch) is.list(ch) && ch[[name]], logical(1))
-  breakable <- flag("breakable")
-  broken <- flag("multi")
-  repeat {
-    lines <- layout_call(chunks, broken, indent, width)
-    todo <- which(breakable & !broken)
-    if (layout_width(lines) <= width || !length(todo)) {
-      break
-    }
-    widest <- vapply(chunks[todo], \(ch) nchar(inline_chunk(ch)), integer(1))
-    broken[[todo[[which.max(widest)]]]] <- TRUE
-  }
-  paste(lines, collapse = "\n")
+  paste(layout_row(chunks, indent, width), collapse = "\n")
 }
 
-# The Inputs / Constants / Body / Outputs sections of a graph, without the
-# header naming it. `constants_label` is "Captures" for a sub-graph, whose
-# constants are nodes of the graph around it.
-format_graph_sections <- function(
+# A graph as `<title> [captures] (inputs) { <body> return <outputs> }`. The
+# signature line carries what section headings used to: the captures in
+# brackets, the inputs in parens with their data types.
+#
+# `typed_captures` spells a captured node's data type too. Only a graph with
+# nothing around it needs that -- a sub-graph's captures are nodes of the graph
+# holding it, declared there, so naming them is enough.
+format_graph_lines <- function(
   inputs,
   constants,
   calls,
   outputs,
   node_ids,
+  title = "graph",
   rdata_types = NULL,
   width = getOption("width", 80L),
-  constants_label = "Constants"
+  typed_captures = FALSE
 ) {
-  lines <- character()
+  indent <- "  "
+  r_types <- rdata_types %||% rep(NA_character_, length(inputs))
+  input_strs <- vapply(
+    seq_along(inputs),
+    function(i) {
+      node <- inputs[[i]]
+      sprintf("%s: %s", format_node_id(node, node_ids), format_aval_short(node$aval, r_types[[i]]))
+    },
+    character(1)
+  )
+  capture_strs <- vapply(
+    constants,
+    function(node) {
+      id <- format_node_id(node, node_ids)
+      if (typed_captures) sprintf("%s: %s", id, format_aval_short(node$aval)) else id
+    },
+    character(1)
+  )
 
-  if (length(inputs) > 0L) {
-    r_types <- rdata_types %||% rep(NA_character_, length(inputs))
-    input_strs <- vapply(
-      seq_along(inputs),
-      function(i) {
-        node <- inputs[[i]]
-        sprintf(
-          "    %s: %s",
-          format_node_id(node, node_ids),
-          format_aval_short(node$aval, r_types[[i]])
-        )
-      },
-      character(1)
-    )
-    lines <- c(lines, "  Inputs:", input_strs)
-  } else {
-    lines <- c(lines, "  Inputs: (none)")
-  }
-
+  header <- list(title)
   if (length(constants) > 0L) {
-    const_strs <- vapply(
-      constants,
-      function(node) {
-        sprintf("    %s: %s", format_node_id(node, node_ids), format_aval_short(node$aval))
-      },
-      character(1)
-    )
-    lines <- c(lines, sprintf("  %s:", constants_label), const_strs)
+    header <- c(header, list(call_chunk(" [", "]", capture_strs)))
   }
+  header <- c(header, list(call_chunk(" (", ")", input_strs)), " {")
 
-  if (length(calls) > 0L) {
-    lines <- c(lines, "  Body:")
-    for (call in calls) {
-      lines <- c(lines, format_call(call, node_ids, indent = "    ", width = width))
-    }
+  output_ids <- vapply(outputs, format_node_id, character(1), node_ids = node_ids)
+  ret <- if (length(outputs) == 1L) {
+    paste0(indent, "return ", output_ids)
   } else {
-    lines <- c(lines, "  Body: (empty)")
+    layout_row(list("return", call_chunk(" (", ")", output_ids)), indent, width)
   }
 
-  if (length(outputs) > 0L) {
-    output_strs <- vapply(
-      outputs,
-      function(node) {
-        if (is_graph_literal(node)) {
-          sprintf("    %s", format_literal(node))
-        } else {
-          sprintf("    %s: %s", format_node_id(node, node_ids), format_aval_short(node$aval))
-        }
-      },
-      character(1)
-    )
-    lines <- c(lines, "  Outputs:", output_strs)
-  } else {
-    lines <- c(lines, "  Outputs: (none)")
-  }
-
-  lines
+  c(
+    layout_row(header, "", width),
+    vapply(calls, format_call, character(1), node_ids = node_ids, indent = indent, width = width),
+    ret,
+    "}"
+  )
 }
 
+# A whole graph, headed by the class that is printing it. Its captures are
+# typed: nothing encloses it, so this is the only place they are declared.
 format_graph_body <- function(
   inputs,
   constants,
@@ -371,16 +362,18 @@ format_graph_body <- function(
   width = getOption("width", 80L)
 ) {
   node_ids <- build_node_ids(inputs, constants, calls)
-  sections <- format_graph_sections(
+  lines <- format_graph_lines(
     inputs = inputs,
     constants = constants,
     calls = calls,
     outputs = outputs,
     node_ids = node_ids,
+    title = sprintf("<%s>", title),
     rdata_types = rdata_types,
-    width = width
+    width = width,
+    typed_captures = TRUE
   )
-  paste(c(sprintf("<%s>", title), sections), collapse = "\n")
+  paste(lines, collapse = "\n")
 }
 
 #' @export

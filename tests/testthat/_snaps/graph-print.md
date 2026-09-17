@@ -107,18 +107,11 @@
     Code
       cat(format_param(g))
     Output
-      graph {
-        Inputs:
-          %x1: f32[]
-          %x2: i32[3]
-        Body:
-          %1: f32[3] = convert [dtype = f32] (%x2)
-          %2: f32[3] = broadcast_in_axes [
-            shape = 3, broadcast_axes = integer(0)
-          ] (%x1)
-          %3: f32[3] = add(%2, %1)
-        Outputs:
-          %3: f32[3]
+      graph (%x1: f32[], %x2: i32[3]) {
+        %1: f32[3] = convert [dtype = f32] (%x2)
+        %2: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)
+        %3: f32[3] = add(%2, %1)
+        return %3
       }
 
 # format_param() / names an unknown object by its class instead of deparsing it
@@ -176,136 +169,86 @@
     Code
       nested_graph()
     Output
-      <AnvlGraph>
-        Inputs:
-          %x1: f32[]
-        Constants:
-          %c1: f32[]
-          %c2: f32[]
-        Body:
-          %1: f32[] = convert [dtype = f32] (2:i32)
-          %2: f32[] = mul(%x1, %1)
-          %3: f32[] = while [
-            cond_graph = graph {
-              Inputs:
-                %x2: f32[]
-              Captures:
-                %x1: f32[]
-              Body:
-                %5: bool[] = less(%x2, %x1)
-              Outputs:
-                %5: bool[]
-            },
-            body_graph = graph {
-              Inputs:
-                %x3: f32[]
-              Captures:
-                %x1: f32[]
-                %2: f32[]
-                %c1: f32[]
-              Body:
-                %6: bool[] = less(%x3, %2)
-                %7: f32[] = if [
-                  true_graph = graph {
-                    Inputs: (none)
-                    Captures:
-                      %x3: f32[]
-                      %2: f32[]
-                    Body:
-                      %8: f32[] = add(%x3, %2)
-                    Outputs:
-                      %8: f32[]
-                  },
-                  false_graph = graph {
-                    Inputs: (none)
-                    Captures:
-                      %x3: f32[]
-                      %2: f32[]
-                      %c1: f32[]
-                    Body:
-                      %9: f32[] = add(%x3, %c1)
-                    Outputs:
-                      %9: f32[]
-                  }
-                ] (%6)
-              Outputs:
-                %7: f32[]
-            }
-          ] (%c2)
-          %4: f32[2, 1] = broadcast_in_axes [
-            shape = c(2, 1), broadcast_axes = integer(0)
-          ] (%3)
-        Outputs:
-          %4: f32[2, 1]
+      <AnvlGraph> [%c1: f32[], %c2: f32[]] (%x1: f32[]) {
+        %1: f32[] = convert [dtype = f32] (2:i32)
+        %2: f32[] = mul(%x1, %1)
+        %3: f32[] = while [
+          cond_graph = graph [%x1] (%x2: f32[]) {
+            %5: bool[] = less(%x2, %x1)
+            return %5
+          },
+          body_graph = graph [%x1, %2, %c1] (%x3: f32[]) {
+            %6: bool[] = less(%x3, %2)
+            %7: f32[] = if [
+              true_graph = graph [%x3, %2] () {
+                %8: f32[] = add(%x3, %2)
+                return %8
+              },
+              false_graph = graph [%x3, %2, %c1] () {
+                %9: f32[] = add(%x3, %c1)
+                return %9
+              }
+            ] (%6)
+            return %7
+          }
+        ] (%c2)
+        %4: f32[2, 1] = broadcast_in_axes [
+          shape = c(2, 1), broadcast_axes = integer(0)
+        ] (%3)
+        return %4
+      }
 
 # format.AnvlGraph() / names the R type of an input the caller supplies as bare R data
 
     Code
       graph
     Output
-      <AnvlGraph>
-        Inputs:
-          %x1: f64[]
-          %x2: f64[] <- double
-          %x3: i32[2] <- integer
-        Body:
-          %1: f64[] = add(%x1, %x2)
-          %2: f64[2] = convert [dtype = f64] (%x3)
-          %3: f64[2] = broadcast_in_axes [shape = 2, broadcast_axes = integer(0)] (%1)
-          %4: f64[2] = add(%3, %2)
-        Outputs:
-          %4: f64[2]
+      <AnvlGraph> (%x1: f64[], %x2: f64[] <- double, %x3: i32[2] <- integer) {
+        %1: f64[] = add(%x1, %x2)
+        %2: f64[2] = convert [dtype = f64] (%x3)
+        %3: f64[2] = broadcast_in_axes [shape = 2, broadcast_axes = integer(0)] (%1)
+        %4: f64[2] = add(%3, %2)
+        return %4
+      }
 
 # format.AnvlGraph() / breaks a call line too long for the width into filled param rows
 
     Code
       cat(format(gather_graph(), width = 80L))
     Output
-      <AnvlGraph>
-        Inputs:
-          %x1: f32[3, 4]
-          %x2: i32[2]
-        Constants:
-          %c1: i32[1]
-        Body:
-          %1: i32[2, 1] = broadcast_in_axes [
-            shape = c(2, 1), broadcast_axes = 1
-          ] (%x2)
-          %2: i32[2, 1] = broadcast_in_axes [
-            shape = c(2, 1), broadcast_axes = 2
-          ] (%c1)
-          %3: i32[2, 2] = concatenate [axis = 2] (%1, %2)
-          %4: f32[2, 4] = gather [
-            slice_sizes = c(1, 4), offset_axes = 2, collapsed_slice_axes = 1,
-            x_batching_axes = integer(0), start_indices_batching_axes = integer(0),
-            start_index_map = c(1, 2), index_vector_axis = 2,
-            indices_are_sorted = FALSE, unique_indices = FALSE
-          ] (%x1, %3)
-        Outputs:
-          %4: f32[2, 4]
+      <AnvlGraph> [%c1: i32[1]] (%x1: f32[3, 4], %x2: i32[2]) {
+        %1: i32[2, 1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 1] (%x2)
+        %2: i32[2, 1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 2] (%c1)
+        %3: i32[2, 2] = concatenate [axis = 2] (%1, %2)
+        %4: f32[2, 4] = gather [
+          slice_sizes = c(1, 4), offset_axes = 2, collapsed_slice_axes = 1,
+          x_batching_axes = integer(0), start_indices_batching_axes = integer(0),
+          start_index_map = c(1, 2), index_vector_axis = 2,
+          indices_are_sorted = FALSE, unique_indices = FALSE
+        ] (%x1, %3)
+        return %4
+      }
 
 # format.AnvlGraph() / breaks a call's operand list, which is as much a list as its params
 
     Code
       cat(body_section(graph, width = 80L), sep = "\n")
     Output
-        Body:
-          %1: f32[90] = concatenate [axis = 1] (
-            %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12, %x13, %x14,
-            %x15, %x16, %x17, %x18, %x19, %x20, %x21, %x22, %x23, %x24, %x25, %x26,
-            %x27, %x28, %x29, %x30
-          )
+        %1: f32[90] = concatenate [axis = 1] (
+          %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12, %x13, %x14,
+          %x15, %x16, %x17, %x18, %x19, %x20, %x21, %x22, %x23, %x24, %x25, %x26,
+          %x27, %x28, %x29, %x30
+        )
 
 # format.AnvlGraph() / breaks the ids and the types of a call with more outputs than fit
 
     Code
       cat(body_section(graph, width = 80L), sep = "\n")
     Output
-        Body:
-          (%1, %2, %3, %4, %5, %6, %7, %8, %9, %10, %11, %12): (
-            f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3],
-            f32[3], f32[3], f32[3]
-          ) = sort [axis = 1, descending = FALSE, is_stable = FALSE] (
-            %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12
-          )
+        (%1, %2, %3, %4, %5, %6, %7, %8, %9, %10, %11, %12): (
+          f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3], f32[3],
+          f32[3], f32[3], f32[3]
+        ) = sort [axis = 1, descending = FALSE, is_stable = FALSE] (
+          %x1, %x2, %x3, %x4, %x5, %x6, %x7, %x8, %x9, %x10, %x11, %x12
+        )
 

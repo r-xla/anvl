@@ -45,11 +45,12 @@ wide_graph <- function(f, n = 30L) {
   trace_fn(f, setNames(args, paste0("a", seq_len(n))))
 }
 
-# The Body section of a formatted graph, so that a snapshot of one call's layout
-# is not buried under thirty lines of Inputs.
+# The body of a formatted graph -- everything between its signature line and its
+# `return` -- so that a snapshot of one call's layout is not buried under thirty
+# lines of signature.
 body_section <- function(graph, width) {
   lines <- strsplit(format(graph, width = width), "\n")[[1L]]
-  lines[seq(match("  Body:", lines), match("  Outputs:", lines) - 1L)]
+  lines[seq(match(") {", lines) + 1L, grep("^  return ", lines) - 1L)]
 }
 
 describe("format_param()", {
@@ -147,16 +148,25 @@ describe("format.AnvlGraph()", {
 
   it("numbers a graph's own values without a gap where a sub-graph call sits", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
-    # The outer body is the only section indented by exactly four spaces.
-    defs <- grep("^    %[0-9]+: .+ = ", lines, value = TRUE)
-    expect_equal(sub("^    %([0-9]+):.*", "\\1", defs), c("1", "2", "3", "4"))
+    # The outer body is the only one indented by exactly two spaces.
+    defs <- grep("^  %[0-9]+: .+ = ", lines, value = TRUE)
+    expect_equal(sub("^  %([0-9]+):.*", "\\1", defs), c("1", "2", "3", "4"))
   })
 
   it("keeps a captured node's outer name inside a sub-graph", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
     # `step` is `%2` in the outer body; the loop body and both `if` branches
-    # capture that same node, so it is named `%2` in all three.
-    expect_equal(sum(grepl("^ +%2: f32\\[\\]$", lines)), 3L)
+    # capture that same node, so it appears in three of the four capture lists.
+    heads <- grep("graph \\[", lines, value = TRUE)
+    captures <- sub("\\].*$", "", sub("^.*graph \\[", "", heads))
+    expect_equal(sum(grepl("%2", captures, fixed = TRUE)), 3L)
+  })
+
+  it("names a capture without its data type, the enclosing graph having it", {
+    lines <- strsplit(format(nested_graph()), "\n")[[1L]]
+    expect_true(any(grepl("cond_graph = graph [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
+    # The graph around it is the one place `%x1` is declared with a type.
+    expect_match(lines[[1L]], "(%x1: f32[])", fixed = TRUE)
   })
 
   it("does not spill the internals of an array an optimization pass inlined", {
