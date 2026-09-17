@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_or}
 \alias{prim_or}
-\title{Primitive Or}
+\title{Primitive Bitwise Or}
 \usage{
 prim_or(lhs, rhs)
 }

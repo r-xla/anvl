@@ -15,25 +15,25 @@ The rule to apply; see \link{promotion_rule}.}
 }
 \value{
 (\code{list()})\cr
-\code{operands}, each realized at the data type the rule named for it.
+\code{operands}, each materialized at the data type the rule named for it.
 }
 \description{
 Applies a \link[=promotion_rule]{promotion rule} to the operands of a primitive,
 inside the primitive's own body.
 
 A primitive promotes nothing on its own: an R value among its operands would
-commit to its own default, so whether a call worked would depend on whether
-the array it met happened to be at that default. A primitive whose operands
-must \emph{agree} says so with this, on the same list it goes on to hand
+materialize at its own default, so whether a call worked would depend on
+whether the array it met happened to be at that default. A primitive whose
+operands must \emph{agree} says so with this, on the same list it goes on to hand
 \code{\link[=graph_desc_add]{graph_desc_add()}}:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{function(lhs, rhs) \{
-  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promote_rdata_common())
+  operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
   graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
 \}
 }\if{html}{\out{</div>}}
 
-\code{\link[=promote_rdata_common]{promote_rdata_common()}} is the rule for it: an operand that has a data type
+\code{\link[=promotion_rdata_common]{promotion_rdata_common()}} is the rule for it: an operand that has a data type
 keeps it, and an R value takes the one the others have, within its own category.
 That is what makes \code{prim_mul(x_f64, 2)} work whatever \code{x}'s data type is,
 while keeping a primitive from widening the array it was handed -- promotion
@@ -53,12 +53,12 @@ its reductor and \code{\link[=prim_scatter]{prim_scatter()}} builds its update c
 slots from \code{\link[=peek_dtype]{peek_dtype()}}, both before recording a call.
 
 It is idempotent: once every operand is at the data type the rule names,
-realizing them again changes nothing.
+materializing them again changes nothing.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# An R value takes the data type of the operand it meets.
-operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promote_rdata_common())
+# an R value takes the data type of the operand it meets.
+operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 dtype(operands$rhs)
 \dontshow{\}) # examplesIf}
 }

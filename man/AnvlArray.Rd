@@ -41,11 +41,16 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 }
 \arguments{
 \item{data}{(any)\cr
-\code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.}
+\code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.
+Alternatively a \code{raw()} vector holding the native little-endian byte
+payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \code{shape}
+are then required (only supported on the \code{"pjrt"} backend).
+Raw payloads are read in column-major element order, or row-major
+with \code{byrow = TRUE}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the data type the R value commits to (see
+The default (\code{NULL}) uses the data type the R value takes (see
 \code{\link[=default_dtypes]{default_dtypes()}}). This depends on the backend.
 For the default \code{"pjrt"} backend, \code{double}s become \code{f32}, \code{integer}
 \code{i32} and \code{logical}s \code{bool}.
@@ -70,6 +75,8 @@ named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} back
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
+Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
+no elements -- so \code{shape} is required there.
 To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
 \item{byrow}{(\code{logical(1)})\cr
@@ -115,7 +122,7 @@ is \code{2} and the size of axis \code{2} is \code{3}, so its shape is \code{c(2
 \code{\link[tengen:naxes]{naxes()}} for the number of axes and
 \code{\link[tengen:shape]{shape()}} for the axis sizes. We speak of the \emph{size of an
 axis} rather than an array's "dimensions", as the latter is generally
-overloaded as it is used to refer to both the axis and it's size.
+overloaded as it is used to refer to both the axis and its size.
 }
 
 \section{Extractors}{
@@ -153,19 +160,19 @@ The supported data types and devices differ between backends.
 # A 1-d array (vector) with shape (4). Default type for integers is `i32`
 nv_array(1:4)
 
-# Specify a dtype
+# specify a dtype
 nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 
-# A 2x3 matrix
+# a 2x3 matrix
 nv_array(1:6, shape = c(2L, 3L))
 
-# A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+# a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 
 # A scalar array.
 nv_scalar(3.14)
 
-# An uninitialized 2x3 array (contents are unspecified)
+# an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 
 # --- Extractors ---

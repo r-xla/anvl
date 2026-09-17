@@ -62,8 +62,8 @@ The general survival rate was `r sprintf("%.2f", mean(y) * 100)`%.
 Now we convert the data to `AnvlArray`s.
 
 ```{r}
-X_tensor <- nv_array(X, dtype = "f32")
-y_tensor <- nv_array(y, dtype = "f32", shape = c(n, 1L))
+X_arr <- nv_array(X, dtype = "f32")
+y_arr <- nv_array(y, dtype = "f32", shape = c(n, 1L))
 ```
 
 ## Model
@@ -138,7 +138,7 @@ beta_init <- nv_array(rnorm(p), dtype = "f32", shape = c(p, 1L))
 alpha_init <- nv_scalar(0, dtype = "f32")
 
 result <- fit_logreg(
-  X_tensor, y_tensor,
+  X_arr, y_arr,
   beta_init, alpha_init,
   nv_scalar(50000L),
   nv_scalar(0.1)

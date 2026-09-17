@@ -42,6 +42,17 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 - Speak of the **size of an axis**, never the "length of an axis" (reserve "length" for vectors and 1-D arrays).
 - Keep the foreign spelling at call boundaries: stablehlo, torch, and base R speak of "dimensions", so calls into them keep those argument names (e.g. `hlo_reduce(dimensions = axes - 1L)`, `array(dim = ...)`) with the anvl-side axis variable on the right.
 - **Arrays, not tensors.** In anvl-facing docs, messages, and identifiers, say *array* rather than *tensor*. The primary array argument of `nv_*` / `prim_*` functions is called `x`.
+- **Materialize, take, canonicalize.** Three words for the R value -> `AnvlArray` story, one each:
+  - *materialize* is the **event** -- an R value becoming an array at a data type. An R value
+    *materializes at* a data type and *materializes as* an array; before that it is
+    *unmaterialized*. `materialize_at()` and `materialize_rdata()` are the functions that do it.
+  - *takes* / *settles on* is **which** data type it gets: a value *takes* the data type of the
+    array it meets, and *settles on* the default when it meets nothing. `peek_dtype()` reports
+    the data type a value *would take*.
+  - *canonicalize* is the **code discipline** of calling `as_anvl_array()` / `as_anvl_arrays()`
+    at the top of an `nv_*` function so it works eagerly and under `jit()`.
+
+  Don't reach for a synonym (*commit*, *realize*, *standardize*) for any of the three.
 
 ## Supported dtypes
 
@@ -51,15 +62,15 @@ Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) direct
 
 An R value entering a program is not converted at the boundary -- it is built into the program at the
 dtype its use site needs, which is what makes `x_f64 / sqrt(2)` exact. `vignette("type-promotion")`
-is the reference for how this works and for the `.promote` rules (`promote_common()`,
-`promote_like()`, `promote_dtype()`, `promote_rdata_common()`) that `nv_*` functions pass to
+is the reference for how this works and for the `.promote` rules (`promotion_common()`,
+`promotion_like()`, `promotion_dtype()`, `promotion_rdata_common()`) that `nv_*` functions pass to
 `as_anvl_arrays()`. Two rules that bite while writing code:
 
 - Never call `dtype()` on an argument that may still be a bare R value -- it errors. Use
-  `peek_dtype()` to ask what it *would* commit to.
+  `peek_dtype()` to ask which data type it would take.
 - A primitive promotes nothing unless its body says so: one whose operands must agree calls
   `apply_promotion()` on them before anything else reads them.
-- A trace output that met nothing commits at the default float / integer of the backend in force,
+- A trace output that met nothing materializes at the default float / integer of the active backend,
   which `default_dtypes()` reports (`default_float()` / `default_int()` for one category) and the
   option `anvl.default_dtypes` overrides. A trace is pinned to the pair the dispatcher keyed its
   program on (`GraphDescriptor$default_dtypes`); name a category with `default_float()` /
@@ -68,16 +79,18 @@ is the reference for how this works and for the `.promote` rules (`promote_commo
   the whole pair.
 - **One backend at a time.** The backend is the option `anvl.backend` (`active_backend()`,
   `local_backend()`, `with_backend()`). Every jitted function runs on it, reading it at call time;
-  nothing infers a backend from an argument, no function takes a `backend` argument, and an array
-  or device of another backend is an error. This is what makes the default dtypes unambiguous in
-  eager code.
+  nothing infers a backend from an argument, no array operation or `jit()` takes a `backend`
+  argument, and an array or device of another backend is an error. This is what makes the default
+  dtypes unambiguous in eager code. (A handful of helpers about the backend itself do name one:
+  `install_anvl()`, `default_device()`, `local_default_dtypes()` / `with_default_dtypes()`.)
 
 ## One Backend at a Time
 
 The backend is the option `anvl.backend` (`active_backend()`, `local_backend()`, `with_backend()`).
 Every jitted function runs on it, reading it at call time; nothing infers a backend from an
-argument, no function takes a `backend` argument, and an array or device of another backend is an
-error.
+argument, no array operation or `jit()` takes a `backend` argument, and an array or device of
+another backend is an error. Only helpers *about* the backend name one (`install_anvl()`,
+`default_device()`, `local_default_dtypes()` / `with_default_dtypes()`).
 
 ## Primitive System
 

@@ -17,7 +17,7 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same data type as the input and shape \code{nv_shape(x)[permutation]}.
+Has the same data type as the input and shape \code{shape(x)[permutation]}.
 }
 \description{
 Permutes the axes of an array.

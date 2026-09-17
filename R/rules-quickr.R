@@ -101,6 +101,18 @@ quickr_emit_known_empty <- function(out_sym, out_aval) {
   quickr_emit_full_like(out_sym, quickr_zero_literal_for(out_aval), shape_out, out_aval)
 }
 
+# The statements for a call all of whose outputs are empty, or `NULL` when at
+# least one of them holds elements and the call has to be lowered properly.
+quickr_emit_all_empty <- function(out_syms, out_avals) {
+  stmts <- lapply(seq_along(out_avals), function(i) {
+    quickr_emit_known_empty(out_syms[[i]], out_avals[[i]])
+  })
+  if (!length(stmts) || any(vapply(stmts, is.null, logical(1)))) {
+    return(NULL)
+  }
+  unlist(stmts, recursive = FALSE)
+}
+
 quickr_subscript <- function(expr, idxs, drop = NULL) {
   if (!length(idxs)) {
     return(expr)
@@ -452,7 +464,7 @@ quickr_emit_reverse <- function(out_sym, operand_expr, shape_in, axes, out_aval)
   rank <- length(shape_in)
 
   if (rank == 0L) {
-    cli_abort("reverse: scalar operands are not supported by quickr lowering") # nocov
+    cli_abort("The quickr backend cannot reverse a scalar {.arg x}.") # nocov
   }
   if (rank > 5L) {
     cli_abort("reverse: only arrays up to rank 5 are supported")
@@ -809,7 +821,7 @@ quickr_emit_gather <- function(
   out_rank <- length(out_shape)
 
   if (!op_rank) {
-    cli_abort("gather: scalar operands are not supported by quickr lowering")
+    cli_abort("The quickr backend cannot gather from a scalar {.arg x}.")
   }
   if (op_rank > 5L || si_rank > 5L || out_rank > 5L) {
     cli_abort("gather: only arrays up to rank 5 are supported")
@@ -824,7 +836,9 @@ quickr_emit_gather <- function(
     cli_abort("gather: start_indices must have rank >= 1")
   }
   if (!identical(length(slice_sizes), op_rank)) {
-    cli_abort("gather: slice_sizes must have length equal to operand rank")
+    cli_abort(
+      "{.arg slice_sizes} must have one entry per axis of {.arg x}."
+    )
   }
   index_vector_size <- as.integer(shape_start_indices[[si_rank]])
   if (!identical(as.integer(length(start_index_map)), as.integer(index_vector_size))) {
@@ -1193,7 +1207,7 @@ quickr_emit_reduce <- function(kind, out_sym, operand_expr, shape_in, axes, drop
       1L
     }
     if (as.character(dtype(out_aval)) %in% "bool") {
-      cli_abort("{kind}: pred reductions are not supported by quickr lowering")
+      cli_abort("{kind}: reductions of a boolean are not supported by quickr lowering")
     }
   } else {
     init_acc_scalar <- NULL
@@ -1554,18 +1568,31 @@ quickr_lower_graph_calls <- function(graph, ctx) {
     if (is.null(lower)) {
       quickr_abort_unsupported_prims(call$primitive$name, quickr_supported_prims())
     }
-    stmts <- c(
-      stmts,
-      lower(
-        call$primitive$name,
-        input_exprs_call,
-        call$params,
-        out_syms_call,
-        call$inputs,
-        out_avals_call,
-        ctx = ctx
+    # A result with a zero-size axis holds no elements, so the empty array of
+    # that shape is the only value it can have and the operands need not be
+    # touched. Emitting it directly also keeps zero-extent arrays away from
+    # quickr's elementwise operators, which reject an empty operand even where
+    # both shapes agree. `prim_print` is excluded because it is there for its
+    # side effect, not for its value.
+    empty_stmts <- if (call$primitive$name != "print") {
+      quickr_emit_all_empty(out_syms_call, out_avals_call)
+    }
+    stmts <- if (!is.null(empty_stmts)) {
+      c(stmts, empty_stmts)
+    } else {
+      c(
+        stmts,
+        lower(
+          call$primitive$name,
+          input_exprs_call,
+          call$params,
+          out_syms_call,
+          call$inputs,
+          out_avals_call,
+          ctx = ctx
+        )
       )
-    )
+    }
   }
 
   out_exprs <- lapply(graph$outputs, quickr_expr_of_node, node_expr = node_expr)
@@ -1992,7 +2019,7 @@ local({
 
       if (dt_lhs %in% "bool" || dt_rhs %in% "bool") {
         if (!prim_name %in% c("equal", "not_equal")) {
-          cli_abort("{prim_name}: comparisons on {.val pred} values are not supported by quickr lowering")
+          cli_abort("{prim_name}: comparisons on {.val bool} values are not supported by quickr lowering")
         }
 
         a <- inputs[[1L]]
@@ -2034,7 +2061,7 @@ local({
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       dt <- as.character(dtype(input_nodes[[1L]]$aval))
       if (!dt %in% "bool") {
-        cli_abort("{prim_name}: only {.val pred} dtype is supported by quickr lowering")
+        cli_abort("{prim_name}: only the {.val bool} data type is supported by quickr lowering")
       }
 
       a <- inputs[[1L]]
@@ -2062,7 +2089,7 @@ local({
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       dt <- as.character(dtype(input_nodes[[1L]]$aval))
       if (!dt %in% "bool") {
-        cli_abort("not: only {.val pred} dtype is supported by quickr lowering")
+        cli_abort("not: only the {.val bool} data type is supported by quickr lowering")
       }
       quickr_emit_assign(out_syms[[1L]], rlang::call2("!", inputs[[1L]]))
     }
@@ -2256,7 +2283,7 @@ local({
       operand_node <- input_nodes[[1L]]
       dt_in <- as.character(dtype(operand_node$aval))
       if (!dt_in %in% "bool") {
-        cli_abort("reduce_any: only {.val pred} inputs are supported by quickr lowering")
+        cli_abort("reduce_any: only a {.val bool} input is supported by quickr lowering")
       }
       quickr_emit_reduce_boolean(
         "any",
@@ -2278,7 +2305,7 @@ local({
       operand_node <- input_nodes[[1L]]
       dt_in <- as.character(dtype(operand_node$aval))
       if (!dt_in %in% "bool") {
-        cli_abort("reduce_all: only {.val pred} inputs are supported by quickr lowering")
+        cli_abort("reduce_all: only a {.val bool} input is supported by quickr lowering")
       }
       quickr_emit_reduce_boolean(
         "all",
@@ -2383,7 +2410,7 @@ graph_to_quickr_r_fun_impl <- function(graph, include_declare = TRUE) {
     if (!is_graph_value(const_node)) {
       cli_abort("quickr lowering: graph constants must be GraphValue nodes") # nocov
     }
-    if (!is_concrete_tensor(const_node$aval)) {
+    if (!is_concrete_array(const_node$aval)) {
       cli_abort("quickr lowering: graph constants must be concrete arrays")
     }
     node_expr[[const_node]] <- as.name(const_arg_names[[i]])

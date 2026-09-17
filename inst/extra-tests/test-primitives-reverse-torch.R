@@ -101,7 +101,7 @@ verify_grad_uni_scalar <- function(
   )
 }
 
-verify_grad_uni_tensor <- function(
+verify_grad_uni_array <- function(
   .f,
   .g,
   naxes = sample(1:3, 1L),
@@ -220,7 +220,7 @@ verify_grad_biv_scalar <- function(
   )
 }
 
-verify_grad_biv_tensor <- function(
+verify_grad_biv_array <- function(
   .f,
   .g,
   naxes = sample(1:3, 1L),
@@ -311,7 +311,7 @@ verify_grad_biv <- function(
     gen_lhs = gen_lhs,
     gen_rhs = gen_rhs
   )
-  verify_grad_biv_tensor(
+  verify_grad_biv_array(
     f,
     g,
     naxes = naxes,
@@ -347,7 +347,7 @@ verify_grad_uni <- function(
       gen = gen
     )
   }
-  verify_grad_uni_tensor(
+  verify_grad_uni_array(
     f,
     g,
     naxes = naxes,
@@ -419,7 +419,7 @@ test_that("prim_reduce_sum", {
 })
 
 test_that("prim_transpose", {
-  verify_grad_uni_tensor(prim_transpose, \(x, permutation) x$permute(permutation), naxes = 3L, args_f = \(shp, dtype) {
+  verify_grad_uni_array(prim_transpose, \(x, permutation) x$permute(permutation), naxes = 3L, args_f = \(shp, dtype) {
     axes <- sample(seq_along(shp))
     list(
       list(permutation = axes),
@@ -430,7 +430,7 @@ test_that("prim_transpose", {
 
 describe("prim_cumsum", {
   it("vector gradient", {
-    verify_grad_uni_tensor(
+    verify_grad_uni_array(
       prim_cumsum,
       torch::torch_cumsum,
       shape = 5L,
@@ -439,7 +439,7 @@ describe("prim_cumsum", {
   })
   it("matrix gradient along each axis", {
     for (d in 1:2) {
-      verify_grad_uni_tensor(
+      verify_grad_uni_array(
         prim_cumsum,
         torch::torch_cumsum,
         shape = c(3L, 4L),
@@ -461,7 +461,7 @@ test_that("prim_broadcast_in_axes", {
     nv_reduce_sum(res, axes = seq_along(shape), drop = TRUE)
   }
 
-  verify_grad_uni_tensor(
+  verify_grad_uni_array(
     nv_broadcast_to,
     \(x, shape) x$broadcast_to(shape),
     shape = input_shape,
@@ -503,7 +503,7 @@ test_that("prim_ifelse", {
 test_that("prim_reshape", {
   in_shape <- c(2L, 3L)
   out_shape <- c(3L, 2L)
-  verify_grad_uni_tensor(
+  verify_grad_uni_array(
     prim_reshape,
     function(x, shape) x$reshape(shape),
     shape = in_shape,
@@ -513,7 +513,7 @@ test_that("prim_reshape", {
 
 test_that("prim_convert", {
   target_dtype <- "f64"
-  verify_grad_uni_tensor(
+  verify_grad_uni_array(
     \(x, dtype) prim_convert(x, dtype = dtype),
     function(x, dtype) x$to(dtype = dtype),
     dtypes = "f32",
@@ -543,7 +543,7 @@ test_that("prim_tanh", {
 test_that("prim_tan", {
   # values near pi/2 cause divergence -> avoid unlucky seed
   withr::local_seed(12)
-  verify_grad_uni_tensor(
+  verify_grad_uni_array(
     prim_tan,
     torch::torch_tan,
     tol = 1e-4
@@ -639,7 +639,7 @@ test_that("prim_erf_inv", {
 })
 
 test_that("prim_abs", {
-  verify_grad_uni_tensor(
+  verify_grad_uni_array(
     prim_abs,
     torch::torch_abs,
     tol = 1e-5

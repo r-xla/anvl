@@ -22,7 +22,7 @@ Function to compile.}
 \item{args_flat}{(\code{list})\cr
 Flat list of abstract input values.}
 
-\item{in_tree}{(\code{Node})\cr
+\item{in_tree}{(\code{\link[pjrt:build_tree]{RTree}})\cr
 Tree structure of the inputs.}
 
 \item{donate}{(\code{character()})\cr
@@ -44,9 +44,9 @@ the program and its cache key agree. \code{NULL} (a caller with no dispatcher in
 front of it) falls back to \code{\link[=default_device]{default_device()}}.}
 
 \item{default_dtypes}{(\code{NULL} | \code{list(float, int)})\cr
-The data types the traced R values commit to when nothing else decides one
-(see \code{\link[=default_dtypes]{default_dtypes()}}), read off \code{info$context} so the program matches
-the cache key it is filed under. \code{NULL} uses the pair in force.}
+The data types the traced R values materialize at when nothing else decides
+one (see \code{\link[=default_dtypes]{default_dtypes()}}), read off \code{info$context} so the program
+matches the cache key it is filed under. \code{NULL} uses the active pair.}
 }
 \value{
 A \code{list} with elements:

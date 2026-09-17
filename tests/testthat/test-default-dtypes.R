@@ -1,4 +1,4 @@
-# The data types an R double and an R integer commit to when nothing else
+# The data types an R double and an R integer materialize at when nothing else
 # decides one are registered per backend (`default_dtypes()`) and overridden by
 # the `anvl.default_dtypes` option, for every backend or per backend. They
 # decide only what a value becomes
@@ -6,7 +6,7 @@
 # untouched.
 
 describe("default_dtypes()", {
-  it("reports the registered defaults of the backend in force", {
+  it("reports the registered defaults of the active backend", {
     local_registered_default_dtypes()
     expect_equal(default_dtypes(), list(float = as_dtype("f32"), int = as_dtype("i32")))
     expect_equal(with_backend("quickr", default_dtypes()), list(float = as_dtype("f64"), int = as_dtype("i32")))
@@ -44,7 +44,7 @@ describe("local_default_dtypes()", {
     local_registered_default_dtypes()
     local({
       local_default_dtypes(c(float = "f64", int = "i64"))
-      # The setter writes an entry for the backend in force, so the option's
+      # The setter writes an entry for the active backend, so the option's
       # value is per backend even when only one was ever named.
       expect_identical(getOption("anvl.default_dtypes"), list(pjrt = c(float = "f64", int = "i64")))
       expect_equal(default_dtypes(), list(float = as_dtype("f64"), int = as_dtype("i64")))
@@ -67,7 +67,7 @@ describe("local_default_dtypes()", {
 
   it("takes what it is given as it is", {
     # A data type of the other category, or one no backend supports, is taken
-    # as given: it commits wherever the default is read and fails there.
+    # as given: it materializes wherever the default is read and fails there.
     local_default_dtypes(c(float = "i32"))
     expect_equal(default_float(), as_dtype("i32"))
     expect_error(local_default_dtypes(c(float = "nope")), "Unsupported dtype")
@@ -86,7 +86,7 @@ describe("with_default_dtypes()", {
     # Cleared so the assertions below rest on the setters alone: a suite-wide
     # override would supply the category a non-merging setter drops.
     local_registered_default_dtypes()
-    # A setter reads the option already in force, so an inner one naming the
+    # A setter reads the option already active, so an inner one naming the
     # other category adds to the outer override instead of replacing it --
     # whichever order they come in.
     expect_equal(
@@ -98,7 +98,7 @@ describe("with_default_dtypes()", {
       list(float = as_dtype("f64"), int = as_dtype("i64"))
     )
     # Both naming the same category: the innermost wins, and the outer one is
-    # back in force once it exits.
+    # active again once it exits.
     expect_equal(
       with_default_dtypes(c(float = "f64"), {
         c(
@@ -113,7 +113,7 @@ describe("with_default_dtypes()", {
 
 describe("an override of one backend", {
   # The registered defaults are a property of the backend, so an override is
-  # one too: the setters change the backend in force, and the option's value
+  # one too: the setters change the active backend, and the option's value
   # may name a backend per entry.
   it("is where a setter that names no backend goes", {
     local_registered_default_dtypes()
@@ -122,7 +122,7 @@ describe("an override of one backend", {
     expect_equal(with_backend("quickr", default_int()), as_dtype("i32"))
   })
 
-  it("can be set for a backend that is not in force", {
+  it("can be set for a backend that is not active", {
     local_registered_default_dtypes()
     local_backend("quickr")
     local_default_dtypes(c(int = "i64"), backend = "pjrt")
@@ -205,16 +205,16 @@ describe("with_dtypes()", {
     local_registered_default_dtypes()
     add_f64 <- with_dtypes(nv_add, c(float = "f64"))
     out <- add_f64(nv_array(1, dtype = "f32"), 2.5)
-    expect_equal(dtype(out), as_dtype("f64"))
+    expect_dtype(out, "f64")
     # The `f32` operand is converted before the call, so the R value meets an
     # `f64` array and the sum keeps every digit of 2.5.
     expect_equal(as.vector(out), 3.5)
     # A category the wrapper does not name is untouched, in the arguments and
     # in the result.
-    expect_equal(dtype(add_f64(nv_array(1L, dtype = "i32"), 2L)), as_dtype("i32"))
-    expect_equal(dtype(add_f64(nv_array(TRUE), TRUE)), as_dtype("bool"))
+    expect_dtype(add_f64(nv_array(1L, dtype = "i32"), 2L), "i32")
+    expect_dtype(add_f64(nv_array(TRUE), TRUE), "bool")
     # Inside the body the defaults are the ones the wrapper names.
-    expect_equal(dtype(with_dtypes(function() nv_fill(0, 2), c(float = "f64"))()), as_dtype("f64"))
+    expect_dtype(with_dtypes(function() nv_fill(0, 2), c(float = "f64"))(), "f64")
     expect_equal(default_float(), as_dtype("f32"))
   })
 
@@ -233,12 +233,12 @@ describe("with_dtypes()", {
     # the defaults of the call alone.
     f <- with_dtypes(function(x) list(x = x, filled = nv_fill(0, 2)), c(uint = "ui32"))
     out <- f(nv_array(1L, dtype = "ui8"))
-    expect_equal(dtype(out$x), as_dtype("ui32"))
-    expect_equal(dtype(out$filled), as_dtype("f32"))
+    expect_dtype(out$x, "ui32")
+    expect_dtype(out$filled, "f32")
     # Named alongside the others it converts as they do.
     g <- with_dtypes(nv_add, c(float = "f64", uint = "ui32"))
-    expect_equal(dtype(g(nv_array(1L, dtype = "ui8"), 2L)), as_dtype("ui32"))
-    expect_equal(dtype(g(nv_array(1, dtype = "f32"), 2)), as_dtype("f64"))
+    expect_dtype(g(nv_array(1L, dtype = "ui8"), 2L), "ui32")
+    expect_dtype(g(nv_array(1, dtype = "f32"), 2), "f64")
   })
 
   it("keeps the signature of the function it wraps", {
@@ -248,15 +248,9 @@ describe("with_dtypes()", {
     expect_identical(formals(g), formals(f))
     # An argument the wrapper is not given is left out, so `f`'s own default
     # decides -- and `...` reaches `f` as it would without the wrapper.
-    expect_equal(shape(g(nv_array(1, dtype = "f32"))$filled), 2L)
-    expect_equal(shape(g(nv_array(1, dtype = "f32"), 3)$filled), 3L)
-    expect_equal(
-      dtype(with_dtypes(function(...) nv_add(...), c(float = "f64"))(
-        nv_array(1, dtype = "f32"),
-        2
-      )),
-      as_dtype("f64")
-    )
+    expect_shape(g(nv_array(1, dtype = "f32"))$filled, 2L)
+    expect_shape(g(nv_array(1, dtype = "f32"), 3)$filled, 3L)
+    expect_dtype(with_dtypes(function(...) nv_add(...), c(float = "f64"))(nv_array(1, dtype = "f32"), 2), "f64")
   })
 
   it("walks a structured argument and result as a tree", {
@@ -269,8 +263,8 @@ describe("with_dtypes()", {
     )
     out <- f(list(a = nv_array(1, dtype = "f32"), b = nv_array(2, dtype = "f32")), 2)
     expect_named(out, c("sum", "scaled"))
-    expect_equal(dtype(out$sum), as_dtype("f64"))
-    expect_equal(dtype(out$scaled[[1L]]), as_dtype("f64"))
+    expect_dtype(out$sum, "f64")
+    expect_dtype(out$scaled[[1L]], "f64")
     expect_equal(as.vector(out$sum), 3)
   })
 
@@ -288,7 +282,7 @@ describe("with_dtypes()", {
     # The static argument still selects the branch, and stays an R value.
     expect_equal(as.vector(g(nv_array(3, dtype = "f32"), TRUE)), 4)
     expect_equal(as.vector(g(nv_array(3, dtype = "f32"), FALSE)), 6)
-    expect_equal(dtype(g(nv_array(3, dtype = "f32"), TRUE)), as_dtype("f64"))
+    expect_dtype(g(nv_array(3, dtype = "f32"), TRUE), "f64")
   })
 
   it("rejects anything but a mapping of the data type categories", {

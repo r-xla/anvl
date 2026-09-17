@@ -27,7 +27,6 @@ evaluates only the selected branch.
 \itemize{
 \item \code{stablehlo}
 \item \code{quickr}
-\item \code{reverse}
 }
 }
 

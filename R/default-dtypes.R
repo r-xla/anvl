@@ -217,7 +217,7 @@ merged_default_dtypes <- function(dtypes, backend) {
 #' with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 #' # A value that meets a typed array still takes that array's data type
 #' with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
-#' # Untyped values in one program can commit at different precisions
+#' # untyped values in one program can materialize at different precisions
 #' jit(function() {
 #'   list(single = nv_fill(0, 2), double = with_default_dtypes(c(float = "f64"), nv_fill(0, 2)))
 #' })()
@@ -262,7 +262,7 @@ with_default_dtypes <- function(dtypes, code, backend = NULL) {
 #' @seealso [`default_dtypes()`], [`local_default_dtypes()`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' add_f64 <- with_dtypes(nv_add, c(float = "f64"))
-#' # An `f32` argument is converted, and the result comes back as `f64`
+#' # an `f32` argument is converted, and the result comes back as `f64`
 #' dtype(add_f64(nv_array(1, dtype = "f32"), 2.5))
 #' # A category that is not named is untouched
 #' dtype(add_f64(nv_array(1L, dtype = "i32"), 2L))
@@ -358,7 +358,7 @@ convertible_dtype_category <- function(dtype) {
   }
 }
 
-# The default dtypes (see `default_dtypes()`) in force here.
+# The default dtypes (see `default_dtypes()`) that are active here.
 current_default_dtypes <- function() {
   desc <- globals[["CURRENT_DESCRIPTOR"]]
   if (is.null(desc)) {

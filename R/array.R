@@ -12,7 +12,7 @@
 #' [`naxes()`][tengen::naxes] for the number of axes and
 #' [`shape()`][tengen::shape] for the axis sizes. We speak of the *size of an
 #' axis* rather than an array's "dimensions", as the latter is generally
-#' overloaded as it is used to refer to both the axis and it's size.
+#' overloaded as it is used to refer to both the axis and its size.
 #'
 #'
 #' @section Extractors:
@@ -39,9 +39,14 @@
 #'
 #' @param data (any)\cr
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
+#'   Alternatively a `raw()` vector holding the native little-endian byte
+#'   payload of `prod(shape)` elements of `dtype`; both `dtype` and `shape`
+#'   are then required (only supported on the `"pjrt"` backend).
+#'   Raw payloads are read in column-major element order, or row-major
+#'   with `byrow = TRUE`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
-#'   The default (`NULL`) uses the data type the R value commits to (see
+#'   The default (`NULL`) uses the data type the R value takes (see
 #'   [`default_dtypes()`]). This depends on the backend.
 #'   For the default `"pjrt"` backend, `double`s become `f32`, `integer`
 #'   `i32` and `logical`s `bool`.
@@ -52,6 +57,8 @@
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
+#'   Empty data has no shape to infer -- `0`, `c(2, 0)` and `c(0, 3)` all hold
+#'   no elements -- so `shape` is required there.
 #'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
@@ -70,19 +77,19 @@
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
 #' nv_array(1:4)
 #'
-#' # Specify a dtype
+#' # specify a dtype
 #' nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #'
-#' # A 2x3 matrix
+#' # a 2x3 matrix
 #' nv_array(1:6, shape = c(2L, 3L))
 #'
-#' # A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+#' # a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 #' nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 #'
 #' # A scalar array.
 #' nv_scalar(3.14)
 #'
-#' # An uninitialized 2x3 array (contents are unspecified)
+#' # an uninitialized 2x3 array (contents are unspecified)
 #' nv_empty("f32", shape = c(2L, 3L))
 #'
 #' # --- Extractors ---
@@ -158,7 +165,23 @@ nv_array <- function(
   if (!is.null(shape)) {
     shape <- as.integer(shape)
   }
-  if (byrow) {
+  is_raw_payload <- is.raw(data)
+  if (is_raw_payload) {
+    if (is.null(dtype)) {
+      cli_abort("{.arg dtype} must be provided when {.arg data} is a raw vector.")
+    }
+    if (is.null(shape)) {
+      cli_abort("{.arg shape} must be provided when {.arg data} is a raw vector.")
+    }
+  } else if (is.null(shape) && is.null(dim(data)) && length(data) == 0L) {
+    # A zero-length vector does not say which axis is empty, so there is
+    # nothing to infer: `0`, `c(2, 0)` and `c(0, 3)` all hold no elements.
+    cli_abort(c(
+      "{.arg shape} must be provided when {.arg data} is empty.",
+      i = "A zero-length vector does not say which axis is empty, e.g. {.code shape = 0L} or {.code shape = c(2L, 0L)}."
+    ))
+  }
+  if (byrow && !is_raw_payload) {
     fill_shape <- shape %||% (if (!is.null(dim(data))) as.integer(dim(data)) else as.integer(length(data)))
     if (length(fill_shape) >= 2L) {
       # Fill column-major into the reversed shape, then permute axes back —
@@ -168,16 +191,16 @@ nv_array <- function(
   }
   if (currently_tracing() && is.null(device)) {
     # A constant of the trace: it belongs to the backend being traced for, and
-    # commits to the defaults the trace is pinned to.
+    # materializes at the defaults the trace is pinned to.
     dtype <- resolve_default_dtype(data, dtype)
-    return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
+    return(globals$backends[["plain"]]$new_data(data, dtype, shape, device, row_major = byrow))
   }
   backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
   dtype <- resolve_default_dtype(data, dtype, current_default_dtypes())
-  globals$backends[[backend]]$new_data(data, dtype, shape, device)
+  globals$backends[[backend]]$new_data(data, dtype, shape, device, row_major = byrow)
 }
 
 #' @title Convert to AnvlArray
@@ -189,7 +212,7 @@ nv_array <- function(
 #' and can additionally apply type promotion rules via the `.promote` argument.
 #'
 #' @param x ([`arrayish`])\cr
-#'   Input to standardize.
+#'   Input to canonicalize.
 #' @param ... ([`arrayish`])\cr
 #'   Inputs to align. Name them to be able to point `.promote` at one of them.
 #' @param device (`NULL` | [`device`])\cr
@@ -202,7 +225,7 @@ nv_array <- function(
 #' @examplesIf pjrt::plugins_downloaded()
 #' as_anvl_array(1L)
 #' as_anvl_arrays(nv_array(1:3), 1L)
-#' as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
+#' as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promotion_common())
 #' @name as_anvl_array
 NULL
 
@@ -210,7 +233,7 @@ NULL
 #' @export
 as_anvl_array <- function(x, device = NULL) {
   if (is_box(x)) {
-    return(commit_rdata_box(x))
+    return(materialize_rdata_box(x))
   }
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
@@ -228,7 +251,7 @@ as_anvl_array <- function(x, device = NULL) {
   # A bare R value: it has no dtype of its own, and nothing here says what it
   # should be, so it takes its default.
   if (currently_tracing()) {
-    return(commit_rdata_box(maybe_box_arrayish(x)))
+    return(materialize_rdata_box(maybe_box_arrayish(x)))
   }
   if (is_valid_r_lit(x)) {
     return(nv_scalar(x, device = device))
@@ -244,8 +267,8 @@ as_anvl_arrays <- function(..., .promote = NULL) {
   if (is.null(.promote)) {
     return(lapply(args, as_anvl_array, device = aligned$device))
   }
-  # We directly realize at the target instead of materializing at the default dtype
-  # and then converting. This keeps the precision in `nv_add(nv_scalar(1, "f64"), pi)`
+  # Materialize directly at the target rather than at the default dtype and then
+  # converting. This keeps the precision in `nv_add(nv_scalar(1, "f64"), pi)`
   # because `pi` does NOT round-trip through f32.
   dtypes <- resolve_promote(.promote, args)
   for (i in seq_along(args)) {
@@ -253,7 +276,7 @@ as_anvl_arrays <- function(..., .promote = NULL) {
       # No conversion/materialization requested
       as_anvl_array(args[[i]], device = aligned$device)
     } else {
-      realize_at(args[[i]], dtype = dtypes[[i]], device = aligned$device)
+      materialize_at(args[[i]], dtype = dtypes[[i]], device = aligned$device)
     }
   }
   args
@@ -306,7 +329,7 @@ align_arrayish <- function(args) {
 # tracing, the R value itself otherwise -- is built from its R data, so it
 # arrives with every digit it had; anything that already has a dtype is
 # converted.
-realize_at <- function(x, dtype, device = NULL) {
+materialize_at <- function(x, dtype, device = NULL) {
   if (currently_tracing() && is_valid_r(x)) {
     return(build_r_at(x, dtype))
   }
@@ -697,13 +720,13 @@ backend.QuickrDevice <- function(x, ...) {
 #' dtype(a)
 #' shape(a)
 #'
-#' # Shorthand
+#' # shorthand
 #' nv_aval("f32", c(2L, 3L))
 #'
-#' # An R value, which has no dtype until it is used
+#' # an R value, which has no dtype until it is used
 #' nv_aval("double", c(2L, 3L))
 #'
-#' # How AbstractArrays appear in an AnvlGraph
+#' # how AbstractArrays appear in an AnvlGraph
 #' graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
 #' graph
 #' graph$inputs[[1]]$aval
@@ -723,7 +746,7 @@ is_abstract_array <- function(x) {
   inherits(x, "AbstractArray")
 }
 
-is_concrete_tensor <- function(x) {
+is_concrete_array <- function(x) {
   inherits(x, "ConcreteArray")
 }
 
@@ -761,7 +784,7 @@ shape.AbstractArray <- function(x, ...) {
 #' naxes(x)
 #' dtype(x)
 #'
-#' # How it appears during tracing
+#' # how it appears during tracing
 #' graph <- trace_fn(function() y, list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -788,7 +811,7 @@ ConcreteArray <- function(data) {
 #' [`nv_fill()`] to create a constant.
 #'
 #' @section Lowering:
-#' `LiteralArray`s become constants inlined into the stableHLO program.
+#' `LiteralArray`s become constants inlined into the StableHLO program.
 #' I.e., they lower to [`hlo_tensor()`].
 #'
 #' @param data (`double(1)` | `integer(1)` | `logical(1)` | [`AnvlArray`])\cr
@@ -804,7 +827,7 @@ ConcreteArray <- function(data) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' # 1. via R literals
 #' graph <- trace_fn(function() 1, list())
 #' graph
@@ -816,7 +839,7 @@ ConcreteArray <- function(data) {
 #' @export
 LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
   if (!is_valid_r_lit(data) && !inherits(data, "AnvlArray")) {
-    cli_abort("LiteralArrays expect scalars or AnvlArray")
+    cli_abort("{.arg data} must be a scalar or a one-element {.cls AnvlArray}.")
   }
   if (inherits(data, "AnvlArray")) {
     if (prod(shape(data)) != 1L) {
@@ -843,7 +866,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' Inherits from [`AbstractArray`].
 #'
 #' @section Lowering:
-#' When lowering to stableHLO, these become `iota` operations that generate the integer sequence
+#' When lowering to StableHLO, these become `iota` operations that generate the integer sequence
 #' so they do not need to actually hold the data in the executable, similar to `ALTREP`s in R.
 #' It lowers to [`hlo_iota()`], optionally shifting the starting value via
 #' [`hlo_add()`].
@@ -863,7 +886,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -921,13 +944,13 @@ print.IotaArray <- function(x, ...) {
 #' a <- nv_aval("f32", c(2L, 3L))
 #' b <- nv_aval("f32", c(2L, 3L))
 #'
-#' # Same dtype and shape
+#' # same dtype and shape
 #' eq_type(a, b)
 #'
-#' # Different dtype
+#' # different dtype
 #' eq_type(a, nv_aval("i32", c(2L, 3L)))
 #'
-#' # Different shape
+#' # different shape
 #' eq_type(a, nv_aval("f32", c(3L, 2L)))
 #'
 #' # neq_type is the negation of eq_type
@@ -1047,7 +1070,7 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #' # AnvlArrays become ConcreteArrays
 #' to_abstract(nv_array(1:4))
 #'
-#' # Use pure = TRUE to strip subclass info
+#' # use pure = TRUE to strip subclass info
 #' to_abstract(nv_array(1:4), pure = TRUE)
 #'
 #' @export
@@ -1114,7 +1137,7 @@ is_shape <- function(x) {
 #' # AnvlArrays are arrayish
 #' is_arrayish(nv_array(1:4))
 #'
-#' # Scalar R literals are arrayish by default
+#' # scalar R literals are arrayish by default
 #' is_arrayish(1.5)
 #' # R arrays are arrayish by default
 #' is_arrayish(array(1.5))
@@ -1123,7 +1146,7 @@ is_shape <- function(x) {
 #' is_arrayish(array(1:4), convert_ok = TRUE)
 #' is_arrayish(array(1:4), convert_ok = FALSE)
 #'
-#' # Length 1 vectors
+#' # length 1 vectors
 #' is_arrayish(1.5, convert_ok = FALSE)
 #' is_arrayish(1.5, convert_ok = TRUE)
 NULL
@@ -1165,7 +1188,7 @@ arr <- function(..., shape = NULL) {
   assert_vector(vals, min.len = 1L)
   nvals <- length(vals)
   if (!is.null(shape) && (nvals != 1) && (prod(shape) != nvals)) {
-    cli_abort("Number of elements is {nvals}, but {.arg shape} is {shape}")
+    cli_abort("Number of elements is {nvals}, but {.arg shape} is {shape_repr(shape)}.")
   }
   array(vals, dim = shape %||% length(vals))
 }

@@ -10,14 +10,14 @@ test_that("an R value takes the dtype of the array it meets", {
   )
 })
 
-test_that("an R value that meets nothing commits to the default dtype", {
+test_that("an R value that meets nothing materializes at the default dtype", {
   expect_equal(jit(function() 1 * 2)(), nv_scalar(2, dtype = default_float()))
   expect_equal(jit(function() 1L * 2L)(), nv_scalar(2L, dtype = default_int()))
 })
 
-test_that("a value that has committed keeps its dtype", {
-  # `x * 1L` commits to i32 -- the R value cannot stay a bool -- and the i16
-  # then promotes against a real i32, which wins.
+test_that("a value that has materialized keeps its dtype", {
+  # `x * 1L` materializes at i32 -- the R value cannot stay a bool -- and the
+  # i16 then promotes against a real i32, which wins.
   f <- function(x, y) (x * 1L) + y
   expect_equal(
     jit(f)(nv_scalar(TRUE), nv_scalar(2L, "i16")),
@@ -51,25 +51,25 @@ test_that("prim_while carries the dtype of its state", {
   )
 })
 
-test_that("a logical R value is a bool, not an uncommitted value", {
+test_that("a logical R value is a bool, not an unmaterialized value", {
   f <- function(x) x * TRUE
   graph <- trace_fn(f, list(x = nv_scalar(1L)))
   # The logical is built at `bool` -- the only dtype that holds it faithfully --
   # and the program converts it to the dtype it met, so the multiply itself sees
   # an i32.
   mul <- Filter(function(call) call$primitive$name == "mul", graph$calls)[[1L]]
-  expect_equal(dtype(mul$inputs[[2L]]$aval), default_int())
+  expect_dtype(mul$inputs[[2L]]$aval, default_int())
 })
 
 describe("eager/jit equivalence", {
-  it("agrees for promote_like() and promote_common()", {
+  it("agrees for promotion_like() and promotion_common()", {
     expect_eager_jit_equal_grid(list(
       "anchored promotion" = function(x, v) {
-        args <- as_anvl_arrays(x = x, v = v, .promote = promote_like("x"))
+        args <- as_anvl_arrays(x = x, v = v, .promote = promotion_like("x"))
         args$x * args$v
       },
       "promotion to the common dtype" = function(x, v) {
-        args <- as_anvl_arrays(x, v, .promote = promote_common())
+        args <- as_anvl_arrays(x, v, .promote = promotion_common())
         args[[1L]] * args[[2L]]
       }
     ))
@@ -79,19 +79,19 @@ describe("eager/jit equivalence", {
 describe("the default float", {
   it("does not change the yielding rule", {
     local_default_dtypes(c(float = "f64"))
-    expect_equal(dtype(nv_array(1, dtype = "f32") + 1.5), as_dtype("f32"))
-    expect_equal(dtype(jit(function(x) x * 2)(nv_array(1, dtype = "f32"))), as_dtype("f32"))
+    expect_dtype(nv_array(1, dtype = "f32") + 1.5, "f32")
+    expect_dtype(jit(function(x) x * 2)(nv_array(1, dtype = "f32")), "f32")
     # Crossing a category takes the *default* of the other category.
-    expect_equal(dtype(nv_array(1L, dtype = "i32") + 1.5), as_dtype("f64"))
+    expect_dtype(nv_array(1L, dtype = "i32") + 1.5, "f64")
   })
 })
 
 describe("the default integer", {
   it("does not change the yielding rule", {
     local_default_dtypes(c(int = "i64"))
-    expect_equal(dtype(nv_array(1L, dtype = "i32") + 1L), as_dtype("i32"))
-    expect_equal(dtype(nv_array(1L, dtype = "i8") * 2L), as_dtype("i8"))
-    expect_equal(dtype(nv_array(TRUE) + 1L), as_dtype("i64"))
+    expect_dtype(nv_array(1L, dtype = "i32") + 1L, "i32")
+    expect_dtype(nv_array(1L, dtype = "i8") * 2L, "i8")
+    expect_dtype(nv_array(TRUE) + 1L, "i64")
   })
 })
 
@@ -99,14 +99,31 @@ describe("eager code", {
   it("reads the same default the operation runs with", {
     skip_if_no_quickr()
     # A plain R helper decides a promotion eagerly, between dispatches. The
-    # default it reads is the one of the backend in force, which is also the
+    # default it reads is the one of the active backend, which is also the
     # backend the operation then runs on.
-    promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promote_common())[[2L]]
-    expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), default_float())
+    promote <- function(x) as_anvl_arrays(x, 1.5, .promote = promotion_common())[[2L]]
+    expect_dtype(promote(nv_array(1L, dtype = "i32")), default_float())
     with_backend("quickr", {
-      expect_equal(dtype(promote(nv_array(1L, dtype = "i32"))), as_dtype("f64"))
+      expect_dtype(promote(nv_array(1L, dtype = "i32")), "f64")
       expect_equal(peek_dtype(1.5), as_dtype("f64"))
-      expect_equal(dtype(nv_fill(0, 3)), as_dtype("f64"))
+      expect_dtype(nv_fill(0, 3), "f64")
     })
+  })
+})
+
+describe("a ui64 that meets a signed integer", {
+  it("is refused rather than promoted to a float", {
+    x <- nv_array(c(1, 2), dtype = "ui64")
+    y <- nv_array(c(3L, 4L), dtype = "i32")
+    expect_error(x + y, "have no common data type")
+    expect_error(jit(function(a, b) a + b)(x, y), "have no common data type")
+  })
+
+  it("promotes once one side is converted", {
+    x <- nv_convert(nv_array(c(1, 2), dtype = "ui64"), "f64")
+    y <- nv_array(c(3L, 4L), dtype = "i32")
+    out <- x + y
+    expect_dtype(out, "f64")
+    expect_equal(as.vector(tengen::as_array(out)), c(4, 6))
   })
 })

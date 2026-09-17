@@ -167,8 +167,8 @@ test_that("can pass constant to nested trace_fn call if it is defined in the par
 test_that("GraphLiteral", {
   local_registered_default_dtypes()
   gl <- GraphLiteral(LiteralArray(1L, integer()))
-  expect_equal(dtype(gl), default_int())
-  expect_equal(shape(gl), integer())
+  expect_dtype(gl, default_int())
+  expect_shape(gl, integer())
   expect_snapshot(gl)
 })
 
@@ -218,7 +218,7 @@ test_that("error handling: stablehlo errors use anvl's terminology", {
   local_registered_default_dtypes()
   # `cli_abort()` errors from stablehlo store an already formatted message in
   # the condition's fields. Shapes rather than data types, since operands whose
-  # data types disagree are refused by `promote_rdata_common()` before inference
+  # data types disagree are refused by `promotion_rdata_common()` before inference
   # ever sees them.
   expect_snapshot(error = TRUE, jit(prim_add)(nv_array(1:4), nv_array(1:6)))
   err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
@@ -291,8 +291,8 @@ test_that("trace_fn(mode = 'subgraph') promotes R lits/arrays to AnvlArray input
     mode = "subgraph"
   )
   expect_equal(length(graph$inputs), 2L)
-  expect_equal(shape(graph$inputs[[1L]]), integer())
-  expect_equal(shape(graph$inputs[[2L]]), 2L)
+  expect_shape(graph$inputs[[1L]], integer())
+  expect_shape(graph$inputs[[2L]], 2L)
 })
 
 test_that("trace_fn(mode = 'subgraph') errors on non-arrayish args", {
@@ -336,10 +336,7 @@ describe("how an R value is built into a graph", {
     # An R double built at an integer data type is built at f64 -- where it is
     # exact -- and converted by the program, so narrowing follows XLA.
     f <- function(x) nv_add(x, nv_convert(1.5, "i32"))
-    # The f64 the staging brings in is what `anvl_staging_widens_warning`
-    # reports; here the point is the graph it produces.
-    expect_warning(trace_fn(f, list(x = nv_aval("i32", integer()))))
-    graph <- suppressWarnings(trace_fn(f, list(x = nv_aval("i32", integer()))))
+    graph <- trace_fn(f, list(x = nv_aval("i32", integer())))
     expect_snapshot(graph)
   })
 
@@ -372,5 +369,50 @@ describe("how an R value is built into a graph", {
     })
     out <- f(nv_scalar(1, dtype = "f64"))
     expect_equal(as_array(out$acc), 8)
+  })
+})
+
+describe("coercing a traced array to R", {
+  trace_call <- function(f) {
+    jit(function(x) {
+      f(x)
+      x
+    })(nv_array(1:3))
+  }
+
+  coercions <- list(
+    as_array = as_array,
+    as_raw = as_raw,
+    as.array = as.array,
+    as.matrix = as.matrix,
+    as.vector = as.vector,
+    as.list = as.list,
+    as.double = as.double,
+    as.numeric = as.numeric,
+    as.integer = as.integer,
+    as.logical = as.logical,
+    as.character = as.character,
+    as.integer64 = bit64::as.integer64
+  )
+
+  for (nm in names(coercions)) {
+    local({
+      fn <- coercions[[nm]]
+      name <- nm
+      it(paste0(name, "() errors"), {
+        expect_error(trace_call(fn), "has no values")
+      })
+    })
+  }
+
+  it("a closed-over concrete array still converts", {
+    # the closed-over array is anyway a constant.
+    k <- nv_array(1:3)
+    out <- NULL
+    jit(function(x) {
+      out <<- as_array(k)
+      x
+    })(nv_array(1:3))
+    expect_equal(out, array(1:3))
   })
 })

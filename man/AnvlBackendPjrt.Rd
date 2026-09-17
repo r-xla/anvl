@@ -18,7 +18,7 @@ backend.
 \section{Data representation}{
 
 An \code{\link{AnvlArray}} with \code{backend = "pjrt"} wraps a \code{\link[pjrt:pjrt_buffer]{pjrt::pjrt_buffer()}}
-stored in the \verb{$data} field. The buffer owns the memory holding the tensor
+stored in the \verb{$data} field. The buffer owns the memory holding the array
 values and may live on any device supported by PJRT (CPU, CUDA, Metal,
 ...). Calling \code{\link[=as_array]{as_array()}} transfers the buffer contents back to an R
 array; calling \code{\link[=nv_array]{nv_array()}} on an R object uploads it to the requested
@@ -37,7 +37,7 @@ Operations require all inputs to live on the same device.
 
 \code{bool}; the signed integers \code{i8}, \code{i16}, \code{i32} and \code{i64}; the unsigned
 integers \code{ui8}, \code{ui16}, \code{ui32} and \code{ui64}; and the floats \code{f32} and \code{f64}.
-An R double commits to \code{f32} on this backend and an R integer to \code{i32}
+An R double materializes at \code{f32} on this backend and an R integer at \code{i32}
 unless the defaults say otherwise (see \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 

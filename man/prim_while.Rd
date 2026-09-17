@@ -9,7 +9,7 @@ prim_while(init, cond, body)
 \arguments{
 \item{init}{(\verb{named list()})\cr
 Named list of initial state values. Each one becomes a parameter of the
-loop's sub-graphs. R values are committed at their default data type.}
+loop's sub-graphs. R values are materialized at their default data type.}
 
 \item{cond}{(\code{function})\cr
 Condition function that receives the current state as arguments
@@ -28,7 +28,6 @@ final state after the loop terminates.
 Repeatedly executes \code{body} while \code{cond} returns \code{TRUE}, like R's
 \code{while} loop. The loop state is initialized with \code{init} and
 passed through each iteration.
-Otherwise, no state is maintained between iterations.
 }
 \section{Implemented Rules}{
 

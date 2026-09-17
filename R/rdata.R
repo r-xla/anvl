@@ -30,9 +30,9 @@ NULL
 #' RData(c(2, 3), "double")
 #' # is equivalent to
 #' nv_aval("double", c(2, 3))
-#' # Below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
+#' # below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
 #' # dtype becomes f64.
-#' # By NOT converting RData to their default data type we prevent loss of precision
+#' # by NOT converting RData to their default data type we prevent loss of precision
 #' # (double -> f32 -> f64 roundrips)
 #' graph <- trace_fn(function(x) {
 #'     print(x)
@@ -40,9 +40,9 @@ NULL
 #'   }, list(x = nv_aval("double", c()))
 #' )
 #' print(graph)
-#' # The actual inputs to the compiled program
+#' # the actual inputs to the compiled program
 #' graph$inputs
-#' # The data types of the R values; AnvlArrays get NA here
+#' # the data types of the R values; AnvlArrays get NA here
 #' graph$rdata_types
 #' @export
 RData <- function(shape, r_type) {
@@ -100,7 +100,7 @@ abort_no_dtype <- function(default_dtype) {
   cli_abort(
     c(
       "An R value has no data type of its own until it is used.",
-      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it commits to the default ({.val {as.character(default_dtype)}}).", # nolint
+      i = "{.fn dtype} is undefined here for the same reason {.code dtype(1.5)} is: the value only takes a data type when it meets a typed array, or when it materializes at the default ({.val {as.character(default_dtype)}}).", # nolint
       i = "Give it one explicitly with {.fn nv_convert}."
     ),
     call = NULL
@@ -145,51 +145,6 @@ rdata_natural_dtype <- function(r_type) {
   switch(r_type, double = as_dtype("f64"), integer = as_dtype("i32"), logical = as_dtype("bool"))
 }
 
-# The dtype an R value is built at on its way to `dtype`, for a `dtype` it
-# cannot be built at directly. Building it where it is exact is what keeps the
-# conversion the program's rather than R's -- but where that is wider than the
-# dtype the value would commit to on its own, the program acquires one nothing
-# asked for. An R double reaches `i32` through `f64`, so a program with no `f64`
-# in it gets one, and a backend without `f64` (Metal) cannot run it at all.
-#
-# That is worth saying out loud rather than refusing: the alternative rounds the
-# value through its default before converting, which is a different answer
-# (`2^25 + 1` reaches `i32` as 33554432 rather than 33554433), and the caller may
-# well want the exact one. `double` is the only R type this can happen for --
-# an integer and a logical are exact at their own defaults.
-
-# This is one of THE core functios of the RData mechanism, as it specifies how
-# we obtain RData inputs at the requested data type.
-# When an RData input is only requested at it's category, we use the dtype within that category
-# that holds enough precision so everybody gets the value at its requested dtype without losing precision.
-# To understand this, consider a program that receives an R double and compare two programs:
-# 1. a single primitive call uses the R double and requires it in f32 -> input becomes f32
-# 2. one primitive requires f32, the other f64. -> input becomes f64
-#    this only works, because the f32 obtained from the f32 is the same as we obtain from the f64.
-# Where we do cross-category concversions, a double input must e.g. always be materialized at
-# f64, otherwise the result of an i32 request might depend on the float requests of that double,
-# which MUST NOT HAPPEN. This is also why prim_convert(1, "i32") errs:
-# We need to introduce an f64 into the program although nobody ever requested one, but otherwise
-# would be even worse.
-rdata_staging_dtype <- function(r_type, dtype) {
-  staged <- rdata_natural_dtype(r_type)
-  # Only worth saying when staging *widens* past the data type the value would
-  # have taken anyway. An R integer stages through `i32`, so under an `i64`
-  # default it stages through something narrower than its default and the
-  # program acquires nothing it could have avoided.
-  if (!dtype_holds(default_dtype_r(r_type), staged)) {
-    cli_warn(
-      c(
-        "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
-        x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts.", # nolint
-        i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(default_dtype_r(r_type))}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
-      ),
-      class = "anvl_staging_widens_warning"
-    )
-  }
-  staged
-}
-
 rdata_in_category <- function(r_type, dtype) {
   dtype_category(dtype) == rdata_category(r_type)
 }
@@ -211,6 +166,25 @@ rdata_builds_directly <- function(r_type, dtype) {
 # reached by building at the natural one and letting the *program* convert the
 # rest of the way, so narrowing follows XLA's semantics rather than R's.
 #
+# This is one of the core parts of the RData mechanism, as it specifies how an
+# RData input is obtained at the data type that was requested. Where the requests
+# only name a category, the input materializes at the data type in that category
+# that holds every requested one exactly, so no request loses precision to
+# another: a double asked for `f32` alone becomes an `f32`, but a double asked
+# for both `f32` and `f64` becomes an `f64`, which works because the `f32` read
+# off that `f64` is the one it would have been built at on its own.
+#
+# A request that crosses the value's own category has to be pinned to the natural
+# data type instead. An R double on its way to `i32` is built at `f64`, where it
+# is exact, never at whichever float the rest of the program happens to want --
+# otherwise the integer would depend on the float requests elsewhere in the
+# program, which MUST NOT HAPPEN. The price is an `f64` in a program nobody asked
+# for one in, which a backend without `f64` (Metal) cannot run. That is accepted
+# for now: the `f64` is only ever an intermediate for a conversion and never
+# feeds float math. The way out, once such a backend matters, is to let one R
+# argument enter the program at several data types, so that the `double -> i32`
+# conversion happens on the host (issue #530).
+#
 # The three ways an R value enters a program -- a literal in a traced body, the
 # input an open argument is supplied at, an array built eagerly -- differ only
 # in `build`, and this is what they share.
@@ -218,7 +192,7 @@ build_r_staged <- function(r_type, dtype, build) {
   if (rdata_builds_directly(r_type, dtype)) {
     return(build(dtype))
   }
-  prim_convert(build(rdata_staging_dtype(r_type, dtype)), dtype = dtype)
+  prim_convert(build(rdata_natural_dtype(r_type)), dtype = dtype)
 }
 
 # Build `box`'s R argument into the graph at `dtype`, and return the GraphBox
@@ -298,10 +272,10 @@ r_const_at <- function(x, dtype, desc) {
 
 #' @title Peek at a Data Type
 #' @description
-#' The data type `x` would use if it was converted to an `AnvlArray`.
+#' The data type `x` would take if it was converted to an `AnvlArray`.
 #' Relevant for R objects and their [`RData`] trace-time analogon: for those it
-#' is the default of the backend in force (see [`default_dtypes()`]), which the
-#' value has not committed to yet.
+#' is the default of the active backend (see [`default_dtypes()`]), which the
+#' value has not materialized at yet.
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
@@ -317,9 +291,9 @@ peek_dtype <- function(x) {
   if (is_rdata(aval)) default_dtype_r(aval$r_type) else aval$dtype
 }
 
-# A traced box, with any R value in it committed to its default dtype. Anything
-# that already has a dtype is returned unchanged.
-commit_rdata_box <- function(x) {
+# A traced box, with any R value in it materialized at its default dtype.
+# Anything that already has a dtype is returned unchanged.
+materialize_rdata_box <- function(x) {
   if (is_rdata_box(x)) {
     materialize_rdata(x, peek_dtype(x))
   } else {

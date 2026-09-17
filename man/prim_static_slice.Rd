@@ -16,7 +16,7 @@ Start indices (inclusive), one per axis. Must satisfy
 
 \item{limit_indices}{(\code{integer()})\cr
 End indices (inclusive), one per axis. Must satisfy
-\code{limit_indices <= nv_shape(x)} per axis.}
+\code{limit_indices <= shape(x)} per axis.}
 
 \item{strides}{(\code{integer()})\cr
 Step sizes, one per axis. Must be \verb{>= 1}. A stride of \code{1}

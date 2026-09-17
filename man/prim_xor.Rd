@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_xor}
 \alias{prim_xor}
-\title{Primitive Xor}
+\title{Primitive Bitwise Xor}
 \usage{
 prim_xor(lhs, rhs)
 }

@@ -17,13 +17,14 @@ RNG state (\code{ui64[2]}).}
 Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled integers. \code{NULL} (default) uses the backend's
-default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Data type of the sampled integers. Must be numeric.
+\code{NULL} (default) uses the backend's default
+integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})\cr
-List of two elements: the updated RNG state and the sampled integers,
-of shape \code{shape}.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{state}, the updated RNG state, and \code{values}, the sampled
+integers of shape \code{shape}.
 }
 \description{
 Samples integers from \code{1} to \code{n} with equal probability and with
@@ -34,9 +35,9 @@ To sample from a population other than \code{1:n}, use \code{\link[=nv_sample]{n
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 state <- nv_rng_state(42L)
-# Roll 6 dice
+# roll 6 dice
 result <- nv_sample_int(6, state, 6L)
-result[[2]]
+result$values
 \dontshow{\}) # examplesIf}
 }
 \seealso{

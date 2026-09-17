@@ -14,6 +14,18 @@ test_that("graph_to_quickr_function requires {quickr}", {
 })
 
 describe("the quickr backend", {
+  it("emits a call whose outputs are all empty directly", {
+    skip_if_no_quickr()
+    local_backend("quickr")
+    # quickr's elementwise operators reject an empty operand even where both
+    # shapes agree, so lowering `x + x` on a `2x0` failed. An empty result has
+    # only one possible value, so it is emitted without touching the operands.
+    empty <- nv_array(numeric(0), shape = c(2L, 0L))
+    out <- jit(function(x) nv_add(x, x))(empty)
+    expect_shape(out, c(2L, 0L))
+    expect_equal(length(as.vector(out)), 0L)
+  })
+
   it("rejects a float default it cannot represent", {
     skip_if_no_quickr()
     local_backend("quickr")
@@ -30,15 +42,15 @@ describe("the quickr backend", {
     expect_error(jit(function(x) nv_convert(x, "f32"))(nv_array(1, dtype = "f64")), "quickr")
   })
 
-  it("commits an R double to f64 everywhere", {
+  it("materializes an R double at f64 everywhere", {
     skip_if_no_quickr()
     local_backend("quickr")
-    expect_equal(dtype(nv_array(1.5)), as_dtype("f64"))
+    expect_dtype(nv_array(1.5), "f64")
     expect_equal(peek_dtype(1.5), as_dtype("f64"))
-    expect_equal(dtype(jit(function() 1.5)()), as_dtype("f64"))
-    expect_equal(dtype(jit(function(x) x + 1.5)(nv_array(1L))), as_dtype("f64"))
-    expect_equal(dtype(jit(function(x) x)(1.5)), as_dtype("f64"))
-    expect_equal(dtype(nv_array(1L)), as_dtype("i32"))
+    expect_dtype(jit(function() 1.5)(), "f64")
+    expect_dtype(jit(function(x) x + 1.5)(nv_array(1L)), "f64")
+    expect_dtype(jit(function(x) x)(1.5), "f64")
+    expect_dtype(nv_array(1L), "i32")
   })
 })
 

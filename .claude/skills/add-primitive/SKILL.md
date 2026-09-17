@@ -23,13 +23,13 @@ The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always name
 - Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
 - Two symmetric operands of a binary op: `lhs` / `rhs`.
 - Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
-- Dimension-number arguments derived from `x` follow it: `x_batching_dims`, `scatter_dims_to_x_dims`.
+- Axis arguments derived from `x` follow it, and are spelled *axes*, never *dims*: `x_batching_axes`, `scatter_axes_to_x_axes`, `offset_axes`, `index_vector_axis`.
 
 When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.
 
 ```r
 stablehlo::GatherDimensionNumbers(
-  operand_batching_dims = x_batching_dims - 1L,  # spec name on the left
+  operand_batching_dims = x_batching_axes - 1L,  # spec name on the left
   ...
 )
 ```
@@ -67,7 +67,7 @@ Beyond what the vignette covers:
 
 ## Optional: Quickr Rule
 
-If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend — the quickr meta test simply excludes it from coverage.
+If the primitive should also run under `local_backend("quickr")`, add a `quickr` lowering in `R/rules-quickr.R` via `quickr_register_prim_lowerer(prim_<name>, function(...) { ... })`. This emits plain R code for the quickr backend. If you skip it, the primitive still works on the pjrt backend; only the quickr one refuses it.
 
 ## API Wrapper (`nv_*`)
 
@@ -137,13 +137,13 @@ describe("prim_foo", {
     verify_grad_uni(prim_foo, torch::torch_foo, gen = gen_foo)
   })
 
-  it("tensor gradient", {
-    verify_grad_uni_tensor(prim_foo, torch::torch_foo, shape = c(3, 4), gen = gen_foo)
+  it("array gradient", {
+    verify_grad_uni_array(prim_foo, torch::torch_foo, shape = c(3, 4), gen = gen_foo)
   })
 })
 ```
 
-For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_tensor` with `gen_lhs` / `gen_rhs`.
+For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_array` with `gen_lhs` / `gen_rhs`.
 
 ### Key testing helpers
 
@@ -151,10 +151,10 @@ For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_tensor` with 
 |--------|------|---------|
 | `expect_jit_torch_unary` | `inst/extra-tests/torch-helpers.R` | Compare unary forward with torch |
 | `expect_jit_torch_binary` | `inst/extra-tests/torch-helpers.R` | Compare binary forward with torch |
-| `verify_grad_uni` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + tensor) |
-| `verify_grad_uni_tensor` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (tensor only) |
-| `verify_grad_biv` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + tensor) |
-| `verify_grad_biv_tensor` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (tensor only) |
+| `verify_grad_uni` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + array) |
+| `verify_grad_uni_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (array only) |
+| `verify_grad_biv` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + array) |
+| `verify_grad_biv_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (array only) |
 | `generate_test_data` | `inst/extra-tests/torch-helpers.R` | Random input sampling by dtype |
 
 Custom generators (`gen`, `gen_x`, `gen_y`, `gen_lhs`, `gen_rhs`) have signature `function(shp, dtype)` and return an R array (or scalar for `integer()` shape).

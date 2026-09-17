@@ -11,7 +11,7 @@ as_anvl_arrays(..., .promote = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input to standardize.}
+Input to canonicalize.}
 
 \item{device}{(\code{NULL} | \code{\link{device}})\cr
 Target device. If \code{x} is an \code{AnvlArray} on a different device, an error
@@ -37,7 +37,7 @@ and can additionally apply type promotion rules via the \code{.promote} argument
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_anvl_array(1L)
 as_anvl_arrays(nv_array(1:3), 1L)
-as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promote_common())
+as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promotion_common())
 \dontshow{\}) # examplesIf}
 }
 \seealso{

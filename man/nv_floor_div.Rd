@@ -19,7 +19,7 @@ Has the same shape and the promoted common data type of the inputs.
 }
 \description{
 Element-wise flooring division.
-You can also call this via the \code{\%/\%} opertor.
+You can also call this via the \code{\%/\%} operator.
 The result is the largest whole number that does not exceed \code{lhs / rhs}.
 }
 \examples{

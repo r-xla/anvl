@@ -11,7 +11,9 @@
 #' `nv_fill_like()` is a variant where `dtype`, `shape`, and
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
-#'   Scalar value to fill the array with.
+#'   Scalar value to fill the array with. It has to be something `dtype` can
+#'   hold: a whole number for an integer data type, a non-negative whole number
+#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | `NULL`)\cr
@@ -45,6 +47,10 @@ nv_fill <- function(value, shape, dtype = NULL, device = NULL) {
 ## Conversion ------------------------------------------------------------------
 
 broadcast_shapes <- function(shape_lhs, shape_rhs) {
+  # Kept for the message: the two are padded below, and reporting the padded
+  # shapes back would name axes the caller never wrote.
+  given_lhs <- shape_lhs
+  given_rhs <- shape_rhs
   if (length(shape_lhs) > length(shape_rhs)) {
     shape_rhs <- c(rep(1L, length(shape_lhs) - length(shape_rhs)), shape_rhs)
   } else if (length(shape_lhs) < length(shape_rhs)) {
@@ -57,7 +63,10 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
     d_lhs <- shape_lhs[i]
     d_rhs <- shape_rhs[i]
     if (d_lhs != d_rhs && d_lhs != 1L && d_rhs != 1L) {
-      cli_abort("lhs and rhs are not broadcastable")
+      cli_abort(c(
+        "Shapes {shape_repr(given_lhs)} and {shape_repr(given_rhs)} are not broadcastable.", # nolint
+        x = "Sizes {d_lhs} and {d_rhs} meet, and neither is 1."
+      ))
     }
     shape_out[i] <- max(d_lhs, d_rhs)
   }
@@ -91,6 +100,7 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' @export
 #' @jit
 nv_broadcast_scalars <- function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shapes <- lapply(args, shape)
   non_scalar_shapes <- Filter(\(s) length(s) > 0L, shapes)
@@ -101,7 +111,7 @@ nv_broadcast_scalars <- function(...) {
 
   target_shape <- non_scalar_shapes[[1L]]
   if (!all(vapply(non_scalar_shapes, identical, logical(1L), target_shape))) {
-    shapes <- paste0(sapply(shapes, shape2string), collapse = ", ")
+    shapes <- shapes_repr(shapes)
     cli_abort(
       "All non-scalar arrays must have the same shape, but got {shapes}. Use {.fn nv_broadcast_arrays} for general broadcasting." # nolint
     )
@@ -116,7 +126,7 @@ nv_broadcast_scalars <- function(...) {
   })
 }
 
-#' @title Promote Arrays to a Common Dtype
+#' @title Promote Arrays to a Common Data Type
 #' @description
 #' Promote arrays to a common data type, see [`common_dtype`] for more details.
 #' @param ... ([`arrayish`])\cr
@@ -130,12 +140,13 @@ nv_broadcast_scalars <- function(...) {
 #' @export
 #' @jit
 nv_promote_to_common <- function(...) {
+  assert_some_arrays(...)
   # An R value has no dtype to convert *from*: it is built at the common one
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
   # converting an f32 `sqrt(2)` would only widen a number that had already lost
   # its digits. So the values are aligned first and built afterwards, once the
-  # common dtype is known. `promote_common()` is that sequence.
-  as_anvl_arrays(..., .promote = promote_common())
+  # common dtype is known. `promotion_common()` is that sequence.
+  as_anvl_arrays(..., .promote = promotion_common())
 }
 
 #' @title Broadcast Arrays to a Common Shape
@@ -160,6 +171,7 @@ nv_promote_to_common <- function(...) {
 #' @export
 #' @jit
 nv_broadcast_arrays <- function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shape <- Reduce(broadcast_shapes, lapply(args, shape))
   lapply(args, nv_broadcast_to, shape = shape)
@@ -207,10 +219,10 @@ nv_convert <- function(x, dtype) {
   if (!is_arrayish(x)) {
     cli_abort("Expected arrayish input, but got {.cls {class(x)}}")
   }
-  # `realize_at()` rather than canonicalizing first: an R value is *built* at
-  # the target dtype, keeping every digit it had, where converting it from its
-  # own default would round through `f32` on the way.
-  realize_at(x, as_dtype(dtype))
+  # `materialize_at()` rather than canonicalizing first: an R value is *built*
+  # at the target dtype, keeping every digit it had, where converting it from
+  # its own default would round through `f32` on the way.
+  materialize_at(x, as_dtype(dtype))
 }
 
 #' @title Transpose
@@ -266,7 +278,7 @@ nv_reshape <- function(x, shape) {
   }
 }
 
-#' @title Flatte
+#' @title Flatten
 #' @description
 #' Flattens an N-dimensional array into a 1-dimensional array.
 #' Fails with scalar inputs.
@@ -307,6 +319,7 @@ nv_flatten <- function(x) {
 #' @export
 #' @jit static "axis"
 nv_concatenate <- function(..., axis = NULL) {
+  assert_some_arrays(...)
   args <- do.call(nv_promote_to_common, list(...))
   shapes <- lapply(args, shape)
   ranks <- lengths(shapes)
@@ -327,8 +340,8 @@ nv_concatenate <- function(..., axis = NULL) {
   })
   if (length(non_scalar_shapes) && length(unique(non_scalar_shapes_without_axis)) != 1L) {
     cli_abort(c(
-      "All non-scalar arrays must have the same shape (except for the concatenation axis)",
-      x = "Got shapes {shapes2string(shapes)} and axis {axis}"
+      "All non-scalar arrays must have the same shape apart from axis {axis}, the one they are joined along.", # nolint
+      x = "Got shapes {shapes_repr(shapes)}."
     ))
   }
   size_out_axis <- n_scalars + sum(vapply(non_scalar_shapes, \(shape) shape[axis], integer(1L)))
@@ -351,7 +364,7 @@ nv_concatenate <- function(..., axis = NULL) {
   rlang::exec(prim_concatenate, !!!args, axis = axis)
 }
 
-#' @title Combine arrays by rows or columns
+#' @title Combine Arrays by Rows or Columns
 #' @name nv_bind
 #' @description
 #' Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
@@ -378,14 +391,14 @@ nv_concatenate <- function(..., axis = NULL) {
 #' @return [`arrayish`]\cr
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Vectors as rows / columns
+#' # vectors as rows / columns
 #' nv_rbind(nv_array(1:3), nv_array(4:6))
 #' nv_cbind(nv_array(1:3), nv_array(4:6))
 #'
-#' # Scalar broadcasting
+#' # scalar broadcasting
 #' nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #'
-#' # Rank-3 arrays preserve trailing axes
+#' # rank-3 arrays preserve trailing axes
 #' a <- nv_array(1:24, shape = c(2, 3, 4))
 #' shape(nv_rbind(a, a)) # c(4, 3, 4)
 NULL
@@ -415,14 +428,14 @@ bind_target_shape <- function(args, stack_axis, fn_name) {
   if (length(unique(ranks)) != 1L) {
     cli_abort(c(
       "{.fn {fn_name}} inputs must all have the same rank (treating rank-1 inputs as a row or column)", # nolint
-      x = "Got shapes {shapes2string(shapes)}"
+      x = "Got shapes {shapes_repr(shapes)}"
     ))
   }
   non_stack <- lapply(reshaped, \(s) s[-stack_axis])
   if (length(unique(non_stack)) != 1L) {
     cli_abort(c(
       "{.fn {fn_name}} inputs must agree on every non-stacked axis",
-      x = "Got shapes {shapes2string(shapes)}"
+      x = "Got shapes {shapes_repr(shapes)}"
     ))
   }
   reshaped[[1L]]
@@ -445,10 +458,11 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @export
 #' @jit
 nv_rbind <- function(...) {
+  assert_some_arrays(...)
   # Promoted here rather than in `nv_concatenate()` below: an R value has to be
-  # built at the common dtype directly, where committing it first would round
+  # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
-  args <- as_anvl_arrays(..., .promote = promote_common())
+  args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 1L, fn_name = "nv_rbind")
   args <- lapply(args, bind_reshape, stack_axis = 1L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 1L)
@@ -458,7 +472,8 @@ nv_rbind <- function(...) {
 #' @export
 #' @jit
 nv_cbind <- function(...) {
-  args <- as_anvl_arrays(..., .promote = promote_common())
+  assert_some_arrays(...)
+  args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
   args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
   rlang::exec(nv_concatenate, !!!args, axis = 2L)
@@ -530,7 +545,7 @@ nv_ifelse <- function(pred, true_value, false_value) {
     pred = pred,
     true_value = true_value,
     false_value = false_value,
-    .promote = promote_common(on = c("true_value", "false_value"))
+    .promote = promotion_common(on = c("true_value", "false_value"))
   )
   args <- nv_broadcast_scalars(args$pred, args$true_value, args$false_value)
   prim_ifelse(args[[1L]], args[[2L]], args[[3L]])
@@ -778,15 +793,20 @@ nv_mod <- function(lhs, rhs) {
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   rest <- nv_remainder(lhs, rhs)
-  # Avoid rounding errors when we can rest is already correct
-  shifted <- nv_ifelse((rest != 0) & ((rest < 0) != (rhs < 0)), rest + rhs, rest)
-  nv_ifelse(nv_abs(shifted) >= nv_abs(rhs), 0, shifted)
+  if (is_dtype_uint(peek_dtype(lhs))) {
+    # Neither operand can be negative, so the truncating remainder already
+    # floors and there is nothing to shift. `nv_abs()` below has no unsigned
+    # lowering either.
+    return(rest)
+  }
+  shifted <- nv_ifelse((rest != 0L) & ((rest < 0L) != (rhs < 0L)), rest + rhs, rest)
+  nv_ifelse(nv_abs(shifted) >= nv_abs(rhs), 0L, shifted)
 }
 
 #' @title Flooring Division
 #' @description
 #' Element-wise flooring division.
-#' You can also call this via the `%/%` opertor.
+#' You can also call this via the `%/%` operator.
 #' The result is the largest whole number that does not exceed `lhs / rhs`.
 #'
 #' @template params_lhs_rhs
@@ -1420,7 +1440,7 @@ nv_gamma <- function(x) {
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' nv_polygamma(1, x) # trigamma
 #' @export
-#' @jit static 1L
+#' @jit
 nv_polygamma <- function(n, x) {
   args <- nv_promote_to_common(n, int_to_float(x))
   args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
@@ -1492,7 +1512,7 @@ nv_popcnt <- prim_popcnt
 #' Element-wise clamp: `max(min_val, min(x, max_val))`.
 #' Converts `min_val` and `max_val` to the data type of `x`.
 #' @details
-#' The underlying stableHLO function already broadcasts scalars, so no need to broadcast manually.
+#' The underlying StableHLO function already broadcasts scalars, so no need to broadcast manually.
 #' @param min_val,max_val ([`arrayish`])\cr
 #'   Minimum and maximum values (scalar or same shape as `x`).
 #' @template param_x
@@ -1504,7 +1524,7 @@ nv_popcnt <- prim_popcnt
 #' @export
 #' @jit
 nv_clamp <- function(min_val, x, max_val) {
-  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promote_like("x"))
+  args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
   prim_clamp(args$min_val, args$x, args$max_val)
 }
 
@@ -1585,7 +1605,12 @@ nv_seq <- function(start, end, dtype = NULL, device = NULL) {
   dtype <- dtype %||% default_int()
   assert_int(start)
   assert_int(end)
-  assert(start <= end)
+  if (start > end) {
+    cli_abort(c(
+      "{.arg start} must not be greater than {.arg end}.",
+      x = "Got {.val {start}} and {.val {end}}."
+    ))
+  }
   nv_iota(
     shape = end - start + 1,
     dtype = dtype,
@@ -1672,10 +1697,10 @@ nv_linspace <- function(start, end, steps, dtype = NULL, device = NULL) {
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
 nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interior_padding = NULL) {
-  # `promote_like("x")` rather than the primitive's own rule: crossing a
+  # `promotion_like("x")` rather than the primitive's own rule: crossing a
   # category is the `nv_*` layer's job, so `nv_pad(x_f32, 0L)` works here the
   # way `nv_clamp(0L, x_f32, 1L)` does, while `prim_pad()` stays strict.
-  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promote_like("x"))
+  args <- as_anvl_arrays(x = x, padding_value = padding_value, .promote = promotion_like("x"))
   x <- args$x
   padding_value <- args$padding_value
   rank <- naxes(x)
@@ -1734,10 +1759,10 @@ nv_matmul <- function(lhs, rhs, precision = "highest") {
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   if (naxes(lhs) < 2L) {
-    cli_abort("lhs of matmul must have at least 2 axes")
+    cli_abort("{.arg lhs} must have at least 2 axes, but it has {naxes(lhs)}.")
   }
   if (naxes(rhs) < 2L) {
-    cli_abort("rhs of matmul must have at least 2 axes")
+    cli_abort("{.arg rhs} must have at least 2 axes, but it has {naxes(rhs)}.")
   }
   nbatch <- naxes(lhs) - 2L
   prim_dot_general(
@@ -1802,10 +1827,7 @@ nv_chol <- prim_chol
 #' @export
 #' @jit
 nv_solve <- function(a, b) {
-  # `a` and `b` must agree, and neither is widened to meet the other: an R
-  # matrix yields to `a`'s data type, two typed arrays that disagree are
-  # rejected.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
   a_shape <- shape(a)
@@ -1887,8 +1909,7 @@ nv_triangular_solve <- function(
   unit_diagonal = FALSE,
   transpose_a = FALSE
 ) {
-  # As in `nv_solve()`: the two must agree, and neither is widened.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promote_rdata_common())
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
 
@@ -1967,7 +1988,7 @@ nv_det <- function(x) {
   prim_mul(d$sign, d$modulus)
 }
 
-#' @title Determinant in modulus/sign form
+#' @title Determinant in Modulus/Sign Form
 #' @description
 #' Computes the determinant of a square matrix in the modulus / sign
 #' decomposition matching base R's [base::determinant()]. For the plain
@@ -2173,7 +2194,7 @@ nv_diag <- function(x) {
   if (naxes(x) != 1L) {
     cli_abort(c(
       "{.arg x} must be a 1-D array.",
-      x = "Got shape {xlamisc::shapevec_repr(shape(x))}."
+      x = "Got shape {shape_repr(shape(x))}."
     ))
   }
   n <- shape(x)[1L]
@@ -2430,6 +2451,7 @@ stack_min_max <- function(lo, hi) {
 #' nv_reduce_any(x)            # all axes -> scalar
 #' nv_reduce_any(x, axes = 1L)
 #' @export
+#' @jit static 2:3
 nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
   x <- as_anvl_array(x)
   prim_reduce_any(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
@@ -2448,6 +2470,7 @@ nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
 #' nv_reduce_all(x)            # all axes -> scalar
 #' nv_reduce_all(x, axes = 1L)
 #' @export
+#' @jit static 2:3
 nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
   x <- as_anvl_array(x)
   prim_reduce_all(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
@@ -2582,7 +2605,7 @@ nv_cummin <- function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
-  if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
+  if (with_indices) out else out$values
 }
 
 # Higher order primitives
@@ -2851,10 +2874,10 @@ nv_outer <- function(lhs, rhs) {
   lhs <- args[[1L]]
   rhs <- args[[2L]]
   if (naxes(lhs) != 1L) {
-    cli_abort("lhs must be a 1-D array")
+    cli_abort("{.arg lhs} must be a 1-D array, but it has {naxes(lhs)} axes.")
   }
   if (naxes(rhs) != 1L) {
-    cli_abort("rhs must be a 1-D array")
+    cli_abort("{.arg rhs} must be a 1-D array, but it has {naxes(rhs)} axes.")
   }
   lhs_exp <- nv_unsqueeze(lhs, axis = 2L)
   rhs_exp <- nv_unsqueeze(rhs, axis = 1L)
@@ -3057,7 +3080,7 @@ nv_crossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
+    args <- as_anvl_arrays(lhs, rhs, .promote = promotion_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -3083,7 +3106,7 @@ nv_tcrossprod <- function(lhs, rhs = NULL) {
     lhs <- as_anvl_array(lhs)
     rhs <- lhs
   } else {
-    args <- as_anvl_arrays(lhs, rhs, .promote = promote_common())
+    args <- as_anvl_arrays(lhs, rhs, .promote = promotion_common())
     lhs <- args[[1L]]
     rhs <- args[[2L]]
   }
@@ -3116,7 +3139,7 @@ nv_select <- function(x, axis, index) {
   x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot select along a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to select along, but it is a scalar.")
   }
   axis <- resolve_axis(axis, rank)
 
@@ -3201,10 +3224,11 @@ nv_select <- function(x, axis, index) {
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_sort(m, axis = 2L)
 #' @export
+#' @jit static 2:4
 nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot sort a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
   }
   prim_sort(list(x), axis = axis %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
 }
@@ -3239,7 +3263,7 @@ nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot argsort a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
   }
   axis <- axis %||% naxes(x)
   idx <- nv_iota_like(x, axis = axis, dtype = default_int())
@@ -3283,7 +3307,7 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
   x <- as_anvl_array(x)
   rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot take top-k of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
   }
   axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
   k <- as.integer(k)
@@ -3294,16 +3318,16 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
     perm <- seq_len(rank)
     perm[c(axis, rank)] <- c(rank, axis)
     out <- prim_top_k(prim_transpose(x, permutation = perm), k = k)
-    values <- prim_transpose(out[[1L]], permutation = perm)
+    values <- prim_transpose(out$values, permutation = perm)
     if (with_indices) {
-      indices <- prim_transpose(out[[2L]], permutation = perm)
+      indices <- prim_transpose(out$indices, permutation = perm)
       list(values = values, indices = indices)
     } else {
       values
     }
   } else {
     out <- prim_top_k(x, k = k)
-    if (with_indices) list(values = out[[1L]], indices = out[[2L]]) else out[[1L]]
+    if (with_indices) out else out$values
   }
 }
 
@@ -3373,7 +3397,7 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
   }
   rank <- naxes(x)
   if (rank == 0L) {
-    cli_abort("Cannot compute quantile of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to take quantiles along, but it is a scalar.")
   }
   assert_choice(interpolation, c("linear", "lower", "higher", "nearest", "midpoint"))
   if (!is_valid_r(probs)) {
@@ -3397,8 +3421,9 @@ nv_quantile <- function(x, probs, axis = NULL, interpolation = "linear", nan_rm 
     to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
     n_valid_kd <- if (nan_rm) {
       # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
-      # rather than crossing categories out of an integer count and committing
-      # `h` -- and with it `lo_f`, `frac` and `out` -- at the default float.
+      # rather than crossing categories out of an integer count and
+      # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
+      # default float.
       prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
     } else {
       nv_broadcast_to(nv_array_like(x, shp[axis], shape = integer()), shp_kd)
@@ -3531,7 +3556,7 @@ nv_median <- function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) 
 nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
   }
   axis <- axis %||% naxes(x)
   .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmax)
@@ -3564,7 +3589,7 @@ nv_argmax <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
   x <- as_anvl_array(x)
   if (naxes(x) == 0L) {
-    cli_abort("Cannot compute the arg-extremum of a 0-dimensional array")
+    cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
   }
   axis <- axis %||% naxes(x)
   .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmin)

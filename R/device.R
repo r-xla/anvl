@@ -32,11 +32,11 @@ default_device <- function(backend = NULL) {
 #'   [`quickr_device`] for `"quickr"`).
 #' @seealso [`backend()`], [`AnvlBackend()`], [`active_backend()`].
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Create CPU device for the active backend
+#' # create CPU device for the active backend
 #' nv_device("cpu")
-#' # Create CPU device for the quickr backend:
+#' # create CPU device for the quickr backend:
 #' with_backend("quickr", nv_device("cpu"))
-#' # Pass through an existing device:
+#' # pass through an existing device:
 #' dev <- nv_device("cpu")
 #' identical(nv_device(dev), dev)
 #' @export

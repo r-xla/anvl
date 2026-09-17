@@ -79,7 +79,7 @@ minmax_raw <- function(bits, signed = TRUE) {
 }
 
 
-nv_minval <- function(dtype, device) {
+nv_minval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(-Inf, dtype = dtype, device = device)
@@ -96,7 +96,7 @@ nv_minval <- function(dtype, device) {
   }
 }
 
-nv_maxval <- function(dtype, device) {
+nv_maxval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(Inf, dtype = dtype, device = device)
@@ -129,8 +129,16 @@ shape2string <- function(x, parenthesize = TRUE) {
   }
 }
 
-shapes2string <- function(shapes) {
-  paste0(sapply(shapes, shape2string), sep = ", ")
+# The shape spelling for user-facing messages: `(2x3)`, and `()` for a scalar.
+# `shape2string()` above is the *repr* spelling -- it is what `f32[2,3]` and
+# `RData(double, (2,3))` are built from and stays as it is -- so everything a
+# caller reads in an error or warning goes through these two instead.
+shape_repr <- function(shape) {
+  sprintf("(%s)", paste0(shape, collapse = "x"))
+}
+
+shapes_repr <- function(shapes) {
+  paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
 zeros <- function(dtype, shape) {
@@ -164,30 +172,6 @@ is_valid_r_array <- function(x) {
 
 is_valid_r <- function(x) {
   (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
-}
-
-# The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
-# implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
-# run on that backend yet, since the implementations are built on first call.
-jit_dispatcher <- function(f, backend = active_backend()) {
-  jit_fns <- environment(f)$.jit_fns
-  if (is.null(jit_fns)) {
-    cli_abort("{.arg f} is not a jitted function.")
-  }
-  impl <- jit_fns[[backend]]
-  if (is.null(impl)) {
-    return(NULL)
-  }
-  environment(impl)$dispatcher
-}
-
-# The number of programs `f` has cached for the active backend.
-cache_size <- function(f) {
-  dispatcher <- jit_dispatcher(f)
-  if (is.null(dispatcher)) {
-    return(0L)
-  }
-  pjrt::dispatcher_size(dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
@@ -226,28 +210,28 @@ gather_clamp_indices <- function(
     bounds_shape <- rep(1L, length(indices_shape))
     bounds_shape[index_vector_axis] <- n_index_coords
 
-    min_tensor <- prim_broadcast_in_axes(
+    min_bound <- prim_broadcast_in_axes(
       prim_fill(1L, dtype = dtype(start_indices), shape = integer()),
       indices_shape,
       integer()
     )
 
     # The max bound is the same for a given slice along the index_vector_axis
-    max_tensor_vals <- prim_reshape(
+    max_bound_vals <- prim_reshape(
       prim_convert(
         nv_array(max_bounds, dtype = default_int()),
         dtype = dtype(start_indices)
       ),
       bounds_shape
     )
-    max_tensor <- nv_broadcast_to(max_tensor_vals, indices_shape)
+    max_bound <- nv_broadcast_to(max_bound_vals, indices_shape)
 
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    prim_clamp(min_bound, start_indices, max_bound)
   } else {
     # Implicit index vector (single coordinate)
-    min_tensor <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
-    max_tensor <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
-    prim_clamp(min_tensor, start_indices, max_tensor)
+    min_bound <- prim_fill(1L, dtype = dtype(start_indices), shape = integer())
+    max_bound <- prim_fill(max_bounds[1L], dtype = dtype(start_indices), shape = integer())
+    prim_clamp(min_bound, start_indices, max_bound)
   }
 }
 

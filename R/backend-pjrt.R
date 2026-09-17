@@ -105,7 +105,7 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   Function to compile.
 #' @param args_flat (`list`)\cr
 #'   Flat list of abstract input values.
-#' @param in_tree (`Node`)\cr
+#' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure of the inputs.
 #' @param donate (`character()`)\cr
 #'   Names of the arguments whose buffers should be donated.
@@ -117,9 +117,9 @@ jit_pjrt_impl <- function(f, static, cache_size, donate, device) {
 #'   converting to abstract values. Used together with traced devices for
 #'   device inference when `device` is `NULL`.
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
-#'   The data types the traced R values commit to when nothing else decides one
-#'   (see [`default_dtypes()`]), read off `info$context` so the program matches
-#'   the cache key it is filed under. `NULL` uses the pair in force.
+#'   The data types the traced R values materialize at when nothing else decides
+#'   one (see [`default_dtypes()`]), read off `info$context` so the program
+#'   matches the cache key it is filed under. `NULL` uses the active pair.
 #' @param fallback_device (`NULL` | device)\cr
 #'   The device to compile for when `device` is `NULL` and nothing in the graph
 #'   names one. pjrt's dispatcher supplies the device it keyed the entry on, so
@@ -210,7 +210,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
   phantom_specs <- out[[3L]]
 
   const_arrays <- lapply(constants, \(const) {
-    if (!is_concrete_tensor(const$aval)) {
+    if (!is_concrete_array(const$aval)) {
       cli_abort("Internal error: Not all constants are concrete arrays")
     }
     arr <- const$aval$data
@@ -263,7 +263,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #'
 #' @section Data representation:
 #' An [`AnvlArray`] with `backend = "pjrt"` wraps a [`pjrt::pjrt_buffer()`]
-#' stored in the `$data` field. The buffer owns the memory holding the tensor
+#' stored in the `$data` field. The buffer owns the memory holding the array
 #' values and may live on any device supported by PJRT (CPU, CUDA, Metal,
 #' ...). Calling [`as_array()`] transfers the buffer contents back to an R
 #' array; calling [`nv_array()`] on an R object uploads it to the requested
@@ -280,7 +280,7 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' @section Supported data types:
 #' `bool`; the signed integers `i8`, `i16`, `i32` and `i64`; the unsigned
 #' integers `ui8`, `ui16`, `ui32` and `ui64`; and the floats `f32` and `f64`.
-#' An R double commits to `f32` on this backend and an R integer to `i32`
+#' An R double materializes at `f32` on this backend and an R integer at `i32`
 #' unless the defaults say otherwise (see [`default_dtypes()`]).
 #'
 #' @section PJRT JIT arguments:
@@ -300,8 +300,12 @@ AnvlBackendPjrt <- function() {
     # already do for dtype/shape). This turns the per-call dtype()/shape()/
     # device() reads on the hot dispatch path into plain field accesses instead
     # of repeated S3-dispatch -> C++/pjrt calls.
-    new_data = function(data, dtype, shape, device) {
-      buf <- pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      buf <- if (is.raw(data)) {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape, row_major = row_major)
+      } else {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+      }
       structure(
         list(
           data = buf,
