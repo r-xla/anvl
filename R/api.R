@@ -1102,12 +1102,18 @@ nv_cos <- make_float_unary(prim_cos)
 #' Element-wise `sin(pi * x)`. You can also use `sinpi()`.
 #' @template param_x_float
 #' @template return_unary_float
+#' @section Data types:
+#' `x` must be numeric -- an integer or a float. A boolean is refused: it
+#' has no numeric value to take a multiple of pi of.
 #' @seealso [nv_cospi()], [nv_tanpi()], [nv_sin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' sinpi(nv_array(c(0, 0.5, 1, 1.5)))
 #' @export
 #' @jit
 nv_sinpi <- function(x) {
+  # So the three `*pi` functions refuse a boolean in the same words; left to
+  # the primitive this one would report it as a missing float instead.
+  assert_numeric_dtype(peek_dtype(x), arg = "x")
   x <- as_anvl_array(int_to_float(x))
   n <- nv_round(x, method = "nearest_even")
   reduced <- nv_sin((x - n) * pi)
@@ -1120,13 +1126,19 @@ nv_sinpi <- function(x) {
 #' Element-wise `cos(pi * x)`. You can also use `cospi()`.
 #' @template param_x_float
 #' @template return_unary_float
+#' @section Data types:
+#' `x` must be numeric -- an integer or a float. A boolean is refused: it
+#' has no numeric value to take a multiple of pi of.
 #' @seealso [nv_sinpi()], [nv_tanpi()], [nv_cos()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' cospi(nv_array(c(0, 0.5, 1, 1.5)))
 #' @export
 #' @jit
 nv_cospi <- function(x) {
-  # cos(pi * x) == sin(pi * (x + 1/2))
+  # cos(pi * x) == sin(pi * (x + 1/2)). The half would promote a boolean to a
+  # float before `nv_sinpi()` ever sees it, so refuse it here instead -- as
+  # `nv_sinpi()` and `nv_tanpi()` do, and as *numeric* on the page says.
+  assert_numeric_dtype(peek_dtype(x), arg = "x")
   nv_sinpi(as_anvl_array(int_to_float(x)) + 0.5)
 }
 
@@ -1137,6 +1149,9 @@ nv_cospi <- function(x) {
 #' the half integers, where the tangent has its poles.
 #' @template param_x_float
 #' @template return_unary_float
+#' @section Data types:
+#' `x` must be numeric -- an integer or a float. A boolean is refused: it
+#' has no numeric value to take a multiple of pi of.
 #' @seealso [nv_sinpi()], [nv_cospi()], [nv_tan()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' tanpi(nv_array(c(0, 0.25, 0.5, 1)))
@@ -3275,8 +3290,9 @@ nv_argsort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
 #' Returns the `k` largest values along an axis, sorted in decreasing order.
 #' @template param_x
 #' @param k (`integer(1)`)\cr
-#'   Number of top elements to return. Must satisfy
-#'   `1 <= k <= shape(x)[axis]`.
+#'   Number of top elements to return. Must be a whole number satisfying
+#'   `1 <= k <= shape(x)[axis]`; a fractional or logical `k` is refused
+#'   rather than truncated.
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to take the top `k`. Negative values count from the
 #'   end, i.e. `-1` refers to the last axis. If `NULL` (default),
@@ -3310,8 +3326,15 @@ nv_top_k <- function(x, k, axis = NULL, with_indices = FALSE) {
     cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
   }
   axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+  # Check before coercing: `as.integer()` first would silently truncate a
+  # fractional `k` and accept a logical one, where `prim_top_k()` refuses both.
+  if (!checkmate::test_int(k, lower = 1L, upper = shape(x)[axis])) {
+    cli_abort(c(
+      "{.arg k} must be a single whole number between 1 and the size of {.arg axis}.",
+      x = "Axis {axis} has size {shape(x)[axis]}, and {.arg k} is {.val {k}}."
+    ))
+  }
   k <- as.integer(k)
-  assert_int(k, lower = 1L, upper = shape(x)[axis])
 
   # prim_top_k operates on the last axis; transpose axis to last and back.
   if (axis != rank) {
@@ -3649,8 +3672,10 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' `[batch, in_channels, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kW]`, output is
 #' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, W]`. `x` and `weight` are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
+#'   Promoted together with `x` -- see `x`.
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
@@ -3667,8 +3692,10 @@ nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' `[batch, in_channels, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kh, kw]`, output is
 #' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`.
+#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. `x` and `weight` are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
+#'   Promoted together with `x` -- see `x`.
 #' @param stride (`integer()`)\cr Length 1 or 2.
 #' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
 #' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
@@ -3698,8 +3725,11 @@ nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 }
 
 .nv_convnd <- function(x, weight, n, stride, padding, dilation, groups, precision) {
-  # `x`/`weight` are left as raw arrayish; prim_convolution's machinery
-  # (graph_desc_add -> maybe_box_arrayish) coerces them.
+  # The `nv_*` layer promotes across data types; `prim_convolution()` would
+  # require `x` and `weight` to agree already, and would name its own operand.
+  args <- as_anvl_arrays(x = x, weight = weight, .promote = promotion_common())
+  x <- args$x
+  weight <- args$weight
   stride <- .nv_conv_vec(stride, n, "stride")
   pad <- .nv_conv_vec(padding, n, "padding")
   dilation <- .nv_conv_vec(dilation, n, "dilation")
