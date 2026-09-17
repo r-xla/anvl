@@ -128,10 +128,14 @@
 </ul></div>
 <div class="section level3">
 <h3 id="bug-fixes-development-version">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-development-version"></a></h3>
-<ul><li>A function returned by <code><a href="../reference/jit.html">jit()</a></code> no longer evaluates its arguments a second time. It used to rebuild the call with <code><a href="https://rdrr.io/r/base/match.call.html" class="external-link">match.call()</a></code> and evaluate the argument expressions again in the caller’s frame, which computed them twice whenever something had evaluated them already – most visibly under S3 dispatch, which evaluates the first argument to choose a method.</li>
+<ul><li>
+<code><a href="../reference/nv_chol.html">nv_chol()</a></code> / <code><a href="../reference/prim_chol.html">prim_chol()</a></code> and <code><a href="../reference/prim_triangular_solve.html">prim_triangular_solve()</a></code> accept batched inputs again: axes before the last two are batch axes.</li>
+<li>A function returned by <code><a href="../reference/jit.html">jit()</a></code> no longer evaluates its arguments a second time. It used to rebuild the call with <code><a href="https://rdrr.io/r/base/match.call.html" class="external-link">match.call()</a></code> and evaluate the argument expressions again in the caller’s frame, which computed them twice whenever something had evaluated them already – most visibly under S3 dispatch, which evaluates the first argument to choose a method.</li>
 <li>
 <code><a href="../reference/nv_conv1d.html">nv_conv1d()</a></code> / <code><a href="../reference/nv_conv2d.html">nv_conv2d()</a></code> / <code><a href="../reference/nv_conv3d.html">nv_conv3d()</a></code> now promote <code>x</code> and <code>weight</code> to a common data type.</li>
-<li>The floating-point <code>nv_*</code> functions refuse a boolean.</li>
+<li>The floating-point <code>nv_*</code> functions refuse a boolean, <code><a href="../reference/nv_matmul.html">nv_matmul()</a></code>, <code><a href="../reference/nv_solve.html">nv_solve()</a></code> and <code><a href="../reference/nv_triangular_solve.html">nv_triangular_solve()</a></code> included – a boolean used to meet a numeric operand at that operand’s data type and pass their data type check.</li>
+<li>
+<code><a href="../reference/nv_crossprod.html">nv_crossprod()</a></code> and <code><a href="../reference/nv_tcrossprod.html">nv_tcrossprod()</a></code> transpose only the last two axes, so they work on batched arrays.</li>
 <li>
 <code><a href="../reference/nv_top_k.html">nv_top_k()</a></code> checks <code>k</code> before coercing it, so a fractional or logical <code>k</code> is refused rather than silently truncated.</li>
 <li>A range that counts down (<code>x[3:1]</code>) now selects in reverse instead of failing.</li>

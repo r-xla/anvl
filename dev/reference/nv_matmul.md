@@ -15,7 +15,8 @@ nv_matmul(lhs, rhs, precision = "highest")
 - lhs, rhs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md))  
-  Arrays with at least 2 axes. Operands are [promoted to a common data
+  Numeric arrays with at least 2 axes. Operands are [promoted to a
+  common data
   type](https://r-xla.github.io/anvl/dev/reference/nv_promote_to_common.md).
 
 - precision:

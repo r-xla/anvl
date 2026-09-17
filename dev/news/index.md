@@ -140,6 +140,11 @@
 
 ### Bug fixes
 
+- [`nv_chol()`](https://r-xla.github.io/anvl/dev/reference/nv_chol.md) /
+  [`prim_chol()`](https://r-xla.github.io/anvl/dev/reference/prim_chol.md)
+  and
+  [`prim_triangular_solve()`](https://r-xla.github.io/anvl/dev/reference/prim_triangular_solve.md)
+  accept batched inputs again: axes before the last two are batch axes.
 - A function returned by
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) no longer
   evaluates its arguments a second time. It used to rebuild the call
@@ -154,7 +159,17 @@
   /
   [`nv_conv3d()`](https://r-xla.github.io/anvl/dev/reference/nv_conv3d.md)
   now promote `x` and `weight` to a common data type.
-- The floating-point `nv_*` functions refuse a boolean.
+- The floating-point `nv_*` functions refuse a boolean,
+  [`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md),
+  [`nv_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_solve.md)
+  and
+  [`nv_triangular_solve()`](https://r-xla.github.io/anvl/dev/reference/nv_triangular_solve.md)
+  included – a boolean used to meet a numeric operand at that operand’s
+  data type and pass their data type check.
+- [`nv_crossprod()`](https://r-xla.github.io/anvl/dev/reference/nv_crossprod.md)
+  and
+  [`nv_tcrossprod()`](https://r-xla.github.io/anvl/dev/reference/nv_tcrossprod.md)
+  transpose only the last two axes, so they work on batched arrays.
 - [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md)
   checks `k` before coercing it, so a fractional or logical `k` is
   refused rather than silently truncated.

@@ -1,7 +1,10 @@
 # Transpose Cross Product (Matrix)
 
 Computes `lhs %*% t(rhs)`. If `rhs` is missing, computes
-`lhs %*% t(lhs)`.
+`lhs %*% t(lhs)`. Above rank 2 the last two axes are the matrix and the
+leading ones are batch axes, as in
+[`nv_matmul()`](https://r-xla.github.io/anvl/dev/reference/nv_matmul.md):
+only the matrix is transposed.
 
 ## Usage
 
