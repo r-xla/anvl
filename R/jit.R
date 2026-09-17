@@ -115,7 +115,8 @@ jit <- function(
   .jit_runs <- list()
   .jit_formals <- formals2(f)
   .jit_dots <- "..." %in% names(.jit_formals)
-  .jit_names <- setdiff(names(.jit_formals), "...")
+  # `names()` of no formals at all is NULL, which is not a character vector.
+  .jit_names <- setdiff(as.character(names(.jit_formals)), "...")
 
   wrapper <- function() {
     # The arguments are read off this frame rather than rebuilt from the call
@@ -150,7 +151,7 @@ jit <- function(
     if (.jit_dots) {
       .jit_args <- c(.jit_args, list(...))
     }
-    if (length(.jit_args) && !any(nzchar(names(.jit_args)))) {
+    if (!any(nzchar(names(.jit_args)))) {
       names(.jit_args) <- NULL
     }
     .jit_be <- active_backend()
