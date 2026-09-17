@@ -137,7 +137,10 @@ jit <- function(
     }
     .jit_args <- mget(.jit_given, envir = .jit_env)
     if (.jit_dots) {
-      .jit_args <- c(.jit_args, list(...))
+      # `list(...)` goes through a quoted call because the wrapper's formals are
+      # `f`'s: written literally, the body of a wrapper for an `f` without `...`
+      # would use a `...` that its function does not have.
+      .jit_args <- c(.jit_args, eval(quote(list(...)), .jit_env))
     }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]
