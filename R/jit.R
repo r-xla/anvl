@@ -126,15 +126,11 @@ jit <- function(
     # so a jitted function registered as a method would otherwise evaluate it
     # twice, and `abs(sign(x))` would evaluate `sign(x)` twice over.
     #
-    # `missing()` distinguishes an argument the caller supplied from one left
-    # at its default, which stays out of the list so that `f` applies the
-    # default itself.
+    # `match.call()` is only read for *which* arguments the call supplied --
+    # it evaluates nothing itself. One left at its default is not among them,
+    # and stays out of the list so that `f` applies the default itself.
     .jit_env <- environment()
-    .jit_given <- .jit_names[!vapply(
-      .jit_names,
-      function(.jit_nm) eval(substitute(missing(.v), list(.v = as.name(.jit_nm))), .jit_env),
-      logical(1)
-    )]
+    .jit_given <- intersect(.jit_names, as.character(names(match.call())))
 
     # Inside tracing: pass through to unwrapped function. The arguments are
     # forwarded as the names they are bound to here, so `f` gets a promise per
