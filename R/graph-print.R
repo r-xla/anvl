@@ -116,9 +116,7 @@ format_param <- function(
     if (length(p) == 0L) {
       return(sprintf("%s(0)", typeof(p)))
     }
-    # `as.character()` renders each element on its own; `format()` would pick one
-    # representation for the whole vector, spelling `c(1, 1e6)` as `c(1e+00, 1e+06)`.
-    elts <- if (is.character(p)) sprintf('"%s"', p) else as.character(p)
+    elts <- if (is.character(p)) sprintf('"%s"', p) else format(p, trim = TRUE)
     return(if (length(p) == 1L) elts else sprintf("c(%s)", paste(elts, collapse = ", ")))
   }
   if (is.list(p) && is.null(attr(p, "class"))) {

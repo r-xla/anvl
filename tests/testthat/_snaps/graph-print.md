@@ -27,7 +27,7 @@
     Code
       format_param(c(1, 1e+06))
     Output
-      [1] "c(1, 1e+06)"
+      [1] "c(1e+00, 1e+06)"
     Code
       format_param(c("a", "b"))
     Output
