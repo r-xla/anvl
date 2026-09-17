@@ -111,21 +111,31 @@ nv_scalar(NA_integer_)
 When you convert it back you get a missing value again, because the same bit pattern means `NA` in R:
 
 ```{r}
-as.integer(nv_scalar(NA_integer_))
+suppressWarnings(as.integer(nv_scalar(NA_integer_)))
 ```
 
-No other integer dtype has room for that value, so there it is an error rather than a warning, whatever `check` is set to:
+The same holds one width up, for a [`bit64::integer64`] at `i64` or `ui64`, whose `NA` is likewise the smallest representable value.
+
+Those two are the only places an `NA` survives the trip, and it is the *bit pattern* that carries it, not the dtype: it has to already be the marker R itself reads back as `NA`.
+So a double `NA` at an integer dtype is an error, even at `i32`:
+
+```{r, error = TRUE}
+nv_scalar(NA_real_, dtype = "i32")
+```
+
+as is an `NA` at any integer dtype with no room for R's marker:
 
 ```{r, error = TRUE}
 nv_scalar(NA_integer_, dtype = "i64")
 ```
 
-When creating logicals, `NA` will be interpreted as `TRUE`:
+and an `NA` at a boolean dtype, where a lost missing value would be indistinguishable from an ordinary `TRUE`:
 
-```{r}
+```{r, error = TRUE}
 nv_scalar(NA)
-as.logical(nv_scalar(NA))
 ```
+
+These errors are raised whatever `check` is set to.
 
 In order to avoid these pitfals, array creators such as `nv_array()` have a `check` argument to prevent the above problems.
 It is `FALSE` by default, because it needs to scan the complete data.
@@ -137,7 +147,7 @@ nv_array(c(1, NA, 3), check = TRUE)
 The same flag is available for converters like `as_array()`:
 
 ```{r, error = TRUE}
-as_array(nv_scalar(NA_integer_), check = TRUE)
+as_array(suppressWarnings(nv_scalar(NA_integer_)), check = TRUE)
 ```
 
 ## No unsigned integers

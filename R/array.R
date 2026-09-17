@@ -68,10 +68,13 @@
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
 #' @param check (`logical(1)`)\cr
 #'   If `TRUE`, error when `data` contains any `NA` values. XLA has no
-#'   representation for missing values, so without the check each dtype
-#'   handles them its own way: a floating-point dtype stores `NaN`, `bool`
-#'   stores `TRUE`, `i32` stores the bit pattern `-2147483648` and warns, and
-#'   every other integer dtype rejects the value with an error whatever
+#'   representation for missing values, so without the check the outcome
+#'   depends on both the dtype and the R type the data arrived as. A
+#'   floating-point dtype stores `NaN`. An integer dtype carries the value
+#'   through only where R's own `NA` marker is already its bit pattern --
+#'   an `integer` at `i32` (`-2147483648`) and a [`bit64::integer64`] at
+#'   `i64` or `ui64` -- and warns when it does. Everywhere else, including
+#'   `bool` and a `double` `NA` at any integer dtype, it is an error whatever
 #'   `check` is set to. Defaults to `FALSE`. See the "Gotchas" vignette.
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
