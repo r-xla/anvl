@@ -20,12 +20,6 @@ data type if the input was an integer array.
 \description{
 Element-wise \code{sin(pi * x)}. You can also use \code{sinpi()}.
 }
-\section{Data types}{
-
-\code{x} must be numeric -- an integer or a float. A boolean is refused: it
-has no numeric value to take a multiple of pi of.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 sinpi(nv_array(c(0, 0.5, 1, 1.5)))

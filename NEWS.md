@@ -72,13 +72,7 @@
 ## Bug fixes
 
 * `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
-  to a common data type, like every other `nv_*` function: an integer input
-  meets a float weight at the float, where the pair used to be refused. They
-  passed their operands straight to `prim_convolution()`, which requires
-  operands that already agree.
-* `nv_cospi()` refuses a boolean, as `nv_sinpi()` and `nv_tanpi()` do and as
-  its page says. Its `+ 1/2` promoted the boolean to a float before
-  `nv_sinpi()` ever saw it, so the three disagreed on the same input.
+  to a common data type.
 * `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
   is refused rather than silently truncated.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,

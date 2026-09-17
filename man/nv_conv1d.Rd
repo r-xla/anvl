@@ -19,7 +19,7 @@ nv_conv1d(
 \link[=nv_promote_to_common]{promoted to a common data type}.}
 
 \item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.
-Promoted together with \code{x} -- see \code{x}.}
+Promoted together with \code{x}.}
 
 \item{stride, padding, dilation}{(\code{integer()})\cr Length 1.}
 

@@ -1102,9 +1102,6 @@ nv_cos <- make_float_unary(prim_cos)
 #' Element-wise `sin(pi * x)`. You can also use `sinpi()`.
 #' @template param_x_float
 #' @template return_unary_float
-#' @section Data types:
-#' `x` must be numeric -- an integer or a float. A boolean is refused: it
-#' has no numeric value to take a multiple of pi of.
 #' @seealso [nv_cospi()], [nv_tanpi()], [nv_sin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' sinpi(nv_array(c(0, 0.5, 1, 1.5)))
@@ -1126,9 +1123,6 @@ nv_sinpi <- function(x) {
 #' Element-wise `cos(pi * x)`. You can also use `cospi()`.
 #' @template param_x_float
 #' @template return_unary_float
-#' @section Data types:
-#' `x` must be numeric -- an integer or a float. A boolean is refused: it
-#' has no numeric value to take a multiple of pi of.
 #' @seealso [nv_sinpi()], [nv_tanpi()], [nv_cos()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' cospi(nv_array(c(0, 0.5, 1, 1.5)))
@@ -1149,9 +1143,6 @@ nv_cospi <- function(x) {
 #' the half integers, where the tangent has its poles.
 #' @template param_x_float
 #' @template return_unary_float
-#' @section Data types:
-#' `x` must be numeric -- an integer or a float. A boolean is refused: it
-#' has no numeric value to take a multiple of pi of.
 #' @seealso [nv_sinpi()], [nv_cospi()], [nv_tan()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' tanpi(nv_array(c(0, 0.25, 0.5, 1)))
@@ -3675,7 +3666,7 @@ nv_argmin <- function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
 #' @param x ([`arrayish`])\cr `[N, C_in, W]`. `x` and `weight` are
 #'   [promoted to a common data type][nv_promote_to_common()].
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
-#'   Promoted together with `x` -- see `x`.
+#'   Promoted together with `x`.
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
@@ -3695,7 +3686,7 @@ nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. `x` and `weight` are
 #'   [promoted to a common data type][nv_promote_to_common()].
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
-#'   Promoted together with `x` -- see `x`.
+#'   Promoted together with `x`.
 #' @param stride (`integer()`)\cr Length 1 or 2.
 #' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
 #' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.

@@ -22,12 +22,6 @@ Element-wise \code{tan(pi * x)}. You can also use \code{tanpi()}.
 Like base R's \code{\link[base:tanpi]{base::tanpi()}}, it is exact for a whole argument and \code{NaN} at
 the half integers, where the tangent has its poles.
 }
-\section{Data types}{
-
-\code{x} must be numeric -- an integer or a float. A boolean is refused: it
-has no numeric value to take a multiple of pi of.
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 tanpi(nv_array(c(0, 0.25, 0.5, 1)))
