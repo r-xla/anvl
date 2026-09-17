@@ -409,7 +409,7 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 
     # A range that counts down selects in reverse, as in base R. There is no
     # descending slice, so it becomes the ascending one plus a reverse of the
-    # output axis -- far cheaper than a gather over explicit indices.
+    # output axis
     if (end < start) {
       return(SubsetRange(end, start, reversed = TRUE))
     }
