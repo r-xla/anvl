@@ -83,9 +83,7 @@ Note that even `nv_broadcast_arrays()` cannot replicate R's recycling for shapes
 
 R has a dedicated missing-value marker (`NA`) for every atomic type.
 {anvl} arrays do not -- there is no representation of "missing" at the XLA level, only `NaN` for floating point numbers.
-What happens to an `NA` therefore depends on the dtype you ask for.
-
-At a floating-point dtype it becomes `NaN`, silently:
+When you convert R values containing `NA` into an `AnvlArray`, the `NA`s are silently turned into `NaN`s.
 
 ```{r}
 nv_array(NA_real_)
@@ -101,23 +99,16 @@ Round-tripping back to R is not guaranteed to produce `NA`, but can also yield `
 as_array(nv_array(c(1, NA, 3)))
 ```
 
-Integers are the awkward case, because R marks missingness with the smallest possible value.
-At `i32` -- the default for an R integer vector -- that bit pattern is carried through to the device, which is worth knowing about, so it warns:
+For other data types, the situation is even worse, especially for integers, where R uses the smallest possible value to represent missingness:
 
 ```{r}
 nv_scalar(NA_integer_)
 ```
 
-When you convert it back you get a missing value again, because the same bit pattern means `NA` in R:
+However, when you convert it back, you get a missing value again:
 
 ```{r}
 as.integer(nv_scalar(NA_integer_))
-```
-
-No other integer dtype has room for that value, so there it is an error rather than a warning, whatever `check` is set to:
-
-```{r, error = TRUE}
-nv_scalar(NA_integer_, dtype = "i64")
 ```
 
 When creating logicals, `NA` will be interpreted as `TRUE`:
