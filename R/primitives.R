@@ -2762,10 +2762,15 @@ prim_scan <- new_primitive(
       carry_out <- outs_body[seq_len(n_carry)]
       for (i in seq_len(n_carry)) {
         if (!eq_type(carry_in[[i]], carry_out[[i]])) {
+          # Name the carry slot that disagrees rather than its flat position,
+          # since the usual cause is one R value in `init` that materialized
+          # at its default. A single unnamed carry has no path to report.
+          path <- pjrt::tree_path(init_tree, i)
+          slot <- if (nzchar(path)) sprintf("`%s`", path) else sprintf("Carry %d", i)
           cli_abort(
             c(
               "{.arg init} and the carry {.arg body} returns must have the same type.",
-              x = "Carry {i} enters as {repr(carry_in[[i]])} and comes back as {repr(carry_out[[i]])}.",
+              x = "{slot} enters as {repr(carry_in[[i]])} and comes back as {repr(carry_out[[i]])}.",
               i = "An R value in {.arg init} materializes at its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
             ),
             call = NULL

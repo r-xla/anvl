@@ -15,14 +15,15 @@ Every slot must keep a fixed shape and dtype across steps.}
 Step function \verb{function(carry, x)} returning
 \code{list(carry = , out = )}. \code{out} may be a single array, a (nested)
 list of arrays, or \code{NULL} (loop for the carry only). Its structure
-must be identical at every step. \code{x} is \code{NULL} when \code{xs} is \code{NULL}.}
+must be identical at every step. \code{x} is \code{NULL} when \code{xs} is empty.}
 
 \item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
 Per-step inputs, sliced along axis 1. All leaves must agree on
-the size of axis 1.}
+the size of axis 1. \code{NULL} or a list with no leaves runs a counted
+loop over \code{length} steps instead.}
 
 \item{length}{(\code{integer(1)} | \code{NULL})\cr
-Static trip count. Required when \code{xs} is \code{NULL}; otherwise inferred
+Static trip count. Required when \code{xs} is empty; otherwise inferred
 from (and checked against) axis 1 of \code{xs}.}
 
 \item{reverse}{(\code{logical(1)})\cr

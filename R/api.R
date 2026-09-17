@@ -2671,12 +2671,13 @@ nv_while <- prim_while
 #'   Step function `function(carry, x)` returning
 #'   `list(carry = , out = )`. `out` may be a single array, a (nested)
 #'   list of arrays, or `NULL` (loop for the carry only). Its structure
-#'   must be identical at every step. `x` is `NULL` when `xs` is `NULL`.
+#'   must be identical at every step. `x` is `NULL` when `xs` is empty.
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
 #'   Per-step inputs, sliced along axis 1. All leaves must agree on
-#'   the size of axis 1.
+#'   the size of axis 1. `NULL` or a list with no leaves runs a counted
+#'   loop over `length` steps instead.
 #' @param length (`integer(1)` | `NULL`)\cr
-#'   Static trip count. Required when `xs` is `NULL`; otherwise inferred
+#'   Static trip count. Required when `xs` is empty; otherwise inferred
 #'   from (and checked against) axis 1 of `xs`.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run `t = length, ..., 1`; each step still reads
@@ -2703,14 +2704,19 @@ nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
   if (!is.logical(reverse) || base::length(reverse) != 1L || is.na(reverse)) {
     cli_abort("{.arg reverse} must be TRUE or FALSE")
   }
-  init <- map_tree(init, as_anvl_array)
-
-  if (!is.null(xs)) {
-    xs <- map_tree(xs, as_anvl_array)
-    xs_flat <- flatten(xs)
-    if (!base::length(xs_flat)) {
-      cli_abort("{.arg xs} must contain at least one array")
+  # Validated before it is compared against `xs`, so that a malformed value
+  # reports itself rather than tripping the comparison.
+  if (!is.null(length)) {
+    length <- suppressWarnings(as.integer(length))
+    if (base::length(length) != 1L || is.na(length) || length < 1L) {
+      cli_abort("{.arg length} must be a positive integer")
     }
+  }
+  init <- map_tree(init, as_anvl_array)
+  xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
+  xs_flat <- flatten(xs)
+
+  if (base::length(xs_flat)) {
     lens <- vapply(
       xs_flat,
       function(x) {
@@ -2726,20 +2732,20 @@ nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
     if (!all(lens == n)) {
       cli_abort("all leaves of {.arg xs} must agree on the size of axis 1")
     }
-    if (!is.null(length) && as.integer(length) != n) {
+    if (n < 1L) {
+      cli_abort("axis 1 of {.arg xs} must have a positive size, not {n}")
+    }
+    if (!is.null(length) && length != n) {
       cli_abort(
-        "{.arg length} ({as.integer(length)}) disagrees with axis 1 of {.arg xs} ({n})"
+        "{.arg length} ({length}) disagrees with axis 1 of {.arg xs} ({n})"
       )
     }
   } else {
+    # No leaves to slice: a counted loop, which needs its trip count stated.
     if (is.null(length)) {
-      cli_abort("{.arg length} is required when {.arg xs} is NULL")
+      cli_abort("{.arg length} is required when {.arg xs} is empty")
     }
-    n <- as.integer(length)
-    if (is.na(n) || n < 1L) {
-      cli_abort("{.arg length} must be a positive integer")
-    }
-    xs <- list()
+    n <- length
   }
 
   prim_scan(init, xs, body, length = n, reverse = reverse)

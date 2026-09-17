@@ -734,21 +734,35 @@ prim_scan[["stablehlo"]] <- function(..., body_graph, length, reverse, n_carry, 
   n_out <- base::length(out_avals)
 
   bufs0 <- lapply(out_avals, function(aval) {
-    dt <- as.character(aval$dtype)
-    zero <- switch(substr(dt, 1L, 1L), "b" = FALSE, "i" = , "u" = 0L, 0)
-    hlo_tensor(zero, dtype = dt, shape = as.integer(c(n, shape(aval))), func = outer)
+    dt <- aval$dtype
+    # Key on the dtype category, not the first letter of its name: `bf16`
+    # would otherwise take the boolean branch and build an `i1` buffer.
+    zero <- if (is_dtype_bool(dt)) {
+      FALSE
+    } else if (is_dtype_float(dt)) {
+      0
+    } else {
+      0L
+    }
+    hlo_tensor(
+      zero,
+      dtype = as.character(dt),
+      shape = as.integer(c(n, shape(aval))),
+      func = outer
+    )
   })
   i0 <- hlo_scalar(0L, dtype = "i32", func = outer)
   state <- c(list(i0), carry0, bufs0, xs0)
 
   # Both regions declare the full state as their inputs, in state order.
+  # `region_input()` names them with auto value ids, which is what keeps one
+  # scan lowered inside another's body from redefining the outer region's.
   declare_state <- function() {
-    i <- hlo_input("i", "i32")
-    rest <- lapply(seq_along(state)[-1L], function(k) {
-      tt <- state[[k]]$value_type$type
-      hlo_input(paste0("s", k), as.character(tt$dtype), shape(tt))
+    vals <- lapply(state, function(s) {
+      vt <- s$value_type
+      region_input(as.character(vt$type$dtype), shape(vt))
     })
-    list(i = i, rest = rest)
+    list(i = vals[[1L]], rest = vals[-1L])
   }
 
   cond_func <- stablehlo::local_func("")

@@ -133,12 +133,78 @@ describe("nv_scan", {
     expect_equal(as.integer(as.array(res$out$sum)), cumsum(c(3L, -1L, 4L, -1L, 5L)))
   })
 
+  it("treats an empty xs like xs = NULL", {
+    res <- nv_scan(
+      init = nv_scalar(1L),
+      body = function(carry, x) {
+        expect_null(x)
+        list(carry = carry + 1L, out = carry * 2L)
+      },
+      xs = list(),
+      length = 3L
+    )
+    expect_equal(as.numeric(as.array(res$out)), c(2, 4, 6))
+    expect_equal(as.numeric(as.array(res$carry)), 4)
+  })
+
   it("validates its arguments", {
     x <- nv_array(c(1, 2, 3, 4))
     expect_error(nv_scan(nv_scalar(0), body = "not a function", xs = x), "must be a function")
     expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, reverse = NA), "TRUE or FALSE")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = list()), "at least one array")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = list()), "`length` is required")
     expect_error(nv_scan(nv_scalar(0), cumsum_body, length = 0L), "positive integer")
+    # `length` is checked before it is compared against axis 1 of `xs`
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, length = "four"), "positive integer")
+    expect_error(
+      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = c(4L, 4L)),
+      "positive integer"
+    )
+    expect_error(
+      nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(matrix(numeric(), nrow = 0, ncol = 2))),
+      "axis 1 of `xs` must have a positive size"
+    )
+  })
+
+  it("nests inside another scan", {
+    # Each region declares its own block arguments; a nested scan must not
+    # reuse the enclosing while's value ids.
+    m <- matrix(as.numeric(1:6), nrow = 2)
+    row_sum_scan <- function(x) {
+      nv_scan(
+        init = nv_scalar(0),
+        body = function(carry, row) {
+          inner <- nv_scan(
+            init = carry,
+            body = function(acc, e) list(carry = acc + e, out = NULL),
+            xs = row
+          )
+          list(carry = inner$carry, out = inner$carry)
+        },
+        xs = x
+      )
+    }
+    res <- row_sum_scan(nv_array(m))
+    expect_equal(as.numeric(as.array(res$out)), cumsum(rowSums(m)))
+    expect_equal(as.numeric(as.array(res$carry)), sum(m))
+
+    jitted <- jit(function(x) row_sum_scan(x)$out)
+    expect_equal(as.numeric(as.array(jitted(nv_array(m)))), cumsum(rowSums(m)))
+  })
+
+  it("names the carry slot whose type changes", {
+    expect_error(
+      nv_scan(
+        init = list(s = nv_scalar(0, dtype = "f32"), m = nv_scalar(0, dtype = "f32")),
+        body = function(carry, v) {
+          list(
+            carry = list(s = carry$s + v, m = nv_convert(carry$m, "f64")),
+            out = NULL
+          )
+        },
+        xs = nv_array(c(1, 2, 3))
+      ),
+      "`m` enters as"
+    )
   })
 
   it("errors clearly on contract violations", {
