@@ -1577,13 +1577,20 @@ nv_iota <- prim_iota
 
 #' @title Sequence
 #' @description
-#' Creates a 1-D array with the consecutive integer values from `start` to
-#' `end` (inclusive), like R's `seq(start, end)`.
+#' Creates a 1-D array with the values from `start` to `end` in steps of `by`,
+#' like R's `seq(start, end, by)`. The sequence counts down when `end` lies
+#' below `start`, and stops before `end` when `end` is not reachable in whole
+#' steps: `nv_seq(0, 9, by = 2)` ends at `8`.
 #'
 #' `nv_seq_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
 #' @param start,end (`integer(1)`)\cr
-#'   Start and end values, which must satisfy `start <= end`.
+#'   First value and upper (or, when counting down, lower) limit of the
+#'   sequence.
+#' @param by (`NULL` | `integer(1)`)\cr
+#'   Step size, which must be a non-zero whole number pointing from `start`
+#'   towards `end`. `NULL` (default) uses `-1` if `start > end` and `1`
+#'   otherwise.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   Data type. `NULL` (default) uses the backend's default integer data type
 #'   (see [`default_dtypes()`]). For `nv_seq_like()`, `NULL` uses `dtype(like)`.
@@ -1592,32 +1599,40 @@ nv_iota <- prim_iota
 #'   (only for `nv_seq_like()`).
 #' @template param_device
 #' @return [`arrayish`]\cr
-#'   1-D array of length `end - start + 1`.
+#'   1-D array of length `(end - start) %/% by + 1`.
 #' @seealso [nv_linspace()] for a given number of evenly spaced values,
 #'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
+#' nv_seq(7, 3)
+#' nv_seq(0, 10, by = 2)
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
-#' @jit static 1:4
-nv_seq <- function(start, end, dtype = NULL, device = NULL) {
+#' @jit static 1:5
+nv_seq <- function(start, end, by = NULL, dtype = NULL, device = NULL) {
   dtype <- dtype %||% default_int()
   assert_int(start)
   assert_int(end)
-  if (start > end) {
+  by <- by %||% if (start > end) -1L else 1L
+  assert_int(by)
+  if (by == 0) {
+    cli_abort("{.arg by} must not be 0.")
+  }
+  if (start != end && sign(by) != sign(end - start)) {
     cli_abort(c(
-      "{.arg start} must not be greater than {.arg end}.",
-      x = "Got {.val {start}} and {.val {end}}."
+      "Wrong sign in {.arg by} argument.",
+      x = "Cannot go from {.val {start}} to {.val {end}} in steps of {.val {by}}."
     ))
   }
-  nv_iota(
-    shape = end - start + 1,
-    dtype = dtype,
-    axis = 1L,
-    start = start,
-    device = device
-  )
+  n <- as.integer((end - start) %/% by) + 1L
+  if (by == 1) {
+    return(nv_iota(shape = n, dtype = dtype, axis = 1L, start = start, device = device))
+  }
+  # prim_iota has no step, so scale a 0-based iota; the literals are integers so
+  # that they take the data type of the array instead of promoting it to float
+  indices <- nv_iota(shape = n, dtype = dtype, axis = 1L, start = 0L, device = device)
+  indices * as.integer(by) + as.integer(start)
 }
 
 #' @title Evenly Spaced Sequence

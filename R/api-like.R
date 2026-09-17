@@ -83,12 +83,12 @@ nv_iota_like <- function(like, axis, shape = NULL, start = 1L, dtype = NULL, dev
 
 #' @rdname nv_seq
 #' @export
-#' @jit static 2:5
-nv_seq_like <- function(like, start, end, dtype = NULL, device = NULL) {
+#' @jit static 2:6
+nv_seq_like <- function(like, start, end, by = NULL, dtype = NULL, device = NULL) {
   do.call(
     nv_seq,
     c(
-      list(start = start, end = end),
+      list(start = start, end = end, by = by),
       like_defaults(like, dtype = dtype, device = device)
     )
   )
