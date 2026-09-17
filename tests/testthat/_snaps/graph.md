@@ -24,14 +24,14 @@
       ! `permutation` must not contain duplicate axes.
       x Got 2 and 2.
 
-# error handling: stablehlo errors use anvl's terminology
+# error handling: type inference reports in anvl's terminology
 
     Code
       jit(prim_add)(nv_array(1:4), nv_array(1:6))
     Condition
       Error in `prim_add()`:
       ! `lhs` and `rhs` must have the same array type.
-      x Got array<4xi32> and array<6xi32>.
+      x Got i32[4] and i32[6].
 
 # can print GraphLiteral if it holds scalar array
 

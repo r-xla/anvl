@@ -443,7 +443,6 @@ reference:
   - subtitle: Miscellaneous
     contents:
       - at2vt
-      - vt2at
       - vt
       - is_arrayish
       - Shape

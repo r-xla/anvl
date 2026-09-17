@@ -9,18 +9,6 @@ at2vt <- function(x) {
   stablehlo::ValueType(stablehlo::TensorType(x$dtype, x$shape))
 }
 
-#' Convert ValueType to AbstractArray
-#' @description
-#' Convert a `ValueType` to an `AbstractArray`.
-#' @param x (`ValueType`)
-#' @return (`AbstractArray`)
-#' @export
-vt2at <- function(x) {
-  stopifnot(inherits(x, "ValueType"))
-  stopifnot(inherits(x$type, "TensorType"))
-  AbstractArray(x$type$dtype, x$type$shape)
-}
-
 #' Construct a stablehlo ValueType
 #' @description
 #' Shorthand for building a tensor [`stablehlo::ValueType`] from a dtype

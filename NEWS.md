@@ -25,9 +25,16 @@
 * The method for `round` was removed, as `digits` is currently not supported.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
+* `vt2at()` was removed. Type inference no longer goes through stablehlo's
+  `ValueType`s, so there is nothing to convert back; `at2vt()` stays for
+  lowering rules that build stablehlo types.
 
 ## Features
 
+* Type inference is now anvl's own (`R/rules-inference.R`) rather than a call
+  into stablehlo's. Errors report 1-based axes and anvl's argument names
+  directly, and several constraints that previously surfaced only in the
+  compiler are now caught at trace time.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,

@@ -8,7 +8,8 @@ prim_shift_right_logical(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type boolean, integer, or unsigned integer.
+Arrayish values of data type integer or unsigned integer. A boolean is not
+accepted: the StableHLO spec's \emph{tensor of integer type} excludes \code{i1}.
 Must have the same shape.}
 }
 \value{

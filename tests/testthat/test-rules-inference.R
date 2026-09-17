@@ -1,0 +1,254 @@
+infer_at <- function(dtype, shape = integer()) {
+  AbstractArray(dtype = dtype, shape = Shape(shape))
+}
+
+describe("assert_array_dtype()", {
+  it("names the categories it wanted and the data type it got", {
+    expect_snapshot(
+      error = TRUE,
+      assert_array_dtype(infer_at("i32", 3L), "float", arg = "x")
+    )
+  })
+
+  it("accepts an array in any one of several categories", {
+    expect_silent(assert_array_dtype(infer_at("ui8", 2L), "float", "uint"))
+  })
+
+  it("checks shape and rank when asked", {
+    expect_snapshot(
+      error = TRUE,
+      assert_array_dtype(infer_at("f32", c(2L, 3L)), shape = integer(), arg = "pred")
+    )
+    expect_snapshot(
+      error = TRUE,
+      assert_array_dtype(infer_at("f32", c(2L, 3L)), naxes = 1L, arg = "initial_state")
+    )
+  })
+})
+
+describe("test_permutation()", {
+  it("rejects a repeated entry that a set comparison would accept", {
+    # `setequal(c(1, 2, 2), 1:2)` is TRUE, which is why `setequal()` alone is
+    # not enough: the length and the multiplicity both matter.
+    expect_false(test_permutation(c(1L, 2L, 2L), 1:2))
+    expect_false(test_permutation(1L, 1:2))
+    expect_true(test_permutation(c(2L, 1L), 1:2))
+  })
+})
+
+describe("the element-wise rules", {
+  it("pass the operand type through unchanged", {
+    x <- infer_at("f32", c(2L, 3L))
+    expect_equal(infer_generic_uni(x), list(x))
+    expect_equal(infer_generic_biv(x, x), list(x))
+  })
+
+  it("refuse operands whose types disagree", {
+    expect_snapshot(
+      error = TRUE,
+      infer_generic_biv(infer_at("i32", 4L), infer_at("i32", 6L))
+    )
+  })
+
+  it("hold the bit shifts to integers, where booleans are not integers", {
+    # StableHLO's `tensor of integer type` does not include `i1`, unlike the
+    # bitwise `and` / `or` / `xor`, which take a `tensor of integer or boolean`.
+    b <- infer_at("bool", 2L)
+    expect_equal(infer_integerish_biv(b, b), list(b))
+    expect_error(infer_integer_biv(b, b), "must have dtype int or uint")
+  })
+
+  it("give a boolean result for a predicate", {
+    expect_equal(
+      infer_is_finite(infer_at("f32", c(2L, 3L))),
+      list(infer_at("bool", c(2L, 3L)))
+    )
+    expect_equal(
+      infer_compare(infer_at("i32", 4L), infer_at("i32", 4L)),
+      list(infer_at("bool", 4L))
+    )
+  })
+})
+
+describe("infer_transpose()", {
+  it("permutes the shape with 1-based axes", {
+    expect_equal(
+      infer_transpose(infer_at("f32", c(2L, 3L, 4L)), c(3L, 1L, 2L)),
+      list(infer_at("f32", c(4L, 2L, 3L)))
+    )
+  })
+
+  it("reports the permutation it expected in 1-based axes", {
+    expect_snapshot(
+      error = TRUE,
+      infer_transpose(infer_at("f32", c(2L, 2L)), 1L)
+    )
+  })
+})
+
+describe("infer_broadcast_in_axes()", {
+  it("broadcasts a size-1 axis and keeps a matching one", {
+    expect_equal(
+      infer_broadcast_in_axes(infer_at("f32", c(1L, 3L)), c(2L, 3L), c(1L, 2L)),
+      list(infer_at("f32", c(2L, 3L)))
+    )
+  })
+
+  it("refuses an axis that is neither 1 nor the target size", {
+    expect_snapshot(
+      error = TRUE,
+      infer_broadcast_in_axes(infer_at("f32", c(2L, 3L)), c(4L, 3L), c(1L, 2L))
+    )
+  })
+})
+
+describe("infer_static_slice()", {
+  it("treats start and limit as 1-based and inclusive", {
+    expect_equal(
+      infer_static_slice(infer_at("i32", 10L), 2L, 5L, 1L),
+      list(infer_at("i32", 4L))
+    )
+    expect_equal(
+      infer_static_slice(infer_at("i32", 10L), 1L, 10L, 2L),
+      list(infer_at("i32", 5L))
+    )
+  })
+
+  it("refuses a stride of zero rather than computing an infinite shape", {
+    # `ceiling(x / 0)` is `Inf`, which MLIR would only reject much later, after
+    # an R coercion warning.
+    expect_snapshot(
+      error = TRUE,
+      infer_static_slice(infer_at("i32", 10L), 1L, 5L, 0L)
+    )
+  })
+
+  it("refuses a limit past the end of the array", {
+    expect_snapshot(
+      error = TRUE,
+      infer_static_slice(infer_at("i32", 10L), 1L, 11L, 1L)
+    )
+  })
+})
+
+describe("infer_concatenate()", {
+  it("sums the sizes along the concatenation axis", {
+    x <- infer_at("f32", c(2L, 3L))
+    expect_equal(
+      infer_concatenate(x, x, axis = 1L),
+      list(infer_at("f32", c(4L, 3L)))
+    )
+  })
+
+  it("refuses inputs that disagree on any other axis", {
+    expect_snapshot(
+      error = TRUE,
+      infer_concatenate(infer_at("f32", c(2L, 3L)), infer_at("f32", c(2L, 4L)), axis = 1L)
+    )
+  })
+})
+
+describe("infer_dot_general()", {
+  it("puts the batch axes first, then the free axes of lhs and rhs", {
+    lhs <- infer_at("f32", c(5L, 2L, 3L))
+    rhs <- infer_at("f32", c(5L, 3L, 7L))
+    expect_equal(
+      infer_dot_general(
+        lhs,
+        rhs,
+        contracting_axes = list(3L, 2L),
+        batching_axes = list(1L, 1L),
+        precision = "highest"
+      ),
+      list(infer_at("f32", c(5L, 2L, 7L)))
+    )
+  })
+
+  it("refuses contracted axes whose sizes differ", {
+    expect_snapshot(
+      error = TRUE,
+      infer_dot_general(
+        infer_at("f32", c(2L, 3L)),
+        infer_at("f32", c(4L, 5L)),
+        contracting_axes = list(2L, 1L),
+        batching_axes = list(integer(), integer()),
+        precision = "highest"
+      )
+    )
+  })
+})
+
+describe("infer_pad()", {
+  it("accounts for edge and interior padding", {
+    expect_equal(
+      infer_pad(infer_at("f32", 3L), infer_at("f32"), 2L, 1L, 0L),
+      list(infer_at("f32", 6L))
+    )
+    # Interior padding goes between elements, so `n - 1` gaps.
+    expect_equal(
+      infer_pad(infer_at("f32", 3L), infer_at("f32"), 0L, 0L, 1L),
+      list(infer_at("f32", 5L))
+    )
+  })
+
+  it("refuses negative padding that would empty an axis", {
+    expect_snapshot(
+      error = TRUE,
+      infer_pad(infer_at("f32", 3L), infer_at("f32"), -3L, -3L, 0L)
+    )
+  })
+})
+
+describe("infer_top_k()", {
+  it("returns the values at the input's type and the indices at the default integer", {
+    out <- infer_top_k(infer_at("f32", c(2L, 8L)), k = 3L)
+    expect_named(out, c("values", "indices"))
+    expect_equal(out$values, infer_at("f32", c(2L, 8L - 5L)))
+    expect_equal(dtype(out$indices), default_int())
+  })
+
+  it("refuses a k larger than the last axis", {
+    expect_snapshot(error = TRUE, infer_top_k(infer_at("f32", c(2L, 3L)), k = 4L))
+  })
+})
+
+describe("the inference rules as the primitives reach them", {
+  it("reports an axis the primitive itself does not catch in 1-based terms", {
+    # A too-short `permutation` passes `resolve_axes()` -- every entry is a
+    # valid, non-duplicated axis -- and is only rejected by inference.
+    expect_snapshot(
+      error = TRUE,
+      jit(prim_transpose, static = "permutation")(
+        nv_array(1:4, shape = c(2, 2)),
+        permutation = 1L
+      )
+    )
+  })
+
+  it("accepts an empty static slice, where start is one past limit", {
+    # 1-based and inclusive, so `start == limit + 1` is StableHLO's
+    # `start == limit`: an empty slice, which the spec allows.
+    expect_equal(
+      shape(jit(prim_static_slice, static = 2:4)(
+        nv_array(1:10),
+        start_indices = 6L,
+        limit_indices = 5L,
+        strides = 1L
+      )),
+      0L
+    )
+  })
+
+  it("names anvl's argument, not StableHLO's operand", {
+    err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
+    expect_match(conditionMessage(err), "`x`", fixed = TRUE)
+    expect_false(grepl("operand", conditionMessage(err), fixed = TRUE))
+  })
+
+  it("speaks of arrays and axes, never tensors and dimensions", {
+    err <- tryCatch(jit(prim_add)(nv_array(1:4), nv_array(1:6)), error = identity)
+    msg <- conditionMessage(err)
+    expect_false(grepl("tensor", msg, ignore.case = TRUE))
+    expect_false(grepl("dimension", msg, ignore.case = TRUE))
+  })
+})
