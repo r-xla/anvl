@@ -107,7 +107,7 @@
     Code
       cat(format_param(g))
     Output
-      graph (%x1: f32[], %x2: i32[3]) {
+      (%x1: f32[], %x2: i32[3]) {
         %1: f32[3] = convert [dtype = f32] (%x2)
         %2: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)
         %3: f32[3] = add(%2, %1)
@@ -162,7 +162,7 @@
     Code
       cat(format(call))
     Output
-      while(f32[]) [cond_graph = graph(f32[]) -> bool[], body_graph = graph(f32[]) -> f32[]] -> f32[]
+      while(f32[]) [cond_graph = (f32[]) -> bool[], body_graph = (f32[]) -> f32[]] -> f32[]
 
 # format.AnvlGraph() / shows literals, constants, params, captures and nested sub-graphs
 
@@ -173,18 +173,18 @@
         %1: f32[] = convert [dtype = f32] (2:i32)
         %2: f32[] = mul(%x1, %1)
         %3: f32[] = while [
-          cond_graph = graph [%x1] (%x2: f32[]) {
+          cond_graph = [%x1] (%x2: f32[]) {
             %5: bool[] = less(%x2, %x1)
             return %5
           },
-          body_graph = graph [%x1, %2, %c1] (%x3: f32[]) {
+          body_graph = [%x1, %2, %c1] (%x3: f32[]) {
             %6: bool[] = less(%x3, %2)
             %7: f32[] = if [
-              true_graph = graph [%x3, %2] () {
+              true_graph = [%x3, %2] () {
                 %8: f32[] = add(%x3, %2)
                 return %8
               },
-              false_graph = graph [%x3, %2, %c1] () {
+              false_graph = [%x3, %2, %c1] () {
                 %9: f32[] = add(%x3, %c1)
                 return %9
               }
@@ -196,6 +196,25 @@
           shape = c(2, 1), broadcast_axes = integer(0)
         ] (%3)
         return %4
+      }
+
+# format.AnvlGraph() / leaves out the bracket list of a graph that captures nothing
+
+    Code
+      graph
+    Output
+      <AnvlGraph> (%x1: f32[]) {
+        %1: f32[] = while [
+          cond_graph = (%x2: f32[]) {
+            %2: bool[] = less(%x2, 9:f32)
+            return %2
+          },
+          body_graph = (%x3: f32[]) {
+            %3: f32[] = add(%x3, 1:f32)
+            return %3
+          }
+        ] (%x1)
+        return %1
       }
 
 # format.AnvlGraph() / names the R type of an input the caller supplies as bare R data

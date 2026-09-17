@@ -156,7 +156,7 @@ format_graph_signature <- function(g) {
   avals <- function(nodes) {
     paste(vapply(nodes, \(node) format_aval_short(node$aval), character(1)), collapse = ", ")
   }
-  sprintf("graph(%s) -> %s", avals(g$inputs), avals(g$outputs))
+  sprintf("(%s) -> %s", avals(g$inputs), avals(g$outputs))
 }
 
 # A sub-graph param, printed in full. `node_ids` is the enclosing graph's table,
@@ -292,9 +292,9 @@ format_call <- function(call, node_ids, indent = "  ", width = getOption("width"
   paste(layout_row(chunks, indent, width), collapse = "\n")
 }
 
-# A graph as `<title> [captures] (inputs) { <body> return <outputs> }`. The
-# signature line carries what section headings used to: the captures in
-# brackets, the inputs in parens with their data types.
+# A graph as `[captures] (inputs) { <body> return <outputs> }`, headed by
+# `title` where it has one. The signature line carries what section headings
+# used to: the captures in brackets, the inputs in parens with their data types.
 #
 # `typed_captures` spells a captured node's data type too. Only a graph with
 # nothing around it needs that -- a sub-graph's captures are nodes of the graph
@@ -305,7 +305,7 @@ format_graph_lines <- function(
   calls,
   outputs,
   node_ids,
-  title = "graph",
+  title = "",
   rdata_types = NULL,
   width = getOption("width", 80L),
   typed_captures = FALSE
@@ -329,11 +329,18 @@ format_graph_lines <- function(
     character(1)
   )
 
-  header <- list(title)
-  if (length(constants) > 0L) {
-    header <- c(header, list(call_chunk(" [", "]", capture_strs)))
+  # Each piece of the signature is separated from the one before it by a space,
+  # and the first of them starts the line. A graph that captures nothing has no
+  # bracket list at all, and a sub-graph has no title before it.
+  add <- function(header, open, close, parts) {
+    open <- if (length(header)) paste0(" ", open) else open
+    c(header, list(call_chunk(open, close, parts)))
   }
-  header <- c(header, list(call_chunk(" (", ")", input_strs)), " {")
+  header <- if (nzchar(title)) list(title) else list()
+  if (length(constants) > 0L) {
+    header <- add(header, "[", "]", capture_strs)
+  }
+  header <- c(add(header, "(", ")", input_strs), " {")
 
   output_ids <- vapply(outputs, format_node_id, character(1), node_ids = node_ids)
   ret <- if (length(outputs) == 1L) {

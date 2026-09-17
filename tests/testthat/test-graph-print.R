@@ -157,16 +157,24 @@ describe("format.AnvlGraph()", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
     # `step` is `%2` in the outer body; the loop body and both `if` branches
     # capture that same node, so it appears in three of the four capture lists.
-    heads <- grep("graph \\[", lines, value = TRUE)
-    captures <- sub("\\].*$", "", sub("^.*graph \\[", "", heads))
+    heads <- grep("^ +[a-z_]+ = \\[", lines, value = TRUE)
+    captures <- sub("\\].*$", "", sub("^[^[]*\\[", "", heads))
     expect_equal(sum(grepl("%2", captures, fixed = TRUE)), 3L)
   })
 
   it("names a capture without its data type, the enclosing graph having it", {
     lines <- strsplit(format(nested_graph()), "\n")[[1L]]
-    expect_true(any(grepl("cond_graph = graph [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
+    expect_true(any(grepl("cond_graph = [%x1] (%x2: f32[]) {", lines, fixed = TRUE)))
     # The graph around it is the one place `%x1` is declared with a type.
     expect_match(lines[[1L]], "(%x1: f32[])", fixed = TRUE)
+  })
+
+  it("leaves out the bracket list of a graph that captures nothing", {
+    graph <- trace_fn(
+      function(x) nv_while(list(i = x), \(i) i < 9, \(i) list(i = i + 1)),
+      list(x = nv_scalar(2, dtype = "f32"))
+    )
+    expect_snapshot(graph)
   })
 
   it("does not spill the internals of an array an optimization pass inlined", {

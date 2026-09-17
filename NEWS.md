@@ -59,9 +59,9 @@
 * `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
   integer array unchanged, like base R does.
 * Improved documentation of API functions and primitives.
-* Printed graphs read as `<AnvlGraph> [captures] (inputs) { ... return ... }`,
-  show sub-graphs in full, and wrap long lines to the console width;
-  `format()` takes a `width` argument.
+* Printed graphs read as `[captures] (inputs) { ... return ... }`, show
+  sub-graphs in full, and wrap long lines to the console width; `format()`
+  takes a `width` argument.
 
 ## Bug fixes
 
