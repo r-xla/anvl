@@ -19,13 +19,13 @@ format_literal <- function(node) {
   sprintf("%s:%s%s", val, as.character(dtype(node$aval)), format_shape_suffix(shape(node$aval)))
 }
 
-# The `[2, 3]` a value repr carries after its data type. A scalar carries none,
-# which is what tells `1:f32` apart from the one-element array `1:f32[1, 1]`.
+# The `[2,3]` a value repr carries after its data type. A scalar carries none,
+# which is what tells `1:f32` apart from the one-element array `1:f32[1,1]`.
 format_shape_suffix <- function(shp) {
   if (length(shp) == 0L) {
     return("")
   }
-  sprintf("[%s]", paste(shp, collapse = ", "))
+  sprintf("[%s]", paste(shp, collapse = ","))
 }
 
 # `r_type` is the R storage type this value is uploaded from, out of the graph's
@@ -34,7 +34,7 @@ format_shape_suffix <- function(shp) {
 # fact about the input. An output that happens to *be* an input
 # (`jit(identity)`) is still just a value of its data type.
 format_aval_short <- function(aval, r_type = NA_character_) {
-  out <- sprintf("%s[%s]", as.character(dtype(aval)), paste(shape(aval), collapse = ", "))
+  out <- sprintf("%s[%s]", as.character(dtype(aval)), paste(shape(aval), collapse = ","))
   if (!is.na(r_type)) {
     # An input the caller supplies as bare R data, which the program uploads at
     # the dtype shown -- worth seeing, since nothing else in the graph says so.
@@ -155,7 +155,7 @@ format_array_param <- function(x) {
   if (nelts(x) == 1L) {
     sprintf("%s:%s%s", as_array(x), dt, format_shape_suffix(shape(x)))
   } else {
-    sprintf("%s[%s]", dt, paste(shape(x), collapse = ", "))
+    sprintf("%s[%s]", dt, paste(shape(x), collapse = ","))
   }
 }
 

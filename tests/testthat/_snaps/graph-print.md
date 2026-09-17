@@ -96,11 +96,11 @@
     Code
       format_param(nv_array(array(1.5, dim = c(1, 1)), dtype = "f32"))
     Output
-      [1] "1.5:f32[1, 1]"
+      [1] "1.5:f32[1,1]"
     Code
       format_param(nv_array(matrix(1:6, nrow = 2), dtype = "i32"))
     Output
-      [1] "i32[2, 3]"
+      [1] "i32[2,3]"
 
 # format_param() / prints a graph in full
 
@@ -190,7 +190,7 @@
             return %7
           }
         ] (%c2)
-        %4: f32[2, 1] = broadcast_in_axes [
+        %4: f32[2,1] = broadcast_in_axes [
           shape = c(2, 1), broadcast_axes = integer(0)
         ] (%3)
         return %4
@@ -233,11 +233,11 @@
     Code
       cat(format(gather_graph(), width = 80L))
     Output
-      <AnvlGraph> [%c1: i32[1]] (%x1: f32[3, 4], %x2: i32[2]) {
-        %1: i32[2, 1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 1] (%x2)
-        %2: i32[2, 1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 2] (%c1)
-        %3: i32[2, 2] = concatenate [axis = 2] (%1, %2)
-        %4: f32[2, 4] = gather [
+      <AnvlGraph> [%c1: i32[1]] (%x1: f32[3,4], %x2: i32[2]) {
+        %1: i32[2,1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 1] (%x2)
+        %2: i32[2,1] = broadcast_in_axes [shape = c(2, 1), broadcast_axes = 2] (%c1)
+        %3: i32[2,2] = concatenate [axis = 2] (%1, %2)
+        %4: f32[2,4] = gather [
           slice_sizes = c(1, 4), offset_axes = 2, collapsed_slice_axes = 1,
           x_batching_axes = integer(0), start_indices_batching_axes = integer(0),
           start_index_map = c(1, 2), index_vector_axis = 2,
