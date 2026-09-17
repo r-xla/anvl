@@ -294,7 +294,7 @@ nv_rbinom <- function(shape, initial_state, size = 1L, prob = 0.5, dtype = NULL)
 #' @seealso [nv_sample()] to sample from an arbitrary population.
 #' @examplesIf pjrt::plugins_downloaded()
 #' state <- nv_rng_state(42L)
-#' # Roll 6 dice
+#' # roll 6 dice
 #' result <- nv_sample_int(6, state, 6L)
 #' result$values
 #' @export

@@ -77,19 +77,19 @@
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
 #' nv_array(1:4)
 #'
-#' # Specify a dtype
+#' # specify a dtype
 #' nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #'
-#' # A 2x3 matrix
+#' # a 2x3 matrix
 #' nv_array(1:6, shape = c(2L, 3L))
 #'
-#' # A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+#' # a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 #' nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 #'
 #' # A scalar array.
 #' nv_scalar(3.14)
 #'
-#' # An uninitialized 2x3 array (contents are unspecified)
+#' # an uninitialized 2x3 array (contents are unspecified)
 #' nv_empty("f32", shape = c(2L, 3L))
 #'
 #' # --- Extractors ---
@@ -720,13 +720,13 @@ backend.QuickrDevice <- function(x, ...) {
 #' dtype(a)
 #' shape(a)
 #'
-#' # Shorthand
+#' # shorthand
 #' nv_aval("f32", c(2L, 3L))
 #'
-#' # An R value, which has no dtype until it is used
+#' # an R value, which has no dtype until it is used
 #' nv_aval("double", c(2L, 3L))
 #'
-#' # How AbstractArrays appear in an AnvlGraph
+#' # how AbstractArrays appear in an AnvlGraph
 #' graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
 #' graph
 #' graph$inputs[[1]]$aval
@@ -784,7 +784,7 @@ shape.AbstractArray <- function(x, ...) {
 #' naxes(x)
 #' dtype(x)
 #'
-#' # How it appears during tracing
+#' # how it appears during tracing
 #' graph <- trace_fn(function() y, list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -827,7 +827,7 @@ ConcreteArray <- function(data) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' # 1. via R literals
 #' graph <- trace_fn(function() 1, list())
 #' graph
@@ -886,7 +886,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -944,13 +944,13 @@ print.IotaArray <- function(x, ...) {
 #' a <- nv_aval("f32", c(2L, 3L))
 #' b <- nv_aval("f32", c(2L, 3L))
 #'
-#' # Same dtype and shape
+#' # same dtype and shape
 #' eq_type(a, b)
 #'
-#' # Different dtype
+#' # different dtype
 #' eq_type(a, nv_aval("i32", c(2L, 3L)))
 #'
-#' # Different shape
+#' # different shape
 #' eq_type(a, nv_aval("f32", c(3L, 2L)))
 #'
 #' # neq_type is the negation of eq_type
@@ -1070,7 +1070,7 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #' # AnvlArrays become ConcreteArrays
 #' to_abstract(nv_array(1:4))
 #'
-#' # Use pure = TRUE to strip subclass info
+#' # use pure = TRUE to strip subclass info
 #' to_abstract(nv_array(1:4), pure = TRUE)
 #'
 #' @export
@@ -1137,7 +1137,7 @@ is_shape <- function(x) {
 #' # AnvlArrays are arrayish
 #' is_arrayish(nv_array(1:4))
 #'
-#' # Scalar R literals are arrayish by default
+#' # scalar R literals are arrayish by default
 #' is_arrayish(1.5)
 #' # R arrays are arrayish by default
 #' is_arrayish(array(1.5))
@@ -1146,7 +1146,7 @@ is_shape <- function(x) {
 #' is_arrayish(array(1:4), convert_ok = TRUE)
 #' is_arrayish(array(1:4), convert_ok = FALSE)
 #'
-#' # Length 1 vectors
+#' # length 1 vectors
 #' is_arrayish(1.5, convert_ok = FALSE)
 #' is_arrayish(1.5, convert_ok = TRUE)
 NULL

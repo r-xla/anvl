@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_not}
 \alias{prim_not}
-\title{Primitive Not}
+\title{Primitive Bitwise Not}
 \usage{
 prim_not(x)
 }

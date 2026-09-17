@@ -29,7 +29,7 @@ to_abstract(TRUE)
 # AnvlArrays become ConcreteArrays
 to_abstract(nv_array(1:4))
 
-# Use pure = TRUE to strip subclass info
+# use pure = TRUE to strip subclass info
 to_abstract(nv_array(1:4), pure = TRUE)
 \dontshow{\}) # examplesIf}
 }
