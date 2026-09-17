@@ -52,7 +52,7 @@ checks this for you.
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1.5)))
 # A value that meets a typed array still takes that array's data type
 with_default_dtypes(c(float = "f64"), dtype(nv_array(1, dtype = "f32") + 1.5))
-# Untyped values in one program can materialize at different precisions: one at
+# untyped values in one program can materialize at different precisions: one at
 # whatever the default is, one at the `f64` the override asks for
 jit(function() {
   list(

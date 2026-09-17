@@ -179,7 +179,7 @@ test_that("a rule that cannot place an argument says which one", {
   # it is not offered as a way out here.
   err <- tryCatch(as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32")), error = identity)
   expect_false(any(grepl("coerce", conditionMessage(err), fixed = TRUE)))
-  coerced <- suppressWarnings(as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32", coerce = TRUE)))
+  coerced <- as_anvl_arrays(v = 1.5, .promote = promotion_dtype("i32", coerce = TRUE))
   expect_dtype(coerced$v, "i32")
 })
 
