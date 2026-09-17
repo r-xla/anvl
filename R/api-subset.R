@@ -311,9 +311,6 @@ subset_specs_to_scatter <- function(subsets, like = NULL) {
 
 # Helper functions for subset operations ======================================
 
-# `[` and `[<-` count subscripts with nargs(), because it sees the trailing
-# missing args that rlang::enquos() drops, while parse_subset_specs() counts
-# the quosures it was handed. All three report the same way through this.
 abort_too_many_subsets <- function(n, x_shape, call = rlang::caller_env()) {
   rank <- length(x_shape)
   cli_abort(
@@ -339,9 +336,6 @@ parse_subset_specs <- function(quos, x_shape) {
     abort_too_many_subsets(length(quos), x_shape)
   }
 
-  # The axis is passed down so that every error names the subscript it came
-  # from: on an array of several axes, which one was rejected is the first
-  # thing the reader needs.
   subsets <- lapply(seq_along(quos), function(i) {
     parse_subset_spec(quos[[i]], x_shape[i], axis = i)
   })
@@ -363,8 +357,6 @@ parse_subset_specs <- function(quos, x_shape) {
 #' @return A SubsetSpec object (SubsetFull, SubsetRange, or SubsetIndices)
 #' @noRd
 parse_subset_spec <- function(quo, axis_size, axis) {
-  # Every out-of-bounds message ends with this, so that the reader is told the
-  # range that would have worked rather than only the size it was compared to.
   in_bounds <- "Axis {axis} has size {axis_size}, so indices must be between 1 and {axis_size}."
   is_integerish <- function(x) {
     is.null(dim(x)) && test_integerish(x, len = 1L, any.missing = FALSE)

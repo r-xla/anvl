@@ -1243,6 +1243,31 @@ describe("nv_seq", {
   it("no longer takes steps", {
     expect_error(nv_seq(0, 1, steps = 5L), "unused argument")
   })
+  it("counts down when start is greater than end", {
+    expect_equal(nv_seq(7, 3), nv_array(7:3))
+  })
+  it("steps by `by`", {
+    expect_equal(nv_seq(0, 10, by = 2), nv_array(seq(0L, 10L, by = 2L)))
+    expect_equal(nv_seq(10, 0, by = -3), nv_array(seq(10L, 0L, by = -3L)))
+  })
+  it("stops before end when end is not reachable", {
+    expect_equal(nv_seq(0, 9, by = 2), nv_array(seq(0L, 9L, by = 2L)))
+  })
+  it("returns a single value when start equals end", {
+    expect_equal(nv_seq(3, 3), nv_array(3L))
+    expect_equal(nv_seq(3, 3, by = -2), nv_array(3L))
+  })
+  it("keeps the default integer dtype when stepping", {
+    expect_dtype(nv_seq(0, 10, by = 2), default_int())
+    with_default_dtypes(c(int = "i64"), expect_dtype(nv_seq(0, 10, by = 2), "i64"))
+    expect_dtype(nv_seq(0, 10, by = 2, dtype = "i16"), "i16")
+  })
+  it("errors for a zero, fractional or wrongly signed `by`", {
+    expect_error(nv_seq(0, 10, by = 0), "must not be 0")
+    expect_error(nv_seq(0, 10, by = 2.5), "by")
+    expect_error(nv_seq(0, 10, by = -2), "Wrong sign")
+    expect_error(nv_seq(10, 0, by = 2), "Wrong sign")
+  })
 })
 
 describe("nv_outer", {
@@ -1556,6 +1581,13 @@ describe("nv_seq_like", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
     out <- nv_seq_like(like, 1, 5, dtype = "f32")
     expect_dtype(out, "f32")
+  })
+
+  it("passes `by` through", {
+    like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
+    out <- nv_seq_like(like, 0, 10, by = 5)
+    expect_dtype(out, "i16")
+    expect_equal(as.integer(out), c(0L, 5L, 10L))
   })
 })
 

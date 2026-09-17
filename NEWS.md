@@ -28,6 +28,8 @@
 
 ## Features
 
+* `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
+  when `start > end`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
@@ -71,12 +73,7 @@
 
 ## Bug fixes
 
-* A range that counts down (`x[3:1]`) now selects in reverse, like base R,
-  instead of failing inside the gather with a negative slice size.
-* Errors from subsetting now name the axis whose subscript was rejected, report
-  every out-of-bounds index rather than the first, and spell out the range of
-  indices the axis accepts. A dynamic range index is rejected where it is
-  written instead of failing later with a length-0 slice size.
+* A range that counts down (`x[3:1]`) now selects in reverse instead of failing.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
   `as.numeric()`, `as.character()` and friends -- now aborts with an
   explanation instead of falling through to the base R generic. Some of those
