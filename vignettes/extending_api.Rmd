@@ -152,7 +152,3 @@ Use names rather than positions whenever an argument lives after `...`, since `.
 
 **When to skip `jit()`.** Don't wrap a function whose body is essentially a single primitive call -- direct aliases (`nv_log <- prim_log`) or thin wrappers that just validate and forward to one primitive. The underlying primitive is already jit-wrapped, so adding another `jit()` layer adds tracing overhead without fusing anything new.
 Also skip pure I/O (`nv_save`, `nv_serialize`), backend constructors (`nv_array`, `nv_scalar`, `nv_matrix`), and device/state objects (`nv_device`, `nv_rng_state`).
-
-The call is evaluated when the package is sourced, so the wrapper is byte-compiled with the rest of the package.
-Any file with a top-level `jit()` call must therefore declare `#' @include jit.R`, which is what places it after `R/jit.R` in `Collate`.
-Backend-specific options (`donate`, ...) cannot be passed here: the backends register later in `Collate` than the API files, so at this point `jit()` sees only the `"plain"` backend and rejects every such option as unknown.

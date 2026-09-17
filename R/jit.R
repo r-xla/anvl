@@ -119,16 +119,8 @@ jit <- function(
   .jit_names <- setdiff(as.character(names(.jit_formals)), "...")
 
   wrapper <- function() {
-    # The arguments are read off this frame rather than rebuilt from the call
-    # and evaluated again in the caller's. Both reach the same values, but an
-    # expression the caller already evaluated must not be computed a second
-    # time -- and S3 dispatch evaluates the first argument to choose a method,
-    # so a jitted function registered as a method would otherwise evaluate it
-    # twice, and `abs(sign(x))` would evaluate `sign(x)` twice over.
-    #
-    # `match.call()` is only read for *which* arguments the call supplied --
-    # it evaluates nothing itself. One left at its default is not among them,
-    # and stays out of the list so that `f` applies the default itself.
+    # We don't use eval + match.call() because evaluating a call that itself is a
+    # primitive might then get added twice to a graph
     .jit_env <- environment()
     .jit_given <- intersect(.jit_names, as.character(names(match.call())))
 
@@ -146,9 +138,6 @@ jit <- function(
     .jit_args <- mget(.jit_given, envir = .jit_env)
     if (.jit_dots) {
       .jit_args <- c(.jit_args, list(...))
-    }
-    if (!any(nzchar(names(.jit_args)))) {
-      names(.jit_args) <- NULL
     }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]

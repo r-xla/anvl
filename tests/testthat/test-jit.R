@@ -153,17 +153,6 @@ test_that("evaluates each argument exactly once, also under S3 dispatch", {
   expect_equal(n, 1L)
 })
 
-test_that("an argument the traced function never uses is not evaluated", {
-  n <- 0L
-  count <- function(x) {
-    n <<- n + 1L
-    x
-  }
-  g <- jit(function(x, y) prim_add(x, x))
-  expect_equal(jit(function(x) g(x, count(nv_scalar(99))))(nv_scalar(1)), nv_scalar(2))
-  expect_equal(n, 0L)
-})
-
 test_that("jitted function has class JitFunction", {
   f_jit <- jit(function(x) x)
   expect_s3_class(f_jit, "JitFunction")

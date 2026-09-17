@@ -111,14 +111,6 @@ nv_foo <- jit(function(x, axis) {
 }, static = "axis")
 ```
 
-The call runs when the package is sourced, so the wrapper is byte-compiled with
-the rest of the package; the file must therefore be collated after `R/jit.R`
-(declare `#' @include jit.R`).
-
-Backend options (`donate`, ...) cannot be passed here. The API files are
-collated before `backend-pjrt.R` / `backend-quickr.R`, so `jit()` sees only the
-`"plain"` backend and rejects any option as unknown.
-
 Wrap every function whose body issues **more than one operation**.
 
 ## Broadcasting
