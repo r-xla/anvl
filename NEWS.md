@@ -199,8 +199,6 @@
 * `prim_while()` now names every state member whose data type or shape changes
   across the body; it used to report the first label repeated once per mismatch,
   without the data types.
-* `nv_array()` of a zero-length vector gives a length-0 array instead of
-  failing inside pjrt.
 * The staging warning (`anvl_staging_widens_warning`) no longer fires where the
   caller has no way to avoid the staging -- under a default integer narrower
   than `i32`, where converting in its own category first would stage through
@@ -214,7 +212,6 @@
 * `nv_serialize()` and `nv_save()` given a single array now say so, instead of
   failing inside `nv_subset()`: `checkmate::assert_list(types = )` subsets its
   input, and an `AnvlArray` has a `[` method.
-* `nv_subset()` accepts a plain R array, as its page says.
 * `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k` is
   refused rather than silently truncated, and it validates `with_indices`.
 * `assert_shapevec()` -- and so every `shape` argument -- rejects a fractional

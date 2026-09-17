@@ -495,9 +495,6 @@ nv_subset <- function(x, ...) {
       "x" = "Got {.cls {class(x)[1]}}."
     ))
   }
-  # `subset_specs_to_gather(like = x)` builds the index arrays at `x`'s data
-  # type, so `x` has to have one -- an R value does not until it is converted.
-  x <- as_anvl_array(x)
   x_shape <- shape(x)
   quos <- rlang::enquos(...)
 

@@ -2653,15 +2653,6 @@ test_that("the API layer checks what its pages promise", {
     shape(nv_conv1d(nv_array(array(1, c(1, 1, 5))), nv_array(array(1, c(1, 1, 3))))),
     c(1L, 1L, 3L)
   )
-
-  # `nv_subset()`'s page says an R value is accepted, and now it is.
-  quos <- list(rlang::quo(1L), rlang::missing_arg())
-  # `as.integer()` rather than `as.vector()`: under an `i64` default the result
-  # comes back as a `bit64::integer64`, whose class `as.vector()` strips.
-  expect_equal(
-    as.integer(as_array(rlang::inject(nv_subset(array(1:6, c(2, 3)), !!!quos)))),
-    c(1L, 3L, 5L)
-  )
 })
 
 test_that("assert_shapevec() rejects what it cannot represent", {
