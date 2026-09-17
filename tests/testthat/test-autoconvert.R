@@ -7,8 +7,8 @@ test_that("jit: autoconverts length-1 numeric scalar", {
 test_that("jit: autoconverted scalar + literal takes the default dtype", {
   f <- jit(\(x) x + 1)
   out <- f(1)
-  expect_equal(dtype(out), default_float())
-  expect_equal(shape(out), integer())
+  expect_dtype(out, default_float())
+  expect_shape(out, integer())
 })
 
 test_that("jit: autoconverts length-1 integer scalar", {
@@ -28,7 +28,7 @@ test_that("jit: autoconverts length-1 logical scalar", {
 test_that("jit: promotes scalar dtype against a typed scalar", {
   f <- jit(\(x, y) x + y)
   out <- f(1, nv_scalar(2, dtype = "f64"))
-  expect_equal(dtype(out), as_dtype("f64"))
+  expect_dtype(out, "f64")
 })
 
 test_that("jit: autoconverts matrix via nv_array", {
@@ -41,8 +41,8 @@ test_that("jit: autoconverts higher-axis array via nv_array", {
   f <- jit(identity)
   a <- array(1:24, dim = c(2, 3, 4))
   out <- f(a)
-  expect_equal(dtype(out), default_int())
-  expect_equal(shape(out), c(2L, 3L, 4L))
+  expect_dtype(out, default_int())
+  expect_shape(out, c(2L, 3L, 4L))
 })
 
 test_that("jit: bare vector without dim errors", {
@@ -58,8 +58,8 @@ test_that("jit: non-array/non-scalar leaves (e.g. character) error", {
 test_that("jit: nested list is flattened; leaves are autoconverted", {
   f <- jit(function(pair) pair[[1]] + pair[[2]])
   out <- f(list(1, 2))
-  expect_equal(dtype(out), default_float())
-  expect_equal(shape(out), integer())
+  expect_dtype(out, default_float())
+  expect_shape(out, integer())
   expect_equal(as_array(out), 3)
 })
 
@@ -85,7 +85,7 @@ test_that("jit: an autoconverted leaf is not baked into the program", {
   # Same key, so this is a cache hit -- and it must still return its own value,
   # not the one the program was compiled with.
   expect_identical(as_array(f(x, pi)), pi)
-  expect_equal(cache_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 })
 
 test_that("jit: a leaf used at two dtypes is exact at the wider one", {
@@ -96,8 +96,8 @@ test_that("jit: a leaf used at two dtypes is exact at the wider one", {
     )
   })
   out <- f(sqrt(2))
-  expect_equal(dtype(out$wide), as_dtype("f64"))
-  expect_equal(dtype(out$narrow), as_dtype("f32"))
+  expect_dtype(out$wide, "f64")
+  expect_dtype(out$narrow, "f32")
   # Uploaded once as f64 and converted down for the f32 site: one rounding,
   # exactly as an f32 upload would have been.
   expect_identical(as_array(out$wide), sqrt(2))
@@ -122,8 +122,8 @@ test_that("quickr: autoconverts matrix input", {
   local_backend("quickr")
   f <- jit(identity)
   out <- f(matrix(1:4, 2, 2))
-  expect_equal(dtype(out), as_dtype("i32"))
-  expect_equal(shape(out), c(2L, 2L))
+  expect_dtype(out, "i32")
+  expect_shape(out, c(2L, 2L))
   expect_equal(out, nv_matrix(1:4, nrow = 2, ncol = 2))
 })
 

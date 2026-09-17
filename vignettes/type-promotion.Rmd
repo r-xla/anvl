@@ -41,13 +41,20 @@ dtypes <- c("bool", "i8", "i16", "i32", "i64", "ui8", "ui16", "ui32", "ui64", "f
 tbl <- matrix(NA_character_, length(dtypes), length(dtypes))
 for (i in seq_along(dtypes)) {
   for (j in seq_along(dtypes)) {
-    tbl[i, j] <- as.character(common_dtype(dtypes[i], dtypes[j]))
+    # `ui64` and a signed integer have no common data type.
+    tbl[i, j] <- tryCatch(as.character(common_dtype(dtypes[i], dtypes[j])), error = function(e) "--")
   }
 }
-rownames(tbl) <- dtypes
+# The column headers are bold as table headers; the row labels are cells, so
+# they are emphasized here to match.
+rownames(tbl) <- sprintf("<strong>%s</strong>", dtypes)
 colnames(tbl) <- dtypes
-knitr::kable(tbl, format = "html", caption = "Type promotion rules (row × column)")
+knitr::kable(tbl, format = "html", escape = FALSE, caption = "Type promotion rules (row × column)")
 ```
+
+Two integer types meet at a type that holds every value of both, so `i8` and `ui8` meet at `i16`.
+The exception is `ui64`: no signed integer type holds its values, and an integer never becomes a float on its own, so a `ui64` and a signed integer have no common type at all (the `--` cells above).
+This is where JAX and NumPy fall back to a float -- {anvl} instead asks you to say what you want, by converting one of the operands with `nv_convert()`.
 
 The biggest differentiator between our type system and the one from JAX is the handling of array objects from the host language, which is R in our case.
 While introducing more complexity, these rules prevent the loss of precision present in JAX's type system.

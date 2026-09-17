@@ -357,21 +357,21 @@ describe("subset_specs_start_indices", {
   it("returns all 1s for SubsetFull specs", {
     subsets <- list(SubsetFull(5L), SubsetFull(3L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(1L, 1L))
   })
 
   it("returns start values for SubsetRange specs", {
     subsets <- list(SubsetRange(3L, 5L), SubsetRange(2L, 4L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(3L, 2L))
   })
 
   it("returns the index for scalar SubsetIndices", {
     subsets <- list(SubsetIndex(nv_scalar(4L, dtype = "i64")))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i64"))
+    expect_dtype(result, "i64")
     expect_equal(as.integer(result), 4L)
   })
 
@@ -382,14 +382,14 @@ describe("subset_specs_start_indices", {
       SubsetIndex(nv_scalar(3L, dtype = "i64"))
     )
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i64"))
+    expect_dtype(result, "i64")
     expect_equal(as.integer(result), c(2L, 1L, 3L))
   })
 
   it("uses i32 for all-static subsets", {
     subsets <- list(SubsetFull(5L), SubsetRange(3L, 5L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), c(1L, 3L))
   })
 
@@ -399,13 +399,13 @@ describe("subset_specs_start_indices", {
       SubsetRange(3L, 5L)
     )
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
   })
 
   it("works with a single axis", {
     subsets <- list(SubsetRange(2L, 7L))
     result <- subset_specs_start_indices(subsets)
-    expect_equal(dtype(result), as_dtype("i32"))
+    expect_dtype(result, "i32")
     expect_equal(as.integer(result), 2L)
   })
 

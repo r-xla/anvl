@@ -344,6 +344,7 @@ reference:
     desc: Code transformations
     contents:
       - jit
+      - jit_cache_size
       - gradient
       - value_and_gradient
 

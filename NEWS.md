@@ -8,6 +8,9 @@
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* `common_dtype()` now errors for `ui64` and a signed integer instead of
+  returning `i64`, which could not hold every `ui64` value. Convert one of them
+  with `nv_convert()`.
 * `jit_eval()` was removed as it is no longer needed.
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
   accumulate a boolean array at the default integer data type instead of returning a boolean.
@@ -27,11 +30,17 @@
 
 ## Features
 
+* New `jit_cache_size()` reports how many compiled programs a jitted function
+  currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
   `nv_sample_int()`, `nv_sample()`) and `prim_rng_bit_generator()` return a
   named list with elements `state` and `values` instead of an unnamed pair,
   and `prim_top_k()`, `prim_cummax()` and `prim_cummin()` name theirs
   `values` and `indices`.
+* `nv_array()` accepts a `raw()` vector holding the native byte payload of
+  `prod(shape)` elements of `dtype` (both then required); `byrow` selects
+  row-major element order for the payload. Only supported on the `"pjrt"`
+  backend; the inverse direction is the existing `as_raw()`.
 * The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
   `all()`) now work with multiple data inputs.
 * The default data types for floating point numbers and integers can now be
@@ -64,6 +73,11 @@
 
 ## Bug fixes
 
+* Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
+  `as.numeric()`, `as.character()` and friends -- now aborts with an
+  explanation instead of falling through to the base R generic. Some of those
+  used to fail with a message about lists or dimensions, and `as.vector()`,
+  `as.list()` and `as.character()` silently returned the traced box itself.
 * `nv_rbinom()` and `nv_sample_int()` reject a boolean `dtype`, which cannot
   hold a count or an index.
 * Subsetting with `drop` (e.g. `x[1, , drop = FALSE]`) now gives a better
@@ -88,6 +102,26 @@
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
 * Improved the numerics for `nv_mod()`.
+* The variadic array functions (`nv_concatenate()`, `nv_rbind()`, `nv_cbind()`,
+  `nv_broadcast_scalars()`, `nv_broadcast_arrays()`, `nv_promote_to_common()`)
+  say so when given no array, instead of warning or failing internally.
+* `nv_array()` of a zero-length vector asks for a `shape` instead of failing
+  inside the backend; which axis is empty cannot be inferred from the data.
+* `nv_save()` and `nv_serialize()` given a single array say so, instead of
+  failing inside `nv_subset()`. `nv_serialize()` to a connection returns
+  invisibly.
+* The `_like()` functions name `like` when it is an R value with no data type.
+* `nv_solve()` and `nv_triangular_solve()` promote their operands, as
+  `nv_matmul()` does, instead of refusing two arrays that disagree.
+* On the `"quickr"` backend a call whose outputs are all empty emits the empty
+  arrays directly, instead of an elementwise operation quickr rejects.
+* `nv_reduce_any()`, `nv_reduce_all()` and `nv_sort()` are jitted, and
+  `nv_polygamma()`'s `n` is no longer static, so it accepts an array as
+  `prim_polygamma()` does.
+* `nv_qnorm()` is accurate to its operand's data type rather than to the
+  default float; its coefficients used to be materialized at the default.
+* `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` name their own operand when it
+  is not a float.
 * `prim_fill()` / `nv_fill()` check that `value` is something `dtype` can hold:
   a whole number for an integer data type, a non-negative one for an unsigned
   one, a logical or `0` / `1` for `bool`.

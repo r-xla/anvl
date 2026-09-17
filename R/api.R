@@ -100,6 +100,7 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' nv_broadcast_scalars(x, nv_scalar(1))
 #' @export
 nv_broadcast_scalars <- jit(function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shapes <- lapply(args, shape)
   non_scalar_shapes <- Filter(\(s) length(s) > 0L, shapes)
@@ -125,7 +126,7 @@ nv_broadcast_scalars <- jit(function(...) {
   })
 })
 
-#' @title Promote Arrays to a Common Dtype
+#' @title Promote Arrays to a Common Data Type
 #' @description
 #' Promote arrays to a common data type, see [`common_dtype`] for more details.
 #' @param ... ([`arrayish`])\cr
@@ -138,6 +139,7 @@ nv_broadcast_scalars <- jit(function(...) {
 #' nv_promote_to_common(x, y)
 #' @export
 nv_promote_to_common <- jit(function(...) {
+  assert_some_arrays(...)
   # An R value has no dtype to convert *from*: it is built at the common one
   # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
   # converting an f32 `sqrt(2)` would only widen a number that had already lost
@@ -167,6 +169,7 @@ nv_promote_to_common <- jit(function(...) {
 #' nv_broadcast_arrays(x, y)
 #' @export
 nv_broadcast_arrays <- jit(function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shape <- Reduce(broadcast_shapes, lapply(args, shape))
   lapply(args, nv_broadcast_to, shape = shape)
@@ -314,6 +317,7 @@ nv_flatten <- function(x) {
 #' @export
 nv_concatenate <- jit(
   function(..., axis = NULL) {
+    assert_some_arrays(...)
     args <- do.call(nv_promote_to_common, list(...))
     shapes <- lapply(args, shape)
     ranks <- lengths(shapes)
@@ -360,7 +364,7 @@ nv_concatenate <- jit(
   static = "axis"
 )
 
-#' @title Combine arrays by rows or columns
+#' @title Combine Arrays by Rows or Columns
 #' @name nv_bind
 #' @description
 #' Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
@@ -387,14 +391,14 @@ nv_concatenate <- jit(
 #' @return [`arrayish`]\cr
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Vectors as rows / columns
+#' # vectors as rows / columns
 #' nv_rbind(nv_array(1:3), nv_array(4:6))
 #' nv_cbind(nv_array(1:3), nv_array(4:6))
 #'
-#' # Scalar broadcasting
+#' # scalar broadcasting
 #' nv_rbind(nv_matrix(1:6, nrow = 2), nv_scalar(0))
 #'
-#' # Rank-3 arrays preserve trailing axes
+#' # rank-3 arrays preserve trailing axes
 #' a <- nv_array(1:24, shape = c(2, 3, 4))
 #' shape(nv_rbind(a, a)) # c(4, 3, 4)
 NULL
@@ -453,6 +457,7 @@ bind_reshape <- function(arg, stack_axis, target_shape) {
 #' @rdname nv_bind
 #' @export
 nv_rbind <- jit(function(...) {
+  assert_some_arrays(...)
   # Promoted here rather than in `nv_concatenate()` below: an R value has to be
   # built at the common dtype directly, where materializing it first would round
   # it through its default on the way there.
@@ -465,6 +470,7 @@ nv_rbind <- jit(function(...) {
 #' @rdname nv_bind
 #' @export
 nv_cbind <- jit(function(...) {
+  assert_some_arrays(...)
   args <- as_anvl_arrays(..., .promote = promotion_common())
   target_shape <- bind_target_shape(args, stack_axis = 2L, fn_name = "nv_cbind")
   args <- lapply(args, bind_reshape, stack_axis = 2L, target_shape = target_shape)
@@ -1406,14 +1412,11 @@ nv_gamma <- jit(function(x) {
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' nv_polygamma(1, x) # trigamma
 #' @export
-nv_polygamma <- jit(
-  function(n, x) {
-    args <- nv_promote_to_common(n, int_to_float(x))
-    args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
-    do.call(prim_polygamma, args)
-  },
-  static = 1L
-)
+nv_polygamma <- jit(function(n, x) {
+  args <- nv_promote_to_common(n, int_to_float(x))
+  args <- nv_broadcast_scalars(args[[1L]], args[[2L]])
+  do.call(prim_polygamma, args)
+})
 
 #' @title Error Function
 #' @description
@@ -1799,10 +1802,7 @@ nv_chol <- prim_chol
 #' nv_solve(a, b)
 #' @export
 nv_solve <- jit(function(a, b) {
-  # `a` and `b` must agree, and neither is widened to meet the other: an R
-  # matrix yields to `a`'s data type, two typed arrays that disagree are
-  # rejected.
-  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
+  args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
   a <- args$a
   b <- args$b
   a_shape <- shape(a)
@@ -1884,8 +1884,7 @@ nv_triangular_solve <- jit(
     unit_diagonal = FALSE,
     transpose_a = FALSE
   ) {
-    # As in `nv_solve()`: the two must agree, and neither is widened.
-    args <- as_anvl_arrays(a = a, b = b, .promote = promotion_rdata_common())
+    args <- as_anvl_arrays(a = a, b = b, .promote = promotion_common())
     a <- args$a
     b <- args$b
 
@@ -1965,7 +1964,7 @@ nv_det <- jit(function(x) {
   prim_mul(d$sign, d$modulus)
 })
 
-#' @title Determinant in modulus/sign form
+#' @title Determinant in Modulus/Sign Form
 #' @description
 #' Computes the determinant of a square matrix in the modulus / sign
 #' decomposition matching base R's [base::determinant()]. For the plain
@@ -2441,10 +2440,13 @@ stack_min_max <- function(lo, hi) {
 #' nv_reduce_any(x)            # all axes -> scalar
 #' nv_reduce_any(x, axes = 1L)
 #' @export
-nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
-  x <- as_anvl_array(x)
-  prim_reduce_any(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
-}
+nv_reduce_any <- jit(
+  function(x, axes = NULL, drop = TRUE) {
+    x <- as_anvl_array(x)
+    prim_reduce_any(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
+  },
+  static = 2:3
+)
 
 #' @title All Reduction
 #' @description
@@ -2459,10 +2461,13 @@ nv_reduce_any <- function(x, axes = NULL, drop = TRUE) {
 #' nv_reduce_all(x)            # all axes -> scalar
 #' nv_reduce_all(x, axes = 1L)
 #' @export
-nv_reduce_all <- function(x, axes = NULL, drop = TRUE) {
-  x <- as_anvl_array(x)
-  prim_reduce_all(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
-}
+nv_reduce_all <- jit(
+  function(x, axes = NULL, drop = TRUE) {
+    x <- as_anvl_array(x)
+    prim_reduce_all(x, axes = .resolve_reduce_axes(x, axes), drop = drop)
+  },
+  static = 2:3
+)
 
 #' @title Cumulative Sum
 #' @description
@@ -3223,13 +3228,16 @@ nv_select <- function(x, axis, index) {
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_sort(m, axis = 2L)
 #' @export
-nv_sort <- function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
-  x <- as_anvl_array(x)
-  if (naxes(x) == 0L) {
-    cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
-  }
-  prim_sort(list(x), axis = axis %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
-}
+nv_sort <- jit(
+  function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
+    x <- as_anvl_array(x)
+    if (naxes(x) == 0L) {
+      cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
+    }
+    prim_sort(list(x), axis = axis %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
+  },
+  static = 2:4
+)
 
 #' @title Argsort
 #' @description

@@ -41,7 +41,12 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 }
 \arguments{
 \item{data}{(any)\cr
-\code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.}
+\code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.
+Alternatively a \code{raw()} vector holding the native little-endian byte
+payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \code{shape}
+are then required (only supported on the \code{"pjrt"} backend).
+Raw payloads are read in column-major element order, or row-major
+with \code{byrow = TRUE}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
@@ -70,6 +75,8 @@ named by the \code{PJRT_PLATFORM} environment variable on the \code{"pjrt"} back
 The output shape of the array.
 The default (\code{NULL}) is to infer it from the data if possible.
 Note that \code{\link{nv_array}} interprets length 1 vectors as having shape \code{(1)}.
+Empty data has no shape to infer -- \code{0}, \code{c(2, 0)} and \code{c(0, 3)} all hold
+no elements -- so \code{shape} is required there.
 To create a "scalar" with no axes (shape \verb{()}), use \code{\link{nv_scalar}} or explicitly specify \code{shape = c()}.}
 
 \item{byrow}{(\code{logical(1)})\cr
@@ -153,19 +160,19 @@ The supported data types and devices differ between backends.
 # A 1-d array (vector) with shape (4). Default type for integers is `i32`
 nv_array(1:4)
 
-# Specify a dtype
+# specify a dtype
 nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 
-# A 2x3 matrix
+# a 2x3 matrix
 nv_array(1:6, shape = c(2L, 3L))
 
-# A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+# a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 
 # A scalar array.
 nv_scalar(3.14)
 
-# An uninitialized 2x3 array (contents are unspecified)
+# an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 
 # --- Extractors ---

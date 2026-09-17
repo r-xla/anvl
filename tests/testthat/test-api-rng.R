@@ -1,14 +1,14 @@
 test_that("nv_rnorm", {
   # statistical validity checks are in inst/random
   out <- nv_rnorm(nv_array(c(1, 2), dtype = "ui64"), dtype = "f32", shape = c(2, 3))
-  expect_equal(dtype(out[[1]]), as_dtype("ui64"))
-  expect_equal(shape(out[[1]]), 2L)
-  expect_equal(dtype(out[[2]]), as_dtype("f32"))
-  expect_equal(shape(out[[2]]), c(2L, 3L))
+  expect_dtype(out[[1]], "ui64")
+  expect_shape(out[[1]], 2L)
+  expect_dtype(out[[2]], "f32")
+  expect_shape(out[[2]], c(2L, 3L))
 
   # test with uneven total number of RVs
   out <- nv_rnorm(nv_array(c(1, 2), dtype = "ui64"), dtype = "f32", shape = c(3, 3))
-  expect_equal(shape(out[[2]]), c(3L, 3L))
+  expect_shape(out[[2]], c(3L, 3L))
 
   # test mean/sd parameters with small sample
   out <- nv_rnorm(
@@ -18,10 +18,10 @@ test_that("nv_rnorm", {
     mean = 10,
     sd = 9
   )
-  expect_equal(dtype(out[[1]]), as_dtype("ui64"))
-  expect_equal(shape(out[[1]]), 2L)
-  expect_equal(shape(out[[2]]), c(2L, 3L))
-  expect_equal(dtype(out[[2]]), as_dtype("f64"))
+  expect_dtype(out[[1]], "ui64")
+  expect_shape(out[[1]], 2L)
+  expect_shape(out[[2]], c(2L, 3L))
+  expect_dtype(out[[2]], "f64")
 })
 
 test_that("nv_rnorm accepts arrayish mean and sd", {
@@ -31,7 +31,7 @@ test_that("nv_rnorm accepts arrayish mean and sd", {
   means <- nv_array(matrix(c(-1000, 1000, -1000, 1000, -1000, 1000), nrow = 2))
   out <- nv_rnorm(c(2, 3), state, dtype = "f64", mean = means, sd = 1)
   values <- as_array(out[[2]])
-  expect_equal(shape(out[[2]]), c(2L, 3L))
+  expect_shape(out[[2]], c(2L, 3L))
   # sd is 1, so each draw stays near its own mean
   expect_true(all(values[1, ] < -900))
   expect_true(all(values[2, ] > 900))
@@ -76,19 +76,19 @@ test_that("nv_runif", {
     max = 1
   )
 
-  expect_equal(dtype(out[[1]]), as_dtype("ui64"))
-  expect_equal(shape(out[[1]]), 2L)
-  expect_equal(shape(out[[2]]), c(3L, 4L))
-  expect_equal(dtype(out[[2]]), as_dtype("f32"))
+  expect_dtype(out[[1]], "ui64")
+  expect_shape(out[[1]], 2L)
+  expect_shape(out[[2]], c(3L, 4L))
+  expect_dtype(out[[2]], "f32")
 })
 
 test_that("nv_rbinom", {
   # statistical validity checks are in inst/random
   out <- nv_rbinom(nv_array(c(1, 2), dtype = "ui64"), dtype = "i32", shape = c(2, 5))
 
-  expect_equal(shape(out[[1]]), 2L)
-  expect_equal(shape(out[[2]]), c(2L, 5L))
-  expect_equal(dtype(out[[2]]), as_dtype("i32"))
+  expect_shape(out[[1]], 2L)
+  expect_shape(out[[2]], c(2L, 5L))
+  expect_dtype(out[[2]], "i32")
 
   # All values should be 0 or 1
   values <- as.vector(out[[2]])
@@ -96,12 +96,12 @@ test_that("nv_rbinom", {
 
   # Test with different dtype
   out2 <- nv_rbinom(nv_array(c(1, 2), dtype = "ui64"), dtype = "f32", shape = 10L)
-  expect_equal(dtype(out2[[2]]), as_dtype("f32"))
-  expect_equal(shape(out2[[2]]), 10L)
+  expect_dtype(out2[[2]], "f32")
+  expect_shape(out2[[2]], 10L)
 
   # Test with non-multiple-of-8 shape (tests slicing)
   out3 <- nv_rbinom(nv_array(c(1, 2), dtype = "ui64"), dtype = "i32", shape = c(3, 3))
-  expect_equal(shape(out3[[2]]), c(3L, 3L))
+  expect_shape(out3[[2]], c(3L, 3L))
 })
 
 test_that("nv_runif with min == max returns the pair, state unchanged", {
@@ -110,7 +110,7 @@ test_that("nv_runif with min == max returns the pair, state unchanged", {
   expect_named(out, c("state", "values"))
   # No draw is made, so the state comes back as it went in.
   expect_equal(as.vector(out$state), as.vector(state))
-  expect_equal(shape(out$values), c(2L, 3L))
+  expect_shape(out$values, c(2L, 3L))
   expect_true(all(as.vector(out$values) == 5))
 })
 
@@ -128,9 +128,9 @@ test_that("nv_sample_int", {
 
   out1 <- nv_sample_int(n = 6L, shape = 10L, initial_state = state)
 
-  expect_equal(shape(out1[[1]]), 2L)
-  expect_equal(shape(out1[[2]]), 10L)
-  expect_equal(dtype(out1[[2]]), default_int())
+  expect_shape(out1[[1]], 2L)
+  expect_shape(out1[[2]], 10L)
+  expect_dtype(out1[[2]], default_int())
 
   # All values should be in 1:6
   values1 <- as.vector(out1[[2]])
@@ -138,7 +138,7 @@ test_that("nv_sample_int", {
 
   # Test 2D output shape
   out3 <- nv_sample_int(n = 4L, shape = c(2L, 3L), initial_state = state)
-  expect_equal(shape(out3[[2]]), c(2L, 3L))
+  expect_shape(out3[[2]], c(2L, 3L))
 
   # The last integer is reachable and the first is not over-represented
   values4 <- as.vector(nv_sample_int(n = 6L, shape = 5000L, initial_state = state)[[2]])
@@ -147,7 +147,7 @@ test_that("nv_sample_int", {
 
   # The dtype of the drawn integers is configurable
   out5 <- nv_sample_int(n = 6L, shape = 4L, initial_state = state, dtype = "i64")
-  expect_equal(dtype(out5[[2]]), as_dtype("i64"))
+  expect_dtype(out5[[2]], "i64")
 
   # A population of size one is always drawn
   expect_true(all(as.vector(nv_sample_int(n = 1L, shape = 20L, initial_state = state)[[2]]) == 1L))
@@ -158,13 +158,13 @@ test_that("nv_sample from a population array", {
   pop <- nv_array(c(10, 20, 30))
 
   out <- nv_sample(x = pop, shape = 8L, initial_state = state)
-  expect_equal(shape(out[[2]]), 8L)
+  expect_shape(out[[2]], 8L)
   # The result has the data type of the population
-  expect_equal(dtype(out[[2]]), dtype(pop))
+  expect_dtype(out[[2]], dtype(pop))
   expect_true(all(as.vector(out[[2]]) %in% c(10, 20, 30)))
 
   # 2D output shape
-  expect_equal(shape(nv_sample(x = pop, shape = c(2L, 3L), initial_state = state)[[2]]), c(2L, 3L))
+  expect_shape(nv_sample(x = pop, shape = c(2L, 3L), initial_state = state)[[2]], c(2L, 3L))
 
   # Every element of the population is reachable
   many <- as.vector(nv_sample(x = pop, shape = 500L, initial_state = state)[[2]])

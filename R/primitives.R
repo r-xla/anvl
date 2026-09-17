@@ -576,15 +576,16 @@ prim_dynamic_slice <- new_primitive(
   function(x, ..., slice_sizes) {
     start_indices <- list(...)
     infer_fn <- function(x, ..., slice_sizes) {
-      start_indices_avals <- list(...)
-      for (i in seq_along(start_indices_avals)) {
-        aval <- start_indices_avals[[i]]
-        if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
-        }
-      }
-      out <- AbstractArray(dtype = x$dtype, shape = slice_sizes)
-      list(out)
+      sizes_attr <- r_to_constant(
+        as.integer(slice_sizes),
+        dtype = "i64",
+        shape = length(slice_sizes)
+      )
+      out <- do.call(
+        stablehlo::infer_types_dynamic_slice,
+        c(list(at2vt(x)), lapply(list(...), at2vt), list(slice_sizes = sizes_attr))
+      )[[1L]]
+      list(vt2at(out))
     }
     graph_desc_add(
       self,
@@ -639,15 +640,11 @@ prim_dynamic_update_slice <- new_primitive(
   function(x, update, ...) {
     start_indices <- list(...)
     infer_fn <- function(x, update, ...) {
-      start_indices_avals <- list(...)
-      for (i in seq_along(start_indices_avals)) {
-        aval <- start_indices_avals[[i]]
-        if (length(shape(aval)) != 0L) {
-          cli_abort("Start index {i} must be a scalar, but has shape {shape_repr(shape(aval))}.")
-        }
-      }
-      out <- AbstractArray(dtype = x$dtype, shape = shape(x))
-      list(out)
+      out <- do.call(
+        stablehlo::infer_types_dynamic_update_slice,
+        c(list(at2vt(x), at2vt(update)), lapply(list(...), at2vt))
+      )[[1L]]
+      list(vt2at(out))
     }
     operands <- apply_promotion(list(x = x, update = update), promotion_rdata_common())
     graph_desc_add(
@@ -968,7 +965,7 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #'
 #' @template param_prim_x_any
 #' @param init ([`arrayish`])\cr
-#'   Scalar (0-dimensional) initial value. Must have the same data type as
+#'   Scalar (0 axes) initial value. Must have the same data type as
 #'   `x` and be the neutral element w.r.t. `reductor`.
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -1159,7 +1156,7 @@ prim_argmax <- new_primitive(
   static = 2:3
 )
 
-#' @title Primitive Argmin
+#' @title Primitive Index of the Minimum
 #' @description
 #' Returns the index of the minimum value along a single axis. Ties
 #' are broken by returning the smallest index.
@@ -1269,7 +1266,7 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 #' @export
 prim_gt <- new_primitive("greater", make_compare_op("GT"))
 
-#' @title Primitive Greater Equal
+#' @title Primitive Greater Than or Equal
 #' @description
 #' Element-wise greater than or equal comparison.
 #' @template params_prim_lhs_rhs_any
@@ -1303,7 +1300,7 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 #' @export
 prim_lt <- new_primitive("less", make_compare_op("LT"))
 
-#' @title Primitive Less Equal
+#' @title Primitive Less Than or Equal
 #' @description
 #' Element-wise less than or equal comparison.
 #' @template params_prim_lhs_rhs_any
@@ -1377,7 +1374,7 @@ prim_remainder <- new_primitive(
   make_binary_op(stablehlo::infer_types_remainder)
 )
 
-#' @title Primitive And
+#' @title Primitive Bitwise And
 #' @description
 #' Element-wise bitwise AND, which for a boolean array is the logical AND.
 #' @template params_prim_lhs_rhs_intlike
@@ -1394,7 +1391,7 @@ prim_remainder <- new_primitive(
 #' @export
 prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 
-#' @title Primitive Not
+#' @title Primitive Bitwise Not
 #' @description
 #' Element-wise bitwise NOT, which for a boolean array is the logical NOT.
 #' @param x ([`arrayish`])\cr
@@ -1411,7 +1408,7 @@ prim_and <- new_primitive("and", make_binary_op(stablehlo::infer_types_and))
 #' @export
 prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 
-#' @title Primitive Or
+#' @title Primitive Bitwise Or
 #' @description
 #' Element-wise bitwise OR, which for a boolean array is the logical OR.
 #' @template params_prim_lhs_rhs_intlike
@@ -1428,7 +1425,7 @@ prim_not <- new_primitive("not", make_unary_op(stablehlo::infer_types_not))
 #' @export
 prim_or <- new_primitive("or", make_binary_op(stablehlo::infer_types_or))
 
-#' @title Primitive Xor
+#' @title Primitive Bitwise Xor
 #' @description
 #' Element-wise bitwise XOR, which for a boolean array is the logical XOR.
 #' @template params_prim_lhs_rhs_intlike
@@ -1523,7 +1520,7 @@ prim_shift_right_arithmetic <- new_primitive(
   }
 )
 
-#' @title Primitive Atan2
+#' @title Primitive Arctangent 2
 #' @description
 #' Element-wise atan2 operation.
 #' @template params_prim_lhs_rhs_float
@@ -2507,7 +2504,6 @@ prim_if <- new_primitive(
 #' Repeatedly executes `body` while `cond` returns `TRUE`, like R's
 #' `while` loop. The loop state is initialized with `init` and
 #' passed through each iteration.
-#' Otherwise, no state is maintained between iterations.
 #' @template param_while_init
 #' @param cond (`function`)\cr
 #'   Condition function that receives the current state as arguments
@@ -2661,7 +2657,7 @@ prim_while <- new_primitive(
 #' sorts (sort `keys` paired with `values`).
 #'
 #' All arrays must have the same shape; their dtypes may differ.
-#' 1-dimensional slices along `axis` are sorted independently; other
+#' 1-D slices along `axis` are sorted independently; other
 #' axes are preserved.
 #' @param xs (`list` of [`arrayish`])\cr
 #'   One or more arrays to sort. The first is the sort key; the rest are
@@ -2695,7 +2691,7 @@ prim_while <- new_primitive(
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' prim_sort(list(x), axis = 1L)[[1L]]
 #'
-#' # Sort indices by the values (argsort): pair x with iota and read off
+#' # sort indices by the values (argsort): pair x with iota and read off
 #' # the second result.
 #' idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
 #' out <- prim_sort(list(x, idx), axis = 1L)
@@ -2970,7 +2966,7 @@ prim_rng_bit_generator <- new_primitive(
 #' Lowers to [hlo_scatter()].
 #' @seealso [prim_gather()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Scatter values 10 and 30 into positions 1 and 3 of a zero vector
+#' # scatter values 10 and 30 into positions 1 and 3 of a zero vector
 #' x <- nv_array(c(0, 0, 0, 0, 0))
 #' indices <- nv_matrix(c(1L, 3L), ncol = 1)
 #' updates <- nv_array(c(10, 30))
@@ -3185,7 +3181,7 @@ prim_scatter <- new_primitive(
 #' Lowers to [hlo_gather()].
 #' @seealso [prim_scatter()], [nv_subset()], [nv_subset_assign()], `[`, `[<-`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Gather rows 1 and 3 from a 3x3 matrix
+#' # gather rows 1 and 3 from a 3x3 matrix
 #' x <- nv_matrix(1:9, nrow = 3)
 #' indices <- nv_matrix(c(1L, 3L), ncol = 1)
 #' prim_gather(
@@ -3296,7 +3292,7 @@ prim_gather <- new_primitive(
 #' Lowers to [hlo_cholesky()].
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Create a positive-definite matrix
+#' # create a positive-definite matrix
 #' x <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f32")
 #' prim_chol(x, lower = TRUE)
 #' @export
@@ -3353,7 +3349,7 @@ prim_chol <- new_primitive(
 #' Lowers to [hlo_triangular_solve()].
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Solve L %*% x = b where L is lower triangular
+#' # solve L %*% x = b where L is lower triangular
 #' L <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
 #' b <- nv_matrix(c(4, 3), nrow = 2, dtype = "f32")
 #' prim_triangular_solve(L, b,

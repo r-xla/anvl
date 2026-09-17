@@ -44,15 +44,15 @@ test_that("nv_empty works with quickr backend", {
   local_backend("quickr")
   x <- nv_empty("f64", c(0L, 3L))
   expect_equal(backend(x), "quickr")
-  expect_equal(dtype(x), as_dtype("f64"))
-  expect_equal(shape(x), c(0L, 3L))
+  expect_dtype(x, "f64")
+  expect_shape(x, c(0L, 3L))
 })
 
 test_that("nv_empty works with pjrt backend", {
   x <- nv_empty("f32", c(0L, 3L))
   expect_equal(backend(x), "pjrt")
-  expect_equal(dtype(x), as_dtype("f32"))
-  expect_equal(shape(x), c(0L, 3L))
+  expect_dtype(x, "f32")
+  expect_shape(x, c(0L, 3L))
 })
 
 test_that("install_anvl routes to the backend's installer and forwards ...", {

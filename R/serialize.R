@@ -23,6 +23,9 @@
 #' nv_save(list(x = x), path)
 #' nv_read(path)
 nv_save <- function(arrays, path) {
+  if (is_arrayish(arrays) || !is.list(arrays)) {
+    cli_abort("{.arg arrays} must be a named list of arrays, not a single array.")
+  }
   checkmate::assert_list(arrays, names = "unique", types = "AnvlArray")
   checkmate::assert_string(path)
 
@@ -87,6 +90,13 @@ nv_read <- function(path, device = NULL) {
 #' raw_data
 #' nv_unserialize(raw_data)
 nv_serialize <- function(arrays, con = NULL) {
+  # `assert_list(types = )` subsets `arrays` internally, and an `AnvlArray` has
+  # a `[` method -- so a bare array sends the *assertion* into `nv_subset()` and
+  # the caller sees a subsetting error. Say what is wrong first, as
+  # `prim_sort()` does for the same trap.
+  if (is_arrayish(arrays) || !is.list(arrays)) {
+    cli_abort("{.arg arrays} must be a named list of arrays, not a single array.")
+  }
   checkmate::assert_list(arrays, names = "unique", types = "AnvlArray")
 
   # TODO(hack): do this properly
@@ -99,10 +109,12 @@ nv_serialize <- function(arrays, con = NULL) {
   })
 
   if (is.null(con)) {
-    safetensors::safe_serialize(arrays_unwrapped)
-  } else {
-    safetensors::safe_save_file(arrays_unwrapped, con)
+    return(safetensors::safe_serialize(arrays_unwrapped))
   }
+  safetensors::safe_save_file(arrays_unwrapped, con)
+  # The connection is written for its side effect; `nv_save()` returns nothing
+  # either.
+  invisible(NULL)
 }
 
 #' @title Deserialize arrays from raw bytes

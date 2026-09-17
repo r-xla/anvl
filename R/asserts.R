@@ -171,7 +171,11 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   # `1` and `1L` both build at `i32`, while `1.5` builds at neither. This keeps
   # the fills that do not know their data type statically (`zeros()`, `ones()`,
   # `nv_eye()`, `nv_diag()`, the gradient zeroing) free to write a plain `0`.
-  is_whole <- is_int64 || test_int(value)
+  # `test_int()` only accepts a double that fits into an R integer, so the
+  # out-of-range whole doubles are recognized here and rejected below.
+  is_whole <- is_int64 ||
+    test_int(value) ||
+    (is.double(value) && is.finite(value) && value == trunc(value))
   # A whole double is built as an R integer, so one beyond that range would
   # silently arrive at the backend as `NA`.
   too_large <- is_whole && !is_int64 && !is.integer(value) && abs(value) > .Machine$integer.max
@@ -242,6 +246,16 @@ assert_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
     ))
   }
   dt
+}
+
+assert_some_arrays <- function(..., call = rlang::caller_env()) {
+  if (...length() == 0L) {
+    cli_abort(
+      "At least one array is required, but none was given.",
+      call = call
+    )
+  }
+  invisible(NULL)
 }
 
 assert_linalg_matrix <- function(x, arg, square = FALSE) {

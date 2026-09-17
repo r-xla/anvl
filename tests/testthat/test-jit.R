@@ -25,12 +25,12 @@ test_that("jit: a constant", {
   )
   x <- nv_scalar(2)
   # the constant is now saved in f_jit, so new x is not found
-  cache_size(f_jit)
+  jit_cache_size(f_jit)
   expect_equal(
     f_jit(nv_scalar(2)),
     nv_scalar(3)
   )
-  cache_size(f_jit)
+  jit_cache_size(f_jit)
 })
 
 test_that("jit basic test", {
@@ -270,11 +270,61 @@ test_that("hash for cache depends on in_tree (#122)", {
       args[[1]][[1L]][[1L]]
     }
   )
-  expect_equal(cache_size(f), 0L)
+  expect_equal(jit_cache_size(f), 0L)
   expect_equal(f(list(list(nv_scalar(1L)), nv_scalar(2L))), nv_scalar(1L))
-  expect_equal(cache_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
   expect_equal(f(list(list(nv_scalar(1L), nv_scalar(2L)))), nv_scalar(1L))
-  expect_equal(cache_size(f), 2L)
+  expect_equal(jit_cache_size(f), 2L)
+})
+
+describe("jit_cache_size", {
+  it("counts the programs compiled for the active backend", {
+    f <- jit(function(x, y) x + y)
+    # The implementations are built on first call, so there is no cache yet.
+    expect_identical(jit_cache_size(f), 0L)
+
+    f(nv_scalar(1), nv_scalar(2))
+    expect_identical(jit_cache_size(f), 1L)
+
+    # Same dtypes and shapes: a cache hit adds no entry.
+    f(nv_scalar(3), nv_scalar(4))
+    expect_identical(jit_cache_size(f), 1L)
+
+    # A new shape misses and compiles a second program.
+    f(nv_array(c(1, 2)), nv_array(c(3, 4)))
+    expect_identical(jit_cache_size(f), 2L)
+  })
+
+  it("never exceeds the cache_size cap", {
+    f <- jit(function(x) x + 1, cache_size = 1L)
+    f(nv_scalar(1))
+    expect_identical(jit_cache_size(f), 1L)
+    # The second signature evicts the first rather than growing the cache.
+    f(nv_array(c(1, 2)))
+    expect_identical(jit_cache_size(f), 1L)
+  })
+
+  it("reports one backend's cache at a time", {
+    skip_if_no_quickr()
+    f <- jit(function(x, y) x + y)
+    f(nv_scalar(1), nv_scalar(2))
+
+    with_backend("quickr", {
+      # A fresh cache: the pjrt entry above is not shared with quickr.
+      expect_identical(jit_cache_size(f), 0L)
+      f(nv_scalar(1), nv_scalar(2))
+      expect_identical(jit_cache_size(f), 1L)
+      # `backend` reads another backend's cache without making it active.
+      expect_identical(jit_cache_size(f, "pjrt"), 1L)
+    })
+    expect_identical(jit_cache_size(f), 1L)
+    expect_identical(jit_cache_size(f, "quickr"), 1L)
+  })
+
+  it("rejects a function that is not jitted, and an unknown backend", {
+    expect_error(jit_cache_size(function(x) x), "not a jitted function")
+    expect_error(jit_cache_size(jit(identity), "nonsense"), "backend")
+  })
 })
 
 describe("jit: option validation", {
@@ -459,7 +509,7 @@ test_that("cache hit when using PJRTDevice", {
   dev1 <- nv_device("cpu")
   f(dev = dev0)
   f(dev = dev1)
-  expect_equal(cache_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 })
 
 test_that("static arguments with reference semantics are rejected", {
@@ -550,21 +600,21 @@ describe("a scoped override inside a jitted body", {
     helper <- function(x) x * 2 + 0.5
     f <- jit(function(x) list(lo = helper(x), hi = with_default_dtypes(c(float = "f64"), helper(x))))
     out <- f(nv_array(1L, dtype = "i32"))
-    expect_equal(dtype(out$lo), default_float())
-    expect_equal(dtype(out$hi), as_dtype("f64"))
+    expect_dtype(out$lo, default_float())
+    expect_dtype(out$hi, "f64")
   })
 
   it("does not reach a bare R value handed out of the scope", {
     # The value has materialized at nothing inside the scope, so it takes the
     # default where it is used -- the per-operation rule, not a special case.
-    expect_equal(dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))()), default_float())
+    expect_dtype(jit(function() with_default_dtypes(c(float = "f64"), 1.5))(), default_float())
   })
 
   it("takes the trace's baseline, not the active backend", {
     skip_if_no_quickr()
     # A program is compiled for one backend, so switching inside the body
     # cannot change what its R values materialize at.
-    expect_equal(dtype(jit(function() with_backend("quickr", nv_array(1.5)))()), default_float())
+    expect_dtype(jit(function() with_backend("quickr", nv_array(1.5)))(), default_float())
   })
 
   it("does not change what the program is keyed on", {
@@ -575,13 +625,13 @@ describe("a scoped override inside a jitted body", {
       with_default_dtypes(c(float = "f64"), x + 1.5)
     })
     x <- nv_array(1L, dtype = "i32")
-    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_dtype(f(x), "f64")
     expect_equal(n_traced, 1L)
     # The scoped region is `f64` either way, but the baseline still keys the
     # cache, so a different default outside the body is a different program.
-    with_default_dtypes(c(float = "f64"), expect_equal(dtype(f(x)), as_dtype("f64")))
+    with_default_dtypes(c(float = "f64"), expect_dtype(f(x), "f64"))
     expect_equal(n_traced, 2L)
-    expect_equal(dtype(f(x)), as_dtype("f64"))
+    expect_dtype(f(x), "f64")
     expect_equal(n_traced, 2L)
   })
 })
