@@ -90,12 +90,21 @@ name_graph_nodes <- function(inputs, constants, calls, node_ids, counters) {
 # anything else is named by its class rather than deparsed, so that an S3 list
 # (`AnvlArray`) reads as `<AnvlArray>` instead of printing its internals,
 # pointers and all.
-format_param <- function(p, node_ids = NULL, width = getOption("width", 80L), expand_graphs = TRUE) {
+format_param <- function(
+  p,
+  node_ids = NULL,
+  width = getOption("width", 80L),
+  expand_graphs = TRUE,
+  prefix_width = 0L
+) {
   if (is.null(p)) {
     return("NULL")
   }
   if (is_graph(p)) {
-    return(if (expand_graphs) format_graph_param(p, node_ids, width) else format_graph_signature(p))
+    if (!expand_graphs) {
+      return(format_graph_signature(p))
+    }
+    return(format_graph_param(p, node_ids, width, prefix_width = prefix_width))
   }
   if (is_dtype(p)) {
     return(as.character(p))
@@ -121,20 +130,22 @@ format_param <- function(p, node_ids = NULL, width = getOption("width", 80L), ex
 
 # The elements of a param list, each prefixed with `name = ` where it has a name.
 format_param_parts <- function(params, node_ids = NULL, width = getOption("width", 80L), expand_graphs = TRUE) {
+  nms <- names(params) %||% rep("", length(params))
+  prefixes <- ifelse(nzchar(nms), paste0(nms, " = "), "")
   parts <- vapply(
-    params,
-    format_param,
-    character(1),
-    node_ids = node_ids,
-    width = width,
-    expand_graphs = expand_graphs
+    seq_along(params),
+    function(i) {
+      format_param(
+        params[[i]],
+        node_ids = node_ids,
+        width = width,
+        expand_graphs = expand_graphs,
+        prefix_width = nchar(prefixes[[i]])
+      )
+    },
+    character(1)
   )
-  nms <- names(params)
-  if (!is.null(nms)) {
-    named <- nzchar(nms)
-    parts[named] <- paste0(nms[named], " = ", parts[named])
-  }
-  parts
+  paste0(prefixes, parts)
 }
 
 # An array param: a scalar shows its value the way a literal does, a larger
@@ -163,7 +174,7 @@ format_graph_signature <- function(g) {
 # which is what lets a captured node keep its outer name; a graph formatted on
 # its own gets a table -- and typed captures -- of its own, there being no
 # enclosing graph to read them from.
-format_graph_param <- function(g, node_ids = NULL, width = getOption("width", 80L)) {
+format_graph_param <- function(g, node_ids = NULL, width = getOption("width", 80L), prefix_width = 0L) {
   alone <- is.null(node_ids)
   node_ids <- node_ids %||% build_node_ids(g$inputs, g$constants, g$calls)
   lines <- format_graph_lines(
@@ -173,7 +184,8 @@ format_graph_param <- function(g, node_ids = NULL, width = getOption("width", 80
     outputs = g$outputs,
     node_ids = node_ids,
     width = width,
-    typed_captures = alone
+    typed_captures = alone,
+    prefix_width = prefix_width
   )
   paste(lines, collapse = "\n")
 }
@@ -308,7 +320,8 @@ format_graph_lines <- function(
   title = "",
   rdata_types = NULL,
   width = getOption("width", 80L),
-  typed_captures = FALSE
+  typed_captures = FALSE,
+  prefix_width = 0L
 ) {
   indent <- "  "
   r_types <- rdata_types %||% rep(NA_character_, length(inputs))
@@ -350,7 +363,9 @@ format_graph_lines <- function(
   }
 
   c(
-    layout_row(header, "", width),
+    # Only the signature shares its line with whatever the graph is printed
+    # behind -- a `cond_graph = `, say -- so only its budget pays for it.
+    layout_row(header, "", width - prefix_width),
     vapply(calls, format_call, character(1), node_ids = node_ids, indent = indent, width = width),
     ret,
     "}"

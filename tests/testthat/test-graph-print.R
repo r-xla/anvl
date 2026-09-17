@@ -45,6 +45,16 @@ wide_graph <- function(f, n = 30L) {
   trace_fn(f, setNames(args, paste0("a", seq_len(n))))
 }
 
+# A `while` whose body captures six values, so that the sub-graph's signature
+# line is long enough to feel the `body_graph = ` it is printed behind.
+capture_heavy_graph <- function() {
+  consts <- lapply(1:6, function(i) nv_scalar(i, dtype = "f32"))
+  trace_fn(
+    function(x) nv_while(list(i = x), \(i) i < 99, \(i) list(i = Reduce(`+`, consts, i))),
+    list(x = nv_scalar(1, dtype = "f32"))
+  )
+}
+
 # The body of a formatted graph -- everything between its signature line and its
 # `return` -- so that a snapshot of one call's layout is not buried under thirty
 # lines of signature.
@@ -98,6 +108,7 @@ describe("format_param()", {
   })
 
   it("prints a graph in full", {
+    local_registered_default_dtypes()
     g <- trace_fn(function(x, y) x + y, list(x = nv_scalar(0, dtype = "f32"), y = nv_array(1:3)))
     expect_snapshot(cat(format_param(g)))
   })
@@ -124,6 +135,7 @@ describe("format_param_parts()", {
 
 describe("format.PrimitiveCall()", {
   it("renders its params the way a graph body does", {
+    local_registered_default_dtypes()
     graph <- trace_fn(function(x) nv_reduce_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
     expect_snapshot(cat(format(graph$calls[[1L]])))
   })
@@ -202,6 +214,7 @@ describe("format.AnvlGraph()", {
   })
 
   it("breaks a call line too long for the width into filled param rows", {
+    local_registered_default_dtypes()
     expect_snapshot(cat(format(gather_graph(), width = 80L)))
   })
 
@@ -221,7 +234,9 @@ describe("format.AnvlGraph()", {
   })
 
   it("shrinks the width budget with nesting, so no line exceeds it", {
-    graph <- nested_graph()
+    # The `name = ` a sub-graph param carries comes out of its budget too, so
+    # the graph here captures enough to overflow a narrow width without it.
+    graph <- capture_heavy_graph()
     widths <- c(60L, 80L, 120L)
     longest <- vapply(
       widths,

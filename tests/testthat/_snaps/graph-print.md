@@ -138,8 +138,7 @@
     Code
       format_param_parts(list(axis = 1, drop = TRUE))
     Output
-               axis          drop 
-         "axis = 1" "drop = TRUE" 
+      [1] "axis = 1"    "drop = TRUE"
     Code
       format_param_parts(list(1, 2))
     Output
@@ -147,8 +146,7 @@
     Code
       format_param_parts(list(1, drop = TRUE))
     Output
-                             drop 
-                "1" "drop = TRUE" 
+      [1] "1"           "drop = TRUE"
 
 # format.PrimitiveCall() / renders its params the way a graph body does
 
