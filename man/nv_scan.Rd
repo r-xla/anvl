@@ -24,7 +24,9 @@ loop over \code{length} steps instead.}
 
 \item{length}{(\code{integer(1)} | \code{NULL})\cr
 Static trip count. Required when \code{xs} is empty; otherwise inferred
-from (and checked against) axis 1 of \code{xs}.}
+from (and checked against) axis 1 of \code{xs}. A trip count of \code{0} runs
+no step: \code{body} is still traced, but the carry comes back as \code{init}
+and every \code{out} leaf is empty along its leading axis.}
 
 \item{reverse}{(\code{logical(1)})\cr
 If \code{TRUE}, steps run \verb{t = length, ..., 1}; each step still reads

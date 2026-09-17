@@ -754,6 +754,14 @@ prim_scan[["stablehlo"]] <- function(..., body_graph, length, reverse, n_carry, 
       func = outer
     )
   })
+  # A zero-step scan is the buffers as allocated and the carry untouched. We
+  # cannot emit the loop and let the condition stop it immediately: the body
+  # slices one step off `xs`, which does not type-check against an `xs` whose
+  # axis 1 is empty, and MLIR verifies a region it never runs.
+  if (n == 0L) {
+    return(c(carry0, bufs0))
+  }
+
   i0 <- hlo_scalar(0L, dtype = "i32", func = outer)
   state <- c(list(i0), carry0, bufs0, xs0)
 

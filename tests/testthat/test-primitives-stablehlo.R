@@ -491,6 +491,22 @@ describe("prim_scan", {
       "same structure as `init`"
     )
     expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = 3L), "size 3 along axis 1")
+    expect_error(
+      prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = -1L),
+      "non-negative integer"
+    )
+  })
+
+  it("emits no loop for length 0", {
+    # The body slices a step off `xs`, which does not type-check against an
+    # empty `xs`, so the rule has to skip the `while` rather than let its
+    # condition stop it on the first test.
+    f <- jit(function(x) {
+      prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 0L)
+    })
+    res <- f(nv_array(numeric(), shape = 0L))
+    expect_equal(shape(res$out), 0L)
+    expect_equal(as.numeric(as_array(res$carry$s)), 0)
   })
 })
 

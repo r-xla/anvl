@@ -2678,7 +2678,9 @@ nv_while <- prim_while
 #'   loop over `length` steps instead.
 #' @param length (`integer(1)` | `NULL`)\cr
 #'   Static trip count. Required when `xs` is empty; otherwise inferred
-#'   from (and checked against) axis 1 of `xs`.
+#'   from (and checked against) axis 1 of `xs`. A trip count of `0` runs
+#'   no step: `body` is still traced, but the carry comes back as `init`
+#'   and every `out` leaf is empty along its leading axis.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run `t = length, ..., 1`; each step still reads
 #'   `xs` at position `t` and writes its output at position `t`, so a
@@ -2709,8 +2711,8 @@ nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
   # REVIEW: Use checkmate for this.
   if (!is.null(length)) {
     length <- suppressWarnings(as.integer(length))
-    if (base::length(length) != 1L || is.na(length) || length < 1L) {
-      cli_abort("{.arg length} must be a positive integer")
+    if (base::length(length) != 1L || is.na(length) || length < 0L) {
+      cli_abort("{.arg length} must be a non-negative integer")
     }
   }
   init <- map_tree(init, as_anvl_array)
@@ -2732,9 +2734,6 @@ nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
     n <- lens[[1L]]
     if (!all(lens == n)) {
       cli_abort("all leaves of {.arg xs} must agree on the size of axis 1")
-    }
-    if (n < 1L) {
-      cli_abort("axis 1 of {.arg xs} must have a positive size, not {n}")
     }
     if (!is.null(length) && length != n) {
       cli_abort(

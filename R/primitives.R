@@ -2663,7 +2663,8 @@ prim_while <- new_primitive(
 #'   where `carry` has the structure of `init` and `out` is a (possibly
 #'   nested) list of arrays or `NULL`. `x` is `NULL` when `xs` is empty.
 #' @param length (`integer(1)`)\cr
-#'   Static trip count; the size of axis 1 of every array in `xs`.
+#'   Static trip count; the size of axis 1 of every array in `xs`. `0` runs
+#'   no step and returns `init` with zero-length stacked outputs.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run from `length` down to `1`; each step still reads
 #'   `xs` at its own position and writes its output there.
@@ -2698,8 +2699,8 @@ prim_scan <- new_primitive(
     }
     length <- as.integer(length)
     # REVIEW: Use checkmate
-    if (base::length(length) != 1L || is.na(length) || length < 1L) {
-      cli_abort("{.arg length} must be a positive integer.")
+    if (base::length(length) != 1L || is.na(length) || length < 0L) {
+      cli_abort("{.arg length} must be a non-negative integer.")
     }
     assert_flag(reverse)
 

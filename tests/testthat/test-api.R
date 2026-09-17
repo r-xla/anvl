@@ -2501,17 +2501,59 @@ describe("nv_scan", {
     expect_error(nv_scan(nv_scalar(0), body = "not a function", xs = x), "must be a function")
     expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, reverse = NA), "TRUE or FALSE")
     expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = list()), "`length` is required")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = 0L), "positive integer")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = -1L), "non-negative integer")
     # `length` is checked before it is compared against axis 1 of `xs`
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, length = "four"), "positive integer")
+    expect_error(
+      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = "four"),
+      "non-negative integer"
+    )
     expect_error(
       nv_scan(nv_scalar(0), cumsum_body, xs = x, length = c(4L, 4L)),
-      "positive integer"
+      "non-negative integer"
     )
-    expect_error(
-      nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(matrix(numeric(), nrow = 0, ncol = 2))),
-      "axis 1 of `xs` must have a positive size"
+  })
+
+  it("returns init and empty outputs for a zero-length scan", {
+    seen <- 0L
+    res <- nv_scan(
+      init = list(s = nv_scalar(2), m = nv_scalar(1L)),
+      body = function(carry, x) {
+        seen <<- seen + 1L
+        list(
+          carry = list(s = carry$s + x, m = carry$m + 1L),
+          out = list(run = carry$s, flag = carry$m > 0L)
+        )
+      },
+      xs = nv_array(numeric(), shape = 0L, dtype = "f32")
     )
+    # The body is traced once to learn the output structure, never stepped.
+    expect_equal(seen, 1L)
+    expect_equal(as.numeric(as.array(res$carry$s)), 2)
+    expect_equal(as.integer(as.array(res$carry$m)), 1L)
+    expect_named(res$out, c("run", "flag"))
+    expect_equal(shape(res$out$run), 0L)
+    expect_equal(shape(res$out$flag), 0L)
+    expect_equal(dtype(res$out$flag), as_dtype("bool"))
+  })
+
+  it("keeps the trailing axes of a zero-length scan's outputs", {
+    res <- nv_scan(
+      init = nv_fill(0, shape = 3L, dtype = "f64"),
+      body = cumsum_body,
+      xs = nv_array(array(numeric(), dim = c(0L, 3L)), dtype = "f64")
+    )
+    expect_equal(shape(res$out), c(0L, 3L))
+    expect_equal(as.numeric(as.array(res$carry)), c(0, 0, 0))
+  })
+
+  it("agrees eagerly and under jit for a zero-length scan", {
+    f <- function(x) nv_scan(nv_scalar(0), cumsum_body, xs = x)
+    x <- nv_array(numeric(), shape = 0L, dtype = "f32")
+    eager <- f(x)
+    jitted <- jit(f)(x)
+    expect_equal(shape(eager$out), 0L)
+    expect_equal(shape(jitted$out), 0L)
+    expect_equal(as.numeric(as.array(jitted$carry)), 0)
   })
 
   it("nests inside another scan", {
