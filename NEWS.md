@@ -1,5 +1,5 @@
 # anvl (development version)
-
+  
 ## Breaking changes
 
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
@@ -159,6 +159,11 @@
 * Improved the documentation and various error messages.
 * `nv_runif()` with `min == max` returns the `state` / `values` pair every
   other sampler returns, instead of the filled array on its own.
+
+## Features
+
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
 
 ## Tests
 
