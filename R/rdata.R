@@ -145,53 +145,6 @@ rdata_natural_dtype <- function(r_type) {
   switch(r_type, double = as_dtype("f64"), integer = as_dtype("i32"), logical = as_dtype("bool"))
 }
 
-# The dtype an R value is built at on its way to `dtype`, for a `dtype` it
-# cannot be built at directly. Building it where it is exact is what keeps the
-# conversion the program's rather than R's -- but where that is wider than the
-# dtype the value would materialize at on its own, the program acquires one
-# nothing asked for. An R double reaches `i32` through `f64`, so a program with
-# no `f64` in it gets one, and a backend without `f64` (Metal) cannot run it at
-# all.
-#
-# That is worth saying out loud rather than refusing: the alternative rounds the
-# value through its default before converting, which is a different answer
-# (`2^25 + 1` reaches `i32` as 33554432 rather than 33554433), and the caller may
-# well want the exact one. `double` is the only R type this can happen for --
-# an integer and a logical are exact at their own defaults.
-
-# This is one of THE core functios of the RData mechanism, as it specifies how
-# we obtain RData inputs at the requested data type.
-# When an RData input is only requested at it's category, we use the dtype within that category
-# that holds enough precision so everybody gets the value at its requested dtype without losing precision.
-# To understand this, consider a program that receives an R double and compare two programs:
-# 1. a single primitive call uses the R double and requires it in f32 -> input becomes f32
-# 2. one primitive requires f32, the other f64. -> input becomes f64
-#    this only works, because the f32 obtained from the f32 is the same as we obtain from the f64.
-# Where we do cross-category concversions, a double input must e.g. always be materialized at
-# f64, otherwise the result of an i32 request might depend on the float requests of that double,
-# which MUST NOT HAPPEN. This is also why prim_convert(1, "i32") errs:
-# We need to introduce an f64 into the program although nobody ever requested one, but otherwise
-# would be even worse.
-rdata_staging_dtype <- function(r_type, dtype) {
-  staged <- rdata_natural_dtype(r_type)
-  own_default <- default_dtype_r(r_type)
-  # Only worth saying when staging *widens* past the data type the value would
-  # have taken anyway. An R integer stages through `i32`, so under an `i64`
-  # default it stages through something narrower than its default and the
-  # program acquires nothing it could have avoided.
-  if (!dtype_holds(own_default, staged)) {
-    cli_warn(
-      c(
-        "Converting an R {r_type} to {.val {as.character(dtype)}} brings {.val {as.character(staged)}} into the program.", # nolint
-        x = "An R {r_type} cannot be built at {.val {as.character(dtype)}} directly, so it is built at {.val {as.character(staged)}} and the program converts.", # nolint
-        i = "To keep it out, convert in its own category first: {.code nv_convert(nv_convert(x, {.str {as.character(own_default)}}), {.str {as.character(dtype)}})}. The result differs for values its data type cannot hold exactly." # nolint
-      ),
-      class = "anvl_staging_widens_warning"
-    )
-  }
-  staged
-}
-
 rdata_in_category <- function(r_type, dtype) {
   dtype_category(dtype) == rdata_category(r_type)
 }
@@ -213,6 +166,25 @@ rdata_builds_directly <- function(r_type, dtype) {
 # reached by building at the natural one and letting the *program* convert the
 # rest of the way, so narrowing follows XLA's semantics rather than R's.
 #
+# This is one of the core parts of the RData mechanism, as it specifies how an
+# RData input is obtained at the data type that was requested. Where the requests
+# only name a category, the input materializes at the data type in that category
+# that holds every requested one exactly, so no request loses precision to
+# another: a double asked for `f32` alone becomes an `f32`, but a double asked
+# for both `f32` and `f64` becomes an `f64`, which works because the `f32` read
+# off that `f64` is the one it would have been built at on its own.
+#
+# A request that crosses the value's own category has to be pinned to the natural
+# data type instead. An R double on its way to `i32` is built at `f64`, where it
+# is exact, never at whichever float the rest of the program happens to want --
+# otherwise the integer would depend on the float requests elsewhere in the
+# program, which MUST NOT HAPPEN. The price is an `f64` in a program nobody asked
+# for one in, which a backend without `f64` (Metal) cannot run. That is accepted
+# for now: the `f64` is only ever an intermediate for a conversion and never
+# feeds float math. The way out, once such a backend matters, is to let one R
+# argument enter the program at several data types, so that the `double -> i32`
+# conversion happens on the host (issue #530).
+#
 # The three ways an R value enters a program -- a literal in a traced body, the
 # input an open argument is supplied at, an array built eagerly -- differ only
 # in `build`, and this is what they share.
@@ -220,7 +192,7 @@ build_r_staged <- function(r_type, dtype, build) {
   if (rdata_builds_directly(r_type, dtype)) {
     return(build(dtype))
   }
-  prim_convert(build(rdata_staging_dtype(r_type, dtype)), dtype = dtype)
+  prim_convert(build(rdata_natural_dtype(r_type)), dtype = dtype)
 }
 
 # Build `box`'s R argument into the graph at `dtype`, and return the GraphBox
