@@ -54,19 +54,19 @@ VignetteBuilder:
     knitr
 Config/testthat/edition: 3
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE, roclets = c("namespace", "rd", "anvl::jit_roclet"))
+Roxygen: list(markdown = TRUE)
 Collate:
     'aaa.R'
-    'api-distributions.R'
+    'utils.R'
     'array.R'
     'device.R'
     'default-dtypes.R'
     'backend.R'
     'jit.R'
-    'promotion.R'
+    'api-distributions.R'
     'primitive.R'
+    'promotion.R'
     'type-converters.R'
-    'utils.R'
     'primitives.R'
     'api.R'
     'api-generics.R'
@@ -81,13 +81,11 @@ Collate:
     'box.R'
     'graph-passes.R'
     'graph.R'
-    'rdata.R'
     'graph-print.R'
     'rules-quickr.R'
     'graph-to-quickr.R'
-    'jit-registry.R'
-    'jit-roclet.R'
     'quickr.R'
+    'rdata.R'
     'reexports.R'
     'reverse.R'
     'roxygen.R'
