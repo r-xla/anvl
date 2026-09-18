@@ -58,12 +58,10 @@ nv_unif_rand <- function(
 #' @template param_shape
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-#'   from random bits. `NULL` (default) uses the default float data
-#'   type (see [`default_dtypes()`]).
+#'   Floating point data type.
+#'   The default (`NULL`) uses the [default float type](default_dtypes).
 #' @param min,max (`numeric(1)`)\cr
-#'   Lower and upper bound. Plain R numbers rather than [`arrayish`], so they
-#'   are built at `dtype` and nothing is promoted.
+#'   Lower and upper bound.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
@@ -86,6 +84,7 @@ nv_runif <- jit(
     checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
     checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
     shape <- assert_shapevec(shape)
+    # TODO: Support max and min to be arrayish
 
     if (max == min) {
       return(list(
@@ -131,12 +130,8 @@ nv_runif <- jit(
 #' @template param_shape
 #' @template param_initial_state
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-#'   from random bits. `mean` and `sd` are brought to it, widening but never
-#'   narrowing -- an `f64` `mean` for an `f32` sample is an error. `NULL`
-#'   (default) takes the data type from `mean` and `sd` instead, promoting them
-#'   to a common one, and falls back to the default float data type (see
-#'   [`default_dtypes()`]) where both are bare R values, which have none.
+#'   Floating point data type.
+#'   The default (`NULL`) uses the [default float type](default_dtypes).
 #' @section Random generation:
 #' `nv_rnorm` samples via the Box-Muller transform. To sample with a covariance
 #' structure, use a Cholesky decomposition.
@@ -236,15 +231,13 @@ nv_rnorm <- jit(
 #' @template param_shape
 #' @template param_initial_state
 #' @param size (`integer(1)`)\cr
-#'   Number of trials. A plain R number rather than [`arrayish`], as is `prob`,
-#'   so nothing is promoted.
+#'   Number of trials.
 #' @param prob (`numeric(1)`)\cr
 #'   Probability of success on each trial.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the sample. Can be any numeric data type; the successes are
-#'   counted and converted to it. Boolean is not one, and is rejected: it
-#'   cannot hold a count. `NULL` (default) uses the default integer
-#'   data type (see [`default_dtypes()`]).
+#'   Numeric type of the sample.
+#'   `NULL` (default) uses the [default integer type](default_dtypes).
+#'   The number of successes are converted to it.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
@@ -301,13 +294,11 @@ nv_rbinom <- jit(
 #' @template param_shape
 #' @template param_initial_state
 #' @param n (`integer(1)`)\cr
-#'   Size of the population, i.e. the integers `1` to `n` are sampled. A plain
-#'   R number rather than [`arrayish`], so it promotes nothing.
+#'   Size of the population, i.e. the integers `1` to `n` are sampled.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the sampled integers. Can be any numeric data type; the drawn
-#'   indices are converted to it. Boolean is not one, and is rejected: it
-#'   cannot hold an index. `NULL` (default) uses the default integer
-#'   data type (see [`default_dtypes()`]).
+#'   Numeric type of the sampled integers.
+#'   The sampled values are converted to it.
+#'   `NULL` (default) uses the [default integer type](default_dtypes).
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
 #'   of shape `shape` and data type `dtype`.
@@ -347,9 +338,8 @@ nv_sample_int <- jit(
 #' @template param_shape
 #' @template param_initial_state
 #' @param x ([`arrayish`])\cr
-#'   The population to sample from, a 1-D array. Can be of any data type, which
-#'   the sample takes over; nothing is promoted. An R value materializes at its
-#'   [default data type][default_dtypes].
+#'   The population vector to sample from.
+#'   An R value materializes at its [default data type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and `x`'s data type.

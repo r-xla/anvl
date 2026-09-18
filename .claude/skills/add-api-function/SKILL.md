@@ -54,12 +54,15 @@ The exact convenience a wrapper should add varies by operation. **Propose a wrap
 - S3 method registrations go in `R/api-generics.R`.
 
 For simple binary ops, use the factory:
+
 ```r
 nv_<name> <- make_do_binary(prim_<name>)
 ```
+
 This automatically adds type promotion and scalar broadcasting.
 
 For simple unary ops that need no extra convenience, alias the primitive directly:
+
 ```r
 nv_<name> <- prim_<name>
 ```
@@ -69,9 +72,9 @@ For ops needing custom logic, write a function that normalizes its array inputs 
 - `as_anvl_array(x)` for a single array input.
 - `as_anvl_arrays(...)` for multiple array inputs (infers a common device, errors on mismatched backends/devices).
 
-A function whose *result* dtype depends on its arguments must canonicalize with a rule -- `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value materializes at its default (the active backend's float default, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
+A function whose _result_ dtype depends on its arguments must canonicalize with a rule -- for example `as_anvl_arrays(x = x, y = y, .promote = promotion_common())` -- rather than canonicalize first and `nv_convert()` afterwards. Without a rule an R value materializes at its default (the active backend's float default, `f32` for a double on pjrt) and any later conversion rounds through it. See `?promotion_rule` and `vignette("type-promotion")`; name the arguments so a rule can point at one.
 
-After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` what it *would* materialize at.
+After conversion, use `shape()`, `naxes()`, and `dtype()` directly -- they work on both concrete `AnvlArray`s and the `GraphBox` tracers that appear under `jit()`. Before conversion, `shape()` and `naxes()` still answer, but `dtype()` does not: a bare R value has none yet, so ask `peek_dtype()` what it _would_ materialize at.
 
 ### Constants and the `_like` pattern
 
@@ -102,7 +105,7 @@ If the underlying primitive requires all its inputs to share a dtype (e.g. `prim
 args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
 ```
 
-`promotion_like("x")` *builds* an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit, where `nv_convert(0, dtype(x))` would have materialized the literal at `f32` first -- and refuses a typed bound `x`'s dtype cannot hold instead of narrowing it silently. `dtype(x)` is not available here anyway: `x` may still be a bare R value.
+`promotion_like("x")` _builds_ an R bound at `x`'s dtype -- so `nv_clamp(0, x_f64, 1)` keeps every digit.
 
 ### Static arguments
 
@@ -118,7 +121,7 @@ nv_foo <- jit(function(x, axis) {
 
 Omit `static` entirely when there are none: `nv_foo <- jit(function(x) { ... })`.
 
-Any argument the function body *inspects* -- branches on, validates with
+Any argument the function body _inspects_ -- branches on, validates with
 `assert_*`, uses to compute shape/axes -- must be named (or positioned) in that
 `static` list.
 Typical candidates: `axes`, `shape`, `axis`, flags, mode strings, dtype specifiers.
@@ -150,29 +153,8 @@ If no proper template for a parameter or the return value exist, write the docum
 
 - **`@title`**: short, e.g. "Absolute Value", "Addition", "Transpose"
 - **`@description`**: one sentence describing what the function does. If an R operator or generic dispatches to this function, mention it: "You can also use `abs()`.", "You can also use the `+` operator."
-- **`@template`**: use templates for common parameter/return patterns:
-  - `param_unary_x` — the input of an elementwise unary function: states the accepted data types
-    and that an R value materializes at its default. Needs `@templateVar dtypes <phrase>` above it,
-    from the same vocabulary as below. Shared with the `prim_*` layer, which behaves identically.
-  - `param_unary_x_tofloat` + `return_unary_tofloat` — the input of an `nv_*` function that
-    converts an integer operand with `int_to_float()` before reaching its float-only primitive,
-    so the result is a float whatever the input was. Takes no `@templateVar dtypes`, since the
-    accepted group is fixed. `params_lhs_rhs_tofloat` is the binary form (`nv_atan2()`)
-  - `param_unary_x_round` — the input of a rounding function (`nv_floor()`, `nv_ceiling()`,
-    `nv_trunc()`, `nv_round()`), which returns an integer input unchanged rather than
-    converting it; pair it with the plain `return_unary`
-  - A function whose `x` is promoted with a sibling (`nv_clamp()`, `nv_pad()`,
-    `nv_subset_assign()`) writes `x` inline: it names the accepted data types and points at the
-    sibling, whose own `@param` carries the promotion sentence
-  - `params_lhs_rhs` — binary operands: states the promotion, the scalar broadcasting and how R
-    values take a data type. Needs `@templateVar dtypes <phrase>` above it, from the vocabulary
-    defined in `?dtypes` (`any data type`, `any numeric data type`, `any integerish data type`,
-    `any float data type`). Its stricter `prim_*` counterpart is `params_prim_lhs_rhs`.
-  - `param_shape`, `param_device` — common params. A `dtype` parameter is written inline,
-    since what it accepts and what it does with the other arguments differs per function
-  - `return_unary`, `return_binary`; for a reduction `@templateVar dtype_out <phrase>` +
-    `@template return_reduce`, plus `@templateVar axes_all` + `@template params_reduce` so `axes`
-    documents its `NULL` default
+- **`@template`**: use templates for common parameter/return patterns. See the man-roxygen/ folder
+  for available templates.
   - `params_reduce` — axes + drop params for reductions
 - **`@param`**: write inline for parameters not covered by templates
 - **`@seealso`**: always link to the underlying `prim_*` primitive. Optionally link to related `nv_*` functions.

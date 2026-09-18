@@ -13,23 +13,19 @@ NULL
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
 #'   function (`q`). `x` can be any float data type; `q` must be `f32` or `f64`
-#'   (see "Details"). `mean` and `sd` are brought to it. An R value materializes at
-#'   its [default data type][default_dtypes].
+#'   (see "Details"). An R `double` is materialized at its [default data type](default_dtypes).
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
 #'   \eqn{[0, 1]} give `NaN`. Must be `f32` or `f64` (see "Details"); `mean`
-#'   and `sd` are brought to it. An R value materializes at its
+#'   and `sd` are converted to it. An R value materializes at its
 #'   [default data type][default_dtypes].
 #' @param mean ([`arrayish`])\cr
-#'   Mean of the distribution, scalar or the same shape as `x`/`q`/`p`; a scalar
-#'   is broadcast. Brought to that argument's data type: an R value is built at
-#'   it, and a value that already has a data type is converted unless that would
-#'   narrow it -- an `f64` mean for an `f32` `x` is an error rather than a silent
-#'   narrowing.
+#'   Mean of the distribution, scalar or the same shape as `x`/`q`/`p`.
+#'   Converted to the argument's data type.
 #' @param sd ([`arrayish`])\cr
 #'   Standard deviation of the distribution, scalar or the same shape as
-#'   `x`/`q`/`p`; a scalar is broadcast, and it is brought to that argument's
-#'   data type like `mean`. Must be positive, otherwise results are invalid.
+#'   `x`/`q`/`p`. Converted to the argument's data type.
+#'   Must be positive, otherwise results are invalid.
 #' @param log,log_p (`logical(1)`)\cr
 #'   If `TRUE`, the densities/probabilities are given as logarithms. For
 #'   `nv_qnorm` this describes the input `p`.

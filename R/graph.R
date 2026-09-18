@@ -622,7 +622,7 @@ match_args_to_formals <- function(f, args) {
 #' @param in_tree ([`RTree`][pjrt::build_tree])\cr
 #'   Tree structure describing how `args_flat` maps back to `f`'s arguments.
 #' @template param_optimize
-#' @return ([`AnvlGraph`])\cr
+#' @return ([`AnvlGraph`])
 #'   Contains the traced operations.
 #' @seealso [`stablehlo()`] to lower the graph, [`jit()`] for end-to-end
 #'   compilation.

@@ -103,9 +103,6 @@ shapes_repr <- function(shapes) {
   paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
-# `prim_fill()` takes a whole number at any data type -- `0` builds at `bool`,
-# at an integer one and at a float one alike -- so the fills that do not know
-# their data type statically write a plain `0` / `1`.
 zeros <- function(dtype, shape) {
   prim_fill(0L, dtype = dtype, shape = shape)
 }
