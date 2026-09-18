@@ -18,9 +18,11 @@ Primitive name.}
 
 \item{fn}{(\code{function})\cr
 Body of the primitive. Its formals become the formals of the returned
-JIT-compiled callable. Inside \code{fn}, the primitive is accessible via
-the lexically-bound symbol \code{self} (an \code{\link{AnvlPrimitive}}); pass it as
-the first argument to \code{\link[=graph_desc_add]{graph_desc_add()}}.}
+JIT-compiled callable. The argument is evaluated with the symbol \code{self}
+bound to the new primitive (an \code{\link{AnvlPrimitive}}), which is what
+\code{\link[=graph_desc_add]{graph_desc_add()}} takes as its first argument: an inline
+\verb{function(...)} body closes over \code{self}, and a body built by a helper
+takes it as an argument (\code{make_binary_op(self, ...)}).}
 
 \item{subgraphs}{(\code{character()})\cr
 Names of parameters that are subgraphs (for higher-order primitives).}

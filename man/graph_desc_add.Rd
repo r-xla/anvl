@@ -46,6 +46,5 @@ this \code{NULL}.}
 }
 \description{
 Add a primitive call to a graph descriptor. Inside a primitive body created
-with \code{\link[=new_primitive]{new_primitive()}}, pass the lexically-bound \code{self} as the primitive
-argument.
+with \code{\link[=new_primitive]{new_primitive()}}, pass \code{self} as the primitive argument.
 }

@@ -836,8 +836,7 @@ is_graph_box <- function(x) {
 #' @title Add a Primitive Call to a Graph Descriptor
 #' @description
 #' Add a primitive call to a graph descriptor. Inside a primitive body created
-#' with [`new_primitive()`], pass the lexically-bound `self` as the primitive
-#' argument.
+#' with [`new_primitive()`], pass `self` as the primitive argument.
 #' @param primitive ([`AnvlPrimitive`] | `JitPrimitive`)\cr
 #'   The primitive the call is for. A `JitPrimitive` is accepted and unwrapped
 #'   to its underlying `AnvlPrimitive` metadata.
