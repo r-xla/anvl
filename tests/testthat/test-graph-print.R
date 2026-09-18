@@ -80,6 +80,7 @@ describe("format_param()", {
       format_param("abc")
       format_param(c(1L, 2L, 3L))
       format_param(c(1, 1e6))
+      format_param(0.1234567890123)
       format_param(c("a", "b"))
       format_param(c(TRUE, FALSE))
       format_param(integer())

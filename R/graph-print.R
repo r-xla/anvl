@@ -30,7 +30,7 @@ format_shape_suffix <- function(shp) {
   if (length(shp) == 0L) {
     return("")
   }
-  sprintf("[%s]", paste(shp, collapse = ","))
+  sprintf("[%s]", shape2string(shp, parenthesize = FALSE))
 }
 
 # `r_type` is the R storage type this value is uploaded from, out of the graph's
@@ -39,7 +39,7 @@ format_shape_suffix <- function(shp) {
 # fact about the input. An output that happens to *be* an input
 # (`jit(identity)`) is still just a value of its data type.
 format_aval_short <- function(aval, r_type = NA_character_) {
-  out <- sprintf("%s[%s]", as.character(dtype(aval)), paste(shape(aval), collapse = ","))
+  out <- sprintf("%s[%s]", as.character(dtype(aval)), shape2string(shape(aval), parenthesize = FALSE))
   if (!is.na(r_type)) {
     # An input the caller supplies as bare R data, which the program uploads at
     # the dtype shown -- worth seeing, since nothing else in the graph says so.
@@ -122,7 +122,10 @@ format_param <- function(
     if (length(p) == 0L) {
       return(sprintf("%s(0)", typeof(p)))
     }
-    elts <- if (is.character(p)) sprintf('"%s"', p) else format(p, trim = TRUE)
+    # Element by element: `format()` would pick one representation for the whole
+    # vector and round it to `getOption("digits")`, printing a value the program
+    # does not hold.
+    elts <- if (is.character(p)) sprintf('"%s"', p) else as.character(p)
     return(if (length(p) == 1L) elts else sprintf("c(%s)", paste(elts, collapse = ", ")))
   }
   if (is.list(p) && is.null(attr(p, "class"))) {
@@ -159,7 +162,7 @@ format_array_param <- function(x) {
   if (nelts(x) == 1L) {
     sprintf("%s:%s%s", as_array(x), dt, format_shape_suffix(shape(x)))
   } else {
-    sprintf("%s[%s]", dt, paste(shape(x), collapse = ","))
+    sprintf("%s[%s]", dt, shape2string(shape(x), parenthesize = FALSE))
   }
 }
 
