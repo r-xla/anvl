@@ -2678,6 +2678,157 @@ prim_while <- new_primitive(
   static = 2:3
 )
 
+#' @title Primitive Scan
+#' @description
+#' Runs `body` a fixed number of times, threading a carry through the steps
+#' and stacking each step's outputs along a new leading axis. Step `t`
+#' receives the carry and, for every array in `xs`, its slice at position `t`
+#' along axis 1 with that axis dropped.
+#' @param init (`list()`)\cr
+#'   Initial carry: a (possibly nested) list of arrays. Every leaf keeps its
+#'   shape and data type across steps.
+#' @param xs (`list()`)\cr
+#'   Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
+#'   all of size `length` along it. An empty list runs a counted loop.
+#' @param body (`function`)\cr
+#'   Step function `function(carry, x)` returning `list(carry = , out = )`,
+#'   where `carry` has the structure of `init` and `out` is a (possibly
+#'   nested) list of arrays or `NULL`. `x` is `NULL` when `xs` is empty.
+#' @param length (`integer(1)`)\cr
+#'   Static trip count; the size of axis 1 of every array in `xs`.
+#' @param reverse (`logical(1)`)\cr
+#'   If `TRUE`, steps run from `length` down to `1`; each step still reads
+#'   `xs` at its own position and writes its output there.
+#' @return `list(carry = , out = )`: the final carry and the stacked
+#'   outputs, each leaf of `out` gaining a leading axis of size `length`.
+#' @templateVar primitive_id scan
+#' @template section_rules
+#' @section StableHLO:
+#' Lowers to [hlo_while()] over a counter, the carry, the output buffers and
+#' `xs`, with [hlo_dynamic_slice()] reading each step's inputs and
+#' [hlo_dynamic_update_slice()] writing its outputs.
+#' @seealso [nv_scan()], [prim_while()]
+#' @examplesIf pjrt::plugins_downloaded()
+#' prim_scan(
+#'   init = list(s = nv_scalar(0)),
+#'   xs = list(x = nv_array(c(1, 2, 3))),
+#'   body = function(carry, x) {
+#'     s <- carry$s + x$x
+#'     list(carry = list(s = s), out = s)
+#'   },
+#'   length = 3L
+#' )
+#' @export
+prim_scan <- new_primitive(
+  "scan",
+  function(init, xs, body, length, reverse = FALSE) {
+    # delayed promise evaluation can cause the value to be added to the wrong graph descriptor
+    force(init)
+    force(xs)
+    if (!is.function(body)) {
+      cli_abort("{.arg body} must be a function.")
+    }
+    length <- as.integer(length)
+    if (base::length(length) != 1L || is.na(length) || length < 1L) {
+      cli_abort("{.arg length} must be a positive integer.")
+    }
+    assert_flag(reverse)
+
+    current_desc <- .current_descriptor(silent = TRUE)
+
+    init_flat <- flatten(init)
+    xs_flat <- flatten(xs)
+    n_carry <- base::length(init_flat)
+    n_xs <- base::length(xs_flat)
+    if (!n_carry) {
+      cli_abort("{.arg init} must contain at least one array.")
+    }
+
+    # The body is traced once, seeing each `xs` leaf with its leading axis
+    # dropped; the lowering slices the real arrays inside the loop.
+    aval_of <- function(x) {
+      if (is_graph_box(x)) {
+        materialize_rdata_box(x)$gnode$aval
+      } else {
+        to_abstract(as_anvl_array(x), pure = TRUE)
+      }
+    }
+    x_slices <- lapply(xs_flat, function(x) {
+      aval <- aval_of(x)
+      shp <- shape(aval)
+      if (!base::length(shp)) {
+        cli_abort("every array in {.arg xs} must have at least one axis.")
+      }
+      if (shp[[1L]] != length) {
+        cli_abort("every array in {.arg xs} must have size {length} along axis 1, not {shp[[1L]]}.")
+      }
+      AbstractArray(dtype = aval$dtype, shape = shp[-1L])
+    })
+    x_slices <- if (n_xs) unflatten(build_tree(xs), x_slices) else list()
+
+    init_tree <- build_tree(init)
+    step <- function(carry, x) {
+      st <- body(carry, if (n_xs) x else NULL)
+      if (
+        !is.list(st) ||
+          is.null(names(st)) ||
+          !setequal(names(st), c("carry", "out")) ||
+          anyDuplicated(names(st))
+      ) {
+        cli_abort("{.arg body} must return {.code list(carry = , out = )}.")
+      }
+      if (!pjrt::tree_equal(build_tree(st$carry), init_tree)) {
+        cli_abort("{.arg body} must return a carry with the same structure as {.arg init}.")
+      }
+      list(carry = st$carry, out = st$out)
+    }
+
+    desc_body <- local_descriptor()
+    body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
+    register_consts(current_desc, body_graph$constants)
+
+    infer_fn <- function(..., body_graph, length, reverse, n_carry, n_xs) {
+      ins <- list(...)
+      outs_body <- lapply(body_graph$outputs, \(out) out$aval)
+      carry_in <- ins[seq_len(n_carry)]
+      carry_out <- outs_body[seq_len(n_carry)]
+      for (i in seq_len(n_carry)) {
+        if (!eq_type(carry_in[[i]], carry_out[[i]])) {
+          cli_abort(
+            c(
+              "{.arg init} and the carry {.arg body} returns must have the same type.",
+              x = "Carry {i} enters as {repr(carry_in[[i]])} and comes back as {repr(carry_out[[i]])}.",
+              i = "An R value in {.arg init} materializes at its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
+            ),
+            call = NULL
+          )
+        }
+      }
+      stacked <- lapply(outs_body[-seq_len(n_carry)], function(aval) {
+        AbstractArray(dtype = aval$dtype, shape = c(length, shape(aval)))
+      })
+      c(carry_out, stacked)
+    }
+
+    out <- graph_desc_add(
+      self,
+      args = c(init_flat, xs_flat),
+      params = list(
+        body_graph = body_graph,
+        length = length,
+        reverse = reverse,
+        n_carry = n_carry,
+        n_xs = n_xs
+      ),
+      infer_fn = infer_fn,
+      desc = current_desc
+    )
+    unflatten(body_graph$out_tree, out)
+  },
+  subgraphs = "body_graph",
+  static = 3:5
+)
+
 #' @title Primitive Sort
 #' @description
 #' Sorts arrays along the given axis.

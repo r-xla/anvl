@@ -427,6 +427,73 @@ describe("prim_if", {
 
 
 # TODO: Continue here
+describe("prim_scan", {
+  cumsum_body <- function(carry, x) {
+    s <- carry$s + x$x
+    list(carry = list(s = s), out = s)
+  }
+
+  it("threads the carry and stacks the outputs", {
+    f <- jit(function(x) {
+      prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 4L)
+    })
+    res <- f(nv_array(c(1, 2, 3, 4)))
+    expect_equal(as.numeric(as_array(res$out)), cumsum(c(1, 2, 3, 4)))
+    expect_equal(as.numeric(as_array(res$carry$s)), 10)
+  })
+
+  it("batches the carry over the non-scanned axes", {
+    a <- array(as.numeric(1:24), dim = c(4L, 2L, 3L))
+    res <- prim_scan(
+      list(s = nv_fill(0, shape = c(2L, 3L), dtype = "f64")),
+      list(x = nv_array(a)),
+      cumsum_body,
+      length = 4L
+    )
+    expect_equal(as_array(res$out), apply(a, c(2, 3), cumsum))
+    expect_equal(as_array(res$carry$s), apply(a, c(2, 3), sum))
+  })
+
+  it("reverse reads and writes at the original positions", {
+    res <- prim_scan(
+      list(s = nv_scalar(0)),
+      list(x = nv_array(c(1, 2, 3, 4))),
+      cumsum_body,
+      length = 4L,
+      reverse = TRUE
+    )
+    expect_equal(as.numeric(as_array(res$out)), rev(cumsum(4:1)))
+  })
+
+  it("runs a counted loop without xs and stacks several outputs", {
+    res <- prim_scan(
+      list(i = nv_scalar(1L)),
+      list(),
+      function(carry, x) {
+        expect_null(x)
+        list(carry = list(i = carry$i + 1L), out = list(twice = carry$i * 2L, pos = carry$i > 1L))
+      },
+      length = 3L
+    )
+    expect_equal(as.integer(as_array(res$out$twice)), c(2L, 4L, 6L))
+    expect_equal(as.logical(as_array(res$out$pos)), c(FALSE, TRUE, TRUE))
+    expect_equal(as.integer(as_array(res$carry$i)), 4L)
+  })
+
+  it("checks the body's contract", {
+    x <- list(x = nv_array(c(1, 2)))
+    expect_error(
+      prim_scan(list(s = nv_scalar(0)), x, function(c, v) c$s + v$x, length = 2L),
+      "list\\(carry = , out = \\)"
+    )
+    expect_error(
+      prim_scan(list(s = nv_scalar(0)), x, function(c, v) list(carry = c$s, out = c$s), length = 2L),
+      "same structure as `init`"
+    )
+    expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = 3L), "size 3 along axis 1")
+  })
+})
+
 describe("prim_while", {
   it("works in simple case", {
     f <- jit(function(n) {

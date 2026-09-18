@@ -43,6 +43,12 @@
   `prod(shape)` elements of `dtype` (both then required); `byrow` selects
   row-major element order for the payload. Only supported on the `"pjrt"`
   backend; the inverse direction is the existing `as_raw()`.
+* New `nv_scan()`: a fixed-length loop in the style of JAX's `lax.scan` that
+  threads a carry through a body function and stacks each step's outputs
+  along a new leading axis. Supports nested carries, multiple `xs` and
+  `out` leaves, reverse scans, `xs = NULL` counted loops and carry-only
+  loops. Backed by the new `prim_scan()` primitive, which lowers to a
+  `while` loop on the pjrt backend and to a `for` loop on quickr.
 * The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
   `all()`) now work with multiple data inputs.
 * The default data types for floating point numbers and integers can now be
