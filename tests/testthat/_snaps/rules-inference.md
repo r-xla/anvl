@@ -79,6 +79,16 @@
       ! Every input must have the same shape except along `axis` (1).
       x Got (2x3) and (2x4).
 
+# infer_concatenate() / refuses inputs with a different number of axes
+
+    Code
+      infer_concatenate(infer_at("f32", c(2L, 3L, 4L)), infer_at("f32", c(2L, 3L)),
+      axis = 3L)
+    Condition
+      Error in `infer_concatenate()`:
+      ! Every input must have the same number of axes.
+      x Input 1 has 3 axes (2x3x4), input 2 has 2 (2x3).
+
 # infer_dot_general() / refuses contracted axes whose sizes differ
 
     Code

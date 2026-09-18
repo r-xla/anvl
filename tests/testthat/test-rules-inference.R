@@ -146,6 +146,16 @@ describe("infer_concatenate()", {
       infer_concatenate(infer_at("f32", c(2L, 3L)), infer_at("f32", c(2L, 4L)), axis = 1L)
     )
   })
+
+  it("refuses inputs with a different number of axes", {
+    # Dropping `axis` from a shape that does not reach it leaves the shape
+    # alone, so this passed the shape check and (C6) then indexed past the end
+    # of the shorter one.
+    expect_snapshot(
+      error = TRUE,
+      infer_concatenate(infer_at("f32", c(2L, 3L, 4L)), infer_at("f32", c(2L, 3L)), axis = 3L)
+    )
+  })
 })
 
 describe("infer_dot_general()", {
@@ -235,10 +245,22 @@ describe("infer_convolution()", {
       infer_convolution(
         infer_at("f32", c(1L, 1L, 5L)),
         infer_at("f32", c(1L, 1L, 3L)),
-        1L, 2L, 3L, 2L, 1L, 3L, 1L, 2L, 3L,
-        window_strides = 1L, padding = padding, x_dilation = 1L,
-        kernel_dilation = 1L, feature_group_count = 1L,
-        batch_group_count = 1L, precision = "highest"
+        1L,
+        2L,
+        3L,
+        2L,
+        1L,
+        3L,
+        1L,
+        2L,
+        3L,
+        window_strides = 1L,
+        padding = padding,
+        x_dilation = 1L,
+        kernel_dilation = 1L,
+        feature_group_count = 1L,
+        batch_group_count = 1L,
+        precision = "highest"
       )
     }
     expect_equal(conv(matrix(0L, 1L, 2L)), list(infer_at("f32", c(1L, 1L, 3L))))

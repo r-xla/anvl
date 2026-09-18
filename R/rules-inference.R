@@ -414,7 +414,20 @@ infer_concatenate <- function(..., axis) {
   rank <- length(shapes[[1L]])
   assert_axes_in_range(axis, rank, "axis")
 
-  # (C2) Every axis but `axis` must agree.
+  # (C2) Ranks first, and said separately: "the same shape except along `axis`"
+  # is a claim about arrays that have the same axes to begin with. It is also
+  # what keeps (C6) in bounds -- `s[-axis]` drops nothing from a shape with
+  # fewer axes than `axis`, so `(2x3x4, 2x3)` along axis 3 would otherwise pass
+  # here and index past the end of the second shape below.
+  ranks <- lengths(shapes)
+  if (any(ranks != rank)) {
+    bad <- which(ranks != rank)[[1L]]
+    cli_abort(c(
+      "Every input must have the same number of axes.",
+      x = "Input 1 has {cli::qty(rank)}{rank} ax{?is/es} {shape_repr(shapes[[1L]])}, input {bad} has {ranks[[bad]]} {shape_repr(shapes[[bad]])}." # nolint
+    ))
+  }
+
   others <- lapply(shapes, function(s) s[-axis])
   if (!all(vapply(others, identical, logical(1L), others[[1L]]))) {
     cli_abort(c(
