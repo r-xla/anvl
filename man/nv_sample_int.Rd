@@ -17,14 +17,12 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{n}{(\code{integer(1)})\cr
-Size of the population, i.e. the integers \code{1} to \code{n} are sampled. A plain
-R number rather than \code{\link{arrayish}}, so it promotes nothing.}
+Size of the population, i.e. the integers \code{1} to \code{n} are sampled.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled integers. Can be any numeric data type; the drawn
-indices are converted to it. Boolean is not one, and is rejected: it
-cannot hold an index. \code{NULL} (default) uses the default integer
-data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Numeric type of the sampled integers.
+The sampled values are converted to it.
+\code{NULL} (default) uses the \href{default_dtypes}{default integer type}.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

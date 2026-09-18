@@ -17,9 +17,8 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{x}{(\code{\link{arrayish}})\cr
-The population to sample from, a 1-D array. Can be of any data type, which
-the sample takes over; nothing is promoted. An R value materializes at its
-\link[=default_dtypes]{default data type}.}
+The population vector to sample from.
+An R value materializes at its \link[=default_dtypes]{default data type}.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

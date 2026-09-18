@@ -17,13 +17,11 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sample: a 32- or 64-bit float, as the sample is assembled
-from random bits. \code{NULL} (default) uses the default float data
-type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Floating point data type.
+The default (\code{NULL}) uses the \href{default_dtypes}{default float type}.}
 
 \item{min, max}{(\code{numeric(1)})\cr
-Lower and upper bound. Plain R numbers rather than \code{\link{arrayish}}, so they
-are built at \code{dtype} and nothing is promoted.}
+Lower and upper bound.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

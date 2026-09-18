@@ -9,7 +9,7 @@ nv_matmul(lhs, rhs, precision = "highest")
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrays with at least 2 axes. Can be any numeric data type; the two are
+Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
 \link[=nv_promote_to_common]{promoted to a common data type}. An R value
 assumes the data type of the other operand, and materializes at its
 \link[=default_dtypes]{default data type} when that has none either.}

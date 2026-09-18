@@ -17,17 +17,15 @@ returns. The data type and length are fixed by the generator, not by the
 default data types, and the returned \code{state} has them too.}
 
 \item{size}{(\code{integer(1)})\cr
-Number of trials. A plain R number rather than \code{\link{arrayish}}, as is \code{prob},
-so nothing is promoted.}
+Number of trials.}
 
 \item{prob}{(\code{numeric(1)})\cr
 Probability of success on each trial.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sample. Can be any numeric data type; the successes are
-counted and converted to it. Boolean is not one, and is rejected: it
-cannot hold a count. \code{NULL} (default) uses the default integer
-data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Numeric type of the sample.
+\code{NULL} (default) uses the \href{default_dtypes}{default integer type}.
+The number of successes are converted to it.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

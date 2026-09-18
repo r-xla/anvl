@@ -8,9 +8,7 @@ nv_serialize(arrays, con = NULL)
 }
 \arguments{
 \item{arrays}{(named \code{list} of \code{\link{AnvlArray}})\cr
-Named list of arrays to serialize. Names must be unique. Any data type
-and shape, both of which round-trip unchanged through
-\code{\link[=nv_unserialize]{nv_unserialize()}}.}
+Named list of arrays to serialize. Names must be unique.}
 
 \item{con}{(\code{NULL} | connection)\cr
 An optional connection to write to.

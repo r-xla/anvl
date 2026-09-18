@@ -2124,7 +2124,7 @@ nv_round <- function(x, method = "nearest_even") {
 #' - `rhs`: `(b1, ..., bk, n, p)`
 #' - output: `(b1, ..., bk, m, p)`
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   Arrays with at least 2 axes. Can be any numeric data type; the two are
+#'   Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
 #'   [promoted to a common data type][nv_promote_to_common()]. An R value
 #'   assumes the data type of the other operand, and materializes at its
 #'   [default data type][default_dtypes] when that has none either.
