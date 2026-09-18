@@ -31,7 +31,11 @@
     Code
       format_param(0.1234567890123)
     Output
-      [1] "0.1234567890123"
+      [1] "0.1234568"
+    Code
+      format_param(0.1234567890123, digits = 17)
+    Output
+      [1] "0.12345678901230001"
     Code
       format_param(c("a", "b"))
     Output

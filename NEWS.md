@@ -61,7 +61,7 @@
 * Improved documentation of API functions and primitives.
 * Printed graphs read as `[captures] (inputs) { ... return ... }`, show
   sub-graphs in full, and wrap long lines to the console width; `format()`
-  takes a `width` argument.
+  takes `width` and `digits` arguments.
 
 ## Bug fixes
 

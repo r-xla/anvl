@@ -81,6 +81,7 @@ describe("format_param()", {
       format_param(c(1L, 2L, 3L))
       format_param(c(1, 1e6))
       format_param(0.1234567890123)
+      format_param(0.1234567890123, digits = 17)
       format_param(c("a", "b"))
       format_param(c(TRUE, FALSE))
       format_param(integer())
@@ -267,6 +268,12 @@ describe("format.AnvlGraph()", {
       )
     )
     expect_snapshot(graph)
+  })
+
+  it("shows a value to `digits` significant digits, seven of them by default", {
+    graph <- trace_fn(function(x) x / sqrt(2), list(x = nv_array(1, dtype = "f64")))
+    expect_match(format(graph), "1.414214:f64", fixed = TRUE)
+    expect_match(format(graph, digits = 17), "1.4142135623730951:f64", fixed = TRUE)
   })
 
   it("spells a data type the anvl way, not the MLIR way", {
