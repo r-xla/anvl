@@ -187,11 +187,11 @@
         %2: f32[] = mul(%x1, %1)
         %3: f32[] = while [
           cond_graph = [%x1] (%x2: f32[]) {
-            %5: bool[] = less(%x2, %x1)
+            %5: bool[] = lt(%x2, %x1)
             return %5
           },
           body_graph = [%x1, %2, %c1] (%x3: f32[]) {
-            %6: bool[] = less(%x3, %2)
+            %6: bool[] = lt(%x3, %2)
             %7: f32[] = if [
               true_graph = [%x3, %2] () {
                 %8: f32[] = add(%x3, %2)
@@ -219,7 +219,7 @@
       <AnvlGraph> (%x1: f32[]) {
         %1: f32[] = while [
           cond_graph = (%x2: f32[]) {
-            %2: bool[] = less(%x2, 9:f32)
+            %2: bool[] = lt(%x2, 9:f32)
             return %2
           },
           body_graph = (%x3: f32[]) {

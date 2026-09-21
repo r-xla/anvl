@@ -4,6 +4,14 @@
 
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
+* A primitive is now named after the `prim_*()` function that exports it rather
+  than the StableHLO op it lowers to, so a printed graph and an error message
+  name a function that exists. Fourteen primitives changed name: `divide` ->
+  `div`, `power` -> `pow`, `equal` -> `eq`, `not_equal` -> `ne`, `greater` ->
+  `gt`, `greater_equal` -> `ge`, `less` -> `lt`, `less_equal` -> `le`,
+  `maximum` -> `max`, `minimum` -> `min`, `sine` -> `sin`, `cosine` -> `cos`,
+  `cholesky` -> `chol` and `select` -> `ifelse`. The `prim_*()` functions
+  themselves are unchanged; only the name the graph carries is.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API

@@ -137,7 +137,7 @@ prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 #' Divides two arrays element-wise.
 #' @template params_prim_lhs_rhs_numeric
 #' @template return_prim_binary
-#' @templateVar primitive_id divide
+#' @templateVar primitive_id div
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_divide()].
@@ -147,14 +147,14 @@ prim_negate <- new_primitive("negate", make_unary_op(infer_numeric_uni))
 #' y <- nv_array(c(2, 5, 10))
 #' prim_div(x, y)
 #' @export
-prim_div <- new_primitive("divide", make_binary_op(infer_numeric_biv))
+prim_div <- new_primitive("div", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Power
 #' @description
 #' Raises lhs to the power of rhs element-wise.
 #' @template params_prim_lhs_rhs_numeric
 #' @template return_prim_binary
-#' @templateVar primitive_id power
+#' @templateVar primitive_id pow
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_power()].
@@ -164,7 +164,7 @@ prim_div <- new_primitive("divide", make_binary_op(infer_numeric_biv))
 #' y <- nv_array(c(3, 2, 1))
 #' prim_pow(x, y)
 #' @export
-prim_pow <- new_primitive("power", make_binary_op(infer_numeric_biv))
+prim_pow <- new_primitive("pow", make_binary_op(infer_numeric_biv))
 
 #' @title Primitive Broadcast
 #' @description
@@ -977,7 +977,7 @@ make_compare_op <- function(direction) {
 #' Element-wise equality comparison.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_compare
-#' @templateVar primitive_id equal
+#' @templateVar primitive_id eq
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "EQ"`.
@@ -987,14 +987,14 @@ make_compare_op <- function(direction) {
 #' y <- nv_array(c(1, 3, 2))
 #' prim_eq(x, y)
 #' @export
-prim_eq <- new_primitive("equal", make_compare_op("EQ"))
+prim_eq <- new_primitive("eq", make_compare_op("EQ"))
 
 #' @title Primitive Not Equal
 #' @description
 #' Element-wise inequality comparison.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_compare
-#' @templateVar primitive_id not_equal
+#' @templateVar primitive_id ne
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "NE"`.
@@ -1004,14 +1004,14 @@ prim_eq <- new_primitive("equal", make_compare_op("EQ"))
 #' y <- nv_array(c(1, 3, 2))
 #' prim_ne(x, y)
 #' @export
-prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
+prim_ne <- new_primitive("ne", make_compare_op("NE"))
 
 #' @title Primitive Greater Than
 #' @description
 #' Element-wise greater than comparison.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_compare
-#' @templateVar primitive_id greater
+#' @templateVar primitive_id gt
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "GT"`.
@@ -1021,14 +1021,14 @@ prim_ne <- new_primitive("not_equal", make_compare_op("NE"))
 #' y <- nv_array(c(3, 2, 1))
 #' prim_gt(x, y)
 #' @export
-prim_gt <- new_primitive("greater", make_compare_op("GT"))
+prim_gt <- new_primitive("gt", make_compare_op("GT"))
 
 #' @title Primitive Greater Than or Equal
 #' @description
 #' Element-wise greater than or equal comparison.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_compare
-#' @templateVar primitive_id greater_equal
+#' @templateVar primitive_id ge
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "GE"`.
@@ -1038,14 +1038,14 @@ prim_gt <- new_primitive("greater", make_compare_op("GT"))
 #' y <- nv_array(c(3, 2, 1))
 #' prim_ge(x, y)
 #' @export
-prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
+prim_ge <- new_primitive("ge", make_compare_op("GE"))
 
 #' @title Primitive Less Than
 #' @description
 #' Element-wise less than comparison.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_compare
-#' @templateVar primitive_id less
+#' @templateVar primitive_id lt
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "LT"`.
@@ -1055,14 +1055,14 @@ prim_ge <- new_primitive("greater_equal", make_compare_op("GE"))
 #' y <- nv_array(c(3, 2, 1))
 #' prim_lt(x, y)
 #' @export
-prim_lt <- new_primitive("less", make_compare_op("LT"))
+prim_lt <- new_primitive("lt", make_compare_op("LT"))
 
 #' @title Primitive Less Than or Equal
 #' @description
 #' Element-wise less than or equal comparison.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_compare
-#' @templateVar primitive_id less_equal
+#' @templateVar primitive_id le
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_compare()] with `comparison_direction = "LE"`.
@@ -1072,7 +1072,7 @@ prim_lt <- new_primitive("less", make_compare_op("LT"))
 #' y <- nv_array(c(3, 2, 1))
 #' prim_le(x, y)
 #' @export
-prim_le <- new_primitive("less_equal", make_compare_op("LE"))
+prim_le <- new_primitive("le", make_compare_op("LE"))
 
 # additional simple binary primitives -----------------------------------------
 
@@ -1081,7 +1081,7 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' Element-wise maximum of two arrays.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_binary
-#' @templateVar primitive_id maximum
+#' @templateVar primitive_id max
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_maximum()].
@@ -1091,14 +1091,14 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 #' y <- nv_array(c(4, 2, 6))
 #' prim_max(x, y)
 #' @export
-prim_max <- new_primitive("maximum", make_binary_op(infer_generic_biv))
+prim_max <- new_primitive("max", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Minimum
 #' @description
 #' Element-wise minimum of two arrays.
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_binary
-#' @templateVar primitive_id minimum
+#' @templateVar primitive_id min
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_minimum()].
@@ -1108,7 +1108,7 @@ prim_max <- new_primitive("maximum", make_binary_op(infer_generic_biv))
 #' y <- nv_array(c(4, 2, 6))
 #' prim_min(x, y)
 #' @export
-prim_min <- new_primitive("minimum", make_binary_op(infer_generic_biv))
+prim_min <- new_primitive("min", make_binary_op(infer_generic_biv))
 
 #' @title Primitive Remainder
 #' @description
@@ -1409,7 +1409,7 @@ prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
 #' Element-wise sine.
 #' @template param_prim_x_float
 #' @template return_prim_unary
-#' @templateVar primitive_id sine
+#' @templateVar primitive_id sin
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_sine()].
@@ -1418,14 +1418,14 @@ prim_tan <- new_primitive("tan", make_unary_op(infer_float_uni))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_sin(x)
 #' @export
-prim_sin <- new_primitive("sine", make_unary_op(infer_float_uni))
+prim_sin <- new_primitive("sin", make_unary_op(infer_float_uni))
 
 #' @title Primitive Cosine
 #' @description
 #' Element-wise cosine.
 #' @template param_prim_x_float
 #' @template return_prim_unary
-#' @templateVar primitive_id cosine
+#' @templateVar primitive_id cos
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_cosine()].
@@ -1434,7 +1434,7 @@ prim_sin <- new_primitive("sine", make_unary_op(infer_float_uni))
 #' x <- nv_array(c(0, pi / 2, pi))
 #' prim_cos(x)
 #' @export
-prim_cos <- new_primitive("cosine", make_unary_op(infer_float_uni))
+prim_cos <- new_primitive("cos", make_unary_op(infer_float_uni))
 
 #' @title Primitive Floor
 #' @description
@@ -2071,7 +2071,7 @@ prim_convert <- new_primitive(
 #'   Values to select from. Must have the same dtype and shape.
 #' @return [`arrayish`]\cr
 #'   Has the same dtype and shape as `true_value`.
-#' @templateVar primitive_id select
+#' @templateVar primitive_id ifelse
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_select()].
@@ -2081,7 +2081,7 @@ prim_convert <- new_primitive(
 #' prim_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
 #' @export
 prim_ifelse <- new_primitive(
-  "select",
+  "ifelse",
   function(pred, true_value, false_value) {
     # `pred` is a bool and keeps out of it; the two branches must agree.
     operands <- apply_promotion(list(true_value = true_value, false_value = false_value), promotion_rdata_common())
@@ -2919,7 +2919,7 @@ prim_gather <- new_primitive(
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as the input.
 #'   The values in the triangle not specified by `lower` are implementation-defined.
-#' @templateVar primitive_id cholesky
+#' @templateVar primitive_id chol
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_cholesky()].
@@ -2930,7 +2930,7 @@ prim_gather <- new_primitive(
 #' prim_chol(x, lower = TRUE)
 #' @export
 prim_chol <- new_primitive(
-  "cholesky",
+  "chol",
   function(x, lower = FALSE) {
     assert_flag(lower)
     assert_linalg_matrix(x, "x", square = TRUE, batched = TRUE)

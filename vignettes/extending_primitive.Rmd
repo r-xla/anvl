@@ -57,7 +57,7 @@ This primitive has a *dynamic* input (an array) and two *static* parameters (how
 
 ### Step 1: Define the Primitive
 
-Primitives are created with `new_primitive()`: it builds the `AnvlPrimitive` metadata object that holds the rules, wraps the body with `jit()`, attaches the metadata, and registers the result in the internal primitive registry. The returned callable becomes the primitive and is bound to a `prim_<name>` R symbol.
+Primitives are created with `new_primitive()`: it builds the `AnvlPrimitive` metadata object that holds the rules, wraps the body with `jit()`, attaches the metadata, and registers the result in the internal primitive registry. The returned callable becomes the primitive and is bound to a `prim_<name>` R symbol. The name passed to `new_primitive()` is that same `<name>`, not the StableHLO op the primitive lowers to, so an error or a printed graph naming a primitive names a function the reader can look up.
 
 ```{r}
 library(anvl)

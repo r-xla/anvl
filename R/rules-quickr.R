@@ -2115,7 +2115,7 @@ local({
       dt_rhs <- as.character(dtype(input_nodes[[2L]]$aval))
 
       if (dt_lhs %in% "bool" || dt_rhs %in% "bool") {
-        if (!prim_name %in% c("equal", "not_equal")) {
+        if (!prim_name %in% c("eq", "ne")) {
           cli_abort("{prim_name}: comparisons on {.val bool} values are not supported by quickr lowering")
         }
 
@@ -2135,18 +2135,18 @@ local({
           rlang::call2("&", not_a, b)
         )
 
-        out_expr <- if (prim_name == "equal") eqv else xor_expr
+        out_expr <- if (prim_name == "eq") eqv else xor_expr
         return(quickr_emit_assign(out_syms[[1L]], out_expr))
       }
 
       op <- switch(
         prim_name,
-        equal = "==",
-        not_equal = "!=",
-        greater = ">",
-        greater_equal = ">=",
-        less = "<",
-        less_equal = "<=",
+        eq = "==",
+        ne = "!=",
+        gt = ">",
+        ge = ">=",
+        lt = "<",
+        le = "<=",
         cli_abort("Internal error: unknown comparison primitive: {.val {prim_name}}")
       )
       quickr_emit_assign(out_syms[[1L]], rlang::call2(op, inputs[[1L]], inputs[[2L]]))
@@ -2211,8 +2211,6 @@ local({
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       fun <- switch(
         prim_name,
-        sine = "sin",
-        cosine = "cos",
         ceil = "ceiling",
         prim_name
       )
@@ -2253,7 +2251,7 @@ local({
   quickr_register_elementwise_lowerer(
     list(prim_max, prim_min),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
-      cmp <- if (prim_name == "maximum") ">=" else "<="
+      cmp <- if (prim_name == "max") ">=" else "<="
       quickr_emit_assign(
         out_syms[[1L]],
         rlang::call2("ifelse", rlang::call2(cmp, inputs[[1L]], inputs[[2L]]), inputs[[1L]], inputs[[2L]])

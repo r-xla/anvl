@@ -47,9 +47,9 @@ test_that("reverse rule is tested", {
 })
 
 test_that("the call an inference error reports is a function that exists", {
-  # A primitive is named for the StableHLO op it lowers to, while the exported
-  # function takes base R's name for it, so the two differ for `prim_div()`,
-  # `prim_sin()`, `prim_chol()` and friends.
+  # A primitive is named for the `prim_*()` that exports it, not for the
+  # StableHLO op it lowers to, so an error can name the call by putting the
+  # prefix back on.
   nms <- names(asNamespace("anvl"))
   exported <- nms[grepl("^prim_", nms)]
   for (nm in exported) {
