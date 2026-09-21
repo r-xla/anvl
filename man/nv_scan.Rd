@@ -47,6 +47,23 @@ At step \code{t}, \code{body} receives the current carry and the step's slice of
 yields a scalar), and must return
 \verb{list(carry = <same structure as init>, out = <arrays to stack>)}.
 The stacked \code{out} buffers gain a new leading axis of size \code{length}.
+
+The whole loop, written out in R:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{carry <- init
+out <- <empty, `length` rows>
+steps <- if (reverse) rev(seq_len(length)) else seq_len(length)
+for (t in steps) \{
+  step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+  carry <- step$carry
+  out[t, ...] <- step$out          # position t, not the loop's position
+\}
+list(carry = carry, out = out)
+}\if{html}{\out{</div>}}
+
+The difference from writing that loop yourself is that \code{body} is traced
+once, not \code{length} times: the result is a single loop in the compiled
+program, so compile time does not grow with \code{length}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

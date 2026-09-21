@@ -2664,6 +2664,24 @@ nv_while <- prim_while
 #' yields a scalar), and must return
 #' `list(carry = <same structure as init>, out = <arrays to stack>)`.
 #' The stacked `out` buffers gain a new leading axis of size `length`.
+#'
+#' The whole loop, written out in R:
+#'
+#' ```r
+#' carry <- init
+#' out <- <empty, `length` rows>
+#' steps <- if (reverse) rev(seq_len(length)) else seq_len(length)
+#' for (t in steps) {
+#'   step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+#'   carry <- step$carry
+#'   out[t, ...] <- step$out          # position t, not the loop's position
+#' }
+#' list(carry = carry, out = out)
+#' ```
+#'
+#' The difference from writing that loop yourself is that `body` is traced
+#' once, not `length` times: the result is a single loop in the compiled
+#' program, so compile time does not grow with `length`.
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
 #'   Every slot must keep a fixed shape and dtype across steps.
