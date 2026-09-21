@@ -2944,15 +2944,24 @@ prim_sort <- new_primitive(
 #' @param k (`integer(1)`)\cr
 #'   Number of top elements. Must satisfy
 #'   `1 <= k <= shape(x)[naxes(x)]`.
-#' @return `list` of two [`arrayish`] values:\cr
-#'   The top-`k` values (same dtype as `x`) and their indices along
-#'   the last axis, of the default integer data type (see
-#'   [`default_dtypes()`]). Both have the same shape as `x` with the
-#'   last axis replaced by `k`. Ties are broken by lower index first.
+#' @param indices (`logical(1)`)\cr
+#'   Whether to also return the indices of the top elements. Without them
+#'   the order among tied values is unspecified, which lets the lowering
+#'   pick the cheapest selection for the platform.
+#' @return `list` of one or two [`arrayish`] values:\cr
+#'   The top-`k` values (same dtype as `x`) and, if `indices` is `TRUE`,
+#'   their indices along the last axis, of the default integer data type
+#'   (see [`default_dtypes()`]). Both have the same shape as `x` with the
+#'   last axis replaced by `k`. With indices, ties are broken by lower
+#'   index first.
 #' @templateVar primitive_id top_k
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_top_k()].
+#' Lowers to [hlo_top_k()]. Without `indices` on CUDA it lowers to an
+#' unstable descending [hlo_sort()] of the values followed by an
+#' [hlo_slice()], which is what the CHLO op expands to there minus the
+#' index operand and the stability the ties no longer need; XLA's CPU
+#' backend has a dedicated top-k kernel, so it keeps [hlo_top_k()].
 #' @seealso [nv_top_k()], [prim_sort()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
@@ -2960,34 +2969,39 @@ prim_sort <- new_primitive(
 #' @export
 prim_top_k <- new_primitive(
   "top_k",
-  function(x, k) {
+  function(x, k, indices = TRUE) {
     assert_integerish(k, lower = 1L, len = 1L)
+    assert_flag(indices)
     k <- as.integer(k)
 
-    infer_fn <- function(x, k) {
+    infer_fn <- function(x, k, indices) {
       k_const <- stablehlo::r_to_constant(
         k,
         dtype = "i64",
         shape = integer()
       )
       vts <- stablehlo::infer_types_top_k(at2vt(x), k = k_const)
+      values <- vt2at(vts[[1L]])
+      if (!indices) {
+        return(list(values = values))
+      }
       # `hlo_top_k` fixes its indices at `i32`; the lowering converts them to
       # the default integer, which is what the caller sees.
-      indices <- vt2at(vts[[2L]])
+      idx <- vt2at(vts[[2L]])
       list(
-        values = vt2at(vts[[1L]]),
-        indices = AbstractArray(dtype = default_int(), shape = Shape(shape(indices)))
+        values = values,
+        indices = AbstractArray(dtype = default_int(), shape = Shape(shape(idx)))
       )
     }
 
     graph_desc_add(
       self,
       args = list(x = x),
-      params = list(k = k),
+      params = list(k = k, indices = indices),
       infer_fn = infer_fn
     )
   },
-  static = "k"
+  static = c("k", "indices")
 )
 
 # Print primitive

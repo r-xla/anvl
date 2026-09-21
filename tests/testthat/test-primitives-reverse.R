@@ -980,28 +980,30 @@ test_that("prim_sort", {
 })
 
 test_that("prim_top_k", {
-  withr::local_seed(42)
-  x_arr <- matrix(rnorm(4 * 6), nrow = 4)
-  k <- 3L
-  w_arr <- matrix(as.double(seq_len(4 * k)), nrow = 4)
+  for (indices in c(TRUE, FALSE)) {
+    withr::local_seed(42)
+    x_arr <- matrix(rnorm(4 * 6), nrow = 4)
+    k <- 3L
+    w_arr <- matrix(as.double(seq_len(4 * k)), nrow = 4)
 
-  x_nv <- nv_array(x_arr)
-  w_nv <- nv_array(w_arr)
+    x_nv <- nv_array(x_arr)
+    w_nv <- nv_array(w_arr)
 
-  f_nv <- function(x) {
-    top <- prim_top_k(x, k = k)[[1L]]
-    nv_reduce_sum(top * w_nv, axes = c(1L, 2L))
+    f_nv <- function(x) {
+      top <- prim_top_k(x, k = k, indices = indices)[[1L]]
+      nv_reduce_sum(top * w_nv, axes = c(1L, 2L))
+    }
+    grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
+
+    # Scatter w along the top-k indices for each row.
+    expected_grad <- matrix(0, nrow = nrow(x_arr), ncol = ncol(x_arr))
+    for (i in seq_len(nrow(x_arr))) {
+      top_idx <- order(x_arr[i, ], decreasing = TRUE)[seq_len(k)]
+      expected_grad[i, top_idx] <- w_arr[i, ]
+    }
+
+    expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
   }
-  grad_nv <- jit(gradient(f_nv))(x_nv)[[1L]]
-
-  # Scatter w along the top-k indices for each row.
-  expected_grad <- matrix(0, nrow = nrow(x_arr), ncol = ncol(x_arr))
-  for (i in seq_len(nrow(x_arr))) {
-    top_idx <- order(x_arr[i, ], decreasing = TRUE)[seq_len(k)]
-    expected_grad[i, top_idx] <- w_arr[i, ]
-  }
-
-  expect_equal(as_array(grad_nv), expected_grad, tolerance = 1e-5)
 })
 
 test_that("prim_reduce_prod: gradient is safe at zeros", {

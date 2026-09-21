@@ -3521,7 +3521,7 @@ nv_top_k <- jit(
     if (axis != rank) {
       perm <- seq_len(rank)
       perm[c(axis, rank)] <- c(rank, axis)
-      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k)
+      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k, indices = with_indices)
       values <- prim_transpose(out$values, permutation = perm)
       if (with_indices) {
         indices <- prim_transpose(out$indices, permutation = perm)
@@ -3530,7 +3530,7 @@ nv_top_k <- jit(
         values
       }
     } else {
-      out <- prim_top_k(x, k = k)
+      out <- prim_top_k(x, k = k, indices = with_indices)
       if (with_indices) out else out$values
     }
   },
@@ -3632,15 +3632,40 @@ nv_quantile <- jit(
     shp_K <- replace(shp, axis, K)
     out_dtype <- dtype(x)
 
-    # Find the NaN positions: nan_rm = TRUE sanitizes them to +Inf so they sort
-    # to the end; nan_rm = FALSE uses them post-hoc to propagate.
+    # Selection instead of a full sort when every requested order statistic lies
+    # in one end of the axis. Ascending position j of a slice's n_valid sorted
+    # values is at most ceil((n_valid - 1) * max(probs)) + 1, and n_valid <= n
+    # only ever moves it down, so the ascending prefix of k_lo elements always
+    # holds it; mirrored, the descending prefix of k_hi elements holds every
+    # position from floor((n_valid - 1) * min(probs)) + 1 up. Either prefix comes
+    # from top_k (of the negated values for the low end), which is cheaper than
+    # a sort when the window is at most about half the axis. With nan_rm = FALSE,
+    # NaNs rank to the front of the window instead of the back, but any slice
+    # containing NaN has its output forced to NaN below, so the gathered values
+    # never surface.
+    n_axis <- shp[axis]
+    budget <- ceiling(n_axis / 2) + 1
+    k_lo <- as.integer(ceiling((n_axis - 1) * max(probs)) + 1)
+    k_hi <- as.integer(ceiling((n_axis - 1) * (1 - min(probs))) + 1)
+    path <- if (n_axis > 0L && k_lo <= budget) {
+      "low"
+    } else if (n_axis > 0L && k_hi <= budget) {
+      "high"
+    } else {
+      "sort"
+    }
+
+    # Find the NaN positions: nan_rm = TRUE sanitizes them to the end the window
+    # does not read from (+Inf, or -Inf for the high window) so the valid values
+    # keep their ranks; nan_rm = FALSE uses them post-hoc to propagate.
     # The count of valid elements is kept at `i32`, since it is a count.
     count_kd <- nv_broadcast_to(
       nv_fill_like(x, shp[axis], shape = integer(), dtype = "i32"),
       shp_kd
     )
     nan_mask <- nv_is_nan(x)
-    to_sort <- if (nan_rm) nv_ifelse(nan_mask, Inf, x) else x
+    nan_fill <- if (path == "high") -Inf else Inf
+    to_sort <- if (nan_rm) nv_ifelse(nan_mask, nan_fill, x) else x
     n_valid_kd <- if (nan_rm) {
       # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
       # rather than crossing categories out of an integer count and
@@ -3650,7 +3675,12 @@ nv_quantile <- jit(
     } else {
       count_kd
     }
-    sorted <- prim_sort(list(to_sort), axis = axis)[[1L]]
+    sorted <- switch(
+      path,
+      "low" = -nv_top_k(-to_sort, k = k_lo, axis = axis),
+      "high" = nv_top_k(to_sort, k = k_hi, axis = axis),
+      "sort" = prim_sort(list(to_sort), axis = axis)[[1L]]
+    )
 
     # Broadcast `(K,) probs` along `axis` and `(shp_kd,) n_valid_kd` across
     # `axis` → both shaped `shp_K`, with K varying along `axis`.
@@ -3668,8 +3698,18 @@ nv_quantile <- jit(
     hi_f <- nv_ceiling(h)
     frac <- h - lo_f
 
-    lo_val <- .gather_along_axis(sorted, nv_convert(lo_f + 1, "i32"), axis, rank, shp)
-    hi_val <- .gather_along_axis(sorted, nv_convert(hi_f + 1, "i32"), axis, rank, shp)
+    # `sorted` is ascending, except the high window, which top_k returns in
+    # descending order: ascending position j of the slice's n_valid values is
+    # its element n_valid - j + 1.
+    if (path == "high") {
+      lo_idx <- n_valid_b - lo_f
+      hi_idx <- n_valid_b - hi_f
+    } else {
+      lo_idx <- lo_f + 1
+      hi_idx <- hi_f + 1
+    }
+    lo_val <- .gather_along_axis(sorted, nv_convert(lo_idx, "i32"), axis, rank, shp)
+    hi_val <- .gather_along_axis(sorted, nv_convert(hi_idx, "i32"), axis, rank, shp)
 
     out <- switch(
       interpolation,
