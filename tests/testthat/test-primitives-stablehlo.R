@@ -1351,7 +1351,7 @@ test_that("the dynamic slicing primitives check their arguments", {
   # dumps.
   expect_error(
     prim_dynamic_slice(v, nv_scalar(1.5), slice_sizes = 1L),
-    "must have dtype int or uint"
+    "must have an integer or unsigned integer data type"
   )
   expect_error(
     prim_dynamic_slice(v, nv_scalar(1L), nv_scalar(1L), slice_sizes = 1L),
@@ -1363,7 +1363,7 @@ test_that("the dynamic slicing primitives check their arguments", {
   )
   expect_error(
     prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1.5)),
-    "must have dtype int or uint"
+    "must have an integer or unsigned integer data type"
   )
   expect_error(
     prim_dynamic_update_slice(v, nv_array(c(1, 2, 3, 4), shape = c(2, 2)), nv_scalar(1L)),

@@ -35,6 +35,11 @@
   into stablehlo's. Errors report 1-based axes and anvl's argument names
   directly, and several constraints that previously surfaced only in the
   compiler are now caught at trace time.
+* Inference rules now reject a malformed static parameter themselves -- a
+  missing value, a non-integer, a wrong length or a negative size -- instead of
+  letting it surface as a raw R error under the primitive's name.
+* `prim_if()` now reports a branch type mismatch itself, in anvl's terms,
+  rather than leaving it to the compiler.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,

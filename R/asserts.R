@@ -281,7 +281,7 @@ assert_linalg_matrix <- function(x, arg, square = FALSE) {
   if (!is_dtype_float(peek_dtype(x))) {
     cli_abort(c(
       "{.arg {arg}} must have a float data type.",
-      "x" = "Got dtype {.val {as.character(peek_dtype(x))}}."
+      "x" = "Got {.val {as.character(peek_dtype(x))}}."
     ))
   }
   invisible(NULL)

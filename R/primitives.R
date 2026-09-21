@@ -839,9 +839,6 @@ prim_reduce <- new_primitive(
     init <- operands$init
 
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
-    if (!checkmate::test_flag(drop)) {
-      cli_abort("{.arg drop} must be a flag.")
-    }
     if (!is.function(reductor)) {
       cli_abort("{.arg reductor} must be a function.")
     }
@@ -906,7 +903,6 @@ prim_argmax <- new_primitive(
   "argmax",
   function(x, axis, drop = TRUE) {
     axis <- resolve_axis(axis, naxes(x))
-    assert_flag(drop)
     graph_desc_add(
       self,
       args = list(x = x),
@@ -940,7 +936,6 @@ prim_argmin <- new_primitive(
   "argmin",
   function(x, axis, drop = TRUE) {
     axis <- resolve_axis(axis, naxes(x))
-    assert_flag(drop)
     graph_desc_add(
       self,
       args = list(x = x),
@@ -1999,7 +1994,6 @@ prim_pad <- new_primitive(
 prim_round <- new_primitive(
   "round",
   function(x, method = "nearest_even") {
-    assert_choice(method, c("nearest_even", "afz"))
     graph_desc_add(self, list(x = x), list(method = method), infer_fn = infer_round)[[1L]]
   },
   static = 2L
@@ -2291,21 +2285,10 @@ prim_while <- new_primitive(
 prim_sort <- new_primitive(
   "sort",
   function(xs, axis = 1L, descending = FALSE, is_stable = FALSE) {
-    assert_flag(descending)
-    assert_flag(is_stable)
     if (!is.list(xs) || !length(xs)) {
       cli_abort("{.arg xs} must be a non-empty list of arrayish values")
     }
-    ref_shape <- shape(xs[[1L]])
-    axis <- resolve_axis(axis, length(ref_shape))
-    for (i in seq_along(xs)[-1L]) {
-      if (!identical(shape(xs[[i]]), ref_shape)) {
-        cli_abort(c(
-          "All elements of {.arg xs} must have the same shape.",
-          x = "Element 1 has shape {shape_repr(ref_shape)}, element {i} has shape {shape_repr(shape(xs[[i]]))}."
-        ))
-      }
-    }
+    axis <- resolve_axis(axis, length(shape(xs[[1L]])))
 
     graph_desc_add(
       self,
@@ -2348,8 +2331,7 @@ prim_sort <- new_primitive(
 prim_top_k <- new_primitive(
   "top_k",
   function(x, k) {
-    assert_integerish(k, lower = 1L, len = 1L)
-    k <- as.integer(k)
+    k <- assert_int_param(k, "k", len = 1L)
 
     graph_desc_add(
       self,

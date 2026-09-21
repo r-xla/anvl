@@ -4,7 +4,7 @@
       assert_array_dtype(infer_at("i32", 3L), "float", arg = "x")
     Condition
       Error in `assert_array_dtype()`:
-      ! `x` must have dtype float.
+      ! `x` must have a float data type.
       x Got "i32".
 
 # assert_array_dtype() / checks shape and rank when asked
@@ -67,7 +67,7 @@
       infer_static_slice(infer_at("i32", 10L), 1L, 11L, 1L)
     Condition
       Error in `infer_static_slice()`:
-      ! `limit_indices` must not exceed the shape of `x` ((10)).
+      ! `limit_indices` must not exceed the shape of `x` (10).
       x Got 11 at axis 1.
 
 # infer_concatenate() / refuses inputs that disagree on any other axis
@@ -107,7 +107,7 @@
     Condition
       Error in `infer_pad()`:
       ! Negative padding must not remove more than an axis holds.
-      x Axis 1 of `x` ((3)) would end up at -3.
+      x `x` is (3); axis 1 would end up at -3.
 
 # infer_top_k() / refuses a k larger than the last axis
 

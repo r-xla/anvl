@@ -26,6 +26,32 @@ describe("assert_array_dtype()", {
   })
 })
 
+describe("assert_arrays()", {
+  it("names each operand by the argument it arrived in", {
+    expect_error(
+      assert_arrays(lhs = infer_at("f32"), rhs = 1L),
+      "`rhs` must be an array",
+      fixed = TRUE
+    )
+  })
+
+  it("indexes the argument a primitive collects its operands in", {
+    expect_error(
+      assert_arrays(infer_at("f32"), 1L, .arg = "xs"),
+      "`xs[[2]]` must be an array",
+      fixed = TRUE
+    )
+  })
+
+  it("names the caller's dots when the primitive takes them itself", {
+    expect_error(
+      assert_arrays(infer_at("f32"), 1L),
+      "`..2` must be an array",
+      fixed = TRUE
+    )
+  })
+})
+
 describe("test_permutation()", {
   it("rejects a repeated entry that a set comparison would accept", {
     # `setequal(c(1, 2, 2), 1:2)` is TRUE, which is why `setequal()` alone is
@@ -55,7 +81,7 @@ describe("the element-wise rules", {
     # bitwise `and` / `or` / `xor`, which take a `tensor of integer or boolean`.
     b <- infer_at("bool", 2L)
     expect_equal(infer_integerish_biv(b, b), list(b))
-    expect_error(infer_integer_biv(b, b), "must have dtype int or uint")
+    expect_error(infer_integer_biv(b, b), "must have an integer or unsigned integer data type")
   })
 
   it("give a boolean result for a predicate", {
@@ -154,6 +180,30 @@ describe("infer_concatenate()", {
     expect_snapshot(
       error = TRUE,
       infer_concatenate(infer_at("f32", c(2L, 3L, 4L)), infer_at("f32", c(2L, 3L)), axis = 3L)
+    )
+  })
+})
+
+describe("infer_sort()", {
+  it("mirrors each input, key and payloads alike", {
+    key <- infer_at("f32", c(2L, 3L))
+    payload <- infer_at("i32", c(2L, 3L))
+    expect_equal(
+      infer_sort(key, payload, axis = 1L, descending = FALSE, is_stable = FALSE),
+      list(key, payload)
+    )
+  })
+
+  it("names `xs`, the argument the primitive collects the arrays in", {
+    expect_error(
+      infer_sort(infer_at("f32", 3L), 1L, axis = 1L, descending = FALSE, is_stable = FALSE),
+      "`xs[[2]]` must be an array",
+      fixed = TRUE
+    )
+    expect_error(
+      infer_sort(axis = 1L, descending = FALSE, is_stable = FALSE),
+      "`xs` must be a non-empty list",
+      fixed = TRUE
     )
   })
 })
@@ -320,5 +370,175 @@ describe("the inference rules as the primitives reach them", {
     msg <- conditionMessage(err)
     expect_false(grepl("tensor", msg, ignore.case = TRUE))
     expect_false(grepl("dimension", msg, ignore.case = TRUE))
+  })
+})
+
+describe("the static parameters a rule is handed", {
+  it("refuses a missing value instead of letting it reach an `if ()`", {
+    # An `NA` used to reach the first comparison and come back out as R's own
+    # "missing value where TRUE/FALSE needed", under the primitive's name.
+    x <- infer_at("f32", c(2L, 3L))
+    expect_error(
+      infer_pad(x, infer_at("f32"), c(NA_integer_, 0L), c(0L, 0L), c(0L, 0L)),
+      "`edge_padding_low` must not contain missing values",
+      fixed = TRUE
+    )
+    expect_error(
+      jit(prim_pad, static = 3:5)(
+        nv_array(1:4),
+        nv_scalar(0L),
+        NA_integer_,
+        0L,
+        0L
+      ),
+      "`edge_padding_low` must not contain missing values",
+      fixed = TRUE
+    )
+  })
+
+  it("refuses a value that is not a whole number", {
+    x <- infer_at("f32", 6L)
+    expect_error(infer_reshape(x, "a"), "`shape` must be a whole number vector", fixed = TRUE)
+    expect_error(infer_cum(infer_at("f32", 3L), NULL), "`axis` must have 1 entry", fixed = TRUE)
+    expect_error(infer_iota(1L, "f32", c(2L, 3L), "a"), "`start` must be a whole number", fixed = TRUE)
+  })
+
+  it("still reads `c()` as the empty set of axes", {
+    # `c()` is `NULL`, and it is how a caller spells "no axes"; the old bare
+    # `as.integer()` accepted it, so the guards must not refuse it.
+    expect_silent(infer_reverse(infer_at("f32", c(2L, 3L)), c()))
+    expect_silent(infer_reduce_simple(infer_at("f32", c(2L, 3L)), c(), TRUE))
+    # A parameter that must be a single axis still refuses it.
+    expect_error(infer_top_k(infer_at("f32", 3L), NULL), "`k` must have 1 entry", fixed = TRUE)
+  })
+
+  it("refuses a negative size rather than letting Shape() complain", {
+    expect_error(
+      infer_reshape(infer_at("f32", 6L), c(-6L, -1L)),
+      "`shape` must not be negative",
+      fixed = TRUE
+    )
+  })
+
+  it("refuses a data type it cannot resolve, naming the argument", {
+    expect_error(infer_convert(infer_at("f32"), "nope"), "`dtype` must name a data type", fixed = TRUE)
+  })
+
+  it("refuses a flag that is not one", {
+    expect_error(infer_round(infer_at("f32", 3L), "bogus"), "`method` must be", fixed = TRUE)
+    expect_error(
+      infer_cholesky(infer_at("f32", c(2L, 2L)), NULL),
+      "`lower` must be",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("infer_cond()", {
+  it("reports a branch mismatch itself, rather than leaving it to the compiler", {
+    expect_error(
+      jit(function(p, a) {
+        prim_if(p, function() a, function() nv_scalar(1L, dtype = "i32"))
+      })(nv_scalar(TRUE), nv_scalar(1.0)),
+      "`true` and `false` must return the same type",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("the reduce rules", {
+  it("own their axis contract, as infer_reduce does", {
+    x <- infer_at("f32", c(2L, 3L))
+    expect_error(infer_reduce_simple(x, 5L, TRUE), "must contain axes between 1 and 2", fixed = TRUE)
+    expect_error(infer_reduce_simple(x, c(1L, 1L), TRUE), "must contain unique axes", fixed = TRUE)
+    expect_error(
+      infer_reduce_boolean(infer_at("bool", c(2L, 3L)), 5L, TRUE),
+      "must contain axes between 1 and 2",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("the rules that take an array but are handed an R value", {
+  it("say so, instead of describing it as a scalar or a rank-0 matrix", {
+    expect_error(infer_qr(42), "`x` must be an array", fixed = TRUE)
+    expect_error(infer_cum(42, 1L), "`x` must be an array", fixed = TRUE)
+    expect_error(infer_arg_extreme(42, 1L, TRUE), "`x` must be an array", fixed = TRUE)
+  })
+})
+
+describe("infer_triangular_solve()", {
+  it("refuses a flag it would otherwise branch on", {
+    # `side <- if (left_side) ...` turned an `NA` into R's own
+    # "missing value where TRUE/FALSE needed", under `prim_triangular_solve()`.
+    a <- infer_at("f32", c(2L, 2L))
+    b <- infer_at("f32", c(2L, 1L))
+    for (flag in c("left_side", "lower", "unit_diagonal", "transpose_a")) {
+      args <- list(a, b, TRUE, TRUE, FALSE, FALSE)
+      names(args) <- c("a", "b", "left_side", "lower", "unit_diagonal", "transpose_a")
+      args[[flag]] <- NA
+      expect_error(
+        do.call(infer_triangular_solve, args),
+        paste0("`", flag, "` must be"),
+        fixed = TRUE,
+        info = flag
+      )
+    }
+  })
+})
+
+describe("infer_convolution()", {
+  it("requires each layout to account for every axis", {
+    expect_error(
+      jit(prim_convolution, static = 3:18)(
+        nv_array(as.double(1:25), shape = c(1, 1, 5, 5)),
+        nv_array(as.double(1:9), shape = c(1, 1, 3, 3)),
+        integer(),
+        2L,
+        c(3L, 4L),
+        2L,
+        1L,
+        c(3L, 4L),
+        1L,
+        2L,
+        c(3L, 4L),
+        c(1L, 1L),
+        matrix(0L, 2L, 2L),
+        c(1L, 1L),
+        c(1L, 1L),
+        1L,
+        1L,
+        "highest"
+      ),
+      "must each be named exactly once",
+      fixed = TRUE
+    )
+  })
+
+  it("checks `padding`, which keeps its shape and so skips the usual guard", {
+    conv <- function(padding) {
+      jit(prim_convolution, static = 3:18)(
+        nv_array(as.double(1:25), shape = c(1, 1, 5, 5)),
+        nv_array(as.double(1:9), shape = c(1, 1, 3, 3)),
+        1L,
+        2L,
+        c(3L, 4L),
+        2L,
+        1L,
+        c(3L, 4L),
+        1L,
+        2L,
+        c(3L, 4L),
+        c(1L, 1L),
+        padding,
+        c(1L, 1L),
+        c(1L, 1L),
+        1L,
+        1L,
+        "highest"
+      )
+    }
+    expect_error(conv(matrix(NA_integer_, 2L, 2L)), "`padding` must not contain missing values", fixed = TRUE)
+    expect_error(conv(matrix(0.5, 2L, 2L)), "`padding` must contain whole numbers", fixed = TRUE)
   })
 })

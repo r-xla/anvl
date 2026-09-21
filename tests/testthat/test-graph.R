@@ -224,7 +224,7 @@ test_that("error handling: type inference reports in anvl's terminology", {
 
   # The primary operand is `x`, never `operand`.
   err <- tryCatch(jit(prim_ceil)(nv_array(1:4)), error = identity)
-  expect_match(conditionMessage(err), "`x` must have dtype float", fixed = TRUE)
+  expect_match(conditionMessage(err), "`x` must have a float data type", fixed = TRUE)
 
   # Axis numbers are 1-based, with no conversion step on the way out. A
   # too-short `permutation` passes anvl's own checks (every entry is a valid,

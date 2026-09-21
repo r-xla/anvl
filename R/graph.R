@@ -887,8 +887,28 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
   lapply(gvals_out, register_gval, desc = desc)
 }
 
+# Map each primitive's name to the `prim_*()` that exports it. A primitive is
+# named for the StableHLO op it lowers to ("divide", "sine", "cholesky"), while
+# the exported function takes base R's name for it (`prim_div()`, `prim_sin()`,
+# `prim_chol()`), so pasting `prim_` onto the name would send the caller after
+# a function that does not exist. Built once, on the first error that needs it.
+primitive_r_names <- function() {
+  if (is.null(globals[["PRIMITIVE_R_NAMES"]])) {
+    ns <- asNamespace("anvl")
+    map <- list()
+    for (nm in grep("^prim_", names(ns), value = TRUE)) {
+      obj <- get0(nm, envir = ns)
+      if (inherits(obj, "JitPrimitive")) {
+        map[[attr(obj, "primitive")$name]] <- nm
+      }
+    }
+    globals[["PRIMITIVE_R_NAMES"]] <- map
+  }
+  globals[["PRIMITIVE_R_NAMES"]]
+}
+
 print_call_repr <- function(prim) {
-  rlang::exec(call, paste0("prim_", prim$name))
+  rlang::exec(call, primitive_r_names()[[prim$name]] %||% paste0("prim_", prim$name))
 }
 
 inline_graph_into_desc <- function(desc, graph) {
