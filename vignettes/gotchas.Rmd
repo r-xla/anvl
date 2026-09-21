@@ -83,7 +83,7 @@ Note that even `nv_broadcast_arrays()` cannot replicate R's recycling for shapes
 
 R has a dedicated missing-value marker (`NA`) for every atomic type.
 {anvl} arrays do not -- there is no representation of "missing" at the XLA level, only `NaN` for floating point numbers.
-When you convert R values containing `NA` into an `AnvlArray`, the `NA`s are silently turned into `NaN`s.
+At a floating-point dtype, an `NA` silently turns into a `NaN`:
 
 ```{r}
 nv_array(NA_real_)
@@ -93,43 +93,88 @@ nv_array(NA_real_)
 nv_array(c(1, NA, 3))
 ```
 
-Round-tripping back to R is not guaranteed to produce `NA`, but can also yield `NaN`:
+Round-tripping back to R therefore does not give the `NA` back, but a `NaN`:
 
 ```{r}
 as_array(nv_array(c(1, NA, 3)))
 ```
 
-For other data types, the situation is even worse, especially for integers, where R uses the smallest possible value to represent missingness:
+The signed integer dtypes are a special case.
+R spells `NA_integer_` as the bit pattern `-2147483648`, which is also what an `i32` array stores, so the value survives the round trip -- but on the device it is an ordinary, very negative integer that nothing distinguishes from a missing value.
+Both directions warn about it:
 
 ```{r}
-nv_scalar(NA_integer_)
+x <- nv_scalar(NA_integer_)
+x
 ```
 
-However, when you convert it back, you get a missing value again:
-
 ```{r}
-as.integer(nv_scalar(NA_integer_))
+as.integer(x)
 ```
 
-When creating logicals, `NA` will be interpreted as `TRUE`:
+At every other dtype there is no bit pattern for an `NA` to land on, so a missing value is an error, including for `bool`:
 
-```{r}
+```{r, error = TRUE}
 nv_scalar(NA)
-as.logical(nv_scalar(NA))
 ```
-
-In order to avoid these pitfals, array creators such as `nv_array()` have a `check` argument to prevent the above problems.
-It is `FALSE` by default, because it needs to scan the complete data.
 
 ```{r, error = TRUE}
-nv_array(c(1, NA, 3), check = TRUE)
+nv_array(c(1L, NA, 3L), dtype = "i16")
 ```
 
-The same flag is available for converters like `as_array()`:
+Array creators take no argument to change any of this: what happens to an `NA` is fixed by the dtype you build at.
+Scan the data yourself with `anyNA()` if you want to hear about a missing value the dtype accepts.
+
+Converters like `as_array()` do take a `check` argument, with three levels: `"warn"` (the default) warns about a value R's type cannot hold, `"err"` makes it an error, and `FALSE` skips the scan.
 
 ```{r, error = TRUE}
-as_array(nv_scalar(NA_integer_), check = TRUE)
+as_array(nv_scalar(NA_integer_), check = "err")
 ```
+
+## Subnormal floating-point values
+
+Subnormal values are extremely small nonzero numbers, very close to zero.
+They allow floating-point numbers to extend below their normal range, but with fewer significant digits of precision.
+For R's usual double-precision numbers (IEEE 754 binary64), subnormal magnitudes range from approximately $4.94 \times 10^{-324}$ to just below $2.23 \times 10^{-308}$.
+More precisely, their magnitudes are at least $2^{-1074}$ but strictly less than $2^{-1022}$, which is the smallest positive normal value.
+
+With {anvl}'s default PJRT backend, these tiny values can be stored in an array and read back into R unchanged, but may become zero when used in calculations.
+On CPUs, XLA enables a mode that treats subnormal inputs and results as zero, often called "flushing to zero".
+The exact behavior depends on the platform, backend, and operation.
+Single-precision (`f32`) values are affected in the same way, below approximately $1.18 \times 10^{-38}$.
+Comparisons flush their inputs too, so for example a negative subnormal can test as greater than or equal to zero.
+
+Running the following example demonstrates this effect, with "Observed" comments corresponding to results from the PJRT CPU backend.
+
+```{r}
+library(anvl)
+
+with_backend("pjrt", {
+  x <- nv_scalar(1e-310, dtype = "f64")
+
+  as.vector(x)  # Preserved: approximately 1e-310
+
+  # Subnormal input; mathematically normal result (should give ~1e-210).
+  as.vector(x * nv_scalar(1e100, dtype = "f64"))  # Observed: 0
+
+  # Normal inputs; mathematically subnormal result (should give ~1e-310).
+  as.vector(
+    nv_scalar(1e-200, dtype = "f64") *
+      nv_scalar(1e-110, dtype = "f64")
+  )  # Observed: 0
+
+  # Comparisons flush their inputs as well.
+  as.vector(nv_scalar(-1e-310, dtype = "f64") >= 0)  # Observed: TRUE
+
+  # The same happens in single precision.
+  as.vector(nv_scalar(1e-40, dtype = "f32"))  # Preserved: approximately 1e-40
+  as.vector(nv_scalar(1e-40, dtype = "f32") * 1e30)  # Observed: 0
+})
+```
+
+If the first argument to `with_backend()` is changed to `"quickr"` -- the experimental, optional backend described in the [internals vignette](internals.html) -- then you should observe the results of subnormal computations are preserved correctly.
+
+This is also present, for example, in the [JAX gotchas guide](https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html#miscellaneous-divergences-from-numpy) which also illustrates values preserved in storage but flushed during operations on some backends.
 
 ## No unsigned integers
 
@@ -149,13 +194,14 @@ big <- nv_array(2147483647L, dtype = "ui32") + 1L
 as_array(big)
 ```
 
-However, for `ui64`, we also convert to `integer64`, which does not cover the whole range, so overflow is possible, but can be detected via the `check` flag:
+However, for `ui64`, we also convert to `integer64`, which does not cover the whole range, so wrapping is possible.
+`as_array()` warns about it, and `check = "err"` makes it an error:
 
 ```{r, error = TRUE}
 big <- nv_array(0L, dtype = "ui64") - 1L
 big
 as_array(big)
-as_array(big, check = TRUE)
+as_array(big, check = "err")
 ```
 
 ## Differences between eager and jit-mode

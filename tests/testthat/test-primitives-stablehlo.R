@@ -427,6 +427,73 @@ describe("prim_if", {
 
 
 # TODO: Continue here
+describe("prim_scan", {
+  cumsum_body <- function(carry, x) {
+    s <- carry$s + x$x
+    list(carry = list(s = s), out = s)
+  }
+
+  it("threads the carry and stacks the outputs", {
+    f <- jit(function(x) {
+      prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 4L)
+    })
+    res <- f(nv_array(c(1, 2, 3, 4)))
+    expect_equal(as.numeric(as_array(res$out)), cumsum(c(1, 2, 3, 4)))
+    expect_equal(as.numeric(as_array(res$carry$s)), 10)
+  })
+
+  it("batches the carry over the non-scanned axes", {
+    a <- array(as.numeric(1:24), dim = c(4L, 2L, 3L))
+    res <- prim_scan(
+      list(s = nv_fill(0, shape = c(2L, 3L), dtype = "f64")),
+      list(x = nv_array(a)),
+      cumsum_body,
+      length = 4L
+    )
+    expect_equal(as_array(res$out), apply(a, c(2, 3), cumsum))
+    expect_equal(as_array(res$carry$s), apply(a, c(2, 3), sum))
+  })
+
+  it("reverse reads and writes at the original positions", {
+    res <- prim_scan(
+      list(s = nv_scalar(0)),
+      list(x = nv_array(c(1, 2, 3, 4))),
+      cumsum_body,
+      length = 4L,
+      reverse = TRUE
+    )
+    expect_equal(as.numeric(as_array(res$out)), rev(cumsum(4:1)))
+  })
+
+  it("runs a counted loop without xs and stacks several outputs", {
+    res <- prim_scan(
+      list(i = nv_scalar(1L)),
+      list(),
+      function(carry, x) {
+        expect_null(x)
+        list(carry = list(i = carry$i + 1L), out = list(twice = carry$i * 2L, pos = carry$i > 1L))
+      },
+      length = 3L
+    )
+    expect_equal(as.integer(as_array(res$out$twice)), c(2L, 4L, 6L))
+    expect_equal(as.logical(as_array(res$out$pos)), c(FALSE, TRUE, TRUE))
+    expect_equal(as.integer(as_array(res$carry$i)), 4L)
+  })
+
+  it("checks the body's contract", {
+    x <- list(x = nv_array(c(1, 2)))
+    expect_error(
+      prim_scan(list(s = nv_scalar(0)), x, function(c, v) c$s + v$x, length = 2L),
+      "list\\(carry = , out = \\)"
+    )
+    expect_error(
+      prim_scan(list(s = nv_scalar(0)), x, function(c, v) list(carry = c$s, out = c$s), length = 2L),
+      "same structure as `init`"
+    )
+    expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = 3L), "size 3 along axis 1")
+  })
+})
+
 describe("prim_while", {
   it("works in simple case", {
     f <- jit(function(n) {
@@ -997,6 +1064,29 @@ describe("prim_top_k", {
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
   })
 
+  it("returns only the values with indices = FALSE", {
+    x <- nv_matrix(c(3, 1, 5, 2, 4, 0, 5, 5, 1), nrow = 3, byrow = TRUE)
+    out <- prim_top_k(x, k = 2L, indices = FALSE)
+    expect_length(out, 1L)
+    expect_named(out, "values")
+    expect_equal(as_array(out$values), as_array(prim_top_k(x, k = 2L)$values))
+    expect_equal(as_array(jit(function(x) prim_top_k(x, k = 2L, indices = FALSE)$values)(x)), as_array(out$values))
+  })
+
+  it("lowers values-only top_k to a sort and slice on CUDA and to chlo top_k elsewhere", {
+    g <- trace_fn(
+      function(x) prim_top_k(x, k = 2L, indices = FALSE)$values,
+      list(nv_aval("f32", shape = c(3L, 5L)))
+    )
+    cuda <- repr(stablehlo(g, platform = "cuda")[[1L]])
+    expect_match(cuda, "stablehlo.sort", fixed = TRUE)
+    expect_match(cuda, "stablehlo.slice", fixed = TRUE)
+    expect_no_match(cuda, "top_k", fixed = TRUE)
+    cpu <- repr(stablehlo(g, platform = "cpu")[[1L]])
+    expect_match(cpu, "top_k", fixed = TRUE)
+    expect_no_match(cpu, "stablehlo.sort", fixed = TRUE)
+  })
+
   it("rejects k larger than the last axis", {
     expect_error(prim_top_k(nv_array(c(1, 2, 3)), k = 5L))
   })
@@ -1199,7 +1289,7 @@ test_that("prim_dot_general precision", {
       batching_axes = list(integer(), integer()),
       precision = "bogus"
     ),
-    "should be one of"
+    "`precision` must be one of"
   )
 })
 
@@ -1375,5 +1465,39 @@ test_that("the dynamic slicing primitives check their arguments", {
   expect_equal(
     as.vector(prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1L))),
     c(99, 20, 30)
+  )
+})
+
+test_that("prim_broadcast_in_axes reports a bad `broadcast_axes` in anvl's terms", {
+  x <- nv_array(c(1, 2, 3))
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = 3L),
+    "`broadcast_axes` must contain axes between 1 and 2",
+    fixed = TRUE
+  )
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = c(1L, 2L)),
+    "`broadcast_axes` must have one entry per axis of `x`",
+    fixed = TRUE
+  )
+})
+
+test_that("prim_static_slice requires a stride of at least 1", {
+  x <- nv_array(1:10)
+  expect_error(
+    prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 0L),
+    "strides"
+  )
+  expect_equal(
+    as.integer(prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 2L)),
+    c(1L, 3L, 5L)
+  )
+})
+
+test_that("prim_sort takes a list of arrays, not an array", {
+  expect_error(prim_sort(nv_array(c(3, 1, 2)), axis = 1L), "non-empty list")
+  expect_equal(
+    as.vector(as_array(prim_sort(list(nv_array(c(3, 1, 2))), axis = 1L)[[1L]])),
+    c(1, 2, 3)
   )
 })

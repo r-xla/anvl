@@ -81,26 +81,6 @@ the defaults for the duration of the call, so
 changes the default data types.
 }
 
-\section{Jitting in a Package}{
-
-To \code{jit()} a function defined in an R package, prefer the \verb{@jit} roxygen
-tag over a top-level \code{jit()} call:
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{#' @export
-#' @jit static = c("flag")
-my_fun <- function(x, flag) if (flag) x + 1 else x * 2
-}\if{html}{\out{</div>}}
-
-This delegates the wrapping to \code{\link[=jit_roclet]{jit_roclet()}}, which records the
-tagged functions in \code{R/jit-registry.R}. The wrapping itself happens at
-package build time via \code{\link[=apply_jit_registry]{apply_jit_registry()}} in \code{R/zzz.R}, so the
-resulting \code{JitFunction} is byte-compiled with the rest of the package
-instead of being rebuilt on every \code{.onLoad}.
-
-See \code{\link[=jit_roclet]{jit_roclet()}} for the one-time setup of the roclet in your
-package.
-}
-
 \section{PJRT JIT arguments}{
 
 \itemize{
@@ -127,7 +107,7 @@ would only get stripped again.
 f <- jit(function(x, y) x + y)
 f(nv_array(1), nv_array(2))
 
-# Static arguments enable data-dependent control flow
+# static arguments enable data-dependent control flow
 g <- jit(function(x, flag) {
   if (flag) x + 1 else x * 2
 }, static = "flag")
@@ -135,12 +115,10 @@ g(nv_array(3), TRUE)
 g(nv_array(3), FALSE)
 \dontshow{\}) # examplesIf}
 \dontshow{if (requireNamespace("quickr", quietly = TRUE)) withAutoprint(\{ # examplesIf}
-# The same function runs on whichever backend is active when it is called
+# the same function runs on whichever backend is active when it is called
 with_backend("quickr", f(nv_array(1), nv_array(2)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=jit_cache_size]{jit_cache_size()}} for how many programs a jitted function has cached.
-
-\code{\link[=jit_roclet]{jit_roclet()}} for the \verb{@jit} tag used inside R packages.
 }

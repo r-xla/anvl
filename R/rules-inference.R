@@ -1046,9 +1046,10 @@ infer_dynamic_update_slice <- function(x, update, ...) {
   list(AbstractArray(dtype = dtype(x), shape = x$shape))
 }
 
-infer_top_k <- function(x, k) {
+infer_top_k <- function(x, k, indices) {
   assert_array_dtype(x, "float", "int", "uint")
   k <- assert_int_param(k, "k", len = 1L)
+  assert_flag_param(indices, "indices")
 
   in_shape <- shape(x)
   rank <- length(in_shape)
@@ -1076,10 +1077,14 @@ infer_top_k <- function(x, k) {
   result_shape <- in_shape
   result_shape[[rank]] <- as.integer(k)
 
+  values <- AbstractArray(dtype = dtype(x), shape = Shape(result_shape))
+  if (!indices) {
+    return(list(values = values))
+  }
   # `hlo_top_k` fixes its indices at `i32`; the lowering converts them to the
   # default integer, which is what the caller sees.
   list(
-    values = AbstractArray(dtype = dtype(x), shape = Shape(result_shape)),
+    values = values,
     indices = AbstractArray(dtype = default_int(), shape = Shape(result_shape))
   )
 }
@@ -1133,6 +1138,12 @@ infer_reduce <- function(x, init, axes, drop, reductor_graph) {
     cli_abort(c(
       "{.arg reductor} must return a value with the same data type as {.arg x}.",
       x = "{.arg x} is {.val {as.character(dtype(x))}}, but {.arg reductor} returns {.val {as.character(dtype(out_aval))}}." # nolint
+    ))
+  }
+  if (length(shape(out_aval))) {
+    cli_abort(c(
+      "{.arg reductor} must return a scalar.",
+      x = "Got shape {shape_repr(shape(out_aval))}."
     ))
   }
 

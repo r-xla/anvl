@@ -41,7 +41,7 @@ There are various scenarios:
 
    2. It cannot be expressed or can only expressed inefficiently:
 
-      $\rightarrow$ You can implement a stableHLO custom call, see the custom print operation in [pjrt](https://github.com/r-xla/pjrt).
+      $\rightarrow$ You can implement a StableHLO custom call, see the custom print operation in [pjrt](https://github.com/r-xla/pjrt).
       The {pjrt} package has a dedicated ["Adding Custom Calls"](https://r-xla.github.io/pjrt/dev/articles/ffi.html) tutorial.
       This mechanism is used, for example, to implement some of the linear algebra primitives such as SVD: on CPU these call into LAPACK, and on GPU they use NVIDIA's cuSOLVER library.
       In the future it will also be possible to call into user-provided custom CUDA kernels, but there is no infrastructure for this yet -- currently we only call into predefined kernels shipped with the CUDA toolkit.

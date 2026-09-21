@@ -981,14 +981,14 @@ describe("bit64::as.integer64()", {
     # go: exactly 2^63 lands on NA and anything above it comes back negative.
     u <- nv_convert(nv_array(c(2^63, 2^63 + 2^11), dtype = "f64"), "ui64")
     expect_identical(
-      bit64::as.integer64(u),
+      bit64::as.integer64(u, check = FALSE),
       c(bit64::NA_integer64_, bit64::as.integer64(-2^63 + 2^11))
     )
   })
 
   it("reports the wrap when asked to check", {
     u <- nv_convert(nv_array(2^63, dtype = "f64"), "ui64")
-    expect_error(bit64::as.integer64(u, check = TRUE), "wrapped")
+    expect_error(bit64::as.integer64(u, check = "err"), "wrapped")
   })
 
   it("works on a scalar", {

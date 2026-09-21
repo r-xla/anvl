@@ -112,7 +112,7 @@
 # infer_top_k() / refuses a k larger than the last axis
 
     Code
-      infer_top_k(infer_at("f32", c(2L, 3L)), k = 4L)
+      infer_top_k(infer_at("f32", c(2L, 3L)), k = 4L, indices = TRUE)
     Condition
       Error in `infer_top_k()`:
       ! `k` must not exceed the size of the last axis of `x` (3).

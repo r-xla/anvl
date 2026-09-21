@@ -1,11 +1,21 @@
 # anvl (development version)
-
+  
 ## Breaking changes
 
+* The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
+  definition instead.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* `as_array()` and the `as.double()` / `as.integer()` /
+  `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
+  `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
+  default about a value R's type cannot hold. Write `check = "err"` where
+  you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
+* `nv_array()` and `nv_scalar()` no longer take a `check` argument, following
+  {pjrt}: what happens to an `NA` is fixed by the dtype it is built at. Call
+  `anyNA()` on the data yourself instead.
 * `common_dtype()` now errors for `ui64` and a signed integer instead of
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.
@@ -40,6 +50,8 @@
   letting it surface as a raw R error under the primitive's name.
 * `prim_if()` now reports a branch type mismatch itself, in anvl's terms,
   rather than leaving it to the compiler.
+* `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
+  when `start > end`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
@@ -51,6 +63,12 @@
   `prod(shape)` elements of `dtype` (both then required); `byrow` selects
   row-major element order for the payload. Only supported on the `"pjrt"`
   backend; the inverse direction is the existing `as_raw()`.
+* New `nv_scan()`: a fixed-length loop in the style of JAX's `lax.scan` that
+  threads a carry through a body function and stacks each step's outputs
+  along a new leading axis. Supports nested carries, multiple `xs` and
+  `out` leaves, reverse scans, `xs = NULL` counted loops and carry-only
+  loops. Backed by the new `prim_scan()` primitive, which lowers to a
+  `while` loop on the pjrt backend and to a `for` loop on quickr.
 * The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
   `all()`) now work with multiple data inputs.
 * The default data types for floating point numbers and integers can now be
@@ -80,9 +98,41 @@
 * `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
   integer array unchanged, like base R does.
 * Improved documentation of API functions and primitives.
+* Printed graphs read as `[captures] (inputs) { ... return ... }`, show
+  sub-graphs in full, and wrap long lines to the console width; `format()`
+  takes `width` and `digits` arguments.
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
+
+## Performance
+
+* `nv_quantile()` and `nv_median()` select the needed order statistics with
+  `top_k` instead of a full sort when every requested quantile lies in the
+  same half of the axis. Results are unchanged.
+* `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
+  unstable sort of the values and a slice instead of the CHLO op, which
+  costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`
+  and the quantile fast path use it.
 
 ## Bug fixes
 
+* `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
+  inputs again: axes before the last two are batch axes.
+* A function returned by `jit()` no longer evaluates its arguments a second
+  time. It used to rebuild the call with `match.call()` and evaluate the
+  argument expressions again in the caller's frame, which computed them twice
+  whenever something had evaluated them already -- most visibly under S3
+  dispatch, which evaluates the first argument to choose a method.
+* `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
+  to a common data type.
+* The floating-point `nv_*` functions refuse a boolean, `nv_matmul()`,
+  `nv_solve()` and `nv_triangular_solve()` included -- a boolean used to meet a
+  numeric operand at that operand's data type and pass their data type check.
+* `nv_crossprod()` and `nv_tcrossprod()` transpose only the last two axes, so
+  they work on batched arrays.
+* `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
+  is refused rather than silently truncated.
+* A range that counts down (`x[3:1]`) now selects in reverse instead of failing.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
   `as.numeric()`, `as.character()` and friends -- now aborts with an
   explanation instead of falling through to the base R generic. Some of those

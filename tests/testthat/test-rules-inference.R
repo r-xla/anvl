@@ -321,14 +321,20 @@ describe("infer_convolution()", {
 
 describe("infer_top_k()", {
   it("returns the values at the input's type and the indices at the default integer", {
-    out <- infer_top_k(infer_at("f32", c(2L, 8L)), k = 3L)
+    out <- infer_top_k(infer_at("f32", c(2L, 8L)), k = 3L, indices = TRUE)
     expect_named(out, c("values", "indices"))
     expect_equal(out$values, infer_at("f32", c(2L, 8L - 5L)))
     expect_equal(dtype(out$indices), default_int())
   })
 
+  it("returns the values alone when the indices are not asked for", {
+    out <- infer_top_k(infer_at("f32", c(2L, 8L)), k = 3L, indices = FALSE)
+    expect_named(out, "values")
+    expect_equal(out$values, infer_at("f32", c(2L, 3L)))
+  })
+
   it("refuses a k larger than the last axis", {
-    expect_snapshot(error = TRUE, infer_top_k(infer_at("f32", c(2L, 3L)), k = 4L))
+    expect_snapshot(error = TRUE, infer_top_k(infer_at("f32", c(2L, 3L)), k = 4L, indices = TRUE))
   })
 })
 

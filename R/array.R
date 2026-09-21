@@ -66,30 +66,24 @@
 #'   default column-major order, mirroring [`base::matrix()`]'s `byrow`.
 #'   Only allowed when `data` is an R object — passing an existing
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
-#' @param check (`logical(1)`)\cr
-#'   If `TRUE`, error when `data` contains any `NA` values. XLA has no
-#'   representation for missing values, so they are otherwise silently
-#'   coerced to the closest available value of the target dtype (e.g. `NaN`
-#'   for floats, the bit pattern `-2147483648` for `i32`, `TRUE` for
-#'   `bool`). Defaults to `FALSE`. See the "Gotchas" vignette.
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
 #' nv_array(1:4)
 #'
-#' # Specify a dtype
+#' # specify a dtype
 #' nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #'
-#' # A 2x3 matrix
+#' # a 2x3 matrix
 #' nv_array(1:6, shape = c(2L, 3L))
 #'
-#' # A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+#' # a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 #' nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 #'
 #' # A scalar array.
 #' nv_scalar(3.14)
 #'
-#' # An uninitialized 2x3 array (contents are unspecified)
+#' # an uninitialized 2x3 array (contents are unspecified)
 #' nv_empty("f32", shape = c(2L, 3L))
 #'
 #' # --- Extractors ---
@@ -117,18 +111,9 @@ nv_array <- function(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  byrow = FALSE,
-  check = FALSE
+  byrow = FALSE
 ) {
   assert_flag(byrow)
-  assert_flag(check)
-  if (check && !is_anvl_array(data) && anyNA(data)) {
-    n_na <- sum(is.na(data))
-    cli_abort(c(
-      "Input {.arg data} contains {n_na} {.val NA} value{?s}, which {?has/have} no representation at the XLA level.",
-      i = "Replace or drop missing values before transferring, or set {.code check = FALSE} to skip this check."
-    ))
-  }
   if (is_anvl_array(data)) {
     if (byrow) {
       cli_abort("{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.")
@@ -373,13 +358,12 @@ unwrap_if_array <- function(x) {
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar <- function(data, dtype = NULL, device = NULL, check = FALSE) {
+nv_scalar <- function(data, dtype = NULL, device = NULL) {
   nv_array(
     data,
     dtype = dtype,
     device = device,
-    shape = integer(),
-    check = check
+    shape = integer()
   )
 }
 
@@ -500,17 +484,21 @@ shape.AnvlArray <- function(x, ...) {
 }
 
 #' @rdname as_array
-#' @param check (`logical(1)`)\cr
-#'   If `TRUE`, sanity-check the materialized R vector against losing
-#'   information across the device-to-host boundary, and abort if any
-#'   problematic value is detected. Forwarded to the backend; for the
-#'   `pjrt` backend the relevant cases are `i32`/`i64` values colliding
-#'   with the `NA` bit pattern and `ui64` values `>= 2^63` wrapping
-#'   through `bit64::integer64`. See [`pjrt::as_array.PJRTBuffer()`] for
-#'   the full list. Defaults to `FALSE`. See the "Gotchas" vignette.
+#' @param check (`character(1)` | `FALSE`)\cr
+#'   How to report a materialized value that the R type cannot hold:
+#'   `"warn"` (the default) warns and returns it anyway, `"err"` aborts,
+#'   and `FALSE` skips the scan. `TRUE` is not accepted -- with two
+#'   levels of strictness it does not say which one is meant. Forwarded
+#'   to the backend; for the `pjrt` backend the cases scanned for are
+#'   `i32`/`i64` values colliding with the `NA` bit pattern and `ui64`
+#'   values `>= 2^63` wrapping through `bit64::integer64`. See
+#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and the "Gotchas"
+#'   vignette.
 #' @export
-as_array.AnvlArray <- function(x, check = FALSE, ...) {
-  assert_flag(check)
+as_array.AnvlArray <- function(x, check = "warn", ...) {
+  if (!isFALSE(check)) {
+    assert_choice(check, c("warn", "err"))
+  }
   globals$backends[[x$backend]]$as_array(x, check = check)
 }
 
@@ -551,7 +539,8 @@ await.AnvlArray <- function(x, ...) {
 #'   to read `i64`, `ui64` and `ui32` values that an R `integer` cannot hold.
 #'   It is lossless for `i64` and `ui32`, but [`bit64::integer64`] is itself
 #'   signed, so a `ui64` value `>= 2^63` wraps to a negative one (exactly
-#'   `2^63` becomes `NA`); pass `check = TRUE` to be told when that happens.
+#'   `2^63` becomes `NA`); that is warned about, and `check = "err"` makes it
+#'   an error.
 #' * `as.logical()`: `bool`.
 #' * `as.vector()`: any dtype; the R type is chosen by the dtype. For the
 #'   dtypes R has no native type for (`i64`, `ui64`, `ui32`) that is the
@@ -562,7 +551,7 @@ await.AnvlArray <- function(x, ...) {
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
 #' `as.vector()`'s signature is fixed by the generic, so it takes no `check`
-#' argument; call [`as_array()`] with `check = TRUE` to have the values
+#' argument; call [`as_array()`] with `check = "err"` to have the values
 #' validated.
 #' @param x ([`AnvlArray`])\cr
 #'   Array to coerce.
@@ -570,7 +559,7 @@ await.AnvlArray <- function(x, ...) {
 #'   Must be `"any"` (the default), meaning the natural R type for the array's
 #'   dtype. Only present because [base::as.vector()]'s signature requires it;
 #'   pick an R type with one of the other methods instead.
-#' @param check (`logical(1)`)\cr
+#' @param check (`character(1)` | `FALSE`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
 #' @return An R vector holding the array's values, of the type the method
@@ -588,7 +577,7 @@ NULL
 #' @rdname as-AnvlArray
 #' @method as.double AnvlArray
 #' @export
-as.double.AnvlArray <- function(x, check = FALSE, ...) {
+as.double.AnvlArray <- function(x, check = "warn", ...) {
   dt <- dtype(x)
   if (!(is_dtype_float(dt) || is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.double} requires a float or integer dtype, but got {.val {as.character(dt)}}.")
@@ -599,7 +588,7 @@ as.double.AnvlArray <- function(x, check = FALSE, ...) {
 #' @rdname as-AnvlArray
 #' @method as.integer AnvlArray
 #' @export
-as.integer.AnvlArray <- function(x, check = FALSE, ...) {
+as.integer.AnvlArray <- function(x, check = "warn", ...) {
   dt <- dtype(x)
   if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.integer} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
@@ -610,7 +599,7 @@ as.integer.AnvlArray <- function(x, check = FALSE, ...) {
 #' @rdname as-AnvlArray
 #' @method as.integer64 AnvlArray
 #' @exportS3Method bit64::as.integer64
-as.integer64.AnvlArray <- function(x, check = FALSE, ...) {
+as.integer64.AnvlArray <- function(x, check = "warn", ...) {
   dt <- dtype(x)
   if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort(
@@ -625,7 +614,7 @@ as.integer64.AnvlArray <- function(x, check = FALSE, ...) {
 #' @rdname as-AnvlArray
 #' @method as.logical AnvlArray
 #' @export
-as.logical.AnvlArray <- function(x, check = FALSE, ...) {
+as.logical.AnvlArray <- function(x, check = "warn", ...) {
   if (!is_dtype_bool(dtype(x))) {
     cli_abort("{.fn as.logical} requires a {.val bool} dtype, but got {.val {as.character(dtype(x))}}.")
   }
@@ -720,13 +709,13 @@ backend.QuickrDevice <- function(x, ...) {
 #' dtype(a)
 #' shape(a)
 #'
-#' # Shorthand
+#' # shorthand
 #' nv_aval("f32", c(2L, 3L))
 #'
-#' # An R value, which has no dtype until it is used
+#' # an R value, which has no dtype until it is used
 #' nv_aval("double", c(2L, 3L))
 #'
-#' # How AbstractArrays appear in an AnvlGraph
+#' # how AbstractArrays appear in an AnvlGraph
 #' graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
 #' graph
 #' graph$inputs[[1]]$aval
@@ -784,7 +773,7 @@ shape.AbstractArray <- function(x, ...) {
 #' naxes(x)
 #' dtype(x)
 #'
-#' # How it appears during tracing
+#' # how it appears during tracing
 #' graph <- trace_fn(function() y, list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -827,7 +816,7 @@ ConcreteArray <- function(data) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' # 1. via R literals
 #' graph <- trace_fn(function() 1, list())
 #' graph
@@ -886,7 +875,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -944,13 +933,13 @@ print.IotaArray <- function(x, ...) {
 #' a <- nv_aval("f32", c(2L, 3L))
 #' b <- nv_aval("f32", c(2L, 3L))
 #'
-#' # Same dtype and shape
+#' # same dtype and shape
 #' eq_type(a, b)
 #'
-#' # Different dtype
+#' # different dtype
 #' eq_type(a, nv_aval("i32", c(2L, 3L)))
 #'
-#' # Different shape
+#' # different shape
 #' eq_type(a, nv_aval("f32", c(3L, 2L)))
 #'
 #' # neq_type is the negation of eq_type
@@ -1070,7 +1059,7 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #' # AnvlArrays become ConcreteArrays
 #' to_abstract(nv_array(1:4))
 #'
-#' # Use pure = TRUE to strip subclass info
+#' # use pure = TRUE to strip subclass info
 #' to_abstract(nv_array(1:4), pure = TRUE)
 #'
 #' @export
@@ -1137,7 +1126,7 @@ is_shape <- function(x) {
 #' # AnvlArrays are arrayish
 #' is_arrayish(nv_array(1:4))
 #'
-#' # Scalar R literals are arrayish by default
+#' # scalar R literals are arrayish by default
 #' is_arrayish(1.5)
 #' # R arrays are arrayish by default
 #' is_arrayish(array(1.5))
@@ -1146,7 +1135,7 @@ is_shape <- function(x) {
 #' is_arrayish(array(1:4), convert_ok = TRUE)
 #' is_arrayish(array(1:4), convert_ok = FALSE)
 #'
-#' # Length 1 vectors
+#' # length 1 vectors
 #' is_arrayish(1.5, convert_ok = FALSE)
 #' is_arrayish(1.5, convert_ok = TRUE)
 NULL

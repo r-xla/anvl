@@ -1,4 +1,22 @@
+#' @include jit.R
+NULL
+
 ## Probability distributions ---------------------------------------------------
+
+# The operand -- `x`/`q`/`p`, always the first argument -- governs the data type
+# the distribution is evaluated at; the parameters follow it. The float check
+# runs before the promotion, so a non-float operand is reported as itself rather
+# than as a failure to bring a parameter to its data type.
+promote_distribution_args <- function(...) {
+  args <- list(...)
+  operand <- names(args)[[1L]]
+  assert_float_dtype(
+    peek_dtype(args[[1L]]),
+    arg = operand,
+    hint = "Convert it with `nv_convert()`."
+  )
+  do.call(as_anvl_arrays, c(args, list(.promote = promotion_like(operand))))
+}
 
 #' @title The Normal Distribution
 #' @name nv_normal
@@ -72,113 +90,112 @@ NULL
 
 #' @rdname nv_normal
 #' @export
-#' @jit static "log"
-nv_dnorm <- function(x, mean = 0, sd = 1, log = FALSE) {
-  assert_flag(log)
-  # Before the promotion, so a non-float operand is reported as `x` rather than
-  # as a failure to bring `mean` to its data type.
-  assert_float_dtype(peek_dtype(x), arg = "x", hint = "Convert it with `nv_convert()`.")
-  args <- as_anvl_arrays(x = x, mean = mean, sd = sd, .promote = promotion_like("x"))
-  x <- args$x
-  mean <- args$mean
-  sd <- args$sd
+nv_dnorm <- jit(
+  function(x, mean = 0, sd = 1, log = FALSE) {
+    assert_flag(log)
+    args <- promote_distribution_args(x = x, mean = mean, sd = sd)
+    x <- args$x
+    mean <- args$mean
+    sd <- args$sd
 
-  z <- (x - mean) / sd
-  log_density <- -0.5 * (z * z) - nv_log(sd) - 0.5 * base::log(2 * pi)
+    z <- (x - mean) / sd
+    log_density <- -0.5 * (z * z) - nv_log(sd) - 0.5 * base::log(2 * pi)
 
-  if (log) {
-    return(log_density)
-  }
-  nv_exp(log_density)
-}
+    if (log) {
+      return(log_density)
+    }
+    nv_exp(log_density)
+  },
+  static = "log"
+)
 
 #' @rdname nv_normal
 #' @export
-#' @jit static c("lower_tail", "log_p")
-nv_pnorm <- function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
-  assert_flag(lower_tail)
-  assert_flag(log_p)
-  # As in `nv_dnorm()`: name the operand, not `mean`.
-  assert_float_dtype(peek_dtype(q), arg = "q", hint = "Convert it with `nv_convert()`.")
-  args <- as_anvl_arrays(q = q, mean = mean, sd = sd, .promote = promotion_like("q"))
-  q <- args$q
-  mean <- args$mean
-  sd <- args$sd
-  # One threshold set per width, so a narrower float has none: it would
-  # silently take the `f64` set.
-  op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
+nv_pnorm <- jit(
+  function(q, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(q = q, mean = mean, sd = sd)
+    q <- args$q
+    mean <- args$mean
+    sd <- args$sd
+    # One threshold set per width, so a narrower float has none: it would
+    # silently take the `f64` set.
+    op_dtype <- assert_rng_float_dtype(dtype(q), arg = "q")
 
-  # Standardise, flipping sign if computing upper tail
-  d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
+    # Standardise, flipping sign if computing upper tail
+    d <- if (lower_tail) (q - mean) / sd else (mean - q) / sd
 
-  if (!log_p) {
-    # When not computing log cdf we're done as no accuracy concerns with erfc
-    return(0.5 * nv_erfc(-d / sqrt(2)))
-  }
+    if (!log_p) {
+      # When not computing log cdf we're done as no accuracy concerns with erfc
+      return(0.5 * nv_erfc(-d / sqrt(2)))
+    }
 
-  # Here computing log cdf: care required to ensure accuracy deep in the tails,
-  # since there is no log version of erfc in XLA.
-  # R handles this with a near-minimax approximation due to Cody
-  # <doi:10.1090/S0025-5718-1969-0247736-4>, but this algorithm does not perform
-  # well with XLA due to complicated rational-polynomial expression.
-  # Instead use the classic successive integration by parts asymptotic expansion
-  # from Abramowitz & Stegun, eq 26.2.12 p.932 <isbn:0-486-61272-4> (originally
-  # due to Laplace? Also used by JAX) if the argument is in a region where
-  # direct evaluation of log(erfc) would be inaccurate.
+    # Here computing log cdf: care required to ensure accuracy deep in the tails,
+    # since there is no log version of erfc in XLA.
+    # R handles this with a near-minimax approximation due to Cody
+    # <doi:10.1090/S0025-5718-1969-0247736-4>, but this algorithm does not perform
+    # well with XLA due to complicated rational-polynomial expression.
+    # Instead use the classic successive integration by parts asymptotic expansion
+    # from Abramowitz & Stegun, eq 26.2.12 p.932 <isbn:0-486-61272-4> (originally
+    # due to Laplace? Also used by JAX) if the argument is in a region where
+    # direct evaluation of log(erfc) would be inaccurate.
 
-  # Thresholds between direct computation of erfc and the asymptotic expansion,
-  # Q, for f32 and f64. These differ from JAX for accuracy.
-  is_f32 <- op_dtype == "f32"
-  lower_threshold <- if (is_f32) -11.9 else -20
-  upper_threshold <- 0
+    # Thresholds between direct computation of erfc and the asymptotic expansion,
+    # Q, for f32 and f64. These differ from JAX for accuracy.
+    is_f32 <- op_dtype == "f32"
+    lower_threshold <- if (is_f32) -11.9 else -20
+    upper_threshold <- 0
 
-  # Computation regime:
-  #   d <= lower_threshold ... then we compute log Q(-d) using asymptotic
-  #                            expansion
-  #   d > upper_threshold  ... then we compute log(1-erfc(d/sqrt(2))). Note the
-  #                            approximation -erfc(d/sqrt(2)) has catastrophic
-  #                            loss of accuracy
-  #   d in between         ... accuracy of log(erfc(-d/sqrt(2))) is fine
+    # Computation regime:
+    #   d <= lower_threshold ... then we compute log Q(-d) using asymptotic
+    #                            expansion
+    #   d > upper_threshold  ... then we compute log(1-erfc(d/sqrt(2))). Note the
+    #                            approximation -erfc(d/sqrt(2)) has catastrophic
+    #                            loss of accuracy
+    #   d in between         ... accuracy of log(erfc(-d/sqrt(2))) is fine
 
-  # Compute Q(-d) for the asymptotic region, first clamping the value to protect
-  # gradient from poisoning later
-  d_asymp <- nv_max(-d, 1)
-  d2_asymp <- d_asymp * d_asymp
-  w <- 1 / d2_asymp
-  # Compute just what is required for precision (confirmed if statement compiles
-  # away during tracing)
-  series_minus_1 <- if (is_f32) {
-    w * (-1 + w * 3)
-  } else {
-    w * (-1 + w * (3 + w * (-15 + w * (105 + w * (-945 + w * (10395 + w * (-135135)))))))
-  }
-  log_pdf_term <- -0.5 * d2_asymp - 0.5 * base::log(2 * pi)
+    # Compute Q(-d) for the asymptotic region, first clamping the value to protect
+    # gradient from poisoning later
+    d_asymp <- nv_max(-d, 1)
+    d2_asymp <- d_asymp * d_asymp
+    w <- 1 / d2_asymp
+    # Compute just what is required for precision (confirmed if statement compiles
+    # away during tracing)
+    series_minus_1 <- if (is_f32) {
+      w * (-1 + w * 3)
+    } else {
+      w * (-1 + w * (3 + w * (-15 + w * (105 + w * (-945 + w * (10395 + w * (-135135)))))))
+    }
+    log_pdf_term <- -0.5 * d2_asymp - 0.5 * base::log(2 * pi)
 
-  # Check which regime (asymptotic, direct, upper tail)
-  use_non_asymp <- d > lower_threshold
-  use_direct <- use_non_asymp & d <= upper_threshold
-  # Compute correct erfc(-d/sqrt(2)) or erfc(d/sqrt(2)), selecting on arg to
-  # avoid multiple erfc evaluations
-  erfc_arg <- nv_ifelse(use_direct, -d, d)
-  erfc_res <- 0.5 * nv_erfc(erfc_arg / sqrt(2))
-  # Clamp result to a safe value on other branches so gradient not poisoned on
-  # log/log1p calls
-  erfc_res_direct <- nv_ifelse(use_direct, erfc_res, 1)
-  erfc_res_upper <- nv_ifelse(use_non_asymp, erfc_res, 0)
-  # Compute final answer down all branches, returning correct branch for each
-  # element
-  nv_ifelse(
-    use_direct,
-    nv_log(erfc_res_direct),
+    # Check which regime (asymptotic, direct, upper tail)
+    use_non_asymp <- d > lower_threshold
+    use_direct <- use_non_asymp & d <= upper_threshold
+    # Compute correct erfc(-d/sqrt(2)) or erfc(d/sqrt(2)), selecting on arg to
+    # avoid multiple erfc evaluations
+    erfc_arg <- nv_ifelse(use_direct, -d, d)
+    erfc_res <- 0.5 * nv_erfc(erfc_arg / sqrt(2))
+    # Clamp result to a safe value on other branches so gradient not poisoned on
+    # log/log1p calls
+    erfc_res_direct <- nv_ifelse(use_direct, erfc_res, 1)
+    erfc_res_upper <- nv_ifelse(use_non_asymp, erfc_res, 0)
+    # Compute final answer down all branches, returning correct branch for each
+    # element
     nv_ifelse(
-      use_non_asymp,
-      nv_log1p(-erfc_res_upper),
-      log_pdf_term -
-        nv_log(d_asymp) +
-        if (is_f32) series_minus_1 else nv_log1p(series_minus_1)
+      use_direct,
+      nv_log(erfc_res_direct),
+      nv_ifelse(
+        use_non_asymp,
+        nv_log1p(-erfc_res_upper),
+        log_pdf_term -
+          nv_log(d_asymp) +
+          if (is_f32) series_minus_1 else nv_log1p(series_minus_1)
+      )
     )
-  )
-}
+  },
+  static = c("lower_tail", "log_p")
+)
 
 # Horner's method for polynomials, coefficients in decreasing power order.
 # x can be vector, say length n.
@@ -292,110 +309,288 @@ qnorm_f32_coefs <- list(
 
 #' @rdname nv_normal
 #' @export
-#' @jit static c("lower_tail", "log_p")
-nv_qnorm <- function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
-  assert_flag(lower_tail)
-  assert_flag(log_p)
-  # As in `nv_dnorm()`: name the operand, not `mean`.
-  assert_float_dtype(peek_dtype(p), arg = "p", hint = "Convert it with `nv_convert()`.")
-  args <- as_anvl_arrays(p = p, mean = mean, sd = sd, .promote = promotion_like("p"))
-  p <- args$p
-  mean <- args$mean
-  sd <- args$sd
-  # One coefficient set per width -- see `nv_pnorm()`.
-  op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
+nv_qnorm <- jit(
+  function(p, mean = 0, sd = 1, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(p = p, mean = mean, sd = sd)
+    p <- args$p
+    mean <- args$mean
+    sd <- args$sd
+    # One coefficient set per width -- see `nv_pnorm()`.
+    op_dtype <- assert_rng_float_dtype(dtype(p), arg = "p")
 
-  is_f32 <- op_dtype == "f32"
+    is_f32 <- op_dtype == "f32"
 
-  cf <- if (is_f32) qnorm_f32_coefs else qnorm_f64_coefs
-  lp <- if (log_p) p else nv_log(p)
+    cf <- if (is_f32) qnorm_f32_coefs else qnorm_f64_coefs
+    lp <- if (log_p) p else nv_log(p)
 
-  # As described above for rational polynomial coefficients, we divide into
-  # regions.
-  # upper tail if p > 1-e^-2         poly in 1/z where z = sqrt(-2 log p)
-  # central    if e^-2 < p <= 1-e^-2 poly in w^2, w = p-0.5
-  # lower tail if p <= e^-2          poly in 1/z where z = sqrt(-2 log (1-p))
-  # Will actually handle lower tail by folding into upper via z = sqrt(-2 log t)
-  # for t = min(p, 1-p).
-  # The tail approximation is split between a near (z < 8) and far (z >= 8).
+    # As described above for rational polynomial coefficients, we divide into
+    # regions.
+    # upper tail if p > 1-e^-2         poly in 1/z where z = sqrt(-2 log p)
+    # central    if e^-2 < p <= 1-e^-2 poly in w^2, w = p-0.5
+    # lower tail if p <= e^-2          poly in 1/z where z = sqrt(-2 log (1-p))
+    # Will actually handle lower tail by folding into upper via z = sqrt(-2 log t)
+    # for t = min(p, 1-p).
+    # The tail approximation is split between a near (z < 8) and far (z >= 8).
 
-  # First, identify flags for upper and central region.
-  # Then,
-  #          use_upper  use_central
-  # upper     TRUE       FALSE
-  # central   FALSE      TRUE
-  # lower     FALSE      FALSE
-  if (log_p) {
-    upper_threshold <- base::log1p(-exp(-2))
-    use_upper <- lp > upper_threshold
-    use_central <- (lp > -2) & (lp <= upper_threshold)
-  } else {
-    upper_threshold <- 1 - exp(-2)
-    use_upper <- p > upper_threshold
-    use_central <- (p > exp(-2)) & (p <= upper_threshold)
-  }
+    # First, identify flags for upper and central region.
+    # Then,
+    #          use_upper  use_central
+    # upper     TRUE       FALSE
+    # central   FALSE      TRUE
+    # lower     FALSE      FALSE
+    if (log_p) {
+      upper_threshold <- base::log1p(-exp(-2))
+      use_upper <- lp > upper_threshold
+      use_central <- (lp > -2) & (lp <= upper_threshold)
+    } else {
+      upper_threshold <- 1 - exp(-2)
+      use_upper <- p > upper_threshold
+      use_central <- (p > exp(-2)) & (p <= upper_threshold)
+    }
 
-  # Tail approximation
-  # Compute log(1-p), with guards for derivatives ...
-  log_t <- if (log_p) {
-    nv_log(-nv_expm1(nv_ifelse(use_upper, lp, -1)))
-  } else {
-    nv_log1p(-nv_ifelse(use_upper, p, 0))
-  }
-  # ... and then log t = min(log p, log(1-p)) by selection
-  log_t <- nv_ifelse(use_upper, log_t, lp)
-  is_boundary <- log_t == -Inf
-  # Safely clamp central region and boundary elements onto the branch boundary,
-  # where tail is well behaved for gradients
-  log_t <- nv_ifelse(is_boundary | use_central, -2, log_t)
+    # Tail approximation
+    # Compute log(1-p), with guards for derivatives ...
+    log_t <- if (log_p) {
+      nv_log(-nv_expm1(nv_ifelse(use_upper, lp, -1)))
+    } else {
+      nv_log1p(-nv_ifelse(use_upper, p, 0))
+    }
+    # ... and then log t = min(log p, log(1-p)) by selection
+    log_t <- nv_ifelse(use_upper, log_t, lp)
+    is_boundary <- log_t == -Inf
+    # Safely clamp central region and boundary elements onto the branch boundary,
+    # where tail is well behaved for gradients
+    log_t <- nv_ifelse(is_boundary | use_central, -2, log_t)
 
-  # Compute the near or far tail rational polynomial approximation
-  # Poly is in 1/z for z = sqrt(-2 log t)
-  z <- nv_sqrt(-2 * log_t)
-  inv_z <- 1 / z
-  use_far_tail <- z >= 8
-  # See important "NOTE" preceding coefficients above regarding this helper func
-  select_far <- function(far, near) {
-    # The coefficients are plain R numbers, so a bare `nv_ifelse(pred, x, y)`
-    # would have nothing to yield to and materialize at the default float,
-    # dragging the whole result up with it. They are built at `p`'s data type
-    # instead.
-    Map(
-      function(x, y) nv_ifelse(use_far_tail, nv_scalar_like(p, x), nv_scalar_like(p, y)),
-      far,
-      near
+    # Compute the near or far tail rational polynomial approximation
+    # Poly is in 1/z for z = sqrt(-2 log t)
+    z <- nv_sqrt(-2 * log_t)
+    inv_z <- 1 / z
+    use_far_tail <- z >= 8
+    # See important "NOTE" preceding coefficients above regarding this helper func
+    select_far <- function(far, near) {
+      # The coefficients are plain R numbers, so a bare `nv_ifelse(pred, x, y)`
+      # would have nothing to yield to and materialize at the default float,
+      # dragging the whole result up with it. They are built at `p`'s data type
+      # instead.
+      Map(
+        function(x, y) nv_ifelse(use_far_tail, nv_scalar_like(p, x), nv_scalar_like(p, y)),
+        far,
+        near
+      )
+    }
+    ratio <- horner(inv_z, select_far(cf$p_far_tail, cf$p_tail)) /
+      horner(inv_z, select_far(cf$q_far_tail, cf$q_tail))
+    res_tail <- z - nv_log(z) * inv_z - ratio * inv_z
+
+    # Central approximation
+    # Poly is in w^2 for w = p-0.5 (accounting for if arg was log_p)
+    w <- if (log_p) 0.5 * nv_expm1(lp + base::log(2)) else p - 0.5
+    w2 <- w * w
+    res_central <- base::sqrt(2 * pi) *
+      (w + w * w2 * (horner(w2, cf$p_central) / horner(w2, cf$q_central)))
+
+    # Final standardised Normal result
+    # Distinguish central region from a tail, then resolve left/right tail
+    res_std <- nv_ifelse(
+      use_central,
+      res_central,
+      nv_ifelse(use_upper, res_tail, -res_tail)
     )
-  }
-  ratio <- horner(inv_z, select_far(cf$p_far_tail, cf$p_tail)) /
-    horner(inv_z, select_far(cf$q_far_tail, cf$q_tail))
-  res_tail <- z - nv_log(z) * inv_z - ratio * inv_z
+    # The infinities are built at `p`'s data type: two bare R doubles here would
+    # have nothing to yield to, materialize at the default float, and drag the
+    # result up with them.
+    res_std <- nv_ifelse(
+      is_boundary,
+      nv_ifelse(use_upper, nv_scalar_like(p, Inf), nv_scalar_like(p, -Inf)),
+      res_std
+    )
+    # Handle tail switch
+    if (!lower_tail) {
+      res_std <- -res_std
+    }
+    # Unstandardise as necessary
+    mean + sd * res_std
+  },
+  static = c("lower_tail", "log_p")
+)
 
-  # Central approximation
-  # Poly is in w^2 for w = p-0.5 (accounting for if arg was log_p)
-  w <- if (log_p) 0.5 * nv_expm1(lp + base::log(2)) else p - 0.5
-  w2 <- w * w
-  res_central <- base::sqrt(2 * pi) *
-    (w + w * w2 * (horner(w2, cf$p_central) / horner(w2, cf$q_central)))
+#' @title The Uniform Distribution
+#' @name nv_uniform
+#' @description
+#' Density (`nv_dunif`), distribution function (`nv_punif`), and quantile
+#' function (`nv_qunif`) for the Uniform distribution on the interval from
+#' `min` to `max`.
+#' @param x,q ([`arrayish`])\cr
+#'   Quantiles at which to evaluate the density (`x`) or the distribution
+#'   function (`q`).
+#' @param p ([`arrayish`])\cr
+#'   Probabilities at which to evaluate the quantile function. Values outside
+#'   \eqn{[0, 1]} give `NaN`.
+#' @param min,max ([`arrayish`])\cr
+#'   Lower and upper limits of the distribution. Either scalars, or arrays of
+#'   exactly the same shape as `x`/`q`/`p`, in which case the interval varies
+#'   elementwise and each element of `x`/`q`/`p` is evaluated against its own
+#'   `min`/`max`.
+#' @param log,log_p (`logical(1)`)\cr
+#'   If `TRUE`, the densities/probabilities are given as logarithms. For
+#'   `nv_qunif` this describes the input `p`.
+#' @param lower_tail (`logical(1)`)\cr
+#'   If `TRUE` (default), probabilities are \eqn{P(X \le x)}; otherwise,
+#'   \eqn{P(X > x)}.
+#' @details
+#' The Uniform distribution has probability density function:
+#' \deqn{f(x) = \frac{1}{b - a}, \quad a \le x \le b}
+#' and zero elsewhere, where \eqn{a} is `min` and \eqn{b} is `max`.
+#' The `min` and `max` are converted to the data type of `x`/`q`/`p`.
+#'
+#' All three are univariate functions evaluated elementwise, returning one
+#' value per element of `x`/`q`/`p`. Non-scalar `min`/`max` therefore give a
+#' separate univariate Uniform per element, *not* a multivariate Uniform over
+#' the hyper-rectangle \eqn{\prod_i [a_i, b_i]}. For that, reduce over the
+#' result: `nv_reduce_prod(nv_dunif(x, min, max))`, or
+#' `nv_reduce_sum(nv_dunif(x, min, max, log = TRUE))` on the log scale.
+#'
+#' @seealso [nv_runif()] for sampling from a uniform distribution.
+#' @return
+#' `nv_dunif()`, `nv_punif()`, and `nv_qunif()` return an [`arrayish`] with the
+#' same shape and data type as `x`/`q`/`p`.
+#'
+#' @examplesIf pjrt::plugins_downloaded()
+#' x <- nv_array(c(-0.5, 0, 0.25, 1, 1.5))
+#' nv_dunif(x)
+#' nv_dunif(x, min = -1, max = 2)
+#' nv_dunif(x, log = TRUE)
+#'
+#' # `min`/`max` may vary elementwise, giving one univariate Uniform per
+#' # element rather than a single distribution over a hyper-rectangle
+#' lower <- nv_array(c(-1, -1, 0, 0, 1))
+#' upper <- nv_array(c(0, 1, 1, 2, 2))
+#' nv_dunif(x, min = lower, max = upper)
+#'
+#' nv_punif(x)
+#' nv_punif(x, min = -1, max = 2)
+#' nv_punif(x, lower_tail = FALSE)
+#' nv_punif(x, log_p = TRUE)
+#'
+#' p <- nv_array(c(0.025, 0.5, 0.975))
+#' nv_qunif(p)
+#' nv_qunif(p, min = -1, max = 2)
+#' nv_qunif(p, lower_tail = FALSE)
+#' nv_qunif(nv_array(c(-700, -2, -0.1), dtype = "f64"), log_p = TRUE)
+NULL
 
-  # Final standardised Normal result
-  # Distinguish central region from a tail, then resolve left/right tail
-  res_std <- nv_ifelse(
-    use_central,
-    res_central,
-    nv_ifelse(use_upper, res_tail, -res_tail)
-  )
-  # The infinities are built at `p`'s data type: two bare R doubles here would
-  # have nothing to yield to, materialize at the default float, and drag the
-  # result up with them.
-  res_std <- nv_ifelse(
-    is_boundary,
-    nv_ifelse(use_upper, nv_scalar_like(p, Inf), nv_scalar_like(p, -Inf)),
-    res_std
-  )
-  # Handle tail switch
-  if (!lower_tail) {
-    res_std <- -res_std
-  }
-  # Unstandardise as necessary
-  mean + sd * res_std
-}
+#' @rdname nv_uniform
+#' @export
+nv_dunif <- jit(
+  function(x, min = 0, max = 1, log = FALSE) {
+    assert_flag(log)
+    args <- promote_distribution_args(x = x, min = min, max = max)
+    x <- args$x
+    min <- args$min
+    max <- args$max
+
+    # Density constant on support, just need support indicator
+    in_support <- (x >= min) & (x <= max)
+    width <- max - min
+
+    density <- if (log) {
+      nv_ifelse(in_support, -nv_log(width), -Inf)
+    } else {
+      nv_ifelse(in_support, 1 / width, 0)
+    }
+    # NOTE: `in_support` will eval to FALSE when x is NaN, so need to restore a
+    #       NaN result there. Similarly, the `max > min` check ensures NaN is
+    #       restored for same reason if either is NaN while also rejecting
+    #       reversed interval ends
+    nv_ifelse(!nv_is_nan(x) & (max > min), density, NaN)
+  },
+  static = "log"
+)
+
+#' @rdname nv_uniform
+#' @export
+nv_punif <- jit(
+  function(q, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(q = q, min = min, max = max)
+    q <- args$q
+    min <- args$min
+    max <- args$max
+
+    width <- max - min
+    # Resolve q against the endpoints before dividing, to match base R behaviour.
+    # Also avoids degenerate 0 / 0 for edge case q == min == max.
+    at_or_above <- q >= max
+    at_or_below <- q <= min
+    resolve_ends <- function(above_val, below_val, interior_val) {
+      nv_ifelse(at_or_above, above_val, nv_ifelse(at_or_below, below_val, interior_val))
+    }
+
+    # Ensure all branches have safe value for gradients
+    q_int <- nv_ifelse(at_or_above | at_or_below, min, q)
+
+    u <- if (lower_tail) {
+      resolve_ends(1, 0, (q_int - min) / width)
+    } else {
+      resolve_ends(0, 1, (max - q_int) / width)
+    }
+
+    # Reversed/non-finite interval is NaN to match base R: `valid` flag to track
+    valid <- nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+
+    if (!log_p) {
+      return(nv_ifelse(valid, u, NaN))
+    }
+
+    # To maintain accuracy of log near 1, switch to log1p in opposite tail mid way
+    v <- if (lower_tail) {
+      resolve_ends(0, 1, (max - q_int) / width)
+    } else {
+      resolve_ends(1, 0, (q_int - min) / width)
+    }
+    # So flag if can use log, else switch to log1p() of the opposite tail
+    use_log <- u <= 0.5
+    # Include inner clamp of a safe input on branch not taken for gradient calcs
+    res <- nv_ifelse(
+      use_log,
+      nv_log(nv_ifelse(use_log, u, 1)),
+      nv_log1p(-nv_ifelse(use_log, 0, v))
+    )
+    nv_ifelse(valid, res, NaN)
+  },
+  static = c("lower_tail", "log_p")
+)
+
+#' @rdname nv_uniform
+#' @export
+nv_qunif <- jit(
+  function(p, min = 0, max = 1, lower_tail = TRUE, log_p = FALSE) {
+    assert_flag(lower_tail)
+    assert_flag(log_p)
+    args <- promote_distribution_args(p = p, min = min, max = max)
+    p <- args$p
+    min <- args$min
+    max <- args$max
+
+    # Out-of-range `p` is resolved to NaN by `valid`, but also need `p_safe` to
+    # avoid poisoning gradients
+    if (log_p) {
+      in_range <- p <= 0
+      p_safe <- nv_ifelse(in_range, p, 0)
+      u <- if (lower_tail) nv_exp(p_safe) else -nv_expm1(p_safe)
+    } else {
+      in_range <- (p >= 0) & (p <= 1)
+      p_safe <- nv_ifelse(in_range, p, 0)
+      u <- if (lower_tail) p_safe else 1 - p_safe
+    }
+
+    # Conditions to match NaN behaviour of base R
+    valid <- in_range & nv_is_finite(min) & nv_is_finite(max) & (max >= min)
+    nv_ifelse(valid, min + u * (max - min), NaN)
+  },
+  static = c("lower_tail", "log_p")
+)

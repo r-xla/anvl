@@ -87,7 +87,7 @@ promotion_common <- function(on = NULL, fallback = NULL) {
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' promotion_like("x", coerce = TRUE)(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64")))
-#' # Without `coerce`, a target the input cannot hold is refused.
+#' # without `coerce`, a target the input cannot hold is refused.
 #' try(promotion_like("x")(list(x = nv_scalar(1, "f32"), nv_scalar(1, "f64"))))
 promotion_like <- function(arg, on = NULL, coerce = FALSE) {
   assert_arg_ref(arg, "arg", len = 1L)
@@ -222,7 +222,7 @@ assert_disjoint_rules <- function(rules) {
 #'   What the rule is, for printing: it shows as `<{kind}>`, so give it the
 #'   name of the function that builds it.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # Every input at the widest float in the call, and never below f32.
+#' # every input at the widest float in the call, and never below f32.
 #' widest_float <- promotion_rule(
 #'   function(args) {
 #'     widths <- vapply(args, function(a) {
@@ -388,7 +388,7 @@ assert_rule_answer <- function(dtypes, args, promote) {
 #'   `operands`, each materialized at the data type the rule named for it.
 #' @seealso [promotion_rule], [new_primitive()], `vignette("extending_primitive")`
 #' @examplesIf pjrt::plugins_downloaded()
-#' # An R value takes the data type of the operand it meets.
+#' # an R value takes the data type of the operand it meets.
 #' operands <- apply_promotion(list(lhs = nv_scalar(1, "f64"), rhs = 2), promotion_rdata_common())
 #' dtype(operands$rhs)
 #' @export
@@ -721,10 +721,50 @@ is_intlike <- function(x) {
   is_dtype_int(dt) || is_dtype_uint(dt)
 }
 
-# Convert an int-like array to the default float and leave everything else
-# alone: this is the step a floating-point `nv_*` function takes before it
-# reaches its primitive. A boolean array passes through untouched, so the
-# primitive rejects it rather than computing on it.
-int_to_float <- function(x) {
+# Convert an int-like array to the default float and leave a float alone: the
+# step a floating-point `nv_*` function takes before it reaches its primitive.
+# A boolean is refused here rather than left to the primitive, which may never
+# see it -- `nv_cospi()`'s `+ 1/2` promotes it to a float on the way.
+int_to_float <- function(x, arg = rlang::caller_arg(x)) {
+  assert_numeric_dtype(peek_dtype(x), arg = arg)
   if (is_intlike(x)) nv_convert(x, default_float()) else x
+}
+
+# The operands of an `nv_*` function that computes on numbers: each is refused
+# if it is a boolean, reported under the name the caller wrote, and they are
+# then brought to their common data type.
+#
+# The boolean is refused before the promotion rather than after it: a `bool`
+# meets every numeric data type at that data type, so a check on the promoted
+# operands would let one past and the primitive that would refuse it never sees
+# it.
+promote_numeric_operands <- function(..., .fallback = NULL) {
+  args <- list(...)
+  Map(
+    function(x, arg) assert_numeric_dtype(peek_dtype(x), arg = arg),
+    args,
+    rlang::names2(args)
+  )
+  do.call(as_anvl_arrays, c(args, list(.promote = promotion_common(fallback = .fallback))))
+}
+
+# The same, brought to the float data type they *compute* at: their common data
+# type where that is a float, and the default float where they are all
+# integers. The binary counterpart of `int_to_float()`.
+#
+# Promoting before converting is what keeps the values exact: an `i32` meeting
+# an `f64` is built at `f64` directly, where converting it to the default float
+# first would round it through `f32` on the way.
+promote_to_common_float <- function(...) {
+  args <- promote_numeric_operands(..., .fallback = default_float())
+  lapply(args, function(x) if (is_dtype_float(dtype(x))) x else nv_convert(x, default_float()))
+}
+
+# The operands of an `nv_*` function that only *accepts* floats -- the linear
+# algebra ones, whose primitives have no integer implementation. They are
+# promoted together, so one check on the first covers them all.
+promote_float_operands <- function(..., hint = NULL) {
+  args <- promote_numeric_operands(...)
+  assert_float_dtype(dtype(args[[1L]]), arg = rlang::names2(args)[[1L]], hint = hint)
+  args
 }

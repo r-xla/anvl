@@ -116,6 +116,43 @@ test_that("multiple returns", {
   )
 })
 
+test_that("evaluates each argument exactly once, also under S3 dispatch", {
+  # The wrapper reads its arguments off its own frame rather than evaluating
+  # the call again in the caller's, so an expression that S3 dispatch has
+  # already evaluated to choose the method is not computed a second time.
+  # Without that, a jitted function used *as* a method doubles the work at
+  # every level of nesting.
+  n <- 0L
+  count <- function(x) {
+    n <<- n + 1L
+    x
+  }
+
+  f <- jit(function(x, y) prim_add(x, y))
+  expect_equal(f(count(nv_scalar(1)), count(nv_scalar(2))), nv_scalar(3))
+  expect_equal(n, 2L)
+
+  double_it <- jit(function(x) prim_add(x, x))
+  nv_double <- function(x) UseMethod("nv_double")
+  nv_double.AnvlArray <- double_it
+  nv_double.AnvlBox <- double_it
+
+  n <- 0L
+  expect_equal(nv_double(count(nv_scalar(1))), nv_scalar(2))
+  expect_equal(n, 1L)
+
+  n <- 0L
+  expect_equal(nv_double(nv_double(count(nv_scalar(1)))), nv_scalar(4))
+  expect_equal(n, 1L)
+
+  # Same on the tracing path, where a re-evaluated argument would record its
+  # operations into the graph a second time as well.
+  n <- 0L
+  traced <- jit(function(x) nv_double(nv_double(count(x))))
+  expect_equal(traced(nv_scalar(1)), nv_scalar(4))
+  expect_equal(n, 1L)
+})
+
 test_that("jitted function has class JitFunction", {
   f_jit <- jit(function(x) x)
   expect_s3_class(f_jit, "JitFunction")
