@@ -83,6 +83,7 @@ Authors:
 Other contributors:
 \itemize{
   \item Louis Aslett \email{louis.aslett@durham.ac.uk} (\href{https://orcid.org/0000-0003-2211-233X}{ORCID}) [contributor]
+  \item Hugh Graham \email{hugh@belian.earth} (\href{https://orcid.org/0000-0001-9451-5010}{ORCID}) [contributor]
 }
 
 }

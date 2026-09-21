@@ -96,7 +96,8 @@ An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are 
 }
 \description{
 The main array object.
-Its type is determined by a data type and a shape.
+Its type is determined by a data type and a shape and lives on a device, which can
+be a CPU or a GPU.
 }
 \section{Terminology}{
 
@@ -143,14 +144,29 @@ The supported data types and devices differ between backends.
 
 \section{Missing values}{
 
-XLA has no representation for a missing value, so what happens to an \code{NA}
-is fixed by the dtype and the R type the data arrived as; there is nothing
-to opt into. A floating-point dtype stores \code{NaN}. An integer dtype carries
-the value through only where R's own \code{NA} marker is already its bit pattern
--- an \code{integer} at \code{i32} (\code{-2147483648}) and a \code{\link[bit64:integer64]{bit64::integer64}} at
-\code{i64} or \code{ui64} -- and warns when it does. Everywhere else, including
-\code{bool} and a \code{double} \code{NA} at any integer dtype, it is an error. See the
-"Gotchas" vignette.
+XLA, the compiler that is used by the \code{"pjrt"} (the default) backend
+has no notion of a missing (\code{NA}) value.
+When creating a new \code{AnvlArray}, the input is therefore checked for the
+presence of such values.
+\code{NA}s are always rejected, except when:
+\enumerate{
+\item Creating \code{float} arrays where we convert the \code{NA} to \code{NaN}.
+\item When creating an \code{i32} from an R \code{integer()}.
+There, we throw a warning, but the resulting \code{AnvlArray} gets the bit
+representation of \code{NAinteger_}, which is \code{-INT_MIN}.
+Disallowing this would prevent round-trips between the data types.
+}
+
+See the "Gotchas" vignette for more information.
+}
+
+\section{Out of Range values}{
+
+Because base R has fewer data types than {anvl}, creating \code{AnvlArray}s from R often involves
+type conversions.
+When such conversions are performed, {anvl} performs a scan of the inputs to ensure that the
+requested data type can actually hold the input data.
+For example, trying to create an unsigned integer from a negative R \code{integer()} fails.
 }
 
 \examples{

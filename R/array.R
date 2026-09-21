@@ -1,7 +1,8 @@
 #' @title AnvlArray
 #' @description
 #' The main array object.
-#' Its type is determined by a data type and a shape.
+#' Its type is determined by a data type and a shape and lives on a device, which can
+#' be a CPU or a GPU.
 #'
 #' @section Terminology:
 #' An array's **axes** are the indices that identify its directions, numbered
@@ -68,14 +69,26 @@
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
 #'
 #' @section Missing values:
-#' XLA has no representation for a missing value, so what happens to an `NA`
-#' is fixed by the dtype and the R type the data arrived as; there is nothing
-#' to opt into. A floating-point dtype stores `NaN`. An integer dtype carries
-#' the value through only where R's own `NA` marker is already its bit pattern
-#' -- an `integer` at `i32` (`-2147483648`) and a [`bit64::integer64`] at
-#' `i64` or `ui64` -- and warns when it does. Everywhere else, including
-#' `bool` and a `double` `NA` at any integer dtype, it is an error. See the
-#' "Gotchas" vignette.
+#' XLA, the compiler that is used by the `"pjrt"` (the default) backend
+#' has no notion of a missing (`NA`) value.
+#' When creating a new `AnvlArray`, the input is therefore checked for the
+#' presence of such values.
+#' `NA`s are always rejected, except when:
+#' 1. Creating `float` arrays where we convert the `NA` to `NaN`.
+#' 2. When creating an `i32` from an R `integer()`.
+#'    There, we throw a warning, but the resulting `AnvlArray` gets the bit
+#'    representation of `NAinteger_`, which is `-INT_MIN`.
+#'    Disallowing this would prevent round-trips between the data types.
+#'
+#' See the "Gotchas" vignette for more information.
+#'
+#' @section Out of Range values:
+#' Because base R has fewer data types than {anvl}, creating `AnvlArray`s from R often involves
+#' type conversions.
+#' When such conversions are performed, {anvl} performs a scan of the inputs to ensure that the
+#' requested data type can actually hold the input data.
+#' For example, trying to create an unsigned integer from a negative R `integer()` fails.
+#'
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
@@ -369,7 +382,12 @@ unwrap_if_array <- function(x) {
 #' @rdname AnvlArray
 #' @export
 nv_scalar <- function(data, dtype = NULL, device = NULL) {
-  nv_array(data, dtype = dtype, device = device, shape = integer())
+  nv_array(
+    data,
+    dtype = dtype,
+    device = device,
+    shape = integer()
+  )
 }
 
 infer_matrix_dim <- function(n, other, given) {
@@ -490,13 +508,15 @@ shape.AnvlArray <- function(x, ...) {
 
 #' @rdname as_array
 #' @param check (`character(1)` | `FALSE`)\cr
-#'   How to report a materialized value that R's type cannot hold:
-#'   `"warn"` (the default) warns and returns it anyway, `"err"` aborts, and
-#'   `FALSE` skips the scan altogether. Forwarded to the backend; for the
-#'   `pjrt` backend the relevant cases are `i32`/`i64` values colliding with
-#'   the `NA` bit pattern and `ui64` values `>= 2^63` wrapping through
-#'   `bit64::integer64`. See [`pjrt::as_array.PJRTBuffer()`] for the full
-#'   list. See the "Gotchas" vignette.
+#'   How to report a materialized value that the R type cannot hold:
+#'   `"warn"` (the default) warns and returns it anyway, `"err"` aborts,
+#'   and `FALSE` skips the scan. `TRUE` is not accepted -- with two
+#'   levels of strictness it does not say which one is meant. Forwarded
+#'   to the backend; for the `pjrt` backend the cases scanned for are
+#'   `i32`/`i64` values colliding with the `NA` bit pattern and `ui64`
+#'   values `>= 2^63` wrapping through `bit64::integer64`. See
+#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and the "Gotchas"
+#'   vignette.
 #' @export
 as_array.AnvlArray <- function(x, check = "warn", ...) {
   assert_check_level(check)
@@ -555,7 +575,8 @@ await.AnvlArray <- function(x, ...) {
 #'   to read `i64`, `ui64` and `ui32` values that an R `integer` cannot hold.
 #'   It is lossless for `i64` and `ui32`, but [`bit64::integer64`] is itself
 #'   signed, so a `ui64` value `>= 2^63` wraps to a negative one (exactly
-#'   `2^63` becomes `NA`); `check` reports it when that happens.
+#'   `2^63` becomes `NA`); that is warned about, and `check = "err"` makes it
+#'   an error.
 #' * `as.logical()`: `bool`.
 #' * `as.vector()`: any dtype; the R type is chosen by the dtype. For the
 #'   dtypes R has no native type for (`i64`, `ui64`, `ui32`) that is the
@@ -574,7 +595,7 @@ await.AnvlArray <- function(x, ...) {
 #'   Must be `"any"` (the default), meaning the natural R type for the array's
 #'   dtype. Only present because [base::as.vector()]'s signature requires it;
 #'   pick an R type with one of the other methods instead.
-#' @param check (`logical(1)`)\cr
+#' @param check (`character(1)` | `FALSE`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
 #' @return An R vector holding the array's values, of the type the method

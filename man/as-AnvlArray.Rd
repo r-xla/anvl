@@ -23,7 +23,7 @@
 \item{x}{(\code{\link{AnvlArray}})\cr
 Array to coerce.}
 
-\item{check}{(\code{logical(1)})\cr
+\item{check}{(\code{character(1)} | \code{FALSE})\cr
 Forwarded to \code{\link[=as_array]{as_array()}}; see there for details.}
 
 \item{...}{Unused.}
@@ -47,7 +47,8 @@ Each method requires a compatible dtype:
 to read \code{i64}, \code{ui64} and \code{ui32} values that an R \code{integer} cannot hold.
 It is lossless for \code{i64} and \code{ui32}, but \code{\link[bit64:integer64]{bit64::integer64}} is itself
 signed, so a \code{ui64} value \verb{>= 2^63} wraps to a negative one (exactly
-\code{2^63} becomes \code{NA}); \code{check} reports it when that happens.
+\code{2^63} becomes \code{NA}); that is warned about, and \code{check = "err"} makes it
+an error.
 \item \code{as.logical()}: \code{bool}.
 \item \code{as.vector()}: any dtype; the R type is chosen by the dtype. For the
 dtypes R has no native type for (\code{i64}, \code{ui64}, \code{ui32}) that is the

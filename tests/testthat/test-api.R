@@ -2724,3 +2724,47 @@ test_that("the quantile page's formula is the one the code computes", {
     }
   }
 })
+
+describe("nv_quantile selection fast path", {
+  # probs that all lie in one half of the axis route through a top_k window
+  # instead of a full sort. An array probs spanning both ends (0.1 and 0.9)
+  # forces the sort path, so the two must agree exactly.
+  it("matches the sort path on random data with NaNs", {
+    withr::local_seed(42)
+    v <- rnorm(101)
+    v[sample(101, 30)] <- NaN
+    x <- nv_array(v)
+    for (q in c(0, 0.1, 0.25, 0.5, 0.75, 0.9, 1)) {
+      for (rm in c(TRUE, FALSE)) {
+        sel <- as.numeric(as_array(nv_quantile(x, q, nan_rm = rm)))
+        srt <- as.numeric(as_array(nv_quantile(x, array(c(0.1, 0.9, q)), nan_rm = rm)))[3L]
+        expect_identical(sel, srt, info = sprintf("q = %s, nan_rm = %s", q, rm))
+      }
+    }
+  })
+  it("matches the sort path along a middle axis of a 3-D array", {
+    withr::local_seed(1)
+    a <- array(rnorm(7 * 55 * 6), c(7, 55, 6))
+    a[sample(length(a), 500)] <- NaN
+    x <- nv_array(a)
+    srt <- as_array(nv_quantile(x, array(c(0.1, 0.9, 0.5, 0.8)), axis = 2L, nan_rm = TRUE))
+    expect_identical(as_array(nv_median(x, axis = 2L, nan_rm = TRUE)), srt[3L, , ])
+    expect_identical(as_array(nv_quantile(x, 0.8, axis = 2L, nan_rm = TRUE)), srt[4L, , ])
+    # and against the R reference
+    expect_equal(srt[3L, , ], apply(a, c(1, 3), median, na.rm = TRUE), tolerance = 1e-6)
+    expect_equal(srt[4L, , ], apply(a, c(1, 3), quantile, 0.8, na.rm = TRUE, names = FALSE), tolerance = 1e-6)
+  })
+  it("handles all-NaN slices and the extremes under nan_rm", {
+    x <- nv_array(matrix(c(NaN, NaN, NaN, 3, NaN, 1), 3L, 2L))
+    for (q in c(0, 0.25, 0.75, 1)) {
+      out <- as.numeric(as_array(nv_quantile(x, q, axis = 1L, nan_rm = TRUE)))
+      expect_true(is.nan(out[1L]), info = sprintf("q = %s", q))
+      expect_equal(out[2L], quantile(c(3, 1), q, names = FALSE), info = sprintf("q = %s", q))
+    }
+  })
+  it("integer inputs still work", {
+    x <- nv_array(c(5L, 1L, 9L, 3L), dtype = "i32")
+    expect_equal(as.numeric(as_array(nv_quantile(x, 0.25, interpolation = "lower"))), 1)
+    expect_equal(as.numeric(as_array(nv_quantile(x, 0.75, interpolation = "higher"))), 9)
+  })
+})

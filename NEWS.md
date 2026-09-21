@@ -1,19 +1,23 @@
 # anvl (development version)
-
+  
 ## Breaking changes
 
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
-* `as_array()`, `as.double()`, `as.integer()`, `bit64::as.integer64()` and
-  `as.logical()` now take `check` as `"warn"` (the default), `"err"` or
-  `FALSE`, and report a value R's type cannot hold instead of returning it
-  silently. Write `check = "err"` where you wrote `check = TRUE`.
-* `nv_array()` and `nv_scalar()` no longer take a `check` argument; what
-  happens to an `NA` is fixed by the dtype.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* `as_array()` and the `as.double()` / `as.integer()` /
+  `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
+  `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
+  default about a value R's type cannot hold. Write `check = "err"` where
+  you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
+* `nv_array()` and `nv_scalar()` no longer take a `check` argument, following
+  {pjrt}: what happens to an `NA` is fixed by the dtype it is built at, and the
+  input is always scanned for values the requested dtype cannot hold. Call
+  `anyNA()` on the data yourself if you want to hear about a missing value the
+  dtype accepts.
 * `common_dtype()` now errors for `ui64` and a signed integer instead of
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.
@@ -49,6 +53,12 @@
   `prod(shape)` elements of `dtype` (both then required); `byrow` selects
   row-major element order for the payload. Only supported on the `"pjrt"`
   backend; the inverse direction is the existing `as_raw()`.
+* New `nv_scan()`: a fixed-length loop in the style of JAX's `lax.scan` that
+  threads a carry through a body function and stacks each step's outputs
+  along a new leading axis. Supports nested carries, multiple `xs` and
+  `out` leaves, reverse scans, `xs = NULL` counted loops and carry-only
+  loops. Backed by the new `prim_scan()` primitive, which lowers to a
+  `while` loop on the pjrt backend and to a `for` loop on quickr.
 * The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
   `all()`) now work with multiple data inputs.
 * The default data types for floating point numbers and integers can now be
@@ -78,6 +88,21 @@
 * `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
   integer array unchanged, like base R does.
 * Improved documentation of API functions and primitives.
+* Printed graphs read as `[captures] (inputs) { ... return ... }`, show
+  sub-graphs in full, and wrap long lines to the console width; `format()`
+  takes `width` and `digits` arguments.
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
+
+## Performance
+
+* `nv_quantile()` and `nv_median()` select the needed order statistics with
+  `top_k` instead of a full sort when every requested quantile lies in the
+  same half of the axis. Results are unchanged.
+* `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
+  unstable sort of the values and a slice instead of the CHLO op, which
+  costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`
+  and the quantile fast path use it.
 
 ## Bug fixes
 
