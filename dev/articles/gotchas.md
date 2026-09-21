@@ -225,6 +225,21 @@ as.integer(x)
 
     ## [1] NA
 
+Nothing on the device reserves that bit pattern, so it also arises from
+ordinary arithmetic – and such a value comes back to R as an `NA` too:
+
+``` r
+
+as_array(nv_scalar(-2147483647L) - nv_scalar(1L))
+```
+
+    ## Warning: Materialized <i32> buffer contains a value that R cannot distinguish from "NA".
+    ## ℹ "i32" reserves the bit pattern "-2147483648" (`INT_MIN`); "i64" reserves
+    ##   "-9223372036854775808" (`INT64_MIN`).
+    ## ℹ Set `check = "err"` to make this an error, or `check = FALSE` to silence it.
+
+    ## [1] NA
+
 At every other dtype there is no bit pattern for an `NA` to land on, so
 a missing value is an error, including for `bool`:
 

@@ -39,9 +39,10 @@ to obtain an R array that preserves the shape, or
 to change the dtype of an
 [`AnvlArray`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
 before coercing. [`as.vector()`](https://rdrr.io/r/base/vector.html)'s
-signature is fixed by the generic, so it takes no `check` argument; call
+signature is fixed by the generic, so it takes no `check` argument and
+always reports at the default level; call
 [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
-with `check = "err"` to have the values validated.
+directly to pick another one.
 
 ## Usage
 

@@ -26,9 +26,10 @@
   and
   [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
   no longer take a `check` argument, following {pjrt}: what happens to
-  an `NA` is fixed by the dtype it is built at. Call
-  [`anyNA()`](https://rdrr.io/r/base/NA.html) on the data yourself
-  instead.
+  an `NA` is fixed by the dtype it is built at, and the input is always
+  scanned for values the requested dtype cannot hold. Call
+  [`anyNA()`](https://rdrr.io/r/base/NA.html) on the data yourself if
+  you want to hear about a missing value the dtype accepts.
 - [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
   now errors for `ui64` and a signed integer instead of returning `i64`,
   which could not hold every `ui64` value. Convert one of them with

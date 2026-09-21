@@ -264,14 +264,24 @@ directions warn about it:</p>
 <span><span class="co">##   <span style="color: #0000BB;">"-9223372036854775808"</span> (`INT64_MIN`).</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = "err"` to make this an error, or `check = FALSE` to silence it.</span></span></code></pre>
 <pre><code><span><span class="co">## [1] NA</span></span></code></pre>
+<p>Nothing on the device reserves that bit pattern, so it also arises
+from ordinary arithmetic – and such a value comes back to R as an
+<code>NA</code> too:</p>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2147483647L</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Warning: Materialized <span style="color: #0000BB;">&lt;i32&gt;</span> buffer contains a value that R cannot distinguish from <span style="color: #0000BB;">"NA"</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">"i32"</span> reserves the bit pattern <span style="color: #0000BB;">"-2147483648"</span> (`INT_MIN`); <span style="color: #0000BB;">"i64"</span> reserves</span></span>
+<span><span class="co">##   <span style="color: #0000BB;">"-9223372036854775808"</span> (`INT64_MIN`).</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = "err"` to make this an error, or `check = FALSE` to silence it.</span></span></code></pre>
+<pre><code><span><span class="co">## [1] NA</span></span></code></pre>
 <p>At every other dtype there is no bit pattern for an <code>NA</code>
 to land on, so a missing value is an error, including for
 <code>bool</code>:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Missing value (NA/NaN) cannot be converted to "pred".</span></span></code></pre>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="cn">NA</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"i16"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Missing value (NA/NaN) cannot be converted to "i16" (element 2).</span></span></code></pre>
@@ -283,7 +293,7 @@ value the dtype accepts.</p>
 argument, with three levels: <code>"warn"</code> (the default) warns
 about a value R’s type cannot hold, <code>"err"</code> makes it an
 error, and <code>FALSE</code> skips the scan.</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span><span class="op">)</span>, check <span class="op">=</span> <span class="st">"err"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Input `data` contains at least one <span style="color: #0000BB;">"NA"</span>, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The value materializes as <span style="color: #0000BB;">"NA"</span> again in R, which `as_array()` reports on the</span></span>
@@ -319,7 +329,7 @@ negative subnormal can test as greater than or equal to zero.</p>
 <p>Running the following example demonstrates this effect, with
 “Observed” comments corresponding to results from the PJRT CPU
 backend.</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/with_backend.html">with_backend</a></span><span class="op">(</span><span class="st">"pjrt"</span>, <span class="op">{</span></span>
@@ -362,12 +372,12 @@ exposes unsigned integer dtypes (<code>ui8</code>, <code>ui16</code>,
 <code>ui32</code>, <code>ui64</code>) backed by XLA, but R has no native
 counterpart. For values that fit into R’s signed integer range, the
 round-trip works as expected:</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">200L</span>, <span class="fl">255L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"ui8"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]   0 200 255</span></span></code></pre>
 <p>Because <code>ui32</code> does not fit into R’s native integer type,
 it will be converted to <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> data type:</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">big</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2147483647L</span>, dtype <span class="op">=</span> <span class="st">"ui32"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1L</span></span>
 <span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## integer64</span></span>
@@ -376,13 +386,13 @@ it will be converted to <code><a href="https://bit64.r-lib.org/reference/bit64-p
 <code>integer64</code>, which does not cover the whole range, so
 wrapping is possible. <code><a href="../reference/as_array.html">as_array()</a></code> warns about it, and
 <code>check = "err"</code> makes it an error:</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">big</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">0L</span>, dtype <span class="op">=</span> <span class="st">"ui64"</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1L</span></span>
 <span><span class="va">big</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1.8447e+19</span></span>
 <span><span class="co">## [ CPUui64{1} ]</span></span></code></pre>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## Warning: Materialized <span style="color: #0000BB;">&lt;ui64&gt;</span> buffer contains a value `&gt;= 2^63` that wrapped through R's</span></span>
 <span><span class="co">## signed <span style="color: #0000BB;">&lt;integer64&gt;</span>.</span></span>
@@ -391,7 +401,7 @@ wrapping is possible. <code><a href="../reference/as_array.html">as_array()</a><
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = "err"` to make this an error, or `check = FALSE` to silence it.</span></span></code></pre>
 <pre><code><span><span class="co">## integer64</span></span>
 <span><span class="co">## [1] -1</span></span></code></pre>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span>, check <span class="op">=</span> <span class="st">"err"</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `tengen::as_array()`:</span></span></span>
 <span><span class="co">## <span style="color: #BBBB00;">!</span> Materialized <span style="color: #0000BB;">&lt;ui64&gt;</span> buffer contains a value `&gt;= 2^63` that wrapped</span></span>
@@ -417,14 +427,14 @@ to <code>AnvlArray</code>s. This can be done via
 <code>as_anvl_arrays</code> for multiple arguments.</p>
 <p>E.g., the following function does not behave the same in jit-mode and
 in eager mode.</p>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add_pi</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="../reference/jit.html">jit</a></span><span class="op">(</span><span class="va">add_pi</span><span class="op">)</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fu">add_pi</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1] FALSE</span></span></code></pre>
 <p>We can fix this, by canonicalizing the inputs:</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">add_pi2</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_anvl_array.html">as_anvl_array</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">pi</span></span>
@@ -440,7 +450,7 @@ If we were to call the function below as
 <code>2</code> to the default device (which is CPU by default) and the
 second addition would then fail because it would attempt to call
 <code>nv_add</code> with mixed-device inputs.</p>
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">threeway_add</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="va">z</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="fu"><a href="../reference/nv_add.html">nv_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span><span class="op">)</span>, <span class="va">z</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>

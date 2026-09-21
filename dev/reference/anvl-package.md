@@ -96,3 +96,6 @@ Other contributors:
 
 - Louis Aslett <louis.aslett@durham.ac.uk>
   ([ORCID](https://orcid.org/0000-0003-2211-233X)) \[contributor\]
+
+- Hugh Graham <hugh@belian.earth>
+  ([ORCID](https://orcid.org/0000-0001-9451-5010)) \[contributor\]

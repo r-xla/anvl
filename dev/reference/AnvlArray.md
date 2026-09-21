@@ -1,7 +1,7 @@
 # AnvlArray
 
-The main array object. Its type is determined by a data type and a
-shape.
+The main array object. Its type is determined by a data type and a shape
+and lives on a device, which can be a CPU or a GPU.
 
 ## Usage
 
@@ -178,6 +178,32 @@ An `AnvlArray` is backend-dependent: it belongs to exactly one backend
 (`"pjrt"` or the experimental `"quickr"`) and lives on a device of that
 backend. The supported data types and devices differ between backends.
 
+## Missing values
+
+XLA, the compiler that is used by the `"pjrt"` (the default) backend has
+no notion of a missing (`NA`) value. When creating a new `AnvlArray`,
+the input is therefore checked for the presence of such values. `NA`s
+are always rejected, except when:
+
+1.  Creating `float` arrays where we convert the `NA` to `NaN`.
+
+2.  When creating an `i32` from an R
+    [`integer()`](https://rdrr.io/r/base/integer.html). There, we throw
+    a warning, but the resulting `AnvlArray` gets the bit representation
+    of `NAinteger_`, which is `-INT_MIN`. Disallowing this would prevent
+    round-trips between the data types.
+
+See the "Gotchas" vignette for more information.
+
+## Out of Range values
+
+Because base R has fewer data types than anvl, creating `AnvlArray`s
+from R often involves type conversions. When such conversions are
+performed, anvl performs a scan of the inputs to ensure that the
+requested data type can actually hold the input data. For example,
+trying to create an unsigned integer from a negative R
+[`integer()`](https://rdrr.io/r/base/integer.html) fails.
+
 ## See also
 
 [nv_fill](https://r-xla.github.io/anvl/dev/reference/nv_fill.md),
@@ -229,8 +255,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  9.8091e-45 1.1210e-44 1.2612e-44
-#>  1.4013e-44 1.5414e-44 1.6816e-44
+#>  3.3767e-30 3.0635e-41 3.3765e-30
+#>  3.0635e-41 3.3764e-30 3.0635e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

@@ -126,7 +126,7 @@ element order of raw byte payloads; backends that do not support raw
 
 <dt id="arg-as-array">as_array<a class="anchor" aria-label="anchor" href="#arg-as-array"></a></dt>
 <dd><p>(<code>function(x, check)</code>)<br> Converts an AnvlArray to an R
-array. The <code>check</code> flag is forwarded from <code><a href="as_array.html">as_array()</a></code>; backends may use
+array. The <code>check</code> level is forwarded from <code><a href="as_array.html">as_array()</a></code>; backends may use
 it to abort when materialization would lose information (e.g. ui64 values
 wrapping through <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>). See <code><a href="https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html" class="external-link">pjrt::as_array.PJRTBuffer()</a></code>.</p></dd>
 

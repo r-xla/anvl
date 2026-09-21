@@ -26,8 +26,8 @@ FALSE for it.
 Use as_array() to obtain an R array that preserves the shape, or
 nv_convert() to change the dtype of an AnvlArray before coercing.
 as.vector()'s signature is fixed by the generic, so it takes no check
-argument; call as_array() with check = &quot;err&quot; to have the values
-validated."><meta property="og:description" content="Convert an AnvlArray to a flat R vector, discarding the array's shape.
+argument and always reports at the default level; call as_array()
+directly to pick another one."><meta property="og:description" content="Convert an AnvlArray to a flat R vector, discarding the array's shape.
 Each method requires a compatible dtype:
 as.double() / as.numeric(): float or (signed/unsigned) integer dtypes.
 as.integer(): signed or unsigned integer dtypes.
@@ -48,8 +48,8 @@ FALSE for it.
 Use as_array() to obtain an R array that preserves the shape, or
 nv_convert() to change the dtype of an AnvlArray before coercing.
 as.vector()'s signature is fixed by the generic, so it takes no check
-argument; call as_array() with check = &quot;err&quot; to have the values
-validated."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+argument and always reports at the default level; call as_array()
+directly to pick another one."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -138,8 +138,8 @@ not hold the values – and it keeps its class, so <code><a href="https://rdrr.i
 </ul><p>Use <code><a href="as_array.html">as_array()</a></code> to obtain an R array that preserves the shape, or
 <code><a href="nv_convert.html">nv_convert()</a></code> to change the dtype of an <code><a href="AnvlArray.html">AnvlArray</a></code> before coercing.
 <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>'s signature is fixed by the generic, so it takes no <code>check</code>
-argument; call <code><a href="as_array.html">as_array()</a></code> with <code>check = "err"</code> to have the values
-validated.</p>
+argument and always reports at the default level; call <code><a href="as_array.html">as_array()</a></code>
+directly to pick another one.</p>
     </div>
 
     <div class="section level2">

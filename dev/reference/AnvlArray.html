@@ -6,8 +6,10 @@
     }
   };
 </script><script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"><link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet"><script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet"><link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet"><script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="AnvlArray — AnvlArray"><meta name="description" content="The main array object.
-Its type is determined by a data type and a shape."><meta property="og:description" content="The main array object.
-Its type is determined by a data type and a shape."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
+Its type is determined by a data type and a shape and lives on a device, which can
+be a CPU or a GPU."><meta property="og:description" content="The main array object.
+Its type is determined by a data type and a shape and lives on a device, which can
+be a CPU or a GPU."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -79,7 +81,8 @@ Its type is determined by a data type and a shape."><meta property="og:image" co
 
     <div class="ref-description section level2">
     <p>The main array object.
-Its type is determined by a data type and a shape.</p>
+Its type is determined by a data type and a shape and lives on a device, which can
+be a CPU or a GPU.</p>
     </div>
 
     <div class="section level2">
@@ -225,6 +228,31 @@ Serialize/deserialize arrays to/from raw vectors.</p></li>
 The supported data types and devices differ between backends.</p>
     </div>
     <div class="section level2">
+    <h2 id="missing-values">Missing values<a class="anchor" aria-label="anchor" href="#missing-values"></a></h2>
+
+
+<p>XLA, the compiler that is used by the <code>"pjrt"</code> (the default) backend
+has no notion of a missing (<code>NA</code>) value.
+When creating a new <code>AnvlArray</code>, the input is therefore checked for the
+presence of such values.
+<code>NA</code>s are always rejected, except when:</p><ol><li><p>Creating <code>float</code> arrays where we convert the <code>NA</code> to <code>NaN</code>.</p></li>
+<li><p>When creating an <code>i32</code> from an R <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code>.
+There, we throw a warning, but the resulting <code>AnvlArray</code> gets the bit
+representation of <code>NAinteger_</code>, which is <code>-INT_MIN</code>.
+Disallowing this would prevent round-trips between the data types.</p></li>
+</ol><p>See the "Gotchas" vignette for more information.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="out-of-range-values">Out of Range values<a class="anchor" aria-label="anchor" href="#out-of-range-values"></a></h2>
+
+
+<p>Because base R has fewer data types than anvl, creating <code>AnvlArray</code>s from R often involves
+type conversions.
+When such conversions are performed, anvl performs a scan of the inputs to ensure that the
+requested data type can actually hold the input data.
+For example, trying to create an unsigned integer from a negative R <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> fails.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><a href="nv_fill.html">nv_fill</a>, <a href="nv_iota.html">nv_iota</a>, <a href="nv_seq.html">nv_seq</a>, <a href="as_array.html">as_array</a>, <a href="nv_serialize.html">nv_serialize</a></p></div>
     </div>
@@ -271,8 +299,8 @@ The supported data types and devices differ between backends.</p>
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  9.8091e-45 1.1210e-44 1.2612e-44</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.4013e-44 1.5414e-44 1.6816e-44</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.3767e-30 3.0635e-41 3.3765e-30</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0635e-41 3.3764e-30 3.0635e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

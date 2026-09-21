@@ -55,7 +55,7 @@ AnvlBackend(
 - as_array:
 
   (`function(x, check)`)  
-  Converts an AnvlArray to an R array. The `check` flag is forwarded
+  Converts an AnvlArray to an R array. The `check` level is forwarded
   from
   [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md);
   backends may use it to abort when materialization would lose
