@@ -4,6 +4,8 @@
 
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
+* `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
+  `with_indices`, spelling it the way `prim_top_k()` does.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
@@ -97,7 +99,7 @@
   computed at `f64`, so it agrees with the window the host sizes.
 * `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
   unstable sort of the values and a slice instead of the CHLO op, which
-  costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`
+  costs no more than a full sort there. `nv_top_k(indices = FALSE)`
   and the quantile fast path use it.
 
 ## Bug fixes

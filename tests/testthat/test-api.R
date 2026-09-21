@@ -996,8 +996,8 @@ describe("nv_cummax / nv_cummin nan_rm", {
     expect_equal(as_array(nv_cummax(x)), as_array(nv_cummax(x, nan_rm = TRUE)))
     expect_equal(as_array(nv_cummin(x)), as_array(nv_cummin(x, nan_rm = TRUE)))
   })
-  it("with_indices returns NaN-propagated values and indices", {
-    out <- nv_cummax(nv_array(c(1, NaN, 3)), with_indices = TRUE)
+  it("indices returns NaN-propagated values and indices", {
+    out <- nv_cummax(nv_array(c(1, NaN, 3)), indices = TRUE)
     vals <- as.numeric(out$values)
     expect_equal(vals[1], 1)
     expect_true(all(is.nan(vals[2:3])))
@@ -2409,15 +2409,15 @@ describe("the default integer", {
     expect_dtype(nv_argmax(x), i64)
     expect_dtype(nv_argmin(x), i64)
     expect_dtype(nv_argsort(x), i64)
-    expect_dtype(nv_cummax(x, with_indices = TRUE)$indices, i64)
-    expect_dtype(nv_cummin(x, with_indices = TRUE)$indices, i64)
+    expect_dtype(nv_cummax(x, indices = TRUE)$indices, i64)
+    expect_dtype(nv_cummin(x, indices = TRUE)$indices, i64)
     # `hlo_top_k` fixes its indices at i32, so these are converted.
-    expect_dtype(nv_top_k(x, k = 2L, with_indices = TRUE)$indices, i64)
+    expect_dtype(nv_top_k(x, k = 2L, indices = TRUE)$indices, i64)
     # And in a trace, where the program is keyed on the defaults.
     expect_dtype(jit(function(x) nv_argmax(x))(x), i64)
     expect_dtype(jit(function(x) nv_argsort(x))(x), i64)
-    expect_dtype(jit(function(x) nv_cummin(x, with_indices = TRUE)$indices)(x), i64)
-    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, with_indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_cummin(x, indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, indices = TRUE)$indices)(x), i64)
   })
 
   it("does not change the indices themselves", {
@@ -2425,14 +2425,14 @@ describe("the default integer", {
     at_i32 <- list(
       argmax = as_array(nv_argmax(x)),
       argsort = as_array(nv_argsort(x)),
-      cummax = as_array(nv_cummax(x, with_indices = TRUE)$indices),
-      top_k = as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices)
+      cummax = as_array(nv_cummax(x, indices = TRUE)$indices),
+      top_k = as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices)
     )
     local_default_dtypes(c(int = "i64"))
     expect_equal(as_array(nv_argmax(x)), at_i32$argmax)
     expect_equal(as_array(nv_argsort(x)), at_i32$argsort)
-    expect_equal(as_array(nv_cummax(x, with_indices = TRUE)$indices), at_i32$cummax)
-    expect_equal(as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), at_i32$top_k)
+    expect_equal(as_array(nv_cummax(x, indices = TRUE)$indices), at_i32$cummax)
+    expect_equal(as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices), at_i32$top_k)
   })
 
   it("decides the data type of an LU decomposition's pivots", {
@@ -2540,7 +2540,7 @@ test_that("the flag and enum arguments are checked in the nv_* layer", {
     expect_error(f(x, nan_rm = "yes"), "logical flag")
   }
   expect_error(nv_cumsum(x, nan_rm = "yes"), "logical flag")
-  expect_error(nv_cummax(x, with_indices = "yes"), "logical flag")
+  expect_error(nv_cummax(x, indices = "yes"), "logical flag")
   expect_error(nv_argmax(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "logical flag")
@@ -2574,12 +2574,12 @@ test_that("the API layer checks what its pages promise", {
 
   # `nv_top_k()` coerced `k` before checking it, so a fractional or logical `k`
   # was silently truncated where `prim_top_k()` refuses both -- and
-  # `with_indices` reached a bare `if()`.
+  # `indices` reached a bare `if()`.
   expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
-  expect_error(nv_top_k(x3, 1L, with_indices = 1), "logical flag")
+  expect_error(nv_top_k(x3, 1L, indices = 1), "logical flag")
   expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
 
   # `nv_quantile()`'s bad-`probs` message was raw `checkmate` output.

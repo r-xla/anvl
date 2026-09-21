@@ -2612,7 +2612,7 @@ nv_cumprod <- jit(
 #' @templateVar cum_base_fn cummax
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name maximum
-#' @template param_nv_cum_with_indices
+#' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummax
 #' @template section_nv_cum_relation
@@ -2622,15 +2622,15 @@ nv_cumprod <- jit(
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummax(x)
 #' nv_cummax(x, axis = 1L)
-#' nv_cummax(x, axis = 1L, with_indices = TRUE)
+#' nv_cummax(x, axis = 1L, indices = TRUE)
 #' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
 nv_cummax <- jit(
-  function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
-    assert_flag(with_indices)
+  function(x, axis = NULL, indices = FALSE, nan_rm = FALSE) {
+    assert_flag(indices)
     assert_flag(nan_rm)
-    .nv_cum_extreme(x, axis, with_indices, nan_rm, -Inf, prim_cummax)
+    .nv_cum_extreme(x, axis, indices, nan_rm, -Inf, prim_cummax)
   },
   static = 2:4
 )
@@ -2642,7 +2642,7 @@ nv_cummax <- jit(
 #' @templateVar cum_base_fn cummin
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name minimum
-#' @template param_nv_cum_with_indices
+#' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummin
 #' @template section_nv_cum_relation
@@ -2652,15 +2652,15 @@ nv_cummax <- jit(
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummin(x)
 #' nv_cummin(x, axis = 1L)
-#' nv_cummin(x, axis = 1L, with_indices = TRUE)
+#' nv_cummin(x, axis = 1L, indices = TRUE)
 #' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
 #' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
 nv_cummin <- jit(
-  function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
-    assert_flag(with_indices)
+  function(x, axis = NULL, indices = FALSE, nan_rm = FALSE) {
+    assert_flag(indices)
     assert_flag(nan_rm)
-    .nv_cum_extreme(x, axis, with_indices, nan_rm, Inf, prim_cummin)
+    .nv_cum_extreme(x, axis, indices, nan_rm, Inf, prim_cummin)
   },
   static = 2:4
 )
@@ -2668,7 +2668,7 @@ nv_cummin <- jit(
 # NaN propagation for the default `nan_rm = FALSE` path is now handled in
 # `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
 # sanitize NaN → identity for `nan_rm = TRUE`.
-.nv_cum_extreme <- function(x, axis, with_indices, nan_rm, identity_val, prim_cum) {
+.nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
   x <- as_anvl_array(x)
   if (is.null(axis)) {
     x <- nv_reshape(x, prod(shape(x)))
@@ -2678,7 +2678,7 @@ nv_cummin <- jit(
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
-  if (with_indices) out else out$values
+  if (indices) out else out$values
 }
 
 # Higher order primitives
@@ -3459,13 +3459,13 @@ nv_argsort <- jit(
 #'   Axis along which to take the top `k`. Negative values count from the
 #'   end, i.e. `-1` refers to the last axis. If `NULL` (default),
 #'   uses the last axis.
-#' @param with_indices (`logical(1)`)\cr
+#' @param indices (`logical(1)`)\cr
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
 #'   returns `list(values = ..., indices = ...)` where `indices` is the
 #'   1-based position of each top-`k` value along `axis`, of the default
 #'   integer data type (see [`default_dtypes()`]).
-#' @return [`arrayish`] (when `with_indices = FALSE`) or named list of two
-#'   arrays (when `with_indices = TRUE`). Output shape matches `x` with
+#' @return [`arrayish`] (when `indices = FALSE`) or named list of two
+#'   arrays (when `indices = TRUE`). Output shape matches `x` with
 #'   `axis` resized to `k`; values are sorted decreasing along `axis`.
 #' @section NaN handling:
 #' `NaN` ranks larger than any finite value (so it appears first in the
@@ -3475,14 +3475,14 @@ nv_argsort <- jit(
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' nv_top_k(x, k = 3L)
-#' nv_top_k(x, k = 3L, with_indices = TRUE)
+#' nv_top_k(x, k = 3L, indices = TRUE)
 #'
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_top_k(m, k = 2L, axis = 2L)
 #' @export
 nv_top_k <- jit(
-  function(x, k, axis = NULL, with_indices = FALSE) {
-    assert_flag(with_indices)
+  function(x, k, axis = NULL, indices = FALSE) {
+    assert_flag(indices)
     x <- as_anvl_array(x)
     rank <- naxes(x)
     if (rank == 0L) {
@@ -3503,17 +3503,16 @@ nv_top_k <- jit(
     if (axis != rank) {
       perm <- seq_len(rank)
       perm[c(axis, rank)] <- c(rank, axis)
-      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k, indices = with_indices)
+      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k, indices = indices)
       values <- prim_transpose(out$values, permutation = perm)
-      if (with_indices) {
-        indices <- prim_transpose(out$indices, permutation = perm)
-        list(values = values, indices = indices)
+      if (indices) {
+        list(values = values, indices = prim_transpose(out$indices, permutation = perm))
       } else {
         values
       }
     } else {
-      out <- prim_top_k(x, k = k, indices = with_indices)
-      if (with_indices) out else out$values
+      out <- prim_top_k(x, k = k, indices = indices)
+      if (indices) out else out$values
     }
   },
   static = 2:4
