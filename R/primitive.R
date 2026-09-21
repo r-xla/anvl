@@ -83,11 +83,9 @@ print.AnvlPrimitive <- function(x, ...) {
 #'   Primitive name.
 #' @param fn (`function`)\cr
 #'   Body of the primitive. Its formals become the formals of the returned
-#'   JIT-compiled callable. The argument is evaluated with the symbol `self`
-#'   bound to the new primitive (an [`AnvlPrimitive`]), which is what
-#'   [`graph_desc_add()`] takes as its first argument: an inline
-#'   `function(...)` body closes over `self`, and a body built by a helper
-#'   takes it as an argument (`make_binary_op(self, ...)`).
+#'   JIT-compiled callable. Inside `fn`, the primitive is accessible via
+#'   the lexically-bound symbol `self` (an [`AnvlPrimitive`]); pass it as
+#'   the first argument to [`graph_desc_add()`].
 #' @param subgraphs (`character()`)\cr
 #'   Names of parameters that are subgraphs (for higher-order primitives).
 #' @param static (`character()` | `integer()`)\cr
@@ -106,21 +104,20 @@ new_primitive <- function(
   register = TRUE
 ) {
   checkmate::assert_string(name)
+  checkmate::assert_function(fn)
   checkmate::assert_character(subgraphs)
   checkmate::assert_flag(register)
 
   primitive <- AnvlPrimitive(name, subgraphs = subgraphs)
 
-  # `fn` is evaluated with `self` (the AnvlPrimitive) bound in a per-primitive
-  # env around the call site, so the body can reference the primitive directly
-  # — same idea as R6's `self`. An inline `function(...)` body closes over that
-  # env; a shared body built by one of the `make_*_op()` helpers takes `self`
-  # as an argument instead, because a helper's body is written inside another
-  # function, where a free `self` would be a global variable.
-  self_env <- new.env(parent = parent.frame())
+  # Bind `self` (the AnvlPrimitive) in a per-primitive env wrapped around fn's
+  # existing enclosing env, so the body can reference the primitive directly —
+  # same idea as R6's `self`. A per-primitive env is needed because inline
+  # `function(...)` literals in R/primitives.R all share the package namespace
+  # env; binding `self` there would clobber across primitives.
+  self_env <- new.env(parent = environment(fn))
   self_env$self <- primitive
-  fn <- eval(substitute(fn), self_env)
-  checkmate::assert_function(fn)
+  environment(fn) <- self_env
 
   jit_fn <- jit(fn, static = static)
   attr(jit_fn, "primitive") <- primitive

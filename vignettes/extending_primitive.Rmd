@@ -98,7 +98,7 @@ The primitive is now callable directly as `prim_repeat_along(x, times, axis)`.
 
 Key points:
 
-- Pass `self` (the [`AnvlPrimitive`]) as the first argument to `graph_desc_add()`. `new_primitive()` evaluates its `fn` argument with `self` bound to the new primitive, so an inline body like the one above closes over it.
+- Pass the lexically-bound `self` (the [`AnvlPrimitive`]) as the first argument to `graph_desc_add()`. `new_primitive()` installs `self` into the enclosing environment of the body, so this is always available inside a primitive.
 - The inference function receives abstract arrays (types, not values) for dynamic inputs, and actual values for static parameters. It must verify that the arguments to the function are valid, and should throw clear error messages — {anvl} programs are otherwise hard to debug.
 - `graph_desc_add()` returns a list of outputs; use `[[1L]]` for single-output primitives.
 
@@ -155,19 +155,17 @@ See `graph_desc_add()` for the detailed semantics.
 
 `prim_repeat_along` has its own parameters and needs a custom body. Many primitives are simpler -- elementwise unary or binary ops, reductions, and comparisons all share a standard shape. `R/primitives.R` exposes factories that generate the body for you:
 
-- `make_unary_op(self, stablehlo_infer)` -- elementwise unary (e.g. `prim_abs`, `prim_negate`).
-- `make_binary_op(self, stablehlo_infer)` -- elementwise binary (e.g. `prim_add`, `prim_mul`).
-- `make_reduce_op(self, infer_fn)` -- reductions with `axes` / `drop` parameters (e.g. `prim_reduce_sum`).
-- `make_compare_op(self, direction)` -- comparison ops with a fixed `direction` string (e.g. `prim_eq`, `prim_lt`).
-
-A factory's body is written inside another function, so it takes `self` as an argument rather than closing over it.
+- `make_unary_op(stablehlo_infer)` -- elementwise unary (e.g. `prim_abs`, `prim_negate`).
+- `make_binary_op(stablehlo_infer)` -- elementwise binary (e.g. `prim_add`, `prim_mul`).
+- `make_reduce_op(infer_fn)` -- reductions with `axes` / `drop` parameters (e.g. `prim_reduce_sum`).
+- `make_compare_op(direction)` -- comparison ops with a fixed `direction` string (e.g. `prim_eq`, `prim_lt`).
 
 Used together with the corresponding stablehlo inference function, the primitive definition collapses to a one-liner:
 
 ```r
-prim_add <- new_primitive("add", make_binary_op(self, stablehlo::infer_types_add))
-prim_negate <- new_primitive("negate", make_unary_op(self, stablehlo::infer_types_negate))
-prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(self), static = 2:3)
+prim_add <- new_primitive("add", make_binary_op(stablehlo::infer_types_add))
+prim_negate <- new_primitive("negate", make_unary_op(stablehlo::infer_types_negate))
+prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 ```
 
 Reach for the manual `graph_desc_add()` form when the primitive has extra static parameters, a custom inference function, or multiple outputs.
