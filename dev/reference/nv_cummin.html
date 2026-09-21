@@ -81,7 +81,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="va">x</span>, axis <span class="op">=</span> <span class="cn">NULL</span>, with_indices <span class="op">=</span> <span class="cn">FALSE</span>, nan_rm <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="va">x</span>, axis <span class="op">=</span> <span class="cn">NULL</span>, indices <span class="op">=</span> <span class="cn">FALSE</span>, nan_rm <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -100,7 +100,7 @@ i.e. <code>-1</code> refers to the last axis. If <code>NULL</code> (default), th
 is first flattened to a 1-D array, like <code><a href="https://rdrr.io/r/base/cumsum.html" class="external-link">base::cummin()</a></code>.</p></dd>
 
 
-<dt id="arg-with-indices">with_indices<a class="anchor" aria-label="anchor" href="#arg-with-indices"></a></dt>
+<dt id="arg-indices">indices<a class="anchor" aria-label="anchor" href="#arg-indices"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>FALSE</code> (default), returns the running-minimum array.
 If <code>TRUE</code>, returns <code>list(values = ..., indices = ...)</code> where <code>indices</code>
@@ -121,8 +121,8 @@ contributes nothing to the running value.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code> (when <code>with_indices = FALSE</code>) or named list of two
-arrays (when <code>with_indices = TRUE</code>).</p>
+    <p><code><a href="arrayish.html">arrayish</a></code> (when <code>indices = FALSE</code>) or named list of two
+arrays (when <code>indices = TRUE</code>).</p>
     </div>
     <div class="section level2">
     <h2 id="relation-to-base-r">Relation to base R<a class="anchor" aria-label="anchor" href="#relation-to-base-r"></a></h2>
@@ -156,7 +156,7 @@ column-major (Fortran) order. The two agree on 1-D inputs.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3 4 5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 1 5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
-<span class="r-in"><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="va">x</span>, axis <span class="op">=</span> <span class="fl">1L</span>, with_indices <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_cummin</span><span class="op">(</span><span class="va">x</span>, axis <span class="op">=</span> <span class="fl">1L</span>, indices <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $values</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  3 4 5</span>

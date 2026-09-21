@@ -7,6 +7,13 @@
 - The `@jit` roxygen tag was removed; wrap functions in
   [`jit()`](https://r-xla.github.io/anvl/dev/reference/jit.md) at the
   definition instead.
+- [`nv_top_k()`](https://r-xla.github.io/anvl/dev/reference/nv_top_k.md),
+  [`nv_cummax()`](https://r-xla.github.io/anvl/dev/reference/nv_cummax.md)
+  and
+  [`nv_cummin()`](https://r-xla.github.io/anvl/dev/reference/nv_cummin.md)
+  take `indices` instead of `with_indices`, spelling it the way
+  [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md)
+  does.
 - The type system of {anvl} was changed to avoid the problems reported
   in issue [\#373](https://github.com/r-xla/anvl/issues/373).
   Specifically, the ambiguity system was replaced with the `RData`
@@ -180,12 +187,13 @@
   [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
   select the needed order statistics with `top_k` instead of a full sort
   when every requested quantile lies in the same half of the axis.
-  Results are unchanged.
+  Results are unchanged: the interpolation index is computed at `f64`,
+  so it agrees with the window the host sizes.
 - [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md)
   gained `indices`; without them the CUDA lowering uses an unstable sort
   of the values and a slice instead of the CHLO op, which costs no more
-  than a full sort there. `nv_top_k(with_indices = FALSE)` and the
-  quantile fast path use it.
+  than a full sort there. `nv_top_k(indices = FALSE)` and the quantile
+  fast path use it.
 
 ### Bug fixes
 

@@ -81,7 +81,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">x</span>, <span class="va">k</span>, axis <span class="op">=</span> <span class="cn">NULL</span>, with_indices <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">x</span>, <span class="va">k</span>, axis <span class="op">=</span> <span class="cn">NULL</span>, indices <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -107,7 +107,7 @@ end, i.e. <code>-1</code> refers to the last axis. If <code>NULL</code> (default
 uses the last axis.</p></dd>
 
 
-<dt id="arg-with-indices">with_indices<a class="anchor" aria-label="anchor" href="#arg-with-indices"></a></dt>
+<dt id="arg-indices">indices<a class="anchor" aria-label="anchor" href="#arg-indices"></a></dt>
 <dd><p>(<code>logical(1)</code>)<br>
 If <code>FALSE</code> (default), returns just the top-<code>k</code> values. If <code>TRUE</code>,
 returns <code>list(values = ..., indices = ...)</code> where <code>indices</code> is the
@@ -117,8 +117,8 @@ integer data type (see <code><a href="default_dtypes.html">default_dtypes()</a><
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code><a href="arrayish.html">arrayish</a></code> (when <code>with_indices = FALSE</code>) or named list of two
-arrays (when <code>with_indices = TRUE</code>). Output shape matches <code>x</code> with
+    <p><code><a href="arrayish.html">arrayish</a></code> (when <code>indices = FALSE</code>) or named list of two
+arrays (when <code>indices = TRUE</code>). Output shape matches <code>x</code> with
 <code>axis</code> resized to <code>k</code>; values are sorted decreasing along <code>axis</code>.</p>
     </div>
     <div class="section level2">
@@ -143,7 +143,7 @@ bit is not canonicalized.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  6</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{3} ] </span>
-<span class="r-in"><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">x</span>, k <span class="op">=</span> <span class="fl">3L</span>, with_indices <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_top_k</span><span class="op">(</span><span class="va">x</span>, k <span class="op">=</span> <span class="fl">3L</span>, indices <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $values</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  9</span>

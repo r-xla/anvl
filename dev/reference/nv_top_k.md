@@ -6,7 +6,7 @@ order.
 ## Usage
 
 ``` r
-nv_top_k(x, k, axis = NULL, with_indices = FALSE)
+nv_top_k(x, k, axis = NULL, indices = FALSE)
 ```
 
 ## Arguments
@@ -30,7 +30,7 @@ nv_top_k(x, k, axis = NULL, with_indices = FALSE)
   end, i.e. `-1` refers to the last axis. If `NULL` (default), uses the
   last axis.
 
-- with_indices:
+- indices:
 
   (`logical(1)`)  
   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
@@ -42,9 +42,9 @@ nv_top_k(x, k, axis = NULL, with_indices = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-(when `with_indices = FALSE`) or named list of two arrays (when
-`with_indices = TRUE`). Output shape matches `x` with `axis` resized to
-`k`; values are sorted decreasing along `axis`.
+(when `indices = FALSE`) or named list of two arrays (when
+`indices = TRUE`). Output shape matches `x` with `axis` resized to `k`;
+values are sorted decreasing along `axis`.
 
 ## NaN handling
 
@@ -69,7 +69,7 @@ nv_top_k(x, k = 3L)
 #>  6
 #>  5
 #> [ CPUf32{3} ] 
-nv_top_k(x, k = 3L, with_indices = TRUE)
+nv_top_k(x, k = 3L, indices = TRUE)
 #> $values
 #> AnvlArray
 #>  9

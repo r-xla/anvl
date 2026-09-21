@@ -5,7 +5,7 @@ Running maximum, optionally along a single axis.
 ## Usage
 
 ``` r
-nv_cummax(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
+nv_cummax(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
 ```
 
 ## Arguments
@@ -23,7 +23,7 @@ nv_cummax(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
   first flattened to a 1-D array, like
   [`base::cummax()`](https://rdrr.io/r/base/cumsum.html).
 
-- with_indices:
+- indices:
 
   (`logical(1)`)  
   If `FALSE` (default), returns the running-maximum array. If `TRUE`,
@@ -45,8 +45,8 @@ nv_cummax(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
-(when `with_indices = FALSE`) or named list of two arrays (when
-`with_indices = TRUE`).
+(when `indices = FALSE`) or named list of two arrays (when
+`indices = TRUE`).
 
 ## Relation to base R
 
@@ -80,7 +80,7 @@ nv_cummax(x, axis = 1L)
 #>  3 4 5
 #>  3 4 9
 #> [ CPUf32{2,3} ] 
-nv_cummax(x, axis = 1L, with_indices = TRUE)
+nv_cummax(x, axis = 1L, indices = TRUE)
 #> $values
 #> AnvlArray
 #>  3 4 5
