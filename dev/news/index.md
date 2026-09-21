@@ -104,11 +104,10 @@
   a fixed-length loop in the style of JAX’s `lax.scan` that threads a
   carry through a body function and stacks each step’s outputs along a
   new leading axis. Supports nested carries, multiple `xs` and `out`
-  leaves, reverse scans, `xs = NULL` counted loops and carry-only loops.
-  Backed by the new
+  leaves, reverse scans, `xs = NULL` counted loops, carry-only loops and
+  zero-length scans. Backed by the new
   [`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
-  primitive, which lowers to a `while` loop on the pjrt backend and to a
-  `for` loop on quickr.
+  primitive, which lowers to a `while` loop on the pjrt backend.
 - The reductions ([`sum()`](https://rdrr.io/r/base/sum.html),
   [`prod()`](https://rdrr.io/r/base/prod.html),
   [`max()`](https://rdrr.io/r/base/Extremes.html),

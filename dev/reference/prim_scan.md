@@ -35,7 +35,8 @@ prim_scan(init, xs, body, length, reverse = FALSE)
 - length:
 
   (`integer(1)`)  
-  Static trip count; the size of axis 1 of every array in `xs`.
+  Static trip count; the size of axis 1 of every array in `xs`. `0` runs
+  no step and returns `init` with zero-length stacked outputs.
 
 - reverse:
 
@@ -51,8 +52,6 @@ leaf of `out` gaining a leading axis of size `length`.
 ## Implemented Rules
 
 - `stablehlo`
-
-- `quickr`
 
 ## StableHLO
 

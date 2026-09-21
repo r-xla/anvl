@@ -118,7 +118,8 @@ nested) list of arrays or <code>NULL</code>. <code>x</code> is <code>NULL</code>
 
 <dt id="arg-length">length<a class="anchor" aria-label="anchor" href="#arg-length"></a></dt>
 <dd><p>(<code>integer(1)</code>)<br>
-Static trip count; the size of axis 1 of every array in <code>xs</code>.</p></dd>
+Static trip count; the size of axis 1 of every array in <code>xs</code>. <code>0</code> runs
+no step and returns <code>init</code> with zero-length stacked outputs.</p></dd>
 
 
 <dt id="arg-reverse">reverse<a class="anchor" aria-label="anchor" href="#arg-reverse"></a></dt>
@@ -137,7 +138,6 @@ outputs, each leaf of <code>out</code> gaining a leading axis of size <code>leng
 
 
 <ul><li><p><code>stablehlo</code></p></li>
-<li><p><code>quickr</code></p></li>
 </ul></div>
     <div class="section level2">
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>

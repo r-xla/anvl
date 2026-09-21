@@ -9,6 +9,18 @@ a scalar), and must return
 `list(carry = <same structure as init>, out = <arrays to stack>)`. The
 stacked `out` buffers gain a new leading axis of size `length`.
 
+The whole loop, written out in R:
+
+    carry <- init
+    out <- <empty, `length` rows>
+    steps <- if (reverse) rev(seq_len(length)) else seq_len(length)
+    for (t in steps) {
+      step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+      carry <- step$carry
+      out[t, ...] <- step$out          # position t, not the loop's position
+    }
+    list(carry = carry, out = out)
+
 ## Usage
 
 ``` r
@@ -30,20 +42,22 @@ nv_scan(init, body, xs = NULL, length = NULL, reverse = FALSE)
   Step function `function(carry, x)` returning `list(carry = , out = )`.
   `out` may be a single array, a (nested) list of arrays, or `NULL`
   (loop for the carry only). Its structure must be identical at every
-  step. `x` is `NULL` when `xs` is `NULL`.
+  step. `x` is `NULL` when `xs` is empty.
 
 - xs:
 
   ([`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)
   \| [`list()`](https://rdrr.io/r/base/list.html) \| `NULL`)  
   Per-step inputs, sliced along axis 1. All leaves must agree on the
-  size of axis 1.
+  size of axis 1. `NULL` or a list with no leaves runs a counted loop
+  over `length` steps instead.
 
 - length:
 
   (`integer(1)` \| `NULL`)  
-  Static trip count. Required when `xs` is `NULL`; otherwise inferred
-  from (and checked against) axis 1 of `xs`.
+  Static trip count. Required when `xs` is empty; otherwise inferred
+  from (and checked against) axis 1 of `xs`. A trip count of `0` runs no
+  step.
 
 - reverse:
 

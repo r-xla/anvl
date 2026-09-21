@@ -86,7 +86,7 @@ because it does not apply for a specific primitive.
 | rng_bit_generator      |     ✓     |   ✗    |    ✗    |
 | round                  |     ✓     |   ✗    |    ✓    |
 | rsqrt                  |     ✓     |   ✗    |    ✓    |
-| scan                   |     ✓     |   ✓    |    ✗    |
+| scan                   |     ✓     |   ✗    |    ✗    |
 | scatter                |     ✓     |   ✓    |    ✓    |
 | select                 |     ✓     |   ✓    |    ✓    |
 | shift_left             |     ✓     |   ✗    |    ✓    |
