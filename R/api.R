@@ -3675,6 +3675,10 @@ nv_quantile <- jit(
     } else {
       count_kd
     }
+    # All three paths index the same multiset, so the order statistic does not
+    # depend on which one ran -- except in the sign of a zero: `top_k` ranks
+    # `-0` below `+0`, as `chlo.top_k` does, where `prim_sort()` folds the two
+    # together. Nothing short of `1/x` tells those two results apart.
     sorted <- switch(
       path,
       "low" = -nv_top_k(-to_sort, k = k_lo, axis = axis),
