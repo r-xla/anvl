@@ -154,7 +154,7 @@ nv_unserialize <- function(con, device = NULL) {
       nv_array(buf)
     } else {
       nv_array(
-        tengen::as_array(buf),
+        tengen::as_array(buf, check = FALSE),
         dtype = as.character(pjrt::elt_type(buf)),
         shape = tengen::shape(buf)
       )

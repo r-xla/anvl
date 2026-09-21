@@ -5,7 +5,7 @@
 \alias{as_array}
 \title{Convert to an R array}
 \usage{
-\method{as_array}{AnvlArray}(x, check = FALSE, ...)
+\method{as_array}{AnvlArray}(x, check = "warn", ...)
 
 as_array(x, ...)
 }
@@ -13,14 +13,14 @@ as_array(x, ...)
 \item{x}{(\code{\link{arrayish}})\cr
 An array-like object.}
 
-\item{check}{(\code{logical(1)})\cr
-If \code{TRUE}, sanity-check the materialized R vector against losing
-information across the device-to-host boundary, and abort if any
-problematic value is detected. Forwarded to the backend; for the
-\code{pjrt} backend the relevant cases are \code{i32}/\code{i64} values colliding
-with the \code{NA} bit pattern and \code{ui64} values \verb{>= 2^63} wrapping
-through \code{bit64::integer64}. See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for
-the full list. Defaults to \code{FALSE}. See the "Gotchas" vignette.}
+\item{check}{(\code{character(1)} | \code{FALSE})\cr
+How to report a materialized value that R's type cannot hold:
+\code{"warn"} (the default) warns and returns it anyway, \code{"err"} aborts, and
+\code{FALSE} skips the scan altogether. Forwarded to the backend; for the
+\code{pjrt} backend the relevant cases are \code{i32}/\code{i64} values colliding with
+the \code{NA} bit pattern and \code{ui64} values \verb{>= 2^63} wrapping through
+\code{bit64::integer64}. See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}} for the full
+list. See the "Gotchas" vignette.}
 
 \item{...}{Additional arguments passed to methods (unused).}
 }

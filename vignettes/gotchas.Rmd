@@ -135,19 +135,21 @@ and an `NA` at a boolean dtype, where a lost missing value would be indistinguis
 nv_scalar(NA)
 ```
 
-These errors are raised whatever `check` is set to.
+What an `NA` does on the way in is therefore fixed by the dtype, and array creators such as `nv_array()` take no argument to change it.
 
-In order to avoid these pitfals, array creators such as `nv_array()` have a `check` argument to prevent the above problems.
-It is `FALSE` by default, because it needs to scan the complete data.
+Coming back the other way there is a choice, because a bit pattern R cannot represent is only discovered once the values are in R.
+Converters like `as_array()` take a `check` argument for it: `"warn"` (the default) warns and hands the value back anyway, `"err"` aborts, and `FALSE` skips the scan.
 
-```{r, error = TRUE}
-nv_array(c(1, NA, 3), check = TRUE)
+```{r}
+as_array(suppressWarnings(nv_scalar(NA_integer_)))
 ```
 
-The same flag is available for converters like `as_array()`:
-
 ```{r, error = TRUE}
-as_array(suppressWarnings(nv_scalar(NA_integer_)), check = TRUE)
+as_array(suppressWarnings(nv_scalar(NA_integer_)), check = "err")
+```
+
+```{r}
+as_array(suppressWarnings(nv_scalar(NA_integer_)), check = FALSE)
 ```
 
 ## No unsigned integers
@@ -168,13 +170,14 @@ big <- nv_array(2147483647L, dtype = "ui32") + 1L
 as_array(big)
 ```
 
-However, for `ui64`, we also convert to `integer64`, which does not cover the whole range, so overflow is possible, but can be detected via the `check` flag:
+However, for `ui64`, we also convert to `integer64`, which does not cover the whole range, so overflow is possible.
+The default `check` level warns about it, and `"err"` makes it an error:
 
 ```{r, error = TRUE}
 big <- nv_array(0L, dtype = "ui64") - 1L
 big
 as_array(big)
-as_array(big, check = TRUE)
+as_array(big, check = "err")
 ```
 
 ## Differences between eager and jit-mode

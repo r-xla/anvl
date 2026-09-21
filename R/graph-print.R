@@ -14,7 +14,9 @@ format_node_id <- function(node, node_ids) {
 format_literal <- function(node) {
   val <- node$aval$data
   if (is_anvl_array(val)) {
-    val <- as_array(val)
+    # A literal is printed as-is: formatting a graph must not warn about a
+    # value R's type cannot hold.
+    val <- as_array(val, check = FALSE)
   }
   dt <- as.character(dtype(node$aval))
   shp <- shape(node$aval)

@@ -4,6 +4,12 @@
 
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
+* `as_array()`, `as.double()`, `as.integer()`, `bit64::as.integer64()` and
+  `as.logical()` now take `check` as `"warn"` (the default), `"err"` or
+  `FALSE`, and report a value R's type cannot hold instead of returning it
+  silently. Write `check = "err"` where you wrote `check = TRUE`.
+* `nv_array()` and `nv_scalar()` no longer take a `check` argument; what
+  happens to an `NA` is fixed by the dtype.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API

@@ -11,16 +11,9 @@
 \alias{nv_empty_like}
 \title{AnvlArray}
 \usage{
-nv_array(
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  byrow = FALSE,
-  check = FALSE
-)
+nv_array(data, dtype = NULL, device = NULL, shape = NULL, byrow = FALSE)
 
-nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
+nv_scalar(data, dtype = NULL, device = NULL)
 
 nv_matrix(
   data,
@@ -86,17 +79,6 @@ default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
 
-\item{check}{(\code{logical(1)})\cr
-If \code{TRUE}, error when \code{data} contains any \code{NA} values. XLA has no
-representation for missing values, so without the check the outcome
-depends on both the dtype and the R type the data arrived as. A
-floating-point dtype stores \code{NaN}. An integer dtype carries the value
-through only where R's own \code{NA} marker is already its bit pattern --
-an \code{integer} at \code{i32} (\code{-2147483648}) and a \code{\link[bit64:integer64]{bit64::integer64}} at
-\code{i64} or \code{ui64} -- and warns when it does. Everywhere else, including
-\code{bool} and a \code{double} \code{NA} at any integer dtype, it is an error whatever
-\code{check} is set to. Defaults to \code{FALSE}. See the "Gotchas" vignette.}
-
 \item{nrow}{(\code{NULL} | \code{integer(1)})\cr
 Number of rows. Inferred from \code{ncol} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
@@ -157,6 +139,18 @@ Serialize/deserialize arrays to/from raw vectors.
 An \code{AnvlArray} is backend-dependent: it belongs to exactly one backend
 (\code{"pjrt"} or the experimental \code{"quickr"}) and lives on a device of that backend.
 The supported data types and devices differ between backends.
+}
+
+\section{Missing values}{
+
+XLA has no representation for a missing value, so what happens to an \code{NA}
+is fixed by the dtype and the R type the data arrived as; there is nothing
+to opt into. A floating-point dtype stores \code{NaN}. An integer dtype carries
+the value through only where R's own \code{NA} marker is already its bit pattern
+-- an \code{integer} at \code{i32} (\code{-2147483648}) and a \code{\link[bit64:integer64]{bit64::integer64}} at
+\code{i64} or \code{ui64} -- and warns when it does. Everywhere else, including
+\code{bool} and a \code{double} \code{NA} at any integer dtype, it is an error. See the
+"Gotchas" vignette.
 }
 
 \examples{
