@@ -525,8 +525,7 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #' Extracts a subset from an array. You can also use the `[` operator.
 #' Supports R-style indexing including scalar indices (which drop axes),
 #' ranges (`a:b`), and `array(c(...))` for selecting multiple elements along a
-#' axis. A range that counts down (`b:a` with `b` above `a`) selects in
-#' reverse, as it does in base R.
+#' axis.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
@@ -643,20 +642,16 @@ subset_scatter_core <- jit(
 #' @title Update Subset
 #' @description
 #' Updates elements of an array at specified positions, returning a new array.
-#' You can also use the `[<-` operator. A range that counts down selects in
-#' reverse, as in [nv_subset()], so a non-scalar `value` goes in back to front.
+#' You can also use the `[<-` operator.
 #' @param x ([`arrayish`])\cr
-#'   The array to update. Can be any data type; `value` is brought to it --
-#'   see `value`.
+#'   The array to update. Can be any data type.
+#'   An R object is materialized at its [default data type][default_dtypes].
 #' @param ... Subset specifications, one per axis. See
 #'   `vignette("subsetting")` for details.
 #' @param value ([`arrayish`])\cr
-#'   Replacement values. Scalars are broadcast to the subset shape; non-scalar
-#'   values must match it. Brought to `x`'s data type: an R value is built at it
-#'   when its category can reach it (`0L` serves an integer and a float `x`
-#'   alike, `0` only a float one), and a value that already has a data type is
-#'   converted unless that would narrow it -- an `f64` value for an `f32` `x` is
-#'   an error rather than a silent narrowing.
+#'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
+#'   values must match it.
+#'   The value is converted to the data type of `x`.
 #' @return ([`arrayish`])\cr
 #'   Has `x`'s data type and shape, with the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.

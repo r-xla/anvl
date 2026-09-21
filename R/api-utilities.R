@@ -4,22 +4,32 @@
 #' Creates an initial RNG state from a seed. This state is required by all
 #' random sampling functions and is updated after each call.
 #' @param seed ([`arrayish`])\cr
-#'   Scalar seed, either a plain R value or an `i32` array. It is built at
-#'   `i32` whatever the default integer data type is, so a given seed names the
-#'   same stream in every configuration -- which is also why an array of
-#'   another data type is refused rather than converted.
+#'   Scalar integer value.
 #' @template param_device
 #' @return ([`arrayish`])\cr
-#'   Has the `ui64` data type and shape `(2)`, the layout the generator
-#'   requires -- fixed, not taken from the default data types.
+#'   Has type `ui64[2]`.
 #' @family rng
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the state is a 1-D `ui64` array the samplers thread through
 #' state <- nv_rng_state(42L)
 #' state
 #' @export
 nv_rng_state <- function(seed, device = NULL) {
-  seed <- nv_array(seed, dtype = as_dtype("i32"), shape = integer(), device = device)
+  dt <- peek_dtype(seed)
+  if (dtype_category(dt) != 2L) {
+    what <- if (is_anvl_array(seed)) {
+      dtype(what)
+    } else {
+      class(seed)[1L]
+    }
+    cli_abort(c(
+      "Input seed must be an (un)signed integer.",
+      x = "Got {what} instead."
+    ))
+  }
+  # REVIEW: Need .promote for as_anvl_array()
+  # Also, they should get argument `device`, then we can use it here and jit() the whole function.
+  seed <- nv_array(seed, device = device, shape = integer())
+  state <- nv_convert(seed, "i32")
   state <- nv_bitcast_convert(seed, dtype = "ui16")
   nv_convert(state, "ui64")
 }

@@ -25,7 +25,7 @@ the full list. Defaults to \code{FALSE}. See the "Gotchas" vignette.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-(\code{\link[base:array]{array}} | \code{vector})\cr
+(\code{\link[base:array]{array}} | \code{vector(1)})\cr
 An R array with the input's shape, or -- for a scalar, which R cannot
 represent as an array -- a vector of length 1.
 }

@@ -18,11 +18,19 @@ Has the input's data type, and one axis holding all of its elements.
 \description{
 Flattens an array of any rank into an array with a single axis, reading the
 elements in row-major order (the last axis fastest), as \code{\link[=nv_reshape]{nv_reshape()}} does.
-Fails with scalar inputs.
 }
+\section{Differences from base R}{
+
+Note that row-major order is used, which differs from R's column-major order.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the 2x2 matrix becomes a length-4 vector
-nv_flatten(matrix(1:4, nrow = 2))
+x <- matrix(1:4, nrow = 2)
+# flatten in row-major
+nv_flatten(x)
+# differs from R's col-major encoding:
+c(x)
 \dontshow{\}) # examplesIf}
 }

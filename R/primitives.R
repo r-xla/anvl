@@ -3221,12 +3221,12 @@ prim_top_k <- new_primitive(
 prim_print <- new_primitive(
   "print",
   function(x) {
-    # HACK: the footer is pre-computed here and passed as a "param", although
-    # it is not really one: stablehlo does not carry the dtype the way anvl
-    # prints it.
+    # HACK: the header and footer are pre-computed here and passed as "params",
+    # although they are not really ones: stablehlo does not carry the dtype the
+    # way anvl prints it.
     # TODO: We should also include the platform/device, but it is currently not avilable in GraphDescriptor
     #
-    # The footer is read off the operand *before* it is materialized, because a
+    # Both are read off the operand *before* it is materialized, because a
     # print is not a use site that should get to name a data type. An R value
     # arrives here with none decided -- printing it is not what settles it, and
     # whatever the program goes on to do with the value usually settles it
@@ -3240,13 +3240,17 @@ prim_print <- new_primitive(
     # place -- `double`, `integer` and `logical` are never data type names, so
     # there is nothing to confuse them with -- and names the data type the
     # *rendering* used, since printing the value does have to build it at one
-    # and that is the default rather than whatever the program settles on.
+    # and that is the default rather than whatever the program settles on. The
+    # header says `RData` for the same reason: what is on screen is an R value
+    # that has not taken a data type, not an `AnvlArray`.
     aval <- to_abstract(x)
     dims <- paste0(shape(aval), collapse = ",")
-    footer <- if (is_rdata(aval)) {
-      sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
+    if (is_rdata(aval)) {
+      header <- "RData"
+      footer <- sprintf("[ %s{%s} printed at %s ]", aval$r_type, dims, as.character(peek_dtype(aval)))
     } else {
-      sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
+      header <- "AnvlArray"
+      footer <- sprintf("[ %s{%s} ]", as.character(dtype(aval)), dims)
     }
     # `x` is printed, not consumed: the call takes a rendering of it and the
     # original is handed straight back. Inserting a print therefore cannot
@@ -3256,9 +3260,12 @@ prim_print <- new_primitive(
     # `f32`. The stablehlo rule threads the operand through the same way, and
     # marks the custom call `has_side_effect` so it survives with its result
     # unused.
-    graph_desc_add(self, list(x = as_anvl_array(x)), list(footer = footer), infer_fn = function(x, ...) {
-      list(x)
-    })
+    graph_desc_add(
+      self,
+      list(x = as_anvl_array(x)),
+      list(header = header, footer = footer),
+      infer_fn = function(x, ...) list(x)
+    )
     x
   }
 )

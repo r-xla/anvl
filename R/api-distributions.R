@@ -13,7 +13,7 @@ NULL
 #' @param x,q ([`arrayish`])\cr
 #'   Quantiles at which to evaluate the density (`x`) or the distribution
 #'   function (`q`). `x` can be any float data type; `q` must be `f32` or `f64`
-#'   (see "Details"). An R `double` is materialized at its [default data type](default_dtypes).
+#'   (see "Details"). An R `double` is materialized at its [default data type][default_dtypes].
 #' @param p ([`arrayish`])\cr
 #'   Probabilities at which to evaluate the quantile function. Values outside
 #'   \eqn{[0, 1]} give `NaN`. Must be `f32` or `f64` (see "Details"); `mean`

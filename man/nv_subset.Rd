@@ -24,8 +24,7 @@ a scalar index drops its axis, a range or an index array keeps it.
 Extracts a subset from an array. You can also use the \code{[} operator.
 Supports R-style indexing including scalar indices (which drop axes),
 ranges (\code{a:b}), and \code{array(c(...))} for selecting multiple elements along a
-axis. A range that counts down (\code{b:a} with \code{b} above \code{a}) selects in
-reverse, as it does in base R.
+axis.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

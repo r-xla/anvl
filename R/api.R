@@ -17,9 +17,9 @@
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
-#'   Data type of the result. Can be any data type the backend supports. The
-#'   default (`NULL`) is the [default data type][default_dtypes] of `value`'s R
-#'   storage type, and `dtype(like)` for `nv_fill_like()`.
+#'   Data type of the result.
+#'   The default (`NULL`) uses the [default data type][default_dtypes] for `nv_fill` and
+#'   `dtype(like)` for `nv_fill_like`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_fill_like()`).
@@ -95,9 +95,7 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' Broadcast scalar arrays to match the shape of non-scalar arrays.
 #' All non-scalar arrays must have the same shape.
 #' @param ... ([`arrayish`][arrayish])\cr
-#'   Arrays to broadcast. Can be of any data types, which are left as they
-#'   are: only the shapes change. Scalars are broadcast to the common
-#'   non-scalar shape.
+#'   Arrays to broadcast.
 #' @return (`list()` of [`arrayish`])\cr
 #'   The inputs, each with its own data type and the common shape.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -134,25 +132,26 @@ nv_broadcast_scalars <- jit(function(...) {
 
 #' @title Promote Arrays to a Common Data Type
 #' @description
-#' Promote arrays to a common data type, see [`common_dtype`] for more details.
+#' Promote arrays to a common data type, see [`promotion_common()`] for more details.
+#' @section Handling of
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to promote. Can be of any data types; an R value among them
-#'   contributes its category rather than a data type of its own.
+#'   Values to promote.
 #' @return (`list()` of [`arrayish`])\cr
 #'   The inputs, each at their common data type and with its own shape.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(1L)
-#' y <- nv_array(1.5)
-#' # integer is promoted to float
+#' # An integer is promoted to float
+#' x <- nv_scalar(1, dtype = "f32")
+#' y <- nv_scalar(1L, dtype = "i32")
 #' nv_promote_to_common(x, y)
+#' with_default_dtypes(c(float = "f64"), {
+#'   # An R value yields within it's category:
+#'   nv_promote_to_common(1, x)
+#'   # and contributes it's default otherwise
+#'   nv_promote_to_common(1, y)
+#' })
 #' @export
 nv_promote_to_common <- jit(function(...) {
   assert_some_arrays(...)
-  # An R value has no dtype to convert *from*: it is built at the common one
-  # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
-  # converting an f32 `sqrt(2)` would only widen a number that had already lost
-  # its digits. So the values are aligned first and built afterwards, once the
-  # common dtype is known. `promotion_common()` is that sequence.
   as_anvl_arrays(..., .promote = promotion_common())
 })
 
@@ -164,21 +163,28 @@ nv_promote_to_common <- jit(function(...) {
 #' 1. If the arrays have different numbers of axes, prepend size-1
 #'    axes to the shorter shape.
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
-#'    it to the other's size; otherwise raise an error.
+#'    it to the other's size if all size
 #'
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to broadcast. Can be of any data types, which are left as they
-#'   are: only the shapes change.
+#'   Arrays to broadcast.
 #' @return (`list()` of [`arrayish`])\cr
 #'   The inputs, each with its own data type and the common shape.
 #' @seealso [nv_broadcast_scalars()], [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the length-3 vector is stretched to the matrix's shape
-#' x <- nv_matrix(1:6, nrow = 2)
-#' y <- nv_array(c(10, 20, 30))
-#' nv_broadcast_arrays(x, y)
+#' x1 <- nv_matrix(1:6, nrow = 2)
+#' shape(x)
+#' x2 <- nv_array(c(10, 20, 30))
+#' shape(y)
+#' nv_broadcast_arrays(x1, x2)
+#' # axes with size 1 are expanded to the other operand's size
+#' y1 <- nv_array(1:3, shape = c(1, 3))
+#' y2 <- nv_array(1:3, shape = c(3, 1))
+#' nv_broadcast_arrays(x1, x2)
+#'
 #' @export
 nv_broadcast_arrays <- jit(function(...) {
+  # TODO: Better handling of sizes 0, currently the error message is not great
   assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shape <- Reduce(broadcast_shapes, lapply(args, shape))
@@ -216,24 +222,27 @@ nv_broadcast_to <- function(x, shape) {
 #' @title Convert Data Type
 #' @description
 #' Converts the elements of an array to a different data type.
-#' Returns the input unchanged if it already has the target type.
-#' @templateVar dtypes any data type
-#' @template param_unary_x
+#' Note that R objects are handled differently than `AnvlArray`
+#' inputs.
+#' For R objects, we check whether the requested data type can
+#' meaningfully hold the provided data and otherwise err.
+#' For `AnvlArray` inputs such a check is *not* performed.
+#'
+#' @param x ([`arrayish`])\cr
+#'   The input to convert.
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Target data type. Can be any data type. The values are converted, and what
-#'   happens to one the target cannot hold depends on the pair: a narrowing
-#'   between integer data types wraps (`nv_convert(nv_array(300L), "i8")` is
-#'   44); a float converted to an integer truncates toward zero and saturates
-#'   at the target's range (`300` reaches `i8` as 127, `-1` reaches `ui8` as 0,
-#'   and `NaN` becomes 0); a narrowing between floats rounds, and may become
-#'   `Inf`.
+#'   Target data type.
 #' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and the input's shape.
 #' @seealso [prim_convert()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the values are preserved, the data type changes
 #' x <- nv_array(c(1L, 2L, 3L))
+#' # For R inputs, we check compatability
 #' nv_convert(x, dtype = "f32")
+#' try(nv_convert(257L, dtype = "i8"))
+#' # For AnvlArrays, we wrap around
+#' nv_convert(nv_scalar(257L), dtype = "i8")
 #' @export
 nv_convert <- function(x, dtype) {
   if (!is_arrayish(x)) {
@@ -273,7 +282,7 @@ nv_transpose <- function(x, permutation = NULL) {
 #' @description
 #' Reshapes an array to a new shape without changing the underlying data.
 #' Returns the input unchanged if it already has the target shape.
-#' @details
+#' @section Differences from base R:
 #' Note that row-major order is used, which differs from R's column-major order.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
@@ -286,10 +295,16 @@ nv_transpose <- function(x, permutation = NULL) {
 #' @seealso [prim_reshape()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the elements are reread in row-major order; the data type is untouched
-#' x <- nv_array(1:6)
-#' nv_reshape(x, c(2, 3))
-#' nv_reshape(x, c(2, -1)) # infer the size of the second axis
-#' nv_reshape(x, -1) # flatten
+#' x <- array(1:6, dim = c(3, 2))
+#' # row-major
+#' nv_reshape(x, 6L)
+#' # differs from R (col-major)
+#' c(x)
+#'
+#' # infer the size of the second axis
+#' nv_reshape(x, c(2, -1))
+#' # flatten
+#' nv_reshape(x, -1)
 #' @export
 nv_reshape <- function(x, shape) {
   x <- as_anvl_array(x)
@@ -307,7 +322,8 @@ nv_reshape <- function(x, shape) {
 #' @description
 #' Flattens an array of any rank into an array with a single axis, reading the
 #' elements in row-major order (the last axis fastest), as [nv_reshape()] does.
-#' Fails with scalar inputs.
+#' @section Differences from base R:
+#' Note that row-major order is used, which differs from R's column-major order.
 #' @templateVar dtypes any data type
 #' @templateVar shapes with at least 1 axis
 #' @template param_unary_x
@@ -316,12 +332,13 @@ nv_reshape <- function(x, shape) {
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' # the 2x2 matrix becomes a length-4 vector
-#' nv_flatten(matrix(1:4, nrow = 2))
+#' x <- matrix(1:4, nrow = 2)
+#' # flatten in row-major
+#' nv_flatten(x)
+#' # differs from R's col-major encoding:
+#' c(x)
 nv_flatten <- function(x) {
   x <- as_anvl_array(x)
-  if (naxes(x) == 0) {
-    cli_abort("Cannot flatten a scalar array.")
-  }
   nv_reshape(x, prod(shape(x)))
 }
 
@@ -418,14 +435,13 @@ nv_concatenate <- jit(
 #' * 1-D: treated as a single row/column.
 #' * Other: used as-is.
 #'
-#' # Differences from base R
+#' @section Differences from base R:
 #'
 #' [base::rbind()] and [base::cbind()] applied to an [`array()`][base::array] of rank > 2
 #' flatten the trailing axes into the column axis (so a `c(2, 3, 4)`
 #' array becomes a `2 x 12` matrix). `nv_rbind` and `nv_cbind` instead
 #' preserve all non-stacked axes: combining two `c(2, 3, 4)` arrays
-#' with `nv_rbind` produces a `c(4, 3, 4)` array, and with `nv_cbind` a
-#' `c(2, 6, 4)` array.
+#' with `nv_rbind` produces a `c(4, 3, 4)` array.
 #'
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to combine. Can be of any data type; they are
@@ -550,6 +566,8 @@ nv_static_slice <- prim_static_slice
 #' @description
 #' Prints an array value to the console during JIT execution and returns the
 #' input unchanged. Useful for debugging.
+#' For [`RData`] inputs, that do not have an actual data type, the [default data type][default_dtypes]
+#' is used for printing.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
@@ -559,6 +577,8 @@ nv_static_slice <- prim_static_slice
 #' # the value is printed and handed back unchanged
 #' x <- nv_array(c(1, 2, 3))
 #' nv_print(x)
+#' # RData is printed at the default dtype
+#' nv_print(1)
 #' @export
 nv_print <- prim_print
 

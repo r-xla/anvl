@@ -1,11 +1,10 @@
 #' @title Assert Shape Vector
 #' @description
 #' Check whether an input is a valid shape vector: whole, non-negative axis
-#' sizes. A zero-size axis is legal, so 0 is accepted.
+#' sizes.
 #' @param x Object to check.
 #' @param min_len (`integer(1)`)\cr
-#'   Minimum number of axes. Default is 0, which admits `integer()` -- the
-#'   shape of a scalar.
+#'   Minimum number of axes. Default is 0.
 #' @param var_name (`character(1)`)\cr
 #'   Name of the variable to use in error messages.
 #' @return (`integer()`)\cr

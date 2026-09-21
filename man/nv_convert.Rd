@@ -8,17 +8,10 @@ nv_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any data type. An R value materializes at its
-\link[=default_dtypes]{default data type}.}
+The input to convert.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Target data type. Can be any data type. The values are converted, and what
-happens to one the target cannot hold depends on the pair: a narrowing
-between integer data types wraps (\code{nv_convert(nv_array(300L), "i8")} is
-44); a float converted to an integer truncates toward zero and saturates
-at the target's range (\code{300} reaches \code{i8} as 127, \code{-1} reaches \code{ui8} as 0,
-and \code{NaN} becomes 0); a narrowing between floats rounds, and may become
-\code{Inf}.}
+Target data type.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -26,13 +19,21 @@ Has the given \code{dtype} and the input's shape.
 }
 \description{
 Converts the elements of an array to a different data type.
-Returns the input unchanged if it already has the target type.
+Note that R objects are handled differently than \code{AnvlArray}
+inputs.
+For R objects, we check whether the requested data type can
+meaningfully hold the provided data and otherwise err.
+For \code{AnvlArray} inputs such a check is \emph{not} performed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the values are preserved, the data type changes
 x <- nv_array(c(1L, 2L, 3L))
+# For R inputs, we check compatability
 nv_convert(x, dtype = "f32")
+try(nv_convert(257L, dtype = "i8"))
+# For AnvlArrays, we wrap around
+nv_convert(nv_scalar(257L), dtype = "i8")
 \dontshow{\}) # examplesIf}
 }
 \seealso{

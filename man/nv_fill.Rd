@@ -19,9 +19,9 @@ for an unsigned one, and a logical or \code{0} / \code{1} for \code{bool}.}
 Shape of the output array.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result. Can be any data type the backend supports. The
-default (\code{NULL}) is the \link[=default_dtypes]{default data type} of \code{value}'s R
-storage type, and \code{dtype(like)} for \code{nv_fill_like()}.}
+Data type of the result.
+The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} for \code{nv_fill} and
+\code{dtype(like)} for \code{nv_fill_like}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

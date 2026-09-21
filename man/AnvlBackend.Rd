@@ -62,8 +62,7 @@ The default data types for this backend.
 Can be overwritten, see \code{\link[=default_dtypes]{default_dtypes()}}.}
 }
 \value{
-(\code{AnvlBackend})\cr
-The backend object, which the registry stores under its name.
+(\code{AnvlBackend})
 }
 \description{
 Create a backend

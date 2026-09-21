@@ -20,7 +20,7 @@ nv_rnorm(shape, initial_state, dtype = NULL, mean = 0, sd = 1)
 \item{x, q}{(\code{\link{arrayish}})\cr
 Quantiles at which to evaluate the density (\code{x}) or the distribution
 function (\code{q}). \code{x} can be any float data type; \code{q} must be \code{f32} or \code{f64}
-(see "Details"). An R \code{double} is materialized at its \href{default_dtypes}{default data type}.}
+(see "Details"). An R \code{double} is materialized at its \link[=default_dtypes]{default data type}.}
 
 \item{mean}{(\code{\link{arrayish}})\cr
 Mean of the distribution, scalar or the same shape as \code{x}/\code{q}/\code{p}.

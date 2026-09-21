@@ -31,7 +31,9 @@ like_defaults <- function(like, ...) {
 #'   An existing array. Any of `dtype`, `device` and `shape` that are `NULL`
 #'   (the default) are taken from `like`.
 #' @export
-nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = NULL) {
+nv_array_like <- function(like, data, dtype = NULL, device = NULL, shape = "auto") {
+  # REVIEW: Need to properly handle the shape = "auto"
+
   do.call(
     nv_array,
     c(

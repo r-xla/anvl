@@ -8,9 +8,7 @@ nv_broadcast_scalars(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to broadcast. Can be of any data types, which are left as they
-are: only the shapes change. Scalars are broadcast to the common
-non-scalar shape.}
+Arrays to broadcast.}
 }
 \value{
 (\code{list()} of \code{\link{arrayish}})\cr

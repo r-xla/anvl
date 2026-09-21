@@ -2724,3 +2724,7 @@ test_that("the quantile page's formula is the one the code computes", {
     }
   }
 })
+
+test_that("nv_flatten accepts scalar", {
+  expect_equal(nv_flatten(1L), nv_array(1L))
+})

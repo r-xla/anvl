@@ -58,13 +58,11 @@ summary(titanic)
 ```
 
 The general survival rate was `r sprintf("%.2f", mean(y) * 100)`%.
-
 Now we convert the data to `AnvlArray`s.
+Here, `X` naturally lands on the default floating point type because it is a `double`.
+Becuase `y` is an integer, we explicitly request it to assume the default float type.
 
 ```{r}
-# `X` is numeric, so it takes the default float on its own; `y` is an R
-# integer, which would take the default *integer* instead, so we name the float
-# we want. Everything downstream follows, whatever the defaults are set to.
 X_arr <- nv_array(X)
 y_arr <- nv_array(y, dtype = default_float(), shape = c(n, 1L))
 ```

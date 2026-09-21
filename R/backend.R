@@ -30,8 +30,7 @@ NULL
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
 #'   The default data types for this backend.
 #'   Can be overwritten, see [`default_dtypes()`].
-#' @return (`AnvlBackend`)\cr
-#'   The backend object, which the registry stores under its name.
+#' @return (`AnvlBackend`)
 #' @keywords internal
 #' @export
 AnvlBackend <- function(

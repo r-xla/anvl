@@ -24,16 +24,24 @@ Has the given \code{shape} and the same data type as \code{x}.
 Reshapes an array to a new shape without changing the underlying data.
 Returns the input unchanged if it already has the target shape.
 }
-\details{
+\section{Differences from base R}{
+
 Note that row-major order is used, which differs from R's column-major order.
 }
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # the elements are reread in row-major order; the data type is untouched
-x <- nv_array(1:6)
-nv_reshape(x, c(2, 3))
-nv_reshape(x, c(2, -1)) # infer the size of the second axis
-nv_reshape(x, -1) # flatten
+x <- array(1:6, dim = c(3, 2))
+# row-major
+nv_reshape(x, 6L)
+# differs from R (col-major)
+c(x)
+
+# infer the size of the second axis
+nv_reshape(x, c(2, -1))
+# flatten
+nv_reshape(x, -1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -33,7 +33,7 @@ nv_matrix(
 
 nv_empty(dtype, shape, device = NULL)
 
-nv_array_like(like, data, dtype = NULL, device = NULL, shape = NULL)
+nv_array_like(like, data, dtype = NULL, device = NULL, shape = "auto")
 
 nv_scalar_like(like, data, dtype = NULL, device = NULL)
 
@@ -44,12 +44,14 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
 \code{integer()}, \code{double()}, or \code{logical()} scalar, vector, or array.
 Alternatively a \code{raw()} vector holding the native little-endian byte
 payload of \code{prod(shape)} elements of \code{dtype}; both \code{dtype} and \code{shape}
-are then required (only supported on the \code{"pjrt"} backend).
+are then required.
 Raw payloads are read in column-major element order, or row-major
 with \code{byrow = TRUE}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result: one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64, or a
+The data type at which to create the array.
+Can be a \code{\link[tengen:DataType]{tengen::DataType}} or one of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64.
+
 \code{\link[tengen:DataType]{tengen::DataType}}. Can be any data type the backend supports; \code{data}
 is built at it, so a value that data type cannot hold exactly is
 converted. The default (\code{NULL}) is the data type the R value materializes at

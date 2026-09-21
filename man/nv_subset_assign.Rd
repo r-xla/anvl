@@ -9,19 +9,16 @@ nv_subset_assign(x, ..., value)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-The array to update. Can be any data type; \code{value} is brought to it --
-see \code{value}.}
+The array to update. Can be any data type.
+An R object is materialized at its \link[=default_dtypes]{default data type}.}
 
 \item{...}{Subset specifications, one per axis. See
 \code{vignette("subsetting")} for details.}
 
 \item{value}{(\code{\link{arrayish}})\cr
-Replacement values. Scalars are broadcast to the subset shape; non-scalar
-values must match it. Brought to \code{x}'s data type: an R value is built at it
-when its category can reach it (\code{0L} serves an integer and a float \code{x}
-alike, \code{0} only a float one), and a value that already has a data type is
-converted unless that would narrow it -- an \code{f64} value for an \code{f32} \code{x} is
-an error rather than a silent narrowing.}
+Replacement values. Scalars are broadcast to the subset shape and non-scalar
+values must match it.
+The value is converted to the data type of \code{x}.}
 }
 \value{
 (\code{\link{arrayish}})\cr
@@ -29,8 +26,7 @@ Has \code{x}'s data type and shape, with the subset replaced.
 }
 \description{
 Updates elements of an array at specified positions, returning a new array.
-You can also use the \verb{[<-} operator. A range that counts down selects in
-reverse, as in \code{\link[=nv_subset]{nv_subset()}}, so a non-scalar \code{value} goes in back to front.
+You can also use the \verb{[<-} operator.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

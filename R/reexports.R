@@ -28,7 +28,10 @@ tengen::shape
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns ([`PJRTDevice`][pjrt::pjrt_device])
+#' @returns (device object)\cr
+#' Backend-dependent device object. One of:
+#'   - [`PJRTDevice`][pjrt::pjrt_device]
+#'   - [`quickr_device`]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:4, dtype = "f32")
 #' device(x)
@@ -52,7 +55,7 @@ tengen::device
 #' @param x ([`arrayish`])\cr
 #'   An array-like object.
 #' @param ... Additional arguments passed to methods (unused).
-#' @returns ([`array`][base::array] | `vector`)\cr
+#' @returns ([`array`][base::array] | `vector(1)`)\cr
 #'   An R array with the input's shape, or -- for a scalar, which R cannot
 #'   represent as an array -- a vector of length 1.
 #' @examplesIf pjrt::plugins_downloaded()

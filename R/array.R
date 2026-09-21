@@ -41,11 +41,13 @@
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
 #'   Alternatively a `raw()` vector holding the native little-endian byte
 #'   payload of `prod(shape)` elements of `dtype`; both `dtype` and `shape`
-#'   are then required (only supported on the `"pjrt"` backend).
+#'   are then required.
 #'   Raw payloads are read in column-major element order, or row-major
 #'   with `byrow = TRUE`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type of the result: one of `r roxy_dtypes()`, or a
+#'   The data type at which to create the array.
+#'   Can be a [`tengen::DataType`] or one of `r roxy_dtypes()`.
+#'
 #'   [`tengen::DataType`]. Can be any data type the backend supports; `data`
 #'   is built at it, so a value that data type cannot hold exactly is
 #'   converted. The default (`NULL`) is the data type the R value materializes at
@@ -132,13 +134,20 @@ nv_array <- function(
   }
   if (is_anvl_array(data)) {
     if (byrow) {
-      cli_abort("{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.")
+      cli_abort(c(
+        "{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.",
+        i = "Use {.fn nv_transpose} instead."
+      ))
     }
     if (!is.null(device) && !eq_device(device(data), nv_device(device))) {
       cli_abort("Cannot change device of existing AnvlArray from {.val {device(data)}} to {.val {device}}")
     }
     if (!is.null(shape) && !identical(shape(data), as.integer(shape))) {
-      cli_abort("Cannot change shape of existing AnvlArray")
+      cli_abort(c(
+        "Cannot change the shape of existing AnvlArray",
+        x = "Input array has shape {shape_repr(shape(data))} but requested shape {shape_repr(shape)},",
+        i = "use {.fn nv_reshape} instead."
+      ))
     }
     if (!is.null(dtype)) {
       if (dtype(data) != as_dtype(dtype)) {
