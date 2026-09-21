@@ -497,6 +497,51 @@ describe("prim_scan", {
     )
   })
 
+  it("nests inside another scan", {
+    # Each `while` region declares its own block arguments; a nested scan
+    # must not reuse the ids of the region enclosing it.
+    m <- matrix(as.numeric(1:6), nrow = 2)
+    row_sums <- function(x) {
+      prim_scan(
+        list(s = nv_scalar(0)),
+        list(x = x),
+        function(carry, row) {
+          inner <- prim_scan(
+            list(s = carry$s),
+            list(x = row$x),
+            function(acc, e) list(carry = list(s = acc$s + e$x), out = NULL),
+            length = 3L
+          )
+          list(carry = list(s = inner$carry$s), out = inner$carry$s)
+        },
+        length = 2L
+      )
+    }
+    res <- row_sums(nv_array(m))
+    expect_equal(as.numeric(res$out), cumsum(rowSums(m)))
+    expect_equal(as.numeric(res$carry$s), sum(m))
+
+    jitted <- jit(function(x) row_sums(x)$out)
+    expect_equal(as.numeric(jitted(nv_array(m))), cumsum(rowSums(m)))
+  })
+
+  it("names the carry slot whose type changes", {
+    expect_error(
+      prim_scan(
+        list(s = nv_scalar(0, dtype = "f32"), m = nv_scalar(0, dtype = "f32")),
+        list(x = nv_array(c(1, 2, 3))),
+        function(carry, x) {
+          list(
+            carry = list(s = carry$s + x$x, m = nv_convert(carry$m, "f64")),
+            out = NULL
+          )
+        },
+        length = 3L
+      ),
+      "`m` enters as"
+    )
+  })
+
   it("emits no loop for length 0", {
     # The body slices a step off `xs`, which does not type-check against an
     # empty `xs`, so the rule has to skip the `while` rather than let its

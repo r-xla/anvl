@@ -2353,26 +2353,13 @@ describe("nv_scan", {
     list(carry = s, out = s)
   }
 
-  it("matches nv_cumsum on a 1-D array", {
+  # `prim_scan()` takes a list on both sides and is tested through one; a bare
+  # array for `init`, `xs` and `out` is what `nv_scan()` adds.
+  it("takes bare arrays and matches nv_cumsum", {
     x <- c(1, 2, 3, 4)
     res <- nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(x))
-    expect_equal(as.numeric(as.array(res$out)), cumsum(x))
-    expect_equal(as.numeric(as.array(res$carry)), sum(x))
-    expect_equal(
-      as.numeric(as.array(res$out)),
-      as.numeric(as.array(nv_cumsum(nv_array(x))))
-    )
-  })
-
-  it("batches the carry over the non-scanned axes", {
-    a <- array(as.numeric(1:24), dim = c(4L, 2L, 3L))
-    res <- nv_scan(
-      init = nv_fill(0, shape = c(2L, 3L), dtype = "f64"),
-      body = cumsum_body,
-      xs = nv_array(a)
-    )
-    expect_equal(as.array(res$out), apply(a, c(2, 3), cumsum))
-    expect_equal(as.array(res$carry), apply(a, c(2, 3), sum))
+    expect_equal(as.numeric(res$out), as.numeric(nv_cumsum(nv_array(x))))
+    expect_equal(as.numeric(res$carry), sum(x))
   })
 
   it("computes a recursive EWMA matching stats::filter", {
@@ -2391,13 +2378,6 @@ describe("nv_scan", {
     )
     ref <- as.numeric(stats::filter(0.3 * x, 0.7, method = "recursive"))
     expect_equal(as.numeric(as.array(res$out)), ref)
-  })
-
-  it("reverse scan reads and writes at the original positions", {
-    x <- c(1, 2, 3, 4)
-    res <- nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(x), reverse = TRUE)
-    expect_equal(as.numeric(as.array(res$out)), rev(cumsum(rev(x))))
-    expect_equal(as.numeric(as.array(res$carry)), sum(x))
   })
 
   it("supports nested carries and multiple out leaves", {
@@ -2458,28 +2438,6 @@ describe("nv_scan", {
     res <- nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(7))
     expect_equal(as.numeric(as.array(res$out)), 7)
     expect_equal(as.numeric(as.array(res$carry)), 7)
-  })
-
-  it("works under jit", {
-    f <- jit(function(x) nv_scan(nv_scalar(0), cumsum_body, xs = x)$out)
-    out <- f(nv_array(c(1, 2, 3, 4)))
-    expect_equal(as.numeric(as.array(out)), cumsum(c(1, 2, 3, 4)))
-  })
-
-  it("stacks boolean and integer outputs", {
-    x <- nv_array(c(3L, -1L, 4L, -1L, 5L), dtype = "i32")
-    res <- nv_scan(
-      init = nv_scalar(0L, dtype = "i32"),
-      body = function(carry, v) {
-        s <- carry + v
-        list(carry = s, out = list(pos = v > 0L, sum = s))
-      },
-      xs = x
-    )
-    expect_equal(dtype(res$out$pos), as_dtype("bool"))
-    expect_equal(dtype(res$out$sum), as_dtype("i32"))
-    expect_equal(as.logical(as.array(res$out$pos)), c(TRUE, FALSE, TRUE, FALSE, TRUE))
-    expect_equal(as.integer(as.array(res$out$sum)), cumsum(c(3L, -1L, 4L, -1L, 5L)))
   })
 
   it("treats an empty xs like xs = NULL", {
@@ -2556,58 +2514,11 @@ describe("nv_scan", {
     expect_equal(as.numeric(jitted$carry), 0)
   })
 
-  it("nests inside another scan", {
-    # Each region declares its own block arguments; a nested scan must not
-    # reuse the enclosing while's value ids.
-    m <- matrix(as.numeric(1:6), nrow = 2)
-    row_sum_scan <- function(x) {
-      nv_scan(
-        init = nv_scalar(0),
-        body = function(carry, row) {
-          inner <- nv_scan(
-            init = carry,
-            body = function(acc, e) list(carry = acc + e, out = NULL),
-            xs = row
-          )
-          list(carry = inner$carry, out = inner$carry)
-        },
-        xs = x
-      )
-    }
-    res <- row_sum_scan(nv_array(m))
-    expect_equal(as.numeric(res$out), cumsum(rowSums(m)))
-    expect_equal(as.numeric(res$carry), sum(m))
-
-    jitted <- jit(function(x) row_sum_scan(x)$out)
-    expect_equal(as.numeric(jitted(nv_array(m))), cumsum(rowSums(m)))
-  })
-
-  it("names the carry slot whose type changes", {
-    expect_error(
-      nv_scan(
-        init = list(s = nv_scalar(0, dtype = "f32"), m = nv_scalar(0, dtype = "f32")),
-        body = function(carry, v) {
-          list(
-            carry = list(s = carry$s + v, m = nv_convert(carry$m, "f64")),
-            out = NULL
-          )
-        },
-        xs = nv_array(c(1, 2, 3))
-      ),
-      "`m` enters as"
-    )
-  })
-
+  # The body's own contract (`list(carry = , out = )`, a carry shaped like
+  # `init`) is `prim_scan()`'s and is tested there; these are the errors
+  # `nv_scan()` adds on top, about `xs` and `length`.
   it("errors clearly on contract violations", {
     x <- nv_array(c(1, 2, 3, 4))
-    expect_error(
-      nv_scan(nv_scalar(0), function(c, v) c + v, xs = x),
-      "list\\(carry = , out = \\)"
-    )
-    expect_error(
-      nv_scan(nv_scalar(0), function(c, v) list(carry = list(c), out = c), xs = x),
-      "same structure as `init`"
-    )
     expect_error(
       nv_scan(nv_scalar(0), cumsum_body, xs = x, length = 9L),
       "disagrees with axis 1"
