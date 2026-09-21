@@ -122,14 +122,18 @@ nv_scalar(NA)
 nv_array(c(1L, NA, 3L), dtype = "i16")
 ```
 
-To catch missing values before any of this, array creators such as `nv_array()` have a `check` argument.
-It is `FALSE` by default, because it needs to scan the complete data.
+To catch missing values before any of this, array creators such as `nv_array()` have a `check` argument with three levels: `"warn"` warns and builds the array anyway, `"err"` aborts, and `FALSE` skips the scan.
+It is `FALSE` by default, because the scan has to read the complete data.
 
-```{r, error = TRUE}
-nv_array(c(1, NA, 3), check = TRUE)
+```{r}
+nv_array(c(1, NA, 3), check = "warn")
 ```
 
-Converters like `as_array()` have one too, with three levels: `"warn"` (the default) warns about a value R's type cannot hold, `"err"` makes it an error, and `FALSE` skips the scan.
+```{r, error = TRUE}
+nv_array(c(1, NA, 3), check = "err")
+```
+
+Converters like `as_array()` have the same three levels, except that there `"warn"` is the default and what it reports is a value R's type cannot hold:
 
 ```{r, error = TRUE}
 as_array(nv_scalar(NA_integer_), check = "err")

@@ -66,12 +66,15 @@
 #'   default column-major order, mirroring [`base::matrix()`]'s `byrow`.
 #'   Only allowed when `data` is an R object — passing an existing
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
-#' @param check (`logical(1)`)\cr
-#'   If `TRUE`, error when `data` contains any `NA` values. XLA has no
-#'   representation for missing values: at a float dtype they otherwise
-#'   become `NaN`, at `i32` and `i64` they become the bit pattern R itself
-#'   spells `NA` as (with a warning), and at every other dtype the backend
-#'   rejects them. Defaults to `FALSE`. See the "Gotchas" vignette.
+#' @param check (`character(1)` | `FALSE`)\cr
+#'   How to report an `NA` in `data`: `"warn"` warns and builds the array
+#'   anyway, `"err"` aborts, and `FALSE` (the default) skips the scan, which
+#'   has to read all of `data`. `TRUE` is not accepted -- with two levels of
+#'   strictness it does not say which one is meant. XLA has no representation
+#'   for missing values: at a float dtype they otherwise become `NaN`, at
+#'   `i32` and `i64` they become the bit pattern R itself spells `NA` as (with
+#'   a warning from the backend), and at every other dtype the backend rejects
+#'   them. See the "Gotchas" vignette.
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
@@ -121,13 +124,22 @@ nv_array <- function(
   check = FALSE
 ) {
   assert_flag(byrow)
-  assert_flag(check)
-  if (check && !is_anvl_array(data) && anyNA(data)) {
-    n_na <- sum(is.na(data))
-    cli_abort(c(
-      "Input {.arg data} contains {n_na} {.val NA} value{?s}, which {?has/have} no representation at the XLA level.",
-      i = "Replace or drop missing values before transferring, or set {.code check = FALSE} to skip this check."
-    ))
+  if (!isFALSE(check)) {
+    assert_choice(check, c("warn", "err"))
+    if (!is_anvl_array(data) && anyNA(data)) {
+      n_na <- sum(is.na(data))
+      lead <- "Input {.arg data} contains {n_na} {.val NA} value{?s}, which {?has/have} no representation at the XLA level." # nolint
+      if (identical(check, "err")) {
+        cli_abort(c(
+          lead,
+          i = "Replace or drop missing values before transferring, or set {.code check = FALSE} to skip this check."
+        ))
+      }
+      cli_warn(c(
+        lead,
+        i = "Set {.code check = \"err\"} to make this an error, or {.code check = FALSE} to silence it."
+      ))
+    }
   }
   if (is_anvl_array(data)) {
     if (byrow) {

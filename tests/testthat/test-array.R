@@ -16,6 +16,30 @@ test_that("nv_array asks for a shape when the data is empty", {
   expect_shape(nv_array(numeric(0), shape = c(2L, 0L)), c(2L, 0L))
 })
 
+describe("nv_array()'s `check`", {
+  it("aborts at \"err\" when the data holds an NA", {
+    expect_error(nv_array(c(1, NA, 3), check = "err"), "no representation at the XLA level")
+  })
+
+  it("warns at \"warn\" and builds the array anyway", {
+    expect_warning(x <- nv_array(c(1, NA, 3), check = "warn"), "no representation at the XLA level")
+    expect_equal(as.vector(x), c(1, NaN, 3))
+  })
+
+  it("scans nothing at FALSE, the default", {
+    expect_silent(nv_array(c(1, NA, 3), check = FALSE))
+    expect_silent(nv_array(c(1, NA, 3)))
+  })
+
+  it("rejects TRUE, which does not say which level is meant", {
+    expect_error(nv_array(c(1, NA, 3), check = TRUE), "Must be element of set")
+  })
+
+  it("reaches nv_scalar() as well", {
+    expect_error(nv_scalar(NA_real_, check = "err"), "no representation at the XLA level")
+  })
+})
+
 test_that("device returns the pjrt device", {
   x <- nv_array(1, device = "cpu")
   expect_true(device(x) == pjrt::as_pjrt_device("cpu"))

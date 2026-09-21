@@ -13,6 +13,9 @@
   `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
   default about a value R's type cannot hold. Write `check = "err"` where
   you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
+* `nv_array()`'s and `nv_scalar()`'s `check` takes the same levels: `"warn"`,
+  `"err"` or `FALSE` (still the default). Write `check = "err"` where you
+  wrote `check = TRUE`.
 * `common_dtype()` now errors for `ui64` and a signed integer instead of
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.

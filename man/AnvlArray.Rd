@@ -86,12 +86,15 @@ default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
 
-\item{check}{(\code{logical(1)})\cr
-If \code{TRUE}, error when \code{data} contains any \code{NA} values. XLA has no
-representation for missing values: at a float dtype they otherwise
-become \code{NaN}, at \code{i32} and \code{i64} they become the bit pattern R itself
-spells \code{NA} as (with a warning), and at every other dtype the backend
-rejects them. Defaults to \code{FALSE}. See the "Gotchas" vignette.}
+\item{check}{(\code{character(1)} | \code{FALSE})\cr
+How to report an \code{NA} in \code{data}: \code{"warn"} warns and builds the array
+anyway, \code{"err"} aborts, and \code{FALSE} (the default) skips the scan, which
+has to read all of \code{data}. \code{TRUE} is not accepted -- with two levels of
+strictness it does not say which one is meant. XLA has no representation
+for missing values: at a float dtype they otherwise become \code{NaN}, at
+\code{i32} and \code{i64} they become the bit pattern R itself spells \code{NA} as (with
+a warning from the backend), and at every other dtype the backend rejects
+them. See the "Gotchas" vignette.}
 
 \item{nrow}{(\code{NULL} | \code{integer(1)})\cr
 Number of rows. Inferred from \code{ncol} and the data length if \code{NULL}.
