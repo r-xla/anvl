@@ -529,7 +529,10 @@ describe("prim_scan", {
     expect_error(
       prim_scan(
         list(s = nv_scalar(0, dtype = "f32"), m = nv_scalar(0, dtype = "f32")),
-        list(x = nv_array(c(1, 2, 3))),
+        # Pinned so that `s` stays f32 and `m` is the only slot that changes;
+        # at the f64 default `x` would widen `s` too and it would be reported
+        # first.
+        list(x = nv_array(c(1, 2, 3), dtype = "f32")),
         function(carry, x) {
           list(
             carry = list(s = carry$s + x$x, m = nv_convert(carry$m, "f64")),
