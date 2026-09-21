@@ -146,7 +146,7 @@ Comparisons flush their inputs too, so for example a negative subnormal can test
 
 Running the following example demonstrates this effect, with "Observed" comments corresponding to results from the PJRT CPU backend.
 
-```{r, eval = FALSE}
+```{r}
 library(anvl)
 
 with_backend("pjrt", {
