@@ -4,13 +4,52 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 
 name: R-CMD-check.yaml
 
 permissions: read-all
 
+# CI budget: on pull requests only the ubuntu / release / cpu configuration
+# with torch is checked. Put the `full-test` label on a PR to check the whole
+# matrix (macos, macos-intel, windows, oldrel-1, oldrel-2, as-cran). Pushes to
+# main/master, the weekly cron and manual dispatches always run everything.
 jobs:
+  setup:
+    # A `labeled` event only matters when it is `full-test` going on.
+    if: ${{ github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
+
+    runs-on: ubuntu-latest
+    name: setup
+    outputs:
+      config: ${{ steps.select.outputs.config }}
+
+    steps:
+      - name: Select the check configurations
+        id: select
+        env:
+          FULL: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
+        run: |
+          if [ "$FULL" = "true" ]; then
+            config='[
+              {"os": "macos", "r": "release", "platform": "cpu"},
+              {"os": "macos-intel", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "r": "release", "platform": "cpu", "torch": true},
+              {"os": "windows", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "r": "oldrel-1", "platform": "cpu"},
+              {"os": "ubuntu", "r": "oldrel-2", "platform": "cpu"}
+            ]'
+          else
+            config='[
+              {"os": "ubuntu", "r": "release", "platform": "cpu", "torch": true}
+            ]'
+          fi
+          echo "config=$(echo "$config" | tr -d '\n' | tr -s ' ')" >> "$GITHUB_OUTPUT"
+
   R-CMD-check:
+    needs: setup
     runs-on: ${{ matrix.runner }}
 
     name: ${{ matrix.config.os }} - ${{ matrix.config.platform }} (${{ matrix.config.r }})${{ matrix.config.torch && ' – with torch' || '' }}
@@ -18,14 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - { os: "macos", r: "release", platform: "cpu" }
-          - { os: "macos-intel", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu", torch: true }
-          - { os: "windows", r: "release", platform: "cpu"}
-          - { os: "ubuntu", r: "oldrel-1", platform: "cpu" }
-          - { os: "ubuntu", r: "oldrel-2", platform: "cpu" }
+        config: ${{ fromJSON(needs.setup.outputs.config) }}
 
         include:
           - config: {os: "ubuntu", platform: "cpu"}
@@ -68,6 +100,53 @@ jobs:
         with:
           install-torch: ${{ matrix.config.torch == true }}
           as-cran: ${{ matrix.config.torch == true && 'false' || 'true' }}
+
+  # Runs the test suite with the default data types set to something other than
+  # what the pjrt backend registers, so that anything hardcoding `f32` / `i32`
+  # where it should read `default_dtypes()` fails here. `setup.R` turns
+  # ANVL_DEFAULT_DTYPES into the `anvl.default_dtypes` option for the whole run.
+  # Cheap enough to run on every pull request, labelled or not.
+  default-dtypes:
+    # Nothing here depends on the labels, so adding one need not re-run it.
+    if: ${{ github.event.action != 'labeled' }}
+
+    runs-on: ubuntu-latest
+    name: default-dtypes (${{ matrix.dtypes }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        dtypes: ["float=f64,int=i64"]
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      PJRT_PLATFORM: cpu
+      ANVL_TEST: "1"
+      PJRT_INSTALL: "1"
+      ANVL_DEFAULT_DTYPES: ${{ matrix.dtypes }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: release
+          use-public-rspm: true
+          extra-repositories: https://r-xla.r-universe.dev https://t-kalinowski.r-universe.dev
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::devtools
+          needs: check
+
+      - name: Install dev versions
+        run: pak::pkg_install(c("r-xla/xlamisc", "r-xla/pjrt", "r-xla/stablehlo", "r-xla/tengen"))
+        shell: Rscript {0}
+
+      - name: Run the test suite
+        run: devtools::test(stop_on_failure = TRUE)
+        shell: Rscript {0}
 
   # Disabled: the self-hosted GPU runner is currently unavailable.
   # R-CMD-check-cuda:
