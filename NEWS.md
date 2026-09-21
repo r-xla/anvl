@@ -8,8 +8,9 @@
   functions was improved.
 * `as_array()` and the `as.double()` / `as.integer()` /
   `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
-  `"err"` or `FALSE` instead of a flag, following {pjrt}. Write
-  `check = "err"` where you wrote `check = TRUE`.
+  `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
+  default about a value R's type cannot hold. Write `check = "err"` where
+  you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
 * `jit_eval()` was removed as it is no longer needed.
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
   accumulate a boolean array at the default integer data type instead of returning a boolean.

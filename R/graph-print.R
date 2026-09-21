@@ -19,7 +19,7 @@ format_node_id <- function(node, node_ids, digits = getOption("digits")) {
 format_literal <- function(node, digits = getOption("digits")) {
   val <- node$aval$data
   if (is_anvl_array(val)) {
-    val <- as_array(val)
+    val <- as_array(val, check = FALSE)
   }
   sprintf(
     "%s:%s%s",
@@ -176,7 +176,12 @@ format_param_parts <- function(
 format_array_param <- function(x, digits = getOption("digits")) {
   dt <- as.character(dtype(x))
   if (nelts(x) == 1L) {
-    sprintf("%s:%s%s", format(as_array(x), trim = TRUE, digits = digits), dt, format_shape_suffix(shape(x)))
+    sprintf(
+      "%s:%s%s",
+      format(as_array(x, check = FALSE), trim = TRUE, digits = digits),
+      dt,
+      format_shape_suffix(shape(x))
+    )
   } else {
     sprintf("%s[%s]", dt, shape2string(shape(x), parenthesize = FALSE))
   }
