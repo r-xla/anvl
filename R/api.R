@@ -3631,9 +3631,13 @@ nv_quantile <- jit(
     # 3.0000002 in `f32`, so the index lands past the window, where the gather
     # clamps and quietly returns a neighbouring order statistic. The index
     # arithmetic therefore runs at `f64`, which is bit-for-bit what R does, and
-    # the window keeps one element of slack in case XLA contracts
-    # `(n_valid - 1) * probs` into a single rounding. Only `frac` returns to
-    # `out_dtype`, so the result keeps its data type.
+    # each window below is the device's own index expression evaluated at
+    # `n_valid = n_axis` -- the same operations on the same bits, rather than a
+    # second formula for the same quantity, whose own rounding could put the
+    # index outside the window at equal precision. The index is nondecreasing
+    # in `n_valid`, so `n_axis` gives the largest index any slice can reach and
+    # the window is exactly big enough. Only `frac` returns to `out_dtype`, so
+    # the result keeps its data type.
     #
     # TODO(metal): Metal has no `f64`, so a program that reaches here cannot run
     # on it at all. Supporting Metal means making the two sides agree the other
@@ -3643,8 +3647,8 @@ nv_quantile <- jit(
 
     n_axis <- shp[axis]
     budget <- ceiling(n_axis / 2) + 1
-    k_lo <- as.integer(min(ceiling((n_axis - 1) * max(probs)) + 2, n_axis))
-    k_hi <- as.integer(min(ceiling((n_axis - 1) * (1 - min(probs))) + 2, n_axis))
+    k_lo <- as.integer(ceiling((n_axis - 1) * max(probs)) + 1)
+    k_hi <- as.integer(n_axis - floor((n_axis - 1) * min(probs)))
     path <- if (n_axis > 0L && k_lo <= budget) {
       "low"
     } else if (n_axis > 0L && k_hi <= budget) {

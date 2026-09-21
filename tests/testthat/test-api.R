@@ -2778,6 +2778,23 @@ describe("nv_quantile selection fast path", {
     ))[3L]
     expect_identical(sel, srt)
   })
+  it("matches the sort path on the high window", {
+    # The high window is the device's `n_valid - floor((n_valid - 1) * probs)`
+    # evaluated at the axis size, so an off-by-one shows up as a neighbouring
+    # order statistic. `"higher"` reads the upper index directly, where a
+    # clamped gather is visible rather than hidden behind a tiny `frac`.
+    # `q = 1` is the tightest case: a window of exactly one element.
+    for (n in c(9L, 22L, 56L)) {
+      v <- (seq_len(n) * 37L) %% (n + 1L) + 0.5
+      for (q in c(0.7, 8 / 11, 0.9, 10 / 11, 1)) {
+        sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, interpolation = "higher")))
+        srt <- as.numeric(as_array(
+          nv_quantile(nv_array(v), array(c(0.02, 0.98, q)), interpolation = "higher")
+        ))[3L]
+        expect_identical(sel, srt, info = sprintf("n = %d, q = %s", n, format(q)))
+      }
+    }
+  })
   it("integer inputs still work", {
     x <- nv_array(c(5L, 1L, 9L, 3L), dtype = "i32")
     expect_equal(as.numeric(as_array(nv_quantile(x, 0.25, interpolation = "lower"))), 1)
