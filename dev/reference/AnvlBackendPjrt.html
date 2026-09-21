@@ -125,6 +125,16 @@ An R double materializes at <code>f32</code> on this backend and an R integer at
 unless the defaults say otherwise (see <code><a href="default_dtypes.html">default_dtypes()</a></code>).</p>
     </div>
     <div class="section level2">
+    <h2 id="floating-point-behavior">Floating-point behavior<a class="anchor" aria-label="anchor" href="#floating-point-behavior"></a></h2>
+
+
+<p>Subnormal floating-point values may be preserved when stored in an array and
+read back into R, yet treated as zero in calculations. On CPUs, XLA enables
+a mode that replaces subnormal inputs and results with zero. The exact
+behavior depends on the platform, backend, and operation.</p>
+<p>See <code><a href="../articles/gotchas.html">vignette("gotchas", package = "anvl")</a></code> for an explanation and examples.</p>
+    </div>
+    <div class="section level2">
     <h2 id="pjrt-jit-arguments">PJRT JIT arguments<a class="anchor" aria-label="anchor" href="#pjrt-jit-arguments"></a></h2>
 
 

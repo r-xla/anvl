@@ -198,6 +198,11 @@ missingness:
 nv_scalar(NA_integer_)
 ```
 
+    ## Warning: Input `data` contains 1 "NA" value, stored on the device as "-2147483648".
+    ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
+    ##   way back.
+    ## ℹ Use `suppressWarnings()` to silence this.
+
     ## AnvlArray
     ##  -2.1475e+09
     ## [ CPUi32{} ]
@@ -208,6 +213,11 @@ However, when you convert it back, you get a missing value again:
 
 as.integer(nv_scalar(NA_integer_))
 ```
+
+    ## Warning: Input `data` contains 1 "NA" value, stored on the device as "-2147483648".
+    ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
+    ##   way back.
+    ## ℹ Use `suppressWarnings()` to silence this.
 
     ## [1] NA
 
@@ -253,12 +263,80 @@ The same flag is available for converters like
 as_array(nv_scalar(NA_integer_), check = TRUE)
 ```
 
-    ## Error in `tengen::as_array()`:
-    ## ! Materialized <i32> buffer contains a value that R cannot distinguish
-    ##   from "NA".
-    ## ℹ "i32" reserves the bit pattern "-2147483648" (`INT_MIN`); "i64" reserves
-    ##   "-9223372036854775808" (`INT64_MIN`).
-    ## ℹ Set `check = FALSE` to skip this check.
+    ## Warning: Input `data` contains 1 "NA" value, stored on the device as "-2147483648".
+    ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
+    ##   way back.
+    ## ℹ Use `suppressWarnings()` to silence this.
+
+    ## Error in `check_level()`:
+    ## ! `check` must be "warn", "err" or `FALSE`, not TRUE.
+    ## ℹ `TRUE` is not accepted; pick "warn" or "err".
+
+## Subnormal floating-point values
+
+Subnormal values are extremely small nonzero numbers, very close to
+zero. They allow floating-point numbers to extend below their normal
+range, but with fewer significant digits of precision. For R’s usual
+double-precision numbers (IEEE 754 binary64), subnormal magnitudes range
+from approximately \\4.94 \times 10^{-324}\\ to just below \\2.23 \times
+10^{-308}\\. More precisely, their magnitudes are at least \\2^{-1074}\\
+but strictly less than \\2^{-1022}\\, which is the smallest positive
+normal value.
+
+With {anvl}’s default PJRT backend, these tiny values can be stored in
+an array and read back into R unchanged, but may become zero when used
+in calculations. On CPUs, XLA enables a mode that treats subnormal
+inputs and results as zero, often called “flushing to zero”. The exact
+behavior depends on the platform, backend, and operation.
+Single-precision (`f32`) values are affected in the same way, below
+approximately \\1.18 \times 10^{-38}\\. Comparisons flush their inputs
+too, so for example a negative subnormal can test as greater than or
+equal to zero.
+
+Running the following example demonstrates this effect, with “Observed”
+comments corresponding to results from the PJRT CPU backend.
+
+``` r
+
+library(anvl)
+
+with_backend("pjrt", {
+  x <- nv_scalar(1e-310, dtype = "f64")
+
+  as.vector(x)  # Preserved: approximately 1e-310
+
+  # Subnormal input; mathematically normal result (should give ~1e-210).
+  as.vector(x * nv_scalar(1e100, dtype = "f64"))  # Observed: 0
+
+  # Normal inputs; mathematically subnormal result (should give ~1e-310).
+  as.vector(
+    nv_scalar(1e-200, dtype = "f64") *
+      nv_scalar(1e-110, dtype = "f64")
+  )  # Observed: 0
+
+  # Comparisons flush their inputs as well.
+  as.vector(nv_scalar(-1e-310, dtype = "f64") >= 0)  # Observed: TRUE
+
+  # The same happens in single precision.
+  as.vector(nv_scalar(1e-40, dtype = "f32"))  # Preserved: approximately 1e-40
+  as.vector(nv_scalar(1e-40, dtype = "f32") * 1e30)  # Observed: 0
+})
+```
+
+    ## [1] 0
+
+If the first argument to
+[`with_backend()`](https://r-xla.github.io/anvl/dev/reference/with_backend.md)
+is changed to `"quickr"` – the experimental, optional backend described
+in the [internals
+vignette](https://r-xla.github.io/anvl/dev/articles/internals.md) – then
+you should observe the results of subnormal computations are preserved
+correctly.
+
+This is also present, for example, in the [JAX gotchas
+guide](https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html#miscellaneous-divergences-from-numpy)
+which also illustrates values preserved in storage but flushed during
+operations on some backends.
 
 ## No unsigned integers
 
@@ -316,12 +394,9 @@ as_array(big)
 as_array(big, check = TRUE)
 ```
 
-    ## Error in `tengen::as_array()`:
-    ## ! Materialized <ui64> buffer contains a value `>= 2^63` that wrapped
-    ##   through R's signed <integer64>.
-    ## ℹ Exactly `2^63` becomes `NA_integer64_`; larger values become negative
-    ##   <integer64>.
-    ## ℹ Set `check = FALSE` to skip this check.
+    ## Error in `check_level()`:
+    ## ! `check` must be "warn", "err" or `FALSE`, not TRUE.
+    ## ℹ `TRUE` is not accepted; pick "warn" or "err".
 
 ## Differences between eager and jit-mode
 

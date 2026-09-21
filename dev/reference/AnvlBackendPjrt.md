@@ -55,6 +55,17 @@ integers `ui8`, `ui16`, `ui32` and `ui64`; and the floats `f32` and
 integer at `i32` unless the defaults say otherwise (see
 [`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md)).
 
+## Floating-point behavior
+
+Subnormal floating-point values may be preserved when stored in an array
+and read back into R, yet treated as zero in calculations. On CPUs, XLA
+enables a mode that replaces subnormal inputs and results with zero. The
+exact behavior depends on the platform, backend, and operation.
+
+See
+[`vignette("gotchas", package = "anvl")`](https://r-xla.github.io/anvl/dev/articles/gotchas.md)
+for an explanation and examples.
+
 ## PJRT JIT arguments
 
 - `donate` ([`character()`](https://rdrr.io/r/base/character.html),
