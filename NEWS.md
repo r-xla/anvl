@@ -10,8 +10,9 @@
   functions was improved.
 * `as_array()` and the `as.double()` / `as.integer()` /
   `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
-  `"err"` or `FALSE` instead of a flag, following {pjrt}. Write
-  `check = "err"` where you wrote `check = TRUE`.
+  `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
+  default about a value R's type cannot hold. Write `check = "err"` where
+  you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
 * `common_dtype()` now errors for `ui64` and a signed integer instead of
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.

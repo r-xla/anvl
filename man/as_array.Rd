@@ -5,7 +5,7 @@
 \alias{as_array}
 \title{Convert to an R array}
 \usage{
-\method{as_array}{AnvlArray}(x, check = FALSE, ...)
+\method{as_array}{AnvlArray}(x, check = "warn", ...)
 
 as_array(x, ...)
 }
@@ -15,8 +15,8 @@ An array-like object.}
 
 \item{check}{(\code{character(1)} | \code{FALSE})\cr
 How to report a materialized value that the R type cannot hold:
-\code{"warn"} warns and returns it anyway, \code{"err"} aborts, and \code{FALSE}
-(the default) skips the scan. \code{TRUE} is not accepted -- with two
+\code{"warn"} (the default) warns and returns it anyway, \code{"err"} aborts,
+and \code{FALSE} skips the scan. \code{TRUE} is not accepted -- with two
 levels of strictness it does not say which one is meant. Forwarded
 to the backend; for the \code{pjrt} backend the cases scanned for are
 \code{i32}/\code{i64} values colliding with the \code{NA} bit pattern and \code{ui64}
