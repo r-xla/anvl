@@ -1,5 +1,5 @@
 # anvl (development version)
-
+  
 ## Breaking changes
 
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
@@ -80,6 +80,8 @@
 * Printed graphs read as `[captures] (inputs) { ... return ... }`, show
   sub-graphs in full, and wrap long lines to the console width; `format()`
   takes `width` and `digits` arguments.
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
 
 ## Bug fixes
 
