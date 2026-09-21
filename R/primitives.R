@@ -2697,11 +2697,7 @@ prim_scan <- new_primitive(
     if (!is.function(body)) {
       cli_abort("{.arg body} must be a function.")
     }
-    length <- as.integer(length)
-    # REVIEW: Use checkmate
-    if (base::length(length) != 1L || is.na(length) || length < 0L) {
-      cli_abort("{.arg length} must be a non-negative integer.")
-    }
+    length <- assert_int(length, lower = 0L, coerce = TRUE)
     assert_flag(reverse)
 
     current_desc <- .current_descriptor(silent = TRUE)
@@ -2715,10 +2711,12 @@ prim_scan <- new_primitive(
     }
 
     # The body is traced once, seeing each `xs` leaf with its leading axis
-    # dropped; the lowering slices the real arrays inside the loop.
-    # REVIEW(QUESTION): Why can't we just use trace_fn() like prim_while()
-    # i.e., why is it more complicated here? the other higher order primitives don't need aval_of
-    # Is it because we need to access the shapes?
+    # dropped; the lowering slices the real arrays inside the loop. This is
+    # why `trace_fn()` alone is not enough, unlike in `prim_while()`, which
+    # traces against the very values it was handed: we have to build the
+    # per-step abstract arrays first, and that needs each leaf's shape and
+    # data type before it has been traced -- from a `GraphBox` under `jit()`,
+    # from a plain array eagerly.
     aval_of <- function(x) {
       if (is_graph_box(x)) {
         materialize_rdata_box(x)$gnode$aval
@@ -2758,7 +2756,9 @@ prim_scan <- new_primitive(
 
     desc_body <- local_descriptor()
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
-    # REVIEW(QUESTION): Why do we need this?
+    # The body is lowered inline into the parent's loop region, so whatever it
+    # closed over has to be a constant of the parent graph too -- the same
+    # reason `prim_while()` and `prim_if()` register theirs.
     register_consts(current_desc, body_graph$constants)
 
     infer_fn <- function(..., body_graph, length, reverse, n_carry, n_xs) {

@@ -733,23 +733,13 @@ prim_scan[["stablehlo"]] <- function(..., body_graph, length, reverse, n_carry, 
   out_avals <- avals_body[-seq_len(n_carry)]
   n_out <- base::length(out_avals)
 
+  # Every step overwrites its own slice, so the buffers only need *some*
+  # value; stablehlo has no uninitialized tensor, and zeros are what JAX
+  # allocates too. `0L` takes the buffer's data type whatever it is.
   bufs0 <- lapply(out_avals, function(aval) {
-    dt <- aval$dtype
-    # Key on the dtype category, not the first letter of its name: `bf16`
-    # would otherwise take the boolean branch and build an `i1` buffer.
-    # REVIEW: Can't we use 0L by now with latest stablehlo?
-    zero <- if (is_dtype_bool(dt)) {
-      FALSE
-    } else if (is_dtype_float(dt)) {
-      0
-    } else {
-      0L
-    }
-    # REVIEW: Can't we initialize a garbage tensor in stablehlo?
     hlo_tensor(
-      zero,
-      # REVIEW: Does dtype not take dt as well?
-      dtype = as.character(dt),
+      0L,
+      dtype = aval$dtype,
       shape = as.integer(c(n, shape(aval))),
       func = outer
     )

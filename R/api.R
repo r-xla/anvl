@@ -2726,13 +2726,7 @@ nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
   }
   # Validated before it is compared against `xs`, so that a malformed value
   # reports itself rather than tripping the comparison.
-  # REVIEW: Use checkmate for this.
-  if (!is.null(length)) {
-    length <- suppressWarnings(as.integer(length))
-    if (base::length(length) != 1L || is.na(length) || length < 0L) {
-      cli_abort("{.arg length} must be a non-negative integer")
-    }
-  }
+  length <- assert_int(length, lower = 0L, coerce = TRUE, null.ok = TRUE)
   init <- map_tree(init, as_anvl_array)
   xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
   xs_flat <- flatten(xs)

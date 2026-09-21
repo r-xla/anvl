@@ -2492,8 +2492,8 @@ describe("nv_scan", {
       xs = list(),
       length = 3L
     )
-    expect_equal(as.numeric(as.array(res$out)), c(2, 4, 6))
-    expect_equal(as.numeric(as.array(res$carry)), 4)
+    expect_equal(as.numeric(res$out), c(2, 4, 6))
+    expect_equal(as.numeric(res$carry), 4)
   })
 
   it("validates its arguments", {
@@ -2501,15 +2501,15 @@ describe("nv_scan", {
     expect_error(nv_scan(nv_scalar(0), body = "not a function", xs = x), "must be a function")
     expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, reverse = NA), "TRUE or FALSE")
     expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = list()), "`length` is required")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = -1L), "non-negative integer")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = -1L), "not >= 0")
     # `length` is checked before it is compared against axis 1 of `xs`
     expect_error(
       nv_scan(nv_scalar(0), cumsum_body, xs = x, length = "four"),
-      "non-negative integer"
+      "single integerish value"
     )
     expect_error(
       nv_scan(nv_scalar(0), cumsum_body, xs = x, length = c(4L, 4L)),
-      "non-negative integer"
+      "Must have length 1"
     )
   })
 
@@ -2528,8 +2528,8 @@ describe("nv_scan", {
     )
     # The body is traced once to learn the output structure, never stepped.
     expect_equal(seen, 1L)
-    expect_equal(as.numeric(as.array(res$carry$s)), 2)
-    expect_equal(as.integer(as.array(res$carry$m)), 1L)
+    expect_equal(as.numeric(res$carry$s), 2)
+    expect_equal(as.integer(res$carry$m), 1L)
     expect_named(res$out, c("run", "flag"))
     expect_equal(shape(res$out$run), 0L)
     expect_equal(shape(res$out$flag), 0L)
@@ -2543,7 +2543,7 @@ describe("nv_scan", {
       xs = nv_array(array(numeric(), dim = c(0L, 3L)), dtype = "f64")
     )
     expect_equal(shape(res$out), c(0L, 3L))
-    expect_equal(as.numeric(as.array(res$carry)), c(0, 0, 0))
+    expect_equal(as.numeric(res$carry), c(0, 0, 0))
   })
 
   it("agrees eagerly and under jit for a zero-length scan", {
@@ -2553,7 +2553,7 @@ describe("nv_scan", {
     jitted <- jit(f)(x)
     expect_equal(shape(eager$out), 0L)
     expect_equal(shape(jitted$out), 0L)
-    expect_equal(as.numeric(as.array(jitted$carry)), 0)
+    expect_equal(as.numeric(jitted$carry), 0)
   })
 
   it("nests inside another scan", {
@@ -2575,11 +2575,11 @@ describe("nv_scan", {
       )
     }
     res <- row_sum_scan(nv_array(m))
-    expect_equal(as.numeric(as.array(res$out)), cumsum(rowSums(m)))
-    expect_equal(as.numeric(as.array(res$carry)), sum(m))
+    expect_equal(as.numeric(res$out), cumsum(rowSums(m)))
+    expect_equal(as.numeric(res$carry), sum(m))
 
     jitted <- jit(function(x) row_sum_scan(x)$out)
-    expect_equal(as.numeric(as.array(jitted(nv_array(m)))), cumsum(rowSums(m)))
+    expect_equal(as.numeric(jitted(nv_array(m))), cumsum(rowSums(m)))
   })
 
   it("names the carry slot whose type changes", {

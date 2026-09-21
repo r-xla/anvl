@@ -493,7 +493,7 @@ describe("prim_scan", {
     expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = 3L), "size 3 along axis 1")
     expect_error(
       prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = -1L),
-      "non-negative integer"
+      "not >= 0"
     )
   })
 
@@ -506,7 +506,7 @@ describe("prim_scan", {
     })
     res <- f(nv_array(numeric(), shape = 0L))
     expect_equal(shape(res$out), 0L)
-    expect_equal(as.numeric(as_array(res$carry$s)), 0)
+    expect_equal(as.numeric(res$carry$s), 0)
   })
 })
 
