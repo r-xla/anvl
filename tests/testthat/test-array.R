@@ -959,7 +959,7 @@ describe("bit64::as.integer64()", {
 
   it("reports the wrap when asked to check", {
     u <- nv_convert(nv_array(2^63, dtype = "f64"), "ui64")
-    expect_error(bit64::as.integer64(u, check = TRUE), "wrapped")
+    expect_error(bit64::as.integer64(u, check = "err"), "wrapped")
   })
 
   it("works on a scalar", {

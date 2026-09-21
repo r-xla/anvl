@@ -6,6 +6,10 @@
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* `as_array()` and the `as.double()` / `as.integer()` /
+  `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
+  `"err"` or `FALSE` instead of a flag, following {pjrt}. Write
+  `check = "err"` where you wrote `check = TRUE`.
 * `jit_eval()` was removed as it is no longer needed.
 * `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
   accumulate a boolean array at the default integer data type instead of returning a boolean.
