@@ -9,7 +9,6 @@ NULL
 # than as a failure to bring a parameter to its data type.
 promote_distribution_args <- function(...) {
   args <- list(...)
-  stopifnot(!is.null(names(args)), all(nzchar(names(args))))
   operand <- names(args)[[1L]]
   assert_float_dtype(
     peek_dtype(args[[1L]]),
