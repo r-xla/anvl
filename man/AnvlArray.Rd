@@ -11,16 +11,9 @@
 \alias{nv_empty_like}
 \title{AnvlArray}
 \usage{
-nv_array(
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  byrow = FALSE,
-  check = FALSE
-)
+nv_array(data, dtype = NULL, device = NULL, shape = NULL, byrow = FALSE)
 
-nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
+nv_scalar(data, dtype = NULL, device = NULL)
 
 nv_matrix(
   data,
@@ -85,16 +78,6 @@ axes, fill the array in row-major order rather than the
 default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'s \code{byrow}.
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
-
-\item{check}{(\code{character(1)} | \code{FALSE})\cr
-How to report an \code{NA} in \code{data}: \code{"warn"} warns and builds the array
-anyway, \code{"err"} aborts, and \code{FALSE} (the default) skips the scan, which
-has to read all of \code{data}. \code{TRUE} is not accepted -- with two levels of
-strictness it does not say which one is meant. XLA has no representation
-for missing values: at a float dtype they otherwise become \code{NaN}, at
-\code{i32} and \code{i64} they become the bit pattern R itself spells \code{NA} as (with
-a warning from the backend), and at every other dtype the backend rejects
-them. See the "Gotchas" vignette.}
 
 \item{nrow}{(\code{NULL} | \code{integer(1)})\cr
 Number of rows. Inferred from \code{ncol} and the data length if \code{NULL}.

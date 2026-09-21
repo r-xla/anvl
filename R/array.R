@@ -66,15 +66,6 @@
 #'   default column-major order, mirroring [`base::matrix()`]'s `byrow`.
 #'   Only allowed when `data` is an R object — passing an existing
 #'   `AnvlArray` together with `byrow = TRUE` is an error.
-#' @param check (`character(1)` | `FALSE`)\cr
-#'   How to report an `NA` in `data`: `"warn"` warns and builds the array
-#'   anyway, `"err"` aborts, and `FALSE` (the default) skips the scan, which
-#'   has to read all of `data`. `TRUE` is not accepted -- with two levels of
-#'   strictness it does not say which one is meant. XLA has no representation
-#'   for missing values: at a float dtype they otherwise become `NaN`, at
-#'   `i32` and `i64` they become the bit pattern R itself spells `NA` as (with
-#'   a warning from the backend), and at every other dtype the backend rejects
-#'   them. See the "Gotchas" vignette.
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
@@ -120,27 +111,9 @@ nv_array <- function(
   dtype = NULL,
   device = NULL,
   shape = NULL,
-  byrow = FALSE,
-  check = FALSE
+  byrow = FALSE
 ) {
   assert_flag(byrow)
-  if (!isFALSE(check)) {
-    assert_choice(check, c("warn", "err"))
-    if (!is_anvl_array(data) && anyNA(data)) {
-      n_na <- sum(is.na(data))
-      lead <- "Input {.arg data} contains {n_na} {.val NA} value{?s}, which {?has/have} no representation at the XLA level." # nolint
-      if (identical(check, "err")) {
-        cli_abort(c(
-          lead,
-          i = "Replace or drop missing values before transferring, or set {.code check = FALSE} to skip this check."
-        ))
-      }
-      cli_warn(c(
-        lead,
-        i = "Set {.code check = \"err\"} to make this an error, or {.code check = FALSE} to silence it."
-      ))
-    }
-  }
   if (is_anvl_array(data)) {
     if (byrow) {
       cli_abort("{.arg byrow} only applies when constructing an {.cls AnvlArray} from an R object.")
@@ -385,13 +358,12 @@ unwrap_if_array <- function(x) {
 
 #' @rdname AnvlArray
 #' @export
-nv_scalar <- function(data, dtype = NULL, device = NULL, check = FALSE) {
+nv_scalar <- function(data, dtype = NULL, device = NULL) {
   nv_array(
     data,
     dtype = dtype,
     device = device,
-    shape = integer(),
-    check = check
+    shape = integer()
   )
 }
 
