@@ -25,8 +25,7 @@ loop over \code{length} steps instead.}
 \item{length}{(\code{integer(1)} | \code{NULL})\cr
 Static trip count. Required when \code{xs} is empty; otherwise inferred
 from (and checked against) axis 1 of \code{xs}. A trip count of \code{0} runs
-no step: \code{body} is still traced, but the carry comes back as \code{init}
-and every \code{out} leaf is empty along its leading axis.}
+no step.}
 
 \item{reverse}{(\code{logical(1)})\cr
 If \code{TRUE}, steps run \verb{t = length, ..., 1}; each step still reads
@@ -60,10 +59,6 @@ for (t in steps) \{
 \}
 list(carry = carry, out = out)
 }\if{html}{\out{</div>}}
-
-The difference from writing that loop yourself is that \code{body} is traced
-once, not \code{length} times: the result is a single loop in the compiled
-program, so compile time does not grow with \code{length}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

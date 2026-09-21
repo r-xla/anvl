@@ -2752,9 +2752,6 @@ nv_while <- prim_while
 #' list(carry = carry, out = out)
 #' ```
 #'
-#' The difference from writing that loop yourself is that `body` is traced
-#' once, not `length` times: the result is a single loop in the compiled
-#' program, so compile time does not grow with `length`.
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
 #'   Every slot must keep a fixed shape and dtype across steps.
@@ -2770,8 +2767,7 @@ nv_while <- prim_while
 #' @param length (`integer(1)` | `NULL`)\cr
 #'   Static trip count. Required when `xs` is empty; otherwise inferred
 #'   from (and checked against) axis 1 of `xs`. A trip count of `0` runs
-#'   no step: `body` is still traced, but the carry comes back as `init`
-#'   and every `out` leaf is empty along its leading axis.
+#'   no step.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run `t = length, ..., 1`; each step still reads
 #'   `xs` at position `t` and writes its output at position `t`, so a
