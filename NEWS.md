@@ -8,6 +8,10 @@
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* `as_array()` and the `as.double()` / `as.integer()` /
+  `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
+  `"err"` or `FALSE` instead of a flag, following {pjrt}. Write
+  `check = "err"` where you wrote `check = TRUE`.
 * `common_dtype()` now errors for `ui64` and a signed integer instead of
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.
