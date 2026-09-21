@@ -8,6 +8,11 @@
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* `as_array()` and the `as.double()` / `as.integer()` /
+  `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
+  `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
+  default about a value R's type cannot hold. Write `check = "err"` where
+  you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
 * `common_dtype()` now errors for `ui64` and a signed integer instead of
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.
@@ -78,6 +83,9 @@
 * `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
   integer array unchanged, like base R does.
 * Improved documentation of API functions and primitives.
+* Printed graphs read as `[captures] (inputs) { ... return ... }`, show
+  sub-graphs in full, and wrap long lines to the console width; `format()`
+  takes `width` and `digits` arguments.
 * New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
   and `nv_qunif()`.
 

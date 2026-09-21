@@ -1,4 +1,15 @@
 describe("inline_scalarish_constants", {
+  it("appends the fills in the order the constants were inlined", {
+    # The order used to come out of a hash table, so it differed between
+    # sessions and no snapshot of an optimized graph could be trusted.
+    two <- nv_scalar(2, dtype = "f32")
+    three <- nv_scalar(3, dtype = "f32")
+    graph <- trace_fn(function(x) x * two + three, list(x = nv_scalar(1, dtype = "f32")))
+    fills <- Filter(\(call) call$primitive$name == "fill", inline_scalarish_constants(graph)$calls)
+    values <- vapply(fills, \(call) as_array(call$params$value), numeric(1))
+    expect_equal(values, vapply(graph$constants, \(const) as_array(const$aval$data), numeric(1)))
+  })
+
   check_inlining <- function(
     graph_fun,
     args,

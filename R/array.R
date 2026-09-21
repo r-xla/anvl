@@ -500,17 +500,21 @@ shape.AnvlArray <- function(x, ...) {
 }
 
 #' @rdname as_array
-#' @param check (`logical(1)`)\cr
-#'   If `TRUE`, sanity-check the materialized R vector against losing
-#'   information across the device-to-host boundary, and abort if any
-#'   problematic value is detected. Forwarded to the backend; for the
-#'   `pjrt` backend the relevant cases are `i32`/`i64` values colliding
-#'   with the `NA` bit pattern and `ui64` values `>= 2^63` wrapping
-#'   through `bit64::integer64`. See [`pjrt::as_array.PJRTBuffer()`] for
-#'   the full list. Defaults to `FALSE`. See the "Gotchas" vignette.
+#' @param check (`character(1)` | `FALSE`)\cr
+#'   How to report a materialized value that the R type cannot hold:
+#'   `"warn"` (the default) warns and returns it anyway, `"err"` aborts,
+#'   and `FALSE` skips the scan. `TRUE` is not accepted -- with two
+#'   levels of strictness it does not say which one is meant. Forwarded
+#'   to the backend; for the `pjrt` backend the cases scanned for are
+#'   `i32`/`i64` values colliding with the `NA` bit pattern and `ui64`
+#'   values `>= 2^63` wrapping through `bit64::integer64`. See
+#'   [`pjrt::as_array.PJRTBuffer()`] for the full list, and the "Gotchas"
+#'   vignette.
 #' @export
-as_array.AnvlArray <- function(x, check = FALSE, ...) {
-  assert_flag(check)
+as_array.AnvlArray <- function(x, check = "warn", ...) {
+  if (!isFALSE(check)) {
+    assert_choice(check, c("warn", "err"))
+  }
   globals$backends[[x$backend]]$as_array(x, check = check)
 }
 
@@ -551,7 +555,8 @@ await.AnvlArray <- function(x, ...) {
 #'   to read `i64`, `ui64` and `ui32` values that an R `integer` cannot hold.
 #'   It is lossless for `i64` and `ui32`, but [`bit64::integer64`] is itself
 #'   signed, so a `ui64` value `>= 2^63` wraps to a negative one (exactly
-#'   `2^63` becomes `NA`); pass `check = TRUE` to be told when that happens.
+#'   `2^63` becomes `NA`); that is warned about, and `check = "err"` makes it
+#'   an error.
 #' * `as.logical()`: `bool`.
 #' * `as.vector()`: any dtype; the R type is chosen by the dtype. For the
 #'   dtypes R has no native type for (`i64`, `ui64`, `ui32`) that is the
@@ -562,7 +567,7 @@ await.AnvlArray <- function(x, ...) {
 #' Use [`as_array()`] to obtain an R array that preserves the shape, or
 #' [`nv_convert()`] to change the dtype of an [`AnvlArray`] before coercing.
 #' `as.vector()`'s signature is fixed by the generic, so it takes no `check`
-#' argument; call [`as_array()`] with `check = TRUE` to have the values
+#' argument; call [`as_array()`] with `check = "err"` to have the values
 #' validated.
 #' @param x ([`AnvlArray`])\cr
 #'   Array to coerce.
@@ -570,7 +575,7 @@ await.AnvlArray <- function(x, ...) {
 #'   Must be `"any"` (the default), meaning the natural R type for the array's
 #'   dtype. Only present because [base::as.vector()]'s signature requires it;
 #'   pick an R type with one of the other methods instead.
-#' @param check (`logical(1)`)\cr
+#' @param check (`character(1)` | `FALSE`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
 #' @return An R vector holding the array's values, of the type the method
@@ -588,7 +593,7 @@ NULL
 #' @rdname as-AnvlArray
 #' @method as.double AnvlArray
 #' @export
-as.double.AnvlArray <- function(x, check = FALSE, ...) {
+as.double.AnvlArray <- function(x, check = "warn", ...) {
   dt <- dtype(x)
   if (!(is_dtype_float(dt) || is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.double} requires a float or integer dtype, but got {.val {as.character(dt)}}.")
@@ -599,7 +604,7 @@ as.double.AnvlArray <- function(x, check = FALSE, ...) {
 #' @rdname as-AnvlArray
 #' @method as.integer AnvlArray
 #' @export
-as.integer.AnvlArray <- function(x, check = FALSE, ...) {
+as.integer.AnvlArray <- function(x, check = "warn", ...) {
   dt <- dtype(x)
   if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort("{.fn as.integer} requires a (signed or unsigned) integer dtype, but got {.val {as.character(dt)}}.")
@@ -610,7 +615,7 @@ as.integer.AnvlArray <- function(x, check = FALSE, ...) {
 #' @rdname as-AnvlArray
 #' @method as.integer64 AnvlArray
 #' @exportS3Method bit64::as.integer64
-as.integer64.AnvlArray <- function(x, check = FALSE, ...) {
+as.integer64.AnvlArray <- function(x, check = "warn", ...) {
   dt <- dtype(x)
   if (!(is_dtype_int(dt) || is_dtype_uint(dt))) {
     cli_abort(
@@ -625,7 +630,7 @@ as.integer64.AnvlArray <- function(x, check = FALSE, ...) {
 #' @rdname as-AnvlArray
 #' @method as.logical AnvlArray
 #' @export
-as.logical.AnvlArray <- function(x, check = FALSE, ...) {
+as.logical.AnvlArray <- function(x, check = "warn", ...) {
   if (!is_dtype_bool(dtype(x))) {
     cli_abort("{.fn as.logical} requires a {.val bool} dtype, but got {.val {as.character(dtype(x))}}.")
   }

@@ -241,6 +241,7 @@ prim_pow <- new_primitive("power", make_binary_op(stablehlo::infer_types_power))
 prim_broadcast_in_axes <- new_primitive(
   "broadcast_in_axes",
   function(x, shape, broadcast_axes) {
+    shape <- assert_shapevec(shape)
     infer_fn <- function(x, shape, broadcast_axes) {
       bd_attr <- r_to_constant(
         as.integer(broadcast_axes - 1L),
