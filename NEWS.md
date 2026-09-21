@@ -1,7 +1,9 @@
 # anvl (development version)
-
+  
 ## Breaking changes
 
+* The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
+  definition instead.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
@@ -28,6 +30,8 @@
 
 ## Features
 
+* `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
+  when `start > end`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
@@ -74,9 +78,28 @@
 * `nv_floor()`, `nv_ceiling()`, `nv_trunc()` and `nv_round()` return an
   integer array unchanged, like base R does.
 * Improved documentation of API functions and primitives.
+* New functions for the uniform distribution: `nv_dunif()`, `nv_punif()`,
+  and `nv_qunif()`.
 
 ## Bug fixes
 
+* `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
+  inputs again: axes before the last two are batch axes.
+* A function returned by `jit()` no longer evaluates its arguments a second
+  time. It used to rebuild the call with `match.call()` and evaluate the
+  argument expressions again in the caller's frame, which computed them twice
+  whenever something had evaluated them already -- most visibly under S3
+  dispatch, which evaluates the first argument to choose a method.
+* `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
+  to a common data type.
+* The floating-point `nv_*` functions refuse a boolean, `nv_matmul()`,
+  `nv_solve()` and `nv_triangular_solve()` included -- a boolean used to meet a
+  numeric operand at that operand's data type and pass their data type check.
+* `nv_crossprod()` and `nv_tcrossprod()` transpose only the last two axes, so
+  they work on batched arrays.
+* `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
+  is refused rather than silently truncated.
+* A range that counts down (`x[3:1]`) now selects in reverse instead of failing.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
   `as.numeric()`, `as.character()` and friends -- now aborts with an
   explanation instead of falling through to the base R generic. Some of those

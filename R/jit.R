@@ -1,6 +1,7 @@
 #' @include backend.R
 #' @include device.R
 #' @include array.R
+#' @include utils.R
 #' @title JIT compile a function
 #' @description
 #' Wraps a function so that it is traced and compiled on first call. Subsequent
@@ -67,32 +68,11 @@
 #' `f_f64 <- with_dtypes(f, c(float = "f64"))` runs `f` at `f64`, unless `f` itself
 #' changes the default data types.
 #'
-#' @section Jitting in a Package:
-#' To `jit()` a function defined in an R package, prefer the `@jit` roxygen
-#' tag over a top-level `jit()` call:
-#'
-#' ```r
-#' #' @export
-#' #' @jit static = c("flag")
-#' my_fun <- function(x, flag) if (flag) x + 1 else x * 2
-#' ```
-#'
-#' This delegates the wrapping to [`jit_roclet()`], which records the
-#' tagged functions in `R/jit-registry.R`. The wrapping itself happens at
-#' package build time via [`apply_jit_registry()`] in `R/zzz.R`, so the
-#' resulting `JitFunction` is byte-compiled with the rest of the package
-#' instead of being rebuilt on every `.onLoad`.
-#'
-#' See [`jit_roclet()`] for the one-time setup of the roclet in your
-#' package.
-#'
 #' @return A `JitFunction` (a `function` with the same formals as `f`).
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
 #' @seealso
 #'   [`jit_cache_size()`] for how many programs a jitted function has cached.
-#'
-#'   [`jit_roclet()`] for the `@jit` tag used inside R packages.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- jit(function(x, y) x + y)
@@ -133,15 +113,32 @@ jit <- function(
   .jit_cfg <- list(f = f, static = static, cache_size = cache_size, device = device, dots = list(...))
   .jit_fns <- list()
   .jit_runs <- list()
+  .jit_formals <- formals2(f)
+  .jit_dots <- "..." %in% names(.jit_formals)
+  # `names()` of no formals at all is NULL, which is not a character vector.
+  .jit_names <- setdiff(as.character(names(.jit_formals)), "...")
 
   wrapper <- function() {
-    # Inside tracing: pass through to unwrapped function
+    # We don't use eval + match.call() because evaluating a call that itself is a
+    # primitive might then get added twice to a graph
+    .jit_env <- environment()
+    .jit_given <- intersect(.jit_names, as.character(names(match.call())))
+
+    # Inside tracing: pass through to unwrapped function. The arguments are
+    # forwarded as the names they are bound to here, so `f` gets a promise per
+    # argument and one it never uses is never evaluated.
     if (currently_tracing()) {
-      .jit_cl <- match.call()
-      .jit_cl[[1L]] <- .jit_cfg$f
-      return(eval.parent(.jit_cl))
+      .jit_fwd <- lapply(.jit_given, as.name)
+      names(.jit_fwd) <- .jit_given
+      if (.jit_dots) {
+        .jit_fwd <- c(.jit_fwd, list(quote(...)))
+      }
+      return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
     }
-    .jit_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+    .jit_args <- mget(.jit_given, envir = .jit_env)
+    if (.jit_dots) {
+      .jit_args <- c(.jit_args, list(...))
+    }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]
     if (is.null(.jit_run)) {
@@ -168,10 +165,10 @@ jit <- function(
       .jit_runs[[.jit_be]] <<- .jit_run
     }
     # The args are already evaluated; the fast entry skips the inner
-    # closure's match.call() + eval() re-capture (and do.call()).
+    # closure's argument re-capture (and do.call()).
     .jit_run(.jit_args)
   }
-  formals(wrapper) <- formals2(f)
+  formals(wrapper) <- .jit_formals
   class(wrapper) <- "JitFunction"
   wrapper
 }

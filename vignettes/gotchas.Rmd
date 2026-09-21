@@ -131,6 +131,51 @@ The same flag is available for converters like `as_array()`:
 as_array(nv_scalar(NA_integer_), check = TRUE)
 ```
 
+## Subnormal floating-point values
+
+Subnormal values are extremely small nonzero numbers, very close to zero.
+They allow floating-point numbers to extend below their normal range, but with fewer significant digits of precision.
+For R's usual double-precision numbers (IEEE 754 binary64), subnormal magnitudes range from approximately $4.94 \times 10^{-324}$ to just below $2.23 \times 10^{-308}$.
+More precisely, their magnitudes are at least $2^{-1074}$ but strictly less than $2^{-1022}$, which is the smallest positive normal value.
+
+With {anvl}'s default PJRT backend, these tiny values can be stored in an array and read back into R unchanged, but may become zero when used in calculations.
+On CPUs, XLA enables a mode that treats subnormal inputs and results as zero, often called "flushing to zero".
+The exact behavior depends on the platform, backend, and operation.
+Single-precision (`f32`) values are affected in the same way, below approximately $1.18 \times 10^{-38}$.
+Comparisons flush their inputs too, so for example a negative subnormal can test as greater than or equal to zero.
+
+Running the following example demonstrates this effect, with "Observed" comments corresponding to results from the PJRT CPU backend.
+
+```{r}
+library(anvl)
+
+with_backend("pjrt", {
+  x <- nv_scalar(1e-310, dtype = "f64")
+
+  as.vector(x)  # Preserved: approximately 1e-310
+
+  # Subnormal input; mathematically normal result (should give ~1e-210).
+  as.vector(x * nv_scalar(1e100, dtype = "f64"))  # Observed: 0
+
+  # Normal inputs; mathematically subnormal result (should give ~1e-310).
+  as.vector(
+    nv_scalar(1e-200, dtype = "f64") *
+      nv_scalar(1e-110, dtype = "f64")
+  )  # Observed: 0
+
+  # Comparisons flush their inputs as well.
+  as.vector(nv_scalar(-1e-310, dtype = "f64") >= 0)  # Observed: TRUE
+
+  # The same happens in single precision.
+  as.vector(nv_scalar(1e-40, dtype = "f32"))  # Preserved: approximately 1e-40
+  as.vector(nv_scalar(1e-40, dtype = "f32") * 1e30)  # Observed: 0
+})
+```
+
+If the first argument to `with_backend()` is changed to `"quickr"` -- the experimental, optional backend described in the [internals vignette](internals.html) -- then you should observe the results of subnormal computations are preserved correctly.
+
+This is also present, for example, in the [JAX gotchas guide](https://docs.jax.dev/en/latest/notebooks/Common_Gotchas_in_JAX.html#miscellaneous-divergences-from-numpy) which also illustrates values preserved in storage but flushed during operations on some backends.
+
 ## No unsigned integers
 
 R's `integer` type is signed 32-bit (range `-2147483648` to `2147483647`).

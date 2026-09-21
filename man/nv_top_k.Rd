@@ -11,8 +11,9 @@ nv_top_k(x, k, axis = NULL, with_indices = FALSE)
 Input array.}
 
 \item{k}{(\code{integer(1)})\cr
-Number of top elements to return. Must satisfy
-\verb{1 <= k <= shape(x)[axis]}.}
+Number of top elements to return. Must be a whole number satisfying
+\verb{1 <= k <= shape(x)[axis]}; a fractional or logical \code{k} is refused
+rather than truncated.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to take the top \code{k}. Negative values count from the
