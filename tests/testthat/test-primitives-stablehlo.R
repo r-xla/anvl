@@ -495,6 +495,65 @@ describe("prim_scan", {
       prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = -1L),
       "not >= 0"
     )
+    expect_error(prim_scan(list(s = nv_scalar(0)), x, "not a function", length = 2L), "must be a function")
+    expect_error(
+      prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = 2L, reverse = NA),
+      "May not be NA"
+    )
+    expect_error(
+      prim_scan(list(s = nv_scalar(0)), list(x = nv_scalar(1)), cumsum_body, length = 1L),
+      "at least one axis"
+    )
+  })
+
+  it("supports nested carries and multiple out leaves", {
+    x <- c(3, 1, 4, 1, 5)
+    res <- prim_scan(
+      list(acc = list(s = nv_scalar(0), m = nv_scalar(-Inf))),
+      list(x = nv_array(x)),
+      function(carry, v) {
+        s <- carry$acc$s + v$x
+        m <- nv_max(carry$acc$m, v$x)
+        list(carry = list(acc = list(s = s, m = m)), out = list(sum = s, max = m))
+      },
+      length = 5L
+    )
+    expect_named(res$out, c("sum", "max"))
+    expect_equal(as.numeric(res$out$sum), cumsum(x))
+    expect_equal(as.numeric(res$out$max), cummax(x))
+    expect_equal(as.numeric(res$carry$acc$m), max(x))
+  })
+
+  it("slices multiple xs leaves in lockstep", {
+    x <- c(1, 2, 3, 4)
+    w <- c(10, 20, 30, 40)
+    res <- prim_scan(
+      list(s = nv_scalar(0)),
+      list(x = nv_array(x), w = nv_array(w)),
+      function(carry, v) {
+        s <- carry$s + v$x * v$w
+        list(carry = list(s = s), out = s)
+      },
+      length = 4L
+    )
+    expect_equal(as.numeric(res$out), cumsum(x * w))
+  })
+
+  it("allows out = NULL for a carry-only loop", {
+    res <- prim_scan(
+      list(s = nv_scalar(0)),
+      list(x = nv_array(c(1, 2, 3, 4))),
+      function(carry, v) list(carry = list(s = carry$s + v$x), out = NULL),
+      length = 4L
+    )
+    expect_null(res$out)
+    expect_equal(as.numeric(res$carry$s), 10)
+  })
+
+  it("handles a single step", {
+    res <- prim_scan(list(s = nv_scalar(0)), list(x = nv_array(7)), cumsum_body, length = 1L)
+    expect_equal(as.numeric(res$out), 7)
+    expect_equal(as.numeric(res$carry$s), 7)
   })
 
   it("nests inside another scan", {
@@ -549,12 +608,51 @@ describe("prim_scan", {
     # The body slices a step off `xs`, which does not type-check against an
     # empty `xs`, so the rule has to skip the `while` rather than let its
     # condition stop it on the first test.
+    x <- nv_array(numeric(), shape = 0L)
     f <- jit(function(x) {
       prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 0L)
     })
-    res <- f(nv_array(numeric(), shape = 0L))
+    res <- f(x)
     expect_equal(shape(res$out), 0L)
     expect_equal(as.numeric(res$carry$s), 0)
+
+    eager <- prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 0L)
+    expect_equal(shape(eager$out), 0L)
+    expect_equal(as.numeric(eager$carry$s), 0)
+  })
+
+  it("traces the body once for a zero-length scan and keeps its output structure", {
+    seen <- 0L
+    res <- prim_scan(
+      list(s = nv_scalar(2), m = nv_scalar(1L)),
+      list(x = nv_array(numeric(), shape = 0L)),
+      function(carry, v) {
+        seen <<- seen + 1L
+        list(
+          carry = list(s = carry$s + v$x, m = carry$m + 1L),
+          out = list(run = carry$s, flag = carry$m > 0L)
+        )
+      },
+      length = 0L
+    )
+    expect_equal(seen, 1L)
+    expect_equal(as.numeric(res$carry$s), 2)
+    expect_equal(as.integer(res$carry$m), 1L)
+    expect_named(res$out, c("run", "flag"))
+    expect_equal(shape(res$out$run), 0L)
+    expect_equal(shape(res$out$flag), 0L)
+    expect_equal(dtype(res$out$flag), as_dtype("bool"))
+  })
+
+  it("keeps the trailing axes of a zero-length scan's outputs", {
+    res <- prim_scan(
+      list(s = nv_fill(0, shape = 3L)),
+      list(x = nv_array(array(numeric(), dim = c(0L, 3L)))),
+      cumsum_body,
+      length = 0L
+    )
+    expect_equal(shape(res$out), c(0L, 3L))
+    expect_equal(as.numeric(res$carry$s), c(0, 0, 0))
   })
 })
 

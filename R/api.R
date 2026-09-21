@@ -2790,50 +2790,28 @@ nv_while <- prim_while
 #' )$out
 #' @export
 nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
-  force(init)
-  if (!is.function(body)) {
-    cli_abort("{.arg body} must be a function")
-  }
-  if (!is.logical(reverse) || base::length(reverse) != 1L || is.na(reverse)) {
-    cli_abort("{.arg reverse} must be TRUE or FALSE")
-  }
-  # Validated before it is compared against `xs`, so that a malformed value
-  # reports itself rather than tripping the comparison.
-  length <- assert_int(length, lower = 0L, coerce = TRUE, null.ok = TRUE)
   init <- map_tree(init, as_anvl_array)
   xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
-  xs_flat <- flatten(xs)
 
-  if (base::length(xs_flat)) {
-    lens <- vapply(
-      xs_flat,
-      function(x) {
-        s <- shape(x)
-        if (!base::length(s)) {
-          cli_abort("every leaf of {.arg xs} must have at least one axis")
-        }
-        as.integer(s[[1L]])
-      },
-      integer(1L)
-    )
-    n <- lens[[1L]]
-    if (!all(lens == n)) {
-      cli_abort("all leaves of {.arg xs} must agree on the size of axis 1")
-    }
-    if (!is.null(length) && length != n) {
-      cli_abort(
-        "{.arg length} ({length}) disagrees with axis 1 of {.arg xs} ({n})"
-      )
-    }
-  } else {
-    # No leaves to slice: a counted loop, which needs its trip count stated.
-    if (is.null(length)) {
+  # The trip count is the one thing this layer settles: `prim_scan()` needs it
+  # stated, here it may be read off `xs` instead. The rest of the contract --
+  # `body`, `reverse`, `length` itself, every leaf of `xs` against the trip
+  # count -- is `prim_scan()`'s and is left to it.
+  if (is.null(length)) {
+    xs_flat <- flatten(xs)
+    if (!base::length(xs_flat)) {
       cli_abort("{.arg length} is required when {.arg xs} is empty")
     }
-    n <- length
+    # Reading axis 1 needs there to be one; the other leaves are checked
+    # against the count that comes out of this one.
+    s <- shape(xs_flat[[1L]])
+    if (!base::length(s)) {
+      cli_abort("every array in {.arg xs} must have at least one axis.")
+    }
+    length <- as.integer(s[[1L]])
   }
 
-  prim_scan(init, xs, body, length = n, reverse = reverse)
+  prim_scan(init, xs, body, length = length, reverse = reverse)
 }
 
 ## Additional math functions ---------------------------------------------------

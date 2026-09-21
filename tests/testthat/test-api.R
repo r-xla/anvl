@@ -2407,62 +2407,14 @@ describe("nv_scan", {
     list(carry = s, out = s)
   }
 
-  # `prim_scan()` takes a list on both sides and is tested through one; a bare
-  # array for `init`, `xs` and `out` is what `nv_scan()` adds.
+  # What `prim_scan()` does with the loop is tested in
+  # test-primitives-stablehlo.R; `nv_scan()` adds bare arrays in place of
+  # lists, `xs = NULL` and a trip count read off `xs`.
   it("takes bare arrays and matches nv_cumsum", {
     x <- c(1, 2, 3, 4)
     res <- nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(x))
     expect_equal(as.numeric(res$out), as.numeric(nv_cumsum(nv_array(x))))
     expect_equal(as.numeric(res$carry), sum(x))
-  })
-
-  it("computes a recursive EWMA matching stats::filter", {
-    x <- c(2, 5, 1, 4, 3, 6)
-    # R double literals materialise as f32 constants, so use explicit f64
-    # scalars to keep the recursion in full double precision
-    alpha <- nv_scalar(0.3, dtype = "f64")
-    one_m_alpha <- nv_scalar(0.7, dtype = "f64")
-    res <- nv_scan(
-      init = nv_scalar(0, dtype = "f64"),
-      body = function(carry, v) {
-        y <- one_m_alpha * carry + alpha * v
-        list(carry = y, out = y)
-      },
-      xs = nv_array(x, dtype = "f64")
-    )
-    ref <- as.numeric(stats::filter(0.3 * x, 0.7, method = "recursive"))
-    expect_equal(as.numeric(as.array(res$out)), ref)
-  })
-
-  it("supports nested carries and multiple out leaves", {
-    x <- c(3, 1, 4, 1, 5)
-    res <- nv_scan(
-      init = list(s = nv_scalar(0), m = nv_scalar(-Inf)),
-      body = function(carry, v) {
-        s <- carry$s + v
-        m <- nv_max(carry$m, v)
-        list(carry = list(s = s, m = m), out = list(sum = s, max = m))
-      },
-      xs = nv_array(x)
-    )
-    expect_named(res$out, c("sum", "max"))
-    expect_equal(as.numeric(as.array(res$out$sum)), cumsum(x))
-    expect_equal(as.numeric(as.array(res$out$max)), cummax(x))
-    expect_equal(as.numeric(as.array(res$carry$m)), max(x))
-  })
-
-  it("slices multiple xs leaves in lockstep", {
-    x <- c(1, 2, 3, 4)
-    w <- c(10, 20, 30, 40)
-    res <- nv_scan(
-      init = nv_scalar(0),
-      body = function(carry, v) {
-        s <- carry + v$x * v$w
-        list(carry = s, out = s)
-      },
-      xs = list(x = nv_array(x), w = nv_array(w))
-    )
-    expect_equal(as.numeric(as.array(res$out)), cumsum(x * w))
   })
 
   it("runs fori-style with xs = NULL and an explicit length", {
@@ -2474,24 +2426,8 @@ describe("nv_scan", {
       },
       length = 3L
     )
-    expect_equal(as.numeric(as.array(res$out)), c(2, 4, 6))
-    expect_equal(as.numeric(as.array(res$carry)), 4)
-  })
-
-  it("allows out = NULL (carry-only loop)", {
-    res <- nv_scan(
-      nv_scalar(0),
-      function(carry, v) list(carry = carry + v, out = NULL),
-      xs = nv_array(c(1, 2, 3, 4))
-    )
-    expect_null(res$out)
-    expect_equal(as.numeric(as.array(res$carry)), 10)
-  })
-
-  it("handles length 1", {
-    res <- nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(7))
-    expect_equal(as.numeric(as.array(res$out)), 7)
-    expect_equal(as.numeric(as.array(res$carry)), 7)
+    expect_equal(as.numeric(res$out), c(2, 4, 6))
+    expect_equal(as.numeric(res$carry), 4)
   })
 
   it("treats an empty xs like xs = NULL", {
@@ -2508,94 +2444,28 @@ describe("nv_scan", {
     expect_equal(as.numeric(res$carry), 4)
   })
 
-  it("validates its arguments", {
-    x <- nv_array(c(1, 2, 3, 4))
-    expect_error(nv_scan(nv_scalar(0), body = "not a function", xs = x), "must be a function")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, reverse = NA), "TRUE or FALSE")
+  it("reads the trip count off xs, and demands it when there is none", {
+    expect_error(nv_scan(nv_scalar(0), cumsum_body), "`length` is required")
     expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = list()), "`length` is required")
-    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = -1L), "not >= 0")
-    # `length` is checked before it is compared against axis 1 of `xs`
-    expect_error(
-      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = "four"),
-      "single integerish value"
-    )
-    expect_error(
-      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = c(4L, 4L)),
-      "Must have length 1"
-    )
-  })
-
-  it("returns init and empty outputs for a zero-length scan", {
-    seen <- 0L
-    res <- nv_scan(
-      init = list(s = nv_scalar(2), m = nv_scalar(1L)),
-      body = function(carry, x) {
-        seen <<- seen + 1L
-        list(
-          carry = list(s = carry$s + x, m = carry$m + 1L),
-          out = list(run = carry$s, flag = carry$m > 0L)
-        )
-      },
-      xs = nv_array(numeric(), shape = 0L, dtype = "f32")
-    )
-    # The body is traced once to learn the output structure, never stepped.
-    expect_equal(seen, 1L)
-    expect_equal(as.numeric(res$carry$s), 2)
-    expect_equal(as.integer(res$carry$m), 1L)
-    expect_named(res$out, c("run", "flag"))
-    expect_equal(shape(res$out$run), 0L)
-    expect_equal(shape(res$out$flag), 0L)
-    expect_equal(dtype(res$out$flag), as_dtype("bool"))
-  })
-
-  it("keeps the trailing axes of a zero-length scan's outputs", {
-    res <- nv_scan(
-      init = nv_fill(0, shape = 3L, dtype = "f64"),
-      body = cumsum_body,
-      xs = nv_array(array(numeric(), dim = c(0L, 3L)), dtype = "f64")
-    )
-    expect_equal(shape(res$out), c(0L, 3L))
-    expect_equal(as.numeric(res$carry), c(0, 0, 0))
-  })
-
-  it("agrees eagerly and under jit for a zero-length scan", {
-    f <- function(x) nv_scan(nv_scalar(0), cumsum_body, xs = x)
-    x <- nv_array(numeric(), shape = 0L, dtype = "f32")
-    eager <- f(x)
-    jitted <- jit(f)(x)
-    expect_equal(shape(eager$out), 0L)
-    expect_equal(shape(jitted$out), 0L)
-    expect_equal(as.numeric(jitted$carry), 0)
-  })
-
-  # The body's own contract (`list(carry = , out = )`, a carry shaped like
-  # `init`) is `prim_scan()`'s and is tested there; these are the errors
-  # `nv_scan()` adds on top, about `xs` and `length`.
-  it("errors clearly on contract violations", {
-    x <- nv_array(c(1, 2, 3, 4))
-    expect_error(
-      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = 9L),
-      "disagrees with axis 1"
-    )
-    expect_error(
-      nv_scan(nv_scalar(0), cumsum_body),
-      "`length` is required"
-    )
     expect_error(
       nv_scan(nv_scalar(0), cumsum_body, xs = nv_scalar(1)),
       "at least one axis"
     )
+  })
+
+  # `body`, `reverse`, `length` and every leaf of `xs` are `prim_scan()`'s
+  # contract; this only pins that its errors reach the caller through here.
+  it("leaves the rest of the contract to prim_scan", {
+    x <- nv_array(c(1, 2, 3, 4))
+    expect_error(nv_scan(nv_scalar(0), "not a function", xs = x), "must be a function")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, reverse = NA), "May not be NA")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = -1L), "not >= 0")
     expect_error(
-      nv_scan(
-        nv_scalar(0),
-        function(c, v) list(carry = c, out = c),
-        xs = list(a = nv_array(c(1, 2)), b = nv_array(c(1, 2, 3)))
-      ),
-      "agree on the size of axis 1"
+      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = 9L),
+      "size 9 along axis 1, not 4"
     )
   })
 })
-
 describe("the default integer", {
   it("decides the data type of the indices an operation returns", {
     x <- nv_array(c(3, 1, 4, 1, 5))
