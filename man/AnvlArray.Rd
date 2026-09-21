@@ -11,16 +11,9 @@
 \alias{nv_empty_like}
 \title{AnvlArray}
 \usage{
-nv_array(
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  byrow = FALSE,
-  check = FALSE
-)
+nv_array(data, dtype = NULL, device = NULL, shape = NULL, byrow = FALSE)
 
-nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
+nv_scalar(data, dtype = NULL, device = NULL)
 
 nv_matrix(
   data,
@@ -87,13 +80,6 @@ default column-major order, mirroring \code{\link[base:matrix]{base::matrix()}}'
 Only allowed when \code{data} is an R object — passing an existing
 \code{AnvlArray} together with \code{byrow = TRUE} is an error.}
 
-\item{check}{(\code{logical(1)})\cr
-If \code{TRUE}, error when \code{data} contains any \code{NA} values. XLA has no
-representation for missing values, so they are otherwise silently
-coerced to the closest available value of the target dtype (e.g. \code{NaN}
-for floats, the bit pattern \code{-2147483648} for \code{i32}, \code{TRUE} for
-\code{bool}). Defaults to \code{FALSE}. See the "Gotchas" vignette.}
-
 \item{nrow}{(\code{NULL} | \code{integer(1)})\cr
 Number of rows. Inferred from \code{ncol} and the data length if \code{NULL}.
 Defaults to \code{1} when \code{data} is a scalar.}
@@ -113,7 +99,8 @@ given \code{shape} (or the one inferred from \code{data}).
 }
 \description{
 The main array object.
-Its type is determined by a data type and a shape.
+Its type is determined by a data type and a shape and lives on a device, which can
+be a CPU or a GPU.
 }
 \section{Terminology}{
 
@@ -156,6 +143,33 @@ Serialize/deserialize arrays to/from raw vectors.
 An \code{AnvlArray} is backend-dependent: it belongs to exactly one backend
 (\code{"pjrt"} or the experimental \code{"quickr"}) and lives on a device of that backend.
 The supported data types and devices differ between backends.
+}
+
+\section{Missing values}{
+
+XLA, the compiler that is used by the \code{"pjrt"} (the default) backend
+has no notion of a missing (\code{NA}) value.
+When creating a new \code{AnvlArray}, the input is therefore checked for the
+presence of such values.
+\code{NA}s are always rejected, except when:
+\enumerate{
+\item Creating \code{float} arrays where we convert the \code{NA} to \code{NaN}.
+\item When creating an \code{i32} from an R \code{integer()}.
+There, we throw a warning, but the resulting \code{AnvlArray} gets the bit
+representation of \code{NAinteger_}, which is \code{-INT_MIN}.
+Disallowing this would prevent round-trips between the data types.
+}
+
+See the "Gotchas" vignette for more information.
+}
+
+\section{Out of Range values}{
+
+Because base R has fewer data types than {anvl}, creating \code{AnvlArray}s from R often involves
+type conversions.
+When such conversions are performed, {anvl} performs a scan of the inputs to ensure that the
+requested data type can actually hold the input data.
+For example, trying to create an unsigned integer from a negative R \code{integer()} fails.
 }
 
 \examples{

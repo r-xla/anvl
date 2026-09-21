@@ -42,6 +42,8 @@ Each input is handled according to its rank:
 }
 }
 \section{Differences from base R}{
+
+
 \code{\link[base:rbind]{base::rbind()}} and \code{\link[base:cbind]{base::cbind()}} applied to an \code{\link[base:array]{array()}} of rank > 2
 flatten the trailing axes into the column axis (so a \code{c(2, 3, 4)}
 array becomes a \verb{2 x 12} matrix). \code{nv_rbind} and \code{nv_cbind} instead
