@@ -7,6 +7,15 @@ test_that("array", {
   expect_equal(as_array(x), array(1:4, c(4, 1)))
 })
 
+test_that("nv_array asks for a shape when the data is empty", {
+  # Which axis is empty is not in the data: `0`, `c(2, 0)` and `c(0, 3)` all
+  # hold no elements.
+  expect_error(nv_array(numeric(0)), "must be provided when")
+  expect_error(nv_array(integer(0)), "must be provided when")
+  expect_shape(nv_array(numeric(0), shape = 0L), 0L)
+  expect_shape(nv_array(numeric(0), shape = c(2L, 0L)), c(2L, 0L))
+})
+
 test_that("device returns the pjrt device", {
   x <- nv_array(1, device = "cpu")
   expect_true(device(x) == pjrt::as_pjrt_device("cpu"))
@@ -228,6 +237,23 @@ test_that("== and != operators throw errors for AbstractArray", {
   expect_error(x != y, "Use.*neq_type")
 })
 
+describe("eq_type", {
+  it("errors for an RData, which has no data type to compare", {
+    r <- RData(integer(), "double")
+    x <- AbstractArray(default_float(), integer())
+    expect_error(eq_type(r, x), "undefined for an <RData>")
+    expect_error(eq_type(x, r), "undefined for an <RData>")
+    expect_error(eq_type(r, r), "undefined for an <RData>")
+    expect_error(neq_type(r, x), "undefined for an <RData>")
+  })
+
+  it("errors for values that are not AbstractArrays", {
+    x <- AbstractArray("f32", integer())
+    expect_error(eq_type(x, 1), "must be AbstractArrays")
+    expect_error(eq_type(1, x), "must be AbstractArrays")
+  })
+})
+
 test_that("to_abstract", {
   # an R value, which has no dtype of its own yet
   expect_equal(to_abstract(TRUE), RData(integer(), "logical"))
@@ -355,6 +381,11 @@ test_that("default floating dtype is f64 for quickr", {
 })
 
 test_that("nv_array_like inherits dtype, shape, device, backend from like", {
+  # An R value has no data type to take defaults from, and the message used to
+  # be about the value rather than about `like`.
+  expect_error(nv_array_like(3, c(1L, 2L)), "`like` must be an array")
+  expect_error(nv_fill_like(3, 1), "`like` must be an array")
+
   like <- nv_array(c(1L, 2L, 3L), dtype = "i16")
   out <- nv_array_like(like, c(7L, 8L, 9L))
   expect_dtype(out, dtype(like))
@@ -611,9 +642,7 @@ describe("as_anvl_arrays", {
     expect_equal(as.integer(out$y), 1L)
     # ... and the same for an R value crossing its own category, which is the
     # other thing `coerce` allows.
-    out <- suppressWarnings(
-      as_anvl_arrays(x = nv_array(1L), y = 1.9, .promote = promotion_like("x", coerce = TRUE))
-    )
+    out <- as_anvl_arrays(x = nv_array(1L), y = 1.9, .promote = promotion_like("x", coerce = TRUE))
     expect_equal(as.integer(out$y), 1L)
   })
 
@@ -1085,4 +1114,26 @@ describe("the default integer", {
     expect_equal(peek_dtype(1L), as_dtype("i64"))
     expect_dtype(nv_array(1.5), default_float())
   })
+})
+
+test_that("nv_array forwards raw payloads to pjrt_buffer()", {
+  skip_if(!is_cpu())
+  payload <- writeBin(as.numeric(1:6), raw(), size = 4L)
+  x <- nv_array(payload, dtype = "f32", shape = c(2L, 3L), device = "cpu")
+  expect_equal(dtype(x), as_dtype("f32"))
+  expect_equal(as_array(x), matrix(1:6, 2L, 3L))
+  # byrow is forwarded as pjrt_buffer()'s row_major
+  x_row <- nv_array(payload, dtype = "f32", shape = c(2L, 3L), device = "cpu", byrow = TRUE)
+  expect_equal(as_array(x_row), matrix(1:6, 2L, 3L, byrow = TRUE))
+})
+
+test_that("raw payloads require dtype and shape and are pjrt-only", {
+  skip_if(!is_cpu())
+  expect_error(nv_array(as.raw(1:4), shape = 4L, device = "cpu"), "dtype")
+  expect_error(nv_array(as.raw(1:4), dtype = "ui8", device = "cpu"), "shape")
+  f <- jit(function() nv_array(as.raw(1:4), dtype = "ui8", shape = 4L))
+  expect_error(f(), "not supported inside")
+  skip_if_no_quickr()
+  local_backend("quickr")
+  expect_error(nv_array(as.raw(1:4), dtype = "ui8", shape = 4L), "quickr")
 })

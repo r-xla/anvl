@@ -283,6 +283,14 @@ compile_graph_pjrt <- function(graph, donate = character(), device) {
 #' An R double materializes at `f32` on this backend and an R integer at `i32`
 #' unless the defaults say otherwise (see [`default_dtypes()`]).
 #'
+#' @section Floating-point behavior:
+#' Subnormal floating-point values may be preserved when stored in an array and
+#' read back into R, yet treated as zero in calculations. On CPUs, XLA enables
+#' a mode that replaces subnormal inputs and results with zero. The exact
+#' behavior depends on the platform, backend, and operation.
+#'
+#' See `vignette("gotchas", package = "anvl")` for an explanation and examples.
+#'
 #' @section PJRT JIT arguments:
 #' * `donate` (`character()`, default `character()`): names of arguments whose
 #'   underlying buffers may be donated to (i.e., reused/consumed by) the
@@ -300,8 +308,12 @@ AnvlBackendPjrt <- function() {
     # already do for dtype/shape). This turns the per-call dtype()/shape()/
     # device() reads on the hot dispatch path into plain field accesses instead
     # of repeated S3-dispatch -> C++/pjrt calls.
-    new_data = function(data, dtype, shape, device) {
-      buf <- pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+    new_data = function(data, dtype, shape, device, row_major = FALSE) {
+      buf <- if (is.raw(data)) {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape, row_major = row_major)
+      } else {
+        pjrt_buffer(data, dtype = dtype, device = device, shape = shape)
+      }
       structure(
         list(
           data = buf,

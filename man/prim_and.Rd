@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_and}
 \alias{prim_and}
-\title{Primitive And}
+\title{Primitive Bitwise And}
 \usage{
 prim_and(lhs, rhs)
 }

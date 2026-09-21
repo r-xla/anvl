@@ -57,7 +57,7 @@ Lowers to \code{\link[stablehlo:hlo_triangular_solve]{hlo_triangular_solve()}}.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# Solve L \%*\% x = b where L is lower triangular
+# solve L \%*\% x = b where L is lower triangular
 L <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
 b <- nv_matrix(c(4, 3), nrow = 2, dtype = "f32")
 prim_triangular_solve(L, b,

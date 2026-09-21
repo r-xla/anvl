@@ -25,12 +25,12 @@ test_that("jit: a constant", {
   )
   x <- nv_scalar(2)
   # the constant is now saved in f_jit, so new x is not found
-  cache_size(f_jit)
+  jit_cache_size(f_jit)
   expect_equal(
     f_jit(nv_scalar(2)),
     nv_scalar(3)
   )
-  cache_size(f_jit)
+  jit_cache_size(f_jit)
 })
 
 test_that("jit basic test", {
@@ -114,6 +114,43 @@ test_that("multiple returns", {
     out[[2]],
     nv_array(2.0)
   )
+})
+
+test_that("evaluates each argument exactly once, also under S3 dispatch", {
+  # The wrapper reads its arguments off its own frame rather than evaluating
+  # the call again in the caller's, so an expression that S3 dispatch has
+  # already evaluated to choose the method is not computed a second time.
+  # Without that, a jitted function used *as* a method doubles the work at
+  # every level of nesting.
+  n <- 0L
+  count <- function(x) {
+    n <<- n + 1L
+    x
+  }
+
+  f <- jit(function(x, y) prim_add(x, y))
+  expect_equal(f(count(nv_scalar(1)), count(nv_scalar(2))), nv_scalar(3))
+  expect_equal(n, 2L)
+
+  double_it <- jit(function(x) prim_add(x, x))
+  nv_double <- function(x) UseMethod("nv_double")
+  nv_double.AnvlArray <- double_it
+  nv_double.AnvlBox <- double_it
+
+  n <- 0L
+  expect_equal(nv_double(count(nv_scalar(1))), nv_scalar(2))
+  expect_equal(n, 1L)
+
+  n <- 0L
+  expect_equal(nv_double(nv_double(count(nv_scalar(1)))), nv_scalar(4))
+  expect_equal(n, 1L)
+
+  # Same on the tracing path, where a re-evaluated argument would record its
+  # operations into the graph a second time as well.
+  n <- 0L
+  traced <- jit(function(x) nv_double(nv_double(count(x))))
+  expect_equal(traced(nv_scalar(1)), nv_scalar(4))
+  expect_equal(n, 1L)
 })
 
 test_that("jitted function has class JitFunction", {
@@ -270,11 +307,61 @@ test_that("hash for cache depends on in_tree (#122)", {
       args[[1]][[1L]][[1L]]
     }
   )
-  expect_equal(cache_size(f), 0L)
+  expect_equal(jit_cache_size(f), 0L)
   expect_equal(f(list(list(nv_scalar(1L)), nv_scalar(2L))), nv_scalar(1L))
-  expect_equal(cache_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
   expect_equal(f(list(list(nv_scalar(1L), nv_scalar(2L)))), nv_scalar(1L))
-  expect_equal(cache_size(f), 2L)
+  expect_equal(jit_cache_size(f), 2L)
+})
+
+describe("jit_cache_size", {
+  it("counts the programs compiled for the active backend", {
+    f <- jit(function(x, y) x + y)
+    # The implementations are built on first call, so there is no cache yet.
+    expect_identical(jit_cache_size(f), 0L)
+
+    f(nv_scalar(1), nv_scalar(2))
+    expect_identical(jit_cache_size(f), 1L)
+
+    # Same dtypes and shapes: a cache hit adds no entry.
+    f(nv_scalar(3), nv_scalar(4))
+    expect_identical(jit_cache_size(f), 1L)
+
+    # A new shape misses and compiles a second program.
+    f(nv_array(c(1, 2)), nv_array(c(3, 4)))
+    expect_identical(jit_cache_size(f), 2L)
+  })
+
+  it("never exceeds the cache_size cap", {
+    f <- jit(function(x) x + 1, cache_size = 1L)
+    f(nv_scalar(1))
+    expect_identical(jit_cache_size(f), 1L)
+    # The second signature evicts the first rather than growing the cache.
+    f(nv_array(c(1, 2)))
+    expect_identical(jit_cache_size(f), 1L)
+  })
+
+  it("reports one backend's cache at a time", {
+    skip_if_no_quickr()
+    f <- jit(function(x, y) x + y)
+    f(nv_scalar(1), nv_scalar(2))
+
+    with_backend("quickr", {
+      # A fresh cache: the pjrt entry above is not shared with quickr.
+      expect_identical(jit_cache_size(f), 0L)
+      f(nv_scalar(1), nv_scalar(2))
+      expect_identical(jit_cache_size(f), 1L)
+      # `backend` reads another backend's cache without making it active.
+      expect_identical(jit_cache_size(f, "pjrt"), 1L)
+    })
+    expect_identical(jit_cache_size(f), 1L)
+    expect_identical(jit_cache_size(f, "quickr"), 1L)
+  })
+
+  it("rejects a function that is not jitted, and an unknown backend", {
+    expect_error(jit_cache_size(function(x) x), "not a jitted function")
+    expect_error(jit_cache_size(jit(identity), "nonsense"), "backend")
+  })
 })
 
 describe("jit: option validation", {
@@ -459,7 +546,7 @@ test_that("cache hit when using PJRTDevice", {
   dev1 <- nv_device("cpu")
   f(dev = dev0)
   f(dev = dev1)
-  expect_equal(cache_size(f), 1L)
+  expect_equal(jit_cache_size(f), 1L)
 })
 
 test_that("static arguments with reference semantics are rejected", {

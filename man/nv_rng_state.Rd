@@ -4,7 +4,7 @@
 \alias{nv_rng_state}
 \title{Generate RNG State}
 \usage{
-nv_rng_state(seed, device = default_device())
+nv_rng_state(seed, device = NULL)
 }
 \arguments{
 \item{seed}{(\code{\link{arrayish}})\cr

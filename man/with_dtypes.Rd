@@ -40,7 +40,7 @@ defaults configured by \code{with_dtypes()}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 add_f64 <- with_dtypes(nv_add, c(float = "f64"))
-# An `f32` argument is converted, and the result comes back as `f64`
+# an `f32` argument is converted, and the result comes back as `f64`
 dtype(add_f64(nv_array(1, dtype = "f32"), 2.5))
 # A category that is not named is untouched
 dtype(add_f64(nv_array(1L, dtype = "i32"), 2L))

@@ -3,6 +3,10 @@
 test_that("nv_serialize and nv_unserialize work for single array", {
   x <- nv_matrix(rnorm(12), nrow = 3)
   lst <- list(x = x)
+  # A bare array, not a list: `assert_list(types = )` subsets its input and an
+  # `AnvlArray` has a `[` method, so the assertion itself went into
+  # `nv_subset()` and reported a subsetting error.
+  expect_error(nv_serialize(x), "must be a named list of arrays")
   raw_data <- nv_serialize(lst)
   expect_type(raw_data, "raw")
   reloaded <- nv_unserialize(raw_data)
@@ -12,7 +16,15 @@ test_that("nv_serialize and nv_unserialize work for single array", {
 test_that("nv_save and nv_read works for a single array", {
   x <- nv_matrix(rnorm(12), nrow = 3)
   lst <- list(x = x)
+  expect_error(nv_save(x, tempfile()), "must be a named list of arrays")
   tmp <- tempfile(fileext = ".safetensors")
+  # Writing to a connection is done for the side effect, so it returns
+  # invisibly, as `nv_save()` does.
+  con <- file(tempfile(), "wb")
+  res <- withVisible(nv_serialize(lst, con))
+  close(con)
+  expect_null(res$value)
+  expect_false(res$visible)
   nv_save(lst, tmp)
   reloaded <- nv_read(tmp)
   expect_equal(lst, reloaded)

@@ -201,6 +201,22 @@ describe("nv_qnorm", {
       qnorm(p),
       tolerance = 1e-6
     )
+    # At `f64` the answer is accurate to `f64`, not to whatever the default
+    # float is. The coefficients are plain R numbers with nothing typed to
+    # yield to, so they used to materialize at the default -- and `qnorm(0.975)`
+    # came back with an error of 1e-8, `f32` accuracy in an `f64` computation.
+    expect_equal(
+      as.vector(nv_qnorm(nv_array(p, dtype = "f64"))),
+      qnorm(p),
+      tolerance = 1e-13
+    )
+  })
+
+  it("names the operand when it is not a float", {
+    # Reported as a failure to bring `mean` to the operand's data type before.
+    expect_error(nv_qnorm(nv_array(1L)), "`p` must be a float data type")
+    expect_error(nv_pnorm(nv_array(1L)), "`q` must be a float data type")
+    expect_error(nv_dnorm(nv_array(1L)), "`x` must be a float data type")
   })
 
   it("matches base R qnorm() with custom mean/sd", {
@@ -346,8 +362,13 @@ describe("nv_qnorm", {
   })
 
   it("converts mean/sd to the dtype of p", {
+    # `p`'s data type, not the default float. The two coincide under the
+    # standard defaults, which is what let the result follow the default
+    # unnoticed while the coefficients materialized there.
     out <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f32"), mean = 0L, sd = 1L)
-    expect_dtype(out, default_float())
+    expect_dtype(out, "f32")
+    out64 <- nv_qnorm(nv_array(c(0.25, 0.75), dtype = "f64"), mean = 0L, sd = 1L)
+    expect_dtype(out64, "f64")
   })
 })
 

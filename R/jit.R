@@ -1,6 +1,7 @@
 #' @include backend.R
 #' @include device.R
 #' @include array.R
+#' @include utils.R
 #' @title JIT compile a function
 #' @description
 #' Wraps a function so that it is traced and compiled on first call. Subsequent
@@ -67,36 +68,17 @@
 #' `f_f64 <- with_dtypes(f, c(float = "f64"))` runs `f` at `f64`, unless `f` itself
 #' changes the default data types.
 #'
-#' @section Jitting in a Package:
-#' To `jit()` a function defined in an R package, prefer the `@jit` roxygen
-#' tag over a top-level `jit()` call:
-#'
-#' ```r
-#' #' @export
-#' #' @jit static = c("flag")
-#' my_fun <- function(x, flag) if (flag) x + 1 else x * 2
-#' ```
-#'
-#' This delegates the wrapping to [`jit_roclet()`], which records the
-#' tagged functions in `R/jit-registry.R`. The wrapping itself happens at
-#' package build time via [`apply_jit_registry()`] in `R/zzz.R`, so the
-#' resulting `JitFunction` is byte-compiled with the rest of the package
-#' instead of being rebuilt on every `.onLoad`.
-#'
-#' See [`jit_roclet()`] for the one-time setup of the roclet in your
-#' package.
-#'
 #' @return A `JitFunction` (a `function` with the same formals as `f`).
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
 #' @seealso
-#'   [`jit_roclet()`] for the `@jit` tag used inside R packages.
+#'   [`jit_cache_size()`] for how many programs a jitted function has cached.
 #' @export
 #' @examplesIf pjrt::plugins_downloaded()
 #' f <- jit(function(x, y) x + y)
 #' f(nv_array(1), nv_array(2))
 #'
-#' # Static arguments enable data-dependent control flow
+#' # static arguments enable data-dependent control flow
 #' g <- jit(function(x, flag) {
 #'   if (flag) x + 1 else x * 2
 #' }, static = "flag")
@@ -104,7 +86,7 @@
 #' g(nv_array(3), FALSE)
 #'
 #' @examplesIf requireNamespace("quickr", quietly = TRUE)
-#' # The same function runs on whichever backend is active when it is called
+#' # the same function runs on whichever backend is active when it is called
 #' with_backend("quickr", f(nv_array(1), nv_array(2)))
 jit <- function(
   f,
@@ -131,15 +113,32 @@ jit <- function(
   .jit_cfg <- list(f = f, static = static, cache_size = cache_size, device = device, dots = list(...))
   .jit_fns <- list()
   .jit_runs <- list()
+  .jit_formals <- formals2(f)
+  .jit_dots <- "..." %in% names(.jit_formals)
+  # `names()` of no formals at all is NULL, which is not a character vector.
+  .jit_names <- setdiff(as.character(names(.jit_formals)), "...")
 
   wrapper <- function() {
-    # Inside tracing: pass through to unwrapped function
+    # We don't use eval + match.call() because evaluating a call that itself is a
+    # primitive might then get added twice to a graph
+    .jit_env <- environment()
+    .jit_given <- intersect(.jit_names, as.character(names(match.call())))
+
+    # Inside tracing: pass through to unwrapped function. The arguments are
+    # forwarded as the names they are bound to here, so `f` gets a promise per
+    # argument and one it never uses is never evaluated.
     if (currently_tracing()) {
-      .jit_cl <- match.call()
-      .jit_cl[[1L]] <- .jit_cfg$f
-      return(eval.parent(.jit_cl))
+      .jit_fwd <- lapply(.jit_given, as.name)
+      names(.jit_fwd) <- .jit_given
+      if (.jit_dots) {
+        .jit_fwd <- c(.jit_fwd, list(quote(...)))
+      }
+      return(eval(as.call(c(list(.jit_cfg$f), .jit_fwd)), .jit_env))
     }
-    .jit_args <- lapply(as.list(match.call())[-1L], eval, envir = parent.frame())
+    .jit_args <- mget(.jit_given, envir = .jit_env)
+    if (.jit_dots) {
+      .jit_args <- c(.jit_args, list(...))
+    }
     .jit_be <- active_backend()
     .jit_run <- .jit_runs[[.jit_be]]
     if (is.null(.jit_run)) {
@@ -166,10 +165,10 @@ jit <- function(
       .jit_runs[[.jit_be]] <<- .jit_run
     }
     # The args are already evaluated; the fast entry skips the inner
-    # closure's match.call() + eval() re-capture (and do.call()).
+    # closure's argument re-capture (and do.call()).
     .jit_run(.jit_args)
   }
-  formals(wrapper) <- formals2(f)
+  formals(wrapper) <- .jit_formals
   class(wrapper) <- "JitFunction"
   wrapper
 }
@@ -182,6 +181,63 @@ jit_config <- function(f) {
     return(NULL)
   }
   environment(f)$.jit_cfg
+}
+
+#' @title Number of cached programs of a jitted function
+#' @description
+#' The number of compiled programs a function returned by [`jit()`] currently
+#' holds for one backend, i.e. how many entries of its compilation cache are
+#' filled. A call whose inputs hit an existing entry leaves this unchanged; a
+#' call that misses adds one, up to the `cache_size` cap [`jit()`] was given,
+#' beyond which the least recently used entry is evicted.
+#'
+#' Each backend a jitted function has run on keeps its own cache, so this is
+#' reported for one backend at a time.
+#' @param f (`function`)\cr
+#'   A function returned by [`jit()`].
+#' @param backend (`character(1)`)\cr
+#'   The backend whose cache to report on. Defaults to the active one
+#'   ([`active_backend()`]).
+#' @return `integer(1)`. A backend that `f` has not run on yet reports `0`,
+#'   since the caches are created on first use.
+#' @seealso [`jit()`]
+#' @export
+#' @examplesIf pjrt::plugins_downloaded()
+#' f <- jit(function(x, y) x + y)
+#' jit_cache_size(f)
+#'
+#' f(nv_scalar(1), nv_scalar(2))
+#' jit_cache_size(f)
+#'
+#' # same dtypes and shapes -- a cache hit, no new entry
+#' f(nv_scalar(3), nv_scalar(4))
+#' jit_cache_size(f)
+#'
+#' # a different shape -- a second program is compiled
+#' f(nv_array(c(1, 2)), nv_array(c(3, 4)))
+#' jit_cache_size(f)
+jit_cache_size <- function(f, backend = active_backend()) {
+  assert_backend(backend)
+  dispatcher <- jit_dispatcher(f, backend)
+  if (is.null(dispatcher)) {
+    return(0L)
+  }
+  pjrt::dispatcher_size(dispatcher)
+}
+
+# The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
+# implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
+# run on that backend yet, since the implementations are built on first call.
+jit_dispatcher <- function(f, backend = active_backend()) {
+  jit_fns <- environment(f)$.jit_fns
+  if (is.null(jit_fns)) {
+    cli_abort("{.arg f} is not a jitted function.")
+  }
+  impl <- jit_fns[[backend]]
+  if (is.null(impl)) {
+    return(NULL)
+  }
+  environment(impl)$dispatcher
 }
 
 # The options a backend's `jit` method takes beyond the ones every backend
@@ -197,6 +253,9 @@ check_jit_options <- function(options) {
   if (!length(options)) {
     return(invisible(NULL))
   }
+  # Reading every backend's `jit` formals builds every registered backend (see
+  # register_backend()); only this path does, and building one is just
+  # assembling its methods into a list.
   known <- sort(unique(unlist(lapply(names(globals$backends), backend_jit_options))))
   names <- rlang::names2(options)
   if (!all(nzchar(names))) {

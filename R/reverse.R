@@ -9,10 +9,10 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
       }
 
       if (!is_dtype_float(peek_dtype(args_flat[[i]]))) {
+        # `repr()` on a data type gives stablehlo's spelling (`i1` for a
+        # boolean); the pages speak anvl's, which `as.character()` gives.
         cli_abort(c(
           "Can only compute gradient with respect to float arrays.",
-          # `repr()` on a data type gives stablehlo's spelling (`i1` for a
-          # boolean); the pages speak anvl's, which `as.character()` gives.
           x = "Got {.val {as.character(peek_dtype(args_flat[[i]]))}}."
         ))
       }
@@ -26,7 +26,7 @@ check_wrt_arrayish <- function(args_flat, is_wrt_flat) {
         cli_abort(c(
           "Cannot compute gradient with respect to a value that has no data type.",
           x = "It is an R {peek_r_type(args_flat[[i]])}, which takes its data type from the way the function body uses it (see {.code ?RData}).", # nolint
-          i = "Give it one first, e.g. {.code nv_array(x, \"f32\")} or {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
+          i = "Give it one first, e.g. {.code nv_array(x, \"f32\")} or an explicit {.code nv_array(x, \"f64\")}, so the gradient's data type is the caller's choice." # nolint
         ))
       }
     }
@@ -437,11 +437,11 @@ collect_input_grads <- function(graph, desc, grad_env, requires_grad) {
 #' g <- jit(gradient(f))
 #' g(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #'
-#' # Differentiate with respect to a single argument
+#' # differentiate with respect to a single argument
 #' g_x <- jit(gradient(f, wrt = "x"))
 #' g_x(nv_array(c(1, 2), dtype = "f32"), nv_array(c(3, 4), dtype = "f32"))
 #'
-#' # Static (non-array) arguments are passed through but cannot be in wrt
+#' # static (non-array) arguments are passed through but cannot be in wrt
 #' f2 <- function(x, power) sum(x^power)
 #' g2 <- jit(gradient(f2, wrt = "x"), static = "power")
 #' g2(nv_array(c(1, 2, 3), dtype = "f32"), power = 2L)

@@ -15,9 +15,11 @@ nv_conv1d(
 )
 }
 \arguments{
-\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}.}
+\item{x}{(\code{\link{arrayish}})\cr \verb{[N, C_in, W]}. \code{x} and \code{weight} are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 
-\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.}
+\item{weight}{(\code{\link{arrayish}})\cr \verb{[C_out, C_in / groups, kW]}.
+Promoted together with \code{x}.}
 
 \item{stride, padding, dilation}{(\code{integer()})\cr Length 1.}
 

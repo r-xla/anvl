@@ -11,28 +11,31 @@ neq_type(e1, e2)
 }
 \arguments{
 \item{e1}{(\code{\link{AbstractArray}})\cr
-First array to compare.}
+First array to compare. Must not be an \code{\link{RData}}.}
 
 \item{e2}{(\code{\link{AbstractArray}})\cr
-Second array to compare.}
+Second array to compare. Must not be an \code{\link{RData}}.}
 }
 \value{
 \code{logical(1)} - \code{TRUE} if the arrays are equal, \code{FALSE} otherwise.
 }
 \description{
 Compare two abstract arrays for type equality.
+
+An \code{\link{RData}} has no data type to compare, so it is an error here, just as
+\code{\link[tengen:dtype]{dtype()}} is. Commit it first, e.g. with \code{\link[=nv_convert]{nv_convert()}}.
 }
 \examples{
 a <- nv_aval("f32", c(2L, 3L))
 b <- nv_aval("f32", c(2L, 3L))
 
-# Same dtype and shape
+# same dtype and shape
 eq_type(a, b)
 
-# Different dtype
+# different dtype
 eq_type(a, nv_aval("i32", c(2L, 3L)))
 
-# Different shape
+# different shape
 eq_type(a, nv_aval("f32", c(3L, 2L)))
 
 # neq_type is the negation of eq_type

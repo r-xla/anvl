@@ -35,7 +35,7 @@ To sample from a population other than \code{1:n}, use \code{\link[=nv_sample]{n
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 state <- nv_rng_state(42L)
-# Roll 6 dice
+# roll 6 dice
 result <- nv_sample_int(6, state, 6L)
 result$values
 \dontshow{\}) # examplesIf}

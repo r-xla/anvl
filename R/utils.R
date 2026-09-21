@@ -3,44 +3,6 @@ dtype_from_buffer <- function(x) {
   as_dtype(d)
 }
 
-#' @title Apply a `@jit` registry
-#' @description
-#' Iterates over a registry produced by [`jit_roclet()`] and rebinds each
-#' listed function in `envir` to
-#' `jit(f, static = entry$static)`.
-#'
-#' Call this from the top level of your package's `R/zzz.R`, right next to
-#' `.onLoad`, so the wrappers are byte-compiled during package install
-#' instead of being rebuilt on every `.onLoad`:
-#'
-#' ```r
-#' anvl::apply_jit_registry(.jit_registry)
-#' ```
-#'
-#' `.jit_registry` is the variable defined by `R/jit-registry.R`, which is
-#' regenerated on every `devtools::document()`.
-#'
-#' @param registry (`list`)\cr
-#'   List of `list(name = <chr>, static = <chr|int>)` entries. Typically the
-#'   `.jit_registry` object emitted by the roclet.
-#' @param envir (`environment`)\cr
-#'   Environment in which to look up and rebind functions. Defaults to
-#'   `parent.frame()`, which at top-level package source time is the package
-#'   namespace.
-#' @return Invisibly returns `envir`.
-#' @seealso [`jit_roclet()`], [`jit()`]
-#' @export
-apply_jit_registry <- function(registry, envir = parent.frame()) {
-  for (entry in registry) {
-    assign(
-      entry$name,
-      jit(get(entry$name, envir = envir, inherits = FALSE), static = entry$static),
-      envir = envir
-    )
-  }
-  invisible(envir)
-}
-
 hashvalues <- function(h) {
   val <- vector("list", numhash(h))
   idx <- 0
@@ -79,7 +41,7 @@ minmax_raw <- function(bits, signed = TRUE) {
 }
 
 
-nv_minval <- function(dtype, device) {
+nv_minval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(-Inf, dtype = dtype, device = device)
@@ -96,7 +58,7 @@ nv_minval <- function(dtype, device) {
   }
 }
 
-nv_maxval <- function(dtype, device) {
+nv_maxval <- function(dtype, device = NULL) {
   dtype <- as.character(dtype)
   if (grepl("^f", dtype)) {
     nv_scalar(Inf, dtype = dtype, device = device)
@@ -141,6 +103,9 @@ shapes_repr <- function(shapes) {
   paste0(vapply(shapes, shape_repr, character(1L)), collapse = ", ")
 }
 
+# `prim_fill()` takes a whole number at any data type -- `0` builds at `bool`,
+# at an integer one and at a float one alike -- so the fills that do not know
+# their data type statically write a plain `0` / `1`.
 zeros <- function(dtype, shape) {
   prim_fill(0L, dtype = dtype, shape = shape)
 }
@@ -172,30 +137,6 @@ is_valid_r_array <- function(x) {
 
 is_valid_r <- function(x) {
   (is.numeric(x) || is.logical(x)) && (is.array(x) || (length(x) == 1L))
-}
-
-# The pjrt dispatcher `f` dispatches through on `backend` -- every backend's
-# implementation caches in pjrt's native dispatcher. `NULL` where `f` has not
-# run on that backend yet, since the implementations are built on first call.
-jit_dispatcher <- function(f, backend = active_backend()) {
-  jit_fns <- environment(f)$.jit_fns
-  if (is.null(jit_fns)) {
-    cli_abort("{.arg f} is not a jitted function.")
-  }
-  impl <- jit_fns[[backend]]
-  if (is.null(impl)) {
-    return(NULL)
-  }
-  environment(impl)$dispatcher
-}
-
-# The number of programs `f` has cached for the active backend.
-cache_size <- function(f) {
-  dispatcher <- jit_dispatcher(f)
-  if (is.null(dispatcher)) {
-    return(0L)
-  }
-  pjrt::dispatcher_size(dispatcher)
 }
 
 # Clamp gather start indices to valid ranges, matching XLA's forward pass behavior.
@@ -290,4 +231,17 @@ col_major_layout <- function(naxes) {
 
 col_major_layouts <- function(...) {
   lapply(list(...), col_major_layout)
+}
+
+# Transpose the matrix an array's last two axes form, leaving any leading batch
+# axes in place -- what `t()` means for the batched operands `nv_matmul()`
+# takes. `nv_transpose()` reverses *every* axis, which would put a batch axis
+# into the contraction slot. An array with fewer than two axes is handed on
+# unchanged, for `nv_matmul()` to report.
+transpose_matrix_axes <- function(x) {
+  n <- naxes(x)
+  if (n < 2L) {
+    return(x)
+  }
+  nv_transpose(x, replace(seq_len(n), c(n - 1L, n), c(n, n - 1L)))
 }

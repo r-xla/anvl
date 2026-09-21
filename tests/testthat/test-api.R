@@ -24,6 +24,11 @@ test_that("nv_fill rejects non-scalar-R value with a helpful message", {
 })
 
 test_that("broadcasting scalars", {
+  # An empty `...` used to fail inside `hlo_return()` instead of saying what
+  # was missing.
+  expect_error(nv_broadcast_scalars(), "At least one array is required")
+  expect_error(nv_broadcast_arrays(), "At least one array is required")
+  expect_error(nv_promote_to_common(), "At least one array is required")
   expect_equal(
     nv_add(
       nv_scalar(1),
@@ -97,6 +102,11 @@ test_that("nv_ifelse broadcasts scalars and promotes branches to a common dtype"
 })
 
 describe("nv_concatenate", {
+  it("needs at least one array", {
+    # An empty `...` never reaches stablehlo, so nothing downstream caught it:
+    # this used to reach `max()` and return `-Inf` with an R warning.
+    expect_error(nv_concatenate(), "At least one array is required")
+  })
   it("auto-promotes to common", {
     expect_equal(
       nv_concatenate(nv_array(c(1, 2)), nv_array(3:4)),
@@ -152,6 +162,9 @@ describe("nv_concatenate", {
 })
 
 describe("nv_rbind", {
+  it("needs at least one array", {
+    expect_error(nv_rbind(), "At least one array is required")
+  })
   it("stacks two 1-D vectors as rows (eager)", {
     x <- nv_array(c(1, 2, 3))
     y <- nv_array(c(4, 5, 6))
@@ -258,6 +271,9 @@ describe("nv_rbind", {
 })
 
 describe("nv_cbind", {
+  it("needs at least one array", {
+    expect_error(nv_cbind(), "At least one array is required")
+  })
   it("stacks two 1-D vectors as columns (eager)", {
     x <- nv_array(c(1, 2, 3))
     y <- nv_array(c(4, 5, 6))
@@ -513,6 +529,14 @@ describe("nv_atan2", {
     expect_dtype(out, default_float())
     expect_equal(as.vector(out), atan2(1, 2), tolerance = 1e-6)
   })
+
+  it("converts an integer operand to the float the other one brings", {
+    # Converting to the default float first and promoting afterwards would
+    # round the `i32` through `f32`, which cannot hold 2^24 + 1.
+    out <- nv_atan2(nv_array(1, dtype = "f64"), nv_array(16777217L, dtype = "i32"))
+    expect_dtype(out, as_dtype("f64"))
+    expect_equal(as.vector(out), atan2(1, 16777217), tolerance = 1e-12)
+  })
 })
 
 describe("nv_floor", {
@@ -602,6 +626,13 @@ describe("nv_polygamma", {
     vals <- c(0.5, 1, 2, 5)
     expect_equal(
       nv_polygamma(2, nv_array(vals)),
+      nv_array(psigamma(vals, 2)),
+      tolerance = 1e-5
+    )
+    # `n` was static, so an array was refused here while `prim_polygamma()`
+    # took one.
+    expect_equal(
+      nv_polygamma(nv_scalar(2), nv_array(vals)),
       nv_array(psigamma(vals, 2)),
       tolerance = 1e-5
     )
@@ -1220,6 +1251,31 @@ describe("nv_seq", {
   it("no longer takes steps", {
     expect_error(nv_seq(0, 1, steps = 5L), "unused argument")
   })
+  it("counts down when start is greater than end", {
+    expect_equal(nv_seq(7, 3), nv_array(7:3))
+  })
+  it("steps by `by`", {
+    expect_equal(nv_seq(0, 10, by = 2), nv_array(seq(0L, 10L, by = 2L)))
+    expect_equal(nv_seq(10, 0, by = -3), nv_array(seq(10L, 0L, by = -3L)))
+  })
+  it("stops before end when end is not reachable", {
+    expect_equal(nv_seq(0, 9, by = 2), nv_array(seq(0L, 9L, by = 2L)))
+  })
+  it("returns a single value when start equals end", {
+    expect_equal(nv_seq(3, 3), nv_array(3L))
+    expect_equal(nv_seq(3, 3, by = -2), nv_array(3L))
+  })
+  it("keeps the default integer dtype when stepping", {
+    expect_dtype(nv_seq(0, 10, by = 2), default_int())
+    with_default_dtypes(c(int = "i64"), expect_dtype(nv_seq(0, 10, by = 2), "i64"))
+    expect_dtype(nv_seq(0, 10, by = 2, dtype = "i16"), "i16")
+  })
+  it("errors for a zero, fractional or wrongly signed `by`", {
+    expect_error(nv_seq(0, 10, by = 0), "must not be 0")
+    expect_error(nv_seq(0, 10, by = 2.5), "by")
+    expect_error(nv_seq(0, 10, by = -2), "Wrong sign")
+    expect_error(nv_seq(10, 0, by = 2), "Wrong sign")
+  })
 })
 
 describe("nv_outer", {
@@ -1443,6 +1499,13 @@ describe("nv_crossprod", {
       tolerance = 1e-5
     )
   })
+  it("transposes only the matrix axes of a batched array", {
+    a <- array(as.numeric(1:12), c(2, 3, 2))
+    out <- as_array(nv_crossprod(nv_array(a, dtype = "f64")))
+    expect_equal(dim(out), c(2L, 2L, 2L))
+    expect_equal(out[1, , ], crossprod(a[1, , ]))
+    expect_equal(out[2, , ], crossprod(a[2, , ]))
+  })
 })
 
 describe("nv_tcrossprod", {
@@ -1476,6 +1539,13 @@ describe("nv_tcrossprod", {
       nv_array(as.numeric(tcrossprod(matrix(1:6, 2, 3))), shape = c(2, 2), dtype = "f32"),
       tolerance = 1e-5
     )
+  })
+  it("transposes only the matrix axes of a batched array", {
+    a <- array(as.numeric(1:12), c(2, 3, 2))
+    out <- as_array(nv_tcrossprod(nv_array(a, dtype = "f64")))
+    expect_equal(dim(out), c(2L, 3L, 3L))
+    expect_equal(out[1, , ], tcrossprod(a[1, , ]))
+    expect_equal(out[2, , ], tcrossprod(a[2, , ]))
   })
 })
 
@@ -1533,6 +1603,13 @@ describe("nv_seq_like", {
     like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
     out <- nv_seq_like(like, 1, 5, dtype = "f32")
     expect_dtype(out, "f32")
+  })
+
+  it("passes `by` through", {
+    like <- nv_array(c(0L, 0L, 0L), dtype = "i16")
+    out <- nv_seq_like(like, 0, 10, by = 5)
+    expect_dtype(out, "i16")
+    expect_equal(as.integer(out), c(0L, 5L, 10L))
   })
 })
 
@@ -2016,6 +2093,17 @@ describe("literals adopt device of array siblings", {
 })
 
 describe("nv_solve", {
+  it("promotes its operands instead of refusing them", {
+    # The primitive underneath requires operands that already agree, and that
+    # requirement used to pass straight through, so an `f32` and an `f64` were
+    # refused rather than meeting at `f64` as `nv_matmul()` does.
+    A_mat <- matrix(c(4, 3, 6, 3), nrow = 2)
+    b_vec <- c(1, 2)
+    x <- nv_solve(nv_array(A_mat, dtype = "f32"), nv_array(b_vec, dtype = "f64"))
+    expect_dtype(x, "f64")
+    expect_equal(as_array(x), array(solve(A_mat, b_vec)), tolerance = 1e-5)
+  })
+
   it("matches base R for matrix b (output stays a 2-D matrix)", {
     A_mat <- matrix(c(4, 3, 6, 3), nrow = 2)
     b_mat <- matrix(c(1, 2), nrow = 2)
@@ -2033,6 +2121,16 @@ describe("nv_solve", {
 })
 
 describe("nv_triangular_solve", {
+  it("promotes its operands instead of refusing them", {
+    # As in `nv_solve()`: an `f32` and an `f64` meet at `f64` now, where the
+    # primitive's "operands must already agree" used to pass straight through.
+    L_mat <- matrix(c(3, 1, 0, 2), nrow = 2)
+    b <- c(6, 5)
+    x <- nv_triangular_solve(nv_array(L_mat, dtype = "f32"), nv_array(b, dtype = "f64"))
+    expect_dtype(x, "f64")
+    expect_equal(as_array(x), array(solve(L_mat, b)), tolerance = 1e-5)
+  })
+
   it("matches base R (lower, vector b)", {
     L_mat <- matrix(c(3, 1, 0, 2), nrow = 2)
     expect_equal(
@@ -2369,4 +2467,260 @@ test_that("a constructor that fills internally works at every data type", {
   b <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
   expect_equal(as.vector(nv_tril(b)), c(TRUE, TRUE, FALSE, TRUE))
   expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
+})
+test_that("the floating-point nv_* functions refuse a boolean", {
+  # `int_to_float()` used to pass a boolean through and leave the rejection to
+  # the primitive, which `nv_cospi()` never reached: its `+ 1/2` promoted the
+  # boolean to a float first.
+  expect_error(nv_cospi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_cospi(TRUE), "`x` must be a numeric data type")
+  expect_error(nv_sinpi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_tanpi(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_sin(nv_array(TRUE)), "`x` must be a numeric data type")
+  expect_error(nv_atan2(nv_array(TRUE), nv_array(1)), "`lhs` must be a numeric data type")
+  expect_error(nv_polygamma(nv_array(TRUE), nv_array(1)), "`n` must be a numeric data type")
+  # A boolean meets a float at the float, so a check on the promoted operands
+  # alone would let one into the linear algebra functions.
+  bool_mat <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
+  rhs <- nv_array(c(1, 2), shape = c(2L, 1L), dtype = "f32")
+  expect_error(nv_solve(bool_mat, rhs), "`a` must be a numeric data type")
+  expect_error(nv_triangular_solve(bool_mat, rhs), "`a` must be a numeric data type")
+  expect_error(nv_matmul(bool_mat, bool_mat), "`lhs` must be a numeric data type")
+  expect_error(nv_crossprod(bool_mat, bool_mat), "`lhs` must be a numeric data type")
+  # An integer is still accepted and converted to a float.
+  expect_equal(as.vector(as_array(nv_cospi(nv_array(1L)))), -1, tolerance = 1e-6)
+  expect_equal(dtype(nv_sin(nv_array(1L))), default_float())
+})
+
+test_that("nv_conv1d/2d/3d promote their operands", {
+  # The `nv_*` layer promotes, as `nv_matmul()` does; `prim_convolution()`
+  # underneath still requires operands that already agree.
+  x32 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+  x64 <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f64")
+  w32 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+  w64 <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f64")
+  expect_equal(dtype(nv_conv1d(x32, w64)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x64, w32)), as_dtype("f64"))
+  expect_equal(dtype(nv_conv1d(x32, w32)), as_dtype("f32"))
+  # An integer input meets a float weight at the float; it used to be refused.
+  expect_equal(
+    dtype(nv_conv1d(nv_array(1:5, shape = c(1, 1, 5)), w32)),
+    as_dtype("f32")
+  )
+  expect_equal(
+    dtype(nv_conv2d(
+      nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+  expect_equal(
+    dtype(nv_conv3d(
+      nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32"),
+      nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f64")
+    )),
+    as_dtype("f64")
+  )
+})
+
+test_that("nv_top_k checks `k` before coercing it", {
+  # `as.integer()` first silently truncated a fractional `k` and accepted a
+  # logical one, where `prim_top_k()` refuses both.
+  x3 <- nv_array(c(1, 2, 3))
+  expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
+  expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
+})
+
+test_that("the flag and enum arguments are checked in the nv_* layer", {
+  x <- nv_array(c(1, 2, 3, 4))
+  for (f in list(nv_reduce_sum, nv_reduce_prod, nv_reduce_max, nv_reduce_min, nv_mean)) {
+    expect_error(f(x, nan_rm = "yes"), "logical flag")
+  }
+  expect_error(nv_cumsum(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_cummax(x, with_indices = "yes"), "logical flag")
+  expect_error(nv_argmax(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
+  expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "logical flag")
+  m <- nv_array(matrix(c(4, 2, 2, 3), 2), dtype = "f32")
+  expect_error(nv_chol(m, lower = "yes"), "logical flag")
+  expect_error(nv_triangular_solve(m, m, lower = "yes"), "logical flag")
+})
+
+test_that("the variadic functions and `like` refuse nothing to work with", {
+  expect_error(nv_concatenate(), "At least one array")
+  expect_error(nv_rbind(), "At least one array")
+  expect_error(nv_cbind(), "At least one array")
+  expect_error(nv_broadcast_arrays(), "At least one array")
+  expect_error(nv_broadcast_scalars(), "At least one array")
+  expect_error(nv_promote_to_common(), "At least one array")
+  expect_error(nv_fill_like(1, 2, shape = 2L), "must be an array")
+})
+
+test_that("nv_inv reports its own argument, and gradient accepts any float", {
+  expect_error(nv_inv(nv_array(matrix(1:4, 2))), "`x` must be a float data type")
+  # The check and the message agree on what "float" means.
+  expect_error(
+    jit(gradient(function(x) nv_reduce_sum(nv_convert(x, "i32"))))(nv_array(c(1, 2))),
+    "float scalar"
+  )
+})
+
+test_that("the API layer checks what its pages promise", {
+  x3 <- nv_array(c(3, 1, 2))
+  f23 <- nv_array(matrix(1:6, 2, 3) + 0)
+
+  # `nv_top_k()` coerced `k` before checking it, so a fractional or logical `k`
+  # was silently truncated where `prim_top_k()` refuses both -- and
+  # `with_indices` reached a bare `if()`.
+  expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
+  expect_error(nv_top_k(x3, 1L, with_indices = 1), "logical flag")
+  expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
+
+  # `nv_quantile()`'s bad-`probs` message was raw `checkmate` output.
+  expect_error(nv_quantile(x3, 1.5), "`probs` must be probabilities")
+  expect_error(nv_quantile(x3, NA_real_), "`probs` must be probabilities")
+
+  # `nv_matmul()` left conformability to `prim_dot_general()`, which reports it
+  # in terms of `contracting_axes` with 0-based numbers.
+  expect_error(nv_matmul(f23, f23), "are not conformable")
+  expect_error(
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(matrix(1, 2, 2))),
+    "same number of axes"
+  )
+  expect_error(
+    nv_matmul(nv_array(array(1, c(2, 2, 2))), nv_array(array(1, c(3, 2, 2)))),
+    "must have the same batch axes"
+  )
+  expect_equal(shape(nv_matmul(f23, nv_array(matrix(1:6, 3, 2) + 0))), c(2L, 2L))
+
+  # A rank mismatch and a size mismatch are different mistakes.
+  expect_error(nv_concatenate(f23, nv_array(c(1, 2, 3)), axis = 1L), "same number of axes")
+  expect_error(
+    nv_concatenate(f23, nv_array(matrix(1:4, 2, 2) + 0), axis = 1L),
+    "same shape apart from axis 1"
+  )
+
+  # `nv_conv*` reported `kernel_input_feature_dimension` and `N`, neither of
+  # which is an argument of theirs.
+  expect_error(
+    nv_conv1d(nv_array(array(1, c(1, 2, 4))), nv_array(array(1, c(1, 3, 2)))),
+    "`weight`'s second axis"
+  )
+  expect_error(
+    nv_conv1d(nv_array(matrix(1, 2, 2)), nv_array(matrix(1, 2, 2))),
+    "must have 3 axes for a 1-D convolution"
+  )
+  expect_equal(
+    shape(nv_conv1d(nv_array(array(1, c(1, 1, 5))), nv_array(array(1, c(1, 1, 3))))),
+    c(1L, 1L, 3L)
+  )
+})
+
+test_that("shape mismatches print the shapes once each", {
+  a <- nv_array(matrix(1:6 / 1, 2), dtype = "f32")
+  b <- nv_array(matrix(1:6 / 1, 3), dtype = "f32")
+  expect_error(nv_concatenate(a, b, axis = 1L), "\\(2x3\\), \\(3x2\\)")
+  expect_error(
+    nv_rbind(a, nv_array(matrix(1:8 / 1, 2), dtype = "f32")),
+    "\\(2x3\\), \\(2x4\\)"
+  )
+})
+
+test_that("a constructor that fills internally works at every data type", {
+  # These fill at a data type they do not know statically, writing a plain `0`
+  # or `1`, so they are what `assert_fill_value()` has to keep accepting.
+  expect_equal(as.vector(nv_eye(2L, dtype = "bool")), c(TRUE, FALSE, FALSE, TRUE))
+  expect_equal(dtype(nv_eye(2L, dtype = "i32")), as_dtype("i32"))
+  expect_equal(as.integer(nv_diag(nv_array(c(1L, 2L)))), c(1L, 0L, 0L, 2L))
+  b <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
+  expect_equal(as.vector(nv_tril(b)), c(TRUE, TRUE, FALSE, TRUE))
+  expect_equal(as.vector(nv_triu(b)), c(TRUE, FALSE, TRUE, TRUE))
+})
+
+test_that("prim_chol and nv_chol accept batched inputs", {
+  # The lowering broadcasts its triangle mask over the batch axes, and both
+  # pages promise batch support.
+  spd <- matrix(c(4, 1, 1, 1, 4, 1, 1, 1, 4), nrow = 3)
+  bx <- array(NA_real_, dim = c(2L, 3L, 3L))
+  bx[1L, , ] <- spd
+  bx[2L, , ] <- spd * 2
+  out <- nv_chol(nv_array(bx, dtype = "f64"))
+  expect_equal(shape(out), c(2L, 3L, 3L))
+  got <- as_array(out)
+  expect_equal(got[1L, , ], chol(spd), tolerance = 1e-8)
+  expect_equal(got[2L, , ], chol(spd * 2), tolerance = 1e-8)
+
+  # A single matrix still works, and the constraints still fire, on the last
+  # two axes.
+  expect_equal(shape(nv_chol(nv_array(spd, dtype = "f32"))), c(3L, 3L))
+  expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its last two axes")
+  expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
+  expect_error(nv_chol(nv_array(spd)), NA)
+  expect_error(nv_chol(nv_array(matrix(1:4, 2))), "float data type")
+})
+
+test_that("nv_quantile and nv_median interpolate at a float data type", {
+  # `probs` used to be built at the key's data type, so at an integer one it
+  # rounded to 0 and every quantile came back as the smallest element.
+  expect_equal(as.vector(as_array(nv_median(nv_array(1:4)))), 2.5)
+  expect_equal(as.vector(as_array(nv_median(nv_array(c(1, 2, 3, 4))))), 2.5)
+  expect_equal(as.vector(as_array(nv_quantile(nv_array(1:4), 0.25))), 1.75)
+  expect_equal(
+    as.vector(as_array(nv_quantile(nv_array(1:4), array(c(0.25, 0.5, 0.75))))),
+    c(1.75, 2.5, 3.25)
+  )
+  expect_equal(
+    as.vector(as_array(nv_median(nv_array(c(TRUE, TRUE, FALSE, FALSE))))),
+    0.5
+  )
+  # The result is a float whatever the interpolation mode does, and a non-float
+  # input is interpolated at the default float rather than a fixed one.
+  expect_equal(
+    dtype(nv_quantile(nv_array(1:4), 0.5, interpolation = "lower")),
+    default_float()
+  )
+  expect_equal(dtype(nv_median(nv_array(1:4, dtype = "i8"))), default_float())
+  with_default_dtypes(c(float = "f64"), {
+    expect_equal(dtype(nv_median(nv_array(1:4))), as_dtype("f64"))
+  })
+  expect_equal(dtype(nv_median(nv_array(c(1, 2), dtype = "f64"))), as_dtype("f64"))
+  # `probs` is a scalar or a 1-D array.
+  expect_error(
+    nv_quantile(nv_array(c(1, 2, 3, 4)), array(c(0.25, 0.5), dim = c(1, 2))),
+    "must be a length-1 numeric or a 1-D array"
+  )
+})
+
+test_that("the quantile page's formula is the one the code computes", {
+  # `h = 1 + (n - 1) * q` in 1-based terms, as the page now states.
+  x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
+  n <- 4L
+  sorted <- c(1, 2, 3, 4)
+  for (q in c(0, 0.1, 0.3, 0.5, 0.75, 1)) {
+    h <- 1 + (n - 1) * q
+    lo <- floor(h)
+    hi <- ceiling(h)
+    frac <- h - lo
+    want <- list(
+      linear = (1 - frac) * sorted[lo] + frac * sorted[hi],
+      lower = sorted[lo],
+      higher = sorted[hi],
+      nearest = if (frac < 0.5) sorted[lo] else sorted[hi],
+      midpoint = (sorted[lo] + sorted[hi]) / 2
+    )
+    for (mode in names(want)) {
+      expect_equal(
+        as.vector(as_array(nv_quantile(x, q, interpolation = mode))),
+        want[[mode]],
+        tolerance = 1e-12,
+        info = paste(mode, q)
+      )
+    }
+  }
 })

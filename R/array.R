@@ -39,6 +39,11 @@
 #'
 #' @param data (any)\cr
 #'   `integer()`, `double()`, or `logical()` scalar, vector, or array.
+#'   Alternatively a `raw()` vector holding the native little-endian byte
+#'   payload of `prod(shape)` elements of `dtype`; both `dtype` and `shape`
+#'   are then required (only supported on the `"pjrt"` backend).
+#'   Raw payloads are read in column-major element order, or row-major
+#'   with `byrow = TRUE`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
 #'   One of `r roxy_dtypes()` or a [`tengen::DataType`].
 #'   The default (`NULL`) uses the data type the R value takes (see
@@ -52,6 +57,8 @@
 #'   The output shape of the array.
 #'   The default (`NULL`) is to infer it from the data if possible.
 #'   Note that [`nv_array`] interprets length 1 vectors as having shape `(1)`.
+#'   Empty data has no shape to infer -- `0`, `c(2, 0)` and `c(0, 3)` all hold
+#'   no elements -- so `shape` is required there.
 #'   To create a "scalar" with no axes (shape `()`), use [`nv_scalar`] or explicitly specify `shape = c()`.
 #' @param byrow (`logical(1)`)\cr
 #'   When constructing from an R object and the result has at least two
@@ -70,19 +77,19 @@
 #' # A 1-d array (vector) with shape (4). Default type for integers is `i32`
 #' nv_array(1:4)
 #'
-#' # Specify a dtype
+#' # specify a dtype
 #' nv_array(c(1.5, 2.5, 3.5), dtype = "f64")
 #'
-#' # A 2x3 matrix
+#' # a 2x3 matrix
 #' nv_array(1:6, shape = c(2L, 3L))
 #'
-#' # A 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
+#' # a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 #' nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 #'
 #' # A scalar array.
 #' nv_scalar(3.14)
 #'
-#' # An uninitialized 2x3 array (contents are unspecified)
+#' # an uninitialized 2x3 array (contents are unspecified)
 #' nv_empty("f32", shape = c(2L, 3L))
 #'
 #' # --- Extractors ---
@@ -158,7 +165,23 @@ nv_array <- function(
   if (!is.null(shape)) {
     shape <- as.integer(shape)
   }
-  if (byrow) {
+  is_raw_payload <- is.raw(data)
+  if (is_raw_payload) {
+    if (is.null(dtype)) {
+      cli_abort("{.arg dtype} must be provided when {.arg data} is a raw vector.")
+    }
+    if (is.null(shape)) {
+      cli_abort("{.arg shape} must be provided when {.arg data} is a raw vector.")
+    }
+  } else if (is.null(shape) && is.null(dim(data)) && length(data) == 0L) {
+    # A zero-length vector does not say which axis is empty, so there is
+    # nothing to infer: `0`, `c(2, 0)` and `c(0, 3)` all hold no elements.
+    cli_abort(c(
+      "{.arg shape} must be provided when {.arg data} is empty.",
+      i = "A zero-length vector does not say which axis is empty, e.g. {.code shape = 0L} or {.code shape = c(2L, 0L)}."
+    ))
+  }
+  if (byrow && !is_raw_payload) {
     fill_shape <- shape %||% (if (!is.null(dim(data))) as.integer(dim(data)) else as.integer(length(data)))
     if (length(fill_shape) >= 2L) {
       # Fill column-major into the reversed shape, then permute axes back —
@@ -170,14 +193,14 @@ nv_array <- function(
     # A constant of the trace: it belongs to the backend being traced for, and
     # materializes at the defaults the trace is pinned to.
     dtype <- resolve_default_dtype(data, dtype)
-    return(globals$backends[["plain"]]$new_data(data, dtype, shape, device))
+    return(globals$backends[["plain"]]$new_data(data, dtype, shape, device, row_major = byrow))
   }
   backend <- active_backend()
   if (is_device(device)) {
     check_device_backend(device, backend)
   }
   dtype <- resolve_default_dtype(data, dtype, current_default_dtypes())
-  globals$backends[[backend]]$new_data(data, dtype, shape, device)
+  globals$backends[[backend]]$new_data(data, dtype, shape, device, row_major = byrow)
 }
 
 #' @title Convert to AnvlArray
@@ -702,13 +725,13 @@ backend.QuickrDevice <- function(x, ...) {
 #' dtype(a)
 #' shape(a)
 #'
-#' # Shorthand
+#' # shorthand
 #' nv_aval("f32", c(2L, 3L))
 #'
-#' # An R value, which has no dtype until it is used
+#' # an R value, which has no dtype until it is used
 #' nv_aval("double", c(2L, 3L))
 #'
-#' # How AbstractArrays appear in an AnvlGraph
+#' # how AbstractArrays appear in an AnvlGraph
 #' graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
 #' graph
 #' graph$inputs[[1]]$aval
@@ -766,7 +789,7 @@ shape.AbstractArray <- function(x, ...) {
 #' naxes(x)
 #' dtype(x)
 #'
-#' # How it appears during tracing
+#' # how it appears during tracing
 #' graph <- trace_fn(function() y, list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -809,7 +832,7 @@ ConcreteArray <- function(data) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' # 1. via R literals
 #' graph <- trace_fn(function() 1, list())
 #' graph
@@ -868,7 +891,7 @@ LiteralArray <- function(data, shape, dtype = default_dtype(data)) {
 #' shape(x)
 #' naxes(x)
 #' dtype(x)
-#' # How it appears during tracing:
+#' # how it appears during tracing:
 #' graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 #' graph
 #' graph$outputs[[1]]$aval
@@ -914,22 +937,25 @@ print.IotaArray <- function(x, ...) {
 #' @title Compare AbstractArray Types
 #' @description
 #' Compare two abstract arrays for type equality.
+#'
+#' An [`RData`] has no data type to compare, so it is an error here, just as
+#' [`dtype()`][tengen::dtype] is. Commit it first, e.g. with [`nv_convert()`].
 #' @param e1 ([`AbstractArray`])\cr
-#'   First array to compare.
+#'   First array to compare. Must not be an [`RData`].
 #' @param e2 ([`AbstractArray`])\cr
-#'   Second array to compare.
+#'   Second array to compare. Must not be an [`RData`].
 #' @return `logical(1)` - `TRUE` if the arrays are equal, `FALSE` otherwise.
 #' @examples
 #' a <- nv_aval("f32", c(2L, 3L))
 #' b <- nv_aval("f32", c(2L, 3L))
 #'
-#' # Same dtype and shape
+#' # same dtype and shape
 #' eq_type(a, b)
 #'
-#' # Different dtype
+#' # different dtype
 #' eq_type(a, nv_aval("i32", c(2L, 3L)))
 #'
-#' # Different shape
+#' # different shape
 #' eq_type(a, nv_aval("f32", c(3L, 2L)))
 #'
 #' # neq_type is the negation of eq_type
@@ -939,8 +965,17 @@ eq_type <- function(e1, e2) {
   if (!inherits(e1, "AbstractArray") || !inherits(e2, "AbstractArray")) {
     cli_abort("e1 and e2 must be AbstractArrays")
   }
-  # An `RData` compares as the dtype it would materialize at; it has no other.
-  if (peek_dtype(e1) != peek_dtype(e2) || !identical(e1$shape, e2$shape)) {
+  if (is_rdata(e1) || is_rdata(e2)) {
+    cli_abort(
+      c(
+        "{.fn eq_type} is undefined for an {.cls RData}.",
+        i = "An R value has no data type of its own until it is used, so there is nothing to compare.",
+        i = "Give it one explicitly with {.fn nv_convert}."
+      ),
+      call = NULL
+    )
+  }
+  if (dtype(e1) != dtype(e2) || !identical(e1$shape, e2$shape)) {
     return(FALSE)
   }
   TRUE
@@ -1040,7 +1075,7 @@ compare_proxy.AnvlArray <- function(x, path) { # nolint
 #' # AnvlArrays become ConcreteArrays
 #' to_abstract(nv_array(1:4))
 #'
-#' # Use pure = TRUE to strip subclass info
+#' # use pure = TRUE to strip subclass info
 #' to_abstract(nv_array(1:4), pure = TRUE)
 #'
 #' @export
@@ -1107,7 +1142,7 @@ is_shape <- function(x) {
 #' # AnvlArrays are arrayish
 #' is_arrayish(nv_array(1:4))
 #'
-#' # Scalar R literals are arrayish by default
+#' # scalar R literals are arrayish by default
 #' is_arrayish(1.5)
 #' # R arrays are arrayish by default
 #' is_arrayish(array(1.5))
@@ -1116,7 +1151,7 @@ is_shape <- function(x) {
 #' is_arrayish(array(1:4), convert_ok = TRUE)
 #' is_arrayish(array(1:4), convert_ok = FALSE)
 #'
-#' # Length 1 vectors
+#' # length 1 vectors
 #' is_arrayish(1.5, convert_ok = FALSE)
 #' is_arrayish(1.5, convert_ok = TRUE)
 NULL
