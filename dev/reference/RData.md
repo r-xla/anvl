@@ -66,19 +66,12 @@ graph <- trace_fn(function(x) {
 )
 #> GraphBox(GraphValue(RData(double, ()))) 
 print(graph)
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f64[] <- double
-#>   Constants:
-#>     %c1: f64[]
-#>     %c2: f32[]
-#>   Body:
-#>     %1: f32[] = convert [dtype = f32] (%x1)
-#>     %2: f64[] = add(%x1, %c1)
-#>     %3: f32[] = add(%1, %c2)
-#>   Outputs:
-#>     %2: f64[]
-#>     %3: f32[] 
+#> <AnvlGraph> [%c1: f64[], %c2: f32[]] (%x1: f64[] <- double) {
+#>   %1: f32[] = convert [dtype = f32] (%x1)
+#>   %2: f64[] = add(%x1, %c1)
+#>   %3: f32[] = add(%1, %c2)
+#>   return (%2, %3)
+#> }
 # the actual inputs to the compiled program
 graph$inputs
 #> [[1]]

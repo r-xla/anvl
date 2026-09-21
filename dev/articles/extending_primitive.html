@@ -276,13 +276,10 @@ caller supplies an R double rather than an array that already had
 one.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">prim_repeat_along</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">#&gt;   Inputs:</span></span>
-<span><span class="co">#&gt;     %x1: f32[2, 3] &lt;- double</span></span>
-<span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[4, 3] = repeat_along [times = 2, axis = 1] (%x1)</span></span>
-<span><span class="co">#&gt;   Outputs:</span></span>
-<span><span class="co">#&gt;     %1: f32[4, 3]</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[2,3] &lt;- double) {</span></span>
+<span><span class="co">#&gt;   %1: f32[4,3] = repeat_along [times = 2, axis = 1] (%x1)</span></span>
+<span><span class="co">#&gt;   return %1</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>Where the default goes wrong is when a primitive has several operands
 that must agree. Materializing each at its own default would make
 <code>prim_add(1, nv_scalar(2, "f64"))</code> an error – the literal
@@ -512,7 +509,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_args &lt;- mget(.jit_given, envir = .jit_env)</span></span>
 <span><span class="co">#&gt;     if (.jit_dots) {</span></span>
-<span><span class="co">#&gt;         .jit_args &lt;- c(.jit_args, list(...))</span></span>
+<span><span class="co">#&gt;         .jit_args &lt;- c(.jit_args, eval(quote(list(...)), .jit_env))</span></span>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_be &lt;- active_backend()</span></span>
 <span><span class="co">#&gt;     .jit_run &lt;- .jit_runs[[.jit_be]]</span></span>
@@ -532,7 +529,7 @@ machinery, so no separate registration step is needed:</p>
 <span><span class="co">#&gt;     }</span></span>
 <span><span class="co">#&gt;     .jit_run(.jit_args)</span></span>
 <span><span class="co">#&gt; }</span></span>
-<span><span class="co">#&gt; &lt;environment: 0x56120fd38ab8&gt;</span></span>
+<span><span class="co">#&gt; &lt;environment: 0x5633d9332bd8&gt;</span></span>
 <span><span class="co">#&gt; attr(,"class")</span></span>
 <span><span class="co">#&gt; [1] "JitPrimitive" "JitFunction" </span></span>
 <span><span class="co">#&gt; attr(,"primitive")</span></span>

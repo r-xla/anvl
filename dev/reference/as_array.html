@@ -85,7 +85,7 @@ Only in the case of scalars is the result a vector of length 1, as R <code>array
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
-<span><span class="fu">as_array</span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">as_array</span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="st">"warn"</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">as_array</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -100,14 +100,16 @@ An array-like object.</p></dd>
 
 
 <dt id="arg-check">check<a class="anchor" aria-label="anchor" href="#arg-check"></a></dt>
-<dd><p>(<code>logical(1)</code>)<br>
-If <code>TRUE</code>, sanity-check the materialized R vector against losing
-information across the device-to-host boundary, and abort if any
-problematic value is detected. Forwarded to the backend; for the
-<code>pjrt</code> backend the relevant cases are <code>i32</code>/<code>i64</code> values colliding
-with the <code>NA</code> bit pattern and <code>ui64</code> values <code>&gt;= 2^63</code> wrapping
-through <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. See <code><a href="https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html" class="external-link">pjrt::as_array.PJRTBuffer()</a></code> for
-the full list. Defaults to <code>FALSE</code>. See the "Gotchas" vignette.</p></dd>
+<dd><p>(<code>character(1)</code> | <code>FALSE</code>)<br>
+How to report a materialized value that the R type cannot hold:
+<code>"warn"</code> (the default) warns and returns it anyway, <code>"err"</code> aborts,
+and <code>FALSE</code> skips the scan. <code>TRUE</code> is not accepted – with two
+levels of strictness it does not say which one is meant. Forwarded
+to the backend; for the <code>pjrt</code> backend the cases scanned for are
+<code>i32</code>/<code>i64</code> values colliding with the <code>NA</code> bit pattern and <code>ui64</code>
+values <code>&gt;= 2^63</code> wrapping through <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code>. See
+<code><a href="https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html" class="external-link">pjrt::as_array.PJRTBuffer()</a></code> for the full list, and the "Gotchas"
+vignette.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

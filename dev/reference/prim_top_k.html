@@ -90,7 +90,7 @@ descending order, together with their indices into that axis.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_top_k</span><span class="op">(</span><span class="va">x</span>, <span class="va">k</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">prim_top_k</span><span class="op">(</span><span class="va">x</span>, <span class="va">k</span>, indices <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -107,14 +107,22 @@ Array of integer, unsigned integer, or floating-point dtype with rank &gt;= 1.</
 Number of top elements. Must satisfy
 <code>1 &lt;= k &lt;= shape(x)[naxes(x)]</code>.</p></dd>
 
+
+<dt id="arg-indices">indices<a class="anchor" aria-label="anchor" href="#arg-indices"></a></dt>
+<dd><p>(<code>logical(1)</code>)<br>
+Whether to also return the indices of the top elements. Without them
+the order among tied values is unspecified, which lets the lowering
+pick the cheapest selection for the platform.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p><code>list</code> of two <code><a href="arrayish.html">arrayish</a></code> values:<br>
-The top-<code>k</code> values (same dtype as <code>x</code>) and their indices along
-the last axis, of the default integer data type (see
-<code><a href="default_dtypes.html">default_dtypes()</a></code>). Both have the same shape as <code>x</code> with the
-last axis replaced by <code>k</code>. Ties are broken by lower index first.</p>
+    <p><code>list</code> of one or two <code><a href="arrayish.html">arrayish</a></code> values:<br>
+The top-<code>k</code> values (same dtype as <code>x</code>) and, if <code>indices</code> is <code>TRUE</code>,
+their indices along the last axis, of the default integer data type
+(see <code><a href="default_dtypes.html">default_dtypes()</a></code>). Both have the same shape as <code>x</code> with the
+last axis replaced by <code>k</code>. With indices, ties are broken by lower
+index first.</p>
     </div>
     <div class="section level2">
     <h2 id="implemented-rules">Implemented Rules<a class="anchor" aria-label="anchor" href="#implemented-rules"></a></h2>
@@ -127,7 +135,11 @@ last axis replaced by <code>k</code>. Ties are broken by lower index first.</p>
     <h2 id="stablehlo">StableHLO<a class="anchor" aria-label="anchor" href="#stablehlo"></a></h2>
 
 
-<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_top_k.html" class="external-link">hlo_top_k()</a></code>.</p>
+<p>Lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_top_k.html" class="external-link">hlo_top_k()</a></code>. Without <code>indices</code> on CUDA it lowers to an
+unstable descending <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_sort.html" class="external-link">hlo_sort()</a></code> of the values followed by an
+<code><a href="https://r-xla.github.io/stablehlo/reference/hlo_slice.html" class="external-link">hlo_slice()</a></code>, which is what the CHLO op expands to there minus the
+index operand and the stability the ties no longer need; XLA's CPU
+backend has a dedicated top-k kernel, so it keeps <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_top_k.html" class="external-link">hlo_top_k()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

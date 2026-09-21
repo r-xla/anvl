@@ -592,6 +592,8 @@ Control flow operations
   Conditional Branching
 - [`nv_while()`](https://r-xla.github.io/anvl/dev/reference/nv_while.md)
   : While Loop
+- [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md) :
+  Scan (Loop With Per-Step Outputs)
 - [`nv_ifelse()`](https://r-xla.github.io/anvl/dev/reference/nv_ifelse.md)
   : Conditional Element Selection
 
@@ -605,6 +607,10 @@ distributions
   [`nv_qnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   [`nv_rnorm()`](https://r-xla.github.io/anvl/dev/reference/nv_normal.md)
   : The Normal Distribution
+- [`nv_dunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
+  [`nv_punif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
+  [`nv_qunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md)
+  : The Uniform Distribution
 - [`nv_runif()`](https://r-xla.github.io/anvl/dev/reference/nv_runif.md)
   : Sample from a Uniform Distribution
 - [`nv_rbinom()`](https://r-xla.github.io/anvl/dev/reference/nv_rbinom.md)
@@ -958,6 +964,8 @@ Low-level primitive operations (prim\_\* functions)
   : Primitive Round
 - [`prim_rsqrt()`](https://r-xla.github.io/anvl/dev/reference/prim_rsqrt.md)
   : Primitive Reciprocal Square Root
+- [`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
+  : Primitive Scan
 - [`prim_scatter()`](https://r-xla.github.io/anvl/dev/reference/prim_scatter.md)
   : Primitive Scatter
 - [`prim_shift_left()`](https://r-xla.github.io/anvl/dev/reference/prim_shift_left.md)

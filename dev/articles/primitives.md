@@ -1,6 +1,6 @@
 # Primitives Reference
 
-The table below shows all 100 primitives and which rules they implement.
+The table below shows all 101 primitives and which rules they implement.
 Note that a rule might be missing because it was just not added yet, or
 because it does not apply for a specific primitive.
 
@@ -86,6 +86,7 @@ because it does not apply for a specific primitive.
 | rng_bit_generator      |     ✓     |   ✗    |    ✗    |
 | round                  |     ✓     |   ✗    |    ✓    |
 | rsqrt                  |     ✓     |   ✗    |    ✓    |
+| scan                   |     ✓     |   ✓    |    ✗    |
 | scatter                |     ✓     |   ✓    |    ✓    |
 | select                 |     ✓     |   ✓    |    ✓    |
 | shift_left             |     ✓     |   ✗    |    ✓    |

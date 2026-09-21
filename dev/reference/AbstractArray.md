@@ -102,15 +102,14 @@ nv_aval("double", c(2L, 3L))
 # how AbstractArrays appear in an AnvlGraph
 graph <- trace_fn(function(x) x + 1, list(x = nv_aval("i32", 4L)))
 graph
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: i32[4]
-#>   Body:
-#>     %1: f32[4] = convert [dtype = f32] (%x1)
-#>     %2: f32[4] = broadcast_in_axes [shape = 4, broadcast_axes = <any>] (1:f32)
-#>     %3: f32[4] = add(%1, %2)
-#>   Outputs:
-#>     %3: f32[4] 
+#> <AnvlGraph> (%x1: i32[4]) {
+#>   %1: f32[4] = convert [dtype = f32] (%x1)
+#>   %2: f32[4] = broadcast_in_axes [
+#>     shape = 4, broadcast_axes = integer(0)
+#>   ] (1:f32)
+#>   %3: f32[4] = add(%1, %2)
+#>   return %3
+#> }
 graph$inputs[[1]]$aval
 #> AbstractArray(dtype=i32, shape=4) 
 ```

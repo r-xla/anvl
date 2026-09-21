@@ -13,6 +13,22 @@
   system and a new system of rules for type promotions. With it, also
   the promotion behavior of various primitives and API functions was
   improved.
+- [`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
+  and the [`as.double()`](https://rdrr.io/r/base/double.html) /
+  [`as.integer()`](https://rdrr.io/r/base/integer.html) /
+  [`bit64::as.integer64()`](https://bit64.r-lib.org/reference/as.integer64.character.html)
+  / [`as.logical()`](https://rdrr.io/r/base/logical.html) methods take
+  `check = "warn"`, `"err"` or `FALSE` instead of a flag, following
+  {pjrt}, and warn by default about a value R’s type cannot hold. Write
+  `check = "err"` where you wrote `check = TRUE`, and `check = FALSE` to
+  materialize silently.
+- [`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  and
+  [`nv_scalar()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
+  no longer take a `check` argument, following {pjrt}: what happens to
+  an `NA` is fixed by the dtype it is built at. Call
+  [`anyNA()`](https://rdrr.io/r/base/NA.html) on the data yourself
+  instead.
 - [`common_dtype()`](https://r-xla.github.io/anvl/dev/reference/common_dtype.md)
   now errors for `ui64` and a signed integer instead of returning `i64`,
   which could not hold every `ui64` value. Convert one of them with
@@ -82,6 +98,16 @@
   payload. Only supported on the `"pjrt"` backend; the inverse direction
   is the existing
   [`as_raw()`](https://r-xla.github.io/anvl/dev/reference/as_raw.md).
+- New
+  [`nv_scan()`](https://r-xla.github.io/anvl/dev/reference/nv_scan.md):
+  a fixed-length loop in the style of JAX’s `lax.scan` that threads a
+  carry through a body function and stacks each step’s outputs along a
+  new leading axis. Supports nested carries, multiple `xs` and `out`
+  leaves, reverse scans, `xs = NULL` counted loops and carry-only loops.
+  Backed by the new
+  [`prim_scan()`](https://r-xla.github.io/anvl/dev/reference/prim_scan.md)
+  primitive, which lowers to a `while` loop on the pjrt backend and to a
+  `for` loop on quickr.
 - The reductions ([`sum()`](https://rdrr.io/r/base/sum.html),
   [`prod()`](https://rdrr.io/r/base/prod.html),
   [`max()`](https://rdrr.io/r/base/Extremes.html),
@@ -137,6 +163,29 @@
   [`nv_round()`](https://r-xla.github.io/anvl/dev/reference/nv_round.md)
   return an integer array unchanged, like base R does.
 - Improved documentation of API functions and primitives.
+- Printed graphs read as `[captures] (inputs) { ... return ... }`, show
+  sub-graphs in full, and wrap long lines to the console width;
+  [`format()`](https://rdrr.io/r/base/format.html) takes `width` and
+  `digits` arguments.
+- New functions for the uniform distribution:
+  [`nv_dunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
+  [`nv_punif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md),
+  and
+  [`nv_qunif()`](https://r-xla.github.io/anvl/dev/reference/nv_uniform.md).
+
+### Performance
+
+- [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md)
+  and
+  [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
+  select the needed order statistics with `top_k` instead of a full sort
+  when every requested quantile lies in the same half of the axis.
+  Results are unchanged.
+- [`prim_top_k()`](https://r-xla.github.io/anvl/dev/reference/prim_top_k.md)
+  gained `indices`; without them the CUDA lowering uses an unstable sort
+  of the values and a slice instead of the CHLO op, which costs no more
+  than a full sort there. `nv_top_k(with_indices = FALSE)` and the
+  quantile fast path use it.
 
 ### Bug fixes
 

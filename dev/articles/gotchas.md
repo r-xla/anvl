@@ -155,9 +155,8 @@ shapes must be broadcast-compatible in the numpy sense.
 
 R has a dedicated missing-value marker (`NA`) for every atomic type.
 {anvl} arrays do not – there is no representation of “missing” at the
-XLA level, only `NaN` for floating point numbers. When you convert R
-values containing `NA` into an `AnvlArray`, the `NA`s are silently
-turned into `NaN`s.
+XLA level, only `NaN` for floating point numbers. At a floating-point
+dtype, an `NA` silently turns into a `NaN`:
 
 ``` r
 
@@ -179,8 +178,8 @@ nv_array(c(1, NA, 3))
     ##    3
     ## [ CPUf32{3} ]
 
-Round-tripping back to R is not guaranteed to produce `NA`, but can also
-yield `NaN`:
+Round-tripping back to R therefore does not give the `NA` back, but a
+`NaN`:
 
 ``` r
 
@@ -189,88 +188,89 @@ as_array(nv_array(c(1, NA, 3)))
 
     ## [1]   1 NaN   3
 
-For other data types, the situation is even worse, especially for
-integers, where R uses the smallest possible value to represent
-missingness:
+The signed integer dtypes are a special case. R spells `NA_integer_` as
+the bit pattern `-2147483648`, which is also what an `i32` array stores,
+so the value survives the round trip – but on the device it is an
+ordinary, very negative integer that nothing distinguishes from a
+missing value. Both directions warn about it:
 
 ``` r
 
-nv_scalar(NA_integer_)
+x <- nv_scalar(NA_integer_)
 ```
 
-    ## Warning: Input `data` contains 1 "NA" value, stored on the device as "-2147483648".
+    ## Warning: Input `data` contains at least one "NA", stored on the device as "-2147483648".
     ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
     ##   way back.
     ## ℹ Use `suppressWarnings()` to silence this.
+
+``` r
+
+x
+```
 
     ## AnvlArray
     ##  -2.1475e+09
     ## [ CPUi32{} ]
 
-However, when you convert it back, you get a missing value again:
-
 ``` r
 
-as.integer(nv_scalar(NA_integer_))
+as.integer(x)
 ```
 
-    ## Warning: Input `data` contains 1 "NA" value, stored on the device as "-2147483648".
-    ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
-    ##   way back.
-    ## ℹ Use `suppressWarnings()` to silence this.
+    ## Warning: Materialized <i32> buffer contains a value that R cannot distinguish from "NA".
+    ## ℹ "i32" reserves the bit pattern "-2147483648" (`INT_MIN`); "i64" reserves
+    ##   "-9223372036854775808" (`INT64_MIN`).
+    ## ℹ Set `check = "err"` to make this an error, or `check = FALSE` to silence it.
 
     ## [1] NA
 
-When creating logicals, `NA` will be interpreted as `TRUE`:
+At every other dtype there is no bit pattern for an `NA` to land on, so
+a missing value is an error, including for `bool`:
 
 ``` r
 
 nv_scalar(NA)
 ```
 
-    ## AnvlArray
-    ##  1
-    ## [ CPUbool{} ]
+    ## Error:
+    ## ! Missing value (NA/NaN) cannot be converted to "pred".
 
 ``` r
 
-as.logical(nv_scalar(NA))
+nv_array(c(1L, NA, 3L), dtype = "i16")
 ```
 
-    ## [1] TRUE
+    ## Error:
+    ## ! Missing value (NA/NaN) cannot be converted to "i16" (element 2).
 
-In order to avoid these pitfals, array creators such as
-[`nv_array()`](https://r-xla.github.io/anvl/dev/reference/AnvlArray.md)
-have a `check` argument to prevent the above problems. It is `FALSE` by
-default, because it needs to scan the complete data.
+Array creators take no argument to change any of this: what happens to
+an `NA` is fixed by the dtype you build at. Scan the data yourself with
+[`anyNA()`](https://rdrr.io/r/base/NA.html) if you want to hear about a
+missing value the dtype accepts.
+
+Converters like
+[`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
+do take a `check` argument, with three levels: `"warn"` (the default)
+warns about a value R’s type cannot hold, `"err"` makes it an error, and
+`FALSE` skips the scan.
 
 ``` r
 
-nv_array(c(1, NA, 3), check = TRUE)
+as_array(nv_scalar(NA_integer_), check = "err")
 ```
 
-    ## Error in `nv_array()`:
-    ## ! Input `data` contains 1 "NA" value, which has no representation at the
-    ##   XLA level.
-    ## ℹ Replace or drop missing values before transferring, or set `check = FALSE` to
-    ##   skip this check.
-
-The same flag is available for converters like
-[`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md):
-
-``` r
-
-as_array(nv_scalar(NA_integer_), check = TRUE)
-```
-
-    ## Warning: Input `data` contains 1 "NA" value, stored on the device as "-2147483648".
+    ## Warning: Input `data` contains at least one "NA", stored on the device as "-2147483648".
     ## ℹ The value materializes as "NA" again in R, which `as_array()` reports on the
     ##   way back.
     ## ℹ Use `suppressWarnings()` to silence this.
 
-    ## Error in `check_level()`:
-    ## ! `check` must be "warn", "err" or `FALSE`, not TRUE.
-    ## ℹ `TRUE` is not accepted; pick "warn" or "err".
+    ## Error in `tengen::as_array()`:
+    ## ! Materialized <i32> buffer contains a value that R cannot distinguish
+    ##   from "NA".
+    ## ℹ "i32" reserves the bit pattern "-2147483648" (`INT_MIN`); "i64" reserves
+    ##   "-9223372036854775808" (`INT64_MIN`).
+    ## ℹ Set `check = FALSE` to skip this check.
 
 ## Subnormal floating-point values
 
@@ -368,8 +368,9 @@ as_array(big)
     ## [1] 2147483648
 
 However, for `ui64`, we also convert to `integer64`, which does not
-cover the whole range, so overflow is possible, but can be detected via
-the `check` flag:
+cover the whole range, so wrapping is possible.
+[`as_array()`](https://r-xla.github.io/anvl/dev/reference/as_array.md)
+warns about it, and `check = "err"` makes it an error:
 
 ``` r
 
@@ -386,17 +387,26 @@ big
 as_array(big)
 ```
 
+    ## Warning: Materialized <ui64> buffer contains a value `>= 2^63` that wrapped through R's
+    ## signed <integer64>.
+    ## ℹ Exactly `2^63` becomes `NA_integer64_`; larger values become negative
+    ##   <integer64>.
+    ## ℹ Set `check = "err"` to make this an error, or `check = FALSE` to silence it.
+
     ## integer64
     ## [1] -1
 
 ``` r
 
-as_array(big, check = TRUE)
+as_array(big, check = "err")
 ```
 
-    ## Error in `check_level()`:
-    ## ! `check` must be "warn", "err" or `FALSE`, not TRUE.
-    ## ℹ `TRUE` is not accepted; pick "warn" or "err".
+    ## Error in `tengen::as_array()`:
+    ## ! Materialized <ui64> buffer contains a value `>= 2^63` that wrapped
+    ##   through R's signed <integer64>.
+    ## ℹ Exactly `2^63` becomes `NA_integer64_`; larger values become negative
+    ##   <integer64>.
+    ## ℹ Set `check = FALSE` to skip this check.
 
 ## Differences between eager and jit-mode
 

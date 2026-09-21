@@ -221,9 +221,8 @@ the shapes must be broadcast-compatible in the numpy sense.</p>
 <p>R has a dedicated missing-value marker (<code>NA</code>) for every
 atomic type. {anvl} arrays do not – there is no representation of
 “missing” at the XLA level, only <code>NaN</code> for floating point
-numbers. When you convert R values containing <code>NA</code> into an
-<code>AnvlArray</code>, the <code>NA</code>s are silently turned into
-<code>NaN</code>s.</p>
+numbers. At a floating-point dtype, an <code>NA</code> silently turns
+into a <code>NaN</code>:</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="cn">NA_real_</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
@@ -236,63 +235,66 @@ numbers. When you convert R values containing <code>NA</code> into an
 <span><span class="co">##  nan</span></span>
 <span><span class="co">##    3</span></span>
 <span><span class="co">## [ CPUf32{3} ]</span></span></code></pre>
-<p>Round-tripping back to R is not guaranteed to produce
-<code>NA</code>, but can also yield <code>NaN</code>:</p>
+<p>Round-tripping back to R therefore does not give the <code>NA</code>
+back, but a <code>NaN</code>:</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NA</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]   1 NaN   3</span></span></code></pre>
-<p>For other data types, the situation is even worse, especially for
-integers, where R uses the smallest possible value to represent
-missingness:</p>
+<p>The signed integer dtypes are a special case. R spells
+<code>NA_integer_</code> as the bit pattern <code>-2147483648</code>,
+which is also what an <code>i32</code> array stores, so the value
+survives the round trip – but on the device it is an ordinary, very
+negative integer that nothing distinguishes from a missing value. Both
+directions warn about it:</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Input `data` contains 1 <span style="color: #0000BB;">"NA"</span> value, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
+<code class="sourceCode R"><span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Warning: Input `data` contains at least one <span style="color: #0000BB;">"NA"</span>, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The value materializes as <span style="color: #0000BB;">"NA"</span> again in R, which `as_array()` reports on the</span></span>
 <span><span class="co">##   way back.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Use `suppressWarnings()` to silence this.</span></span></code></pre>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">x</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  -2.1475e+09</span></span>
 <span><span class="co">## [ CPUi32{} ]</span></span></code></pre>
-<p>However, when you convert it back, you get a missing value again:</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Input `data` contains 1 <span style="color: #0000BB;">"NA"</span> value, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
-<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The value materializes as <span style="color: #0000BB;">"NA"</span> again in R, which `as_array()` reports on the</span></span>
-<span><span class="co">##   way back.</span></span>
-<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Use `suppressWarnings()` to silence this.</span></span></code></pre>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Warning: Materialized <span style="color: #0000BB;">&lt;i32&gt;</span> buffer contains a value that R cannot distinguish from <span style="color: #0000BB;">"NA"</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">"i32"</span> reserves the bit pattern <span style="color: #0000BB;">"-2147483648"</span> (`INT_MIN`); <span style="color: #0000BB;">"i64"</span> reserves</span></span>
+<span><span class="co">##   <span style="color: #0000BB;">"-9223372036854775808"</span> (`INT64_MIN`).</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = "err"` to make this an error, or `check = FALSE` to silence it.</span></span></code></pre>
 <pre><code><span><span class="co">## [1] NA</span></span></code></pre>
-<p>When creating logicals, <code>NA</code> will be interpreted as
-<code>TRUE</code>:</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<p>At every other dtype there is no bit pattern for an <code>NA</code>
+to land on, so a missing value is an error, including for
+<code>bool</code>:</p>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## AnvlArray</span></span>
-<span><span class="co">##  1</span></span>
-<span><span class="co">## [ CPUbool{} ]</span></span></code></pre>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## [1] TRUE</span></span></code></pre>
-<p>In order to avoid these pitfals, array creators such as
-<code><a href="../reference/AnvlArray.html">nv_array()</a></code> have a <code>check</code> argument to prevent
-the above problems. It is <code>FALSE</code> by default, because it
-needs to scan the complete data.</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="cn">NA</span>, <span class="fl">3</span><span class="op">)</span>, check <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `nv_array()`:</span></span></span>
-<span><span class="co">## <span style="color: #BBBB00;">!</span> Input `data` contains 1 <span style="color: #0000BB;">"NA"</span> value, which has no representation at the</span></span>
-<span><span class="co">##   XLA level.</span></span>
-<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Replace or drop missing values before transferring, or set `check = FALSE` to</span></span>
-<span><span class="co">##   skip this check.</span></span></code></pre>
-<p>The same flag is available for converters like
-<code><a href="../reference/as_array.html">as_array()</a></code>:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span><span class="op">)</span>, check <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## Warning: Input `data` contains 1 <span style="color: #0000BB;">"NA"</span> value, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> Missing value (NA/NaN) cannot be converted to "pred".</span></span></code></pre>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="cn">NA</span>, <span class="fl">3L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"i16"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;">:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> Missing value (NA/NaN) cannot be converted to "i16" (element 2).</span></span></code></pre>
+<p>Array creators take no argument to change any of this: what happens
+to an <code>NA</code> is fixed by the dtype you build at. Scan the data
+yourself with <code><a href="https://rdrr.io/r/base/NA.html" class="external-link">anyNA()</a></code> if you want to hear about a missing
+value the dtype accepts.</p>
+<p>Converters like <code><a href="../reference/as_array.html">as_array()</a></code> do take a <code>check</code>
+argument, with three levels: <code>"warn"</code> (the default) warns
+about a value R’s type cannot hold, <code>"err"</code> makes it an
+error, and <code>FALSE</code> skips the scan.</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="cn">NA_integer_</span><span class="op">)</span>, check <span class="op">=</span> <span class="st">"err"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Warning: Input `data` contains at least one <span style="color: #0000BB;">"NA"</span>, stored on the device as <span style="color: #0000BB;">"-2147483648"</span>.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> The value materializes as <span style="color: #0000BB;">"NA"</span> again in R, which `as_array()` reports on the</span></span>
 <span><span class="co">##   way back.</span></span>
 <span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Use `suppressWarnings()` to silence this.</span></span></code></pre>
-<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `check_level()`:</span></span></span>
-<span><span class="co">## <span style="color: #BBBB00;">!</span> `check` must be <span style="color: #0000BB;">"warn"</span>, <span style="color: #0000BB;">"err"</span> or `FALSE`, not <span style="color: #0000BB;">TRUE</span>.</span></span>
-<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `TRUE` is not accepted; pick <span style="color: #0000BB;">"warn"</span> or <span style="color: #0000BB;">"err"</span>.</span></span></code></pre>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `tengen::as_array()`:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> Materialized <span style="color: #0000BB;">&lt;i32&gt;</span> buffer contains a value that R cannot distinguish</span></span>
+<span><span class="co">##   from <span style="color: #0000BB;">"NA"</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> <span style="color: #0000BB;">"i32"</span> reserves the bit pattern <span style="color: #0000BB;">"-2147483648"</span> (`INT_MIN`); <span style="color: #0000BB;">"i64"</span> reserves</span></span>
+<span><span class="co">##   <span style="color: #0000BB;">"-9223372036854775808"</span> (`INT64_MIN`).</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = FALSE` to skip this check.</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="subnormal-floating-point-values">Subnormal floating-point values<a class="anchor" aria-label="anchor" href="#subnormal-floating-point-values"></a>
@@ -317,7 +319,7 @@ negative subnormal can test as greater than or equal to zero.</p>
 <p>Running the following example demonstrates this effect, with
 “Observed” comments corresponding to results from the PJRT CPU
 backend.</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://r-xla.github.io/anvl/">anvl</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/with_backend.html">with_backend</a></span><span class="op">(</span><span class="st">"pjrt"</span>, <span class="op">{</span></span>
@@ -360,35 +362,43 @@ exposes unsigned integer dtypes (<code>ui8</code>, <code>ui16</code>,
 <code>ui32</code>, <code>ui64</code>) backed by XLA, but R has no native
 counterpart. For values that fit into R’s signed integer range, the
 round-trip works as expected:</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0L</span>, <span class="fl">200L</span>, <span class="fl">255L</span><span class="op">)</span>, dtype <span class="op">=</span> <span class="st">"ui8"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## [1]   0 200 255</span></span></code></pre>
 <p>Because <code>ui32</code> does not fit into R’s native integer type,
 it will be converted to <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> data type:</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">big</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">2147483647L</span>, dtype <span class="op">=</span> <span class="st">"ui32"</span><span class="op">)</span> <span class="op">+</span> <span class="fl">1L</span></span>
 <span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">## integer64</span></span>
 <span><span class="co">## [1] 2147483648</span></span></code></pre>
 <p>However, for <code>ui64</code>, we also convert to
 <code>integer64</code>, which does not cover the whole range, so
-overflow is possible, but can be detected via the <code>check</code>
-flag:</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+wrapping is possible. <code><a href="../reference/as_array.html">as_array()</a></code> warns about it, and
+<code>check = "err"</code> makes it an error:</p>
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">big</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fl">0L</span>, dtype <span class="op">=</span> <span class="st">"ui64"</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1L</span></span>
 <span><span class="va">big</span></span></code></pre></div>
 <pre><code><span><span class="co">## AnvlArray</span></span>
 <span><span class="co">##  1.8447e+19</span></span>
 <span><span class="co">## [ CPUui64{1} ]</span></span></code></pre>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## Warning: Materialized <span style="color: #0000BB;">&lt;ui64&gt;</span> buffer contains a value `&gt;= 2^63` that wrapped through R's</span></span>
+<span><span class="co">## signed <span style="color: #0000BB;">&lt;integer64&gt;</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Exactly `2^63` becomes `NA_integer64_`; larger values become negative</span></span>
+<span><span class="co">##   <span style="color: #0000BB;">&lt;integer64&gt;</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = "err"` to make this an error, or `check = FALSE` to silence it.</span></span></code></pre>
 <pre><code><span><span class="co">## integer64</span></span>
 <span><span class="co">## [1] -1</span></span></code></pre>
 <div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span>, check <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `check_level()`:</span></span></span>
-<span><span class="co">## <span style="color: #BBBB00;">!</span> `check` must be <span style="color: #0000BB;">"warn"</span>, <span style="color: #0000BB;">"err"</span> or `FALSE`, not <span style="color: #0000BB;">TRUE</span>.</span></span>
-<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> `TRUE` is not accepted; pick <span style="color: #0000BB;">"warn"</span> or <span style="color: #0000BB;">"err"</span>.</span></span></code></pre>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/as_array.html">as_array</a></span><span class="op">(</span><span class="va">big</span>, check <span class="op">=</span> <span class="st">"err"</span><span class="op">)</span></span></code></pre></div>
+<pre><code><span><span class="co">## <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `tengen::as_array()`:</span></span></span>
+<span><span class="co">## <span style="color: #BBBB00;">!</span> Materialized <span style="color: #0000BB;">&lt;ui64&gt;</span> buffer contains a value `&gt;= 2^63` that wrapped</span></span>
+<span><span class="co">##   through R's signed <span style="color: #0000BB;">&lt;integer64&gt;</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Exactly `2^63` becomes `NA_integer64_`; larger values become negative</span></span>
+<span><span class="co">##   <span style="color: #0000BB;">&lt;integer64&gt;</span>.</span></span>
+<span><span class="co">## <span style="color: #00BBBB;">ℹ</span> Set `check = FALSE` to skip this check.</span></span></code></pre>
 </div>
 <div class="section level2">
 <h2 id="differences-between-eager-and-jit-mode">Differences between eager and jit-mode<a class="anchor" aria-label="anchor" href="#differences-between-eager-and-jit-mode"></a>

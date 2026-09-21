@@ -58,24 +58,14 @@ directly.
 ``` r
 graph <- trace_fn(prim_mul, list(nv_aval("f32", c()), nv_aval("f32", c())))
 graph
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>     %x2: f32[]
-#>   Body:
-#>     %1: f32[] = mul(%x1, %x2)
-#>   Outputs:
-#>     %1: f32[] 
+#> <AnvlGraph> (%x1: f32[], %x2: f32[]) {
+#>   %1: f32[] = mul(%x1, %x2)
+#>   return %1
+#> }
 transform_gradient(graph, "lhs")
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>     %x2: f32[]
-#>   Constants:
-#>     %c1: f32[]
-#>   Body:
-#>     %1: f32[] = mul(%x1, %x2)
-#>     %2: f32[] = mul(%c1, %x2)
-#>   Outputs:
-#>     %2: f32[] 
+#> <AnvlGraph> [%c1: f32[]] (%x1: f32[], %x2: f32[]) {
+#>   %1: f32[] = mul(%x1, %x2)
+#>   %2: f32[] = mul(%c1, %x2)
+#>   return %2
+#> }
 ```

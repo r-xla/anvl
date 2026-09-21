@@ -129,26 +129,16 @@ those higher-level wrappers unless you need to operate on graphs directly.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">prim_mul</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"f32"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Inputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %x1: f32[]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %x2: f32[]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Body:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: f32[] = mul(%x1, %x2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: f32[] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[]) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %1: f32[] = mul(%x1, %x2)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return %1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="fu">transform_gradient</span><span class="op">(</span><span class="va">graph</span>, <span class="st">"lhs"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Inputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %x1: f32[]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %x2: f32[]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Constants:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %c1: f32[]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Body:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: f32[] = mul(%x1, %x2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32[] = mul(%c1, %x2)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %2: f32[] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %1: f32[] = mul(%x1, %x2)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %2: f32[] = mul(%c1, %x2)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return %2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

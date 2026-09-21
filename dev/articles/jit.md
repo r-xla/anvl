@@ -185,18 +185,13 @@ f32_vec3   <- nv_aval("f32", 3)
 f32_vec3
 #> AbstractArray(dtype=f32, shape=3)
 trace_fn(linear, args = list(x = f32_vec3, w = f32_scalar, b = f32_scalar))
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[3]
-#>     %x2: f32[]
-#>     %x3: f32[]
-#>   Body:
-#>     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x2)
-#>     %2: f32[3] = mul(%x1, %1)
-#>     %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x3)
-#>     %4: f32[3] = add(%2, %3)
-#>   Outputs:
-#>     %4: f32[3]
+#> <AnvlGraph> (%x1: f32[3], %x2: f32[], %x3: f32[]) {
+#>   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x2)
+#>   %2: f32[3] = mul(%x1, %1)
+#>   %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x3)
+#>   %4: f32[3] = add(%2, %3)
+#>   return %4
+#> }
 ```
 
 The printed `AnvlGraph` is like an R function: it has inputs, a body and
@@ -244,19 +239,14 @@ linear_repeated <- function(x, w, b, n) {
   x
 }
 trace_fn(linear_repeated, args = list(x = f32_scalar, w = f32_vec3, b = f32_vec3, n = 2L))
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>     %x2: f32[3]
-#>     %x3: f32[3]
-#>   Body:
-#>     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = <any>] (%x1)
-#>     %2: f32[3] = mul(%1, %x2)
-#>     %3: f32[3] = add(%2, %x3)
-#>     %4: f32[3] = mul(%3, %x2)
-#>     %5: f32[3] = add(%4, %x3)
-#>   Outputs:
-#>     %5: f32[3]
+#> <AnvlGraph> (%x1: f32[], %x2: f32[3], %x3: f32[3]) {
+#>   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)
+#>   %2: f32[3] = mul(%1, %x2)
+#>   %3: f32[3] = add(%2, %x3)
+#>   %4: f32[3] = mul(%3, %x2)
+#>   %5: f32[3] = add(%4, %x3)
+#>   return %5
+#> }
 ```
 
 The graph contains a single `broadcast_in_axes` (lifting the scalar `x`
@@ -286,16 +276,11 @@ trace_fn(
   linear_maybe,
   args = list(x = f32_scalar, w = f32_scalar, b = f32_scalar, use_bias = TRUE)
 )
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>     %x2: f32[]
-#>     %x3: f32[]
-#>   Body:
-#>     %1: f32[] = mul(%x1, %x2)
-#>     %2: f32[] = add(%1, %x3)
-#>   Outputs:
-#>     %2: f32[]
+#> <AnvlGraph> (%x1: f32[], %x2: f32[], %x3: f32[]) {
+#>   %1: f32[] = mul(%x1, %x2)
+#>   %2: f32[] = add(%1, %x3)
+#>   return %2
+#> }
 ```
 
 The graph contains one `mul` and one `add` operation, but no
@@ -313,13 +298,10 @@ h <- function(x) {
   if (threshold > 0.5) x * 2 else x + 1
 }
 trace_fn(h, args = list(x = f32_scalar))
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>   Body:
-#>     %1: f32[] = add(%x1, 1:f32)
-#>   Outputs:
-#>     %1: f32[]
+#> <AnvlGraph> (%x1: f32[]) {
+#>   %1: f32[] = add(%x1, 1:f32)
+#>   return %1
+#> }
 ```
 
 The trace itself runs correctly, but it becomes a problem in combination
@@ -345,15 +327,11 @@ Here we close over a default bias instead of taking it as an argument:
 default_b <- 5
 linear_default_b <- function(x, w) linear(x, w, default_b)
 trace_fn(linear_default_b, args = list(x = f32_scalar, w = f32_scalar))
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>     %x2: f32[]
-#>   Body:
-#>     %1: f32[] = mul(%x1, %x2)
-#>     %2: f32[] = add(%1, 5:f32)
-#>   Outputs:
-#>     %2: f32[]
+#> <AnvlGraph> (%x1: f32[], %x2: f32[]) {
+#>   %1: f32[] = mul(%x1, %x2)
+#>   %2: f32[] = add(%1, 5:f32)
+#>   return %2
+#> }
 ```
 
 The graph contains `add(%1, 5:f32?)` – the value `5` is hard-wired into

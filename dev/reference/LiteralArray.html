@@ -132,22 +132,18 @@ I.e., they lower to <code><a href="https://r-xla.github.io/stablehlo/reference/h
 <span class="r-in"><span><span class="co"># 1. via R literals</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Inputs: (none)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Body: (empty)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     1:f32 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; () {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return 1:f32</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">outputs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">aval</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> LiteralArray(1, f32, ()) </span>
 <span class="r-in"><span><span class="co"># 2. via nv_fill()</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="nv_fill.html">nv_fill</a></span><span class="op">(</span><span class="fl">2L</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Inputs: (none)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Body:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: i32[2, 2] = fill [value = 2, dtype = i32, shape = c(2, 2)] ()</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: i32[2, 2] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; () {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %1: i32[2,2] = fill [value = 2, dtype = i32, shape = c(2, 2)] ()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return %1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">outputs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">aval</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AbstractArray(dtype=i32, shape=2x2) </span>
 </code></pre></div>

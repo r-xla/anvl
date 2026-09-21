@@ -116,16 +116,11 @@ A `list` of length 3:
 x <- nv_array(c(1, 2))
 graph <- trace_fn(function(y) y + x, list(y = nv_aval("f32", shape = c())))
 graph
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[]
-#>   Constants:
-#>     %c1: f32[2]
-#>   Body:
-#>     %1: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = <any>] (%x1)
-#>     %2: f32[2] = add(%1, %c1)
-#>   Outputs:
-#>     %2: f32[2] 
+#> <AnvlGraph> [%c1: f32[2]] (%x1: f32[]) {
+#>   %1: f32[2] = broadcast_in_axes [shape = 2, broadcast_axes = integer(0)] (%x1)
+#>   %2: f32[2] = add(%1, %c1)
+#>   return %2
+#> }
 stablehlo(graph)
 #> [[1]]
 #> func.func @main (%0: tensor<2xf32>, %1: tensor<f32>) -> tensor<2xf32> {

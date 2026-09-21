@@ -188,14 +188,10 @@ that specify the input types.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">f</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">aten</span>, y <span class="op">=</span> <span class="va">aten</span>, op <span class="op">=</span> <span class="st">"mul"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">graph</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: f32[]</span></span>
-<span><span class="co">##     %x2: f32[]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f32[] = mul(%x1, %x2)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %1: f32[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[]) {</span></span>
+<span><span class="co">##   %1: f32[] = mul(%x1, %x2)</span></span>
+<span><span class="co">##   return %1</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>The output of <code><a href="../reference/trace_fn.html">trace_fn()</a></code> is now an
 <code>AnvlGraph</code> object that represents the computation. The
 fields of the <code>AnvlGraph</code> are:</p>
@@ -302,19 +298,12 @@ with respect to which arguments to compute the gradient.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bwd_graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/transform_gradient.html">transform_gradient</a></span><span class="op">(</span><span class="va">graph</span>, wrt <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"x"</span>, <span class="st">"y"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bwd_graph</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: f32[]</span></span>
-<span><span class="co">##     %x2: f32[]</span></span>
-<span><span class="co">##   Constants:</span></span>
-<span><span class="co">##     %c1: f32[]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f32[] = mul(%x1, %x2)</span></span>
-<span><span class="co">##     %2: f32[] = mul(%c1, %x2)</span></span>
-<span><span class="co">##     %3: f32[] = mul(%c1, %x1)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %2: f32[]</span></span>
-<span><span class="co">##     %3: f32[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span></span>
+<span><span class="co">##   %1: f32[] = mul(%x1, %x2)</span></span>
+<span><span class="co">##   %2: f32[] = mul(%c1, %x2)</span></span>
+<span><span class="co">##   %3: f32[] = mul(%c1, %x1)</span></span>
+<span><span class="co">##   return (%2, %3)</span></span>
+<span><span class="co">## }</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="lowering-a-graph">Lowering a Graph<a class="anchor" aria-label="anchor" href="#lowering-a-graph"></a>
@@ -505,20 +494,13 @@ abstract representation.</p>
 <div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">h_graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">h</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">h_graph</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: f32[]</span></span>
-<span><span class="co">##     %x2: f32[]</span></span>
-<span><span class="co">##   Constants:</span></span>
-<span><span class="co">##     %c1: f32[]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f32[] = add(%x1, %x2)</span></span>
-<span><span class="co">##     %2: f32[] = mul(%1, %x1)</span></span>
-<span><span class="co">##     %3: f32[] = mul(%c1, %x1)</span></span>
-<span><span class="co">##     %4: f32[] = mul(%c1, %1)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %3: f32[]</span></span>
-<span><span class="co">##     %4: f32[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[], %x2: f32[]) {</span></span>
+<span><span class="co">##   %1: f32[] = add(%x1, %x2)</span></span>
+<span><span class="co">##   %2: f32[] = mul(%1, %x1)</span></span>
+<span><span class="co">##   %3: f32[] = mul(%c1, %x1)</span></span>
+<span><span class="co">##   %4: f32[] = mul(%c1, %1)</span></span>
+<span><span class="co">##   return (%3, %4)</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>Afterwards, this graph is lowered to StableHLO and subsequently
 compiled.</p>
 </div>
@@ -537,19 +519,18 @@ below:</p>
 <span>  <span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">+</span> <span class="fl">1</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">graph</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: i32[]</span></span>
-<span><span class="co">##   Constants:</span></span>
-<span><span class="co">##     %c1: f32[1000000]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f32[] = convert [dtype = f32] (%x1)</span></span>
-<span><span class="co">##     %2: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = &lt;any&gt;] (%1)</span></span>
-<span><span class="co">##     %3: f32[1000000] = add(%2, %c1)</span></span>
-<span><span class="co">##     %4: f32[1000000] = broadcast_in_axes [shape = 1000000, broadcast_axes = &lt;any&gt;] (1:f32)</span></span>
-<span><span class="co">##     %5: f32[1000000] = add(%3, %4)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %5: f32[1000000]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[1000000]] (%x1: i32[]) {</span></span>
+<span><span class="co">##   %1: f32[] = convert [dtype = f32] (%x1)</span></span>
+<span><span class="co">##   %2: f32[1000000] = broadcast_in_axes [</span></span>
+<span><span class="co">##     shape = 1000000, broadcast_axes = integer(0)</span></span>
+<span><span class="co">##   ] (%1)</span></span>
+<span><span class="co">##   %3: f32[1000000] = add(%2, %c1)</span></span>
+<span><span class="co">##   %4: f32[1000000] = broadcast_in_axes [</span></span>
+<span><span class="co">##     shape = 1000000, broadcast_axes = integer(0)</span></span>
+<span><span class="co">##   ] (1:f32)</span></span>
+<span><span class="co">##   %5: f32[1000000] = add(%3, %4)</span></span>
+<span><span class="co">##   return %5</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>Here, <code>y</code> is a closed-over constant and it is included in
 the <code>$constants</code> field of the graph, just like the literal
 <code>1</code>.</p>
@@ -666,15 +647,10 @@ integer, which the runtime uploads at that data type.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"integer"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: i64[] &lt;- integer</span></span>
-<span><span class="co">##   Constants:</span></span>
-<span><span class="co">##     %c1: i64[]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: i64[] = add(%x1, %c1)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %1: i64[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: i64[]] (%x1: i64[] &lt;- integer) {</span></span>
+<span><span class="co">##   %1: i64[] = add(%x1, %c1)</span></span>
+<span><span class="co">##   return %1</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>Yielding stays within the value’s own category, so an R integer
 meeting an <code>f32</code> is an error rather than a promotion –
 crossing a category is the job of the <code>nv_*</code> layer.</p>
@@ -683,13 +659,10 @@ crossing a category is the job of the <code>nv_*</code> layer.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_exp.html">prim_exp</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: f32[] &lt;- double</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f32[] = exp(%x1)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %1: f32[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (%x1: f32[] &lt;- double) {</span></span>
+<span><span class="co">##   %1: f32[] = exp(%x1)</span></span>
+<span><span class="co">##   return %1</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>When the same <code>RData</code> input is used at several data types,
 it is supplied at the narrowest one that holds them all, and each use
 site converts down from it. Below the input is uploaded as
@@ -702,22 +675,15 @@ bits.</p>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i16"</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="st">"i64"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"integer"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: i64[] &lt;- integer</span></span>
-<span><span class="co">##   Constants:</span></span>
-<span><span class="co">##     %c1: i8[]</span></span>
-<span><span class="co">##     %c2: i16[]</span></span>
-<span><span class="co">##     %c3: i64[]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: i32[] = convert [dtype = i32] (%x1)</span></span>
-<span><span class="co">##     %2: i8[] = convert [dtype = i8] (%1)</span></span>
-<span><span class="co">##     %3: i8[] = add(%2, %c1)</span></span>
-<span><span class="co">##     %4: i16[] = convert [dtype = i16] (%1)</span></span>
-<span><span class="co">##     %5: i16[] = add(%4, %c2)</span></span>
-<span><span class="co">##     %6: i64[] = add(%x1, %c3)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %6: i64[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: i8[], %c2: i16[], %c3: i64[]] (%x1: i64[] &lt;- integer) {</span></span>
+<span><span class="co">##   %1: i32[] = convert [dtype = i32] (%x1)</span></span>
+<span><span class="co">##   %2: i8[] = convert [dtype = i8] (%1)</span></span>
+<span><span class="co">##   %3: i8[] = add(%2, %c1)</span></span>
+<span><span class="co">##   %4: i16[] = convert [dtype = i16] (%1)</span></span>
+<span><span class="co">##   %5: i16[] = add(%4, %c2)</span></span>
+<span><span class="co">##   %6: i64[] = add(%x1, %c3)</span></span>
+<span><span class="co">##   return %6</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>This design tries to balance correctness with hardware compatibility.
 Another approach would be to always represent R doubles as
 <code>f64</code>, which is their natural representation. The problem
@@ -735,30 +701,20 @@ type.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f64"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: f64[] &lt;- double</span></span>
-<span><span class="co">##   Constants:</span></span>
-<span><span class="co">##     %c1: f64[]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f64[] = add(%x1, %c1)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %1: f64[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f64[]] (%x1: f64[] &lt;- double) {</span></span>
+<span><span class="co">##   %1: f64[] = add(%x1, %c1)</span></span>
+<span><span class="co">##   return %1</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>Otherwise, the <code>double</code> input is fed as an
 <code>f32</code> to the pjrt program:</p>
 <div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_add.html">prim_add</a></span><span class="op">(</span><span class="va">x</span>, <span class="fu"><a href="../reference/AnvlArray.html">nv_scalar</a></span><span class="op">(</span><span class="fl">1</span>, <span class="st">"f32"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: f32[] &lt;- double</span></span>
-<span><span class="co">##   Constants:</span></span>
-<span><span class="co">##     %c1: f32[]</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: f32[] = add(%x1, %c1)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %1: f32[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; [%c1: f32[]] (%x1: f32[] &lt;- double) {</span></span>
+<span><span class="co">##   %1: f32[] = add(%x1, %c1)</span></span>
+<span><span class="co">##   return %1</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>There is one special case, however: operations that explicitly
 request a data type, such as <code><a href="../reference/prim_convert.html">prim_convert()</a></code> and the
 <code><a href="../reference/AnvlArray.html">nv_array()</a></code> constructor. If <code><a href="../reference/prim_convert.html">prim_convert()</a></code> were
@@ -773,13 +729,10 @@ representation.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span>\<span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu"><a href="../reference/prim_convert.html">prim_convert</a></span><span class="op">(</span><span class="va">x</span>, <span class="st">"i32"</span><span class="op">)</span></span>
 <span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/AbstractArray.html">nv_aval</a></span><span class="op">(</span><span class="st">"double"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<pre><code><span><span class="co">## &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">##   Inputs:</span></span>
-<span><span class="co">##     %x1: f64[] &lt;- double</span></span>
-<span><span class="co">##   Body:</span></span>
-<span><span class="co">##     %1: i32[] = convert [dtype = i32] (%x1)</span></span>
-<span><span class="co">##   Outputs:</span></span>
-<span><span class="co">##     %1: i32[]</span></span></code></pre>
+<pre><code><span><span class="co">## &lt;AnvlGraph&gt; (%x1: f64[] &lt;- double) {</span></span>
+<span><span class="co">##   %1: i32[] = convert [dtype = i32] (%x1)</span></span>
+<span><span class="co">##   return %1</span></span>
+<span><span class="co">## }</span></span></code></pre>
 <p>This brings an <code>f64</code> into a program that never asked for
 one, which a backend without <code>f64</code> support cannot run. We
 accept this for now, because such an <code>f64</code> is only ever an

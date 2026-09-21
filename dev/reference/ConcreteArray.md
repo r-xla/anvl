@@ -45,13 +45,9 @@ dtype(x)
 # how it appears during tracing
 graph <- trace_fn(function() y, list())
 graph
-#> <AnvlGraph>
-#>   Inputs: (none)
-#>   Constants:
-#>     %c1: f32[2]
-#>   Body: (empty)
-#>   Outputs:
-#>     %c1: f32[2] 
+#> <AnvlGraph> [%c1: f32[2]] () {
+#>   return %c1
+#> }
 graph$outputs[[1]]$aval
 #> ConcreteArray
 #>  0.5000

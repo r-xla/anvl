@@ -138,12 +138,10 @@ It lowers to <code><a href="https://r-xla.github.io/stablehlo/reference/hlo_iota
 <span class="r-in"><span><span class="co"># how it appears during tracing:</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="nv_iota.html">nv_iota</a></span><span class="op">(</span>axis <span class="op">=</span> <span class="fl">1L</span>, dtype <span class="op">=</span> <span class="st">"i32"</span>, shape <span class="op">=</span> <span class="fl">4L</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Inputs: (none)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Body:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: i32[4] = iota [axis = 1, dtype = i32, shape = 4, start = 1] ()</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %1: i32[4] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; () {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   %1: i32[4] = iota [axis = 1, dtype = "i32", shape = 4, start = 1] ()</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return %1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">outputs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">aval</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> IotaArray(shape=(4), dtype=i32, axis=1, start=1) </span>
 </code></pre></div>

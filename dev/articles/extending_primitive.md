@@ -168,13 +168,10 @@ already had one.
 ``` r
 
 trace_fn(prim_repeat_along, list(nv_aval("double", c(2, 3)), 2, 1))
-#> <AnvlGraph>
-#>   Inputs:
-#>     %x1: f32[2, 3] <- double
-#>   Body:
-#>     %1: f32[4, 3] = repeat_along [times = 2, axis = 1] (%x1)
-#>   Outputs:
-#>     %1: f32[4, 3]
+#> <AnvlGraph> (%x1: f32[2,3] <- double) {
+#>   %1: f32[4,3] = repeat_along [times = 2, axis = 1] (%x1)
+#>   return %1
+#> }
 ```
 
 Where the default goes wrong is when a primitive has several operands
@@ -408,7 +405,7 @@ prim_repeat_along
 #>     }
 #>     .jit_args <- mget(.jit_given, envir = .jit_env)
 #>     if (.jit_dots) {
-#>         .jit_args <- c(.jit_args, list(...))
+#>         .jit_args <- c(.jit_args, eval(quote(list(...)), .jit_env))
 #>     }
 #>     .jit_be <- active_backend()
 #>     .jit_run <- .jit_runs[[.jit_be]]
@@ -428,7 +425,7 @@ prim_repeat_along
 #>     }
 #>     .jit_run(.jit_args)
 #> }
-#> <environment: 0x56120fd38ab8>
+#> <environment: 0x5633d9332bd8>
 #> attr(,"class")
 #> [1] "JitPrimitive" "JitFunction" 
 #> attr(,"primitive")

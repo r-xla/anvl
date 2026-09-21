@@ -199,6 +199,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sample.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sample_int.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_save.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_scan.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_sd.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_select.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_seq.html</loc></url>
@@ -230,6 +231,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_tril.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_triu.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_trunc.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/nv_uniform.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_unserialize.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_unsqueeze.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/nv_upper_tri.html</loc></url>
@@ -319,6 +321,7 @@
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_rng_bit_generator.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_round.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_rsqrt.html</loc></url>
+<url><loc>https://r-xla.github.io/anvl/dev/reference/prim_scan.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_scatter.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_shift_left.html</loc></url>
 <url><loc>https://r-xla.github.io/anvl/dev/reference/prim_shift_right_arithmetic.html</loc></url>

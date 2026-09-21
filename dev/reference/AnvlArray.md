@@ -6,16 +6,9 @@ shape.
 ## Usage
 
 ``` r
-nv_array(
-  data,
-  dtype = NULL,
-  device = NULL,
-  shape = NULL,
-  byrow = FALSE,
-  check = FALSE
-)
+nv_array(data, dtype = NULL, device = NULL, shape = NULL, byrow = FALSE)
 
-nv_scalar(data, dtype = NULL, device = NULL, check = FALSE)
+nv_scalar(data, dtype = NULL, device = NULL)
 
 nv_matrix(
   data,
@@ -107,15 +100,6 @@ nv_empty_like(like, dtype = NULL, shape = NULL, device = NULL)
   [`base::matrix()`](https://rdrr.io/r/base/matrix.html)'s `byrow`. Only
   allowed when `data` is an R object — passing an existing `AnvlArray`
   together with `byrow = TRUE` is an error.
-
-- check:
-
-  (`logical(1)`)  
-  If `TRUE`, error when `data` contains any `NA` values. XLA has no
-  representation for missing values, so they are otherwise silently
-  coerced to the closest available value of the target dtype (e.g. `NaN`
-  for floats, the bit pattern `-2147483648` for `i32`, `TRUE` for
-  `bool`). Defaults to `FALSE`. See the "Gotchas" vignette.
 
 - nrow:
 
@@ -245,8 +229,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  4.1920e+06 3.0624e-41 4.1920e+06
-#>  3.0624e-41 4.6377e+04 3.0624e-41
+#>  9.8091e-45 1.1210e-44 1.2612e-44
+#>  1.4013e-44 1.5414e-44 1.6816e-44
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---

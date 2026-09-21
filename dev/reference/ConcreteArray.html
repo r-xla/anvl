@@ -127,13 +127,9 @@ This is to avoid increasing compilation time and bloating the size of the execut
 <span class="r-in"><span><span class="co"># how it appears during tracing</span></span></span>
 <span class="r-in"><span><span class="va">graph</span> <span class="op">&lt;-</span> <span class="fu"><a href="trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="va">y</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">graph</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Inputs: (none)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Constants:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %c1: f32[2]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Body: (empty)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   Outputs:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     %c1: f32[2] </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;AnvlGraph&gt; [%c1: f32[2]] () {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   return %c1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> }</span>
 <span class="r-in"><span><span class="va">graph</span><span class="op">$</span><span class="va">outputs</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">aval</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ConcreteArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0.5000</span>

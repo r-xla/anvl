@@ -63,12 +63,10 @@ dtype(x)
 # how it appears during tracing:
 graph <- trace_fn(function() nv_iota(axis = 1L, dtype = "i32", shape = 4L), list())
 graph
-#> <AnvlGraph>
-#>   Inputs: (none)
-#>   Body:
-#>     %1: i32[4] = iota [axis = 1, dtype = i32, shape = 4, start = 1] ()
-#>   Outputs:
-#>     %1: i32[4] 
+#> <AnvlGraph> () {
+#>   %1: i32[4] = iota [axis = 1, dtype = "i32", shape = 4, start = 1] ()
+#>   return %1
+#> }
 graph$outputs[[1]]$aval
 #> IotaArray(shape=(4), dtype=i32, axis=1, start=1) 
 ```

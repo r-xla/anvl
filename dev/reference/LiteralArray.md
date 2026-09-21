@@ -55,22 +55,18 @@ dtype(x)
 # 1. via R literals
 graph <- trace_fn(function() 1, list())
 graph
-#> <AnvlGraph>
-#>   Inputs: (none)
-#>   Body: (empty)
-#>   Outputs:
-#>     1:f32 
+#> <AnvlGraph> () {
+#>   return 1:f32
+#> }
 graph$outputs[[1]]$aval
 #> LiteralArray(1, f32, ()) 
 # 2. via nv_fill()
 graph <- trace_fn(function() nv_fill(2L, shape = c(2, 2)), list())
 graph
-#> <AnvlGraph>
-#>   Inputs: (none)
-#>   Body:
-#>     %1: i32[2, 2] = fill [value = 2, dtype = i32, shape = c(2, 2)] ()
-#>   Outputs:
-#>     %1: i32[2, 2] 
+#> <AnvlGraph> () {
+#>   %1: i32[2,2] = fill [value = 2, dtype = i32, shape = c(2, 2)] ()
+#>   return %1
+#> }
 graph$outputs[[1]]$aval
 #> AbstractArray(dtype=i32, shape=2x2) 
 ```

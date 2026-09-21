@@ -13,7 +13,8 @@ bit64::as.integer64(): signed or unsigned integer dtypes. This is how
 to read i64, ui64 and ui32 values that an R integer cannot hold.
 It is lossless for i64 and ui32, but bit64::integer64 is itself
 signed, so a ui64 value &amp;gt;= 2^63 wraps to a negative one (exactly
-2^63 becomes NA); pass check = TRUE to be told when that happens.
+2^63 becomes NA); that is warned about, and check = &quot;err&quot; makes it
+an error.
 as.logical(): bool.
 as.vector(): any dtype; the R type is chosen by the dtype. For the
 dtypes R has no native type for (i64, ui64, ui32) that is the
@@ -25,7 +26,7 @@ FALSE for it.
 Use as_array() to obtain an R array that preserves the shape, or
 nv_convert() to change the dtype of an AnvlArray before coercing.
 as.vector()'s signature is fixed by the generic, so it takes no check
-argument; call as_array() with check = TRUE to have the values
+argument; call as_array() with check = &quot;err&quot; to have the values
 validated."><meta property="og:description" content="Convert an AnvlArray to a flat R vector, discarding the array's shape.
 Each method requires a compatible dtype:
 as.double() / as.numeric(): float or (signed/unsigned) integer dtypes.
@@ -34,7 +35,8 @@ bit64::as.integer64(): signed or unsigned integer dtypes. This is how
 to read i64, ui64 and ui32 values that an R integer cannot hold.
 It is lossless for i64 and ui32, but bit64::integer64 is itself
 signed, so a ui64 value &amp;gt;= 2^63 wraps to a negative one (exactly
-2^63 becomes NA); pass check = TRUE to be told when that happens.
+2^63 becomes NA); that is warned about, and check = &quot;err&quot; makes it
+an error.
 as.logical(): bool.
 as.vector(): any dtype; the R type is chosen by the dtype. For the
 dtypes R has no native type for (i64, ui64, ui32) that is the
@@ -46,7 +48,7 @@ FALSE for it.
 Use as_array() to obtain an R array that preserves the shape, or
 nv_convert() to change the dtype of an AnvlArray before coercing.
 as.vector()'s signature is fixed by the generic, so it takes no check
-argument; call as_array() with check = TRUE to have the values
+argument; call as_array() with check = &quot;err&quot; to have the values
 validated."><meta property="og:image" content="https://r-xla.github.io/anvl/logo.svg"><meta name="robots" content="noindex"></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
@@ -125,7 +127,8 @@ Each method requires a compatible dtype:</p><ul><li><p><code><a href="https://rd
 to read <code>i64</code>, <code>ui64</code> and <code>ui32</code> values that an R <code>integer</code> cannot hold.
 It is lossless for <code>i64</code> and <code>ui32</code>, but <code><a href="https://bit64.r-lib.org/reference/bit64-package.html" class="external-link">bit64::integer64</a></code> is itself
 signed, so a <code>ui64</code> value <code>&gt;= 2^63</code> wraps to a negative one (exactly
-<code>2^63</code> becomes <code>NA</code>); pass <code>check = TRUE</code> to be told when that happens.</p></li>
+<code>2^63</code> becomes <code>NA</code>); that is warned about, and <code>check = "err"</code> makes it
+an error.</p></li>
 <li><p><code><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical()</a></code>: <code>bool</code>.</p></li>
 <li><p><code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>: any dtype; the R type is chosen by the dtype. For the
 dtypes R has no native type for (<code>i64</code>, <code>ui64</code>, <code>ui32</code>) that is the
@@ -135,23 +138,23 @@ not hold the values – and it keeps its class, so <code><a href="https://rdrr.i
 </ul><p>Use <code><a href="as_array.html">as_array()</a></code> to obtain an R array that preserves the shape, or
 <code><a href="nv_convert.html">nv_convert()</a></code> to change the dtype of an <code><a href="AnvlArray.html">AnvlArray</a></code> before coercing.
 <code><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector()</a></code>'s signature is fixed by the generic, so it takes no <code>check</code>
-argument; call <code><a href="as_array.html">as_array()</a></code> with <code>check = TRUE</code> to have the values
+argument; call <code><a href="as_array.html">as_array()</a></code> with <code>check = "err"</code> to have the values
 validated.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for class 'AnvlArray'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/double.html" class="external-link">as.double</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="st">"warn"</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="st">"warn"</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
-<span><span class="fu">as.integer64</span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu">as.integer64</span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="st">"warn"</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">as.logical</a></span><span class="op">(</span><span class="va">x</span>, check <span class="op">=</span> <span class="st">"warn"</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for class 'AnvlArray'</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/vector.html" class="external-link">as.vector</a></span><span class="op">(</span><span class="va">x</span>, mode <span class="op">=</span> <span class="st">"any"</span><span class="op">)</span></span></code></pre></div>
@@ -167,7 +170,7 @@ Array to coerce.</p></dd>
 
 
 <dt id="arg-check">check<a class="anchor" aria-label="anchor" href="#arg-check"></a></dt>
-<dd><p>(<code>logical(1)</code>)<br>
+<dd><p>(<code>character(1)</code> | <code>FALSE</code>)<br>
 Forwarded to <code><a href="as_array.html">as_array()</a></code>; see there for details.</p></dd>
 
 

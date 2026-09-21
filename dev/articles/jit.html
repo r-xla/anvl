@@ -289,18 +289,13 @@ the hood. Below, we trace <code>linear</code> with a length-3 vector for
 <span><span class="va">f32_vec3</span></span>
 <span><span class="co">#&gt; AbstractArray(dtype=f32, shape=3)</span></span>
 <span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">linear</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_vec3</span>, w <span class="op">=</span> <span class="va">f32_scalar</span>, b <span class="op">=</span> <span class="va">f32_scalar</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">#&gt;   Inputs:</span></span>
-<span><span class="co">#&gt;     %x1: f32[3]</span></span>
-<span><span class="co">#&gt;     %x2: f32[]</span></span>
-<span><span class="co">#&gt;     %x3: f32[]</span></span>
-<span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x2)</span></span>
-<span><span class="co">#&gt;     %2: f32[3] = mul(%x1, %1)</span></span>
-<span><span class="co">#&gt;     %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x3)</span></span>
-<span><span class="co">#&gt;     %4: f32[3] = add(%2, %3)</span></span>
-<span><span class="co">#&gt;   Outputs:</span></span>
-<span><span class="co">#&gt;     %4: f32[3]</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[3], %x2: f32[], %x3: f32[]) {</span></span>
+<span><span class="co">#&gt;   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x2)</span></span>
+<span><span class="co">#&gt;   %2: f32[3] = mul(%x1, %1)</span></span>
+<span><span class="co">#&gt;   %3: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x3)</span></span>
+<span><span class="co">#&gt;   %4: f32[3] = add(%2, %3)</span></span>
+<span><span class="co">#&gt;   return %4</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>The printed <code>AnvlGraph</code> is like an R function: it has
 inputs, a body and outputs. However, the content is more structured:</p>
 <ul>
@@ -346,19 +341,14 @@ recorded in the graph. Here we apply the <code>linear</code> function
 <span>  <span class="va">x</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">linear_repeated</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_scalar</span>, w <span class="op">=</span> <span class="va">f32_vec3</span>, b <span class="op">=</span> <span class="va">f32_vec3</span>, n <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">#&gt;   Inputs:</span></span>
-<span><span class="co">#&gt;     %x1: f32[]</span></span>
-<span><span class="co">#&gt;     %x2: f32[3]</span></span>
-<span><span class="co">#&gt;     %x3: f32[3]</span></span>
-<span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = &lt;any&gt;] (%x1)</span></span>
-<span><span class="co">#&gt;     %2: f32[3] = mul(%1, %x2)</span></span>
-<span><span class="co">#&gt;     %3: f32[3] = add(%2, %x3)</span></span>
-<span><span class="co">#&gt;     %4: f32[3] = mul(%3, %x2)</span></span>
-<span><span class="co">#&gt;     %5: f32[3] = add(%4, %x3)</span></span>
-<span><span class="co">#&gt;   Outputs:</span></span>
-<span><span class="co">#&gt;     %5: f32[3]</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[3], %x3: f32[3]) {</span></span>
+<span><span class="co">#&gt;   %1: f32[3] = broadcast_in_axes [shape = 3, broadcast_axes = integer(0)] (%x1)</span></span>
+<span><span class="co">#&gt;   %2: f32[3] = mul(%1, %x2)</span></span>
+<span><span class="co">#&gt;   %3: f32[3] = add(%2, %x3)</span></span>
+<span><span class="co">#&gt;   %4: f32[3] = mul(%3, %x2)</span></span>
+<span><span class="co">#&gt;   %5: f32[3] = add(%4, %x3)</span></span>
+<span><span class="co">#&gt;   return %5</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>The graph contains a single <code>broadcast_in_axes</code> (lifting
 the scalar <code>x</code> to <code>f32[3]</code>) followed by two
 <code>mul</code>/<code>add</code> pairs in sequence – not a loop
@@ -386,16 +376,11 @@ on a static input flag:</p>
 <span>  <span class="va">linear_maybe</span>,</span>
 <span>  args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_scalar</span>, w <span class="op">=</span> <span class="va">f32_scalar</span>, b <span class="op">=</span> <span class="va">f32_scalar</span>, use_bias <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">#&gt;   Inputs:</span></span>
-<span><span class="co">#&gt;     %x1: f32[]</span></span>
-<span><span class="co">#&gt;     %x2: f32[]</span></span>
-<span><span class="co">#&gt;     %x3: f32[]</span></span>
-<span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[] = mul(%x1, %x2)</span></span>
-<span><span class="co">#&gt;     %2: f32[] = add(%1, %x3)</span></span>
-<span><span class="co">#&gt;   Outputs:</span></span>
-<span><span class="co">#&gt;     %2: f32[]</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[], %x3: f32[]) {</span></span>
+<span><span class="co">#&gt;   %1: f32[] = mul(%x1, %x2)</span></span>
+<span><span class="co">#&gt;   %2: f32[] = add(%1, %x3)</span></span>
+<span><span class="co">#&gt;   return %2</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>The graph contains one <code>mul</code> and one <code>add</code>
 operation, but no conditional. Tracing with
 <code>use_bias = FALSE</code> would produce a graph containing the other
@@ -409,13 +394,10 @@ enclosing environment:</p>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">threshold</span> <span class="op">&gt;</span> <span class="fl">0.5</span><span class="op">)</span> <span class="va">x</span> <span class="op">*</span> <span class="fl">2</span> <span class="kw">else</span> <span class="va">x</span> <span class="op">+</span> <span class="fl">1</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">h</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_scalar</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">#&gt;   Inputs:</span></span>
-<span><span class="co">#&gt;     %x1: f32[]</span></span>
-<span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[] = add(%x1, 1:f32)</span></span>
-<span><span class="co">#&gt;   Outputs:</span></span>
-<span><span class="co">#&gt;     %1: f32[]</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[]) {</span></span>
+<span><span class="co">#&gt;   %1: f32[] = add(%x1, 1:f32)</span></span>
+<span><span class="co">#&gt;   return %1</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>The trace itself runs correctly, but it becomes a problem in
 combination with <code><a href="../reference/jit.html">jit()</a></code>’s caching mechanism. The closed-over
 <code>threshold</code> does not influence the cache key, so subsequent
@@ -439,15 +421,11 @@ argument:</p>
 <code class="sourceCode R"><span><span class="va">default_b</span> <span class="op">&lt;-</span> <span class="fl">5</span></span>
 <span><span class="va">linear_default_b</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span><span class="op">)</span> <span class="fu">linear</span><span class="op">(</span><span class="va">x</span>, <span class="va">w</span>, <span class="va">default_b</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/trace_fn.html">trace_fn</a></span><span class="op">(</span><span class="va">linear_default_b</span>, args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">f32_scalar</span>, w <span class="op">=</span> <span class="va">f32_scalar</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; &lt;AnvlGraph&gt;</span></span>
-<span><span class="co">#&gt;   Inputs:</span></span>
-<span><span class="co">#&gt;     %x1: f32[]</span></span>
-<span><span class="co">#&gt;     %x2: f32[]</span></span>
-<span><span class="co">#&gt;   Body:</span></span>
-<span><span class="co">#&gt;     %1: f32[] = mul(%x1, %x2)</span></span>
-<span><span class="co">#&gt;     %2: f32[] = add(%1, 5:f32)</span></span>
-<span><span class="co">#&gt;   Outputs:</span></span>
-<span><span class="co">#&gt;     %2: f32[]</span></span></code></pre></div>
+<span><span class="co">#&gt; &lt;AnvlGraph&gt; (%x1: f32[], %x2: f32[]) {</span></span>
+<span><span class="co">#&gt;   %1: f32[] = mul(%x1, %x2)</span></span>
+<span><span class="co">#&gt;   %2: f32[] = add(%1, 5:f32)</span></span>
+<span><span class="co">#&gt;   return %2</span></span>
+<span><span class="co">#&gt; }</span></span></code></pre></div>
 <p>The graph contains <code>add(%1, 5:f32?)</code> – the value
 <code>5</code> is hard-wired into the program. Changing
 <code>default_b</code> afterwards has no effect on the graph (and, once

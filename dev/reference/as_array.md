@@ -9,7 +9,7 @@ axes.
 
 ``` r
 # S3 method for class 'AnvlArray'
-as_array(x, check = FALSE, ...)
+as_array(x, check = "warn", ...)
 
 as_array(x, ...)
 ```
@@ -23,16 +23,18 @@ as_array(x, ...)
 
 - check:
 
-  (`logical(1)`)  
-  If `TRUE`, sanity-check the materialized R vector against losing
-  information across the device-to-host boundary, and abort if any
-  problematic value is detected. Forwarded to the backend; for the
-  `pjrt` backend the relevant cases are `i32`/`i64` values colliding
-  with the `NA` bit pattern and `ui64` values `>= 2^63` wrapping through
+  (`character(1)` \| `FALSE`)  
+  How to report a materialized value that the R type cannot hold:
+  `"warn"` (the default) warns and returns it anyway, `"err"` aborts,
+  and `FALSE` skips the scan. `TRUE` is not accepted – with two levels
+  of strictness it does not say which one is meant. Forwarded to the
+  backend; for the `pjrt` backend the cases scanned for are `i32`/`i64`
+  values colliding with the `NA` bit pattern and `ui64` values `>= 2^63`
+  wrapping through
   [`bit64::integer64`](https://bit64.r-lib.org/reference/bit64-package.html).
   See
   [`pjrt::as_array.PJRTBuffer()`](https://r-xla.github.io/pjrt/reference/as_array.PJRTBuffer.html)
-  for the full list. Defaults to `FALSE`. See the "Gotchas" vignette.
+  for the full list, and the "Gotchas" vignette.
 
 - ...:
 
