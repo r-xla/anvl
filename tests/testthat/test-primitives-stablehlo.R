@@ -1199,7 +1199,7 @@ test_that("prim_dot_general precision", {
       batching_axes = list(integer(), integer()),
       precision = "bogus"
     ),
-    "should be one of"
+    "`precision` must be one of"
   )
 })
 
@@ -1375,5 +1375,39 @@ test_that("the dynamic slicing primitives go through stablehlo's inference", {
   expect_equal(
     as.vector(prim_dynamic_update_slice(v, nv_array(99), nv_scalar(1L))),
     c(99, 20, 30)
+  )
+})
+
+test_that("prim_broadcast_in_axes goes through stablehlo's inference", {
+  # The wording is stablehlo's -- `broadcast_dimensions` -- but the axis
+  # numbers are anvl's, `to_one_based()` converting them on the way out.
+  x <- nv_array(c(1, 2, 3))
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = 3L),
+    "valid range is \\[1, 3\\)"
+  )
+  expect_error(
+    prim_broadcast_in_axes(x, shape = c(2L, 3L), broadcast_axes = c(1L, 2L)),
+    "must equal rank"
+  )
+})
+
+test_that("prim_static_slice requires a stride of at least 1", {
+  x <- nv_array(1:10)
+  expect_error(
+    prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 0L),
+    "strides"
+  )
+  expect_equal(
+    as.integer(prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 2L)),
+    c(1L, 3L, 5L)
+  )
+})
+
+test_that("prim_sort takes a list of arrays, not an array", {
+  expect_error(prim_sort(nv_array(c(3, 1, 2)), axis = 1L), "non-empty list")
+  expect_equal(
+    as.vector(as_array(prim_sort(list(nv_array(c(3, 1, 2))), axis = 1L)[[1L]])),
+    c(1, 2, 3)
   )
 })

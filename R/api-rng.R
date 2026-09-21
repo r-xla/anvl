@@ -252,7 +252,8 @@ nv_rbinom <- jit(
     # as `bool` for `size = 1` and silently as an integer for anything above.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
-      arg = "dtype"
+      arg = "dtype",
+      hint = "A boolean cannot hold a count; use an integer data type and compare it."
     )
     checkmate::assert_int(size, lower = 1)
     checkmate::assert_number(prob, lower = 0, upper = 1)
@@ -312,7 +313,8 @@ nv_sample_int <- jit(
     # An index is a count too: at `bool` every draw collapsed to `TRUE`.
     dtype <- assert_numeric_dtype(
       dtype %||% default_int(),
-      arg = "dtype"
+      arg = "dtype",
+      hint = "A boolean cannot hold an index; use an integer data type."
     )
     assert_int(n, lower = 1)
     shape <- assert_shapevec(shape)

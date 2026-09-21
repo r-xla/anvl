@@ -81,6 +81,8 @@
 
 ## Bug fixes
 
+* `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
+  inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second
   time. It used to rebuild the call with `match.call()` and evaluate the
   argument expressions again in the caller's frame, which computed them twice
@@ -88,7 +90,11 @@
   dispatch, which evaluates the first argument to choose a method.
 * `nv_conv1d()` / `nv_conv2d()` / `nv_conv3d()` now promote `x` and `weight`
   to a common data type.
-* The floating-point `nv_*` functions refuse a boolean.
+* The floating-point `nv_*` functions refuse a boolean, `nv_matmul()`,
+  `nv_solve()` and `nv_triangular_solve()` included -- a boolean used to meet a
+  numeric operand at that operand's data type and pass their data type check.
+* `nv_crossprod()` and `nv_tcrossprod()` transpose only the last two axes, so
+  they work on batched arrays.
 * `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
   is refused rather than silently truncated.
 * A range that counts down (`x[3:1]`) now selects in reverse instead of failing.
