@@ -83,7 +83,7 @@ Note that even `nv_broadcast_arrays()` cannot replicate R's recycling for shapes
 
 R has a dedicated missing-value marker (`NA`) for every atomic type.
 {anvl} arrays do not -- there is no representation of "missing" at the XLA level, only `NaN` for floating point numbers.
-When you convert R values containing `NA` into an `AnvlArray`, the `NA`s are silently turned into `NaN`s.
+At a floating-point dtype, an `NA` silently turns into a `NaN`:
 
 ```{r}
 nv_array(NA_real_)
@@ -93,42 +93,46 @@ nv_array(NA_real_)
 nv_array(c(1, NA, 3))
 ```
 
-Round-tripping back to R is not guaranteed to produce `NA`, but can also yield `NaN`:
+Round-tripping back to R therefore does not give the `NA` back, but a `NaN`:
 
 ```{r}
 as_array(nv_array(c(1, NA, 3)))
 ```
 
-For other data types, the situation is even worse, especially for integers, where R uses the smallest possible value to represent missingness:
+The signed integer dtypes are a special case.
+R spells `NA_integer_` as the bit pattern `-2147483648`, which is also what an `i32` array stores, so the value survives the round trip -- but on the device it is an ordinary, very negative integer that nothing distinguishes from a missing value.
+Both directions warn about it:
 
 ```{r}
-nv_scalar(NA_integer_)
+x <- nv_scalar(NA_integer_)
+x
 ```
 
-However, when you convert it back, you get a missing value again:
-
 ```{r}
-as.integer(nv_scalar(NA_integer_))
+as.integer(x)
 ```
 
-When creating logicals, `NA` will be interpreted as `TRUE`:
+At every other dtype there is no bit pattern for an `NA` to land on, so a missing value is an error, including for `bool`:
 
-```{r}
+```{r, error = TRUE}
 nv_scalar(NA)
-as.logical(nv_scalar(NA))
 ```
 
-In order to avoid these pitfals, array creators such as `nv_array()` have a `check` argument to prevent the above problems.
+```{r, error = TRUE}
+nv_array(c(1L, NA, 3L), dtype = "i16")
+```
+
+To catch missing values before any of this, array creators such as `nv_array()` have a `check` argument.
 It is `FALSE` by default, because it needs to scan the complete data.
 
 ```{r, error = TRUE}
 nv_array(c(1, NA, 3), check = TRUE)
 ```
 
-The same flag is available for converters like `as_array()`:
+Converters like `as_array()` have one too, with three levels: `"warn"` (the default) warns about a value R's type cannot hold, `"err"` makes it an error, and `FALSE` skips the scan.
 
 ```{r, error = TRUE}
-as_array(nv_scalar(NA_integer_), check = TRUE)
+as_array(nv_scalar(NA_integer_), check = "err")
 ```
 
 ## Subnormal floating-point values
@@ -194,13 +198,14 @@ big <- nv_array(2147483647L, dtype = "ui32") + 1L
 as_array(big)
 ```
 
-However, for `ui64`, we also convert to `integer64`, which does not cover the whole range, so overflow is possible, but can be detected via the `check` flag:
+However, for `ui64`, we also convert to `integer64`, which does not cover the whole range, so wrapping is possible.
+`as_array()` warns about it, and `check = "err"` makes it an error:
 
 ```{r, error = TRUE}
 big <- nv_array(0L, dtype = "ui64") - 1L
 big
 as_array(big)
-as_array(big, check = TRUE)
+as_array(big, check = "err")
 ```
 
 ## Differences between eager and jit-mode

@@ -88,10 +88,10 @@ Only allowed when \code{data} is an R object — passing an existing
 
 \item{check}{(\code{logical(1)})\cr
 If \code{TRUE}, error when \code{data} contains any \code{NA} values. XLA has no
-representation for missing values, so they are otherwise silently
-coerced to the closest available value of the target dtype (e.g. \code{NaN}
-for floats, the bit pattern \code{-2147483648} for \code{i32}, \code{TRUE} for
-\code{bool}). Defaults to \code{FALSE}. See the "Gotchas" vignette.}
+representation for missing values: at a float dtype they otherwise
+become \code{NaN}, at \code{i32} and \code{i64} they become the bit pattern R itself
+spells \code{NA} as (with a warning), and at every other dtype the backend
+rejects them. Defaults to \code{FALSE}. See the "Gotchas" vignette.}
 
 \item{nrow}{(\code{NULL} | \code{integer(1)})\cr
 Number of rows. Inferred from \code{ncol} and the data length if \code{NULL}.
