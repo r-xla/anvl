@@ -19,8 +19,6 @@ format_node_id <- function(node, node_ids, digits = getOption("digits")) {
 format_literal <- function(node, digits = getOption("digits")) {
   val <- node$aval$data
   if (is_anvl_array(val)) {
-    # A literal is printed as-is: formatting a graph must not warn about a
-    # value R's type cannot hold.
     val <- as_array(val, check = FALSE)
   }
   sprintf(
