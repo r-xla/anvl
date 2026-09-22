@@ -84,6 +84,17 @@ Under `jit()` this happens automatically, but in **eager mode** you are responsi
 If you are adding a new array-creator function (`nv_foo` that allocates data rather than transforming an input), also add a `nv_foo_like(like, ...)` variant next to it.
 Any dispatch-on-input constants inside other API functions should go through `_like`, not the bare creator.
 
+### Integer literals
+
+Write a whole number with the `L` suffix wherever it *is* an integer -- an axis number, a shape
+entry, an index, a count -- and in the arithmetic and comparisons around it: `naxes(x) == 0L`,
+`axis + 1L`, `rep(1L, rank)`, `n %% 2L == 1L`.
+
+The exception is a literal that meets an array. There the value is not an R integer but a
+dtype-taking one, so it is written in the *category* of the operand: `nv_ifelse(mask, 0, x)` for
+a float `x`, `0L` only when `x` is an integer array. Adding an `L` there silently narrows the
+category.
+
 ### Binary element-wise ops
 
 For element-wise binary primitives, use the `make_do_binary()` factory -- it already composes `nv_promote_to_common()` + `nv_broadcast_scalars()` before calling the primitive:

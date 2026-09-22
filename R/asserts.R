@@ -29,7 +29,7 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
         x = "Got {fmt(x)}."
       ))
     }
-    if (any(x < 0)) {
+    if (any(x < 0L)) {
       cli_abort(c(
         "{.arg {var_name}} must not contain a negative axis size.",
         x = "Got {fmt(x)}."
@@ -114,7 +114,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
     ))
   }
   known <- prod(shape[-inferred])
-  if (known <= 0 || nelts %% known != 0) {
+  if (known <= 0L || nelts %% known != 0L) {
     cli_abort(c(
       "Cannot infer the size of axis {inferred} of {.arg {arg}}.",
       # The `-1` is the axis being asked for, so it is shown as `?` rather
@@ -189,9 +189,9 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   }
 
   ok <- if (is_dtype_bool(dt)) {
-    is.logical(value) || (is_whole && (value == 0 || value == 1))
+    is.logical(value) || (is_whole && (value == 0L || value == 1L))
   } else if (is_dtype_uint(dt)) {
-    is_whole && value >= 0
+    is_whole && value >= 0L
   } else if (is_dtype_int(dt)) {
     is_whole
   } else {

@@ -35,6 +35,12 @@ When adding new functionality, decide which layer it belongs to. Most new operat
 
 Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets, so write it in the *category* the operand is in -- `0` for a float array, `0L` for an integer one. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
 
+This is where the general "write a whole number as `1L`" rule stops. A literal that meets an
+array is not an R integer, it is a dtype-taking value, so `1L` there *narrows the category* and
+`nv_ifelse(mask, 0L, x)` on a float `x` is a bug, not a style fix. Elsewhere in the package --
+axis numbers, shape entries, indices, counts, and the arithmetic and comparisons around them --
+the `L` suffix applies as usual: `naxes(x) == 0L`, `e[[2L]]`, `n %% 2L == 1L`.
+
 ## Terminology
 
 - **Axis, axis size, shape.** An *axis* is an index that identifies a direction of an array; the *size* of that axis (its *axis size*) is the extent along it; the *shape* is the vector of all axis sizes. For a `20x5x3` array the axes are `1`, `2`, `3` and the shape is `c(20, 5, 3)`, so the size of axis `1` is `20`. Name identifiers accordingly: use `axis`/`axes` when the value is an index (or vector of indices) and `shape` for the vector of sizes; for a single size use an *axis size* name (e.g. `axis_size`, `n`). Helpers reflect this: `naxes(x)` is the number of axes (the rank), so `seq_len(naxes(x))` is the axis indices, and `shape(x)` returns the axis sizes.

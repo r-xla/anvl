@@ -288,7 +288,7 @@ nv_reshape <- function(x, shape) {
 #' nv_flatten(matrix(1:4, nrow = 2))
 nv_flatten <- function(x) {
   x <- as_anvl_array(x)
-  if (naxes(x) == 0) {
+  if (naxes(x) == 0L) {
     cli_abort("Cannot flatten a scalar array.")
   }
   nv_reshape(x, prod(shape(x)))
@@ -3638,9 +3638,9 @@ nv_quantile <- jit(
     idx_dtype <- "f64"
 
     n_axis <- shp[axis]
-    budget <- ceiling(n_axis / 2) + 1
-    k_lo <- as.integer(ceiling((n_axis - 1) * max(probs)) + 1)
-    k_hi <- as.integer(n_axis - floor((n_axis - 1) * min(probs)))
+    budget <- ceiling(n_axis / 2L) + 1L
+    k_lo <- as.integer(ceiling((n_axis - 1L) * max(probs)) + 1L)
+    k_hi <- as.integer(n_axis - floor((n_axis - 1L) * min(probs)))
     path <- if (n_axis > 0L && k_lo <= budget) {
       "low"
     } else if (n_axis > 0L && k_hi <= budget) {
@@ -3883,7 +3883,7 @@ nv_argmin <- jit(
 
 # Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.
 .nv_conv_axis_numbers <- function(n_spatial) {
-  spatial <- 3:(2 + n_spatial)
+  spatial <- 3:(2L + n_spatial)
   list(
     input_batch_axis = 1L,
     input_feature_axis = 2L,

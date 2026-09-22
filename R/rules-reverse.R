@@ -862,7 +862,7 @@ prim_concatenate[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 
   offset <- 1L
   limit_indices <- shape(grad)
-  start_indices <- rep(1L, length(shape(inputs[[1]])))
+  start_indices <- rep(1L, length(shape(inputs[[1L]])))
   for (i in seq_len(n_inputs)) {
     input_shape <- shape(inputs[[i]])
     axis_size <- input_shape[axis]

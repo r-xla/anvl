@@ -161,7 +161,7 @@ register_backend(
       }
       dtype_chr <- as.character(dtype)
       data <- switch(
-        substr(dtype_chr, 1, 1),
+        substr(dtype_chr, 1L, 1L),
         "f" = as.double(data),
         "i" = ,
         "u" = as.integer(data),

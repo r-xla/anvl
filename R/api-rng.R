@@ -180,7 +180,7 @@ nv_rnorm <- jit(
     U <- nv_unif_rand(
       initial_state = initial_state,
       dtype = dtype,
-      shape = as.integer(ceiling(n / 2))
+      shape = as.integer(ceiling(n / 2L))
     )
 
     # compute the radius R = sqrt(-2 * log(u1))
@@ -188,7 +188,7 @@ nv_rnorm <- jit(
     sqrt_R <- nv_sqrt(R)
 
     # generate second batch of ceil(n/2) random uniform variables
-    Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2)))
+    Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2L)))
 
     # compute cos(2 * pi * u2) / sin(2 * pi * u2)
     Theta$values <- nv_mul(Theta$values, 2 * pi)
@@ -203,7 +203,7 @@ nv_rnorm <- jit(
     Z <- nv_concatenate(Z1, Z2, axis = 1L)
 
     # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
-    if (n %% 2 == 1) {
+    if (n %% 2L == 1L) {
       Z <- nv_static_slice(Z, start_indices = 1L, limit_indices = n, strides = 1L)
     }
 

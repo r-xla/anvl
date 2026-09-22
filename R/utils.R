@@ -5,9 +5,9 @@ dtype_from_buffer <- function(x) {
 
 hashvalues <- function(h) {
   val <- vector("list", numhash(h))
-  idx <- 0
+  idx <- 0L
   maphash(h, function(k, v) {
-    idx <<- idx + 1
+    idx <<- idx + 1L
     val[[idx]] <<- v
   })
   val
@@ -25,8 +25,8 @@ formals2 <- function(f) {
 
 # We assume little endian
 minmax_raw <- function(bits, signed = TRUE) {
-  stopifnot(bits %% 8 == 0, bits >= 8)
-  n <- bits %/% 8
+  stopifnot(bits %% 8L == 0L, bits >= 8L)
+  n <- bits %/% 8L
   if (!signed) {
     return(list(
       min = as.raw(rep(0x00, n)),
@@ -35,8 +35,8 @@ minmax_raw <- function(bits, signed = TRUE) {
   }
   hi_min <- as.raw(0x80) # 1000 0000
   hi_max <- as.raw(0x7F) # 0111 1111
-  zeros <- as.raw(rep(0x00, n - 1))
-  ff <- as.raw(rep(0xFF, n - 1))
+  zeros <- as.raw(rep(0x00, n - 1L))
+  ff <- as.raw(rep(0xFF, n - 1L))
   list(min = c(zeros, hi_min), max = c(ff, hi_max))
 }
 

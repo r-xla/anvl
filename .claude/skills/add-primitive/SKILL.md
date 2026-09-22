@@ -34,6 +34,16 @@ stablehlo::GatherDimensionNumbers(
 )
 ```
 
+## Integer Literals
+
+Axis numbers, shape entries, indices and counts are integers, so write them as `1L`, not `1` --
+including in the arithmetic that converts to StableHLO's 0-based indexing (`axes - 1L`,
+`rep(1L, rank)`, `seq_len(rank) - 1L`).
+
+A literal that meets an array is the exception: it takes the dtype of the operands it meets, so
+it is written in their *category* (`prim_fill(0, dtype = dtype(x), ...)`, `hlo_scalar(1, ...)`).
+An `L` there narrows the category and is a bug, not a style fix.
+
 ## Roxygen Documentation
 
 Use templates from `man-roxygen/` where applicable:

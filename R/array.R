@@ -1212,7 +1212,7 @@ arr <- function(..., shape = NULL) {
   assert_integerish(shape, null.ok = TRUE)
   assert_vector(vals, min.len = 1L)
   nvals <- length(vals)
-  if (!is.null(shape) && (nvals != 1) && (prod(shape) != nvals)) {
+  if (!is.null(shape) && (nvals != 1L) && (prod(shape) != nvals)) {
     cli_abort("Number of elements is {nvals}, but {.arg shape} is {shape_repr(shape)}.")
   }
   array(vals, dim = shape %||% length(vals))
