@@ -21,7 +21,8 @@ where \code{carry} has the structure of \code{init} and \code{out} is a (possibl
 nested) list of arrays or \code{NULL}. \code{x} is \code{NULL} when \code{xs} is empty.}
 
 \item{length}{(\code{integer(1)})\cr
-Static trip count; the size of axis 1 of every array in \code{xs}.}
+Static trip count; the size of axis 1 of every array in \code{xs}. \code{0} runs
+no step and returns \code{init} with zero-length stacked outputs.}
 
 \item{reverse}{(\code{logical(1)})\cr
 If \code{TRUE}, steps run from \code{length} down to \code{1}; each step still reads
@@ -41,7 +42,6 @@ along axis 1 with that axis dropped.
 
 \itemize{
 \item \code{stablehlo}
-\item \code{quickr}
 }
 }
 

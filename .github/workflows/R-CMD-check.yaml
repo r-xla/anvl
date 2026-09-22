@@ -4,13 +4,52 @@ on:
   push:
     branches: [main, master]
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  workflow_dispatch:
 
 name: R-CMD-check.yaml
 
 permissions: read-all
 
+# CI budget: on pull requests only the ubuntu / release / cpu configuration
+# with torch is checked. Put the `full-test` label on a PR to check the whole
+# matrix (macos, macos-intel, windows, oldrel-1, oldrel-2, as-cran). Pushes to
+# main/master, the weekly cron and manual dispatches always run everything.
 jobs:
+  setup:
+    # A `labeled` event only matters when it is `full-test` going on.
+    if: ${{ github.event.action != 'labeled' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
+
+    runs-on: ubuntu-latest
+    name: setup
+    outputs:
+      config: ${{ steps.select.outputs.config }}
+
+    steps:
+      - name: Select the check configurations
+        id: select
+        env:
+          FULL: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'full-test') }}
+        run: |
+          if [ "$FULL" = "true" ]; then
+            config='[
+              {"os": "macos", "r": "release", "platform": "cpu"},
+              {"os": "macos-intel", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "r": "release", "platform": "cpu", "torch": true},
+              {"os": "windows", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "r": "oldrel-1", "platform": "cpu"},
+              {"os": "ubuntu", "r": "oldrel-2", "platform": "cpu"}
+            ]'
+          else
+            config='[
+              {"os": "ubuntu", "r": "release", "platform": "cpu", "torch": true}
+            ]'
+          fi
+          echo "config=$(echo "$config" | tr -d '\n' | tr -s ' ')" >> "$GITHUB_OUTPUT"
+
   R-CMD-check:
+    needs: setup
     runs-on: ${{ matrix.runner }}
 
     name: ${{ matrix.config.os }} - ${{ matrix.config.platform }} (${{ matrix.config.r }})${{ matrix.config.torch && ' – with torch' || '' }}
@@ -18,14 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config:
-          - { os: "macos", r: "release", platform: "cpu" }
-          - { os: "macos-intel", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu" }
-          - { os: "ubuntu", r: "release", platform: "cpu", torch: true }
-          - { os: "windows", r: "release", platform: "cpu"}
-          - { os: "ubuntu", r: "oldrel-1", platform: "cpu" }
-          - { os: "ubuntu", r: "oldrel-2", platform: "cpu" }
+        config: ${{ fromJSON(needs.setup.outputs.config) }}
 
         include:
           - config: {os: "ubuntu", platform: "cpu"}

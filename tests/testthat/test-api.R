@@ -996,8 +996,8 @@ describe("nv_cummax / nv_cummin nan_rm", {
     expect_equal(as_array(nv_cummax(x)), as_array(nv_cummax(x, nan_rm = TRUE)))
     expect_equal(as_array(nv_cummin(x)), as_array(nv_cummin(x, nan_rm = TRUE)))
   })
-  it("with_indices returns NaN-propagated values and indices", {
-    out <- nv_cummax(nv_array(c(1, NaN, 3)), with_indices = TRUE)
+  it("indices returns NaN-propagated values and indices", {
+    out <- nv_cummax(nv_array(c(1, NaN, 3)), indices = TRUE)
     vals <- as.numeric(out$values)
     expect_equal(vals[1], 1)
     expect_true(all(is.nan(vals[2:3])))
@@ -2401,6 +2401,71 @@ describe("nv_mod", {
   })
 })
 
+describe("nv_scan", {
+  cumsum_body <- function(carry, x) {
+    s <- carry + x
+    list(carry = s, out = s)
+  }
+
+  # What `prim_scan()` does with the loop is tested in
+  # test-primitives-stablehlo.R; `nv_scan()` adds bare arrays in place of
+  # lists, `xs = NULL` and a trip count read off `xs`.
+  it("takes bare arrays and matches nv_cumsum", {
+    x <- c(1, 2, 3, 4)
+    res <- nv_scan(nv_scalar(0), cumsum_body, xs = nv_array(x))
+    expect_equal(as.numeric(res$out), as.numeric(nv_cumsum(nv_array(x))))
+    expect_equal(as.numeric(res$carry), sum(x))
+  })
+
+  it("runs fori-style with xs = NULL and an explicit length", {
+    res <- nv_scan(
+      init = nv_scalar(1L),
+      body = function(carry, x) {
+        expect_null(x)
+        list(carry = carry + 1L, out = carry * 2L)
+      },
+      length = 3L
+    )
+    expect_equal(as.numeric(res$out), c(2, 4, 6))
+    expect_equal(as.numeric(res$carry), 4)
+  })
+
+  it("treats an empty xs like xs = NULL", {
+    res <- nv_scan(
+      init = nv_scalar(1L),
+      body = function(carry, x) {
+        expect_null(x)
+        list(carry = carry + 1L, out = carry * 2L)
+      },
+      xs = list(),
+      length = 3L
+    )
+    expect_equal(as.numeric(res$out), c(2, 4, 6))
+    expect_equal(as.numeric(res$carry), 4)
+  })
+
+  it("reads the trip count off xs, and demands it when there is none", {
+    expect_error(nv_scan(nv_scalar(0), cumsum_body), "`length` is required")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = list()), "`length` is required")
+    expect_error(
+      nv_scan(nv_scalar(0), cumsum_body, xs = nv_scalar(1)),
+      "at least one axis"
+    )
+  })
+
+  # `body`, `reverse`, `length` and every leaf of `xs` are `prim_scan()`'s
+  # contract; this only pins that its errors reach the caller through here.
+  it("leaves the rest of the contract to prim_scan", {
+    x <- nv_array(c(1, 2, 3, 4))
+    expect_error(nv_scan(nv_scalar(0), "not a function", xs = x), "must be a function")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, xs = x, reverse = NA), "May not be NA")
+    expect_error(nv_scan(nv_scalar(0), cumsum_body, length = -1L), "not >= 0")
+    expect_error(
+      nv_scan(nv_scalar(0), cumsum_body, xs = x, length = 9L),
+      "size 9 along axis 1, not 4"
+    )
+  })
+})
 describe("the default integer", {
   it("decides the data type of the indices an operation returns", {
     x <- nv_array(c(3, 1, 4, 1, 5))
@@ -2409,15 +2474,15 @@ describe("the default integer", {
     expect_dtype(nv_argmax(x), i64)
     expect_dtype(nv_argmin(x), i64)
     expect_dtype(nv_argsort(x), i64)
-    expect_dtype(nv_cummax(x, with_indices = TRUE)$indices, i64)
-    expect_dtype(nv_cummin(x, with_indices = TRUE)$indices, i64)
+    expect_dtype(nv_cummax(x, indices = TRUE)$indices, i64)
+    expect_dtype(nv_cummin(x, indices = TRUE)$indices, i64)
     # `hlo_top_k` fixes its indices at i32, so these are converted.
-    expect_dtype(nv_top_k(x, k = 2L, with_indices = TRUE)$indices, i64)
+    expect_dtype(nv_top_k(x, k = 2L, indices = TRUE)$indices, i64)
     # And in a trace, where the program is keyed on the defaults.
     expect_dtype(jit(function(x) nv_argmax(x))(x), i64)
     expect_dtype(jit(function(x) nv_argsort(x))(x), i64)
-    expect_dtype(jit(function(x) nv_cummin(x, with_indices = TRUE)$indices)(x), i64)
-    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, with_indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_cummin(x, indices = TRUE)$indices)(x), i64)
+    expect_dtype(jit(function(x) nv_top_k(x, k = 2L, indices = TRUE)$indices)(x), i64)
   })
 
   it("does not change the indices themselves", {
@@ -2425,14 +2490,14 @@ describe("the default integer", {
     at_i32 <- list(
       argmax = as_array(nv_argmax(x)),
       argsort = as_array(nv_argsort(x)),
-      cummax = as_array(nv_cummax(x, with_indices = TRUE)$indices),
-      top_k = as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices)
+      cummax = as_array(nv_cummax(x, indices = TRUE)$indices),
+      top_k = as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices)
     )
     local_default_dtypes(c(int = "i64"))
     expect_equal(as_array(nv_argmax(x)), at_i32$argmax)
     expect_equal(as_array(nv_argsort(x)), at_i32$argsort)
-    expect_equal(as_array(nv_cummax(x, with_indices = TRUE)$indices), at_i32$cummax)
-    expect_equal(as_array(nv_top_k(x, k = 2L, with_indices = TRUE)$indices), at_i32$top_k)
+    expect_equal(as_array(nv_cummax(x, indices = TRUE)$indices), at_i32$cummax)
+    expect_equal(as_array(nv_top_k(x, k = 2L, indices = TRUE)$indices), at_i32$top_k)
   })
 
   it("decides the data type of an LU decomposition's pivots", {
@@ -2540,7 +2605,7 @@ test_that("the flag and enum arguments are checked in the nv_* layer", {
     expect_error(f(x, nan_rm = "yes"), "logical flag")
   }
   expect_error(nv_cumsum(x, nan_rm = "yes"), "logical flag")
-  expect_error(nv_cummax(x, with_indices = "yes"), "logical flag")
+  expect_error(nv_cummax(x, indices = "yes"), "logical flag")
   expect_error(nv_argmax(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_median(x, nan_rm = "yes"), "logical flag")
   expect_error(nv_reduce_sum(x, axes = 1L, drop = "yes"), "logical flag")
@@ -2574,12 +2639,12 @@ test_that("the API layer checks what its pages promise", {
 
   # `nv_top_k()` coerced `k` before checking it, so a fractional or logical `k`
   # was silently truncated where `prim_top_k()` refuses both -- and
-  # `with_indices` reached a bare `if()`.
+  # `indices` reached a bare `if()`.
   expect_error(nv_top_k(x3, 1.5), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, TRUE), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 10L), "`k` must be a single whole number")
   expect_error(nv_top_k(x3, 0L), "`k` must be a single whole number")
-  expect_error(nv_top_k(x3, 1L, with_indices = 1), "logical flag")
+  expect_error(nv_top_k(x3, 1L, indices = 1), "logical flag")
   expect_equal(as.vector(as_array(nv_top_k(x3, 2L))), c(3, 2))
 
   # `nv_quantile()`'s bad-`probs` message was raw `checkmate` output.
@@ -2764,6 +2829,39 @@ describe("nv_quantile selection fast path", {
       out <- as.numeric(as_array(nv_quantile(x, q, axis = 1L, nan_rm = TRUE)))
       expect_true(is.nan(out[1L]), info = sprintf("q = %s", q))
       expect_equal(out[2L], quantile(c(3, 1), q, names = FALSE), info = sprintf("q = %s", q))
+    }
+  })
+  it("matches the sort path when the device index rounds past the window", {
+    # The window is sized here in R doubles, but `h` is computed on device at
+    # `dtype(x)`. At n = 22 and q = 1/7 that is 3 exactly in a double and
+    # 3.0000002 in `f32`, so the device asks for the 5th smallest while a window
+    # sized without slack holds 4 -- and the gather clamps to the 4th.
+    # `"higher"` reads the upper index directly, where the clamp is visible;
+    # under `"linear"` it is hidden by a `frac` of 2e-7.
+    withr::local_seed(3)
+    v <- runif(22)
+    q <- 1 / 7
+    sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, interpolation = "higher")))
+    srt <- as.numeric(as_array(
+      nv_quantile(nv_array(v), array(c(0.1, 0.9, q)), interpolation = "higher")
+    ))[3L]
+    expect_identical(sel, srt)
+  })
+  it("matches the sort path on the high window", {
+    # The high window is the device's `n_valid - floor((n_valid - 1) * probs)`
+    # evaluated at the axis size, so an off-by-one shows up as a neighbouring
+    # order statistic. `"higher"` reads the upper index directly, where a
+    # clamped gather is visible rather than hidden behind a tiny `frac`.
+    # `q = 1` is the tightest case: a window of exactly one element.
+    for (n in c(9L, 22L, 56L)) {
+      v <- (seq_len(n) * 37L) %% (n + 1L) + 0.5
+      for (q in c(0.7, 8 / 11, 0.9, 10 / 11, 1)) {
+        sel <- as.numeric(as_array(nv_quantile(nv_array(v), q, interpolation = "higher")))
+        srt <- as.numeric(as_array(
+          nv_quantile(nv_array(v), array(c(0.02, 0.98, q)), interpolation = "higher")
+        ))[3L]
+        expect_identical(sel, srt, info = sprintf("n = %d, q = %s", n, format(q)))
+      }
     }
   })
   it("integer inputs still work", {

@@ -4,7 +4,7 @@
 \alias{nv_top_k}
 \title{Top-K Elements}
 \usage{
-nv_top_k(x, k, axis = NULL, with_indices = FALSE)
+nv_top_k(x, k, axis = NULL, indices = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -21,16 +21,16 @@ Axis along which to take the top \code{k}. Negative values count from the
 end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
 uses the last axis.}
 
-\item{with_indices}{(\code{logical(1)})\cr
+\item{indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns just the top-\code{k} values. If \code{TRUE},
 returns \code{list(values = ..., indices = ...)} where \code{indices} holds the
 position of each top-\code{k} value along \code{axis}.}
 }
 \value{
 (\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
-One array when \code{with_indices = FALSE}, a named \code{list} when
-\code{with_indices = TRUE}. The values have the input's data type and the
-indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both
+One array when \code{indices = FALSE}, a named \code{list} of \code{values} and
+\code{indices} when \code{indices = TRUE}. The values have the input's data type and
+the indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both
 have the input's shape with \code{axis} resized to \code{k}; values are sorted
 decreasing along \code{axis}.
 }
@@ -49,7 +49,7 @@ bit is not canonicalized.
 # the values keep the input's data type, the indices the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_top_k(x, k = 3L)
-nv_top_k(x, k = 3L, with_indices = TRUE)
+nv_top_k(x, k = 3L, indices = TRUE)
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 nv_top_k(m, k = 2L, axis = 2L)

@@ -4,6 +4,8 @@
 
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
+* `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
+  `with_indices`, spelling it the way `prim_top_k()` does.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
@@ -56,9 +58,9 @@
 * New `nv_scan()`: a fixed-length loop in the style of JAX's `lax.scan` that
   threads a carry through a body function and stacks each step's outputs
   along a new leading axis. Supports nested carries, multiple `xs` and
-  `out` leaves, reverse scans, `xs = NULL` counted loops and carry-only
-  loops. Backed by the new `prim_scan()` primitive, which lowers to a
-  `while` loop on the pjrt backend and to a `for` loop on quickr.
+  `out` leaves, reverse scans, `xs = NULL` counted loops, carry-only loops
+  and zero-length scans. Backed by the new `prim_scan()` primitive, which
+  lowers to a `while` loop on the pjrt backend.
 * The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
   `all()`) now work with multiple data inputs.
 * The default data types for floating point numbers and integers can now be
@@ -98,10 +100,11 @@
 
 * `nv_quantile()` and `nv_median()` select the needed order statistics with
   `top_k` instead of a full sort when every requested quantile lies in the
-  same half of the axis. Results are unchanged.
+  same half of the axis. Results are unchanged: the interpolation index is
+  computed at `f64`, so it agrees with the window the host sizes.
 * `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
   unstable sort of the values and a slice instead of the CHLO op, which
-  costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`
+  costs no more than a full sort there. `nv_top_k(indices = FALSE)`
   and the quantile fast path use it.
 
 ## Bug fixes
