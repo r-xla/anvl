@@ -5,26 +5,22 @@
 \alias{tcrossprod.AnvlArray}
 \title{Transpose Cross Product (Matrix)}
 \usage{
-nv_tcrossprod(lhs, rhs = NULL)
+nv_tcrossprod(x, y = NULL)
 
-\method{tcrossprod}{AnvlArray}(x, y = NULL, ...)
+\method{tcrossprod}{AnvlArray}(x, y = NULL)
 }
 \arguments{
-\item{lhs}{(\code{\link{arrayish}})\cr
+\item{x}{(\code{\link{arrayish}})\cr
 An array with at least 2 axes.}
 
-\item{rhs}{(\code{\link{arrayish}} | \code{NULL})\cr
-Optional second array. If \code{NULL}, uses \code{lhs}.}
-
-\item{x, y}{Same as \code{lhs} and \code{rhs}; the names used by the base R S3 generic.}
-
-\item{...}{No additional arguments.}
+\item{y}{(\code{\link{arrayish}} | \code{NULL})\cr
+Optional second array. If \code{NULL}, uses \code{x}.}
 }
 \value{
 \code{\link{arrayish}}
 }
 \description{
-Computes \code{lhs \%*\% t(rhs)}. If \code{rhs} is missing, computes \code{lhs \%*\% t(lhs)}.
+Computes \code{x \%*\% t(y)}. If \code{y} is missing, computes \code{x \%*\% t(x)}.
 Above rank 2 the last two axes are the matrix and the leading ones are batch
 axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed.
 }

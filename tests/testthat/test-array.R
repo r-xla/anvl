@@ -74,9 +74,9 @@ test_that("ConcreteArray", {
 })
 
 test_that("from DataType", {
-  expect_class(nv_array(1L, "i32"), "AnvlArray")
+  expect_class(nv_array(1L, dtype = "i32"), "AnvlArray")
   expect_class(nv_scalar(1L, "i32"), "AnvlArray")
-  expect_class(nv_empty("i32", c(0, 1)), "AnvlArray")
+  expect_class(nv_empty(c(0, 1), "i32"), "AnvlArray")
 })
 
 test_that("nv_array from nv_array", {
@@ -365,7 +365,7 @@ test_that("nv_array rejects a device of another backend", {
   skip_if_no_quickr()
   local_backend("quickr")
   expect_error(nv_array(1, device = pjrt::pjrt_device("cpu")), "active backend")
-  expect_error(nv_empty("f64", 2L, device = pjrt::pjrt_device("cpu")), "active backend")
+  expect_error(nv_empty(2L, "f64", device = pjrt::pjrt_device("cpu")), "active backend")
 })
 
 test_that("default floating dtype is f32 for pjrt", {
@@ -1119,8 +1119,8 @@ describe("the default float", {
     local_default_dtypes(c(float = "f64", int = "i64"))
     # A buffer already has its dtype; nv_minval() builds one from raw bytes.
     expect_dtype(nv_scalar(pjrt::pjrt_scalar(1L, dtype = "i32")), "i32")
-    expect_equal(as.integer(nv_reduce_max(nv_array(1:3, dtype = "i32"))), 3L)
-    expect_equal(as.integer(jit(function(x) nv_reduce_min(x))(nv_array(1:3, dtype = "i32"))), 1L)
+    expect_equal(as.integer(nv_max(nv_array(1:3, dtype = "i32"))), 3L)
+    expect_equal(as.integer(jit(function(x) nv_min(x))(nv_array(1:3, dtype = "i32"))), 1L)
   })
 })
 

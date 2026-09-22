@@ -893,7 +893,30 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
 }
 
 print_call_repr <- function(prim) {
-  rlang::exec(call, paste0("prim_", prim$name))
+  rlang::exec(call, primitive_r_name(prim$name))
+}
+
+# The `prim_*` symbol a primitive is bound to is not always `prim_<name>`:
+# a primitive's name is its IR opcode, which follows StableHLO where an op
+# exists (`prim_pmax` is named `maximum`). Error messages should name the
+# symbol the user called, so look it up once and cache the mapping.
+primitive_r_name <- function(name) {
+  map <- globals[["PRIMITIVE_R_NAMES"]]
+  if (is.null(map)) {
+    ns <- asNamespace("anvl")
+    syms <- grep("^prim_", names(ns), value = TRUE)
+    ids <- vapply(
+      syms,
+      function(sym) {
+        obj <- get(sym, envir = ns)
+        if (inherits(obj, "JitPrimitive")) attr(obj, "primitive")$name else NA_character_
+      },
+      character(1L)
+    )
+    map <- setNames(syms[!is.na(ids)], ids[!is.na(ids)])
+    globals[["PRIMITIVE_R_NAMES"]] <- map
+  }
+  if (name %in% names(map)) map[[name]] else paste0("prim_", name)
 }
 
 # Restate a type-inference error in anvl's own vocabulary: stablehlo speaks of

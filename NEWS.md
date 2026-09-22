@@ -2,14 +2,62 @@
   
 ## Breaking changes
 
+* The element-wise `nv_max()` / `nv_min()` and `prim_max()` / `prim_min()` are
+  now `nv_pmax()` / `nv_pmin()` and `prim_pmax()` / `prim_pmin()`, following
+  `base::pmax()` / `base::pmin()`.
+* The reductions lost their `reduce_` prefix: write `nv_sum()`, `nv_prod()`,
+  `nv_max()`, `nv_min()`, `nv_any()`, `nv_all()` and the matching `prim_*()`
+  instead of `nv_reduce_sum()` and friends. `prim_reduce()` keeps its name.
+* `nv_argsort()` is now `nv_order()`, `nv_reverse()` / `prim_reverse()` are
+  `nv_rev()` / `prim_rev()`, `nv_argmax()` / `nv_argmin()` and their primitives
+  are `nv_which_max()` / `nv_which_min()` and `prim_which_max()` /
+  `prim_which_min()`, and `prim_ceil()` is `prim_ceiling()`.
+* `nv_polygamma()` / `prim_polygamma()` are now `nv_psigamma()` /
+  `prim_psigamma()` and take `(x, deriv)` like `base::psigamma()` instead of
+  `(n, x)`; `deriv` defaults to `0`.
+* `nv_eigh()` / `prim_eigh()` are now `nv_eigen()` / `prim_eigen()`, and
+  `nv_logistic()` / `prim_logistic()` are `nv_plogis()` / `prim_plogis()`.
+* The general transpose is now `nv_aperm(x, perm)`, matching `base::aperm()`;
+  `nv_transpose()` stays as another spelling of it, but its second argument is
+  called `perm` instead of `permutation`.
 * `prim_reshape()` and `nv_reshape()`, and with them `nv_flatten()` and every
   `axis = NULL` flattening default, are now column-major like base R's `dim<-`:
   `nv_flatten(matrix(1:4, 2))` is `1:4`, as `as.vector()` gives. Transpose
   first for the previous row-major order.
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
-* `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
-  `with_indices`, spelling it the way `prim_top_k()` does.
+* `nv_clamp()` and `prim_clamp()` take `(x, min, max)` instead of
+  `(min_val, x, max_val)`.
+* `nv_seq()` / `nv_seq_like()` call their bounds `from` and `to`, like
+  `base::seq()`.
+* `nv_ifelse()` and `prim_ifelse()` take `(test, yes, no)`, like
+  `base::ifelse()`. `prim_if()` / `nv_if()` keep `(pred, true, false)`: they
+  mirror the `if` construct, not `ifelse()`.
+* `nv_scan()` takes `(init, xs, body)`, the order `prim_scan()` uses, and both
+  call the trip count `steps` instead of `length`.
+* `prim_sort()` takes `(operands, axis, decreasing, stable)`: `xs` is now
+  `operands`, and `descending` / `is_stable` are `decreasing` / `stable`, as in
+  `nv_sort()`.
+* `prim_top_k()`'s `indices` is now `with_indices` and defaults to `FALSE`,
+  agreeing with `nv_top_k()`.
+* `prim_reduce()` takes `(x, init, axes, reducer, drop)`: `reductor` is now
+  `reducer`, and it comes before `drop`.
+* `prim_static_slice()` / `nv_static_slice()` call their (inclusive) upper
+  bound `end_indices` instead of `limit_indices`.
+* `nv_crossprod()`, `nv_tcrossprod()` and `nv_outer()` call their operands `x`
+  and `y`, as base R does.
+* `nv_atan2()` and `prim_atan2()` take `(y, x)`, like `base::atan2()`.
+* The array constructors spell their trailing arguments `shape`, `dtype`,
+  `device` in that order: `nv_array(data, shape, dtype, device, byrow)`,
+  `nv_empty(shape, dtype, device)`, `nv_iota()` / `prim_iota()`
+  `(axis, shape, dtype, start, device)`, and likewise `nv_array_like()`,
+  `nv_empty_like()` and `nv_iota_like()`.
+* `prim_gather()`'s `start_index_map` is now `start_indices_to_x_axes`,
+  pairing with `prim_scatter()`'s `scatter_axes_to_x_axes`.
+* The RNG functions (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
+  `nv_sample()`, `nv_sample_int()`, `prim_rng_bit_generator()`) call their
+  state argument `state` instead of `initial_state`, matching the `state`
+  element they return.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
@@ -33,7 +81,7 @@
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.
 * `jit_eval()` was removed as it is no longer needed.
-* `nv_reduce_sum()`, `nv_reduce_prod()`, `nv_cumsum()` and `nv_cumprod()` now
+* `nv_sum()`, `nv_prod()`, `nv_cumsum()` and `nv_cumprod()` now
   accumulate a boolean array at the default integer data type instead of returning a boolean.
 * `as.vector()` on an `AnvlArray` now only accepts `mode = "any"` (the
   default) and errors for any other `mode`.
@@ -50,15 +98,15 @@
   single `axis`, defaulting to every axis like `nv_mean()` and base R's
   `quantile()` / `median()`, and gained a `drop` argument. Write
   `nv_median(x, axes = -1L)` for the previous default.
-* `nv_sort()` and `nv_argsort()` now flatten a multi-axis array when
+* `nv_sort()` and `nv_order()` now flatten a multi-axis array when
   `axis = NULL`, instead of working along the last axis, so `sort()` on an
   anvl array agrees with base R. Write `axis = -1L` for the previous default.
 * `prim_sort()` no longer defaults `axis` to `1L`; pass it explicitly, as with
   every other primitive.
-* `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a
+* `nv_which_max()` and `nv_which_min()` now reduce over `axes` (plural) instead of a
   single `axis`, defaulting to every axis so that they pair with
-  `nv_reduce_max()` / `nv_reduce_min()`. Reducing several axes indexes their
-  column-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
+  `nv_max()` / `nv_min()`. Reducing several axes indexes their
+  column-major flattening. Write `nv_which_max(x, axes = -1L)` for the previous
   default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
@@ -69,7 +117,11 @@
 
 ## Features
 
-* `nv_reverse()` gained an `axes = NULL` default that reverses every axis,
+* `aperm()` and `quantile()` now work on an `AnvlArray` / `AnvlBox`,
+  forwarding to `nv_aperm()` and `nv_quantile()`.
+* New `nv_drop()`, another spelling of `nv_squeeze()`; with the default
+  `axes = NULL` it drops every size-1 axis like `base::drop()`.
+* `nv_rev()` gained an `axes = NULL` default that reverses every axis,
   matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
   `axes` instead of erroring.
 * `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
@@ -132,13 +184,16 @@
   `top_k` instead of a full sort when every requested quantile lies in the
   same half of the axis. Results are unchanged: the interpolation index is
   computed at `f64`, so it agrees with the window the host sizes.
-* `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
+* `prim_top_k()` gained `with_indices`; without them the CUDA lowering uses an
   unstable sort of the values and a slice instead of the CHLO op, which
-  costs no more than a full sort there. `nv_top_k(indices = FALSE)`
+  costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`
   and the quantile fast path use it.
 
 ## Bug fixes
 
+* An error raised while tracing a primitive now names the `prim_*` function
+  that was called instead of its IR opcode (e.g. `prim_pmax()`, not
+  `prim_maximum()`).
 * `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
   inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second
@@ -177,10 +232,10 @@
   reals -- correctly reported 0. Conversions between floats still pass the
   gradient through.
 * `prim_scatter()` now checks that `update_computation` returns one value of
-  `x`'s data type, as `prim_reduce()` already did for its `reductor`. A
+  `x`'s data type, as `prim_reduce()` already did for its `reducer`. A
   combiner returning something else made type inference declare a data type
   the call could not produce, and failed in the backend.
-* `prim_reduce()`'s `reductor` no longer has to name its arguments `lhs` and
+* `prim_reduce()`'s `reducer` no longer has to name its arguments `lhs` and
   `rhs`. They were passed by name, so `function(a, b)` failed with
   `unused arguments (lhs = ..., rhs = ...)`; they are now matched positionally,
   as `prim_scatter()` already matched its `update_computation`.
@@ -198,9 +253,9 @@
   `nv_matmul()` does, instead of refusing two arrays that disagree.
 * On the `"quickr"` backend a call whose outputs are all empty emits the empty
   arrays directly, instead of an elementwise operation quickr rejects.
-* `nv_reduce_any()`, `nv_reduce_all()` and `nv_sort()` are jitted, and
-  `nv_polygamma()`'s `n` is no longer static, so it accepts an array as
-  `prim_polygamma()` does.
+* `nv_any()`, `nv_all()` and `nv_sort()` are jitted, and
+  `nv_psigamma()`'s `deriv` is no longer static, so it accepts an array as
+  `prim_psigamma()` does.
 * `nv_qnorm()` is accurate to its operand's data type rather than to the
   default float; its coefficients used to be materialized at the default.
 * `nv_dnorm()`, `nv_pnorm()` and `nv_qnorm()` name their own operand when it
@@ -213,8 +268,8 @@
   `nv_qnorm()` keep the narrower requirement, as they carry one coefficient
   set per width.
 * The gradient of `nv_gamma()` is now correct for positive whole numbers.
-* `prim_reduce_any()` / `prim_reduce_all()` (and `nv_reduce_any()` /
-  `nv_reduce_all()`) now reject a non-boolean input when the call is traced.
+* `prim_any()` / `prim_all()` (and `nv_any()` /
+  `nv_all()`) now reject a non-boolean input when the call is traced.
   Type inference declared a `bool` output whatever the input was, so an
   integer operand reached the lowering and failed with `Data types of inputs
   and init_values must match`.

@@ -4,12 +4,17 @@
 \alias{nv_scan}
 \title{Scan (Loop With Per-Step Outputs)}
 \usage{
-nv_scan(init, body, xs = NULL, length = NULL, reverse = FALSE)
+nv_scan(init, xs = NULL, body, steps = NULL, reverse = FALSE)
 }
 \arguments{
 \item{init}{(\code{\link{arrayish}} | \code{list()})\cr
 Initial carry: a single array or a (possibly nested) named list.
 Every slot must keep a fixed shape and dtype across steps.}
+
+\item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
+Per-step inputs, sliced along axis 1. All leaves must agree on
+the size of axis 1. \code{NULL} or a list with no leaves runs a counted
+loop over \code{steps} steps instead.}
 
 \item{body}{(\code{function})\cr
 Step function \verb{function(carry, x)} returning
@@ -17,25 +22,20 @@ Step function \verb{function(carry, x)} returning
 list of arrays, or \code{NULL} (loop for the carry only). Its structure
 must be identical at every step. \code{x} is \code{NULL} when \code{xs} is empty.}
 
-\item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
-Per-step inputs, sliced along axis 1. All leaves must agree on
-the size of axis 1. \code{NULL} or a list with no leaves runs a counted
-loop over \code{length} steps instead.}
-
-\item{length}{(\code{integer(1)} | \code{NULL})\cr
+\item{steps}{(\code{integer(1)} | \code{NULL})\cr
 Static trip count. Required when \code{xs} is empty; otherwise inferred
 from (and checked against) axis 1 of \code{xs}. A trip count of \code{0} runs
 no step.}
 
 \item{reverse}{(\code{logical(1)})\cr
-If \code{TRUE}, steps run \verb{t = length, ..., 1}; each step still reads
+If \code{TRUE}, steps run \verb{t = steps, ..., 1}; each step still reads
 \code{xs} at position \code{t} and writes its output at position \code{t}, so a
 reverse scan consumes and produces arrays in the original order.}
 }
 \value{
 \code{list(carry = , out = )}: the final carry (same structure as
 \code{init}) and the stacked outputs (structure of \code{body}'s \code{out}, each
-leaf gaining a leading axis of size \code{length}).
+leaf gaining a leading axis of size \code{steps}).
 }
 \description{
 Runs a fixed-length loop that threads a carry through \code{body} while
@@ -45,14 +45,14 @@ At step \code{t}, \code{body} receives the current carry and the step's slice of
 \code{xs} (taken along axis 1, with that unit axis dropped; a 1-D leaf
 yields a scalar), and must return
 \verb{list(carry = <same structure as init>, out = <arrays to stack>)}.
-The stacked \code{out} buffers gain a new leading axis of size \code{length}.
+The stacked \code{out} buffers gain a new leading axis of size \code{steps}.
 
 The whole loop, written out in R:
 
 \if{html}{\out{<div class="sourceCode r">}}\preformatted{carry <- init
-out <- <empty, `length` rows>
-steps <- if (reverse) rev(seq_len(length)) else seq_len(length)
-for (t in steps) \{
+out <- <empty, `steps` rows>
+order <- if (reverse) rev(seq_len(steps)) else seq_len(steps)
+for (t in order) \{
   step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
   carry <- step$carry
   out[t, ...] <- step$out          # position t, not the loop's position
@@ -66,8 +66,8 @@ list(carry = carry, out = out)
 x <- nv_array(c(1, 2, 3, 4))
 nv_scan(
   init = nv_scalar(0),
-  body = function(carry, x) list(carry = carry + x, out = carry + x),
-  xs = x
+  xs = x,
+  body = function(carry, x) list(carry = carry + x, out = carry + x)
 )$out
 \dontshow{\}) # examplesIf}
 }

@@ -31,7 +31,7 @@ test_that("prim_static_slice", {
   out <- nv_static_slice(
     nv_array(1:6, dtype = "ui64", shape = c(2, 3)),
     start_indices = c(1, 1),
-    limit_indices = c(2, 2),
+    end_indices = c(2, 2),
     strides = c(1, 1)
   )
   expect_equal(as_array(out), matrix(c(1:4), nrow = 2))
@@ -464,7 +464,7 @@ describe("prim_scan", {
 
   it("threads the carry and stacks the outputs", {
     f <- jit(function(x) {
-      prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 4L)
+      prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, steps = 4L)
     })
     res <- f(nv_array(c(1, 2, 3, 4)))
     expect_equal(as.numeric(as_array(res$out)), cumsum(c(1, 2, 3, 4)))
@@ -477,7 +477,7 @@ describe("prim_scan", {
       list(s = nv_fill(0, shape = c(2L, 3L), dtype = "f64")),
       list(x = nv_array(a)),
       cumsum_body,
-      length = 4L
+      steps = 4L
     )
     expect_equal(as_array(res$out), apply(a, c(2, 3), cumsum))
     expect_equal(as_array(res$carry$s), apply(a, c(2, 3), sum))
@@ -488,7 +488,7 @@ describe("prim_scan", {
       list(s = nv_scalar(0)),
       list(x = nv_array(c(1, 2, 3, 4))),
       cumsum_body,
-      length = 4L,
+      steps = 4L,
       reverse = TRUE
     )
     expect_equal(as.numeric(as_array(res$out)), rev(cumsum(4:1)))
@@ -502,7 +502,7 @@ describe("prim_scan", {
         expect_null(x)
         list(carry = list(i = carry$i + 1L), out = list(twice = carry$i * 2L, pos = carry$i > 1L))
       },
-      length = 3L
+      steps = 3L
     )
     expect_equal(as.integer(as_array(res$out$twice)), c(2L, 4L, 6L))
     expect_equal(as.logical(as_array(res$out$pos)), c(FALSE, TRUE, TRUE))
@@ -512,25 +512,25 @@ describe("prim_scan", {
   it("checks the body's contract", {
     x <- list(x = nv_array(c(1, 2)))
     expect_error(
-      prim_scan(list(s = nv_scalar(0)), x, function(c, v) c$s + v$x, length = 2L),
+      prim_scan(list(s = nv_scalar(0)), x, function(c, v) c$s + v$x, steps = 2L),
       "list\\(carry = , out = \\)"
     )
     expect_error(
-      prim_scan(list(s = nv_scalar(0)), x, function(c, v) list(carry = c$s, out = c$s), length = 2L),
+      prim_scan(list(s = nv_scalar(0)), x, function(c, v) list(carry = c$s, out = c$s), steps = 2L),
       "same structure as `init`"
     )
-    expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = 3L), "size 3 along axis 1")
+    expect_error(prim_scan(list(s = nv_scalar(0)), x, cumsum_body, steps = 3L), "size 3 along axis 1")
     expect_error(
-      prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = -1L),
+      prim_scan(list(s = nv_scalar(0)), x, cumsum_body, steps = -1L),
       "not >= 0"
     )
-    expect_error(prim_scan(list(s = nv_scalar(0)), x, "not a function", length = 2L), "must be a function")
+    expect_error(prim_scan(list(s = nv_scalar(0)), x, "not a function", steps = 2L), "must be a function")
     expect_error(
-      prim_scan(list(s = nv_scalar(0)), x, cumsum_body, length = 2L, reverse = NA),
+      prim_scan(list(s = nv_scalar(0)), x, cumsum_body, steps = 2L, reverse = NA),
       "May not be NA"
     )
     expect_error(
-      prim_scan(list(s = nv_scalar(0)), list(x = nv_scalar(1)), cumsum_body, length = 1L),
+      prim_scan(list(s = nv_scalar(0)), list(x = nv_scalar(1)), cumsum_body, steps = 1L),
       "at least one axis"
     )
   })
@@ -545,7 +545,7 @@ describe("prim_scan", {
         m <- nv_pmax(carry$acc$m, v$x)
         list(carry = list(acc = list(s = s, m = m)), out = list(sum = s, max = m))
       },
-      length = 5L
+      steps = 5L
     )
     expect_named(res$out, c("sum", "max"))
     expect_equal(as.numeric(res$out$sum), cumsum(x))
@@ -563,7 +563,7 @@ describe("prim_scan", {
         s <- carry$s + v$x * v$w
         list(carry = list(s = s), out = s)
       },
-      length = 4L
+      steps = 4L
     )
     expect_equal(as.numeric(res$out), cumsum(x * w))
   })
@@ -573,14 +573,14 @@ describe("prim_scan", {
       list(s = nv_scalar(0)),
       list(x = nv_array(c(1, 2, 3, 4))),
       function(carry, v) list(carry = list(s = carry$s + v$x), out = NULL),
-      length = 4L
+      steps = 4L
     )
     expect_null(res$out)
     expect_equal(as.numeric(res$carry$s), 10)
   })
 
   it("handles a single step", {
-    res <- prim_scan(list(s = nv_scalar(0)), list(x = nv_array(7)), cumsum_body, length = 1L)
+    res <- prim_scan(list(s = nv_scalar(0)), list(x = nv_array(7)), cumsum_body, steps = 1L)
     expect_equal(as.numeric(res$out), 7)
     expect_equal(as.numeric(res$carry$s), 7)
   })
@@ -598,11 +598,11 @@ describe("prim_scan", {
             list(s = carry$s),
             list(x = row$x),
             function(acc, e) list(carry = list(s = acc$s + e$x), out = NULL),
-            length = 3L
+            steps = 3L
           )
           list(carry = list(s = inner$carry$s), out = inner$carry$s)
         },
-        length = 2L
+        steps = 2L
       )
     }
     res <- row_sums(nv_array(m))
@@ -627,30 +627,30 @@ describe("prim_scan", {
             out = NULL
           )
         },
-        length = 3L
+        steps = 3L
       ),
       "`m` enters as"
     )
   })
 
-  it("emits no loop for length 0", {
+  it("emits no loop for 0 steps", {
     # The body slices a step off `xs`, which does not type-check against an
     # empty `xs`, so the rule has to skip the `while` rather than let its
     # condition stop it on the first test.
     x <- nv_array(numeric(), shape = 0L)
     f <- jit(function(x) {
-      prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 0L)
+      prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, steps = 0L)
     })
     res <- f(x)
     expect_equal(shape(res$out), 0L)
     expect_equal(as.numeric(res$carry$s), 0)
 
-    eager <- prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, length = 0L)
+    eager <- prim_scan(list(s = nv_scalar(0)), list(x = x), cumsum_body, steps = 0L)
     expect_equal(shape(eager$out), 0L)
     expect_equal(as.numeric(eager$carry$s), 0)
   })
 
-  it("traces the body once for a zero-length scan and keeps its output structure", {
+  it("traces the body once for a zero-step scan and keeps its output structure", {
     seen <- 0L
     res <- prim_scan(
       list(s = nv_scalar(2), m = nv_scalar(1L)),
@@ -662,7 +662,7 @@ describe("prim_scan", {
           out = list(run = carry$s, flag = carry$m > 0L)
         )
       },
-      length = 0L
+      steps = 0L
     )
     expect_equal(seen, 1L)
     expect_equal(as.numeric(res$carry$s), 2)
@@ -673,12 +673,12 @@ describe("prim_scan", {
     expect_equal(dtype(res$out$flag), as_dtype("bool"))
   })
 
-  it("keeps the trailing axes of a zero-length scan's outputs", {
+  it("keeps the trailing axes of a zero-step scan's outputs", {
     res <- prim_scan(
       list(s = nv_fill(0, shape = 3L)),
       list(x = nv_array(array(numeric(), dim = c(0L, 3L)))),
       cumsum_body,
-      length = 0L
+      steps = 0L
     )
     expect_equal(shape(res$out), c(0L, 3L))
     expect_equal(as.numeric(res$carry$s), c(0, 0, 0))
@@ -1016,9 +1016,9 @@ test_that("prim_is_finite", {
 
 test_that("prim_clamp", {
   x <- nv_array(c(-2.0, -0.5, 0.5, 2.0), dtype = "f32")
-  min_val <- nv_broadcast_to(nv_scalar(-1.0, "f32"), shape(x))
-  max_val <- nv_broadcast_to(nv_scalar(1.0, "f32"), shape(x))
-  expect_equal(prim_clamp(min_val, x, max_val), nv_array(c(-1.0, -0.5, 0.5, 1.0), dtype = "f32"))
+  lo <- nv_broadcast_to(nv_scalar(-1.0, "f32"), shape(x))
+  hi <- nv_broadcast_to(nv_scalar(1.0, "f32"), shape(x))
+  expect_equal(prim_clamp(x, lo, hi), nv_array(c(-1.0, -0.5, 0.5, 1.0), dtype = "f32"))
 })
 
 test_that("prim_rev", {
@@ -1031,13 +1031,13 @@ test_that("prim_rev", {
 })
 
 test_that("prim_iota", {
-  expect_equal(prim_iota(1L, "i32", 5L, start = 0L), nv_array(0:4, dtype = "i32"))
+  expect_equal(prim_iota(1L, 5L, "i32", start = 0L), nv_array(0:4, dtype = "i32"))
 
-  expect_equal(prim_iota(1L, "i32", 5L, start = 1L), nv_array(1:5, dtype = "i32"))
+  expect_equal(prim_iota(1L, 5L, "i32", start = 1L), nv_array(1:5, dtype = "i32"))
 
   # 2D along first axis (default start = 1)
   expected <- matrix(c(1L, 2L, 3L, 1L, 2L, 3L), 3, 2)
-  expect_equal(prim_iota(1L, "i32", c(3L, 2L)), nv_array(expected, dtype = "i32"))
+  expect_equal(prim_iota(1L, c(3L, 2L), "i32"), nv_array(expected, dtype = "i32"))
 })
 
 test_that("prim_rev negative dims", {
@@ -1047,8 +1047,8 @@ test_that("prim_rev negative dims", {
 })
 
 test_that("prim_iota negative dim", {
-  expect_equal(prim_iota(-1L, "i32", c(3L, 2L)), prim_iota(2L, "i32", c(3L, 2L)))
-  expect_error(prim_iota(-3L, "i32", c(3L, 2L)), "between 1 and 2, or between -2 and -1")
+  expect_equal(prim_iota(-1L, c(3L, 2L), "i32"), prim_iota(2L, c(3L, 2L), "i32"))
+  expect_error(prim_iota(-3L, c(3L, 2L), "i32"), "between 1 and 2, or between -2 and -1")
 })
 
 test_that("prim_popcnt", {
@@ -1068,7 +1068,7 @@ test_that("prim_gather", {
     collapsed_slice_axes = 1L,
     x_batching_axes = integer(),
     start_indices_batching_axes = integer(),
-    start_index_map = 1L,
+    start_indices_to_x_axes = 1L,
     index_vector_axis = 2L,
     indices_are_sorted = FALSE,
     unique_indices = FALSE
@@ -1161,7 +1161,7 @@ describe("prim_sort", {
 
   it("variadic: carried array is permuted by the key", {
     x <- nv_array(c(3, 1, 4, 2, 5))
-    idx <- nv_iota(axis = 1L, dtype = "i64", shape = 5L)
+    idx <- nv_iota(axis = 1L, shape = 5L, dtype = "i64")
     out <- prim_sort(list(x, idx), axis = 1L)
     expect_equal(
       out,
@@ -1177,7 +1177,7 @@ describe("prim_sort", {
 
   it("float descending: NaN values land at the beginning", {
     out <- as.numeric(
-      prim_sort(list(arr(c(1, NaN, 2, -NaN))), axis = 1L, descending = TRUE)[[1L]]
+      prim_sort(list(arr(c(1, NaN, 2, -NaN))), axis = 1L, decreasing = TRUE)[[1L]]
     )
     expect_true(all(is.nan(out[1:2])))
     expect_equal(out[3:4], c(2, 1))
@@ -1196,7 +1196,7 @@ describe("prim_sort", {
 
   it("argsort puts NaN positions last under ascending sort", {
     x <- arr(c(1, NaN, 2, -NaN))
-    idx <- nv_iota(axis = 1L, dtype = "i32", shape = 4L)
+    idx <- nv_iota(axis = 1L, shape = 4L, dtype = "i32")
     perm <- as.integer(prim_sort(list(x, idx), axis = 1L)[[2L]])
     # values at perm[1:2] are non-NaN (positions of 1 and 2 = 1 and 3),
     # perm[3:4] are the NaN positions in some order
@@ -1211,11 +1211,11 @@ describe("prim_sort", {
 
   it("stable sort: signed zeros and NaNs canonicalize to equal keys, so argsort is 1:n", {
     # -0/+0 collapse to +0, -NaN/+NaN collapse to +NaN, so within each group
-    # all keys compare equal under TOTALORDER. With is_stable = TRUE the input
+    # all keys compare equal under TOTALORDER. With stable = TRUE the input
     # order must be preserved, giving indices 1:n (0s before NaNs).
     x <- arr(c(-0, 0, 0, -0, -NaN, NaN, -NaN, NaN))
-    idx <- nv_iota(axis = 1L, dtype = "i32", shape = 8L)
-    perm <- as.integer(prim_sort(list(x, idx), axis = 1L, is_stable = TRUE)[[2L]])
+    idx <- nv_iota(axis = 1L, shape = 8L, dtype = "i32")
+    perm <- as.integer(prim_sort(list(x, idx), axis = 1L, stable = TRUE)[[2L]])
     expect_equal(perm, 1:8)
   })
 
@@ -1227,8 +1227,8 @@ describe("prim_sort", {
 })
 
 describe("prim_top_k", {
-  it("returns values and 1-based indices along the last axis", {
-    out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L)
+  it("returns values and indices along the last axis", {
+    out <- prim_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L, with_indices = TRUE)
     expect_length(out, 2L)
     expect_named(out, c("values", "indices"))
     expect_equal(as.vector(out$values), c(9, 6, 5))
@@ -1238,13 +1238,13 @@ describe("prim_top_k", {
 
   it("operates per-row on a matrix", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    out <- prim_top_k(m, k = 2L)
+    out <- prim_top_k(m, k = 2L, with_indices = TRUE)
     expect_equal(as_array(out[[1L]]), matrix(c(5, 3, 4, 2), nrow = 2, byrow = TRUE))
     expect_equal(as_array(out[[2L]]), matrix(c(3L, 1L, 2L, 1L), nrow = 2, byrow = TRUE))
   })
 
   it("breaks ties with the smaller index", {
-    out <- prim_top_k(nv_array(c(1, 5, 5, 3)), k = 2L)
+    out <- prim_top_k(nv_array(c(1, 5, 5, 3)), k = 2L, with_indices = TRUE)
     expect_equal(as.vector(out[[1L]]), c(5, 5))
     expect_equal(as.vector(out[[2L]]), c(2L, 3L))
   })
@@ -1255,18 +1255,18 @@ describe("prim_top_k", {
     expect_equal(as.vector(out[[1L]]), c(8L, 5L))
   })
 
-  it("returns only the values with indices = FALSE", {
+  it("returns only the values without with_indices", {
     x <- nv_matrix(c(3, 1, 5, 2, 4, 0, 5, 5, 1), nrow = 3, byrow = TRUE)
-    out <- prim_top_k(x, k = 2L, indices = FALSE)
+    out <- prim_top_k(x, k = 2L)
     expect_length(out, 1L)
     expect_named(out, "values")
-    expect_equal(as_array(out$values), as_array(prim_top_k(x, k = 2L)$values))
-    expect_equal(as_array(jit(function(x) prim_top_k(x, k = 2L, indices = FALSE)$values)(x)), as_array(out$values))
+    expect_equal(as_array(out$values), as_array(prim_top_k(x, k = 2L, with_indices = TRUE)$values))
+    expect_equal(as_array(jit(function(x) prim_top_k(x, k = 2L)$values)(x)), as_array(out$values))
   })
 
   it("lowers values-only top_k to a sort and slice on CUDA and to chlo top_k elsewhere", {
     g <- trace_fn(
-      function(x) prim_top_k(x, k = 2L, indices = FALSE)$values,
+      function(x) prim_top_k(x, k = 2L)$values,
       list(nv_aval("f32", shape = c(3L, 5L)))
     )
     cuda <- repr(stablehlo(g, platform = "cuda")[[1L]])
@@ -1375,23 +1375,23 @@ describe("prim_which_min", {
 
 describe("prim_reduce", {
   it("sum via prim_add", {
-    out <- prim_reduce(nv_array(c(1, 2, 3, 4)), init = nv_scalar(0), axes = 1L, reductor = prim_add)
+    out <- prim_reduce(nv_array(c(1, 2, 3, 4)), init = nv_scalar(0), axes = 1L, reducer = prim_add)
     expect_equal(as_array(out), 10)
   })
 
   it("product via prim_mul", {
-    out <- prim_reduce(nv_array(c(1, 2, 3, 4)), init = nv_scalar(1), axes = 1L, reductor = prim_mul)
+    out <- prim_reduce(nv_array(c(1, 2, 3, 4)), init = nv_scalar(1), axes = 1L, reducer = prim_mul)
     expect_equal(as_array(out), 24)
   })
 
   it("custom max via prim_pmax with -Inf init", {
-    out <- prim_reduce(nv_array(c(3, 1, 4, 1, 5, 9, 2)), init = nv_scalar(-Inf), axes = 1L, reductor = prim_pmax)
+    out <- prim_reduce(nv_array(c(3, 1, 4, 1, 5, 9, 2)), init = nv_scalar(-Inf), axes = 1L, reducer = prim_pmax)
     expect_equal(as_array(out), 9)
   })
 
   it("supports drop = FALSE", {
     m <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)
-    out <- prim_reduce(m, init = nv_scalar(0), axes = 2L, drop = FALSE, reductor = prim_add)
+    out <- prim_reduce(m, init = nv_scalar(0), axes = 2L, drop = FALSE, reducer = prim_add)
     expect_shape(out, c(2L, 1L))
     expect_equal(as.vector(out), c(9, 12))
   })
@@ -1399,14 +1399,14 @@ describe("prim_reduce", {
   it("rejects mismatched init dtype", {
     # `x` and `init` must agree, and the rule converts neither.
     expect_error(
-      prim_reduce(nv_array(c(1, 2, 3)), init = nv_scalar(0L, dtype = "i32"), axes = 1L, reductor = prim_add),
+      prim_reduce(nv_array(c(1, 2, 3)), init = nv_scalar(0L, dtype = "i32"), axes = 1L, reducer = prim_add),
       "no common data type"
     )
   })
 
   it("rejects non-scalar init", {
     expect_error(
-      prim_reduce(nv_array(c(1, 2, 3)), init = nv_array(c(0, 0)), axes = 1L, reductor = prim_add),
+      prim_reduce(nv_array(c(1, 2, 3)), init = nv_array(c(0, 0)), axes = 1L, reducer = prim_add),
       "scalar"
     )
   })
@@ -1414,11 +1414,11 @@ describe("prim_reduce", {
   it("accepts negative dims", {
     m <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 2)
     expect_equal(
-      prim_reduce(m, init = nv_scalar(0), axes = -1L, reductor = prim_add),
-      prim_reduce(m, init = nv_scalar(0), axes = 2L, reductor = prim_add)
+      prim_reduce(m, init = nv_scalar(0), axes = -1L, reducer = prim_add),
+      prim_reduce(m, init = nv_scalar(0), axes = 2L, reducer = prim_add)
     )
     expect_error(
-      prim_reduce(m, init = nv_scalar(0), axes = -3L, reductor = prim_add),
+      prim_reduce(m, init = nv_scalar(0), axes = -3L, reducer = prim_add),
       "between 1 and 2, or between -2 and -1"
     )
   })
@@ -1540,29 +1540,29 @@ describe("prim_scatter update_computation", {
   })
 })
 
-describe("prim_reduce reductor", {
+describe("prim_reduce reducer", {
   x <- nv_array(c(1, 2, 3, 4), dtype = "f64")
 
-  it("accepts a reductor whatever its arguments are named", {
-    # The two scalars are matched positionally, so `reductor` is not obliged
+  it("accepts a reducer whatever its arguments are named", {
+    # The two scalars are matched positionally, so `reducer` is not obliged
     # to call them `lhs` and `rhs`.
     expect_equal(
-      as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = function(a, b) prim_add(a, b))),
+      as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reducer = function(a, b) prim_add(a, b))),
       10
     )
     expect_equal(
-      as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = function(lhs, rhs) {
+      as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reducer = function(lhs, rhs) {
         prim_add(lhs, rhs)
       })),
       10
     )
-    expect_equal(as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = prim_add)), 10)
-    expect_equal(as.numeric(prim_reduce(x, init = nv_scalar(1, "f64"), axes = 1L, reductor = prim_mul)), 24)
+    expect_equal(as.numeric(prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reducer = prim_add)), 10)
+    expect_equal(as.numeric(prim_reduce(x, init = nv_scalar(1, "f64"), axes = 1L, reducer = prim_mul)), 24)
   })
 
   it("works the same under jit", {
     f <- jit(function(x) {
-      prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reductor = function(a, b) prim_add(a, b))
+      prim_reduce(x, init = nv_scalar(0, "f64"), axes = 1L, reducer = function(a, b) prim_add(a, b))
     })
     expect_equal(as.numeric(f(x)), 10)
   })
@@ -1679,11 +1679,11 @@ test_that("prim_broadcast_in_axes goes through stablehlo's inference", {
 test_that("prim_static_slice requires a stride of at least 1", {
   x <- nv_array(1:10)
   expect_error(
-    prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 0L),
+    prim_static_slice(x, start_indices = 1L, end_indices = 5L, strides = 0L),
     "strides"
   )
   expect_equal(
-    as.integer(prim_static_slice(x, start_indices = 1L, limit_indices = 5L, strides = 2L)),
+    as.integer(prim_static_slice(x, start_indices = 1L, end_indices = 5L, strides = 2L)),
     c(1L, 3L, 5L)
   )
 })

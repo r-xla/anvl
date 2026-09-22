@@ -2,21 +2,31 @@
 % Please edit documentation in R/primitives.R
 \name{prim_max}
 \alias{prim_max}
-\title{Primitive Maximum}
+\title{Primitive Max Reduction}
 \usage{
-prim_max(lhs, rhs)
+prim_max(x, axes, drop = TRUE)
 }
 \arguments{
-\item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of any data type.
-Must have the same shape.}
+\item{x}{(\code{\link{arrayish}})\cr
+Arrayish value of any data type.}
+
+\item{axes}{(\code{integer()})\cr
+Axes to reduce over.
+Negative values count from the end, i.e. \code{-1} refers to the last axis.}
+
+\item{drop}{(\code{logical(1)})\cr
+Whether to drop the reduced axes from the output shape.
+If \code{TRUE}, the reduced axes are removed.
+If \code{FALSE}, the reduced axes are set to 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+Has the same data type as the input.
+When \code{drop = TRUE}, the shape is that of \code{x} with \code{axes} removed.
+When \code{drop = FALSE}, the shape is that of \code{x} with \code{axes} set to 1.
 }
 \description{
-Element-wise maximum of two arrays.
+Finds the maximum of array elements along the specified axes.
 }
 \section{Implemented Rules}{
 
@@ -29,14 +39,13 @@ Element-wise maximum of two arrays.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}}.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{\link[stablehlo:hlo_maximum]{hlo_maximum()}} as the reducer.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(1, 5, 3))
-y <- nv_array(c(4, 2, 6))
-prim_max(x, y)
+x <- nv_matrix(1:6, nrow = 2)
+prim_max(x, axes = 1L)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

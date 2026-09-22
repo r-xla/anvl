@@ -4,13 +4,13 @@
 \alias{nv_sample_int}
 \title{Sample Integers}
 \usage{
-nv_sample_int(shape, initial_state, n, dtype = NULL)
+nv_sample_int(shape, state, n, dtype = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
 \item{n}{(\code{integer(1)})\cr

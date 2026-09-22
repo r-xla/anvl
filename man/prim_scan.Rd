@@ -4,7 +4,7 @@
 \alias{prim_scan}
 \title{Primitive Scan}
 \usage{
-prim_scan(init, xs, body, length, reverse = FALSE)
+prim_scan(init, xs, body, steps, reverse = FALSE)
 }
 \arguments{
 \item{init}{(\code{list()})\cr
@@ -13,24 +13,24 @@ shape and data type across steps.}
 
 \item{xs}{(\code{list()})\cr
 Per-step inputs: a (possibly nested) list of arrays sliced along axis 1,
-all of size \code{length} along it. An empty list runs a counted loop.}
+all of size \code{steps} along it. An empty list runs a counted loop.}
 
 \item{body}{(\code{function})\cr
 Step function \verb{function(carry, x)} returning \code{list(carry = , out = )},
 where \code{carry} has the structure of \code{init} and \code{out} is a (possibly
 nested) list of arrays or \code{NULL}. \code{x} is \code{NULL} when \code{xs} is empty.}
 
-\item{length}{(\code{integer(1)})\cr
+\item{steps}{(\code{integer(1)})\cr
 Static trip count; the size of axis 1 of every array in \code{xs}. \code{0} runs
 no step and returns \code{init} with zero-length stacked outputs.}
 
 \item{reverse}{(\code{logical(1)})\cr
-If \code{TRUE}, steps run from \code{length} down to \code{1}; each step still reads
+If \code{TRUE}, steps run from \code{steps} down to \code{1}; each step still reads
 \code{xs} at its own position and writes its output there.}
 }
 \value{
 \code{list(carry = , out = )}: the final carry and the stacked
-outputs, each leaf of \code{out} gaining a leading axis of size \code{length}.
+outputs, each leaf of \code{out} gaining a leading axis of size \code{steps}.
 }
 \description{
 Runs \code{body} a fixed number of times, threading a carry through the steps
@@ -61,7 +61,7 @@ prim_scan(
     s <- carry$s + x$x
     list(carry = list(s = s), out = s)
   },
-  length = 3L
+  steps = 3L
 )
 \dontshow{\}) # examplesIf}
 }

@@ -4,7 +4,7 @@
 \alias{prim_reduce}
 \title{Primitive Generic Reduce}
 \usage{
-prim_reduce(x, init, axes, drop = TRUE, reductor)
+prim_reduce(x, init, axes, reducer, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -12,19 +12,19 @@ Arrayish value of any data type.}
 
 \item{init}{(\code{\link{arrayish}})\cr
 Scalar (0 axes) initial value. Must have the same data type as
-\code{x} and be the neutral element w.r.t. \code{reductor}.}
+\code{x} and be the neutral element w.r.t. \code{reducer}.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reduce over.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 
+\item{reducer}{(\verb{function(lhs, rhs)})\cr
+Binary reducer producing a scalar of the same dtype as \code{x}.
+Must be associative (see "Associativity Requirement").}
+
 \item{drop}{(\code{logical(1)})\cr
 If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE}
 they are kept with size 1.}
-
-\item{reductor}{(\verb{function(lhs, rhs)})\cr
-Binary reducer producing a scalar of the same dtype as \code{x}.
-Must be associative (see "Associativity Requirement").}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -37,10 +37,10 @@ associative reducer.
 }
 \section{Associativity Requirement}{
 
-The order in which \code{reductor} is applied across the reduction window is
-implementation-defined. If the reductor is not associative, the result
+The order in which \code{reducer} is applied across the reduction window is
+implementation-defined. If the reducer is not associative, the result
 is ill-defined.
-Furthermore, \code{init} must be the neutral element for this reductor.
+Furthermore, \code{init} must be the neutral element for this reducer.
 Because floating point math is non-associative, the output of
 the reduction can differ between backends (GPU, CPU), even if the underlying mathematical
 function (like \code{+}) is associative.
@@ -55,16 +55,16 @@ function (like \code{+}) is associative.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{reductor} as the body.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{reducer} as the body.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4))
-prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
-prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)
+prim_reduce(x, init = nv_scalar(0), axes = 1L, reducer = prim_add)
+prim_reduce(x, init = nv_scalar(1), axes = 1L, reducer = prim_mul)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_reduce_sum]{prim_reduce_sum()}}, \code{\link[=prim_reduce_max]{prim_reduce_max()}}
+\code{\link[=prim_sum]{prim_sum()}}, \code{\link[=prim_max]{prim_max()}}
 }

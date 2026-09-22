@@ -8,9 +8,9 @@
 # error handling
 
     Code
-      jit(prim_ceil)(nv_array(1:4))
+      jit(prim_ceiling)(nv_array(1:4))
     Condition
-      Error in `prim_ceil()`:
+      Error in `prim_ceiling()`:
       ! `x` must have dtype float.
       x Got i32.
 

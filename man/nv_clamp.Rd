@@ -4,22 +4,22 @@
 \alias{nv_clamp}
 \title{Clamp}
 \usage{
-nv_clamp(min_val, x, max_val)
+nv_clamp(x, min, max)
 }
 \arguments{
-\item{min_val, max_val}{(\code{\link{arrayish}})\cr
-Minimum and maximum values (scalar or same shape as \code{x}).}
-
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
+
+\item{min, max}{(\code{\link{arrayish}})\cr
+Minimum and maximum values (scalar or same shape as \code{x}).}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as the input.
 }
 \description{
-Element-wise clamp: \code{max(min_val, min(x, max_val))}.
-Converts \code{min_val} and \code{max_val} to the data type of \code{x}.
+Element-wise clamp: \code{max(min, min(x, max))}.
+Converts \code{min} and \code{max} to the data type of \code{x}.
 }
 \details{
 The underlying StableHLO function already broadcasts scalars, so no need to broadcast manually.
@@ -27,7 +27,7 @@ The underlying StableHLO function already broadcasts scalars, so no need to broa
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(-1, 0.5, 2))
-nv_clamp(nv_scalar(0), x, nv_scalar(1))
+nv_clamp(x, nv_scalar(0), nv_scalar(1))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

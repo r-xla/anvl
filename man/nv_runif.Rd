@@ -4,13 +4,13 @@
 \alias{nv_runif}
 \title{Sample from a Uniform Distribution}
 \usage{
-nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
+nv_runif(shape, state, dtype = NULL, min = 0, max = 1)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
 Shape.}
 
-\item{initial_state}{(\code{\link{arrayish}})\cr
+\item{state}{(\code{\link{arrayish}})\cr
 RNG state (\code{ui64[2]}).}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr

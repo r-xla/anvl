@@ -24,7 +24,7 @@ nested_param_graph <- function() {
     nv_while(
       list(i = nv_scalar(0, dtype = "f32")),
       \(i) i < x,
-      \(i) list(i = nv_reduce_max(nv_broadcast_to(i, c(2, 1)), axes = 1, drop = TRUE)[1])
+      \(i) list(i = nv_max(nv_broadcast_to(i, c(2, 1)), axes = 1, drop = TRUE)[1])
     )
   }
   trace_fn(f, list(x = nv_scalar(3, dtype = "f32")))
@@ -145,7 +145,7 @@ describe("format_param_parts()", {
 describe("format.PrimitiveCall()", {
   it("renders its params the way a graph body does", {
     local_registered_default_dtypes()
-    graph <- trace_fn(function(x) nv_reduce_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
+    graph <- trace_fn(function(x) nv_max(x, axes = 1, drop = TRUE), list(x = nv_array(1:10)))
     expect_snapshot(cat(format(graph$calls[[1L]])))
   })
 
@@ -212,7 +212,7 @@ describe("format.AnvlGraph()", {
 
   it("gives a sub-graph param its own rows and fills the short ones around it", {
     graph <- trace_fn(
-      function(x) prim_reduce(x, init = 0, axes = 1L, reductor = \(a, b) a + b),
+      function(x) prim_reduce(x, init = 0, axes = 1L, reducer = \(a, b) a + b),
       list(x = nv_array(as.numeric(1:6), dtype = "f32"))
     )
     expect_snapshot(cat(format(graph, width = 80L)))

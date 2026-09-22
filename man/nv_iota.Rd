@@ -5,9 +5,9 @@
 \alias{nv_iota_like}
 \title{Iota}
 \usage{
-nv_iota(axis, dtype, shape, start = 1L, device = NULL)
+nv_iota(axis, shape, dtype, start = 1L, device = NULL)
 
-nv_iota_like(like, axis, shape = NULL, start = 1L, dtype = NULL, device = NULL)
+nv_iota_like(like, axis, shape = NULL, dtype = NULL, start = 1L, device = NULL)
 }
 \arguments{
 \item{axis}{(\code{integer(1)})\cr
@@ -15,11 +15,11 @@ Axis along which values increase.
 Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
 last axis.}
 
-\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type.}
-
 \item{shape}{(\code{integer()})\cr
 Shape.}
+
+\item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type.}
 
 \item{start}{(\code{integer(1)})\cr
 Starting value (default 1).}
@@ -50,12 +50,12 @@ Has the given \code{dtype} and \code{shape}.
 Creates an array with values increasing along the specified axis,
 starting from \code{start}.
 
-\code{nv_iota_like()} is a variant where \code{dtype}, \code{shape}, and
+\code{nv_iota_like()} is a variant where \code{shape}, \code{dtype}, and
 \code{device} default to those of \code{like}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_iota(axis = 1L, dtype = "i32", shape = 5L)
+nv_iota(axis = 1L, shape = 5L, dtype = "i32")
 x <- nv_fill(0L, shape = c(2, 3))
 nv_iota_like(x, axis = 1L)
 \dontshow{\}) # examplesIf}

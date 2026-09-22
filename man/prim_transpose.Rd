@@ -43,5 +43,5 @@ prim_transpose(x, permutation = c(2L, 1L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=nv_transpose]{nv_transpose()}}, \code{\link[=t]{t()}}
+\code{\link[=nv_aperm]{nv_aperm()}}, \code{\link[=t]{t()}}
 }

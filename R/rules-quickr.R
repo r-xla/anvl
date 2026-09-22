@@ -550,13 +550,13 @@ quickr_emit_static_slice <- function(
   out_sym,
   operand_expr,
   start_indices,
-  limit_indices,
+  end_indices,
   strides,
   shape_out,
   out_aval
 ) {
   start_indices <- as.integer(start_indices)
-  limit_indices <- as.integer(limit_indices)
+  end_indices <- as.integer(end_indices)
   strides <- as.integer(strides)
   shape_out <- as.integer(shape_out)
 
@@ -565,7 +565,7 @@ quickr_emit_static_slice <- function(
     cli_abort("static_slice: only arrays up to rank 5 are supported")
   }
   stopifnot(length(start_indices) == rank)
-  stopifnot(length(limit_indices) == rank)
+  stopifnot(length(end_indices) == rank)
   stopifnot(length(strides) == rank)
 
   if (rank == 0L) {
@@ -801,7 +801,7 @@ quickr_emit_gather <- function(
   collapsed_slice_axes,
   x_batching_axes,
   start_indices_batching_axes,
-  start_index_map,
+  start_indices_to_x_axes,
   index_vector_axis,
   out_aval
 ) {
@@ -812,7 +812,7 @@ quickr_emit_gather <- function(
   collapsed_slice_axes <- sort(unique(as.integer(collapsed_slice_axes)))
   x_batching_axes <- as.integer(x_batching_axes)
   start_indices_batching_axes <- as.integer(start_indices_batching_axes)
-  start_index_map <- as.integer(start_index_map)
+  start_indices_to_x_axes <- as.integer(start_indices_to_x_axes)
   index_vector_axis <- as.integer(index_vector_axis)
 
   op_rank <- length(shape_operand)
@@ -841,14 +841,16 @@ quickr_emit_gather <- function(
     )
   }
   index_vector_size <- as.integer(shape_start_indices[[si_rank]])
-  if (!identical(as.integer(length(start_index_map)), as.integer(index_vector_size))) {
-    cli_abort("gather: start_index_map length must match start_indices index vector size")
+  if (!identical(as.integer(length(start_indices_to_x_axes)), as.integer(index_vector_size))) {
+    cli_abort("gather: start_indices_to_x_axes length must match start_indices index vector size")
   }
-  if (length(start_index_map) && (min(start_index_map) < 1L || max(start_index_map) > op_rank)) {
-    cli_abort("gather: invalid start_index_map: {start_index_map}")
+  if (
+    length(start_indices_to_x_axes) && (min(start_indices_to_x_axes) < 1L || max(start_indices_to_x_axes) > op_rank)
+  ) {
+    cli_abort("gather: invalid start_indices_to_x_axes: {start_indices_to_x_axes}")
   }
-  if (length(unique(start_index_map)) != length(start_index_map)) {
-    cli_abort("gather: start_index_map must not contain duplicates")
+  if (length(unique(start_indices_to_x_axes)) != length(start_indices_to_x_axes)) {
+    cli_abort("gather: start_indices_to_x_axes must not contain duplicates")
   }
   if (length(collapsed_slice_axes) && (min(collapsed_slice_axes) < 1L || max(collapsed_slice_axes) > op_rank)) {
     cli_abort("gather: invalid collapsed_slice_axes: {collapsed_slice_axes}")
@@ -885,8 +887,8 @@ quickr_emit_gather <- function(
 
   start_sym <- vector("list", op_rank)
   start_stmts <- list()
-  for (k in seq_along(start_index_map)) {
-    d <- start_index_map[[k]]
+  for (k in seq_along(start_indices_to_x_axes)) {
+    d <- start_indices_to_x_axes[[k]]
     sym <- as.name(paste0("s_", as.character(out_sym), "_", d))
     start_sym[[d]] <- sym
     upper <- as.integer(shape_operand[[d]] - slice_sizes[[d]] + 1L)
@@ -1632,7 +1634,7 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_reverse,
+    prim_rev,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
@@ -1660,7 +1662,7 @@ local({
         out_sym,
         inputs[[1L]],
         params$start_indices,
-        params$limit_indices,
+        params$end_indices,
         params$strides,
         shape(out_aval),
         out_aval
@@ -1749,7 +1751,7 @@ local({
         params$collapsed_slice_axes,
         params$x_batching_axes,
         params$start_indices_batching_axes,
-        params$start_index_map,
+        params$start_indices_to_x_axes,
         params$index_vector_axis,
         out_aval
       )
@@ -2073,7 +2075,7 @@ local({
   )
 
   quickr_register_elementwise_lowerer(
-    list(prim_abs, prim_sqrt, prim_log, prim_floor, prim_ceil, prim_exp, prim_sin, prim_cos, prim_tan),
+    list(prim_abs, prim_sqrt, prim_log, prim_floor, prim_ceiling, prim_exp, prim_sin, prim_cos, prim_tan),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       fun <- switch(
         prim_name,
@@ -2108,7 +2110,7 @@ local({
   )
 
   quickr_register_elementwise_lowerer(
-    prim_logistic,
+    prim_plogis,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       x <- inputs[[1L]]
       denom <- rlang::call2("+", 1, rlang::call2("exp", rlang::call2("-", x)))
@@ -2117,7 +2119,7 @@ local({
   )
 
   quickr_register_elementwise_lowerer(
-    list(prim_max, prim_min),
+    list(prim_pmax, prim_pmin),
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       cmp <- if (prim_name == "maximum") ">=" else "<="
       quickr_emit_assign(
@@ -2199,7 +2201,7 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_reduce_sum,
+    prim_sum,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
@@ -2209,7 +2211,7 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_reduce_prod,
+    prim_prod,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
@@ -2219,7 +2221,7 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_reduce_max,
+    prim_max,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
@@ -2229,7 +2231,7 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_reduce_min,
+    prim_min,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
@@ -2239,7 +2241,7 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_reduce_any,
+    prim_any,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
@@ -2261,7 +2263,7 @@ local({
   )
 
   quickr_register_prim_lowerer(
-    prim_reduce_all,
+    prim_all,
     function(prim_name, inputs, params, out_syms, input_nodes, out_avals, ctx = NULL) {
       out_sym <- out_syms[[1L]]
       out_aval <- out_avals[[1L]]
