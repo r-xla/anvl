@@ -76,6 +76,35 @@
   array, improving consistency with base R.
 - The method for `round` was removed, as `digits` is currently not
   supported.
+- [`nv_quantile()`](https://r-xla.github.io/anvl/dev/reference/nv_quantile.md)
+  and
+  [`nv_median()`](https://r-xla.github.io/anvl/dev/reference/nv_median.md)
+  now reduce over `axes` (plural) instead of a single `axis`, defaulting
+  to every axis like
+  [`nv_mean()`](https://r-xla.github.io/anvl/dev/reference/nv_mean.md)
+  and base R’s [`quantile()`](https://rdrr.io/r/stats/quantile.html) /
+  [`median()`](https://rdrr.io/r/stats/median.html), and gained a `drop`
+  argument. Write `nv_median(x, axes = -1L)` for the previous default.
+- [`nv_sort()`](https://r-xla.github.io/anvl/dev/reference/nv_sort.md)
+  and
+  [`nv_argsort()`](https://r-xla.github.io/anvl/dev/reference/nv_argsort.md)
+  now flatten a multi-axis array when `axis = NULL`, instead of working
+  along the last axis, so [`sort()`](https://rdrr.io/r/base/sort.html)
+  on an anvl array agrees with base R. Write `axis = -1L` for the
+  previous default.
+- [`prim_sort()`](https://r-xla.github.io/anvl/dev/reference/prim_sort.md)
+  no longer defaults `axis` to `1L`; pass it explicitly, as with every
+  other primitive.
+- [`nv_argmax()`](https://r-xla.github.io/anvl/dev/reference/nv_argmax.md)
+  and
+  [`nv_argmin()`](https://r-xla.github.io/anvl/dev/reference/nv_argmin.md)
+  now reduce over `axes` (plural) instead of a single `axis`, defaulting
+  to every axis so that they pair with
+  [`nv_reduce_max()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_max.md)
+  /
+  [`nv_reduce_min()`](https://r-xla.github.io/anvl/dev/reference/nv_reduce_min.md).
+  Reducing several axes indexes their row-major flattening. Write
+  `nv_argmax(x, axes = -1L)` for the previous default.
 - The `tensor_to_gval` argument of
   [`GraphDescriptor()`](https://r-xla.github.io/anvl/dev/reference/GraphDescriptor.md)
   is now called `array_to_gval`.
@@ -91,6 +120,10 @@
 
 ### Features
 
+- [`nv_reverse()`](https://r-xla.github.io/anvl/dev/reference/nv_reverse.md)
+  gained an `axes = NULL` default that reverses every axis, matching
+  [`rev()`](https://rdrr.io/r/base/rev.html) and `numpy.flip()`, and
+  returns `x` unchanged for an empty `axes` instead of erroring.
 - [`nv_seq()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md) /
   [`nv_seq_like()`](https://r-xla.github.io/anvl/dev/reference/nv_seq.md)
   gained a `by` argument and now count down when `start > end`, like

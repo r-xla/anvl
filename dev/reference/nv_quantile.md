@@ -1,13 +1,13 @@
 # Quantile
 
-Computes the `probs` quantile(s) of an array along an axis.
+Computes the `probs` quantile(s) of an array over one or more axes.
 
 `probs` follows the same scalar-vs-array convention as
 [`nv_select()`](https://r-xla.github.io/anvl/dev/reference/nv_select.md)'s
 `index`:
 
-- a length-1 numeric (e.g. `0.5`) treats `probs` as scalar — the output
-  has `axis` removed, like a reduction;
+- a length-1 numeric (e.g. `0.5`) treats `probs` as scalar — the result
+  is the reduction alone;
 
 - a 1-D R array (e.g. `array(c(0.25, 0.5, 0.75))`) prepends a leading
   axis of size `length(probs)`.
@@ -22,7 +22,14 @@ computed (and returned) at the default float data type.
 ## Usage
 
 ``` r
-nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_quantile(
+  x,
+  probs,
+  axes = NULL,
+  drop = TRUE,
+  interpolation = "linear",
+  nan_rm = FALSE
+)
 ```
 
 ## Arguments
@@ -36,16 +43,21 @@ nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 
   (`numeric(1)` \| 1-D `array`)  
   One or more probabilities in `[0, 1]`. Either a length-1 numeric
-  (scalar; `axis` is dropped) or a 1-D `array` (a leading axis of size
-  `length(probs)` is prepended). Plain length-K (K \> 1) vectors are
-  rejected — wrap with [`array()`](https://rdrr.io/r/base/array.html).
+  (scalar) or a 1-D `array` (a leading axis of size `length(probs)` is
+  prepended). Plain length-K (K \> 1) vectors are rejected — wrap with
+  [`array()`](https://rdrr.io/r/base/array.html).
 
-- axis:
+- axes:
 
-  (`integer(1)` \| `NULL`)  
-  Axis along which to compute the quantile. Negative values count from
-  the end, i.e. `-1` refers to the last axis. If `NULL` (default), uses
-  the last axis.
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
+  Axes to reduce. Negative values count from the end, i.e. `-1` refers
+  to the last axis. If `NULL` (default), reduces over all axes,
+  returning a scalar.
+
+- drop:
+
+  (`logical(1)`)  
+  Whether to drop reduced axes.
 
 - interpolation:
 
@@ -62,15 +74,16 @@ nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
 ## Value
 
 [`arrayish`](https://r-xla.github.io/anvl/dev/reference/arrayish.md)  
-For scalar `probs`: same shape as `x` with `axis` removed. For array
-`probs`: a **leading** axis of size `length(probs)` is prepended. The
-data type is that of `x`, or the default float for a non-float `x`.
+Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+For array `probs`, a **leading** axis of size `length(probs)` is
+prepended. The data type is that of `x`, or the default float for a
+non-float `x`.
 
 ## Interpolation modes
 
-Let `h = (n - 1) * q` be the 0-based fractional index for an axis of
-length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
-`frac = h - lo`. Then:
+Let `h = (n - 1) * q` be the 0-based fractional index over the `n`
+reduced elements for probability `q`, with `lo = floor(h)`,
+`hi = ceil(h)`, `frac = h - lo`. Then:
 
 - `"linear"` (default): `(1 - frac) * sorted[lo] + frac * sorted[hi]`.
 
@@ -81,6 +94,10 @@ length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
 - `"nearest"`: `sorted[lo]` if `frac < 0.5` else `sorted[hi]`.
 
 - `"midpoint"`: `(sorted[lo] + sorted[hi]) / 2`.
+
+Reducing several axes at once ranks all of their elements together, so
+`nv_quantile(x, q, axes = c(1, 2))` equals
+`nv_quantile(nv_flatten(x), q)` for a matrix `x`.
 
 ## See also
 
@@ -105,6 +122,16 @@ nv_quantile(x, 0.5, interpolation = "lower")
 #> AnvlArray
 #>  3
 #> [ CPUf32{} ] 
+m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+nv_quantile(m, 0.5) # over every element
+#> AnvlArray
+#>  2.5000
+#> [ CPUf32{} ] 
+nv_quantile(m, 0.5, axes = 2L) # one quantile per row
+#> AnvlArray
+#>  3
+#>  2
+#> [ CPUf32{2} ] 
 nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)
 #> AnvlArray
 #>  nan

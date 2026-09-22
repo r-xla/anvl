@@ -23,8 +23,10 @@ nv_concatenate(..., axis = NULL)
 
   (`integer(1)` \| `NULL`)  
   Axis along which to concatenate. Negative values count from the end,
-  i.e. `-1` refers to the last axis. If `NULL` (default), assumes all
-  inputs are at most 1-D and concatenates along axis 1.
+  i.e. `-1` refers to the last axis. If `NULL` (default), concatenates
+  along axis 1, which requires every input to have at most one axis; for
+  anything else `axis` must be given, since there is no neutral axis to
+  join two matrices along.
 
 ## Value
 
@@ -61,4 +63,13 @@ nv_concatenate(x, y)
 #>  5
 #>  6
 #> [ CPUf32{6} ] 
+
+m <- nv_matrix(1:4, nrow = 2)
+nv_concatenate(m, m, axis = 1L) # required: `m` has two axes
+#> AnvlArray
+#>  1 3
+#>  2 4
+#>  1 3
+#>  2 4
+#> [ CPUi32{4,2} ] 
 ```

@@ -1,13 +1,13 @@
 # Reverse
 
-Reverses the order of elements along specified axes. You can also use
-[`rev()`](https://rdrr.io/r/base/rev.html), which reverses along every
-axis.
+Reverses the order of elements along the given axes, every axis by
+default. You can also use [`rev()`](https://rdrr.io/r/base/rev.html),
+which always reverses along every axis.
 
 ## Usage
 
 ``` r
-nv_reverse(x, axes)
+nv_reverse(x, axes = NULL)
 ```
 
 ## Arguments
@@ -19,9 +19,9 @@ nv_reverse(x, axes)
 
 - axes:
 
-  ([`integer()`](https://rdrr.io/r/base/integer.html))  
+  ([`integer()`](https://rdrr.io/r/base/integer.html) \| `NULL`)  
   Axes to reverse. Negative values count from the end, i.e. `-1` refers
-  to the last axis.
+  to the last axis. If `NULL` (default), reverses along every axis.
 
 ## Value
 
@@ -46,7 +46,7 @@ for the underlying primitive.
 
 ``` r
 x <- nv_array(c(1, 2, 3, 4, 5))
-nv_reverse(x, axes = 1L)
+nv_reverse(x)
 #> AnvlArray
 #>  5
 #>  4
@@ -54,4 +54,16 @@ nv_reverse(x, axes = 1L)
 #>  2
 #>  1
 #> [ CPUf32{5} ] 
+
+m <- nv_matrix(1:6, nrow = 2)
+nv_reverse(m) # every axis
+#> AnvlArray
+#>  6 4 2
+#>  5 3 1
+#> [ CPUi32{2,3} ] 
+nv_reverse(m, axes = 2L) # columns only
+#> AnvlArray
+#>  5 3 1
+#>  6 4 2
+#> [ CPUi32{2,3} ] 
 ```

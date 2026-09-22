@@ -123,11 +123,10 @@ boolean input, which is accumulated at the default integer data type (see
     <h2 id="relation-to-base-r">Relation to base R<a class="anchor" aria-label="anchor" href="#relation-to-base-r"></a></h2>
 
 
-<p>Both <code>nv_cumsum()</code> (with <code>axis = NULL</code>) and <code><a href="https://rdrr.io/r/base/cumsum.html" class="external-link">base::cumsum()</a></code>
-flatten inputs to a single axis before accumulating, but the
-flatten order differs: anvl arrays are row-major (C order), so the
-flattened sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. The two agree on 1-D inputs.</p>
+<p><code>nv_cumsum()</code> with <code>axis = NULL</code> and <code><a href="https://rdrr.io/r/base/cumsum.html" class="external-link">base::cumsum()</a></code>
+both flatten first, but in different orders – anvl arrays are row-major (C
+order), base R is column-major (Fortran) – so for a multi-axis input the
+two give different running values. They agree on 1-D inputs.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

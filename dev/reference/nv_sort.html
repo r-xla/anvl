@@ -102,8 +102,8 @@ Input array.</p></dd>
 <dt id="arg-axis">axis<a class="anchor" aria-label="anchor" href="#arg-axis"></a></dt>
 <dd><p>(<code>integer(1)</code> | <code>NULL</code>)<br>
 Axis along which to sort. Negative values count from the end,
-i.e. <code>-1</code> refers to the last axis. If <code>NULL</code> (default), uses the last
-axis.</p></dd>
+i.e. <code>-1</code> refers to the last axis. If <code>NULL</code> (default), the input is
+first flattened to a 1-D array, like <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">base::sort()</a></code>.</p></dd>
 
 
 <dt id="arg-decreasing">decreasing<a class="anchor" aria-label="anchor" href="#arg-decreasing"></a></dt>
@@ -139,10 +139,12 @@ Same shape and data type as <code>x</code>.</p>
     <h2 id="the-sort-generic">The <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> generic<a class="anchor" aria-label="anchor" href="#the-sort-generic"></a></h2>
 
 
-<p><code><a href="https://rdrr.io/r/base/sort.html" class="external-link">base::sort()</a></code> flattens a multi-axis array into a vector, while
-<code>nv_sort()</code> (and <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> on an anvl array) sorts along a single axis, the
-last one by default, and keeps the shape. Flatten with <code><a href="nv_flatten.html">nv_flatten()</a></code>
-first if you want a single sorted sequence.</p>
+<p>Like <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">base::sort()</a></code>, <code>nv_sort()</code> with <code>axis = NULL</code> flattens a multi-axis
+array into one sorted vector, so <code><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort()</a></code> on an anvl array agrees with base
+R (the flatten order does not matter once the elements are sorted). It
+differs in one respect: base R drops <code>NA</code> by default, whereas <code>NaN</code> is kept
+and sorted to the end. Pass <code>axis</code> to sort each slice along one axis
+instead, which keeps the shape.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -189,7 +191,16 @@ first if you want a single sorted sequence.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{8} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="AnvlArray.html">nv_matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">5</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">0</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span>, byrow <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">m</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="co"># one sorted vector, like base R</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  4</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{6} ] </span>
+<span class="r-in"><span><span class="fu">nv_sort</span><span class="op">(</span><span class="va">m</span>, axis <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span> <span class="co"># each row sorted, shape kept</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 3 5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  0 2 4</span>

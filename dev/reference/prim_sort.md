@@ -14,7 +14,7 @@ along `axis` are sorted independently; other axes are preserved.
 ## Usage
 
 ``` r
-prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis, descending = FALSE, is_stable = FALSE)
 ```
 
 ## Arguments
