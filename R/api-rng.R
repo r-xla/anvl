@@ -239,7 +239,6 @@ nv_rnorm <- jit(
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #'   The number of successes are converted to it.
 #' @return (named `list` of two [`arrayish`])\cr
-#' @template section_rng_precision
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and data type `dtype`.
 #' @family rng
@@ -301,7 +300,6 @@ nv_rbinom <- jit(
 #'   The sampled values are converted to it.
 #'   `NULL` (default) uses the [default integer type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
-#' @template section_rng_precision
 #'   Elements `state`, the updated RNG state, and `values`, the sampled integers
 #'   of shape `shape` and data type `dtype`.
 #' @family rng
@@ -343,7 +341,6 @@ nv_sample_int <- jit(
 #'   The population vector to sample from.
 #'   An R value materializes at its [default data type][default_dtypes].
 #' @return (named `list` of two [`arrayish`])\cr
-#' @template section_rng_precision
 #'   Elements `state`, the updated RNG state, and `values`, the sample of shape
 #'   `shape` and `x`'s data type.
 #' @family rng
