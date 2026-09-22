@@ -802,12 +802,3 @@ promote_to_common_float <- function(...) {
   args <- promote_numeric_operands(..., .fallback = default_float())
   lapply(args, function(x) if (is_dtype_float(dtype(x))) x else nv_convert(x, default_float()))
 }
-
-# The operands of an `nv_*` function that only *accepts* floats -- the linear
-# algebra ones, whose primitives have no integer implementation. They are
-# promoted together, so one check on the first covers them all.
-promote_float_operands <- function(..., hint = NULL) {
-  args <- promote_numeric_operands(...)
-  assert_float_dtype(dtype(args[[1L]]), arg = rlang::names2(args)[[1L]], hint = hint)
-  args
-}

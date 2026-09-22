@@ -21,6 +21,8 @@ Has the given \code{dtype} and the input's shape.
 }
 \description{
 Converts the elements of an array to a different data type.
+Bare R inputs are directly materialized at the requested data type
+and are checked for out-of-range or missing values.
 }
 \section{Implemented Rules}{
 

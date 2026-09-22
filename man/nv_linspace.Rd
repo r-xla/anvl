@@ -12,20 +12,16 @@ nv_linspace_like(like, start, end, steps, dtype = NULL, device = NULL)
 \arguments{
 \item{start, end}{(\code{numeric(1)})\cr
 First and last value of the sequence. \code{end} may lie below \code{start}, in
-which case the values decrease. Both are plain R values built into the
-program, not arrays.}
+which case the values decrease.}
 
 \item{steps}{(\code{integer(1)})\cr
-Number of values to generate. Must be at least 1; for \code{steps = 1} the
-result is \code{start}. A plain R value built into the program, not an array.}
+Number of values to generate. Must be at least 1; for \code{steps = 1} the}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the result. Must be a float data type; \code{NULL} (default) uses
 the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}), since
 the spacing is fractional. For \code{nv_linspace_like()}, \code{NULL} uses
-\code{dtype(like)}, which must then be a float too. To obtain integers, convert
-the result with \code{\link[=nv_convert]{nv_convert()}}, which leaves the rounding yours to
-choose.}
+\code{dtype(like)}, which must then be a float too.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

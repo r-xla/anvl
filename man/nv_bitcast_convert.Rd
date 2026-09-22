@@ -34,7 +34,6 @@ nv_bitcast_convert(x, dtype = "i8")
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_bitcast_convert]{prim_bitcast_convert()}}, which this is an alias of -- a single
-operand leaves the API layer nothing to promote or broadcast -- and
+\code{\link[=prim_bitcast_convert]{prim_bitcast_convert()}}, which this is an alias, and
 \code{\link[=nv_convert]{nv_convert()}} for value-preserving type conversion.
 }

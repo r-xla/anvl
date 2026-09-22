@@ -16,14 +16,11 @@ Negative values count from the end of \code{shape}, i.e. \code{-1} refers to the
 last axis.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result, required here. Can be any numeric data type;
-boolean is not one, and is rejected. For \code{nv_iota_like()} it may be
-\code{NULL}, which uses \code{dtype(like)}.}
+Data type of the result, required here. Can be any numeric data type.
+For \code{nv_iota_like()} it may be \code{NULL}, which uses \code{dtype(like)}.}
 
 \item{shape}{(\code{integer()})\cr
-Shape of the result: one axis size per axis, at least one of them, since
-\code{axis} has to name one. A plain R vector built into the program, not an
-array.}
+Shape of the result.}
 
 \item{start}{(\code{integer(1)})\cr
 Starting value (default 1). Built at \code{dtype}, as the increments are.}

@@ -11,11 +11,14 @@ nv_solve(a, b)
 }
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
-Square non-singular matrix with exactly 2 axes. Can be any float data
-type; \code{a} and \code{b} are
-\link[=nv_promote_to_common]{promoted to a common data type}, which must come
-out a float. An R value assumes the other operand's data type, and commits
-to its \link[=default_dtypes]{default data type} when that has none either.}
+Square non-singular matrix with exactly 2 axes. Can be any numeric data
+type: \code{a} and \code{b} are
+\link[=nv_promote_to_common]{promoted to a common data type} and that is then
+converted to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where
+it is not a float already, since the decomposition is a float one. An R
+value assumes the other operand's data type within its
+\link[=dtypes]{data type category}, and settles on the default float when
+neither has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side, vector of length \code{n} or matrix with \code{n} rows. Promoted
@@ -26,7 +29,8 @@ together with \code{a} -- see \code{a}.}
 \value{
 (\code{\link{arrayish}})\cr
 The solution \code{x} such that \code{a \%*\% x = b}, with \code{b}'s shape and the
-operands' common data type.
+operands' common data type -- or the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}) where that was an integer one.
 }
 \description{
 Solves the linear system \code{a \%*\% x = b} for \code{x}. Uses LU decomposition
@@ -55,6 +59,9 @@ non-singular.
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 b <- nv_matrix(c(1, 2), nrow = 2, dtype = "f64")
 nv_solve(a, b)
+
+# an integer system is solved at the default float data type
+nv_solve(nv_matrix(c(3L, 1L, 1L, 2L), nrow = 2), nv_array(c(9L, 8L)))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

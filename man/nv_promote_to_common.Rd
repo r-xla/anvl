@@ -17,10 +17,6 @@ The inputs, each at their common data type and with its own shape.
 \description{
 Promote arrays to a common data type, see \code{\link[=promotion_common]{promotion_common()}} for more details.
 }
-\section{Handling of}{
-
-}
-
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # An integer is promoted to float

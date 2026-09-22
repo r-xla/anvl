@@ -16,11 +16,14 @@ nv_triangular_solve(
 \arguments{
 \item{a}{(\code{\link{arrayish}})\cr
 Triangular coefficient matrix with at least 2 axes. The last two
-axes must be equal; any leading axes are batch axes. Can be any float
-data type; \code{a} and \code{b} are
-\link[=nv_promote_to_common]{promoted to a common data type}, which must come
-out a float. An R value assumes the other operand's data type, and commits
-to its \link[=default_dtypes]{default data type} when that has none either.}
+axes must be equal; any leading axes are batch axes. Can be any numeric
+data type: \code{a} and \code{b} are
+\link[=nv_promote_to_common]{promoted to a common data type} and that is then
+converted to the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where
+it is not a float already, since the solve is a float one. An R value
+assumes the other operand's data type within its
+\link[=dtypes]{data type category}, and settles on the default float when
+neither has one.}
 
 \item{b}{(\code{\link{arrayish}})\cr
 Right-hand side. For \code{a} of shape \verb{(B..., n, n)}, \code{b} may be either:
@@ -52,7 +55,9 @@ If \code{TRUE}, solve with \code{t(a)} in place of \code{a}. Defaults to \code{F
 }
 \value{
 (\code{\link{arrayish}})\cr
-The solution \code{x}, with \code{b}'s shape and the operands' common data type.
+The solution \code{x}, with \code{b}'s shape and the operands' common data type --
+or the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where that was
+an integer one.
 }
 \description{
 Solves a triangular system of linear equations. When \code{left_side = TRUE},

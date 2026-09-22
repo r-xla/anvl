@@ -11,8 +11,7 @@ nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape of the result: exactly two axis sizes, since the result is a matrix.
-A plain R vector built into the program, not an array.}
+Shape of the result: exactly two axis sizes, since the result is a matrix.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset, with the same meaning as in \code{\link[=nv_triu]{nv_triu()}}. The default
@@ -39,9 +38,7 @@ Existing array whose attributes are used as defaults
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has the given \code{shape} and boolean data type. It is a mask over positions,
-so no array data enters it -- pass it to \code{\link[=nv_ifelse]{nv_ifelse()}} or multiply by it
-to use it.
+Has the given \code{shape} and boolean data type.
 }
 \description{
 Returns a boolean matrix that is \code{TRUE} on and above the given diagonal,

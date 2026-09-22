@@ -14,8 +14,7 @@ nv_pad(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-The array to pad. Can be any data type; \code{padding_value} is brought to it
--- see \code{padding_value}.}
+The array to pad. Can be any data type; \code{padding_value} is brought to it.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
 Scalar value to use for padding. It is

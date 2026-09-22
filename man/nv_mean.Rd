@@ -34,8 +34,9 @@ How to handle \code{NaN} values in float inputs. If \code{FALSE}
 }
 \value{
 (\code{\link{arrayish}})\cr
-Has a float data type. The shape is the input's with the reduced axes
-removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
+Has the input's data type where that is a float, and the default float
+data type (see \code{\link[=default_dtypes]{default_dtypes()}})
+otherwise. The shape is the input's with the reduced axes removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Computes the arithmetic mean along the specified axes. You can also
@@ -44,8 +45,11 @@ use \code{mean()}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-# the result is a float, even though the input is an integer
+# an integer input is averaged at the default float data type
 nv_mean(x)
+
+# a float input keeps its own, whatever the default float is
+nv_mean(nv_array(c(1, 2), dtype = "f64"))
 
 # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_mean(x, axes = 1L)

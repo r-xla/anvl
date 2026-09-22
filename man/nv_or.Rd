@@ -21,7 +21,8 @@ Has the inputs' broadcast shape and common data type.
 }
 \description{
 Element-wise bitwise OR -- a logical OR on a boolean input, and a
-bit-by-bit one on an integer. You can also use the \code{|} operator.
+bit-by-bit one on an integer. You can also use the \code{|} operator,
+which expects \code{bool} inputs, however.
 }
 \section{The \code{|} operator}{
 

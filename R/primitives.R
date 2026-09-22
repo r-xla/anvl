@@ -2722,6 +2722,8 @@ prim_round <- new_primitive(
 #' @title Primitive Convert Data Type
 #' @description
 #' Converts the elements of an array to a different data type.
+#' Bare R inputs are directly materialized at the requested data type
+#' and are checked for out-of-range or missing values.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param dtype (`character(1)` | [`DataType`])\cr
@@ -2766,7 +2768,7 @@ prim_convert <- new_primitive(
 )
 
 
-#' @title Primitive Conditional Element Selection
+#' @title Primitive Ifelse
 #' @description
 #' Element-wise selection based on a boolean predicate, like R's [ifelse()].
 #' For each element, returns the corresponding element from `true_value` where
@@ -2779,7 +2781,7 @@ prim_convert <- new_primitive(
 #'   `r roxy_agree("true_value", "false_value")`
 #' @return ([`arrayish`])\cr
 #'   Has the shape of `true_value` and `false_value`, and the data type they
-#'   agreed on. `pred` only selects between them and never widens the result.
+#'   agreed on.
 #' @templateVar primitive_id select
 #' @template section_rules
 #' @section StableHLO:
@@ -3222,9 +3224,6 @@ prim_scan <- new_primitive(
 #' @param xs (`list` of [`arrayish`])\cr
 #'   One or more arrays to sort. The first is the sort key; the rest are
 #'   carried along under the same permutation. All must share the same shape.
-#'   Each can be of any data type, and they need not agree: a key and its
-#'   payloads are meant to differ, so nothing here is promoted. An R value
-#'   among them materializes at its [default data type][default_dtypes].
 #' @param axis (`integer(1)`)\cr
 #'   Axis along which to sort.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
@@ -3378,6 +3377,7 @@ prim_top_k <- new_primitive(
 #' @description
 #' Prints an array value to the console during execution and returns the
 #' input unchanged. This is useful for debugging JIT-compiled code.
+#' Bare R inputs print at the categorie's default data type.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @return ([`arrayish`])\cr
@@ -3391,6 +3391,8 @@ prim_top_k <- new_primitive(
 #' # the value is printed and handed back unchanged
 #' x <- nv_array(c(1, 2, 3))
 #' prim_print(x)
+#' # bare R inputs are printed at the categorie's default data type
+#' prim_print(1L)
 #' @export
 prim_print <- new_primitive(
   "print",
@@ -3457,8 +3459,7 @@ prim_print <- new_primitive(
 #'   One of `"THREE_FRY"` (default), `"PHILOX"` or `"DEFAULT"`, the last
 #'   leaving the choice to the implementation.
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the generated random values. Can be any numeric data type;
-#'   boolean is not one, and is rejected.
+#'   Data type of the generated random values. Can be any numeric data type.
 #' @template param_shape
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Elements `state`, the updated RNG state with `initial_state`'s data type
@@ -3741,8 +3742,8 @@ prim_scatter <- new_primitive(
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param start_indices ([`arrayish`])\cr
-#'   Array of starting indices, of an integer data type, which it keeps -- the
-#'   indices take no part in `x`'s. Contains index vectors that map to
+#'   Array of starting indices, of the same integer data type.
+#'   Contains index vectors that map to
 #'   positions in `x` via `start_index_map`. The axis
 #'   specified by `index_vector_axis` holds the index vectors.
 #' @param slice_sizes (`integer()`)\cr

@@ -9,10 +9,7 @@ prim_sort(xs, axis, descending = FALSE, is_stable = FALSE)
 \arguments{
 \item{xs}{(\code{list} of \code{\link{arrayish}})\cr
 One or more arrays to sort. The first is the sort key; the rest are
-carried along under the same permutation. All must share the same shape.
-Each can be of any data type, and they need not agree: a key and its
-payloads are meant to differ, so nothing here is promoted. An R value
-among them materializes at its \link[=default_dtypes]{default data type}.}
+carried along under the same permutation. All must share the same shape.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to sort.

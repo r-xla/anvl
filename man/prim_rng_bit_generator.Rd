@@ -22,8 +22,7 @@ One of \code{"THREE_FRY"} (default), \code{"PHILOX"} or \code{"DEFAULT"}, the la
 leaving the choice to the implementation.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the generated random values. Can be any numeric data type;
-boolean is not one, and is rejected.}
+Data type of the generated random values. Can be any numeric data type.}
 
 \item{shape}{(\code{integer()})\cr
 Shape of the result: one axis size per axis, and \code{integer()} for a scalar.

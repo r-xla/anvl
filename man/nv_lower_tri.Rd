@@ -11,8 +11,7 @@ nv_lower_tri_like(like, diagonal = -1L, shape = NULL, device = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape of the result: exactly two axis sizes, since the result is a matrix.
-A plain R vector built into the program, not an array.}
+Shape of the result: exactly two axis sizes, since the result is a matrix.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset, with the same meaning as in \code{\link[=nv_tril]{nv_tril()}}. The default

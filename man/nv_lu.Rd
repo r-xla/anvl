@@ -8,13 +8,17 @@ nv_lu(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input, with exactly 2 axes. Can be any float data type. An R value materializes at its
-\link[=default_dtypes]{default data type}.}
+One input, with exactly 2 axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
 (named \code{list} of \code{\link{arrayish}})\cr
-\code{L} and \code{U} have the input's data type; \code{pivots} and \code{permutation} are
-indices at the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).
+\code{L} and \code{U} have the input's data type -- or the default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one; \code{pivots}
+and \code{permutation} are indices at the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}).
 \itemize{
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.

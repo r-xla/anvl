@@ -19,7 +19,7 @@ Has the input's shape and data type.
 \description{
 Element-wise bitwise NOT -- a logical negation on a boolean input, and a
 bit-by-bit complement on an integer, so \code{nv_not(12L)} is \code{-13}. You can also
-use the \code{!} operator.
+use the \code{!} operator, which expects \code{bool} inputs.
 }
 \section{The \code{!} operator}{
 

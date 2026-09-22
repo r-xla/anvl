@@ -12,16 +12,16 @@ nv_seq_like(like, start, end, by = NULL, dtype = NULL, device = NULL)
 \arguments{
 \item{start, end}{(\code{integer(1)})\cr
 First value and upper (or, when counting down, lower) limit of the
-sequence. Both are plain R values built into the program, not arrays.}
+sequence.}
 
 \item{by}{(\code{NULL} | \code{integer(1)})\cr
 Step size, which must be a non-zero whole number pointing from \code{start}
 towards \code{end}. \code{NULL} (default) uses \code{-1} if \code{start > end} and \code{1}
-otherwise. A plain R value built into the program, not an array.}
+otherwise.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result. Can be any numeric data type; boolean is not one,
-and is rejected. \code{NULL} (default) uses the default integer data
+Data type of the result. Can be any numeric data type.
+\code{NULL} (default) uses the default integer data
 type (see \code{\link[=default_dtypes]{default_dtypes()}}), since the values are whole. For
 \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
 

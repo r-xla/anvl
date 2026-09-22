@@ -2,7 +2,7 @@
 % Please edit documentation in R/primitives.R
 \name{prim_ifelse}
 \alias{prim_ifelse}
-\title{Primitive Conditional Element Selection}
+\title{Primitive Ifelse}
 \usage{
 prim_ifelse(pred, true_value, false_value)
 }
@@ -20,7 +20,7 @@ none of them has one.}
 \value{
 (\code{\link{arrayish}})\cr
 Has the shape of \code{true_value} and \code{false_value}, and the data type they
-agreed on. \code{pred} only selects between them and never widens the result.
+agreed on.
 }
 \description{
 Element-wise selection based on a boolean predicate, like R's \code{\link[=ifelse]{ifelse()}}.
