@@ -58,10 +58,6 @@
   default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
-* `nv_rbinom()`, `nv_sample_int()` and `nv_sample()` draw at the default float
-  data type instead of always at `f64`, so they also run on hardware without
-  `f64`. Their samples change where the default float is not `f64`; set it with
-  `with_default_dtypes()` to draw on the finer grid.
 
 ## Features
 
