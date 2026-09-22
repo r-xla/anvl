@@ -3617,30 +3617,45 @@ nv_quantile <- jit(
     # containing NaN has its output forced to NaN below, so the gathered values
     # never surface.
     #
-    # The window is sized here in R doubles while the gather index is computed
-    # on device, so the two agree only if the device arithmetic matches R's. At
-    # `dtype(x)` it does not: `21 * (1/7)` is 3 exactly in a double and
-    # 3.0000002 in `f32`, so the index lands past the window, where the gather
-    # clamps and quietly returns a neighbouring order statistic. The index
-    # arithmetic therefore runs at `f64`, which is bit-for-bit what R does, and
-    # each window below is the device's own index expression evaluated at
-    # `n_valid = n_axis` -- the same operations on the same bits, rather than a
-    # second formula for the same quantity, whose own rounding could put the
-    # index outside the window at equal precision. The index is nondecreasing
-    # in `n_valid`, so `n_axis` gives the largest index any slice can reach and
-    # the window is exactly big enough. Only `frac` returns to `out_dtype`, so
-    # the result keeps its data type.
+    # The window is sized on the host while the gather index is computed on
+    # device, so the two agree only if both round the same way. They would not
+    # if the host used R doubles: `21 * (1/7)` is 3 exactly in a double and
+    # 3.0000002 in `f32`, so the index would land past the window, where the
+    # gather clamps and quietly returns a neighbouring order statistic. The
+    # window is therefore computed by the backend itself -- `with_eager()`
+    # steps out of the trace and runs the index expression eagerly at
+    # `idx_dtype`, on the same hardware that will run the program -- rather
+    # than being predicted by a second formula in R whose own rounding could
+    # put the index outside the window.
     #
-    # TODO(metal): Metal has no `f64`, so a program that reaches here cannot run
-    # on it at all. Supporting Metal means making the two sides agree the other
-    # way round -- rounding the host-side window computation through the
-    # device's data type -- instead of widening the device to R's.
-    idx_dtype <- "f64"
+    # The window is that expression at `n_valid = n_axis`. The index is
+    # nondecreasing in `n_valid`, so that is the largest index any slice can
+    # reach and the window is exactly big enough. Only `frac` returns to
+    # `out_dtype`, so the result keeps its data type.
+    #
+    # The arithmetic runs at the wider of `x`'s data type and the default
+    # float: never coarser than the values it indexes, never coarser than the
+    # rest of the program, and never a data type the backend does not have.
+    idx_dtype <- if (dtype_width(out_dtype) >= dtype_width(default_float())) {
+      out_dtype
+    } else {
+      default_float()
+    }
 
     n_axis <- shp[axis]
     budget <- ceiling(n_axis / 2) + 1
-    k_lo <- as.integer(ceiling((n_axis - 1) * max(probs)) + 1)
-    k_hi <- as.integer(n_axis - floor((n_axis - 1) * min(probs)))
+    window <- with_eager({
+      n_window <- nv_scalar(n_axis, dtype = idx_dtype)
+      h_window <- (n_window - 1) * nv_array(probs, dtype = idx_dtype, shape = K)
+      # `hi_idx` of the ascending window and `lo_idx` of the descending one,
+      # spelled below exactly as they are spelled here.
+      list(
+        lo = as.integer(max(as.vector(nv_ceiling(h_window) + 1))),
+        hi = as.integer(max(as.vector(n_window - nv_floor(h_window))))
+      )
+    })
+    k_lo <- window$lo
+    k_hi <- window$hi
     path <- if (n_axis > 0L && k_lo <= budget) {
       "low"
     } else if (n_axis > 0L && k_hi <= budget) {

@@ -416,3 +416,69 @@ describe("coercing a traced array to R", {
     expect_equal(out, array(1:3))
   })
 })
+
+describe("local_eager", {
+  it("runs operations on the backend instead of recording them", {
+    seen <- NULL
+    f <- jit(function(x) {
+      seen <<- local({
+        local_eager()
+        as.vector(nv_scalar(21, dtype = "f32") * nv_scalar(1 / 7, dtype = "f32"))
+      })
+      x + 1
+    })
+    expect_equal(as.vector(as_array(f(nv_array(1)))), 2)
+    # The backend's rounding, not R's: `21 * (1/7)` is 3 exactly in a double.
+    expect_gt(seen, 3)
+  })
+
+  it("restores the descriptor a nested trace was building", {
+    inner <- NULL
+    outer <- NULL
+    f <- jit(function(x) {
+      g <- jit(function(y) {
+        local({
+          local_eager()
+          inner <<- .current_descriptor(silent = TRUE)
+        })
+        y * 2
+      })
+      out <- g(x)
+      outer <<- .current_descriptor(silent = TRUE)
+      out + 1
+    })
+    expect_equal(as.vector(as_array(f(nv_array(3)))), 7)
+    expect_null(inner)
+    expect_false(is.null(outer))
+  })
+
+  it("is a no-op outside a trace", {
+    expect_null(local_eager())
+    expect_null(.current_descriptor(silent = TRUE))
+  })
+})
+
+describe("with_eager", {
+  it("evaluates its expression outside the trace and returns its value", {
+    f <- jit(function(x) {
+      k <- with_eager({
+        inside <- .current_descriptor(silent = TRUE)
+        expect_null(inside)
+        as.integer(as.vector(nv_scalar(3, dtype = "f32") * 2))
+      })
+      expect_equal(k, 6L)
+      expect_false(is.null(.current_descriptor(silent = TRUE)))
+      x + k
+    })
+    expect_equal(as.vector(as_array(f(nv_array(1)))), 7)
+  })
+
+  it("restores the trace when its expression errors", {
+    f <- jit(function(x) {
+      expect_error(with_eager(stop("boom")), "boom")
+      expect_false(is.null(.current_descriptor(silent = TRUE)))
+      x + 1
+    })
+    expect_equal(as.vector(as_array(f(nv_array(1)))), 2)
+  })
+})

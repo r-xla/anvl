@@ -2005,6 +2005,25 @@ describe("nv_quantile", {
       nv_quantile(m, array(c(0.25, 0.75)), axis = 2L)
     )
   })
+
+  it("computes the gather index at the default float", {
+    local_registered_default_dtypes()
+    graph <- trace_fn(
+      function(x) nv_quantile(x, array(c(0.25, 0.5))),
+      list(x = nv_aval(default_float(), 8L))
+    )
+    expect_no_match(repr(stablehlo(graph)[[1L]]), "f64", fixed = TRUE)
+  })
+
+  it("computes the gather index at `x`'s data type when it is the wider one", {
+    local_registered_default_dtypes()
+    skip_if_not(dtype_width(default_float()) < 64L)
+    graph <- trace_fn(
+      function(x) nv_quantile(x, array(c(0.25, 0.5))),
+      list(x = nv_aval("f64", 8L))
+    )
+    expect_match(repr(stablehlo(graph)[[1L]]), "f64", fixed = TRUE)
+  })
 })
 
 describe("mean()", {

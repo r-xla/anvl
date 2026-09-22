@@ -125,6 +125,14 @@ When a function is JIT-compiled, anvl traces it by executing with `GraphBox` obj
 
 Key types: `GraphValue` (traced variable), `GraphLiteral` (embedded constant), `AbstractArray` (shape + dtype metadata), `AnvlGraph`.
 
+`local_eager()` / `with_eager()` step out of the trace — for the rest of the calling
+scope and for one expression respectively — so that operations on concrete arrays are
+executed on the backend instead of recorded. Use them where a trace needs a *value*
+while tracing: a count or size that a later operation takes as a static argument,
+computed with the data type and rounding the device itself would use (`nv_quantile()`
+sizes its `top_k` window this way). It costs a compile and a run per trace, so it
+belongs in the trace path, never in something evaluated per call.
+
 ## NSE and Tracing
 
 `force()` is only needed in higher-order primitives that trace R functions internally (e.g. `prim_sort` traces a comparator, `prim_scatter` traces an update computation). In those cases, force all arrayish inputs first so they aren't accidentally captured as unevaluated promises in the sub-graph descriptor — R's lazy evaluation otherwise causes hard-to-debug errors. Plain primitives that don't open a sub-descriptor don't need `force()`.

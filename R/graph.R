@@ -826,6 +826,40 @@ local_descriptor <- function(..., envir = parent.frame()) {
   return(desc)
 }
 
+# Run the rest of the calling scope outside the trace, so that operations on
+# concrete arrays are executed on the backend instead of being recorded. It is
+# how a trace asks the backend for a value it needs *while* tracing -- a count
+# or a size that a later operation takes as a static argument, computed at the
+# data type and with the rounding the device itself would use. The whole
+# descriptor state is set aside, not just the current one, so that a trace
+# nested inside another restores both on the way out.
+local_eager <- function(envir = parent.frame()) {
+  desc <- globals[["CURRENT_DESCRIPTOR"]]
+  if (is.null(desc)) {
+    return(invisible(NULL))
+  }
+  stash <- globals[["DESCRIPTOR_STASH"]]
+  globals[["CURRENT_DESCRIPTOR"]] <- NULL
+  globals[["DESCRIPTOR_STASH"]] <- list()
+  withr::defer(
+    envir = envir,
+    priority = "first",
+    {
+      globals[["CURRENT_DESCRIPTOR"]] <- desc
+      globals[["DESCRIPTOR_STASH"]] <- stash
+    }
+  )
+  invisible(NULL)
+}
+
+# `local_eager()` as an expression: `code` is evaluated outside the trace and
+# its value returned. Like the other `with_*` helpers, `code` is evaluated in
+# the caller's frame, so anything it assigns lands there.
+with_eager <- function(code) {
+  local_eager(envir = environment())
+  code
+}
+
 is_graph <- function(x) {
   inherits(x, "AnvlGraph")
 }

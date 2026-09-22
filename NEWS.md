@@ -113,6 +113,9 @@
 
 ## Bug fixes
 
+* `nv_quantile()` / `nv_median()` compute the gather index at the wider of `x`'s
+  data type and the default float instead of always at `f64`, so they also run
+  on hardware without `f64`.
 * `nv_chol()` / `prim_chol()` and `prim_triangular_solve()` accept batched
   inputs again: axes before the last two are batch axes.
 * A function returned by `jit()` no longer evaluates its arguments a second
