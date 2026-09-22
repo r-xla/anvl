@@ -53,9 +53,9 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   given_lhs <- shape_lhs
   given_rhs <- shape_rhs
   if (length(shape_lhs) > length(shape_rhs)) {
-    shape_rhs <- c(rep(1L, length(shape_lhs) - length(shape_rhs)), shape_rhs)
+    shape_rhs <- c(shape_rhs, rep(1L, length(shape_lhs) - length(shape_rhs)))
   } else if (length(shape_lhs) < length(shape_rhs)) {
-    shape_lhs <- c(rep(1L, length(shape_rhs) - length(shape_lhs)), shape_lhs)
+    shape_lhs <- c(shape_lhs, rep(1L, length(shape_rhs) - length(shape_lhs)))
   } else if (identical(shape_lhs, shape_rhs)) {
     return(shape_lhs)
   }
@@ -73,18 +73,6 @@ broadcast_shapes <- function(shape_lhs, shape_rhs) {
   }
   shape_out
 }
-
-make_broadcast_axes <- function(shape_in, shape_out) {
-  rank_in <- length(shape_in)
-  rank_out <- length(shape_out)
-  if (rank_in == rank_out) {
-    # When ranks match, each input axis maps to the same output axis
-    # StableHLO expects a mapping for every input axis
-    return(seq_along(shape_out))
-  }
-  tail(seq_len(rank_out), rank_in)
-}
-
 
 #' @title Broadcast Scalars to Common Shape
 #' @description
@@ -150,11 +138,12 @@ nv_promote_to_common <- jit(function(...) {
 
 #' @title Broadcast Arrays to a Common Shape
 #' @description
-#' Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
+#' Broadcasts arrays to a common shape, aligning their axes from the first
+#' one, the way base R's recycling does.
 #'
 #' @section Broadcasting Rules:
-#' 1. If the arrays have different numbers of axes, prepend size-1
-#'    axes to the shorter shape.
+#' 1. If the arrays have different numbers of axes, append size-1
+#'    axes to the shorter shape, so axis 1 meets axis 1.
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
 #'    it to the other's size; otherwise raise an error.
 #'
@@ -165,7 +154,7 @@ nv_promote_to_common <- jit(function(...) {
 #' @seealso [nv_broadcast_scalars()], [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' y <- nv_array(c(10, 20, 30))
+#' y <- nv_array(c(10, 20))
 #' nv_broadcast_arrays(x, y)
 #' @export
 nv_broadcast_arrays <- jit(function(...) {
@@ -177,24 +166,28 @@ nv_broadcast_arrays <- jit(function(...) {
 
 #' @title Broadcast to Shape
 #' @description
-#' Broadcasts an array to a target shape using NumPy-style broadcasting rules.
+#' Broadcasts an array to a target shape, aligning the array's axes with the
+#' leading axes of `shape`, the way base R's recycling does.
 #' @template param_x
 #' @param shape (`integer()`)\cr
-#'   Target shape. Each existing axis must either match or be 1.
+#'   Target shape. It must have at least as many axes as `x`, and each axis
+#'   of `x` must either match the axis it meets or be 1.
 #' @return [`arrayish`]\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
 #'   [prim_broadcast_in_axes()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
-#' nv_broadcast_to(x, shape = c(2, 3))
+#' nv_broadcast_to(x, shape = c(3, 2))
 #' @export
 nv_broadcast_to <- function(x, shape) {
   x <- as_anvl_array(x)
   shape_op <- shape(x)
   if (!identical(shape_op, shape)) {
-    broadcast_axes <- make_broadcast_axes(shape_op, shape)
-    prim_broadcast_in_axes(x, shape, broadcast_axes)
+    # Axes align from the first, as base R's recycling does: the array's
+    # existing axes map to the leading axes of `shape`, and the axes it lacks
+    # are appended. StableHLO wants a mapping for every input axis.
+    prim_broadcast_in_axes(x, shape, seq_along(shape_op))
   } else {
     x
   }
@@ -300,7 +293,7 @@ nv_flatten <- function(x) {
 #' Concatenates arrays along an axis. Operands are promoted to a common
 #' data type and scalars are broadcast before concatenation.
 #'
-#' You can also use `c()`, which flattens its arguments first, like base R.
+#' You can also use `c()` on scalars and 1-D arrays, like base R.
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to concatenate. Must have the same shape except along `axis`.
 #' @param axis (`integer(1)` | `NULL`)\cr

@@ -11,19 +11,21 @@ nv_broadcast_to(x, shape)
 Input array.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. Each existing axis must either match or be 1.}
+Target shape. It must have at least as many axes as \code{x}, and each axis
+of \code{x} must either match the axis it meets or be 1.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
-Broadcasts an array to a target shape using NumPy-style broadcasting rules.
+Broadcasts an array to a target shape, aligning the array's axes with the
+leading axes of \code{shape}, the way base R's recycling does.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3))
-nv_broadcast_to(x, shape = c(2, 3))
+nv_broadcast_to(x, shape = c(3, 2))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

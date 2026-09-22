@@ -23,6 +23,47 @@ test_that("nv_fill rejects non-scalar-R value with a helpful message", {
   )
 })
 
+describe("nv_broadcast_to()", {
+  it("aligns the array's axes with the leading axes of the target", {
+    x <- nv_array(c(1, 2))
+    got <- nv_broadcast_to(x, shape = c(2L, 3L))
+    expect_shape(got, c(2L, 3L))
+    # every column is `x`, the way `m + v` recycles `v` down the columns
+    expect_equal(as_array(got), matrix(c(1, 2), nrow = 2L, ncol = 3L))
+  })
+
+  it("refuses a vector that would only fit the trailing axis", {
+    expect_error(nv_broadcast_to(nv_array(c(1, 2, 3)), shape = c(2L, 3L)), "3")
+  })
+
+  it("expands a size-1 axis wherever it sits", {
+    x <- nv_array(c(1, 2, 3), shape = c(1L, 3L))
+    expect_equal(
+      as_array(nv_broadcast_to(x, shape = c(2L, 3L))),
+      matrix(c(1, 2, 3), nrow = 2L, ncol = 3L, byrow = TRUE)
+    )
+  })
+})
+
+describe("nv_broadcast_arrays()", {
+  it("appends size-1 axes to the shorter shape", {
+    m <- nv_matrix(1:6, nrow = 2L)
+    v <- nv_array(c(10L, 20L))
+    xs <- nv_broadcast_arrays(m, v)
+    expect_shape(xs[[1L]], c(2L, 3L))
+    expect_shape(xs[[2L]], c(2L, 3L))
+    # base R recycles the same way when the vector is as long as the columns
+    expect_equal(as_array(xs[[1L]] + xs[[2L]]), matrix(1:6, nrow = 2L) + c(10L, 20L))
+  })
+
+  it("refuses shapes that meet at an axis where neither size is 1", {
+    expect_error(
+      nv_broadcast_arrays(nv_matrix(1:6, nrow = 2L), nv_array(c(10, 20, 30))),
+      "not broadcastable"
+    )
+  })
+})
+
 test_that("broadcasting scalars", {
   # An empty `...` used to fail inside `hlo_return()` instead of saying what
   # was missing.

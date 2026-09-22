@@ -5,7 +5,14 @@
 * `prim_reshape()` and `nv_reshape()`, and with them `nv_flatten()` and every
   `axis = NULL` flattening default, are now column-major like base R's `dim<-`:
   `nv_flatten(matrix(1:4, 2))` is `1:4`, as `as.vector()` gives. Transpose
-  first for the previous row-major order.
+  first for the previous row-major order. A multi-axis RNG sample draws the
+  same values but lays them out column-major, so a given seed now gives a
+  permuted result.
+* `nv_broadcast_to()` and `nv_broadcast_arrays()` align axes from the first
+  instead of the last: a shorter shape gets size-1 axes appended, so a
+  length-`nrow` vector broadcasts against a matrix where a length-`ncol` one
+  no longer does. Write `prim_broadcast_in_axes()` with an explicit axis
+  mapping for the previous right-aligned behavior.
 * The `@jit` roxygen tag was removed; wrap functions in `jit()` at the
   definition instead.
 * `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of

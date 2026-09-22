@@ -34,7 +34,7 @@ But combining two non-scalar arrays of different shapes errors, even when one sh
 nv_array(1:4) + nv_array(1:2)
 ```
 
-When two non-scalar arrays differ only by size-1 axes (numpy-style broadcasting, e.g. shape `(2, 3)` and `(1, 3)`), use `nv_broadcast_arrays()` to align them explicitly first:
+When two non-scalar arrays differ only by size-1 axes (e.g. shape `(2, 3)` and `(1, 3)`), use `nv_broadcast_arrays()` to align them explicitly first:
 
 ```{r}
 a <- nv_matrix(1:6, nrow = 2)
@@ -46,7 +46,23 @@ lapply(xs, shape)
 xs[[1]] + xs[[2]]
 ```
 
-Note that even `nv_broadcast_arrays()` cannot replicate R's recycling for shapes like `(4)` and `(2)` -- the shapes must be broadcast-compatible in the numpy sense.
+Axes are aligned **from the first**, as base R's recycling is: an array with
+fewer axes gets size-1 axes appended, so its axis 1 meets axis 1 of the other.
+A length-`nrow` vector therefore broadcasts against a matrix, and a
+length-`ncol` one does not -- the same way `m + v` recycles `v` down the
+columns of `m`.
+
+```{r}
+m <- nv_matrix(1:6, nrow = 2)
+v <- nv_array(c(10, 20))
+shape(nv_broadcast_arrays(m, v)[[2]])
+```
+
+```{r, error = TRUE}
+nv_broadcast_to(nv_array(c(10, 20, 30)), shape = c(2, 3))
+```
+
+Note that even `nv_broadcast_arrays()` cannot replicate R's recycling for shapes like `(4)` and `(2)`: every axis must either match or be 1.
 
 ## No `NA`s
 

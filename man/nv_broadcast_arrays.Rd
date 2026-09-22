@@ -15,13 +15,14 @@ Arrays to broadcast.}
 List of arrays, all with the same shape.
 }
 \description{
-Broadcasts arrays to a common shape using NumPy-style broadcasting rules.
+Broadcasts arrays to a common shape, aligning their axes from the first
+one, the way base R's recycling does.
 }
 \section{Broadcasting Rules}{
 
 \enumerate{
-\item If the arrays have different numbers of axes, prepend size-1
-axes to the shorter shape.
+\item If the arrays have different numbers of axes, append size-1
+axes to the shorter shape, so axis 1 meets axis 1.
 \item For each axis: if the sizes match, keep them; if one is 1, expand
 it to the other's size; otherwise raise an error.
 }
@@ -30,7 +31,7 @@ it to the other's size; otherwise raise an error.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-y <- nv_array(c(10, 20, 30))
+y <- nv_array(c(10, 20))
 nv_broadcast_arrays(x, y)
 \dontshow{\}) # examplesIf}
 }

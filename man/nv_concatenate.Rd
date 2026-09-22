@@ -27,7 +27,7 @@ axes except \code{axis}, which is the sum of input sizes.
 Concatenates arrays along an axis. Operands are promoted to a common
 data type and scalars are broadcast before concatenation.
 
-You can also use \code{c()}, which flattens its arguments first, like base R.
+You can also use \code{c()} on scalars and 1-D arrays, like base R.
 }
 \section{The \code{c()} generic}{
 
