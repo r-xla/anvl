@@ -5,18 +5,34 @@
 \alias{median.AnvlArray}
 \title{Median}
 \usage{
-nv_median(x, axis = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_median(
+  x,
+  axes = NULL,
+  drop = TRUE,
+  interpolation = "linear",
+  nan_rm = FALSE
+)
 
-\method{median}{AnvlArray}(x, na.rm = FALSE, ..., axis = NULL, interpolation = "linear")
+\method{median}{AnvlArray}(
+  x,
+  na.rm = FALSE,
+  ...,
+  axes = NULL,
+  drop = TRUE,
+  interpolation = "linear"
+)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to compute the median. Negative values count from
-the end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
-uses the last axis.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
+axes, returning a scalar.}
+
+\item{drop}{(\code{logical(1)})\cr
+Whether to drop reduced axes.}
 
 \item{interpolation}{(\code{character(1)})\cr
 Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. One of \code{"linear"} (default), \code{"lower"},
@@ -31,34 +47,33 @@ Forwarded to \code{\link[=nv_quantile]{nv_quantile()}}. See its documentation fo
 }
 \value{
 \code{\link{arrayish}}\cr
-Same shape as \code{x} with \code{axis} removed. The data type is that of \code{x}, or
-the default float for a non-float \code{x}.
+Same shape as \code{x} with \code{axes} removed (or set to 1 if \code{drop = FALSE}).
+The data type is that of \code{x}, or the default float for a non-float \code{x}.
 }
 \description{
-Computes the median along an axis. Equivalent to
-\code{nv_quantile(x, 0.5, axis, interpolation)}; for an even-length axis
-with the default \code{"linear"} interpolation, the average of the two middle
-values is returned, matching base R's \code{median()}.
+Computes the median over one or more axes. Equivalent to
+\code{nv_quantile(x, 0.5, axes, drop, interpolation)}; for an even number of
+reduced elements with the default \code{"linear"} interpolation, the average of
+the two middle values is returned, matching base R's \code{median()}.
 
 You can also use \code{median()} directly on an \code{\link{AnvlArray}} or \code{\link{AnvlBox}};
 extra arguments (e.g. \code{interpolation}) are forwarded via \code{...}.
 }
 \section{The \code{median()} generic}{
 
-\code{\link[stats:median]{stats::median()}} flattens a multi-axis array, while \code{nv_median()} (and
-\code{median()} on an anvl array) reduces a single axis, the last one by
-default. Pass \code{axis} explicitly, or flatten first with \code{\link[=nv_flatten]{nv_flatten()}}, to
-say which you mean. A non-float \code{x} is computed at the default float, like
-base R returns a double.
+\code{\link[stats:median]{stats::median()}} reduces every axis of a multi-axis array, and so does
+\code{nv_median()} by default, so the two agree. Pass \code{axes} to reduce a subset
+instead. A non-float \code{x} is computed at the default float, like base R
+returns a double.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
-nv_median(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-  axis = 2L
-)
+m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+nv_median(m) # over every element
+nv_median(m, axes = 2L) # one median per row
 # forwards through the S3 generic via `...`
 median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")
 nv_median(nv_array(c(1, NaN, 3, 5)))

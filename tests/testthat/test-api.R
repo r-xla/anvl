@@ -945,6 +945,24 @@ describe("cumulative ops with a negative dim", {
   })
 })
 
+describe("the cumulative ops' axis default", {
+  m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+  mr <- as_array(m)
+
+  it("flattens a multi-axis input, row-major", {
+    for (fn in list(nv_cumsum, nv_cumprod, nv_cummax, nv_cummin)) {
+      expect_equal(as_array(fn(m)), as_array(fn(nv_flatten(m))))
+    }
+    expect_equal(as.vector(nv_cumsum(m)), cumsum(as.vector(t(mr))))
+    expect_shape(nv_cumsum(m), 6L)
+  })
+
+  it("accumulates along a chosen axis when one is given", {
+    expect_equal(as_array(nv_cumsum(m, axis = 1L)), apply(mr, 2L, cumsum))
+    expect_equal(as_array(nv_cumsum(m, axis = 2L)), t(apply(mr, 1L, cumsum)))
+  })
+})
+
 describe("nv_cumsum / nv_cumprod nan_rm", {
   it("propagates NaN forward by default", {
     x <- nv_array(c(1, NaN, 3))
@@ -1026,9 +1044,9 @@ describe("nv_argmax / nv_argmin nan_rm", {
   it("propagates per-slice along the reduced axis", {
     # row 1 has NaN at col 2, row 2 has no NaN
     m <- nv_matrix(c(1, NaN, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(as.integer(nv_argmax(m, axis = 2L)), c(2L, 2L))
+    expect_equal(as.integer(nv_argmax(m, axes = 2L)), c(2L, 2L))
     expect_equal(
-      as.integer(nv_argmax(m, axis = 2L, nan_rm = TRUE)),
+      as.integer(nv_argmax(m, axes = 2L, nan_rm = TRUE)),
       c(3L, 2L)
     )
   })
@@ -1693,10 +1711,19 @@ describe("nv_sort", {
     )
   })
 
-  it("defaults to last axis for matrices (rows)", {
+  it("flattens a matrix by default, like base R", {
+    mr <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    m <- nv_array(mr)
+    expect_equal(as.vector(nv_sort(m)), sort(mr))
+    expect_shape(nv_sort(m), 6L)
+    # `sort()` on an anvl array agrees with base R exactly
+    expect_equal(as.vector(sort(m)), sort(mr))
+  })
+
+  it("sorts each slice when an axis is given", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expected <- nv_matrix(c(1, 3, 5, 0, 2, 4), nrow = 2, byrow = TRUE)
-    expect_equal(nv_sort(m), expected)
+    expect_equal(nv_sort(m, axis = 2L), expected)
   })
 
   it("errors on a 0-dimensional input", {
@@ -1737,6 +1764,22 @@ describe("nv_argsort", {
   it("accepts a negative dim", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     expect_equal(nv_argsort(m, axis = -2L), nv_argsort(m, axis = 1L))
+  })
+
+  it("flattens a matrix by default, matching nv_sort", {
+    mr <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    m <- nv_array(mr)
+    perm <- as.integer(nv_argsort(m))
+    expect_shape(nv_argsort(m), 6L)
+    # the indices refer to the row-major flattening, which is what nv_sort
+    # sorts, so indexing it by them reproduces nv_sort()'s output
+    expect_equal(as.vector(t(mr))[perm], as.vector(nv_sort(m)))
+  })
+
+  it("permutes each slice when an axis is given", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_shape(nv_argsort(m, axis = 2L), c(2L, 3L))
+    expect_equal(nv_argsort(m, axis = 2L), nv_argsort(m, axis = -1L))
   })
 })
 
@@ -1863,10 +1906,17 @@ describe("nv_median", {
     )
   })
 
-  it("operates row-wise by default on a matrix", {
+  it("reduces every axis of a matrix by default, like base R", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    out <- nv_median(m)
-    expect_equal(as.vector(out), c(3, 2))
+    expect_equal(as.vector(nv_median(m)), median(c(3, 1, 5, 2, 4, 0)))
+    expect_shape(nv_median(m), integer())
+  })
+
+  it("reduces the named axes only", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(as.vector(nv_median(m, axes = 2L)), c(3, 2))
+    expect_equal(as.vector(nv_median(m, axes = 1L)), c(2.5, 2.5, 2.5))
+    expect_equal(nv_median(m, axes = c(1L, 2L)), nv_median(m))
   })
 
   it("dispatches via the median() generic", {
@@ -1886,9 +1936,19 @@ describe("nv_median", {
     expect_equal(as_array(median(x, interpolation = "higher")), as_array(nv_scalar(3)))
   })
 
-  it("accepts a negative dim", {
+  it("accepts negative axes", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(nv_median(m, axis = -1L), nv_median(m, axis = 2L))
+    expect_equal(nv_median(m, axes = -1L), nv_median(m, axes = 2L))
+  })
+
+  it("keeps the reduced axes at size 1 when drop = FALSE", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_shape(nv_median(m, axes = 2L, drop = FALSE), c(2L, 1L))
+    expect_shape(nv_median(m, drop = FALSE), c(1L, 1L))
+    expect_equal(
+      as.vector(nv_median(m, axes = 2L, drop = FALSE)),
+      as.vector(nv_median(m, axes = 2L))
+    )
   })
 
   it("computes a non-float array at the default float, like base R", {
@@ -1936,7 +1996,7 @@ describe("nv_quantile", {
   it("vector probs work for >1-D inputs (frac broadcast)", {
     mr <- matrix(c(3, 1, 4, 1, 5, 9, 2, 6, 7, 0, 5, 4), nrow = 3)
     m <- nv_array(mr)
-    out <- nv_quantile(m, array(c(0.25, 0.75)))
+    out <- nv_quantile(m, array(c(0.25, 0.75)), axes = 2L)
     expect_shape(out, c(2L, 3L))
     # apply(., 1, quantile) returns shape [length(probs), nrow(mr)] —
     # rows are quantile probs, cols are original rows — matching anvl's
@@ -1984,8 +2044,49 @@ describe("nv_quantile", {
   it("operates along a chosen axis of a matrix", {
     m_raw <- matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
     m <- nv_array(m_raw)
-    out <- nv_quantile(m, 0.5, axis = 2L)
+    out <- nv_quantile(m, 0.5, axes = 2L)
     expect_equal(as.vector(out), c(3, 2))
+  })
+
+  it("reduces every axis by default, like base R", {
+    mr <- matrix(c(3, 1, 4, 1, 5, 9, 2, 6, 7, 0, 5, 4), nrow = 3)
+    m <- nv_array(mr)
+    for (q in c(0, 0.25, 0.5, 0.75, 1)) {
+      expect_equal(as_array(nv_quantile(m, q)), unname(quantile(mr, q)), info = paste("q =", q))
+    }
+    expect_shape(nv_quantile(m, 0.5), integer())
+  })
+
+  it("ranks the elements of several axes together", {
+    a <- nv_array(as.numeric(1:24), shape = c(2L, 3L, 4L))
+    ar <- as_array(a)
+    out <- nv_quantile(a, 0.5, axes = c(1L, 3L))
+    expect_shape(out, 3L)
+    expect_equal(as.vector(out), apply(ar, 2L, median))
+    # reducing every axis is the same as flattening first
+    expect_equal(nv_quantile(a, 0.5, axes = c(1L, 2L, 3L)), nv_quantile(nv_flatten(a), 0.5))
+  })
+
+  it("keeps the reduced axes at size 1 when drop = FALSE", {
+    a <- nv_array(as.numeric(1:24), shape = c(2L, 3L, 4L))
+    expect_shape(nv_quantile(a, 0.5, axes = c(1L, 3L), drop = FALSE), c(1L, 3L, 1L))
+    expect_equal(
+      as.vector(nv_quantile(a, 0.5, axes = c(1L, 3L), drop = FALSE)),
+      as.vector(nv_quantile(a, 0.5, axes = c(1L, 3L)))
+    )
+  })
+
+  it("prepends the probs axis in front of the kept axes for several axes", {
+    a <- nv_array(as.numeric(1:24), shape = c(2L, 3L, 4L))
+    ar <- as_array(a)
+    out <- nv_quantile(a, array(c(0.25, 0.75)), axes = c(1L, 3L))
+    expect_shape(out, c(2L, 3L))
+    expect_equal(as_array(out), apply(ar, 2L, quantile, probs = c(0.25, 0.75)), ignore_attr = TRUE)
+  })
+
+  it("reduces nothing for axes = integer()", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(as_array(nv_quantile(m, 0.5, axes = integer())), as_array(m))
   })
 
   it("rejects probs outside [0, 1]", {
@@ -1993,16 +2094,16 @@ describe("nv_quantile", {
     expect_error(nv_quantile(nv_array(c(1, 2)), 1.5))
   })
 
-  it("errors on a 0-dimensional input", {
-    expect_error(nv_quantile(nv_scalar(1), 0.5), "at least one axis")
+  it("returns a scalar input unchanged, like the other reductions", {
+    expect_equal(as_array(nv_quantile(nv_scalar(7), 0.5)), as_array(nv_scalar(7)))
   })
 
-  it("accepts a negative dim", {
+  it("accepts negative axes", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(nv_quantile(m, 0.5, axis = -1L), nv_quantile(m, 0.5, axis = 2L))
+    expect_equal(nv_quantile(m, 0.5, axes = -1L), nv_quantile(m, 0.5, axes = 2L))
     expect_equal(
-      nv_quantile(m, array(c(0.25, 0.75)), axis = -1L),
-      nv_quantile(m, array(c(0.25, 0.75)), axis = 2L)
+      nv_quantile(m, array(c(0.25, 0.75)), axes = -1L),
+      nv_quantile(m, array(c(0.25, 0.75)), axes = 2L)
     )
   })
 })
@@ -2019,20 +2120,92 @@ describe("mean()", {
   })
 })
 
+describe("nv_reverse", {
+  m <- nv_matrix(1:6, nrow = 2)
+  mr <- as_array(m)
+
+  it("reverses every axis by default", {
+    expect_equal(as_array(nv_reverse(m)), mr[2:1, 3:1])
+    expect_equal(nv_reverse(m), nv_reverse(m, axes = c(1L, 2L)))
+  })
+
+  it("reverses the named axes only", {
+    expect_equal(as_array(nv_reverse(m, axes = 1L)), mr[2:1, ])
+    expect_equal(as_array(nv_reverse(m, axes = 2L)), mr[, 3:1])
+  })
+
+  it("accepts negative axes", {
+    expect_equal(nv_reverse(m, axes = -1L), nv_reverse(m, axes = 2L))
+  })
+
+  it("returns the input unchanged when there is no axis to reverse", {
+    expect_equal(as.vector(nv_reverse(nv_scalar(7))), 7)
+    expect_equal(nv_reverse(m, axes = integer()), m)
+  })
+
+  it("agrees with rev()", {
+    expect_equal(nv_reverse(m), rev(m))
+  })
+
+  it("works under jit()", {
+    expect_equal(as.vector(jit(nv_reverse)(nv_array(1:3))), 3:1)
+  })
+})
+
 describe("nv_argmax / nv_argmin", {
-  it("default axis is the last axis", {
-    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(nv_argmax(m), prim_argmax(m, axis = 2L))
-    expect_equal(nv_argmin(m), prim_argmin(m, axis = 2L))
+  m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+  mr <- as_array(m)
+
+  it("reduces every axis by default, indexing the flattened array", {
+    expect_equal(as.integer(nv_argmax(m)), which.max(as.vector(t(mr))))
+    expect_equal(as.integer(nv_argmin(m)), which.min(as.vector(t(mr))))
+    expect_equal(nv_argmax(m), nv_argmax(nv_flatten(m)))
+    expect_shape(nv_argmax(m), integer())
   })
-  it("errors on a 0-dimensional input", {
-    expect_error(nv_argmax(nv_scalar(3)))
-    expect_error(nv_argmin(nv_scalar(3)))
+
+  it("reduces the named axes only", {
+    expect_equal(nv_argmax(m, axes = 2L), prim_argmax(m, axis = 2L))
+    expect_equal(nv_argmin(m, axes = 2L), prim_argmin(m, axis = 2L))
+    expect_equal(as.integer(nv_argmax(m, axes = 1L)), apply(mr, 2L, which.max))
   })
-  it("accepts a negative dim", {
-    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(nv_argmax(m, axis = -1L), nv_argmax(m, axis = 2L))
-    expect_equal(nv_argmin(m, axis = -1L), nv_argmin(m, axis = 2L))
+
+  it("points at the element nv_reduce_max / nv_reduce_min returns", {
+    a <- nv_array(as.numeric(c(5, 2, 9, 1, 3, 8, 4, 7, 6, 0, 2, 5)), shape = c(2L, 2L, 3L))
+    ar <- as_array(a)
+    for (ax in 1:3) {
+      keep <- setdiff(1:3, ax)
+      expect_equal(as.vector(nv_argmax(a, axes = ax)), as.vector(apply(ar, keep, which.max)))
+      expect_equal(as.vector(nv_argmin(a, axes = ax)), as.vector(apply(ar, keep, which.min)))
+    }
+  })
+
+  it("indexes the row-major flattening when several axes are reduced", {
+    a <- nv_array(as.numeric(c(5, 2, 9, 1, 3, 8, 4, 7, 6, 0, 2, 5)), shape = c(2L, 2L, 3L))
+    ar <- as_array(a)
+    got <- as.integer(nv_argmax(a, axes = c(1L, 3L)))
+    # for each kept position along axis 2, flatten axes (1, 3) row-major
+    expected <- vapply(1:2, function(j) which.max(as.vector(t(ar[, j, ]))), integer(1L))
+    expect_equal(got, expected)
+    expect_equal(nv_argmax(a, axes = c(1L, 2L, 3L)), nv_argmax(nv_flatten(a)))
+  })
+
+  it("keeps the reduced axes at size 1 when drop = FALSE", {
+    expect_shape(nv_argmax(m, axes = 2L, drop = FALSE), c(2L, 1L))
+    expect_shape(nv_argmax(m, drop = FALSE), c(1L, 1L))
+    expect_equal(
+      as.vector(nv_argmax(m, axes = 2L, drop = FALSE)),
+      as.vector(nv_argmax(m, axes = 2L))
+    )
+  })
+
+  it("returns 1 for a scalar, like which.max() does", {
+    expect_equal(as.integer(nv_argmax(nv_scalar(3))), 1L)
+    expect_equal(as.integer(nv_argmin(nv_scalar(3))), 1L)
+  })
+
+  it("accepts negative axes", {
+    expect_equal(nv_argmax(m, axes = -1L), nv_argmax(m, axes = 2L))
+    expect_equal(nv_argmin(m, axes = -1L), nv_argmin(m, axes = 2L))
   })
 })
 
@@ -2812,9 +2985,9 @@ describe("nv_quantile selection fast path", {
     a <- array(rnorm(7 * 55 * 6), c(7, 55, 6))
     a[sample(length(a), 500)] <- NaN
     x <- nv_array(a)
-    srt <- as_array(nv_quantile(x, array(c(0.1, 0.9, 0.5, 0.8)), axis = 2L, nan_rm = TRUE))
-    expect_identical(as_array(nv_median(x, axis = 2L, nan_rm = TRUE)), srt[3L, , ])
-    expect_identical(as_array(nv_quantile(x, 0.8, axis = 2L, nan_rm = TRUE)), srt[4L, , ])
+    srt <- as_array(nv_quantile(x, array(c(0.1, 0.9, 0.5, 0.8)), axes = 2L, nan_rm = TRUE))
+    expect_identical(as_array(nv_median(x, axes = 2L, nan_rm = TRUE)), srt[3L, , ])
+    expect_identical(as_array(nv_quantile(x, 0.8, axes = 2L, nan_rm = TRUE)), srt[4L, , ])
     # and against the R reference
     expect_equal(srt[3L, , ], apply(a, c(1, 3), median, na.rm = TRUE), tolerance = 1e-6)
     expect_equal(srt[4L, , ], apply(a, c(1, 3), quantile, 0.8, na.rm = TRUE, names = FALSE), tolerance = 1e-6)
@@ -2822,7 +2995,7 @@ describe("nv_quantile selection fast path", {
   it("handles all-NaN slices and the extremes under nan_rm", {
     x <- nv_array(matrix(c(NaN, NaN, NaN, 3, NaN, 1), 3L, 2L))
     for (q in c(0, 0.25, 0.75, 1)) {
-      out <- as.numeric(as_array(nv_quantile(x, q, axis = 1L, nan_rm = TRUE)))
+      out <- as.numeric(as_array(nv_quantile(x, q, axes = 1L, nan_rm = TRUE)))
       expect_true(is.nan(out[1L]), info = sprintf("q = %s", q))
       expect_equal(out[2L], quantile(c(3, 1), q, names = FALSE), info = sprintf("q = %s", q))
     }

@@ -4,20 +4,19 @@
 \alias{nv_argmax}
 \title{Index of the Maximum}
 \usage{
-nv_argmax(x, axis = NULL, drop = TRUE, nan_rm = FALSE)
+nv_argmax(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to find the index. Negative values count from the
-end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses
-the last axis.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
+axes, returning a scalar.}
 
 \item{drop}{(\code{logical(1)})\cr
-If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it
-is kept with size 1.}
+Whether to drop reduced axes.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
@@ -26,25 +25,35 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 \value{
 \code{\link{arrayish}} of the default integer data type (see
 \code{\link[=default_dtypes]{default_dtypes()}})\cr
-Same shape as \code{x} with \code{axis} removed (or set to 1 if \code{drop = FALSE}).
+Same shape as \code{x} with \code{axes} removed (or set to 1 if \code{drop = FALSE}).
 }
 \description{
-Returns the index of the maximum value along an axis. Ties are broken
-by returning the smallest index.
+Returns the index of the maximum value over one or more axes. Ties are
+broken by returning the smallest index.
 }
+\section{Reducing several axes}{
+
+\code{nv_argmax()} is the index to \code{\link[=nv_reduce_max]{nv_reduce_max()}}'s value: called with the
+same \code{axes} and \code{drop}, it points at the element whose value
+\code{nv_reduce_max()} returns. Reducing several axes ranks their elements
+together, and the result indexes the row-major flattening of those axes --
+the order \code{\link[=nv_flatten]{nv_flatten()}} produces -- which is also the order ties are
+broken in.
+}
+
 \section{NaN handling}{
 
-With \code{nan_rm = FALSE} (default), if any entry along the reduced axis is
-\code{NaN}, the returned index points at the first such \code{NaN}. With
-\code{nan_rm = TRUE}, \code{NaN} entries are skipped.
+With \code{nan_rm = FALSE} (default), if any entry being reduced is \code{NaN}, the
+returned index points at the first such \code{NaN}. With \code{nan_rm = TRUE}, \code{NaN}
+entries are skipped.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
-nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-  axis = 2L
-)
+m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+nv_argmax(m) # indexes the flattened matrix
+nv_argmax(m, axes = 2L) # one index per row
 nv_argmax(nv_array(c(1, NaN, 3)))
 nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 \dontshow{\}) # examplesIf}

@@ -1,6 +1,5 @@
 #' @section Relation to base R:
-#' Both `<%= cum_nv_name %>()` (with `axis = NULL`) and [base::<%= cum_base_fn %>()]
-#' flatten inputs to a single axis before accumulating, but the
-#' flatten order differs: anvl arrays are row-major (C order), so the
-#' flattened sequence iterates the last axis fastest, whereas base R uses
-#' column-major (Fortran) order. The two agree on 1-D inputs.
+#' `<%= cum_nv_name %>()` with `axis = NULL` and [base::<%= cum_base_fn %>()]
+#' both flatten first, but in different orders -- anvl arrays are row-major (C
+#' order), base R is column-major (Fortran) -- so for a multi-axis input the
+#' two give different running values. They agree on 1-D inputs.

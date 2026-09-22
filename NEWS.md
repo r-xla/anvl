@@ -42,15 +42,28 @@
 * The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
   now require a boolean input array, improving consistency with base R.
 * The method for `round` was removed, as `digits` is currently not supported.
+* `nv_quantile()` and `nv_median()` now reduce over `axes` (plural) instead of a
+  single `axis`, defaulting to every axis like `nv_mean()` and base R's
+  `quantile()` / `median()`, and gained a `drop` argument. Write
+  `nv_median(x, axes = -1L)` for the previous default.
+* `nv_sort()` and `nv_argsort()` now flatten a multi-axis array when
+  `axis = NULL`, instead of working along the last axis, so `sort()` on an
+  anvl array agrees with base R. Write `axis = -1L` for the previous default.
+* `prim_sort()` no longer defaults `axis` to `1L`; pass it explicitly, as with
+  every other primitive.
+* `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a
+  single `axis`, defaulting to every axis so that they pair with
+  `nv_reduce_max()` / `nv_reduce_min()`. Reducing several axes indexes their
+  row-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
+  default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
-* `nv_rbinom()`, `nv_sample_int()` and `nv_sample()` draw at the default float
-  data type instead of always at `f64`, so they also run on hardware without
-  `f64`. Their samples change where the default float is not `f64`; set it with
-  `with_default_dtypes()` to draw on the finer grid.
 
 ## Features
 
+* `nv_reverse()` gained an `axes = NULL` default that reverses every axis,
+  matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
+  `axes` instead of erroring.
 * `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
   when `start > end`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
