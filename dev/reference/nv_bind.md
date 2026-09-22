@@ -20,10 +20,10 @@ nv_rbind(...)
 nv_cbind(...)
 
 # S3 method for class 'AnvlArray'
-rbind(..., deparse.level = 1)
+rbind(..., deparse.level = 1L)
 
 # S3 method for class 'AnvlArray'
-cbind(..., deparse.level = 1)
+cbind(..., deparse.level = 1L)
 ```
 
 ## Arguments

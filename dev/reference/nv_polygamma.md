@@ -35,7 +35,7 @@ Has the same shape and the promoted common data type of the inputs.
 
 ## The [`trigamma()`](https://rdrr.io/r/base/Special.html) generic
 
-`trigamma(x)` is `nv_polygamma(1, x)`.
+`trigamma(x)` is `nv_polygamma(1L, x)`.
 
 ## See also
 
