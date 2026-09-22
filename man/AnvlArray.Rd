@@ -167,6 +167,9 @@ type conversions.
 When such conversions are performed, {anvl} performs a scan of the inputs to ensure that the
 requested data type can actually hold the input data.
 For example, trying to create an unsigned integer from a negative R \code{integer()} fails.
+The same holds where an R value takes its data type from the array it meets
+rather than from an argument: \code{nv_scalar(1L, "ui8") + (-2L)} is refused, where
+converting an array with \code{\link[=nv_convert]{nv_convert()}} wraps around.
 }
 
 \examples{

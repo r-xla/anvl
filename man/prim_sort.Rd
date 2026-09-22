@@ -4,7 +4,7 @@
 \alias{prim_sort}
 \title{Primitive Sort}
 \usage{
-prim_sort(xs, axis = 1L, descending = FALSE, is_stable = FALSE)
+prim_sort(xs, axis, descending = FALSE, is_stable = FALSE)
 }
 \arguments{
 \item{xs}{(\code{list} of \code{\link{arrayish}})\cr

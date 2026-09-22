@@ -77,8 +77,8 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' 100 * 100 * 4 bytes of memory.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with. It has to be something `dtype` can
-#'   hold: a whole number for an integer data type, a non-negative whole number
-#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
+#'   hold: a whole number in its range for an integer data type, a non-negative
+#'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | [`DataType`])\cr
@@ -3262,7 +3262,7 @@ prim_scan <- new_primitive(
 #' @export
 prim_sort <- new_primitive(
   "sort",
-  function(xs, axis = 1L, descending = FALSE, is_stable = FALSE) {
+  function(xs, axis, descending = FALSE, is_stable = FALSE) {
     assert_flag(descending)
     assert_flag(is_stable)
     if (is_arrayish(xs) || !is.list(xs) || !length(xs)) {

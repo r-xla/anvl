@@ -14,7 +14,8 @@ One input. Can be any data type. An R value materializes at its
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to compute the sort permutation. Negative values
 count from the end, i.e. \code{-1} refers to the last axis. If \code{NULL}
-(default), uses the last axis.}
+(default), the input is first flattened to a 1-D array, like
+\code{\link[=nv_sort]{nv_sort()}}, and the indices refer to that flattening.}
 
 \item{decreasing}{(\code{logical(1)})\cr
 If \code{TRUE}, returns indices that produce a decreasing sort. Default
@@ -27,13 +28,15 @@ original relative order. Default \code{FALSE}.}
 \value{
 (\code{\link{arrayish}})\cr
 Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
-the input's, and the input's shape. For a size-0 axis, the output is an
-empty array of the same shape (a valid empty permutation).
-\code{as_array(x)[as_array(nv_argsort(x))]} reproduces the sorted
-array (for 1-D inputs).
+the input's, and the input's shape -- or 1-D holding every element's index
+when \code{axis} is \code{NULL}. For a size-0 axis, the output is an empty array of
+the same shape (a valid empty permutation). Indexing the flattened input
+by the result reproduces \code{\link[=nv_sort]{nv_sort()}}'s output.
 }
 \description{
-Returns the indices that would sort the array along an axis.
+Returns the indices that would sort the array: over every element by
+default, or along one axis. It is the index twin of \code{\link[=nv_sort]{nv_sort()}} and takes
+the same \code{axis}, so the two always describe the same ordering.
 }
 \section{NaN handling}{
 
@@ -47,6 +50,10 @@ Returns the indices that would sort the array along an axis.
 # the indices come out at the default integer data type
 x <- nv_array(c(3, 1, 4, 1, 5))
 nv_argsort(x)
+
+m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+nv_argsort(m) # indexes the flattened matrix
+nv_argsort(m, axis = 2L) # a permutation per row
 \dontshow{\}) # examplesIf}
 }
 \seealso{
