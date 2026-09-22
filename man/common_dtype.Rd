@@ -7,25 +7,12 @@
 common_dtype(lhs_dtype, rhs_dtype)
 }
 \arguments{
-\item{lhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The left-hand side type.}
-
-\item{rhs_dtype}{(\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The right-hand side type.}
+\item{lhs_dtype, }{rhs_dtype (\code{\link[tengen:DataType]{tengen::DataType}})\cr
+The two data types.}
 }
 \value{
 (\code{\link[tengen:DataType]{tengen::DataType}})\cr
-The narrowest common data type: the wider of the two among the signed
-integers or among the floats, the higher category where the categories
-differ, and a wider \emph{signed} integer where a signed and an unsigned
-integer meet (\code{ui8} and \code{i8} give \code{i16}). A \code{ui64} meeting a signed
-integer has no common data type at all and is an error.
-
-Floats are ordered by width alone, which leaves \code{f16} and \code{bf16} -- the
-same width, but neither one's range and precision covering the other's --
-without a true common type. They give \code{f16}, which loses \code{bf16}'s exponent
-range, so bring them together explicitly (at \code{f32}, say) where that
-matters.
+The narrowest common data type.
 }
 \description{
 Compute the common data type.
@@ -37,6 +24,8 @@ is the exception -- no signed data type holds it, and an integer does not
 become a float on its own -- so \code{ui64} and a signed integer have no common
 data type and the pair is an error. Convert one side with \code{\link[=nv_convert]{nv_convert()}}
 to decide what they meet at.
+
+See the \emph{Type Promotion} article for more information.
 }
 \examples{
 common_dtype("i32", "f32")

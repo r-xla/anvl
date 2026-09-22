@@ -270,6 +270,7 @@ graph$constants
 
 When compiling such a program to StableHLO, an R literal is **inlined** into the program -- there it is a `stablehlo.constant`, which the compiler can fold -- while a captured `AnvlArray` becomes an input to the StableHLO program, whatever its size.
 This is because inlining an array into the executable would copy its data into the program text, which is wasteful for a large one and buys nothing for a small one: the value is already a buffer on the device.
+Note that if we ran `trace_fn()` with `optimize = TRUE`, scalarish constants would also be inlined.
 
 ```{r}
 out <- stablehlo(graph)

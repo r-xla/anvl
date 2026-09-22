@@ -61,8 +61,7 @@ The data types and the words the docs use for groups of them are in `?dtypes`
 *integerish* / *signed numeric* / *float* / *boolean*. Two things to keep in mind:
 
 - There is currently no support for complex numbers.
-- `f16` / `bf16` exist but only some primitives lower for them; the whole float *category* counts
-  as float, so a page that says "any float data type" includes them.
+- We currently do not worry about any float type other than `f32` and `f64`.
 
 ## Type Promotion
 

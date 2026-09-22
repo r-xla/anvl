@@ -9,22 +9,12 @@
 #' become a float on its own -- so `ui64` and a signed integer have no common
 #' data type and the pair is an error. Convert one side with [`nv_convert()`]
 #' to decide what they meet at.
-#' @param lhs_dtype ([`tengen::DataType`])\cr
-#'   The left-hand side type.
-#' @param rhs_dtype ([`tengen::DataType`])\cr
-#'   The right-hand side type.
-#' @return ([`tengen::DataType`])\cr
-#'   The narrowest common data type: the wider of the two among the signed
-#'   integers or among the floats, the higher category where the categories
-#'   differ, and a wider *signed* integer where a signed and an unsigned
-#'   integer meet (`ui8` and `i8` give `i16`). A `ui64` meeting a signed
-#'   integer has no common data type at all and is an error.
 #'
-#'   Floats are ordered by width alone, which leaves `f16` and `bf16` -- the
-#'   same width, but neither one's range and precision covering the other's --
-#'   without a true common type. They give `f16`, which loses `bf16`'s exponent
-#'   range, so bring them together explicitly (at `f32`, say) where that
-#'   matters.
+#' See the *Type Promotion* article for more information.
+#' @param lhs_dtype, rhs_dtype ([`tengen::DataType`])\cr
+#'   The two data types.
+#' @return ([`tengen::DataType`])\cr
+#'   The narrowest common data type.
 #' @examples
 #' common_dtype("i32", "f32")
 #' common_dtype("i32", "i64")
@@ -641,18 +631,11 @@ common_dtype_of <- function(..., .fallback = NULL) {
 #' * **boolean** -- `bool`
 #' * **integer** -- `i8`, `i16`, `i32`, `i64` and their unsigned counterparts
 #'   `ui8`, `ui16`, `ui32`, `ui64`
-#' * **float** -- `f32`, `f64`, and the narrower floats `f16` and `bf16`
+#' * **float** -- `f32` and `f64`.
 #'
 #' These are the categories promotion works in, where signed and unsigned
 #' integers count as one. [`tengen::dtype_category()`] reports a finer split
 #' that names `int` and `uint` separately.
-#'
-#' Being in a category is not the same as being runnable: `f16` and `bf16` are
-#' float data types everywhere anvl reasons about data types -- wherever a page
-#' says *any float data type*, they are included, and promotion treats them as
-#' floats -- but no backend materializes them today, so an array at one of them
-#' fails when it reaches the backend (`Unsupported type: f16`) rather than at
-#' the anvl call. There is no support for complex data types at all.
 #'
 #' @template section_dtype_words
 #' @section Where a Data Type Comes From:

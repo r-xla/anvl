@@ -23,13 +23,6 @@ dtypes_supported <- c(
 roxy_dtypes <- function() {
   paste0(dtypes_supported, collapse = ", ")
 }
-
-# Wrap a generated sentence before it is substituted into a roxygen block.
-# Inline `r ...` results and template variables are spliced in *after* roxygen
-# has wrapped the surrounding text, so without this the rendered `.Rd` carries
-# one very long line per substitution. Breaking only at spaces leaves markdown
-# links, code spans and URLs intact; Rd treats the newline as ordinary
-# whitespace, so the rendered page is unchanged.
 roxy_wrap <- function(x, width = 74L) {
   paste(strwrap(x, width = width), collapse = "\n")
 }
@@ -56,11 +49,6 @@ roxy_agree <- function(...) {
   ))
 }
 
-# The CHLO op a primitive lowers to, for inline use in roxygen blocks as
-# `r roxy_spec_chlo("erf")`. CHLO ops are not in the StableHLO specification --
-# they are lowered to StableHLO during compilation -- so they link the generated
-# CHLO reference instead. Its anchors name the op twice, and the second half
-# drops the underscores: `erf_inv` is `chloerf_inv_chloerfinvop`.
 roxy_spec_chlo <- function(op) {
   roxy_wrap(sprintf(
     paste(
@@ -73,9 +61,6 @@ roxy_spec_chlo <- function(op) {
   ))
 }
 
-# The StableHLO op a primitive lowers to, with a link to its entry in the
-# specification, for inline use in roxygen blocks as `r roxy_spec("gather")`.
-# The op name is both the `hlo_*` function's suffix and the spec's anchor.
 roxy_spec <- function(op) {
   roxy_wrap(sprintf(
     "Lowers to [hlo_%1$s()], specified under [%1$s](https://openxla.org/stablehlo/spec#%1$s).",
