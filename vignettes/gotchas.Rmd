@@ -51,13 +51,20 @@ appended, so its axis 1 meets axis 1 of the other.
 Anvl arrays are column-major, so the first axis is the one that varies fastest,
 and appending leaves every axis the array already had meaning what it did.
 (NumPy prepends instead, which is the matching choice for a row-major array.)
-A length-`nrow` vector therefore broadcasts against a matrix, and a
-length-`ncol` one does not.
+A vector therefore meets a matrix as a **column**: a length-`nrow` vector
+broadcasts against it, one value per row, and a length-`ncol` one does not.
 
 ```{r}
-m <- nv_matrix(1:6, nrow = 2)
-v <- nv_array(c(10, 20))
-shape(nv_broadcast_arrays(m, v)[[2]])
+x <- nv_array(c(1, 2, 3))
+y <- nv_array(matrix(1, nrow = 3, ncol = 3))
+xs <- nv_broadcast_arrays(x, y)
+xs[[1]] + xs[[2]]
+```
+
+which is what base R already gives you for the same two operands:
+
+```{r}
+matrix(1, nrow = 3, ncol = 3) + c(1, 2, 3)
 ```
 
 ```{r, error = TRUE}
@@ -68,8 +75,8 @@ This is *not* base R's recycling, which is a different mechanism: base R has no
 broadcasting between arrays at all (`matrix(1:6, 2) + matrix(c(10, 20, 30), 1)`
 is a "non-conformable arrays" error), and recycles a shorter *vector* over the
 column-major flattening instead, warning only when the lengths do not divide.
-That happens to agree with broadcasting when the vector's length is the size of
-the first axis, and to disagree quietly otherwise -- `matrix(1:6, 2) + c(10, 20, 30)`
+That agrees with broadcasting whenever the vector's length is the size of the
+first axis -- the case above, and the usual way a vector meets a matrix -- and to disagree quietly otherwise -- `matrix(1:6, 2) + c(10, 20, 30)`
 recycles rather than adding one value per column.
 So `nv_broadcast_arrays()` cannot replicate recycling for shapes like `(4)` and
 `(2)`: every axis must either match or be 1.

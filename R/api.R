@@ -143,19 +143,30 @@ nv_promote_to_common <- jit(function(...) {
 #' @title Broadcast Arrays to a Common Shape
 #' @description
 #' Broadcasts arrays to a common shape, aligning their axes from the first
-#' one.
+#' one, so that a vector meets a matrix as a column.
 #'
 #' @section Broadcasting Rules:
 #' 1. If the arrays have different numbers of axes, append size-1
-#'    axes to the shorter shape, so axis 1 meets axis 1. Anvl arrays are
-#'    column-major, so it is the first axis that varies fastest and an
-#'    appended axis leaves every existing one meaning what it did. Julia
-#'    is column-major too and appends for the same reason, which is where
-#'    Reactant.jl -- the compiler that lowers Julia to the same StableHLO
-#'    this package targets -- gets the rule from. NumPy prepends instead,
-#'    the matching choice for a row-major array.
+#'    axes to the shorter shape, so axis 1 meets axis 1. A length-`n`
+#'    vector therefore lines up with the rows of an `n` by `m` matrix and
+#'    is replicated across its columns. Anvl arrays are column-major, so
+#'    it is the first axis that varies fastest and an appended axis leaves
+#'    every existing one meaning what it did. Julia is column-major and
+#'    appends as well, which is where Reactant.jl -- the compiler that
+#'    lowers Julia to the same StableHLO this package targets -- gets the
+#'    rule from. NumPy prepends instead, the matching choice for a
+#'    row-major array.
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
 #'    it to the other's size; otherwise raise an error.
+#'
+#' @section Relation to base R:
+#' Base R has no broadcasting between arrays -- `matrix(1, 3, 3) +
+#' matrix(1, 1, 3)` is a "non-conformable arrays" error. It does recycle a
+#' *vector* over a matrix, though, and for a vector as long as the first
+#' axis that lands on exactly this broadcast, which is why a vector meets a
+#' matrix as a column in both. The two part ways once the lengths stop
+#' lining up: `matrix(1, 2, 3) + c(1, 2, 3)` recycles on regardless, where
+#' the matching broadcast is an error.
 #'
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to broadcast.
@@ -163,10 +174,13 @@ nv_promote_to_common <- jit(function(...) {
 #'   The inputs, each with its own data type and the common shape.
 #' @seealso [nv_broadcast_scalars()], [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the length-2 vector is stretched to the matrix's shape
-#' x1 <- nv_matrix(1:6, nrow = 2)
-#' x2 <- nv_array(c(10, 20))
-#' nv_broadcast_arrays(x1, x2)
+#' # a vector meets a matrix as a column: one value per row, across columns
+#' x <- nv_array(c(1, 2, 3))
+#' y <- nv_array(matrix(1, nrow = 3, ncol = 3))
+#' xs <- nv_broadcast_arrays(x, y)
+#' xs[[1L]] + xs[[2L]]
+#' # base R's recycling agrees, for a vector as long as the first axis
+#' matrix(1, nrow = 3, ncol = 3) + c(1, 2, 3)
 #'
 #' # axes of size 1 are expanded to the other operand's size
 #' y1 <- nv_array(1:3, shape = c(1, 3))
@@ -184,7 +198,7 @@ nv_broadcast_arrays <- jit(function(...) {
 #' @title Broadcast to Shape
 #' @description
 #' Broadcasts an array to a target shape, aligning the array's axes with the
-#' leading axes of `shape`.
+#' leading axes of `shape`, so that a vector fills a column.
 #' @templateVar dtypes any data type
 #' @template param_unary_x
 #' @param shape (`integer()`)\cr
@@ -195,7 +209,7 @@ nv_broadcast_arrays <- jit(function(...) {
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
 #'   [prim_broadcast_in_axes()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' # the length-3 vector is repeated along a new leading axis
+#' # the vector fills a column and is repeated along the new trailing axis
 #' x <- nv_array(c(1, 2, 3))
 #' nv_broadcast_to(x, shape = c(3, 2))
 #' @export

@@ -16,30 +16,45 @@ The inputs, each with its own data type and the common shape.
 }
 \description{
 Broadcasts arrays to a common shape, aligning their axes from the first
-one.
+one, so that a vector meets a matrix as a column.
 }
 \section{Broadcasting Rules}{
 
 \enumerate{
 \item If the arrays have different numbers of axes, append size-1
-axes to the shorter shape, so axis 1 meets axis 1. Anvl arrays are
-column-major, so it is the first axis that varies fastest and an
-appended axis leaves every existing one meaning what it did. Julia
-is column-major too and appends for the same reason, which is where
-Reactant.jl -- the compiler that lowers Julia to the same StableHLO
-this package targets -- gets the rule from. NumPy prepends instead,
-the matching choice for a row-major array.
+axes to the shorter shape, so axis 1 meets axis 1. A length-\code{n}
+vector therefore lines up with the rows of an \code{n} by \code{m} matrix and
+is replicated across its columns. Anvl arrays are column-major, so
+it is the first axis that varies fastest and an appended axis leaves
+every existing one meaning what it did. Julia is column-major and
+appends as well, which is where Reactant.jl -- the compiler that
+lowers Julia to the same StableHLO this package targets -- gets the
+rule from. NumPy prepends instead, the matching choice for a
+row-major array.
 \item For each axis: if the sizes match, keep them; if one is 1, expand
 it to the other's size; otherwise raise an error.
 }
 }
 
+\section{Relation to base R}{
+
+Base R has no broadcasting between arrays -- \code{matrix(1, 3, 3) + matrix(1, 1, 3)} is a "non-conformable arrays" error. It does recycle a
+\emph{vector} over a matrix, though, and for a vector as long as the first
+axis that lands on exactly this broadcast, which is why a vector meets a
+matrix as a column in both. The two part ways once the lengths stop
+lining up: \code{matrix(1, 2, 3) + c(1, 2, 3)} recycles on regardless, where
+the matching broadcast is an error.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the length-2 vector is stretched to the matrix's shape
-x1 <- nv_matrix(1:6, nrow = 2)
-x2 <- nv_array(c(10, 20))
-nv_broadcast_arrays(x1, x2)
+# a vector meets a matrix as a column: one value per row, across columns
+x <- nv_array(c(1, 2, 3))
+y <- nv_array(matrix(1, nrow = 3, ncol = 3))
+xs <- nv_broadcast_arrays(x, y)
+xs[[1L]] + xs[[2L]]
+# base R's recycling agrees, for a vector as long as the first axis
+matrix(1, nrow = 3, ncol = 3) + c(1, 2, 3)
 
 # axes of size 1 are expanded to the other operand's size
 y1 <- nv_array(1:3, shape = c(1, 3))

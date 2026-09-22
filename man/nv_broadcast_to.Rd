@@ -21,11 +21,11 @@ Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
 Broadcasts an array to a target shape, aligning the array's axes with the
-leading axes of \code{shape}.
+leading axes of \code{shape}, so that a vector fills a column.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# the length-3 vector is repeated along a new leading axis
+# the vector fills a column and is repeated along the new trailing axis
 x <- nv_array(c(1, 2, 3))
 nv_broadcast_to(x, shape = c(3, 2))
 \dontshow{\}) # examplesIf}
