@@ -766,7 +766,7 @@ infer_pad <- function(
     bad <- which(result_shape < 0L)
     cli_abort(c(
       "Negative padding must not remove more than an axis holds.",
-      x = "{.arg x} is {shape_repr(in_shape)}; {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)} would end up at {vec_repr(result_shape[bad])}." # nolint
+      x = "{.arg x} has shape {shape_repr(in_shape)}; {cli::qty(length(bad))}ax{?is/es} {vec_repr(bad)} would end up at {vec_repr(result_shape[bad])}." # nolint
     ))
   }
 

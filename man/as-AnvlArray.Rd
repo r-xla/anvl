@@ -60,8 +60,8 @@ not hold the values -- and it keeps its class, so \code{is.vector()} is
 Use \code{\link[=as_array]{as_array()}} to obtain an R array that preserves the shape, or
 \code{\link[=nv_convert]{nv_convert()}} to change the dtype of an \code{\link{AnvlArray}} before coercing.
 \code{as.vector()}'s signature is fixed by the generic, so it takes no \code{check}
-argument; call \code{\link[=as_array]{as_array()}} with \code{check = "err"} to have the values
-validated.
+argument and always reports at the default level; call \code{\link[=as_array]{as_array()}}
+directly to pick another one.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

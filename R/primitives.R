@@ -30,8 +30,8 @@ make_unary_op <- function(infer_fn) {
 #' 100 * 100 * 4 bytes of memory.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with. It has to be something `dtype` can
-#'   hold: a whole number for an integer data type, a non-negative whole number
-#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
+#'   hold: a whole number in its range for an integer data type, a non-negative
+#'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @template param_dtype
@@ -2270,7 +2270,8 @@ prim_while <- new_primitive(
 #'   where `carry` has the structure of `init` and `out` is a (possibly
 #'   nested) list of arrays or `NULL`. `x` is `NULL` when `xs` is empty.
 #' @param length (`integer(1)`)\cr
-#'   Static trip count; the size of axis 1 of every array in `xs`.
+#'   Static trip count; the size of axis 1 of every array in `xs`. `0` runs
+#'   no step and returns `init` with zero-length stacked outputs.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run from `length` down to `1`; each step still reads
 #'   `xs` at its own position and writes its output there.
@@ -2303,10 +2304,7 @@ prim_scan <- new_primitive(
     if (!is.function(body)) {
       cli_abort("{.arg body} must be a function.")
     }
-    length <- as.integer(length)
-    if (base::length(length) != 1L || is.na(length) || length < 1L) {
-      cli_abort("{.arg length} must be a positive integer.")
-    }
+    length <- assert_int(length, lower = 0L, coerce = TRUE)
     assert_flag(reverse)
 
     current_desc <- .current_descriptor(silent = TRUE)
@@ -2320,7 +2318,12 @@ prim_scan <- new_primitive(
     }
 
     # The body is traced once, seeing each `xs` leaf with its leading axis
-    # dropped; the lowering slices the real arrays inside the loop.
+    # dropped; the lowering slices the real arrays inside the loop. This is
+    # why `trace_fn()` alone is not enough, unlike in `prim_while()`, which
+    # traces against the very values it was handed: we have to build the
+    # per-step abstract arrays first, and that needs each leaf's shape and
+    # data type before it has been traced -- from a `GraphBox` under `jit()`,
+    # from a plain array eagerly.
     aval_of <- function(x) {
       if (is_graph_box(x)) {
         materialize_rdata_box(x)$gnode$aval
@@ -2360,6 +2363,9 @@ prim_scan <- new_primitive(
 
     desc_body <- local_descriptor()
     body_graph <- trace_fn(step, list(carry = init, x = x_slices), desc = desc_body, mode = "subgraph")
+    # The body is lowered inline into the parent's loop region, so whatever it
+    # closed over has to be a constant of the parent graph too -- the same
+    # reason `prim_while()` and `prim_if()` register theirs.
     register_consts(current_desc, body_graph$constants)
 
     infer_fn <- function(..., body_graph, length, reverse, n_carry, n_xs) {
@@ -2369,10 +2375,15 @@ prim_scan <- new_primitive(
       carry_out <- outs_body[seq_len(n_carry)]
       for (i in seq_len(n_carry)) {
         if (!eq_type(carry_in[[i]], carry_out[[i]])) {
+          # Name the carry slot that disagrees rather than its flat position,
+          # since the usual cause is one R value in `init` that materialized
+          # at its default. A single unnamed carry has no path to report.
+          path <- pjrt::tree_path(init_tree, i)
+          slot <- if (nzchar(path)) sprintf("`%s`", path) else sprintf("Carry %d", i)
           cli_abort(
             c(
               "{.arg init} and the carry {.arg body} returns must have the same type.",
-              x = "Carry {i} enters as {repr(carry_in[[i]])} and comes back as {repr(carry_out[[i]])}.",
+              x = "{slot} enters as {repr(carry_in[[i]])} and comes back as {repr(carry_out[[i]])}.",
               i = "An R value in {.arg init} materializes at its default data type; name the one the loop carries, e.g. {.code nv_scalar(0, dtype = \"f64\")} or {.fn nv_convert}." # nolint
             ),
             call = NULL
@@ -2458,7 +2469,7 @@ prim_scan <- new_primitive(
 #' @export
 prim_sort <- new_primitive(
   "sort",
-  function(xs, axis = 1L, descending = FALSE, is_stable = FALSE) {
+  function(xs, axis, descending = FALSE, is_stable = FALSE) {
     assert_flag(descending)
     assert_flag(is_stable)
     if (is_arrayish(xs) || !is.list(xs) || !length(xs)) {

@@ -139,14 +139,14 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(x, update, ..., output_type
 
 prim_reduce_sum[["stablehlo"]] <- function(x, axes, drop) {
   init <- function(x) {
-    hlo_scalar(0, dtype = dtype(x), func = x$func)
+    hlo_scalar(0L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_reduce(hlo_add, x, init, axes, drop)
 }
 
 prim_reduce_prod[["stablehlo"]] <- function(x, axes, drop) {
   init <- function(x) {
-    hlo_scalar(1, dtype = dtype(x), func = x$func)
+    hlo_scalar(1L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_reduce(hlo_multiply, x, init, axes, drop)
 }
@@ -215,14 +215,14 @@ prim_reduce_all[["stablehlo"]] <- function(x, axes, drop) {
 
 prim_cumsum[["stablehlo"]] <- function(x, axis) {
   init <- function(x) {
-    hlo_scalar(0, dtype = dtype(x), func = x$func)
+    hlo_scalar(0L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_cum(hlo_add, x, init, axis)
 }
 
 prim_cumprod[["stablehlo"]] <- function(x, axis) {
   init <- function(x) {
-    hlo_scalar(1, dtype = dtype(x), func = x$func)
+    hlo_scalar(1L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_cum(hlo_multiply, x, init, axis)
 }
@@ -299,7 +299,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   values <- out[[1L]]
   indices_0 <- out[[2L]]
   one <- hlo_scalar(1L, dtype = i_dtype, func = indices_0$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices_0$value_type))
+  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(indices_0$value_type))
   list(values, hlo_add(indices_0, one_bc))
 }
 
@@ -372,7 +372,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env
   # convert to 1-based
   result <- out[[2L]]
   one <- hlo_scalar(1L, dtype = i_dtype, func = result$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(result$value_type))
+  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(result$value_type))
   result <- hlo_add(result, one_bc)
   if (drop) {
     return(list(result))
@@ -633,7 +633,7 @@ prim_iota[["stablehlo"]] <- function(axis, dtype, shape, start) {
   if (start != 0L) {
     offset <- hlo_broadcast_in_dim(
       hlo_scalar(start, dtype = dtype, func = out$func),
-      integer(0),
+      integer(0L),
       shape
     )
     out <- hlo_add(out, offset)
@@ -733,22 +733,37 @@ prim_scan[["stablehlo"]] <- function(..., body_graph, length, reverse, n_carry, 
   out_avals <- avals_body[-seq_len(n_carry)]
   n_out <- base::length(out_avals)
 
+  # Every step overwrites its own slice, so the buffers only need *some*
+  # value; stablehlo has no uninitialized tensor, and zeros are what JAX
+  # allocates too. `0L` takes the buffer's data type whatever it is.
   bufs0 <- lapply(out_avals, function(aval) {
-    dt <- as.character(aval$dtype)
-    zero <- switch(substr(dt, 1L, 1L), "b" = FALSE, "i" = , "u" = 0L, 0)
-    hlo_tensor(zero, dtype = dt, shape = as.integer(c(n, shape(aval))), func = outer)
+    hlo_tensor(
+      0L,
+      dtype = aval$dtype,
+      shape = as.integer(c(n, shape(aval))),
+      func = outer
+    )
   })
+  # A zero-step scan is the buffers as allocated and the carry untouched. We
+  # cannot emit the loop and let the condition stop it immediately: the body
+  # slices one step off `xs`, which does not type-check against an `xs` whose
+  # axis 1 is empty, and MLIR verifies a region it never runs.
+  if (n == 0L) {
+    return(c(carry0, bufs0))
+  }
+
   i0 <- hlo_scalar(0L, dtype = "i32", func = outer)
   state <- c(list(i0), carry0, bufs0, xs0)
 
   # Both regions declare the full state as their inputs, in state order.
+  # `region_input()` names them with auto value ids, which is what keeps one
+  # scan lowered inside another's body from redefining the outer region's.
   declare_state <- function() {
-    i <- region_input("i32")
-    rest <- lapply(state[-1L], function(value) {
-      tt <- value$value_type$type
-      region_input(as.character(tt$dtype), shape(tt))
+    vals <- lapply(state, function(s) {
+      vt <- s$value_type
+      region_input(as.character(vt$type$dtype), shape(vt))
     })
-    list(i = i, rest = rest)
+    list(i = vals[[1L]], rest = vals[-1L])
   }
 
   cond_func <- stablehlo::local_func("")
@@ -817,31 +832,10 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
 # comparing so stable sort treats IEEE-equal values as equal — this keeps
 # all NaNs at one end and stops -0/+0 from being silently reordered.
 # Mirrors JAX _sort_lt_comparator, _canonicalize_float_for_sort).
-.hlo_top_k_values <- function(x, k) {
-  # Only the values are wanted, so ties may come out in any order. The CHLO
-  # top_k expands on GPU to a *stable* sort of (values, iota) plus a slice,
-  # and the stability is what it charges for: an unstable sort of the values
-  # alone is never slower than a full sort there. XLA's CPU backend lowers
-  # the CHLO op to a dedicated partial-sort kernel that beats any sort, so it
-  # keeps it.
-  if (!identical(current_platform(), "cuda")) {
-    return(hlo_top_k(x, k = k)[[1L]])
-  }
-  shp <- shape(x$value_type)
-  rank <- length(shp)
-  sorted <- hlo_sort(
-    x,
-    dimension = rank - 1L,
-    is_stable = FALSE,
-    comparator = .build_sort_comparator(list(x), descending = TRUE)
-  )
-  if (!inherits(sorted, "FuncValue")) {
-    sorted <- sorted[[1L]]
-  }
-  hlo_slice(sorted, rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
-}
-
-.build_sort_comparator <- function(ops, descending) {
+# `canonicalize = FALSE` drops the -0/-NaN folding, giving the raw TOTALORDER
+# that `chlo.top_k` compares with. Only `.hlo_top_k_values()` passes it, so that
+# its result does not depend on which lowering the platform took.
+.build_sort_comparator <- function(ops, descending, canonicalize = TRUE) {
   key_dtype <- ops[[1L]]$value_type$type$dtype
   key_is_float <- is_dtype_float(key_dtype)
   direction <- if (descending) "GT" else "LT"
@@ -863,8 +857,10 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
   }
 
   if (key_is_float) {
-    a <- .canonicalize_float_for_sort(a, key_dtype)
-    b <- .canonicalize_float_for_sort(b, key_dtype)
+    if (canonicalize) {
+      a <- .canonicalize_float_for_sort(a, key_dtype)
+      b <- .canonicalize_float_for_sort(b, key_dtype)
+    }
     result <- hlo_compare(a, b, comparison_direction = direction, compare_type = "TOTALORDER")
   } else {
     ct <- if (is_dtype_int(key_dtype)) "SIGNED" else "UNSIGNED"
@@ -876,11 +872,36 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
 # Collapse -0 → +0 and -NaN → +NaN on a scalar float. See the comment on
 # `.build_sort_comparator` above for why we do this.
 .canonicalize_float_for_sort <- function(x, dtype) {
-  zero <- hlo_scalar(0, dtype = dtype, func = x$func)
+  zero <- hlo_scalar(0L, dtype = dtype, func = x$func)
   canonical_nan <- hlo_scalar(NaN, dtype = dtype, func = x$func)
   is_zero <- hlo_compare(x, zero, comparison_direction = "EQ", compare_type = "FLOAT")
   is_nan <- hlo_compare(x, x, comparison_direction = "NE", compare_type = "FLOAT")
   hlo_select(is_nan, canonical_nan, hlo_select(is_zero, zero, x))
+}
+
+# The values-only lowering. Ties may come out in any order, so on CUDA we can
+# drop the stability that `chlo.top_k` charges for: it expands there to a
+# *stable* sort of (values, iota) plus a slice, and an unstable sort of the
+# values alone is never slower than a full sort. XLA's CPU backend lowers the
+# CHLO op to a dedicated partial-sort kernel that beats any sort, so it keeps
+# it.
+#
+# The comparator is `chlo.top_k`'s (`canonicalize = FALSE`), not `prim_sort()`'s,
+# so the result does not depend on which lowering the platform took -- a
+# negative NaN ranks below `-Inf` on both, as `?nv_top_k` documents.
+.hlo_top_k_values <- function(x, k) {
+  if (!identical(current_platform(), "cuda")) {
+    return(hlo_top_k(x, k = k)[[1L]])
+  }
+  shp <- shape(x$value_type)
+  rank <- length(shp)
+  sorted <- hlo_sort(
+    x,
+    dimension = rank - 1L,
+    is_stable = FALSE,
+    comparator = .build_sort_comparator(list(x), descending = TRUE, canonicalize = FALSE)
+  )
+  hlo_slice(sorted[[1L]], rep(0L, rank), replace(shp, rank, k), rep(1L, rank))
 }
 
 prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
@@ -894,7 +915,7 @@ prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
   # `hlo_top_k`'s indices are `i32` by spec, so the shift to 1-based happens
   # there and only the result follows the default integer.
   one <- hlo_scalar(1L, dtype = "i32", func = indices$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices$value_type))
+  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(indices$value_type))
   indices <- hlo_add(indices, one_bc)
 
   index_dtype <- index_dtype_of(output_types, 2L)

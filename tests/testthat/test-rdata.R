@@ -298,18 +298,33 @@ describe("an R value at its use site", {
     expect_identical(as_array(g(3L, nv_scalar(2, dtype = "f64"))$i), 5)
   })
 
-  it("reaches an unsigned data type through a convert when negative", {
-    # An R integer is signed, so it is built at i32/i64 and converted: writing it
-    # straight into the IR would not even be valid StableHLO, and the answer has
-    # to be the same eagerly as under jit().
+  it("is built straight at a narrow or unsigned data type", {
     x <- nv_array(c(1L, 2L), dtype = "ui32")
-    expect_equal(as_array(nv_add(x, -1L)), as_array(jit(function(x) nv_add(x, -1L))(x)))
-    expect_equal(as.character(as_array(nv_add(x, -1L))), c("0", "1"))
     expect_equal(as.character(as_array(nv_add(x, 1L))), c("2", "3"))
-    graph <- trace_fn(function(x) nv_add(x, -1L), list(x = nv_aval("ui32", 2L)))
+    graph <- trace_fn(function(x) nv_add(x, 1L), list(x = nv_aval("ui32", 2L)))
     src <- repr(stablehlo(graph)[[1L]])
-    expect_match(src, "dense<-1> : tensor<i32>", fixed = TRUE)
-    expect_match(src, "stablehlo.convert", fixed = TRUE)
+    expect_match(src, "dense<1> : tensor<ui32>", fixed = TRUE)
+    expect_no_match(src, "stablehlo.convert", fixed = TRUE)
+  })
+
+  it("is refused where the data type it meets cannot hold it", {
+    # The value is built *at* the data type it meets rather than converted into
+    # it, so a negative one has nowhere to go in `ui32`: it is refused, rather
+    # than wrapping around the way `nv_convert()` on an array does.
+    x <- nv_array(c(1L, 2L), dtype = "ui32")
+    expect_error(jit(function(x) nv_add(x, -1L))(x), "Cannot build the R value -1")
+    expect_error(jit(function(x) nv_add(x, -1L))(x), "outside the range of .ui32.")
+    expect_error(jit(function(x) nv_add(x, 300L))(nv_array(1L, dtype = "i8")), "outside the range of .i8.")
+    # The same value as an open argument has no value to check while tracing, so
+    # the upload checks it instead -- once per call, on the data it is given.
+    f <- jit(function(x, v) nv_add(x, v))
+    expect_equal(as.character(as_array(f(x, 1L))), c("2", "3"))
+    expect_error(f(x, -1L), "ui32")
+    # ... and eagerly, where the R value is an argument of the jitted primitive.
+    expect_error(nv_add(x, -1L), "ui32")
+    expect_error(nv_array(1L, dtype = "i8") + 300L, "i8")
+    # An array of R values is checked element by element.
+    expect_error(jit(function(x) nv_add(x, array(c(1L, -1L))))(x), "Cannot build the R value -1")
   })
 
   it("materializes at its default as a sub-graph parameter", {
@@ -386,6 +401,10 @@ describe("nv_convert", {
     # Converting to an integer dtype truncates, as it does for a typed array.
     expect_equal(as_array(nv_convert(1.9, "i32")), 1L)
     expect_equal(as_array(nv_convert(-1.9, "i32")), -1L)
+    # An R value is built at the target, so one it cannot hold is refused --
+    # where converting an array of that value wraps around.
+    expect_error(nv_convert(-2L, "ui8"), "Cannot build the R value -2")
+    expect_equal(as.character(as_array(nv_convert(nv_scalar(-2L), "ui8"))), "254")
   })
 })
 
@@ -663,9 +682,12 @@ describe("staging an R value out of its own category", {
     expect_equal(calls("double", "f32"), 0L)
     expect_equal(calls("integer", "i64"), 0L)
     expect_equal(calls("logical", "bool"), 0L)
-    # An i8 is in the integer category but too narrow to build an R integer at,
-    # so that one does stage through i32 and convert.
-    expect_equal(calls("integer", "i8"), 1L)
+    # ... including the narrow and unsigned integer data types, which an R
+    # integer is built at directly rather than staged through i32.
+    expect_equal(calls("integer", "i8"), 0L)
+    expect_equal(calls("integer", "ui8"), 0L)
+    # A target of another category is what stages.
+    expect_equal(calls("double", "i32"), 1L)
   })
 })
 

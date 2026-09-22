@@ -387,8 +387,8 @@ parse_subset_spec <- function(quo, axis_size, axis) {
   # Check for range expression (a:b) before evaluating
   if (rlang::is_call(e, ":")) {
     env <- rlang::quo_get_env(quo)
-    start <- rlang::eval_tidy(e[[2]], env = env)
-    end <- rlang::eval_tidy(e[[3]], env = env)
+    start <- rlang::eval_tidy(e[[2L]], env = env)
+    end <- rlang::eval_tidy(e[[3L]], env = env)
 
     if (!is_integerish(start) || !is_integerish(end)) {
       bad <- if (!is_integerish(start)) start else end

@@ -896,6 +896,26 @@ describe("arr", {
   })
 })
 
+describe("as_array", {
+  it("rejects a `check` level it does not know", {
+    x <- nv_array(1:3)
+    expect_error(as_array(x, check = "nope"), "must be")
+    expect_error(as_array(x, check = NA), "must be")
+    expect_error(as_array(x, check = c("warn", "err")), "must be")
+  })
+
+  it("rejects `TRUE`, which does not say which level is meant", {
+    expect_error(as_array(nv_array(1:3), check = TRUE), "not accepted")
+  })
+
+  it("takes the levels it does know", {
+    x <- nv_array(1:3)
+    expect_equal(as_array(x, check = "warn"), array(1:3, 3L))
+    expect_equal(as_array(x, check = "err"), array(1:3, 3L))
+    expect_equal(as_array(x, check = FALSE), array(1:3, 3L))
+  })
+})
+
 describe("as.double", {
   it("returns a bare double vector and discards shape", {
     x <- nv_array(c(1, 2, 3, 4, 5, 6), dtype = "f32", shape = c(2L, 3L))
@@ -979,6 +999,7 @@ describe("bit64::as.integer64()", {
   it("wraps a ui64 value that R's signed integer64 cannot hold", {
     # `bit64::integer64` is signed, so the top half of `ui64` has nowhere to
     # go: exactly 2^63 lands on NA and anything above it comes back negative.
+    # `check = FALSE` asks for the wrapped value without being told about it.
     u <- nv_convert(nv_array(c(2^63, 2^63 + 2^11), dtype = "f64"), "ui64")
     expect_identical(
       bit64::as.integer64(u, check = FALSE),
@@ -986,9 +1007,11 @@ describe("bit64::as.integer64()", {
     )
   })
 
-  it("reports the wrap when asked to check", {
+  it("reports the wrap at every check level", {
     u <- nv_convert(nv_array(2^63, dtype = "f64"), "ui64")
+    expect_warning(bit64::as.integer64(u), "wrapped")
     expect_error(bit64::as.integer64(u, check = "err"), "wrapped")
+    expect_no_warning(bit64::as.integer64(u, check = FALSE))
   })
 
   it("works on a scalar", {

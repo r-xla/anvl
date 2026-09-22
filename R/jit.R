@@ -444,6 +444,6 @@ static_path <- function(path, name, i) {
 # The devices of the call's array inputs, for compile_pjrt()'s device inference.
 # pjrt has already checked they agree; this only converts them to anvl devices.
 dispatch_arg_devices <- function(info) {
-  is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1))
+  is_array <- !info$is_static & vapply(info$leaves, is_anvl_array, logical(1L))
   lapply(info$leaves[is_array], tengen::device)
 }

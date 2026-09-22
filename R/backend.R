@@ -14,7 +14,7 @@ NULL
 #' @param dtype (`function`)\cr Extracts the dtype from an AnvlArray.
 #' @param shape (`function`)\cr Extracts the shape from an AnvlArray.
 #' @param as_array (`function(x, check)`)\cr Converts an AnvlArray to an R
-#'   array. The `check` flag is forwarded from [`as_array()`]; backends may use
+#'   array. The `check` level is forwarded from [`as_array()`]; backends may use
 #'   it to abort when materialization would lose information (e.g. ui64 values
 #'   wrapping through `bit64::integer64`). See [`pjrt::as_array.PJRTBuffer()`].
 #' @param as_raw (`function`)\cr Converts an AnvlArray to raw bytes.
@@ -108,9 +108,9 @@ check_single_backend <- function(graph, arg_devices, expected) {
   const_backends <- vapply(
     graph$constants,
     function(const) if (is_concrete_array(const$aval)) backend(const$aval$data) else NA_character_,
-    character(1)
+    character(1L)
   )
-  arg_backends <- vapply(arg_devices, backend, character(1))
+  arg_backends <- vapply(arg_devices, backend, character(1L))
   found <- unique(c(const_backends, arg_backends))
   mismatches <- setdiff(found, c(expected, "plain", NA_character_))
   if (length(mismatches)) {
@@ -161,7 +161,7 @@ register_backend(
       }
       dtype_chr <- as.character(dtype)
       data <- switch(
-        substr(dtype_chr, 1, 1),
+        substr(dtype_chr, 1L, 1L),
         "f" = as.double(data),
         "i" = ,
         "u" = as.integer(data),

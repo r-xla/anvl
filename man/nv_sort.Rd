@@ -15,8 +15,8 @@ Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to sort. Negative values count from the end,
-i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses the last
-axis.}
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input is
+first flattened to a 1-D array, like \code{\link[base:sort]{base::sort()}}.}
 
 \item{decreasing}{(\code{logical(1)})\cr If \code{TRUE}, sort in decreasing order.}
 
@@ -46,10 +46,12 @@ You can also use \code{sort()} directly.
 
 \section{The \code{sort()} generic}{
 
-\code{\link[base:sort]{base::sort()}} flattens a multi-axis array into a vector, while
-\code{nv_sort()} (and \code{sort()} on an anvl array) sorts along a single axis, the
-last one by default, and keeps the shape. Flatten with \code{\link[=nv_flatten]{nv_flatten()}}
-first if you want a single sorted sequence.
+Like \code{\link[base:sort]{base::sort()}}, \code{nv_sort()} with \code{axis = NULL} flattens a multi-axis
+array into one sorted vector, so \code{sort()} on an anvl array agrees with base
+R (the flatten order does not matter once the elements are sorted). It
+differs in one respect: base R drops \code{NA} by default, whereas \code{NaN} is kept
+and sorted to the end. Pass \code{axis} to sort each slice along one axis
+instead, which keeps the shape.
 }
 
 \examples{
@@ -60,7 +62,8 @@ sort(x) # via the S3 generic
 nv_sort(x, decreasing = TRUE)
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_sort(m, axis = 2L)
+nv_sort(m) # one sorted vector, like base R
+nv_sort(m, axis = 2L) # each row sorted, shape kept
 \dontshow{\}) # examplesIf}
 }
 \seealso{

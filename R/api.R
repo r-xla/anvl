@@ -13,8 +13,8 @@
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with. It has to be something `dtype` can
-#'   hold: a whole number for an integer data type, a non-negative whole number
-#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
+#'   hold: a whole number in its range for an integer data type, a non-negative
+#'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | `NULL`)\cr
@@ -288,7 +288,7 @@ nv_reshape <- function(x, shape) {
 #' nv_flatten(matrix(1:4, nrow = 2))
 nv_flatten <- function(x) {
   x <- as_anvl_array(x)
-  if (naxes(x) == 0) {
+  if (naxes(x) == 0L) {
     cli_abort("Cannot flatten a scalar array.")
   }
   nv_reshape(x, prod(shape(x)))
@@ -305,7 +305,9 @@ nv_flatten <- function(x) {
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to concatenate.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#'   If `NULL` (default), assumes all inputs are at most 1-D and concatenates along axis 1.
+#'   If `NULL` (default), concatenates along axis 1, which requires every
+#'   input to have at most one axis; for anything else `axis` must be given,
+#'   since there is no neutral axis to join two matrices along.
 #' @return [`arrayish`]\cr
 #'   Has the common data type and a shape matching the inputs in all
 #'   axes except `axis`, which is the sum of input sizes.
@@ -314,6 +316,9 @@ nv_flatten <- function(x) {
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
 #' nv_concatenate(x, y)
+#'
+#' m <- nv_matrix(1:4, nrow = 2)
+#' nv_concatenate(m, m, axis = 1L) # required: `m` has two axes
 #' @export
 nv_concatenate <- jit(
   function(..., axis = NULL) {
@@ -1095,7 +1100,7 @@ nv_sinpi <- jit(function(x) {
   n <- nv_round(x, method = "nearest_even")
   reduced <- nv_sin((x - n) * pi)
   # The sine of `pi * n` alternates in sign with the parity of `n`.
-  nv_ifelse(nv_mod(n, 2) == 0, reduced, -reduced)
+  nv_ifelse(nv_mod(n, 2L) == 0L, reduced, -reduced)
 })
 
 #' @title Cosine of a Multiple of Pi
@@ -1127,7 +1132,7 @@ nv_tanpi <- jit(function(x) {
   x <- as_anvl_array(int_to_float(x))
   denominator <- nv_cospi(x)
   # Otherwise we get (+-)inf depending on which side we land, which is bad
-  nv_ifelse(denominator == 0, NaN, nv_sinpi(x) / denominator)
+  nv_ifelse(denominator == 0L, NaN, nv_sinpi(x) / denominator)
 })
 
 #' @title Floor
@@ -1391,10 +1396,10 @@ nv_gamma <- jit(function(x) {
   # not selected it is evaluated at a regular point: at a positive whole
   # number sin(pi * x) * gamma(1 - x) is 0 * Inf, and the cotangent that
   # nv_ifelse() sends into the discarded branch would pick the NaN up.
-  x_reflect <- nv_ifelse(x < 0, x, -0.5)
-  reflected <- pi / (nv_sinpi(x_reflect) * nv_exp(nv_lgamma(1 - x_reflect)))
-  out <- nv_ifelse(x < 0, reflected, positive)
-  nv_ifelse((x <= 0) & (x == nv_floor(x)), NaN, out)
+  x_reflect <- nv_ifelse(x < 0L, x, -0.5)
+  reflected <- pi / (nv_sinpi(x_reflect) * nv_exp(nv_lgamma(1L - x_reflect)))
+  out <- nv_ifelse(x < 0L, reflected, positive)
+  nv_ifelse((x <= 0L) & (x == nv_floor(x)), NaN, out)
 })
 
 #' @title Polygamma
@@ -1507,20 +1512,33 @@ nv_clamp <- jit(function(min_val, x, max_val) {
 
 #' @title Reverse
 #' @description
-#' Reverses the order of elements along specified axes.
-#' You can also use `rev()`, which reverses along every axis.
+#' Reverses the order of elements along the given axes, every axis by default.
+#' You can also use `rev()`, which always reverses along every axis.
 #' @template param_x
-#' @param axes (`integer()`)\cr
-#'   Axes to reverse.
-#'   Negative values count from the end, i.e. `-1` refers to the last axis.
+#' @param axes (`integer()` | `NULL`)\cr
+#'   Axes to reverse. Negative values count from the end, i.e. `-1` refers to
+#'   the last axis. If `NULL` (default), reverses along every axis.
 #' @return [`arrayish`]\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [prim_reverse()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_reverse(x, axes = 1L)
+#' nv_reverse(x)
+#'
+#' m <- nv_matrix(1:6, nrow = 2)
+#' nv_reverse(m) # every axis
+#' nv_reverse(m, axes = 2L) # columns only
 #' @export
-nv_reverse <- prim_reverse
+nv_reverse <- function(x, axes = NULL) {
+  x <- as_anvl_array(x)
+  axes <- axes %||% seq_len(naxes(x))
+  if (length(axes) == 0L) {
+    # Nothing to reverse -- a scalar, or an explicitly empty `axes`. The
+    # primitive rejects an empty axis list, so answer it here.
+    return(x)
+  }
+  prim_reverse(x, axes = axes)
+}
 
 #' @title Iota
 #' @description
@@ -2063,8 +2081,8 @@ nv_determinant <- jit(
     # log|det| = 0 and sign(det) = +1. This matches `base::determinant()`
     # and short-circuits since prim_lu rejects zero-sized inputs.
     if (n == 0L) {
-      one <- nv_scalar_like(x, 1)
-      modulus <- if (logarithm) nv_scalar_like(x, 0) else one
+      one <- nv_scalar_like(x, 1L)
+      modulus <- if (logarithm) nv_scalar_like(x, 0L) else one
       return(list(modulus = modulus, sign = one))
     }
     factored <- prim_lu(x)
@@ -2233,17 +2251,17 @@ nv_diag <- jit(function(x) {
     ))
   }
   n <- shape(x)[1L]
-  zeros <- nv_fill_like(x, 0, shape = c(n, n))
+  zeros <- nv_fill_like(x, 0L, shape = c(n, n))
   idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
   indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
     zeros,
     indices,
     x,
-    update_window_axes = integer(0),
+    update_window_axes = integer(0L),
     inserted_window_axes = c(1L, 2L),
-    x_batching_axes = integer(0),
-    scatter_indices_batching_axes = integer(0),
+    x_batching_axes = integer(0L),
+    scatter_indices_batching_axes = integer(0L),
     scatter_axes_to_x_axes = c(1L, 2L),
     index_vector_axis = 2L,
     unique_indices = TRUE
@@ -2277,7 +2295,7 @@ nv_eye <- jit(
   function(n, dtype = NULL, device = NULL) {
     assert_int(n, lower = 0L)
     dtype <- dtype %||% default_float()
-    nv_diag(nv_fill(1, as.integer(n), dtype = dtype, device = device))
+    nv_diag(nv_fill(1L, as.integer(n), dtype = dtype, device = device))
   },
   static = 1:3
 )
@@ -2294,6 +2312,39 @@ nv_eye <- jit(
 
 .count_bool <- function(x) {
   if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int()) else x
+}
+
+# Gather `axes` into a single trailing axis, so an operation that only ever
+# handles one axis -- a sort, an arg-reduction -- can reduce several at once by
+# ranking their elements together. `axes` must already be resolved and sorted.
+# Returns the reshaped array along with the shape its kept axes take afterwards,
+# which `drop = FALSE` restores the reduced axes into at size 1.
+.flatten_reduce_axes <- function(x, axes, drop) {
+  x_shape <- shape(x)
+  keep <- setdiff(seq_along(x_shape), axes)
+  permutation <- c(keep, axes)
+  if (!identical(permutation, seq_along(x_shape))) {
+    x <- prim_transpose(x, permutation = permutation)
+  }
+  flat_shape <- c(x_shape[keep], as.integer(prod(x_shape[axes])))
+  if (!identical(shape(x), flat_shape)) {
+    x <- prim_reshape(x, flat_shape)
+  }
+  list(
+    x = x,
+    keep_shape = if (drop) x_shape[keep] else replace(x_shape, axes, 1L)
+  )
+}
+
+# Resolve the `axis` of a cumulative op. `NULL` accumulates over every element,
+# like base R's `cum*()` functions, which means flattening the input first --
+# so this hands back the array as well as the axis.
+.resolve_cum_input <- function(x, axis) {
+  if (is.null(axis)) {
+    list(x = nv_reshape(x, prod(shape(x))), axis = 1L)
+  } else {
+    list(x = x, axis = axis)
+  }
 }
 
 #' @title Sum Reduction
@@ -2319,7 +2370,7 @@ nv_reduce_sum <- jit(
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0, x)
+      x <- nv_ifelse(nv_is_nan(x), 0L, x)
     }
     prim_reduce_sum(x, axes = axes, drop = drop)
   },
@@ -2349,7 +2400,7 @@ nv_mean <- jit(
     axes <- .resolve_reduce_axes(x, axes)
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
       is_nan <- nv_is_nan(x)
-      total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
+      total <- prim_reduce_sum(nv_ifelse(is_nan, 0L, x), axes = axes, drop = drop)
       count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
       return(total / count)
     }
@@ -2381,7 +2432,7 @@ nv_reduce_prod <- jit(
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1, x)
+      x <- nv_ifelse(nv_is_nan(x), 1L, x)
     }
     prim_reduce_prod(x, axes = axes, drop = drop)
   },
@@ -2557,13 +2608,11 @@ nv_reduce_all <- jit(
 nv_cumsum <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
-    x <- .count_bool(as_anvl_array(x))
-    if (is.null(axis)) {
-      x <- nv_reshape(x, prod(shape(x)))
-      axis <- 1L
-    }
+    cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
+    x <- cum$x
+    axis <- cum$axis
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0, x)
+      x <- nv_ifelse(nv_is_nan(x), 0L, x)
     }
     prim_cumsum(x, axis = axis)
   },
@@ -2592,13 +2641,11 @@ nv_cumsum <- jit(
 nv_cumprod <- jit(
   function(x, axis = NULL, nan_rm = FALSE) {
     assert_flag(nan_rm)
-    x <- .count_bool(as_anvl_array(x))
-    if (is.null(axis)) {
-      x <- nv_reshape(x, prod(shape(x)))
-      axis <- 1L
-    }
+    cum <- .resolve_cum_input(.count_bool(as_anvl_array(x)), axis)
+    x <- cum$x
+    axis <- cum$axis
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1, x)
+      x <- nv_ifelse(nv_is_nan(x), 1L, x)
     }
     prim_cumprod(x, axis = axis)
   },
@@ -2612,7 +2659,7 @@ nv_cumprod <- jit(
 #' @templateVar cum_base_fn cummax
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name maximum
-#' @template param_nv_cum_with_indices
+#' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummax
 #' @template section_nv_cum_relation
@@ -2622,15 +2669,15 @@ nv_cumprod <- jit(
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummax(x)
 #' nv_cummax(x, axis = 1L)
-#' nv_cummax(x, axis = 1L, with_indices = TRUE)
+#' nv_cummax(x, axis = 1L, indices = TRUE)
 #' nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 #' nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 #' @export
 nv_cummax <- jit(
-  function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
-    assert_flag(with_indices)
+  function(x, axis = NULL, indices = FALSE, nan_rm = FALSE) {
+    assert_flag(indices)
     assert_flag(nan_rm)
-    .nv_cum_extreme(x, axis, with_indices, nan_rm, -Inf, prim_cummax)
+    .nv_cum_extreme(x, axis, indices, nan_rm, -Inf, prim_cummax)
   },
   static = 2:4
 )
@@ -2642,7 +2689,7 @@ nv_cummax <- jit(
 #' @templateVar cum_base_fn cummin
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name minimum
-#' @template param_nv_cum_with_indices
+#' @template param_nv_cum_indices
 #' @template return_nv_cum_extreme
 #' @templateVar cum_nv_name nv_cummin
 #' @template section_nv_cum_relation
@@ -2652,15 +2699,15 @@ nv_cummax <- jit(
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummin(x)
 #' nv_cummin(x, axis = 1L)
-#' nv_cummin(x, axis = 1L, with_indices = TRUE)
+#' nv_cummin(x, axis = 1L, indices = TRUE)
 #' nv_cummin(nv_array(c(3, NaN, 1)))                # NaN propagates
 #' nv_cummin(nv_array(c(3, NaN, 1)), nan_rm = TRUE) # NaN skipped
 #' @export
 nv_cummin <- jit(
-  function(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE) {
-    assert_flag(with_indices)
+  function(x, axis = NULL, indices = FALSE, nan_rm = FALSE) {
+    assert_flag(indices)
     assert_flag(nan_rm)
-    .nv_cum_extreme(x, axis, with_indices, nan_rm, Inf, prim_cummin)
+    .nv_cum_extreme(x, axis, indices, nan_rm, Inf, prim_cummin)
   },
   static = 2:4
 )
@@ -2668,17 +2715,15 @@ nv_cummin <- jit(
 # NaN propagation for the default `nan_rm = FALSE` path is now handled in
 # `prim_cummax` / `prim_cummin`'s lowering directly. Here we only need to
 # sanitize NaN → identity for `nan_rm = TRUE`.
-.nv_cum_extreme <- function(x, axis, with_indices, nan_rm, identity_val, prim_cum) {
-  x <- as_anvl_array(x)
-  if (is.null(axis)) {
-    x <- nv_reshape(x, prod(shape(x)))
-    axis <- 1L
-  }
+.nv_cum_extreme <- function(x, axis, indices, nan_rm, identity_val, prim_cum) {
+  cum <- .resolve_cum_input(as_anvl_array(x), axis)
+  x <- cum$x
+  axis <- cum$axis
   if (nan_rm && is_dtype_float(peek_dtype(x))) {
     x <- nv_ifelse(nv_is_nan(x), identity_val, x)
   }
   out <- prim_cum(x, axis = axis)
-  if (with_indices) out else out$values
+  if (indices) out else out$values
 }
 
 # Higher order primitives
@@ -2737,6 +2782,21 @@ nv_while <- prim_while
 #' yields a scalar), and must return
 #' `list(carry = <same structure as init>, out = <arrays to stack>)`.
 #' The stacked `out` buffers gain a new leading axis of size `length`.
+#'
+#' The whole loop, written out in R:
+#'
+#' ```r
+#' carry <- init
+#' out <- <empty, `length` rows>
+#' steps <- if (reverse) rev(seq_len(length)) else seq_len(length)
+#' for (t in steps) {
+#'   step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+#'   carry <- step$carry
+#'   out[t, ...] <- step$out          # position t, not the loop's position
+#' }
+#' list(carry = carry, out = out)
+#' ```
+#'
 #' @param init ([`arrayish`] | `list()`)\cr
 #'   Initial carry: a single array or a (possibly nested) named list.
 #'   Every slot must keep a fixed shape and dtype across steps.
@@ -2744,13 +2804,15 @@ nv_while <- prim_while
 #'   Step function `function(carry, x)` returning
 #'   `list(carry = , out = )`. `out` may be a single array, a (nested)
 #'   list of arrays, or `NULL` (loop for the carry only). Its structure
-#'   must be identical at every step. `x` is `NULL` when `xs` is `NULL`.
+#'   must be identical at every step. `x` is `NULL` when `xs` is empty.
 #' @param xs ([`arrayish`] | `list()` | `NULL`)\cr
 #'   Per-step inputs, sliced along axis 1. All leaves must agree on
-#'   the size of axis 1.
+#'   the size of axis 1. `NULL` or a list with no leaves runs a counted
+#'   loop over `length` steps instead.
 #' @param length (`integer(1)` | `NULL`)\cr
-#'   Static trip count. Required when `xs` is `NULL`; otherwise inferred
-#'   from (and checked against) axis 1 of `xs`.
+#'   Static trip count. Required when `xs` is empty; otherwise inferred
+#'   from (and checked against) axis 1 of `xs`. A trip count of `0` runs
+#'   no step.
 #' @param reverse (`logical(1)`)\cr
 #'   If `TRUE`, steps run `t = length, ..., 1`; each step still reads
 #'   `xs` at position `t` and writes its output at position `t`, so a
@@ -2769,53 +2831,28 @@ nv_while <- prim_while
 #' )$out
 #' @export
 nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
-  force(init)
-  if (!is.function(body)) {
-    cli_abort("{.arg body} must be a function")
-  }
-  if (!is.logical(reverse) || base::length(reverse) != 1L || is.na(reverse)) {
-    cli_abort("{.arg reverse} must be TRUE or FALSE")
-  }
   init <- map_tree(init, as_anvl_array)
+  xs <- if (is.null(xs)) list() else map_tree(xs, as_anvl_array)
 
-  if (!is.null(xs)) {
-    xs <- map_tree(xs, as_anvl_array)
+  # The trip count is the one thing this layer settles: `prim_scan()` needs it
+  # stated, here it may be read off `xs` instead. The rest of the contract --
+  # `body`, `reverse`, `length` itself, every leaf of `xs` against the trip
+  # count -- is `prim_scan()`'s and is left to it.
+  if (is.null(length)) {
     xs_flat <- flatten(xs)
     if (!base::length(xs_flat)) {
-      cli_abort("{.arg xs} must contain at least one array")
+      cli_abort("{.arg length} is required when {.arg xs} is empty")
     }
-    lens <- vapply(
-      xs_flat,
-      function(x) {
-        s <- shape(x)
-        if (!base::length(s)) {
-          cli_abort("every leaf of {.arg xs} must have at least one axis")
-        }
-        as.integer(s[[1L]])
-      },
-      integer(1L)
-    )
-    n <- lens[[1L]]
-    if (!all(lens == n)) {
-      cli_abort("all leaves of {.arg xs} must agree on the size of axis 1")
+    # Reading axis 1 needs there to be one; the other leaves are checked
+    # against the count that comes out of this one.
+    s <- shape(xs_flat[[1L]])
+    if (!base::length(s)) {
+      cli_abort("every array in {.arg xs} must have at least one axis.")
     }
-    if (!is.null(length) && as.integer(length) != n) {
-      cli_abort(
-        "{.arg length} ({as.integer(length)}) disagrees with axis 1 of {.arg xs} ({n})"
-      )
-    }
-  } else {
-    if (is.null(length)) {
-      cli_abort("{.arg length} is required when {.arg xs} is NULL")
-    }
-    n <- as.integer(length)
-    if (is.na(n) || n < 1L) {
-      cli_abort("{.arg length} must be a positive integer")
-    }
-    xs <- list()
+    length <- as.integer(s[[1L]])
   }
 
-  prim_scan(init, xs, body, length = n, reverse = reverse)
+  prim_scan(init, xs, body, length = length, reverse = reverse)
 }
 
 ## Additional math functions ---------------------------------------------------
@@ -2925,7 +2962,7 @@ nv_var <- jit(
       # When count <= correction the divisor clamps to 0 and ssum is 0
       # (single non-NaN point has zero deviation, all-NaN slice contributes
       # nothing), so 0/0 = NaN propagates naturally — no explicit mask needed.
-      return(ssum / nv_max(0, count - correction))
+      return(ssum / nv_max(0L, count - correction))
     }
     nelts <- prod(shape(x)[axes])
     ssum / max(0L, nelts - correction)
@@ -2991,7 +3028,7 @@ nv_squeeze <- function(x, axes = NULL) {
     new_shape <- shp[-axes]
   }
   if (length(new_shape) == 0L) {
-    new_shape <- integer(0)
+    new_shape <- integer(0L)
   }
   nv_reshape(x, new_shape)
 }
@@ -3073,10 +3110,10 @@ nv_extract_diag <- jit(function(x) {
   prim_gather(
     x,
     start_indices = indices,
-    offset_axes = integer(0),
+    offset_axes = integer(0L),
     collapsed_slice_axes = c(1L, 2L),
-    x_batching_axes = integer(0),
-    start_indices_batching_axes = integer(0),
+    x_batching_axes = integer(0L),
+    start_indices_batching_axes = integer(0L),
     start_index_map = c(1L, 2L),
     index_vector_axis = 2L,
     slice_sizes = c(1L, 1L)
@@ -3201,7 +3238,7 @@ nv_tril <- jit(
     if (naxes(x) != 2L) {
       cli_abort("{.arg x} must be a 2-D array")
     }
-    nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+    nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0L))
   },
   static = 2L
 )
@@ -3227,7 +3264,7 @@ nv_triu <- jit(
     if (naxes(x) != 2L) {
       cli_abort("{.arg x} must be a 2-D array")
     }
-    nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+    nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0L))
   },
   static = 2L
 )
@@ -3347,10 +3384,10 @@ nv_select <- function(x, axis, index) {
     x,
     start_indices = start_indices,
     slice_sizes = rep(1L, rank),
-    offset_axes = integer(0),
+    offset_axes = integer(0L),
     collapsed_slice_axes = seq_len(rank),
-    x_batching_axes = integer(0),
-    start_indices_batching_axes = integer(0),
+    x_batching_axes = integer(0L),
+    start_indices_batching_axes = integer(0L),
     start_index_map = seq_len(rank),
     index_vector_axis = rank + 1L
   )
@@ -3365,8 +3402,8 @@ nv_select <- function(x, axis, index) {
 #' @template param_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to sort. Negative values count from the end,
-#'   i.e. `-1` refers to the last axis. If `NULL` (default), uses the last
-#'   axis.
+#'   i.e. `-1` refers to the last axis. If `NULL` (default), the input is
+#'   first flattened to a 1-D array, like [base::sort()].
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, sort in decreasing order. Default `FALSE`.
 #' @param stable (`logical(1)`)\cr
@@ -3381,10 +3418,12 @@ nv_select <- function(x, axis, index) {
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
 #' @section The `sort()` generic:
-#' [base::sort()] flattens a multi-axis array into a vector, while
-#' `nv_sort()` (and `sort()` on an anvl array) sorts along a single axis, the
-#' last one by default, and keeps the shape. Flatten with [nv_flatten()]
-#' first if you want a single sorted sequence.
+#' Like [base::sort()], `nv_sort()` with `axis = NULL` flattens a multi-axis
+#' array into one sorted vector, so `sort()` on an anvl array agrees with base
+#' R (the flatten order does not matter once the elements are sorted). It
+#' differs in one respect: base R drops `NA` by default, whereas `NaN` is kept
+#' and sorted to the end. Pass `axis` to sort each slice along one axis
+#' instead, which keeps the shape.
 #' @seealso [prim_sort()] for the underlying primitive,
 #'   [nv_argsort()], [nv_top_k()], [nv_median()],
 #'   [nv_argmax()], [nv_argmin()].
@@ -3395,7 +3434,8 @@ nv_select <- function(x, axis, index) {
 #' nv_sort(x, decreasing = TRUE)
 #'
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-#' nv_sort(m, axis = 2L)
+#' nv_sort(m) # one sorted vector, like base R
+#' nv_sort(m, axis = 2L) # each row sorted, shape kept
 #' @export
 nv_sort <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
@@ -3403,19 +3443,26 @@ nv_sort <- jit(
     if (naxes(x) == 0L) {
       cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
     }
-    prim_sort(list(x), axis = axis %||% naxes(x), descending = decreasing, is_stable = stable)[[1L]]
+    if (is.null(axis)) {
+      x <- nv_flatten(x)
+      axis <- 1L
+    }
+    prim_sort(list(x), axis = axis, descending = decreasing, is_stable = stable)[[1L]]
   },
   static = 2:4
 )
 
 #' @title Argsort
 #' @description
-#' Returns the indices that would sort the array along an axis.
+#' Returns the indices that would sort the array: over every element by
+#' default, or along one axis. It is the index twin of [nv_sort()] and takes
+#' the same `axis`, so the two always describe the same ordering.
 #' @template param_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to compute the sort permutation. Negative values
 #'   count from the end, i.e. `-1` refers to the last axis. If `NULL`
-#'   (default), uses the last axis.
+#'   (default), the input is first flattened to a 1-D array, like
+#'   [nv_sort()], and the indices refer to that flattening.
 #' @param decreasing (`logical(1)`)\cr
 #'   If `TRUE`, returns indices that produce a decreasing sort. Default
 #'   `FALSE`.
@@ -3424,15 +3471,19 @@ nv_sort <- jit(
 #'   original relative order. Default `FALSE`.
 #' @return [`arrayish`] of the default integer data type (see
 #'   [`default_dtypes()`])\cr
-#'   Same shape as `x`. For a size-0 axis, the output is an empty
-#'   array of the same shape (a valid empty permutation).
-#'   `as_array(x)[as_array(nv_argsort(x))]` reproduces the sorted
-#'   array (for 1-D inputs).
+#'   Same shape as `x`, or 1-D holding every element's index when `axis` is
+#'   `NULL`. For a size-0 axis, the output is an empty array of the same
+#'   shape (a valid empty permutation). Indexing the flattened input by the
+#'   result reproduces [nv_sort()]'s output.
 #' @inheritSection nv_sort NaN handling
 #' @seealso [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' nv_argsort(x)
+#'
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+#' nv_argsort(m) # indexes the flattened matrix
+#' nv_argsort(m, axis = 2L) # a permutation per row
 #' @export
 nv_argsort <- jit(
   function(x, axis = NULL, decreasing = FALSE, stable = FALSE) {
@@ -3440,7 +3491,10 @@ nv_argsort <- jit(
     if (naxes(x) == 0L) {
       cli_abort("{.arg x} must have at least one axis to sort along, but it is a scalar.")
     }
-    axis <- axis %||% naxes(x)
+    if (is.null(axis)) {
+      x <- nv_flatten(x)
+      axis <- 1L
+    }
     idx <- nv_iota_like(x, axis = axis, dtype = default_int())
     prim_sort(list(x, idx), axis = axis, descending = decreasing, is_stable = stable)[[2L]]
   },
@@ -3459,13 +3513,13 @@ nv_argsort <- jit(
 #'   Axis along which to take the top `k`. Negative values count from the
 #'   end, i.e. `-1` refers to the last axis. If `NULL` (default),
 #'   uses the last axis.
-#' @param with_indices (`logical(1)`)\cr
+#' @param indices (`logical(1)`)\cr
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
 #'   returns `list(values = ..., indices = ...)` where `indices` is the
 #'   1-based position of each top-`k` value along `axis`, of the default
 #'   integer data type (see [`default_dtypes()`]).
-#' @return [`arrayish`] (when `with_indices = FALSE`) or named list of two
-#'   arrays (when `with_indices = TRUE`). Output shape matches `x` with
+#' @return [`arrayish`] (when `indices = FALSE`) or named list of two
+#'   arrays (when `indices = TRUE`). Output shape matches `x` with
 #'   `axis` resized to `k`; values are sorted decreasing along `axis`.
 #' @section NaN handling:
 #' `NaN` ranks larger than any finite value (so it appears first in the
@@ -3475,14 +3529,14 @@ nv_argsort <- jit(
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' nv_top_k(x, k = 3L)
-#' nv_top_k(x, k = 3L, with_indices = TRUE)
+#' nv_top_k(x, k = 3L, indices = TRUE)
 #'
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_top_k(m, k = 2L, axis = 2L)
 #' @export
 nv_top_k <- jit(
-  function(x, k, axis = NULL, with_indices = FALSE) {
-    assert_flag(with_indices)
+  function(x, k, axis = NULL, indices = FALSE) {
+    assert_flag(indices)
     x <- as_anvl_array(x)
     rank <- naxes(x)
     if (rank == 0L) {
@@ -3503,17 +3557,16 @@ nv_top_k <- jit(
     if (axis != rank) {
       perm <- seq_len(rank)
       perm[c(axis, rank)] <- c(rank, axis)
-      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k, indices = with_indices)
+      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k, indices = indices)
       values <- prim_transpose(out$values, permutation = perm)
-      if (with_indices) {
-        indices <- prim_transpose(out$indices, permutation = perm)
-        list(values = values, indices = indices)
+      if (indices) {
+        list(values = values, indices = prim_transpose(out$indices, permutation = perm))
       } else {
         values
       }
     } else {
-      out <- prim_top_k(x, k = k, indices = with_indices)
-      if (with_indices) out else out$values
+      out <- prim_top_k(x, k = k, indices = indices)
+      if (indices) out else out$values
     }
   },
   static = 2:4
@@ -3521,13 +3574,13 @@ nv_top_k <- jit(
 
 #' @title Quantile
 #' @description
-#' Computes the `probs` quantile(s) of an array along an axis.
+#' Computes the `probs` quantile(s) of an array over one or more axes.
 #'
 #' `probs` follows the same scalar-vs-array convention as [nv_select()]'s
 #' `index`:
 #'
-#' * a length-1 numeric (e.g. `0.5`) treats `probs` as scalar — the output
-#'   has `axis` removed, like a reduction;
+#' * a length-1 numeric (e.g. `0.5`) treats `probs` as scalar — the result is
+#'   the reduction alone;
 #' * a 1-D R array (e.g. `array(c(0.25, 0.5, 0.75))`) prepends a leading
 #'   axis of size `length(probs)`.
 #'
@@ -3537,8 +3590,8 @@ nv_top_k <- jit(
 #' A quantile generally falls between two elements, so a non-float `x` is
 #' computed (and returned) at the default float data type.
 #' @section Interpolation modes:
-#' Let `h = (n - 1) * q` be the 0-based fractional index for an axis of
-#' length `n` and probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
+#' Let `h = (n - 1) * q` be the 0-based fractional index over the `n` reduced
+#' elements for probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
 #' `frac = h - lo`. Then:
 #'
 #' * `"linear"` (default): `(1 - frac) * sorted[lo] + frac * sorted[hi]`.
@@ -3546,23 +3599,24 @@ nv_top_k <- jit(
 #' * `"higher"`: `sorted[hi]` — the upper bracket of `linear`.
 #' * `"nearest"`: `sorted[lo]` if `frac < 0.5` else `sorted[hi]`.
 #' * `"midpoint"`: `(sorted[lo] + sorted[hi]) / 2`.
+#'
+#' Reducing several axes at once ranks all of their elements together, so
+#' `nv_quantile(x, q, axes = c(1, 2))` equals
+#' `nv_quantile(nv_flatten(x), q)` for a matrix `x`.
 #' @template param_x
 #' @param probs (`numeric(1)` | 1-D `array`)\cr
 #'   One or more probabilities in `[0, 1]`. Either a length-1 numeric
-#'   (scalar; `axis` is dropped) or a 1-D `array` (a leading axis of size
-#'   `length(probs)` is prepended). Plain length-K (K > 1) vectors are
-#'   rejected — wrap with `array()`.
-#' @param axis (`integer(1)` | `NULL`)\cr
-#'   Axis along which to compute the quantile. Negative values count from
-#'   the end, i.e. `-1` refers to the last axis. If `NULL` (default),
-#'   uses the last axis.
+#'   (scalar) or a 1-D `array` (a leading axis of size `length(probs)` is
+#'   prepended). Plain length-K (K > 1) vectors are rejected — wrap with
+#'   `array()`.
+#' @template params_reduce
 #' @param interpolation (`character(1)`)\cr
 #'   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
 #'   `"midpoint"`. See "Interpolation modes".
 #' @template param_nan_rm
 #' @return [`arrayish`]\cr
-#'   For scalar `probs`: same shape as `x` with `axis` removed. For
-#'   array `probs`: a **leading** axis of size `length(probs)` is
+#'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+#'   For array `probs`, a **leading** axis of size `length(probs)` is
 #'   prepended. The data type is that of `x`, or the default float for a
 #'   non-float `x`.
 #' @seealso [nv_median()], [nv_sort()].
@@ -3571,11 +3625,15 @@ nv_top_k <- jit(
 #' nv_quantile(x, 0.5) # = nv_median(x)
 #' nv_quantile(x, array(c(0.25, 0.5, 0.75)))
 #' nv_quantile(x, 0.5, interpolation = "lower")
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+#' nv_quantile(m, 0.5) # over every element
+#' nv_quantile(m, 0.5, axes = 2L) # one quantile per row
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)
 #' nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
 #' @export
 nv_quantile <- jit(
-  function(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+  function(x, probs, axes = NULL, drop = TRUE, interpolation = "linear", nan_rm = FALSE) {
+    assert_flag(drop)
     assert_flag(nan_rm)
     x <- as_anvl_array(x)
     # A quantile lies between two elements, so -- like base R's quantile() --
@@ -3583,10 +3641,6 @@ nv_quantile <- jit(
     # interpolation weights down to whole numbers.
     if (!is_dtype_float(peek_dtype(x))) {
       x <- nv_convert(x, default_float())
-    }
-    rank <- naxes(x)
-    if (rank == 0L) {
-      cli_abort("{.arg x} must have at least one axis to take quantiles along, but it is a scalar.")
     }
     assert_choice(interpolation, c("linear", "lower", "higher", "nearest", "midpoint"))
     if (!is_valid_r(probs)) {
@@ -3606,7 +3660,15 @@ nv_quantile <- jit(
         x = "Got an array with {length(dim(probs))} axes."
       ))
     }
-    axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+
+    # The sort below only ever orders one axis, so reducing several means
+    # ranking their elements together in one flattened axis.
+    axes <- sort(.resolve_reduce_axes(x, axes))
+    flat <- .flatten_reduce_axes(x, axes, drop)
+    x <- flat$x
+
+    rank <- naxes(x)
+    axis <- rank
     shp <- shape(x)
     K <- length(probs)
     probs <- as.numeric(probs)
@@ -3625,10 +3687,31 @@ nv_quantile <- jit(
     # NaNs rank to the front of the window instead of the back, but any slice
     # containing NaN has its output forced to NaN below, so the gathered values
     # never surface.
+    #
+    # The window is sized here in R doubles while the gather index is computed
+    # on device, so the two agree only if the device arithmetic matches R's. At
+    # `dtype(x)` it does not: `21 * (1/7)` is 3 exactly in a double and
+    # 3.0000002 in `f32`, so the index lands past the window, where the gather
+    # clamps and quietly returns a neighbouring order statistic. The index
+    # arithmetic therefore runs at `f64`, which is bit-for-bit what R does, and
+    # each window below is the device's own index expression evaluated at
+    # `n_valid = n_axis` -- the same operations on the same bits, rather than a
+    # second formula for the same quantity, whose own rounding could put the
+    # index outside the window at equal precision. The index is nondecreasing
+    # in `n_valid`, so `n_axis` gives the largest index any slice can reach and
+    # the window is exactly big enough. Only `frac` returns to `out_dtype`, so
+    # the result keeps its data type.
+    #
+    # TODO(metal): Metal has no `f64`, so a program that reaches here cannot run
+    # on it at all. Supporting Metal means making the two sides agree the other
+    # way round -- rounding the host-side window computation through the
+    # device's data type -- instead of widening the device to R's.
+    idx_dtype <- "f64"
+
     n_axis <- shp[axis]
-    budget <- ceiling(n_axis / 2) + 1
-    k_lo <- as.integer(ceiling((n_axis - 1) * max(probs)) + 1)
-    k_hi <- as.integer(ceiling((n_axis - 1) * (1 - min(probs))) + 1)
+    budget <- ceiling(n_axis / 2L) + 1L
+    k_lo <- as.integer(ceiling((n_axis - 1L) * max(probs)) + 1L)
+    k_hi <- as.integer(n_axis - floor((n_axis - 1L) * min(probs)))
     path <- if (n_axis > 0L && k_lo <= budget) {
       "low"
     } else if (n_axis > 0L && k_hi <= budget) {
@@ -3649,14 +3732,16 @@ nv_quantile <- jit(
     nan_fill <- if (path == "high") -Inf else Inf
     to_sort <- if (nan_rm) nv_ifelse(nan_mask, nan_fill, x) else x
     n_valid_kd <- if (nan_rm) {
-      # At `dtype(x)`, so both branches agree and the `- 1` below yields to it
-      # rather than crossing categories out of an integer count and
-      # materializing `h` -- and with it `lo_f`, `frac` and `out` -- at the
-      # default float.
-      prim_reduce_sum(nv_convert(!nan_mask, dtype(x)), axes = axis, drop = FALSE)
+      # At `idx_dtype`, the data type the index arithmetic below runs at; the
+      # `i32` count the other branch takes is converted to it as well.
+      prim_reduce_sum(nv_convert(!nan_mask, idx_dtype), axes = axis, drop = FALSE)
     } else {
       count_kd
     }
+    # All three paths index the same multiset, so the order statistic does not
+    # depend on which one ran -- except in the sign of a zero: `top_k` ranks
+    # `-0` below `+0`, as `chlo.top_k` does, where `prim_sort()` folds the two
+    # together. Nothing short of `1/x` tells those two results apart.
     sorted <- switch(
       path,
       "low" = -nv_top_k(-to_sort, k = k_lo, axis = axis),
@@ -3669,16 +3754,16 @@ nv_quantile <- jit(
     probs_shape <- replace(rep(1L, rank), axis, K)
     probs_b <- nv_broadcast_to(
       prim_reshape(
-        nv_array_like(sorted, probs, shape = K, dtype = out_dtype),
+        nv_array_like(sorted, probs, shape = K, dtype = idx_dtype),
         probs_shape
       ),
       shp_K
     )
-    n_valid_b <- nv_convert(nv_broadcast_to(n_valid_kd, shp_K), out_dtype)
-    h <- (n_valid_b - 1) * probs_b
+    n_valid_b <- nv_convert(nv_broadcast_to(n_valid_kd, shp_K), idx_dtype)
+    h <- (n_valid_b - 1L) * probs_b
     lo_f <- nv_floor(h)
     hi_f <- nv_ceiling(h)
-    frac <- h - lo_f
+    frac <- nv_convert(h - lo_f, out_dtype)
 
     # `sorted` is ascending, except the high window, which top_k returns in
     # descending order: ascending position j of the slice's n_valid values is
@@ -3687,8 +3772,8 @@ nv_quantile <- jit(
       lo_idx <- n_valid_b - lo_f
       hi_idx <- n_valid_b - hi_f
     } else {
-      lo_idx <- lo_f + 1
-      hi_idx <- hi_f + 1
+      lo_idx <- lo_f + 1L
+      hi_idx <- hi_f + 1L
     }
     lo_val <- .gather_along_axis(sorted, nv_convert(lo_idx, "i32"), axis, rank, shp)
     hi_val <- .gather_along_axis(sorted, nv_convert(hi_idx, "i32"), axis, rank, shp)
@@ -3698,8 +3783,8 @@ nv_quantile <- jit(
       "lower" = lo_val,
       "higher" = hi_val,
       "nearest" = nv_ifelse(frac < 0.5, lo_val, hi_val),
-      "linear" = lo_val * (1 - frac) + hi_val * frac,
-      "midpoint" = (lo_val + hi_val) / 2
+      "linear" = lo_val * (1L - frac) + hi_val * frac,
+      "midpoint" = (lo_val + hi_val) / 2L
     )
 
     # Propagate NaN: nan_rm = TRUE produces NaN only for all-NaN slices;
@@ -3708,168 +3793,176 @@ nv_quantile <- jit(
     bad <- if (nan_rm) n_valid_kd == 0L else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
 
-    # For scalar probs, drop the (now size-1) reduced axis. For array probs,
-    # move the K axis (currently at `axis`) to the front.
+    # Unpack the trailing axis the reduced ones were gathered into: dropped, or
+    # restored at size 1 in their original positions. For array `probs`, the K
+    # axis moves from the back, where it is now, to the front.
     if (is_probs_array) {
-      prim_transpose(out, permutation = c(axis, seq_len(rank)[-axis]))
+      out <- prim_transpose(out, permutation = c(axis, seq_len(rank - 1L)))
+      prim_reshape(out, c(K, flat$keep_shape))
     } else {
-      prim_reshape(out, shp[-axis])
+      prim_reshape(out, flat$keep_shape)
     }
   },
-  static = 2:5
+  static = 2:6
 )
 
 
 #' @title Median
 #' @name nv_median
 #' @description
-#' Computes the median along an axis. Equivalent to
-#' `nv_quantile(x, 0.5, axis, interpolation)`; for an even-length axis
-#' with the default `"linear"` interpolation, the average of the two middle
-#' values is returned, matching base R's `median()`.
+#' Computes the median over one or more axes. Equivalent to
+#' `nv_quantile(x, 0.5, axes, drop, interpolation)`; for an even number of
+#' reduced elements with the default `"linear"` interpolation, the average of
+#' the two middle values is returned, matching base R's `median()`.
 #'
 #' You can also use `median()` directly on an [`AnvlArray`] or [`AnvlBox`];
 #' extra arguments (e.g. `interpolation`) are forwarded via `...`.
 #' @section The `median()` generic:
-#' [stats::median()] flattens a multi-axis array, while `nv_median()` (and
-#' `median()` on an anvl array) reduces a single axis, the last one by
-#' default. Pass `axis` explicitly, or flatten first with [nv_flatten()], to
-#' say which you mean. A non-float `x` is computed at the default float, like
-#' base R returns a double.
+#' [stats::median()] reduces every axis of a multi-axis array, and so does
+#' `nv_median()` by default, so the two agree. Pass `axes` to reduce a subset
+#' instead. A non-float `x` is computed at the default float, like base R
+#' returns a double.
 #' @template param_x
-#' @param axis (`integer(1)` | `NULL`)\cr
-#'   Axis along which to compute the median. Negative values count from
-#'   the end, i.e. `-1` refers to the last axis. If `NULL` (default),
-#'   uses the last axis.
+#' @template params_reduce
 #' @param interpolation (`character(1)`)\cr
 #'   Forwarded to [nv_quantile()]. One of `"linear"` (default), `"lower"`,
 #'   `"higher"`, `"nearest"`, `"midpoint"`.
 #' @param nan_rm (`logical(1)`)\cr
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
 #' @return [`arrayish`]\cr
-#'   Same shape as `x` with `axis` removed. The data type is that of `x`, or
-#'   the default float for a non-float `x`.
+#'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+#'   The data type is that of `x`, or the default float for a non-float `x`.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' median(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
-#' nv_median(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-#'   axis = 2L
-#' )
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+#' nv_median(m) # over every element
+#' nv_median(m, axes = 2L) # one median per row
 #' # forwards through the S3 generic via `...`
 #' median(nv_array(c(1, 2, 3, 4)), interpolation = "lower")
 #' nv_median(nv_array(c(1, NaN, 3, 5)))
 #' nv_median(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
 nv_median <- jit(
-  function(x, axis = NULL, interpolation = "linear", nan_rm = FALSE) {
+  function(x, axes = NULL, drop = TRUE, interpolation = "linear", nan_rm = FALSE) {
     assert_flag(nan_rm)
-    nv_quantile(x, probs = 0.5, axis = axis, interpolation = interpolation, nan_rm = nan_rm)
+    nv_quantile(
+      x,
+      probs = 0.5,
+      axes = axes,
+      drop = drop,
+      interpolation = interpolation,
+      nan_rm = nan_rm
+    )
   },
-  static = 2:4
+  static = 2:5
 )
 
 #' @title Index of the Maximum
 #' @description
-#' Returns the index of the maximum value along an axis. Ties are broken
-#' by returning the smallest index.
+#' Returns the index of the maximum value over one or more axes. Ties are
+#' broken by returning the smallest index.
 #' @template param_x
-#' @param axis (`integer(1)` | `NULL`)\cr
-#'   Axis along which to find the index. Negative values count from the
-#'   end, i.e. `-1` refers to the last axis. If `NULL` (default), uses
-#'   the last axis.
-#' @param drop (`logical(1)`)\cr
-#'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
-#'   is kept with size 1.
+#' @template params_reduce
 #' @template param_nan_rm
 #' @return [`arrayish`] of the default integer data type (see
 #'   [`default_dtypes()`])\cr
-#'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
+#'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+#' @section Reducing several axes:
+#' `nv_argmax()` is the index to [nv_reduce_max()]'s value: called with the
+#' same `axes` and `drop`, it points at the element whose value
+#' `nv_reduce_max()` returns. Reducing several axes ranks their elements
+#' together, and the result indexes the row-major flattening of those axes --
+#' the order [nv_flatten()] produces -- which is also the order ties are
+#' broken in.
 #' @section NaN handling:
-#' With `nan_rm = FALSE` (default), if any entry along the reduced axis is
-#' `NaN`, the returned index points at the first such `NaN`. With
-#' `nan_rm = TRUE`, `NaN` entries are skipped.
+#' With `nan_rm = FALSE` (default), if any entry being reduced is `NaN`, the
+#' returned index points at the first such `NaN`. With `nan_rm = TRUE`, `NaN`
+#' entries are skipped.
 #' @seealso [nv_argmin()], [nv_reduce_max()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
-#' nv_argmax(nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE),
-#'   axis = 2L
-#' )
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+#' nv_argmax(m) # indexes the flattened matrix
+#' nv_argmax(m, axes = 2L) # one index per row
 #' nv_argmax(nv_array(c(1, NaN, 3)))
 #' nv_argmax(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
 nv_argmax <- jit(
-  function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+  function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+    assert_flag(drop)
     assert_flag(nan_rm)
-    x <- as_anvl_array(x)
-    if (naxes(x) == 0L) {
-      cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
-    }
-    axis <- axis %||% naxes(x)
-    .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmax)
+    .nv_arg_extreme(as_anvl_array(x), axes, drop, nan_rm, prim_argmax)
   },
   static = 2:4
 )
 
 #' @title Index of the Minimum
 #' @description
-#' Returns the index of the minimum value along an axis. Ties are broken
-#' by returning the smallest index.
+#' Returns the index of the minimum value over one or more axes. Ties are
+#' broken by returning the smallest index.
 #' @template param_x
-#' @param axis (`integer(1)` | `NULL`)\cr
-#'   Axis along which to find the index. Negative values count from the
-#'   end, i.e. `-1` refers to the last axis. If `NULL` (default), uses
-#'   the last axis.
-#' @param drop (`logical(1)`)\cr
-#'   If `TRUE` (default) the reduced axis is removed; if `FALSE` it
-#'   is kept with size 1.
+#' @template params_reduce
 #' @template param_nan_rm
 #' @return [`arrayish`] of the default integer data type (see
 #'   [`default_dtypes()`])\cr
-#'   Same shape as `x` with `axis` removed (or set to 1 if `drop = FALSE`).
+#'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+#' @section Reducing several axes:
+#' `nv_argmin()` is the index to [nv_reduce_min()]'s value: called with the
+#' same `axes` and `drop`, it points at the element whose value
+#' `nv_reduce_min()` returns. Reducing several axes ranks their elements
+#' together, and the result indexes the row-major flattening of those axes --
+#' the order [nv_flatten()] produces -- which is also the order ties are
+#' broken in.
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
+#' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+#' nv_argmin(m) # indexes the flattened matrix
+#' nv_argmin(m, axes = 2L) # one index per row
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)))
 #' nv_argmin(nv_array(c(2, NaN, 1, 3)), nan_rm = TRUE)
 #' @export
 nv_argmin <- jit(
-  function(x, axis = NULL, drop = TRUE, nan_rm = FALSE) {
+  function(x, axes = NULL, drop = TRUE, nan_rm = FALSE) {
+    assert_flag(drop)
     assert_flag(nan_rm)
-    x <- as_anvl_array(x)
-    if (naxes(x) == 0L) {
-      cli_abort("{.arg x} must have at least one axis to search along, but it is a scalar.")
-    }
-    axis <- axis %||% naxes(x)
-    .nv_arg_extreme(x, axis, drop, nan_rm, prim_argmin)
+    .nv_arg_extreme(as_anvl_array(x), axes, drop, nan_rm, prim_argmin)
   },
   static = 2:4
 )
 
-# Shared NaN-aware argmax/argmin. The XLA arg-reduction kernels are
-# comparison-based and silently skip NaN, so `nan_rm = TRUE` is free — we
-# just call the primitive. For `nan_rm = FALSE` we want NaN to propagate,
-# mirroring `.nv_reduce_extreme`'s contract; there's no NaN in i32, so we
-# surface "a NaN was here" by returning the first NaN's index instead.
+# Shared NaN-aware argmax/argmin. The primitives read a single axis, so several
+# axes are gathered into one first, exactly as `nv_quantile()` does -- which is
+# what makes the result index the row-major flattening of `axes`.
 #
-.nv_arg_extreme <- function(x, axis, drop, nan_rm, prim_arg) {
-  result <- prim_arg(x, axis = axis, drop = drop)
-  if (nan_rm || !is_dtype_float(peek_dtype(x))) {
-    return(result)
+# The XLA arg-reduction kernels are comparison-based and silently skip NaN, so
+# `nan_rm = TRUE` is free -- we just call the primitive. For `nan_rm = FALSE` we
+# want NaN to propagate, mirroring `.nv_reduce_extreme`'s contract; there's no
+# NaN in an integer, so we surface "a NaN was here" by returning the first NaN's
+# index instead.
+.nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
+  flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
+  x <- flat$x
+  axis <- naxes(x)
+  result <- prim_arg(x, axis = axis, drop = TRUE)
+  if (!nan_rm && is_dtype_float(peek_dtype(x))) {
+    # argmax on the bool mask returns the index of the first TRUE (tie-break:
+    # smallest index) — exactly the first NaN's position — or 1 if no NaN
+    # exists. `any_nan` disambiguates those two cases.
+    nan_mask <- nv_is_nan(x)
+    any_nan <- prim_reduce_any(nan_mask, axes = axis, drop = TRUE)
+    first_nan_idx <- prim_argmax(nan_mask, axis = axis, drop = TRUE)
+    result <- nv_ifelse(any_nan, first_nan_idx, result)
   }
-  # argmax on the bool mask returns the index of the first TRUE (tie-break:
-  # smallest index) — exactly the first NaN's position — or 1 if no NaN
-  # exists. `any_nan` disambiguates those two cases.
-  nan_mask <- nv_is_nan(x)
-  any_nan <- prim_reduce_any(nan_mask, axes = axis, drop = drop)
-  first_nan_idx <- prim_argmax(nan_mask, axis = axis, drop = drop)
-  nv_ifelse(any_nan, first_nan_idx, result)
+  prim_reshape(result, flat$keep_shape)
 }
 
 # Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.
 .nv_conv_axis_numbers <- function(n_spatial) {
-  spatial <- 3:(2 + n_spatial)
+  spatial <- 3:(2L + n_spatial)
   list(
     input_batch_axis = 1L,
     input_feature_axis = 2L,

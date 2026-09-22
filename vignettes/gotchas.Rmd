@@ -112,6 +112,13 @@ x
 as.integer(x)
 ```
 
+Nothing on the device reserves that bit pattern, so it also arises from ordinary
+arithmetic -- and such a value comes back to R as an `NA` too:
+
+```{r}
+as_array(nv_scalar(-2147483647L) - nv_scalar(1L))
+```
+
 At every other dtype there is no bit pattern for an `NA` to land on, so a missing value is an error, including for `bool`:
 
 ```{r, error = TRUE}

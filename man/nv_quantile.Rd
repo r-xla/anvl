@@ -4,7 +4,14 @@
 \alias{nv_quantile}
 \title{Quantile}
 \usage{
-nv_quantile(x, probs, axis = NULL, interpolation = "linear", nan_rm = FALSE)
+nv_quantile(
+  x,
+  probs,
+  axes = NULL,
+  drop = TRUE,
+  interpolation = "linear",
+  nan_rm = FALSE
+)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -12,14 +19,17 @@ Input array.}
 
 \item{probs}{(\code{numeric(1)} | 1-D \code{array})\cr
 One or more probabilities in \verb{[0, 1]}. Either a length-1 numeric
-(scalar; \code{axis} is dropped) or a 1-D \code{array} (a leading axis of size
-\code{length(probs)} is prepended). Plain length-K (K > 1) vectors are
-rejected — wrap with \code{array()}.}
+(scalar) or a 1-D \code{array} (a leading axis of size \code{length(probs)} is
+prepended). Plain length-K (K > 1) vectors are rejected — wrap with
+\code{array()}.}
 
-\item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to compute the quantile. Negative values count from
-the end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
-uses the last axis.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reduce. Negative values count from the end, i.e. \code{-1}
+refers to the last axis. If \code{NULL} (default), reduces over all
+axes, returning a scalar.}
+
+\item{drop}{(\code{logical(1)})\cr
+Whether to drop reduced axes.}
 
 \item{interpolation}{(\code{character(1)})\cr
 One of \code{"linear"} (default), \code{"lower"}, \code{"higher"}, \code{"nearest"},
@@ -31,19 +41,19 @@ How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
 }
 \value{
 \code{\link{arrayish}}\cr
-For scalar \code{probs}: same shape as \code{x} with \code{axis} removed. For
-array \code{probs}: a \strong{leading} axis of size \code{length(probs)} is
+Same shape as \code{x} with \code{axes} removed (or set to 1 if \code{drop = FALSE}).
+For array \code{probs}, a \strong{leading} axis of size \code{length(probs)} is
 prepended. The data type is that of \code{x}, or the default float for a
 non-float \code{x}.
 }
 \description{
-Computes the \code{probs} quantile(s) of an array along an axis.
+Computes the \code{probs} quantile(s) of an array over one or more axes.
 
 \code{probs} follows the same scalar-vs-array convention as \code{\link[=nv_select]{nv_select()}}'s
 \code{index}:
 \itemize{
-\item a length-1 numeric (e.g. \code{0.5}) treats \code{probs} as scalar — the output
-has \code{axis} removed, like a reduction;
+\item a length-1 numeric (e.g. \code{0.5}) treats \code{probs} as scalar — the result is
+the reduction alone;
 \item a 1-D R array (e.g. \code{array(c(0.25, 0.5, 0.75))}) prepends a leading
 axis of size \code{length(probs)}.
 }
@@ -56,8 +66,8 @@ computed (and returned) at the default float data type.
 }
 \section{Interpolation modes}{
 
-Let \code{h = (n - 1) * q} be the 0-based fractional index for an axis of
-length \code{n} and probability \code{q}, with \code{lo = floor(h)}, \code{hi = ceil(h)},
+Let \code{h = (n - 1) * q} be the 0-based fractional index over the \code{n} reduced
+elements for probability \code{q}, with \code{lo = floor(h)}, \code{hi = ceil(h)},
 \code{frac = h - lo}. Then:
 \itemize{
 \item \code{"linear"} (default): \code{(1 - frac) * sorted[lo] + frac * sorted[hi]}.
@@ -66,6 +76,10 @@ length \code{n} and probability \code{q}, with \code{lo = floor(h)}, \code{hi = 
 \item \code{"nearest"}: \code{sorted[lo]} if \code{frac < 0.5} else \code{sorted[hi]}.
 \item \code{"midpoint"}: \code{(sorted[lo] + sorted[hi]) / 2}.
 }
+
+Reducing several axes at once ranks all of their elements together, so
+\code{nv_quantile(x, q, axes = c(1, 2))} equals
+\code{nv_quantile(nv_flatten(x), q)} for a matrix \code{x}.
 }
 
 \examples{
@@ -74,6 +88,9 @@ x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_quantile(x, 0.5) # = nv_median(x)
 nv_quantile(x, array(c(0.25, 0.5, 0.75)))
 nv_quantile(x, 0.5, interpolation = "lower")
+m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+nv_quantile(m, 0.5) # over every element
+nv_quantile(m, 0.5, axes = 2L) # one quantile per row
 nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5)
 nv_quantile(nv_array(c(1, NaN, 3, 5)), 0.5, nan_rm = TRUE)
 \dontshow{\}) # examplesIf}

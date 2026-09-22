@@ -12,18 +12,27 @@
   `maximum` -> `max`, `minimum` -> `min`, `sine` -> `sin`, `cosine` -> `cos`,
   `cholesky` -> `chol` and `select` -> `ifelse`. The `prim_*()` functions
   themselves are unchanged; only the name the graph carries is.
+* `nv_top_k()`, `nv_cummax()` and `nv_cummin()` take `indices` instead of
+  `with_indices`, spelling it the way `prim_top_k()` does.
 * The type system of {anvl} was changed to avoid the problems reported in issue #373.
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* An R value is now built directly at every data type of its own category,
+  narrow and unsigned integers included, so one the data type cannot hold is an
+  error instead of wrapping around: `x_ui8 + (-2L)` and `x_i8 + 300L` are
+  refused. Write `nv_convert()` on an array where the wraparound is what you
+  want.
 * `as_array()` and the `as.double()` / `as.integer()` /
   `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
   `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by
   default about a value R's type cannot hold. Write `check = "err"` where
   you wrote `check = TRUE`, and `check = FALSE` to materialize silently.
 * `nv_array()` and `nv_scalar()` no longer take a `check` argument, following
-  {pjrt}: what happens to an `NA` is fixed by the dtype it is built at. Call
-  `anyNA()` on the data yourself instead.
+  {pjrt}: what happens to an `NA` is fixed by the dtype it is built at, and the
+  input is always scanned for values the requested dtype cannot hold. Call
+  `anyNA()` on the data yourself if you want to hear about a missing value the
+  dtype accepts.
 * `common_dtype()` now errors for `ui64` and a signed integer instead of
   returning `i64`, which could not hold every `ui64` value. Convert one of them
   with `nv_convert()`.
@@ -41,11 +50,29 @@
 * The operators `&`, `|`,  `!`, as well as the generics `sum()` and `all()`
   now require a boolean input array, improving consistency with base R.
 * The method for `round` was removed, as `digits` is currently not supported.
+* `nv_quantile()` and `nv_median()` now reduce over `axes` (plural) instead of a
+  single `axis`, defaulting to every axis like `nv_mean()` and base R's
+  `quantile()` / `median()`, and gained a `drop` argument. Write
+  `nv_median(x, axes = -1L)` for the previous default.
+* `nv_sort()` and `nv_argsort()` now flatten a multi-axis array when
+  `axis = NULL`, instead of working along the last axis, so `sort()` on an
+  anvl array agrees with base R. Write `axis = -1L` for the previous default.
+* `prim_sort()` no longer defaults `axis` to `1L`; pass it explicitly, as with
+  every other primitive.
+* `nv_argmax()` and `nv_argmin()` now reduce over `axes` (plural) instead of a
+  single `axis`, defaulting to every axis so that they pair with
+  `nv_reduce_max()` / `nv_reduce_min()`. Reducing several axes indexes their
+  row-major flattening. Write `nv_argmax(x, axes = -1L)` for the previous
+  default.
 * The `tensor_to_gval` argument of `GraphDescriptor()` is now called
   `array_to_gval`.
 * `vt2at()` was removed. Type inference no longer goes through stablehlo's
   `ValueType`s, so there is nothing to convert back; `at2vt()` stays for
   lowering rules that build stablehlo types.
+* `nv_rbinom()`, `nv_sample_int()` and `nv_sample()` draw at the default float
+  data type instead of always at `f64`, so they also run on hardware without
+  `f64`. Their samples change where the default float is not `f64`; set it with
+  `with_default_dtypes()` to draw on the finer grid.
 
 ## Features
 
@@ -58,6 +85,9 @@
   letting it surface as a raw R error under the primitive's name.
 * `prim_if()` now reports a branch type mismatch itself, in anvl's terms,
   rather than leaving it to the compiler.
+* `nv_reverse()` gained an `axes = NULL` default that reverses every axis,
+  matching `rev()` and `numpy.flip()`, and returns `x` unchanged for an empty
+  `axes` instead of erroring.
 * `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
   when `start > end`, like `seq()`.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
@@ -74,9 +104,9 @@
 * New `nv_scan()`: a fixed-length loop in the style of JAX's `lax.scan` that
   threads a carry through a body function and stacks each step's outputs
   along a new leading axis. Supports nested carries, multiple `xs` and
-  `out` leaves, reverse scans, `xs = NULL` counted loops and carry-only
-  loops. Backed by the new `prim_scan()` primitive, which lowers to a
-  `while` loop on the pjrt backend and to a `for` loop on quickr.
+  `out` leaves, reverse scans, `xs = NULL` counted loops, carry-only loops
+  and zero-length scans. Backed by the new `prim_scan()` primitive, which
+  lowers to a `while` loop on the pjrt backend.
 * The reductions (`sum()`, `prod()`, `max()`, `min()`, `range()`, `any()`,
   `all()`) now work with multiple data inputs.
 * The default data types for floating point numbers and integers can now be
@@ -116,10 +146,11 @@
 
 * `nv_quantile()` and `nv_median()` select the needed order statistics with
   `top_k` instead of a full sort when every requested quantile lies in the
-  same half of the axis. Results are unchanged.
+  same half of the axis. Results are unchanged: the interpolation index is
+  computed at `f64`, so it agrees with the window the host sizes.
 * `prim_top_k()` gained `indices`; without them the CUDA lowering uses an
   unstable sort of the values and a slice instead of the CHLO op, which
-  costs no more than a full sort there. `nv_top_k(with_indices = FALSE)`
+  costs no more than a full sort there. `nv_top_k(indices = FALSE)`
   and the quantile fast path use it.
 
 ## Bug fixes

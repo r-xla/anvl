@@ -616,7 +616,7 @@ prim_cbrt[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, 
   list(
     # d/dx cbrt(x) = 1 / (3 * cbrt(x)^2)
     if (required[[1L]]) {
-      three <- prim_fill(3, dtype = dtype(y), shape = shape(y))
+      three <- prim_fill(3L, dtype = dtype(y), shape = shape(y))
       prim_div(grad, nv_mul(prim_mul(y, y), three))
     }
   )
@@ -828,7 +828,7 @@ prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
       batching <- seq_len(rank - 1L)
 
       zero_input <- prim_fill(
-        0,
+        0L,
         dtype = dtype(grad_values),
         shape = full_shape
       )
@@ -840,7 +840,7 @@ prim_top_k[["reverse"]] <- rule_reverse(forward = function(inputs, params) {
         # index vectors selecting positions along the last axis of `x`
         scatter_indices = indices,
         update = grad_values,
-        update_window_axes = integer(0),
+        update_window_axes = integer(0L),
         inserted_window_axes = rank,
         x_batching_axes = batching,
         scatter_indices_batching_axes = batching,
@@ -862,7 +862,7 @@ prim_concatenate[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
 
   offset <- 1L
   limit_indices <- shape(grad)
-  start_indices <- rep(1L, length(shape(inputs[[1]])))
+  start_indices <- rep(1L, length(shape(inputs[[1L]])))
   for (i in seq_len(n_inputs)) {
     input_shape <- shape(inputs[[i]])
     axis_size <- input_shape[axis]
@@ -910,7 +910,7 @@ prim_reduce_prod[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, p
     n <- reduced_size
     ones_shape <- collapsed_shape
     ones_shape[rank] <- 1L
-    ones <- prim_fill(1, dtype = dtype(x), shape = ones_shape)
+    ones <- prim_fill(1L, dtype = dtype(x), shape = ones_shape)
     full_strides <- rep(1L, rank)
 
     starts_n <- rep(1L, rank)
@@ -970,7 +970,7 @@ prim_cumsum[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params
     x = zeros_like(x),
     scatter_indices = indices,
     update = grad,
-    update_window_axes = integer(0),
+    update_window_axes = integer(0L),
     inserted_window_axes = axis,
     x_batching_axes = batching,
     scatter_indices_batching_axes = batching,

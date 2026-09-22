@@ -31,7 +31,7 @@ Imports:
     cli,
     fastmap,
     methods,
-    pjrt (>= 0.5.0.9000),
+    pjrt (>= 0.5.0.9001),
     rlang,
     safetensors (>= 0.2.0),
     stablehlo (>= 0.4.0),

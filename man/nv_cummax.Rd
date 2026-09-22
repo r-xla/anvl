@@ -5,7 +5,7 @@
 \alias{cummax.AnvlArray}
 \title{Cumulative Maximum}
 \usage{
-nv_cummax(x, axis = NULL, with_indices = FALSE, nan_rm = FALSE)
+nv_cummax(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
@@ -16,7 +16,7 @@ Axis along which to accumulate. Negative values count from the end,
 i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
 is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}}.}
 
-\item{with_indices}{(\code{logical(1)})\cr
+\item{indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns the running-maximum array.
 If \code{TRUE}, returns \code{list(values = ..., indices = ...)} where \code{indices}
 is the index of the last occurrence of the running
@@ -32,19 +32,18 @@ op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min
 contributes nothing to the running value.}
 }
 \value{
-\code{\link{arrayish}} (when \code{with_indices = FALSE}) or named list of two
-arrays (when \code{with_indices = TRUE}).
+\code{\link{arrayish}} (when \code{indices = FALSE}) or named list of two
+arrays (when \code{indices = TRUE}).
 }
 \description{
 Running maximum, optionally along a single axis.
 }
 \section{Relation to base R}{
 
-Both \code{nv_cummax()} (with \code{axis = NULL}) and \code{\link[base:cummax]{base::cummax()}}
-flatten inputs to a single axis before accumulating, but the
-flatten order differs: anvl arrays are row-major (C order), so the
-flattened sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. The two agree on 1-D inputs.
+\code{nv_cummax()} with \code{axis = NULL} and \code{\link[base:cummax]{base::cummax()}}
+both flatten first, but in different orders -- anvl arrays are row-major (C
+order), base R is column-major (Fortran) -- so for a multi-axis input the
+two give different running values. They agree on 1-D inputs.
 }
 
 \examples{
@@ -52,7 +51,7 @@ column-major (Fortran) order. The two agree on 1-D inputs.
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummax(x)
 nv_cummax(x, axis = 1L)
-nv_cummax(x, axis = 1L, with_indices = TRUE)
+nv_cummax(x, axis = 1L, indices = TRUE)
 nv_cummax(nv_array(c(1, NaN, 3)))                # NaN propagates
 nv_cummax(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN skipped
 \dontshow{\}) # examplesIf}

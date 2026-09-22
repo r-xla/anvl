@@ -35,11 +35,10 @@ A boolean array is multiplied as zeroes and ones, like \code{\link[base:cumprod]
 }
 \section{Relation to base R}{
 
-Both \code{nv_cumprod()} (with \code{axis = NULL}) and \code{\link[base:cumprod]{base::cumprod()}}
-flatten inputs to a single axis before accumulating, but the
-flatten order differs: anvl arrays are row-major (C order), so the
-flattened sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. The two agree on 1-D inputs.
+\code{nv_cumprod()} with \code{axis = NULL} and \code{\link[base:cumprod]{base::cumprod()}}
+both flatten first, but in different orders -- anvl arrays are row-major (C
+order), base R is column-major (Fortran) -- so for a multi-axis input the
+two give different running values. They agree on 1-D inputs.
 }
 
 \examples{

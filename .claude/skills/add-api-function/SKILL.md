@@ -84,6 +84,22 @@ Under `jit()` this happens automatically, but in **eager mode** you are responsi
 If you are adding a new array-creator function (`nv_foo` that allocates data rather than transforming an input), also add a `nv_foo_like(like, ...)` variant next to it.
 Any dispatch-on-input constants inside other API functions should go through `_like`, not the bare creator.
 
+### Integer literals
+
+Write a whole number with the `L` suffix -- axis numbers, shape entries, indices, counts, and the
+arithmetic and comparisons around them (`naxes(x) == 0L`, `axis + 1L`, `rep(1L, rank)`).
+
+This holds for a literal that meets an array too. It takes that array's dtype, and an R integer
+widens into any category, while a plain `1` is an R *double* that pulls an integer array into the
+float category (`x_i32 - 1` is `f32`). So write `nv_ifelse(mask, 0L, x)` and `nv_fill_like(x, 0L)`
+even when `x` is a float.
+
+Keep the plain spelling only where the value is genuinely a real number that happens to be whole:
+a distribution parameter, a probability bound, a threshold, a coefficient -- `sd = 1`,
+`lower = 0, upper = 1`, `nv_max(-d, 1)`. This matters most for an argument default, which may meet
+nothing at all and then settles on the default of its own category: `nv_rnorm(mean = 0, sd = 1)`
+written with `0L` / `1L` returns the sample at the default *integer*.
+
 ### Binary element-wise ops
 
 For element-wise binary primitives, use the `make_do_binary()` factory -- it already composes `nv_promote_to_common()` + `nv_broadcast_scalars()` before calling the primitive:

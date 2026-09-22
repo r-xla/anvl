@@ -36,7 +36,7 @@ element order of raw byte payloads; backends that do not support raw
 \item{shape}{(\code{function})\cr Extracts the shape from an AnvlArray.}
 
 \item{as_array}{(\verb{function(x, check)})\cr Converts an AnvlArray to an R
-array. The \code{check} flag is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
+array. The \code{check} level is forwarded from \code{\link[=as_array]{as_array()}}; backends may use
 it to abort when materialization would lose information (e.g. ui64 values
 wrapping through \code{bit64::integer64}). See \code{\link[pjrt:as_array.PJRTBuffer]{pjrt::as_array.PJRTBuffer()}}.}
 

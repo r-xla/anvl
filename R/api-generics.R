@@ -448,10 +448,10 @@ digamma.AnvlBox <- digamma.AnvlArray
 #' @rdname nv_polygamma
 #' @usage NULL
 #' @section The `trigamma()` generic:
-#' `trigamma(x)` is `nv_polygamma(1, x)`.
+#' `trigamma(x)` is `nv_polygamma(1L, x)`.
 #' @export
 trigamma.AnvlArray <- function(x) {
-  nv_polygamma(1, x)
+  nv_polygamma(1L, x)
 }
 
 #' @export
@@ -803,11 +803,7 @@ t.AnvlBox <- t.AnvlArray
 #' @method rev AnvlArray
 #' @export
 rev.AnvlArray <- function(x) {
-  if (naxes(x) == 0L) {
-    # A scalar array has nothing to reverse.
-    return(x)
-  }
-  nv_reverse(x, axes = seq_len(naxes(x)))
+  nv_reverse(x)
 }
 
 #' @method rev AnvlBox
@@ -851,9 +847,9 @@ c.AnvlBox <- c.AnvlArray
 #' @param ... No additional arguments.
 #' @method median AnvlArray
 #' @export
-median.AnvlArray <- function(x, na.rm = FALSE, ..., axis = NULL, interpolation = "linear") {
+median.AnvlArray <- function(x, na.rm = FALSE, ..., axes = NULL, drop = TRUE, interpolation = "linear") {
   rlang::check_dots_empty()
-  nv_median(x, axis = axis, interpolation = interpolation, nan_rm = na.rm)
+  nv_median(x, axes = axes, drop = drop, interpolation = interpolation, nan_rm = na.rm)
 }
 
 #' @method median AnvlBox
@@ -997,7 +993,7 @@ length.AnvlBox <- length.AnvlArray
 #'   and [base::cbind()].
 #' @method rbind AnvlArray
 #' @export
-rbind.AnvlArray <- function(..., deparse.level = 1) {
+rbind.AnvlArray <- function(..., deparse.level = 1L) {
   nv_rbind(...)
 }
 
@@ -1008,7 +1004,7 @@ rbind.AnvlBox <- rbind.AnvlArray
 #' @rdname nv_bind
 #' @method cbind AnvlArray
 #' @export
-cbind.AnvlArray <- function(..., deparse.level = 1) {
+cbind.AnvlArray <- function(..., deparse.level = 1L) {
   nv_cbind(...)
 }
 

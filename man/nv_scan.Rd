@@ -15,15 +15,17 @@ Every slot must keep a fixed shape and dtype across steps.}
 Step function \verb{function(carry, x)} returning
 \code{list(carry = , out = )}. \code{out} may be a single array, a (nested)
 list of arrays, or \code{NULL} (loop for the carry only). Its structure
-must be identical at every step. \code{x} is \code{NULL} when \code{xs} is \code{NULL}.}
+must be identical at every step. \code{x} is \code{NULL} when \code{xs} is empty.}
 
 \item{xs}{(\code{\link{arrayish}} | \code{list()} | \code{NULL})\cr
 Per-step inputs, sliced along axis 1. All leaves must agree on
-the size of axis 1.}
+the size of axis 1. \code{NULL} or a list with no leaves runs a counted
+loop over \code{length} steps instead.}
 
 \item{length}{(\code{integer(1)} | \code{NULL})\cr
-Static trip count. Required when \code{xs} is \code{NULL}; otherwise inferred
-from (and checked against) axis 1 of \code{xs}.}
+Static trip count. Required when \code{xs} is empty; otherwise inferred
+from (and checked against) axis 1 of \code{xs}. A trip count of \code{0} runs
+no step.}
 
 \item{reverse}{(\code{logical(1)})\cr
 If \code{TRUE}, steps run \verb{t = length, ..., 1}; each step still reads
@@ -44,6 +46,19 @@ At step \code{t}, \code{body} receives the current carry and the step's slice of
 yields a scalar), and must return
 \verb{list(carry = <same structure as init>, out = <arrays to stack>)}.
 The stacked \code{out} buffers gain a new leading axis of size \code{length}.
+
+The whole loop, written out in R:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{carry <- init
+out <- <empty, `length` rows>
+steps <- if (reverse) rev(seq_len(length)) else seq_len(length)
+for (t in steps) \{
+  step <- body(carry, xs[t, ...])  # `x` is NULL when `xs` is empty
+  carry <- step$carry
+  out[t, ...] <- step$out          # position t, not the loop's position
+\}
+list(carry = carry, out = out)
+}\if{html}{\out{</div>}}
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
