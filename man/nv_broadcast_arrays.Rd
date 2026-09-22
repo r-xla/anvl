@@ -24,13 +24,9 @@ one, so that a vector meets a matrix as a column.
 \item If the arrays have different numbers of axes, append size-1
 axes to the shorter shape, so axis 1 meets axis 1. A length-\code{n}
 vector therefore lines up with the rows of an \code{n} by \code{m} matrix and
-is replicated across its columns. Anvl arrays are column-major, so
-it is the first axis that varies fastest and an appended axis leaves
-every existing one meaning what it did. Julia is column-major and
-appends as well, which is where Reactant.jl -- the compiler that
-lowers Julia to the same StableHLO this package targets -- gets the
-rule from. NumPy prepends instead, the matching choice for a
-row-major array.
+is replicated across its columns. NumPy prepends instead, so an
+array expression carried over from Python may need its axes
+reordered.
 \item For each axis: if the sizes match, keep them; if one is 1, expand
 it to the other's size; otherwise raise an error.
 }
