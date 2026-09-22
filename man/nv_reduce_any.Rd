@@ -9,21 +9,20 @@ nv_reduce_any(x, axes = NULL, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Must be a boolean or an R logical.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. Negative values count from the end, i.e. \code{-1}
-refers to the last axis. If \code{NULL} (default), reduces over all
-axes, returning a scalar.}
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced axes.}
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Boolean array.
-When \code{drop = TRUE}, the reduced axes are removed.
-When \code{drop = FALSE}, the reduced axes are set to 1.
+(\code{\link{arrayish}})\cr
+Has the boolean data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Performs logical OR along the specified axes.
@@ -42,8 +41,12 @@ data argument.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-nv_reduce_any(x)            # all axes -> scalar
+# no axes given: reduce over all of them
+nv_reduce_any(x)
+
+# reducing axis 1 removes it, drop = FALSE keeps it at size 1
 nv_reduce_any(x, axes = 1L)
+nv_reduce_any(x, axes = 1L, drop = FALSE)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

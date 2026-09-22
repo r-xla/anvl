@@ -5,7 +5,7 @@
 \alias{as_anvl_arrays}
 \title{Convert to AnvlArray}
 \usage{
-as_anvl_array(x, device = NULL)
+as_anvl_array(x, device = NULL, .promote = NULL)
 
 as_anvl_arrays(..., .promote = NULL)
 }
@@ -17,11 +17,13 @@ Input to canonicalize.}
 Target device. If \code{x} is an \code{AnvlArray} on a different device, an error
 is raised.}
 
+\item{.promote}{(\code{NULL} | \code{function})\cr
+Which data type every input is brought to. See \code{\link{promotion_rule}} for more
+information. A rule materializes an R value \emph{at} its answer rather than
+converting it afterwards, so it keeps every digit.}
+
 \item{...}{(\code{\link{arrayish}})\cr
 Inputs to align. Name them to be able to point \code{.promote} at one of them.}
-
-\item{.promote}{(\code{NULL} | \code{function})\cr
-Which dtype every input is brought to. See \code{\link{promotion_rule}} for more information.}
 }
 \value{
 (One or more \code{\link{arrayish}} values).
@@ -30,12 +32,14 @@ Which dtype every input is brought to. See \code{\link{promotion_rule}} for more
 Use this to canonicalize inputs at the start of a function so it works
 both with eager executing and in combination with \code{\link[=jit]{jit()}}.
 Use \code{\link[=as_anvl_array]{as_anvl_array()}} for a single input and \code{\link[=as_anvl_arrays]{as_anvl_arrays()}} for multiple inputs.
-The latter will also ensure all arrays are from the same backend and live on the same device,
-and can additionally apply type promotion rules via the \code{.promote} argument.
+The latter will also ensure all arrays are from the same backend and live on the same device.
+Both take a \code{.promote} rule saying which data type the input is brought to.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 as_anvl_array(1L)
+# a rule builds the R value at the data type it names
+as_anvl_array(1, .promote = promotion_dtype("f64"))
 as_anvl_arrays(nv_array(1:3), 1L)
 as_anvl_arrays(nv_array(1L), nv_array(1.5), .promote = promotion_common())
 \dontshow{\}) # examplesIf}

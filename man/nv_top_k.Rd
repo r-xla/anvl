@@ -4,36 +4,48 @@
 \alias{nv_top_k}
 \title{Top-K Elements}
 \usage{
-nv_top_k(x, k, axis = NULL, indices = FALSE)
+nv_top_k(x, k, axes = NULL, indices = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input, with at least 1 axis. Can be any numeric data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{k}{(\code{integer(1)})\cr
-Number of top elements to return. Must be a whole number satisfying
-\verb{1 <= k <= shape(x)[axis]}; a fractional or logical \code{k} is refused
-rather than truncated.}
+Number of top elements to return. Must be a whole number between 1 and
+the number of elements \code{axes} holds together; a fractional or logical \code{k}
+is refused rather than truncated.}
 
-\item{axis}{(\code{integer(1)} | \code{NULL})\cr
-Axis along which to take the top \code{k}. Negative values count from the
-end, i.e. \code{-1} refers to the last axis. If \code{NULL} (default),
-uses the last axis.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to take the top \code{k} over. Negative values count from the end, i.e.
+\code{-1} refers to the last axis. If \code{NULL} (default), ranks over every axis.}
 
 \item{indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns just the top-\code{k} values. If \code{TRUE},
-returns \code{list(values = ..., indices = ...)} where \code{indices} is the
-1-based position of each top-\code{k} value along \code{axis}, of the default
-integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+returns \code{list(values = ..., indices = ...)} where \code{indices} holds the
+position of each top-\code{k} value.}
 }
 \value{
-\code{\link{arrayish}} (when \code{indices = FALSE}) or named list of two
-arrays (when \code{indices = TRUE}). Output shape matches \code{x} with
-\code{axis} resized to \code{k}; values are sorted decreasing along \code{axis}.
+(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+One array when \code{indices = FALSE}, a named \code{list} of \code{values} and
+\code{indices} when \code{indices = TRUE}. The values have the input's data type and
+the indices the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both
+have the input's shape with \code{axes} replaced by a single axis of size \code{k},
+sitting where the first of them was; values are sorted decreasing along
+that axis.
 }
 \description{
-Returns the \code{k} largest values along an axis, sorted in decreasing order.
+Returns the \code{k} largest values over one or more axes, sorted in decreasing
+order.
 }
+\section{Ranking several axes}{
+
+Taking the top \code{k} over several axes ranks all of their elements together,
+so \code{nv_top_k(x, k)} equals \code{nv_top_k(nv_flatten(x), k)}. The indices then
+index the row-major flattening of those axes -- the order \code{\link[=nv_flatten]{nv_flatten()}}
+produces -- rather than any single axis.
+}
+
 \section{NaN handling}{
 
 \code{NaN} ranks larger than any finite value (so it appears first in the
@@ -43,12 +55,14 @@ bit is not canonicalized.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the values keep the input's data type, the indices the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_top_k(x, k = 3L)
 nv_top_k(x, k = 3L, indices = TRUE)
 
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-nv_top_k(m, k = 2L, axis = 2L)
+nv_top_k(m, k = 2L, axes = 2L) # the top 2 of each row
+nv_top_k(m, k = 2L) # the top 2 of the whole matrix
 \dontshow{\}) # examplesIf}
 }
 \seealso{

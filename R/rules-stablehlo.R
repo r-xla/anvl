@@ -683,9 +683,9 @@ prim_rng_bit_generator[["stablehlo"]] <- function(initial_state, rng_algorithm, 
   hlo_rng_bit_generator(initial_state, rng_algorithm, dtype, shape)
 }
 
-prim_print[["stablehlo"]] <- function(x, footer) {
+prim_print[["stablehlo"]] <- function(x, header, footer) {
   backend_config <- stablehlo::CustomOpBackendConfig(list(
-    stablehlo::StringAttr(name = "print_header", value = "AnvlArray"),
+    stablehlo::StringAttr(name = "print_header", value = header),
     stablehlo::StringAttr(name = "print_footer", value = footer)
   ))
 

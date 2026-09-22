@@ -11,7 +11,7 @@ nv_upper_tri_like(like, diagonal = 1L, shape = NULL, device = NULL)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result: exactly two axis sizes, since the result is a matrix.}
 
 \item{diagonal}{(\code{integer(1)})\cr
 Diagonal offset, with the same meaning as in \code{\link[=nv_triu]{nv_triu()}}. The default
@@ -37,8 +37,8 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_upper_tri_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the given \code{shape} and dtype \code{bool}.
+(\code{\link{arrayish}})\cr
+Has the given \code{shape} and boolean data type.
 }
 \description{
 Returns a boolean matrix that is \code{TRUE} on and above the given diagonal,
@@ -47,6 +47,7 @@ triangle of an existing array instead.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a boolean mask, whatever the array it is later used with
 nv_upper_tri(c(3, 3))
 nv_upper_tri(c(3, 3), diagonal = 0L)
 x <- nv_fill(0, shape = c(3, 3))

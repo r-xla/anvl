@@ -8,28 +8,31 @@ nv_runif(shape, initial_state, dtype = NULL, min = 0, max = 1)
 }
 \arguments{
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the result.}
 
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state: a 1-D array of two \code{ui64} elements, as \code{\link[=nv_rng_state]{nv_rng_state()}}
+returns. The data type and length are fixed by the generator, not by the
+default data types, and the returned \code{state} has them too.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the sampled values: a 32- or 64-bit float.
-\code{NULL} (default) uses the backend's default
-float data type (see \code{\link[=default_dtypes]{default_dtypes()}}).}
+Floating point data type.
+The default (\code{NULL}) uses the \link[=default_dtypes]{default float type}.}
 
 \item{min, max}{(\code{numeric(1)})\cr
 Lower and upper bound.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr
-Elements \code{state}, the updated RNG state, and \code{values}, the sampled values.
+Elements \code{state}, the updated RNG state, and \code{values}, the sample of shape
+\code{shape} and data type \code{dtype}.
 }
 \description{
 Samples from a uniform distribution in the open interval \verb{(min, max)}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `state` is the updated RNG state, `values` the sample
 state <- nv_rng_state(42L)
 result <- nv_runif(c(2, 3), state)
 result$values

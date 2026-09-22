@@ -42,13 +42,11 @@ Raw payloads are read in column-major element order, or row-major
 with \code{byrow = TRUE}.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-One of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64 or a \code{\link[tengen:DataType]{tengen::DataType}}.
-The default (\code{NULL}) uses the data type the R value takes (see
-\code{\link[=default_dtypes]{default_dtypes()}}). This depends on the backend.
-For the default \code{"pjrt"} backend, \code{double}s become \code{f32}, \code{integer}
-\code{i32} and \code{logical}s \code{bool}.
-You can change the defaults via the \code{anvl.default_dtypes} option, or for
-a scope with \code{\link[=local_default_dtypes]{local_default_dtypes()}} / \code{\link[=with_default_dtypes]{with_default_dtypes()}}.}
+The data type at which to create the array: a \code{\link[tengen:DataType]{tengen::DataType}} or one
+of bool, i8, i16, i32, i64, ui8, ui16, ui32, ui64, f32, f64. \code{data} is built at it rather than converted to it,
+and a value it cannot hold at all is an error (\code{nv_array(3e9, dtype = "i32")} overflows); a \code{double} at an integer data type is truncated.
+The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} of
+\code{data}'s category.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -174,7 +172,7 @@ converting an array with \code{\link[=nv_convert]{nv_convert()}} wraps around.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-# A 1-d array (vector) with shape (4). Default type for integers is `i32`
+# a 1-d array (vector) with shape (4), at the default data type for integers
 nv_array(1:4)
 
 # specify a dtype
@@ -186,7 +184,7 @@ nv_array(1:6, shape = c(2L, 3L))
 # a 2x3 matrix filled by row, like `matrix(1:6, 2, 3, byrow = TRUE)`.
 nv_array(1:6, shape = c(2L, 3L), byrow = TRUE)
 
-# A scalar array.
+# a scalar array
 nv_scalar(3.14)
 
 # an uninitialized 2x3 array (contents are unspecified)

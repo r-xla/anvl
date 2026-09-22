@@ -8,14 +8,20 @@ prim_if(pred, true, false)
 }
 \arguments{
 \item{pred}{(\code{\link{arrayish}})\cr
-Scalar boolean predicate that determines which branch to execute.}
+Predicate deciding which branch to execute. Must be a scalar of the
+boolean data type, or an R logical.}
 
 \item{true, false}{(\verb{function()})\cr
-Zero-argument functions for the true and false branches. Both must return outputs
-with the same structure, dtypes, and shapes.}
+Zero-argument functions for the true and false branches. Both must return
+outputs of the same structure, data types and shapes. As with
+\code{\link[=prim_ifelse]{prim_ifelse()}}, whose two values must already agree, nothing is promoted:
+branches that disagree are an error.}
 }
 \value{
-Result of the executed branch.\cr
+(\code{\link{arrayish}} | \code{list})\cr
+Result of the executed branch: an array, or a tree of them in the sense
+of pjrt's \code{\link[pjrt:build_tree]{RTree}} -- a \code{list}, nested arbitrarily -- with
+the structure, data types and shapes both branches share.
 }
 \description{
 Conditional execution of one of two branches based on a scalar boolean
@@ -32,11 +38,13 @@ evaluates only the selected branch.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_if]{hlo_if()}}.
+Lowers to \code{\link[stablehlo:hlo_if]{hlo_if()}}, specified under
+\href{https://openxla.org/stablehlo/spec#if}{if}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# both branches must return the same structure, data types and shapes
 prim_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 \dontshow{\}) # examplesIf}
 }

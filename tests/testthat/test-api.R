@@ -588,6 +588,24 @@ describe("nv_round", {
   })
 })
 
+describe("nv_sign", {
+  it("returns -1, 0 and 1 at the input's data type", {
+    expect_equal(nv_sign(nv_array(c(-3, 0, 5))), nv_array(c(-1, 0, 1)))
+    expect_equal(nv_sign(nv_array(c(-3L, 0L, 5L))), nv_array(c(-1L, 0L, 1L)))
+  })
+
+  it("returns 0 or 1 for an unsigned input, like base R on a non-negative one", {
+    x <- nv_array(c(0L, 3L, 7L), dtype = "ui32")
+    expect_equal(nv_sign(x), nv_array(c(0L, 1L, 1L), dtype = "ui32"))
+    expect_equal(as.vector(nv_sign(x)), sign(c(0L, 3L, 7L)))
+    expect_equal(sign(nv_array(0L, dtype = "ui8")), nv_array(0L, dtype = "ui8"))
+  })
+
+  it("does not accept a boolean array", {
+    expect_error(nv_sign(nv_array(TRUE)))
+  })
+})
+
 describe("nv_floor_div", {
   it("floors like base R, at both signs and both categories", {
     for (lhs in c(7L, -7L)) {
@@ -658,6 +676,15 @@ describe("nv_is_finite", {
       nv_array(c(TRUE, FALSE, FALSE, FALSE, TRUE))
     )
   })
+  it("is all TRUE for a data type that has no non-finite value, like base R", {
+    expect_equal(nv_is_finite(nv_array(1:3)), nv_array(rep(TRUE, 3L)))
+    expect_equal(nv_is_finite(nv_array(c(TRUE, FALSE))), nv_array(c(TRUE, TRUE)))
+    expect_equal(nv_is_finite(nv_array(1L, dtype = "ui8")), nv_array(TRUE))
+    expect_shape(nv_is_finite(nv_array(1:6, shape = c(2L, 3L))), c(2L, 3L))
+    # The answer is a constant, so nothing of the input is read.
+    hlo <- format(stablehlo(trace_fn(function(a) nv_is_finite(a), list(nv_array(1:3))))[[1L]])
+    expect_false(any(grepl("is_finite", hlo, fixed = TRUE)))
+  })
 })
 
 describe("nv_is_nan", {
@@ -673,9 +700,27 @@ describe("nv_is_nan", {
       nv_array(c(FALSE, TRUE, FALSE, FALSE, FALSE))
     )
   })
+  it("is all FALSE for a data type that has no NaN, without comparing", {
+    expect_equal(nv_is_nan(nv_array(1:3)), nv_array(rep(FALSE, 3L)))
+    expect_equal(nv_is_nan(nv_array(c(TRUE, FALSE))), nv_array(c(FALSE, FALSE)))
+    expect_equal(nv_is_nan(nv_scalar(1L)), nv_scalar(FALSE))
+    expect_shape(nv_is_nan(nv_array(1:6, shape = c(2L, 3L))), c(2L, 3L))
+    # The answer is a constant, so nothing of the input is read.
+    hlo <- format(stablehlo(trace_fn(function(a) nv_is_nan(a), list(nv_array(1:3))))[[1L]])
+    expect_false(any(grepl("compare", hlo, fixed = TRUE)))
+  })
 })
 
 describe("nv_is_infinite", {
+  it("is all FALSE for a data type that has no infinity, without comparing", {
+    expect_equal(nv_is_infinite(nv_array(1:3)), nv_array(rep(FALSE, 3L)))
+    expect_equal(nv_is_infinite(nv_array(c(TRUE, FALSE))), nv_array(c(FALSE, FALSE)))
+    expect_shape(nv_is_infinite(nv_array(1:6, shape = c(2L, 3L))), c(2L, 3L))
+    hlo <- format(
+      stablehlo(trace_fn(function(a) nv_is_infinite(a), list(nv_array(1:3))))[[1L]]
+    )
+    expect_false(any(grepl("is_finite", hlo, fixed = TRUE)))
+  })
   it("detects infinite values", {
     expect_equal(
       nv_is_infinite(nv_array(c(1, NaN, Inf, -Inf, 0))),
@@ -1784,28 +1829,63 @@ describe("nv_argsort", {
 })
 
 describe("nv_top_k", {
-  it("returns the k largest values along the last axis", {
+  it("returns the k largest values of a 1-D array", {
     expect_equal(
       nv_top_k(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)), k = 3L),
       nv_array(c(9, 6, 5))
     )
   })
 
-  it("operates per-row on a matrix when axis is the last axis", {
+  it("operates per-row on a matrix when given the last axis", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    out <- nv_top_k(m, k = 2L)
+    out <- nv_top_k(m, k = 2L, axes = 2L)
     expect_shape(out, c(2L, 2L))
     expect_equal(as_array(out), matrix(c(5, 3, 4, 2), nrow = 2, byrow = TRUE))
   })
 
-  it("errors when k > size of axis", {
-    expect_error(nv_top_k(nv_array(c(1, 2, 3)), k = 5L))
+  it("puts the k axis where the first reduced axis was", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    out <- nv_top_k(m, k = 1L, axes = 1L)
+    expect_shape(out, c(1L, 3L))
+    expect_equal(as_array(out), matrix(c(3, 4, 5), nrow = 1))
   })
 
-  it("accepts a negative dim", {
+  it("ranks every axis together by default, like flattening first", {
     m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-    expect_equal(nv_top_k(m, k = 2L, axis = -1L), nv_top_k(m, k = 2L, axis = 2L))
-    expect_equal(nv_top_k(m, k = 2L, axis = -2L), nv_top_k(m, k = 2L, axis = 1L))
+    expect_equal(nv_top_k(m, k = 3L), nv_array(c(5, 4, 3)))
+    expect_equal(nv_top_k(m, k = 3L), nv_top_k(nv_flatten(m), k = 3L))
+    expect_equal(nv_top_k(m, k = 3L, axes = c(1L, 2L)), nv_top_k(m, k = 3L))
+  })
+
+  it("indexes the row-major flattening of the reduced axes", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    # Along one axis the index is a position in that axis.
+    expect_equal(
+      as_array(nv_top_k(m, k = 2L, axes = 2L, indices = TRUE)$indices),
+      matrix(c(3L, 1L, 2L, 1L), nrow = 2, byrow = TRUE)
+    )
+    # Over both, it is a position in `nv_flatten(m)`.
+    out <- nv_top_k(m, k = 3L, indices = TRUE)
+    expect_equal(as.vector(as_array(out$indices)), c(3L, 5L, 1L))
+    expect_equal(
+      as.vector(as_array(out$values)),
+      as.vector(as_array(nv_flatten(m)))[c(3L, 5L, 1L)]
+    )
+  })
+
+  it("errors when k exceeds what the reduced axes hold", {
+    expect_error(nv_top_k(nv_array(c(1, 2, 3)), k = 5L))
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_error(nv_top_k(m, k = 4L, axes = 2L), "The ranked axis holds 3 of them")
+    # Over both axes the same `k` is fine, since they hold six elements.
+    expect_error(nv_top_k(m, k = 4L), NA)
+    expect_error(nv_top_k(m, k = 7L), "The ranked axes hold 6 of them")
+  })
+
+  it("accepts a negative axis", {
+    m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
+    expect_equal(nv_top_k(m, k = 2L, axes = -1L), nv_top_k(m, k = 2L, axes = 2L))
+    expect_equal(nv_top_k(m, k = 2L, axes = -2L), nv_top_k(m, k = 2L, axes = 1L))
   })
 })
 
@@ -2277,6 +2357,23 @@ describe("nv_solve", {
     expect_equal(as_array(x), array(solve(A_mat, b_vec)), tolerance = 1e-5)
   })
 
+  it("converts an integer system to the default float, like base R's solve()", {
+    A_mat <- matrix(c(3L, 1L, 1L, 2L), nrow = 2)
+    b_vec <- c(9L, 8L)
+    x <- nv_solve(nv_array(A_mat), nv_array(b_vec))
+    expect_dtype(x, default_float())
+    expect_equal(as_array(x), array(solve(A_mat, b_vec)), tolerance = 1e-5)
+  })
+
+  it("lets an integer operand yield to the float it meets", {
+    # Unlike numpy, where an integer operand forces the whole solve to f64.
+    x <- nv_solve(
+      nv_array(matrix(c(3, 1, 1, 2), nrow = 2), dtype = "f32"),
+      nv_array(c(9L, 8L))
+    )
+    expect_dtype(x, "f32")
+  })
+
   it("matches base R for matrix b (output stays a 2-D matrix)", {
     A_mat <- matrix(c(4, 3, 6, 3), nrow = 2)
     b_mat <- matrix(c(1, 2), nrow = 2)
@@ -2301,6 +2398,14 @@ describe("nv_triangular_solve", {
     b <- c(6, 5)
     x <- nv_triangular_solve(nv_array(L_mat, dtype = "f32"), nv_array(b, dtype = "f64"))
     expect_dtype(x, "f64")
+    expect_equal(as_array(x), array(solve(L_mat, b)), tolerance = 1e-5)
+  })
+
+  it("converts an integer system to the default float", {
+    L_mat <- matrix(c(3L, 1L, 0L, 2L), nrow = 2)
+    b <- c(6L, 5L)
+    x <- nv_triangular_solve(nv_array(L_mat), nv_array(b))
+    expect_dtype(x, default_float())
     expect_equal(as_array(x), array(solve(L_mat, b)), tolerance = 1e-5)
   })
 
@@ -2512,8 +2617,9 @@ describe("nv_flatten", {
       x
     )
   })
-  it("fails for 0D input", {
-    expect_error(nv_flatten(1), "scalar")
+  it("makes a scalar a length-1 array", {
+    expect_equal(nv_flatten(1L), nv_array(1L))
+    expect_shape(nv_flatten(nv_scalar(1)), 1L)
   })
   it("works with empty input", {
     expect_equal(
@@ -2798,7 +2904,7 @@ test_that("the variadic functions and `like` refuse nothing to work with", {
 })
 
 test_that("nv_inv reports its own argument, and gradient accepts any float", {
-  expect_error(nv_inv(nv_array(matrix(1:4, 2))), "`x` must be a float data type")
+  expect_error(nv_inv(nv_array(matrix(TRUE, 2, 2))), "`x` must be a numeric data type")
   # The check and the message agree on what "float" means.
   expect_error(
     jit(gradient(function(x) nv_reduce_sum(nv_convert(x, "i32"))))(nv_array(c(1, 2))),
@@ -2900,7 +3006,52 @@ test_that("prim_chol and nv_chol accept batched inputs", {
   expect_error(nv_chol(nv_array(matrix(1:6 / 1, 2), dtype = "f32")), "square in its last two axes")
   expect_error(nv_chol(nv_array(c(1, 2), dtype = "f32")), "at least 2 axes")
   expect_error(nv_chol(nv_array(spd)), NA)
-  expect_error(nv_chol(nv_array(matrix(1:4, 2))), "float data type")
+  expect_error(nv_chol(nv_array(matrix(TRUE, 2, 2))), "must be a numeric data type")
+})
+
+describe("the linear algebra functions", {
+  it("computes an integer input at the default float, like base R", {
+    spd_mat <- matrix(c(4L, 2L, 2L, 3L), nrow = 2)
+    spd <- nv_array(spd_mat)
+    a_mat <- matrix(c(4L, 3L, 6L, 3L), nrow = 2)
+    a <- nv_array(a_mat)
+    m_mat <- matrix(1:6, nrow = 3)
+    m <- nv_array(m_mat)
+
+    expect_dtype(nv_chol(spd), default_float())
+    expect_equal(as_array(nv_chol(spd)), chol(spd_mat + 0), tolerance = 1e-5)
+    expect_dtype(nv_inv(a), default_float())
+    expect_equal(as_array(nv_inv(a)), solve(a_mat + 0), tolerance = 1e-5)
+    expect_dtype(nv_det(a), default_float())
+    expect_equal(as.vector(as_array(nv_det(a))), det(a_mat + 0), tolerance = 1e-5)
+    expect_dtype(nv_determinant(a)$modulus, default_float())
+    expect_dtype(nv_qr(m)$Q, default_float())
+    expect_dtype(nv_svd(m)$d, default_float())
+    expect_equal(as.vector(as_array(nv_svd(m)$d)), svd(m_mat + 0)$d, tolerance = 1e-5)
+    expect_dtype(nv_eigh(spd)$values, default_float())
+    expect_dtype(nv_lu(a)$L, default_float())
+    # The pivots stay indices whatever the input was.
+    expect_dtype(nv_lu(a)$pivots, default_int())
+  })
+
+  it("leaves a float input at its own data type", {
+    spd <- nv_array(matrix(c(4, 2, 2, 3), nrow = 2), dtype = "f64")
+    expect_dtype(nv_chol(spd), "f64")
+    expect_dtype(nv_inv(spd), "f64")
+    expect_dtype(nv_det(spd), "f64")
+    expect_dtype(nv_eigh(spd)$values, "f64")
+  })
+
+  it("still refuses a boolean input", {
+    b <- nv_array(rep(TRUE, 4L), shape = c(2L, 2L))
+    expect_error(nv_chol(b), "`x` must be a numeric data type")
+    expect_error(nv_inv(b), "`x` must be a numeric data type")
+    expect_error(nv_det(b), "`x` must be a numeric data type")
+    expect_error(nv_qr(b), "`x` must be a numeric data type")
+    expect_error(nv_svd(b), "`x` must be a numeric data type")
+    expect_error(nv_eigh(b), "`x` must be a numeric data type")
+    expect_error(nv_lu(b), "`x` must be a numeric data type")
+  })
 })
 
 test_that("nv_quantile and nv_median interpolate at a float data type", {

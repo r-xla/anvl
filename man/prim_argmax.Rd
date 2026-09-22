@@ -2,13 +2,14 @@
 % Please edit documentation in R/primitives.R
 \name{prim_argmax}
 \alias{prim_argmax}
-\title{Primitive Argmax}
+\title{Primitive Index of the Maximum}
 \usage{
 prim_argmax(x, axis, drop = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Axis along which to find the index of the maximum.
@@ -19,10 +20,10 @@ If \code{TRUE} (default) the reduced axis is removed; if \code{FALSE} it is
 kept with size 1.}
 }
 \value{
-\code{\link{arrayish}} of the default integer data type (see
-\code{\link[=default_dtypes]{default_dtypes()}})\cr
-Same shape as \code{x} with \code{axis} removed (or set to 1 if
-\code{drop = FALSE}).
+(\code{\link{arrayish}})\cr
+Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
+the input's, and the input's shape with \code{axis} removed (\code{drop = TRUE}) or
+set to 1 (\code{drop = FALSE}).
 }
 \description{
 Returns the index of the maximum value along a single axis. Ties
@@ -38,12 +39,15 @@ are broken by returning the smallest index.
 
 \section{StableHLO}{
 
-Lowers to a variadic \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} over \verb{(values, indices)}
-with a (value > value | (value == value & idx < idx)) selector.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+The reduction is variadic over \verb{(values, indices)}, with a
+(value > value | (value == value & idx < idx)) selector.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the index comes out at the default integer data type
 prim_argmax(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 \dontshow{\}) # examplesIf}
 }

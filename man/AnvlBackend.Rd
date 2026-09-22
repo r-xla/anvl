@@ -62,7 +62,7 @@ The default data types for this backend.
 Can be overwritten, see \code{\link[=default_dtypes]{default_dtypes()}}.}
 }
 \value{
-An \code{AnvlBackend} object.
+(\code{AnvlBackend})
 }
 \description{
 Create a backend

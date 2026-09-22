@@ -1,4 +1,4 @@
-#' @title Save arrays to a file
+#' @title Save Arrays to a File
 #'
 #' @description
 #' Saves a named list of arrays to a file in the
@@ -9,14 +9,16 @@
 #' a file connection.
 #'
 #' @param arrays (named `list` of [`AnvlArray`])\cr
-#'   Named list of arrays to save. Names must be unique.
+#'   Named list of arrays. Names must be unique.
 #' @param path (`character(1)`)\cr
 #'   File path to write to.
 #'
-#' @returns `NULL` (invisibly).
+#' @returns (`NULL`)\cr
+#'   Invisibly.
 #' @seealso [nv_read()], [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' path <- tempfile(fileext = ".safetensors")
@@ -35,7 +37,7 @@ nv_save <- function(arrays, path) {
   invisible(NULL)
 }
 
-#' @title Read arrays from a file
+#' @title Read Arrays from a File
 #'
 #' @description
 #' Loads arrays from a file in the
@@ -51,10 +53,11 @@ nv_save <- function(arrays, path) {
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
 #'
-#' @returns Named `list` of [`AnvlArray`] objects.
+#' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_save()], [nv_serialize()], [nv_unserialize()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' path <- tempfile(fileext = ".safetensors")
@@ -68,7 +71,7 @@ nv_read <- function(path, device = NULL) {
   nv_unserialize(con, device = device)
 }
 
-#' @title Serialize arrays to raw bytes
+#' @title Serialize Arrays to Raw Bytes
 #'
 #' @description
 #' Serializes a named list of arrays into the
@@ -80,10 +83,12 @@ nv_read <- function(path, device = NULL) {
 #'   An optional connection to write to.
 #'   If `NULL` (default), a raw vector is returned.
 #'
-#' @returns A [`raw`] vector if `con` is `NULL`, otherwise `NULL` (invisibly).
+#' @returns ([`raw`] | `NULL`)\cr
+#'   A raw vector if `con` is `NULL`, otherwise `NULL` invisibly.
 #' @seealso [nv_unserialize()], [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' raw_data <- nv_serialize(list(x = x))
@@ -117,7 +122,7 @@ nv_serialize <- function(arrays, con = NULL) {
   invisible(NULL)
 }
 
-#' @title Deserialize arrays from raw bytes
+#' @title Deserialize Arrays from Raw Bytes
 #'
 #' @description
 #' Deserializes arrays from the
@@ -133,10 +138,11 @@ nv_serialize <- function(arrays, con = NULL) {
 #'   The device on which to place the loaded arrays (`"cpu"`, `"cuda"`, ...).
 #'   Default is to use the CPU.
 #'
-#' @returns Named `list` of [`AnvlArray`] objects.
+#' @returns (named `list` of [`AnvlArray`])
 #' @seealso [nv_serialize()], [nv_save()], [nv_read()]
 #' @export
 #' @examplesIf pjrt::plugins_downloaded("cpu")
+#' # data types and shapes round-trip unchanged
 #' x <- nv_matrix(1:6, nrow = 2)
 #' x
 #' raw_data <- nv_serialize(list(x = x))

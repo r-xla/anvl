@@ -11,7 +11,8 @@ nv_sort(x, axis = NULL, decreasing = FALSE, stable = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to sort. Negative values count from the end,
@@ -30,8 +31,8 @@ values the result is identical either way.}
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Same shape and data type as \code{x}.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Sorts an array along an axis.
@@ -56,6 +57,7 @@ instead, which keeps the shape.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# sorting moves elements, so the data type and shape stay
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 nv_sort(x)
 sort(x) # via the S3 generic

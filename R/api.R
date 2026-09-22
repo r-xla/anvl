@@ -1,6 +1,5 @@
 # This is the user-facing API containing the exported array operations.
 #' @include primitives.R
-#' @include jit.R
 
 # Special array creators
 
@@ -17,17 +16,22 @@
 #'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
-#' @param dtype (`character(1)` | `NULL`)\cr
-#'   Data type.
+#' @param dtype (`NULL` | `character(1)` | [`DataType`][tengen::DataType])\cr
+#'   Data type of the result.
+#'   The default (`NULL`) uses the [default data type][default_dtypes] for `nv_fill` and
+#'   `dtype(like)` for `nv_fill_like`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_fill_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and `dtype`.
 #' @seealso [prim_fill()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the R double settles the data type, the shape is given
 #' nv_fill(0, shape = c(2, 3))
+#'
+#' # `_like` takes shape, data type and device from an existing array
 #' x <- nv_matrix(1:6, nrow = 2)
 #' nv_fill_like(x, 0)
 #' @export
@@ -91,9 +95,9 @@ make_broadcast_axes <- function(shape_in, shape_out) {
 #' Broadcast scalar arrays to match the shape of non-scalar arrays.
 #' All non-scalar arrays must have the same shape.
 #' @param ... ([`arrayish`][arrayish])\cr
-#'   Arrays to broadcast. Scalars will be broadcast to the common non-scalar shape.
+#'   Arrays to broadcast.
 #' @return (`list()` of [`arrayish`])\cr
-#'   List of broadcasted arrays.
+#'   The inputs, each with its own data type and the common shape.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3))
 #' # scalar 1 is broadcast to shape [3]
@@ -128,23 +132,23 @@ nv_broadcast_scalars <- jit(function(...) {
 
 #' @title Promote Arrays to a Common Data Type
 #' @description
-#' Promote arrays to a common data type, see [`common_dtype`] for more details.
+#' Promote arrays to a common data type, see [`promotion_common()`] for more details.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to promote.
-#' @return (`list()` of [`arrayish`])
+#'   Values to promote.
+#' @return (`list()` of [`arrayish`])\cr
+#'   The inputs, each at their common data type and with its own shape.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(1L)
-#' y <- nv_array(1.5)
-#' # integer is promoted to float
+#' # An integer is promoted to float
+#' x <- nv_scalar(1, dtype = "f32")
+#' y <- nv_scalar(1L, dtype = "i32")
 #' nv_promote_to_common(x, y)
+#' # an R value yields to the data type it meets within its category
+#' with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, x))
+#' # and settles on its default otherwise
+#' with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, y))
 #' @export
 nv_promote_to_common <- jit(function(...) {
   assert_some_arrays(...)
-  # An R value has no dtype to convert *from*: it is built at the common one
-  # directly, from the R data. That is what keeps `x_f64 / sqrt(2)` exact --
-  # converting an f32 `sqrt(2)` would only widen a number that had already lost
-  # its digits. So the values are aligned first and built afterwards, once the
-  # common dtype is known. `promotion_common()` is that sequence.
   as_anvl_arrays(..., .promote = promotion_common())
 })
 
@@ -161,14 +165,21 @@ nv_promote_to_common <- jit(function(...) {
 #' @param ... ([`arrayish`])\cr
 #'   Arrays to broadcast.
 #' @return (`list()` of [`arrayish`])\cr
-#'   List of arrays, all with the same shape.
+#'   The inputs, each with its own data type and the common shape.
 #' @seealso [nv_broadcast_scalars()], [nv_broadcast_to()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_matrix(1:6, nrow = 2)
-#' y <- nv_array(c(10, 20, 30))
-#' nv_broadcast_arrays(x, y)
+#' # the length-3 vector is stretched to the matrix's shape
+#' x1 <- nv_matrix(1:6, nrow = 2)
+#' x2 <- nv_array(c(10, 20, 30))
+#' nv_broadcast_arrays(x1, x2)
+#'
+#' # axes of size 1 are expanded to the other operand's size
+#' y1 <- nv_array(1:3, shape = c(1, 3))
+#' y2 <- nv_array(1:3, shape = c(3, 1))
+#' nv_broadcast_arrays(y1, y2)
 #' @export
 nv_broadcast_arrays <- jit(function(...) {
+  # TODO: Better handling of sizes 0, currently the error message is not great
   assert_some_arrays(...)
   args <- as_anvl_arrays(...)
   shape <- Reduce(broadcast_shapes, lapply(args, shape))
@@ -178,14 +189,17 @@ nv_broadcast_arrays <- jit(function(...) {
 #' @title Broadcast to Shape
 #' @description
 #' Broadcasts an array to a target shape using NumPy-style broadcasting rules.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param shape (`integer()`)\cr
-#'   Target shape. Each existing axis must either match or be 1.
-#' @return [`arrayish`]\cr
+#'   Target shape. The input's axes are matched against its trailing axes, and
+#'   each must either match or be 1; leading axes are added.
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [nv_broadcast_arrays()], [nv_broadcast_scalars()],
 #'   [prim_broadcast_in_axes()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the length-3 vector is repeated along a new leading axis
 #' x <- nv_array(c(1, 2, 3))
 #' nv_broadcast_to(x, shape = c(2, 3))
 #' @export
@@ -203,15 +217,27 @@ nv_broadcast_to <- function(x, shape) {
 #' @title Convert Data Type
 #' @description
 #' Converts the elements of an array to a different data type.
-#' Returns the input unchanged if it already has the target type.
-#' @template param_x
-#' @template param_dtype
-#' @return [`arrayish`]\cr
-#'   Has the given `dtype` and the same shape as `x`.
+#' Note that R objects are handled differently than `AnvlArray`
+#' inputs.
+#' For R objects, we check whether the requested data type can
+#' meaningfully hold the provided data and otherwise err.
+#' For `AnvlArray` inputs such a check is *not* performed.
+#'
+#' @param x ([`arrayish`])\cr
+#'   The input to convert.
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   Target data type.
+#' @return ([`arrayish`])\cr
+#'   Has the given `dtype` and the input's shape.
 #' @seealso [prim_convert()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the values are preserved, the data type changes
 #' x <- nv_array(c(1L, 2L, 3L))
+#' # For R inputs, we check compatability
 #' nv_convert(x, dtype = "f32")
+#' try(nv_convert(257L, dtype = "i8"))
+#' # For AnvlArrays, we wrap around
+#' nv_convert(nv_scalar(257L), dtype = "i8")
 #' @export
 nv_convert <- function(x, dtype) {
   if (!is_arrayish(x)) {
@@ -226,14 +252,17 @@ nv_convert <- function(x, dtype) {
 #' @title Transpose
 #' @description
 #' Permutes the axes of an array. You can also use `t()` for matrices.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param permutation (`integer()` | `NULL`)\cr
 #'   New ordering of axes. If `NULL` (default), reverses the axes.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
-#' @return [`arrayish`]\cr
-#'   Has the same data type as `x` and shape `shape(x)[permutation]`.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type and shape `shape(x)[permutation]`, or `rev(shape(x))`
+#'   when `permutation` is `NULL`.
 #' @seealso [prim_transpose()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the 2x3 becomes a 3x2, keeping its data type
 #' x <- nv_matrix(1:6, nrow = 2)
 #' t(x)
 #' @export
@@ -248,21 +277,29 @@ nv_transpose <- function(x, permutation = NULL) {
 #' @description
 #' Reshapes an array to a new shape without changing the underlying data.
 #' Returns the input unchanged if it already has the target shape.
-#' @details
+#' @section Differences from base R:
 #' Note that row-major order is used, which differs from R's column-major order.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param shape (`integer()`)\cr
 #'   Target shape. Must have the same number of elements as `x`.
 #'   At most one entry may be `-1`, in which case its extent is inferred from
 #'   the remaining entries and the number of elements of `x`.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `shape` and the same data type as `x`.
 #' @seealso [prim_reshape()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(1:6)
-#' nv_reshape(x, c(2, 3))
-#' nv_reshape(x, c(2, -1)) # infer the second dimension
-#' nv_reshape(x, -1) # flatten
+#' # the elements are reread in row-major order; the data type is untouched
+#' x <- array(1:6, dim = c(3, 2))
+#' # row-major
+#' nv_reshape(x, 6L)
+#' # differs from R (col-major)
+#' c(x)
+#'
+#' # infer the size of the second axis
+#' nv_reshape(x, c(2, -1))
+#' # flatten
+#' nv_reshape(x, -1)
 #' @export
 nv_reshape <- function(x, shape) {
   x <- as_anvl_array(x)
@@ -278,19 +315,25 @@ nv_reshape <- function(x, shape) {
 
 #' @title Flatten
 #' @description
-#' Flattens an N-dimensional array into a 1-dimensional array.
-#' Fails with scalar inputs.
-#' @template param_x
+#' Flattens an array of any rank into an array with a single axis, reading the
+#' elements in row-major order (the last axis fastest), as [nv_reshape()] does.
+#' @section Differences from base R:
+#' Note that row-major order is used, which differs from R's column-major order.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @return ([`arrayish`])\cr
-#'   1-D array.
+#'   Has the input's data type, and one axis holding all of its elements --
+#'   so a scalar, which has none, becomes a length-1 vector.
 #' @export
-#' @examples
-#' nv_flatten(matrix(1:4, nrow = 2))
+#' @examplesIf pjrt::plugins_downloaded()
+#' # the 2x2 matrix becomes a length-4 vector
+#' x <- matrix(1:4, nrow = 2)
+#' # flatten in row-major
+#' nv_flatten(x)
+#' # differs from R's col-major encoding:
+#' c(x)
 nv_flatten <- function(x) {
   x <- as_anvl_array(x)
-  if (naxes(x) == 0L) {
-    cli_abort("Cannot flatten a scalar array.")
-  }
   nv_reshape(x, prod(shape(x)))
 }
 
@@ -301,18 +344,22 @@ nv_flatten <- function(x) {
 #'
 #' You can also use `c()`, which flattens its arguments first, like base R.
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to concatenate. Must have the same shape except along `axis`.
+#'   Arrays to concatenate. Can be of any data type; they are
+#'   [promoted to a common data type][nv_promote_to_common()] and scalars are
+#'   [broadcast][nv_broadcast_scalars()]. Must have the same shape except
+#'   along `axis`.
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to concatenate.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #'   If `NULL` (default), concatenates along axis 1, which requires every
 #'   input to have at most one axis; for anything else `axis` must be given,
 #'   since there is no neutral axis to join two matrices along.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the common data type and a shape matching the inputs in all
 #'   axes except `axis`, which is the sum of input sizes.
 #' @seealso [prim_concatenate()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the operands are promoted to a common data type; axis 1 grows to 6
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5, 6))
 #' nv_concatenate(x, y)
@@ -380,16 +427,14 @@ nv_concatenate <- jit(
 #' @name nv_bind
 #' @description
 #' Combine arrays along the row (`nv_rbind`) or column (`nv_cbind`) axis.
-#' Arguments are first promoted to a common data type
-#' (see [nv_promote_to_common()]).
 #'
-#' Each input is then handled according to its rank:
+#' Each input is handled according to its rank:
 #'
-#' * 0-D: broadcast to match the non-stacked axes of the other inputs.
+#' * a scalar: broadcast to match the non-stacked axes of the other inputs.
 #' * 1-D: treated as a single row/column.
 #' * Other: used as-is.
 #'
-#' # Differences from base R
+#' @section Differences from base R:
 #'
 #' [base::rbind()] and [base::cbind()] applied to an [`array()`][base::array] of rank > 2
 #' flatten the trailing axes into the column axis (so a `c(2, 3, 4)`
@@ -399,8 +444,13 @@ nv_concatenate <- jit(
 #' `c(2, 6, 4)` array.
 #'
 #' @param ... ([`arrayish`])\cr
-#'   Arrays to combine. Inputs are promoted to a common data type.
-#' @return [`arrayish`]\cr
+#'   Arrays to combine. Can be of any data type; they are
+#'   [promoted to a common data type][nv_promote_to_common()], and a scalar is
+#'   [broadcast][nv_broadcast_scalars()] to match the non-stacked axes.
+#' @return ([`arrayish`])\cr
+#'   Has the inputs' common data type. The stacked axis is the sum of their
+#'   sizes along it -- rows for `nv_rbind()`, columns for `nv_cbind()` -- and
+#'   every other axis is theirs unchanged.
 #' @seealso [nv_concatenate()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' # vectors as rows / columns
@@ -493,17 +543,20 @@ nv_cbind <- jit(function(...) {
 #' @description
 #' Extracts a slice from an array using static (compile-time) indices.
 #' For dynamic indexing, use [nv_subset()] instead.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param start_indices (`integer()`)\cr
 #'   Start indices (inclusive), one per axis.
 #' @param limit_indices (`integer()`)\cr
 #'   End indices (inclusive), one per axis.
 #' @param strides (`integer()`)\cr
 #'   Step sizes, one per axis. A stride of 1 selects every element.
-#' @return [`arrayish`]\cr
-#'   Has the same data type as `x`.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type and shape
+#'   `ceiling((limit_indices - start_indices + 1) / strides)` per axis.
 #' @seealso [nv_subset()], [prim_static_slice()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # elements 2 through 5, the limit being inclusive
 #' x <- nv_array(1:10)
 #' nv_static_slice(x, start_indices = 2L, limit_indices = 5L, strides = 1L)
 #' @export
@@ -513,13 +566,19 @@ nv_static_slice <- prim_static_slice
 #' @description
 #' Prints an array value to the console during JIT execution and returns the
 #' input unchanged. Useful for debugging.
-#' @template param_x
-#' @return [`arrayish`]\cr
-#'   Returns `x` unchanged.
+#' For [`RData`] inputs, that do not have an actual data type, the [default data type][default_dtypes]
+#' is used for printing.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @return ([`arrayish`])\cr
+#'   Returns the input unchanged, data type and shape included.
 #' @seealso [prim_print()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the value is printed and handed back unchanged
 #' x <- nv_array(c(1, 2, 3))
 #' nv_print(x)
+#' # RData is printed at the default dtype
+#' nv_print(1)
 #' @export
 nv_print <- prim_print
 
@@ -527,23 +586,23 @@ nv_print <- prim_print
 #' @description
 #' Selects elements from `true_value` or `false_value` based on `pred`,
 #' analogous to R's [ifelse()].
-#' @param pred ([`arrayish`] of boolean type)\cr
-#'   Predicate array. Must be scalar or have the same shape as the
-#'   non-scalar arguments.
+#' @param pred ([`arrayish`])\cr
+#'   Predicate array. Must be a boolean or an R logical, and scalar or the same
+#'   shape as the non-scalar arguments.
 #' @param true_value,false_value ([`arrayish`])\cr
-#'   Values to return where `pred` is `TRUE` / `FALSE`.
-#'   `true_value` and `false_value` are
+#'   Values to return where `pred` is `TRUE` / `FALSE`. Can be of any data
+#'   type; the two are
 #'   [promoted to a common data type][nv_promote_to_common()].
 #'   Scalars (including `pred`) are
 #'   [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar arguments.
-#' @return [`arrayish`]\cr
-#'   Has the common data type of `true_value` and `false_value` and the
-#'   shape of the non-scalar arguments.
+#' @return ([`arrayish`])\cr
+#'   Has the common data type of `true_value` and `false_value`, and their
+#'   broadcast shape.
 #' @seealso [prim_ifelse()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' pred <- nv_array(c(TRUE, FALSE, TRUE))
 #' nv_ifelse(pred, nv_array(c(1, 2, 3)), nv_array(c(4, 5, 6)))
-#' # scalar branches are broadcast and promoted to a common dtype
+#' # scalar branches are broadcast and promoted to a common data type
 #' nv_ifelse(pred, nv_scalar(1L), nv_scalar(0.5))
 #' @export
 nv_ifelse <- jit(function(pred, true_value, false_value) {
@@ -575,7 +634,9 @@ make_do_binary <- function(f) {
 
 #' @title Addition
 #' @description
-#' Adds two arrays element-wise. You can also use the `+` operator.
+#' Adds two arrays element-wise.
+#' You can also use the `+` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_add()] for the underlying primitive.
@@ -584,12 +645,19 @@ make_do_binary <- function(f) {
 #' y <- nv_array(c(4, 5, 6))
 #' nv_add(x, y)
 #' x + y
+#'
+#' # different data types are promoted to their common one
+#' nv_add(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x + 1L
 #' @export
 nv_add <- make_do_binary(prim_add)
 
 #' @title Multiplication
 #' @description
 #' Multiplies two arrays element-wise. You can also use the `*` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_mul()] for the underlying primitive.
@@ -598,12 +666,19 @@ nv_add <- make_do_binary(prim_add)
 #' y <- nv_array(c(4, 5, 6))
 #' nv_mul(x, y)
 #' x * y
+#'
+#' # different data types are promoted to their common one
+#' nv_mul(nv_scalar(2, "f32"), nv_scalar(3, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x * 2L
 #' @export
 nv_mul <- make_do_binary(prim_mul)
 
 #' @title Subtraction
 #' @description
 #' Subtracts two arrays element-wise. You can also use the `-` operator.
+#' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_sub()] for the underlying primitive.
@@ -612,12 +687,19 @@ nv_mul <- make_do_binary(prim_mul)
 #' y <- nv_array(c(1, 2, 3))
 #' nv_sub(x, y)
 #' x - y
+#'
+#' # different data types are promoted to their common one
+#' nv_sub(nv_scalar(5, "f32"), nv_scalar(3, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x - 1L
 #' @export
 nv_sub <- make_do_binary(prim_sub)
 
 #' @title Division
 #' @description
 #' Divides two arrays element-wise. You can also use the `/` operator.
+#' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_div()] for the underlying primitive.
@@ -626,26 +708,39 @@ nv_sub <- make_do_binary(prim_sub)
 #' y <- nv_array(c(2, 5, 10))
 #' nv_div(x, y)
 #' x / y
+#'
+#' # different data types are promoted to their common one
+#' nv_div(nv_scalar(10, "f32"), nv_scalar(4, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x / 2L
 #' @export
 nv_div <- make_do_binary(prim_div)
 
 #' @title Power
 #' @description
 #' Raises `lhs` to the power of `rhs` element-wise. You can also use the `^` operator.
+#' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_pow()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(2, 3, 4))
 #' y <- nv_array(c(3, 2, 1))
-#' nv_pow(x, y)
-#' x^y
+#' x ^ y
+#'
+#' # different data types are promoted to their common one
+#' nv_pow(nv_scalar(2, "f32"), nv_scalar(3, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x^2L
 #' @export
 nv_pow <- make_do_binary(prim_pow)
 
 #' @title Equal
 #' @description
 #' Element-wise equality comparison. You can also use the `==` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
 #' @seealso [prim_eq()] for the underlying primitive.
@@ -654,12 +749,19 @@ nv_pow <- make_do_binary(prim_pow)
 #' y <- nv_array(c(1, 3, 2))
 #' nv_eq(x, y)
 #' x == y
+#'
+#' # different data types are promoted to their common one
+#' nv_eq(nv_scalar(1, "f32"), nv_scalar(1, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x == 2L
 #' @export
 nv_eq <- make_do_binary(prim_eq)
 
 #' @title Not Equal
 #' @description
 #' Element-wise inequality comparison. You can also use the `!=` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
 #' @seealso [prim_ne()] for the underlying primitive.
@@ -668,12 +770,19 @@ nv_eq <- make_do_binary(prim_eq)
 #' y <- nv_array(c(1, 3, 2))
 #' nv_ne(x, y)
 #' x != y
+#'
+#' # different data types are promoted to their common one
+#' nv_ne(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x != 2L
 #' @export
 nv_ne <- make_do_binary(prim_ne)
 
 #' @title Greater Than
 #' @description
 #' Element-wise greater than comparison. You can also use the `>` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
 #' @seealso [prim_gt()] for the underlying primitive.
@@ -682,12 +791,19 @@ nv_ne <- make_do_binary(prim_ne)
 #' y <- nv_array(c(3, 2, 1))
 #' nv_gt(x, y)
 #' x > y
+#'
+#' # different data types are promoted to their common one
+#' nv_gt(nv_scalar(2, "f32"), nv_scalar(1, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x > 2L
 #' @export
 nv_gt <- make_do_binary(prim_gt)
 
 #' @title Greater Than or Equal
 #' @description
 #' Element-wise greater than or equal comparison. You can also use the `>=` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
 #' @seealso [prim_ge()] for the underlying primitive.
@@ -696,12 +812,19 @@ nv_gt <- make_do_binary(prim_gt)
 #' y <- nv_array(c(3, 2, 1))
 #' nv_ge(x, y)
 #' x >= y
+#'
+#' # different data types are promoted to their common one
+#' nv_ge(nv_scalar(2, "f32"), nv_scalar(1, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x >= 2L
 #' @export
 nv_ge <- make_do_binary(prim_ge)
 
 #' @title Less Than
 #' @description
 #' Element-wise less than comparison. You can also use the `<` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
 #' @seealso [prim_lt()] for the underlying primitive.
@@ -710,12 +833,19 @@ nv_ge <- make_do_binary(prim_ge)
 #' y <- nv_array(c(3, 2, 1))
 #' nv_lt(x, y)
 #' x < y
+#'
+#' # different data types are promoted to their common one
+#' nv_lt(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x < 2L
 #' @export
 nv_lt <- make_do_binary(prim_lt)
 
 #' @title Less Than or Equal
 #' @description
 #' Element-wise less than or equal comparison. You can also use the `<=` operator.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_compare
 #' @seealso [prim_le()] for the underlying primitive.
@@ -724,12 +854,19 @@ nv_lt <- make_do_binary(prim_lt)
 #' y <- nv_array(c(3, 2, 1))
 #' nv_le(x, y)
 #' x <= y
+#'
+#' # different data types are promoted to their common one
+#' nv_le(nv_scalar(1, "f32"), nv_scalar(2, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' x <= 2L
 #' @export
 nv_le <- make_do_binary(prim_le)
 
 #' @title Maximum
 #' @description
 #' Element-wise maximum of two arrays.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_max()] for the underlying primitive.
@@ -737,12 +874,19 @@ nv_le <- make_do_binary(prim_le)
 #' x <- nv_array(c(1, 5, 3))
 #' y <- nv_array(c(4, 2, 6))
 #' nv_max(x, y)
+#'
+#' # different data types are promoted to their common one
+#' nv_max(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' nv_max(x, 2L)
 #' @export
 nv_max <- make_do_binary(prim_max)
 
 #' @title Minimum
 #' @description
 #' Element-wise minimum of two arrays.
+#' @templateVar dtypes any data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_min()] for the underlying primitive.
@@ -750,13 +894,20 @@ nv_max <- make_do_binary(prim_max)
 #' x <- nv_array(c(1, 5, 3))
 #' y <- nv_array(c(4, 2, 6))
 #' nv_min(x, y)
+#'
+#' # different data types are promoted to their common one
+#' nv_min(nv_scalar(1, "f32"), nv_scalar(5, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' nv_min(x, 2L)
 #' @export
 nv_min <- make_do_binary(prim_min)
 
 #' @title Remainder (Truncating)
 #' @description
-#' Element-wise remainder.
-#' This differs from base R's `%%`, use [`nv_mod()`]/`%%` instead.
+#' Element-wise remainder. This
+#' differs from base R's `%%`, use [`nv_mod()`]/`%%` instead.
+#' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [nv_mod()] for the flooring remainder, [prim_remainder()] for the
@@ -765,14 +916,20 @@ nv_min <- make_do_binary(prim_min)
 #' x <- nv_array(c(7, 8, 9))
 #' y <- nv_array(c(3, 3, 4))
 #' nv_remainder(x, y)
+#'
+#' # different data types are promoted to their common one
+#' nv_remainder(nv_scalar(7, "f32"), nv_scalar(3, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' nv_remainder(x, 3L)
 #' @export
 nv_remainder <- make_do_binary(prim_remainder)
 
 #' @title Modulo (Flooring Remainder)
 #' @description
-#' Element-wise flooring remainder of division. The sign of the result equals
-#' the sign of `rhs`, matching base R's `%%` operator.
-#'
+#' Element-wise flooring remainder of division. The sign of the result equals the sign of `rhs`, matching base R's `%%`
+#' operator.
+#' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [nv_remainder()] for truncating remainder, [nv_floor_div()] for the
@@ -781,8 +938,13 @@ nv_remainder <- make_do_binary(prim_remainder)
 #' x <- nv_array(c(1L, -1L))
 #' y <- nv_array(c(-3L, 3L))
 #' nv_mod(x, y)
-#' x %% y
-#' as.vector(x) %% as.vector(y) # the same in base R
+#' as.vector(x) %% as.vector(y)
+#'
+#' # different data types are promoted to their common one
+#' nv_mod(nv_scalar(1L, "i32"), nv_scalar(-3L, "i64"))
+#'
+#' # a scalar is broadcast
+#' x %% 2L
 #' @export
 nv_mod <- jit(function(lhs, rhs) {
   args <- nv_promote_to_common(lhs, rhs)
@@ -806,6 +968,7 @@ nv_mod <- jit(function(lhs, rhs) {
 #' You can also call this via the `%/%` operator.
 #' The result is the largest whole number that does not exceed `lhs / rhs`.
 #'
+#' @templateVar dtypes any numeric data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [nv_mod()] for the matching remainder, [nv_div()] for the
@@ -836,50 +999,74 @@ nv_floor_div <- jit(function(lhs, rhs) {
 
 #' @title Bitwise AND
 #' @description
-#' Element-wise bitwise AND of two integer arrays, which for a boolean array
-#' is the logical AND.
+#' Element-wise bitwise AND -- a logical AND on a boolean input, and a
+#' bit-by-bit one on an integer. You can also use the `&` operator, which expects
+#' `bool` inputs, however.
+#' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_and()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' nv_and(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
-#' nv_and(nv_array(12L), nv_array(10L)) # bitwise: 8
-#' nv_array(c(TRUE, FALSE)) & nv_array(c(TRUE, TRUE)) # logical
+#' x <- nv_array(c(TRUE, FALSE, TRUE))
+#' y <- nv_array(c(TRUE, TRUE, FALSE))
+#' x & y
+#'
+#' # different data types are promoted to their common one
+#' nv_and(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
+#'
+#' # a scalar is broadcast
+#' x & TRUE
 #' @export
 nv_and <- make_do_binary(prim_and)
 
 #' @title Bitwise OR
 #' @description
-#' Element-wise bitwise OR of two integer arrays, which for a boolean array
-#' is the logical OR.
+#' Element-wise bitwise OR -- a logical OR on a boolean input, and a
+#' bit-by-bit one on an integer. You can also use the `|` operator,
+#' which expects `bool` inputs, however.
+#' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_or()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' nv_or(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
-#' nv_or(nv_array(12L), nv_array(10L)) # bitwise: 14
-#' nv_array(c(TRUE, FALSE)) | nv_array(c(FALSE, FALSE)) # logical
+#' x <- nv_array(c(TRUE, FALSE, TRUE))
+#' y <- nv_array(c(TRUE, TRUE, FALSE))
+#' x | y
+#'
+#' # different data types are promoted to their common one
+#' nv_or(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
+#'
+#' # a scalar is broadcast
+#' x | TRUE
 #' @export
 nv_or <- make_do_binary(prim_or)
 
 #' @title Bitwise XOR
 #' @description
-#' Element-wise bitwise XOR of two integer arrays, which for a boolean array
-#' is the logical XOR.
+#' Element-wise bitwise XOR -- a logical XOR on a boolean input, and a
+#' bit-by-bit one on an integer.
 #' For *logical* inputs, you can also use `xor`.
+#' @templateVar dtypes any integerish data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_xor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' nv_xor(nv_array(c(TRUE, FALSE, TRUE)), nv_array(c(TRUE, TRUE, FALSE)))
-#' nv_xor(nv_array(12L), nv_array(10L)) # bitwise: 6
-#' xor(nv_array(c(TRUE, FALSE)), nv_array(c(TRUE, TRUE))) # logical
+#' x <- nv_array(c(TRUE, FALSE, TRUE))
+#' y <- nv_array(c(TRUE, TRUE, FALSE))
+#' nv_xor(x, y)
+#'
+#' # different data types are promoted to their common one
+#' nv_xor(nv_scalar(12L, "i32"), nv_scalar(10L, "i64"))
+#'
+#' # a scalar is broadcast
+#' nv_xor(x, TRUE)
 #' @export
 nv_xor <- make_do_binary(prim_xor)
 
 #' @title Shift Left
 #' @description
 #' Element-wise left bit shift.
+#' @templateVar dtypes any integer data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_shift_left()] for the underlying primitive.
@@ -887,12 +1074,19 @@ nv_xor <- make_do_binary(prim_xor)
 #' x <- nv_array(c(1L, 2L, 4L))
 #' y <- nv_array(c(1L, 2L, 1L))
 #' nv_shift_left(x, y)
+#'
+#' # different data types are promoted to their common one
+#' nv_shift_left(nv_scalar(8L, "i32"), nv_scalar(2L, "i64"))
+#'
+#' # a scalar is broadcast
+#' nv_shift_left(x, 1L)
 #' @export
 nv_shift_left <- make_do_binary(prim_shift_left)
 
 #' @title Logical Shift Right
 #' @description
 #' Element-wise logical right bit shift.
+#' @templateVar dtypes any integer data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_shift_right_logical()] for the underlying primitive.
@@ -900,12 +1094,19 @@ nv_shift_left <- make_do_binary(prim_shift_left)
 #' x <- nv_array(c(8L, 16L, 32L))
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_logical(x, y)
+#'
+#' # different data types are promoted to their common one
+#' nv_shift_right_logical(nv_scalar(32L, "i32"), nv_scalar(2L, "i64"))
+#'
+#' # a scalar is broadcast
+#' nv_shift_right_logical(x, 1L)
 #' @export
 nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 
 #' @title Arithmetic Shift Right
 #' @description
 #' Element-wise arithmetic right bit shift.
+#' @templateVar dtypes any integer data type
 #' @template params_lhs_rhs
 #' @template return_binary
 #' @seealso [prim_shift_right_arithmetic()] for the underlying primitive.
@@ -913,20 +1114,35 @@ nv_shift_right_logical <- make_do_binary(prim_shift_right_logical)
 #' x <- nv_array(c(8L, -16L, 32L))
 #' y <- nv_array(c(1L, 2L, 3L))
 #' nv_shift_right_arithmetic(x, y)
+#'
+#' # different data types are promoted to their common one
+#' nv_shift_right_arithmetic(nv_scalar(-32L, "i32"), nv_scalar(2L, "i64"))
+#'
+#' # a scalar is broadcast
+#' nv_shift_right_arithmetic(x, 1L)
 #' @export
 nv_shift_right_arithmetic <- make_do_binary(prim_shift_right_arithmetic)
 
 #' @title Arctangent 2
 #' @description
-#' Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive
-#' x-axis and the point `(rhs, lhs)`.
-#' @template params_lhs_rhs_float
-#' @template return_binary
+#' Element-wise two-argument arctangent, i.e. the angle (in radians) between the positive x-axis
+#' and the point `(rhs, lhs)`.
+#' @template params_lhs_rhs_tofloat
+#' @return ([`arrayish`])\cr
+#'   Has the inputs' broadcast shape, and their common data type -- or the
+#'   default float data type (see [`default_dtypes()`]) where that was an
+#'   integer one.
 #' @seealso [prim_atan2()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' y <- nv_array(c(1, 0, -1))
 #' x <- nv_array(c(0, 1, 0))
 #' nv_atan2(y, x)
+#'
+#' # different data types are promoted to their common one
+#' nv_atan2(nv_scalar(1, "f32"), nv_scalar(1, "f64"))
+#'
+#' # a scalar is broadcast and an R integer is converted to a float
+#' nv_atan2(y, 1L)
 #' @export
 nv_atan2 <- jit(function(lhs, rhs) {
   args <- promote_to_common_float(lhs = lhs, rhs = rhs)
@@ -941,16 +1157,15 @@ nv_atan2 <- jit(function(lhs, rhs) {
 #' Reinterprets the bits of an array as a different data type without modifying
 #' the underlying data. If the target type is narrower, an extra trailing
 #' axis is added; if wider, the last axis is consumed.
-#' @template param_x
-#' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Target data type.
-#' @return [`arrayish`]\cr
-#'   Has the given `dtype`.
-#' @seealso [prim_bitcast_convert()] for the underlying primitive, [nv_convert()]
-#'   for value-preserving type conversion.
+#' @inheritParams prim_bitcast_convert
+#' @return ([`arrayish`])\cr
+#'   Has the given `dtype`, and the shape described under `dtype`.
+#' @seealso [prim_bitcast_convert()], which this is an alias of, and
+#'   [nv_convert()] for value-preserving type conversion.
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(1L)
-#' prim_bitcast_convert(x, dtype = "i8")
+#' # the bits of one i32 reread as four i8, in a new trailing axis
+#' x <- nv_array(1L, dtype = "i32")
+#' nv_bitcast_convert(x, dtype = "i8")
 #' @export
 nv_bitcast_convert <- prim_bitcast_convert
 
@@ -967,130 +1182,173 @@ make_float_unary <- function(f) {
 #' @title Negation
 #' @description
 #' Negates an array element-wise. You can also use the unary `-` operator.
-#' @template param_x
+#' @templateVar dtypes any numeric data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_negate()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, -2, 3))
 #' -x
+#'
+#' # an R value materializes at its default data type
+#' nv_negate(1)
 #' @export
 nv_negate <- prim_negate
 
 #' @title Bitwise Not
 #' @description
-#' Element-wise bitwise NOT of an integer array, which for a boolean array is
-#' the logical NOT.
-#' @template param_x
+#' Element-wise bitwise NOT -- a logical negation on a boolean input, and a
+#' bit-by-bit complement on an integer, so `nv_not(12L)` is `-13`. You can also
+#' use the `!` operator, which expects `bool` inputs.
+#' @templateVar dtypes any integerish data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_not()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
-#' nv_not(nv_array(c(TRUE, FALSE, TRUE)))
-#' nv_not(nv_array(12L)) # bitwise: -13
-#' !nv_array(c(TRUE, FALSE)) # logical
+#' # on a boolean this is a logical negation
+#' x <- nv_array(c(TRUE, FALSE, TRUE))
+#' !x
+#'
+#' # on an integer it complements every bit, so `12L` becomes `-13`
+#' nv_not(nv_array(12L))
 #' @export
 nv_not <- prim_not
 
 #' @title Absolute Value
 #' @description
 #' Element-wise absolute value. You can also use `abs()`.
-#' @template param_x
+#' @templateVar dtypes any signed numeric data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_abs()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 2, -3))
 #' abs(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_abs(-1)
 #' @export
 nv_abs <- prim_abs
 
 #' @title Square Root
 #' @description
 #' Element-wise square root. You can also use `sqrt()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_sqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 4, 9))
 #' sqrt(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_sqrt(4)
 #' @export
 nv_sqrt <- make_float_unary(prim_sqrt)
 
 #' @title Reciprocal Square Root
 #' @description
 #' Element-wise reciprocal square root, i.e. `1 / sqrt(x)`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_rsqrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 4, 9))
 #' nv_rsqrt(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_rsqrt(4)
 #' @export
 nv_rsqrt <- make_float_unary(prim_rsqrt)
 
 #' @title Natural Logarithm
 #' @description
 #' Element-wise natural logarithm. You can also use `log()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_log()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2.718, 7.389))
 #' log(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_log(2)
 #' @export
 nv_log <- make_float_unary(prim_log)
 
 #' @title Hyperbolic Tangent
 #' @description
 #' Element-wise hyperbolic tangent. You can also use `tanh()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_tanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' tanh(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_tanh(1)
 #' @export
 nv_tanh <- make_float_unary(prim_tanh)
 
 #' @title Tangent
 #' @description
 #' Element-wise tangent. You can also use `tan()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_tan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.5, 1))
 #' tan(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_tan(0.5)
 #' @export
 nv_tan <- make_float_unary(prim_tan)
 
 #' @title Sine
 #' @description
 #' Element-wise sine. You can also use `sin()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_sin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, pi / 2, pi))
 #' sin(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_sin(0)
 #' @export
 nv_sin <- make_float_unary(prim_sin)
 
 #' @title Cosine
 #' @description
 #' Element-wise cosine. You can also use `cos()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_cos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, pi / 2, pi))
 #' cos(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_cos(0)
 #' @export
 nv_cos <- make_float_unary(prim_cos)
 
 #' @title Sine of a Multiple of Pi
 #' @description
 #' Element-wise `sin(pi * x)`. You can also use `sinpi()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [nv_cospi()], [nv_tanpi()], [nv_sin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' sinpi(nv_array(c(0, 0.5, 1, 1.5)))
@@ -1106,8 +1364,8 @@ nv_sinpi <- jit(function(x) {
 #' @title Cosine of a Multiple of Pi
 #' @description
 #' Element-wise `cos(pi * x)`. You can also use `cospi()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [nv_sinpi()], [nv_tanpi()], [nv_cos()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' cospi(nv_array(c(0, 0.5, 1, 1.5)))
@@ -1122,8 +1380,8 @@ nv_cospi <- jit(function(x) {
 #' Element-wise `tan(pi * x)`. You can also use `tanpi()`.
 #' Like base R's [base::tanpi()], it is exact for a whole argument and `NaN` at
 #' the half integers, where the tangent has its poles.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [nv_sinpi()], [nv_cospi()], [nv_tan()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' tanpi(nv_array(c(0, 0.25, 0.5, 1)))
@@ -1138,10 +1396,11 @@ nv_tanpi <- jit(function(x) {
 #' @title Floor
 #' @description
 #' Element-wise floor (round toward negative infinity). You can also use `floor()`.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @template return_unary
 #' @seealso [prim_floor()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' floor(x)
 #' floor(nv_array(1:3)) # an integer array is already whole
@@ -1153,10 +1412,11 @@ nv_floor <- function(x) {
 #' @title Ceiling
 #' @description
 #' Element-wise ceiling (round toward positive infinity). You can also use `ceiling()`.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @template return_unary
 #' @seealso [prim_ceil()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' ceiling(x)
 #' ceiling(nv_array(1:3)) # an integer array is already whole
@@ -1168,10 +1428,11 @@ nv_ceiling <- function(x) {
 #' @title Truncate
 #' @description
 #' Element-wise truncation (round toward zero). You can also use `trunc()`.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @template return_unary
 #' @seealso [nv_floor()], [nv_ceiling()], [nv_round()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.2, 2.7, -1.5))
 #' trunc(x)
 #' trunc(nv_array(1:3)) # an integer array is already whole
@@ -1186,169 +1447,242 @@ nv_trunc <- jit(function(x) {
 
 #' @title Sign
 #' @description
-#' Element-wise sign function. You can also use `sign()`.
-#' @template param_x
+#' Element-wise sign function: `-1`, `0` or `1` at the input's data type. An
+#' unsigned input holds no negative value, so its sign is `0` or `1`, like
+#' base R's `sign()` on a non-negative number. You can also use `sign()`.
+#' @templateVar dtypes any numeric data type
+#' @template param_unary_x
 #' @template return_unary
-#' @seealso [prim_sign()] for the underlying primitive.
+#' @seealso [prim_sign()] for the underlying primitive, which takes a signed
+#'   input only.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-3, 0, 5))
 #' sign(x)
+#'
+#' # an unsigned input is 0 where it is 0 and 1 everywhere else
+#' nv_sign(nv_array(c(0L, 3L), dtype = "ui32"))
+#'
+#' # an R value materializes at its default data type
+#' nv_sign(-3)
 #' @export
-nv_sign <- prim_sign
+nv_sign <- jit(function(x) {
+  x <- as_anvl_array(x)
+  if (is_dtype_uint(dtype(x))) {
+    # `prim_sign` takes a signed input only, and an unsigned one is never
+    # negative, so its sign is whether it is non-zero.
+    return(nv_convert(nv_gt(x, 0L), dtype(x)))
+  }
+  prim_sign(x)
+})
 
 #' @title Exponential
 #' @description
 #' Element-wise exponential. You can also use `exp()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_exp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 1, 2))
 #' exp(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_exp(1)
 #' @export
 nv_exp <- make_float_unary(prim_exp)
 
 #' @title Exponential Minus One
 #' @description
-#' Element-wise `exp(x) - 1`, more accurate for small `x`.
-#' @template param_x_float
-#' @template return_unary_float
+#' Element-wise `exp(x) - 1`, more accurate for small `x`. You can also use
+#' `expm1()`.
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_expm1()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_expm1(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_expm1(0.001)
 #' @export
 nv_expm1 <- make_float_unary(prim_expm1)
 
 #' @title Log Plus One
 #' @description
-#' Element-wise `log(1 + x)`, more accurate for small `x`.
-#' @template param_x_float
-#' @template return_unary_float
+#' Element-wise `log(1 + x)`, more accurate for small `x`. You can also use
+#' `log1p()`.
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_log1p()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0, 0.001, 1))
 #' nv_log1p(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_log1p(0.001)
 #' @export
 nv_log1p <- make_float_unary(prim_log1p)
 
 #' @title Cube Root
 #' @description
 #' Element-wise cube root.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_cbrt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 8, 27))
 #' nv_cbrt(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_cbrt(8)
 #' @export
 nv_cbrt <- make_float_unary(prim_cbrt)
 
 #' @title Logistic (Sigmoid)
 #' @description
 #' Element-wise logistic sigmoid: `1 / (1 + exp(-x))`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_logistic()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-2, 0, 2))
 #' nv_logistic(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_logistic(2)
 #' @export
 nv_logistic <- make_float_unary(prim_logistic)
 
 #' @title Arc Cosine
 #' @description
 #' Element-wise inverse cosine. You can also use `acos()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_acos()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' acos(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_acos(0.5)
 #' @export
 nv_acos <- make_float_unary(prim_acos)
 
 #' @title Inverse Hyperbolic Cosine
 #' @description
 #' Element-wise inverse hyperbolic cosine. You can also use `acosh()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_acosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2, 10))
 #' acosh(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_acosh(2)
 #' @export
 nv_acosh <- make_float_unary(prim_acosh)
 
 #' @title Arc Sine
 #' @description
 #' Element-wise inverse sine. You can also use `asin()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_asin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' asin(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_asin(0.5)
 #' @export
 nv_asin <- make_float_unary(prim_asin)
 
 #' @title Inverse Hyperbolic Sine
 #' @description
 #' Element-wise inverse hyperbolic sine. You can also use `asinh()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_asinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' asinh(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_asinh(1)
 #' @export
 nv_asinh <- make_float_unary(prim_asinh)
 
 #' @title Arc Tangent
 #' @description
 #' Element-wise inverse tangent. You can also use `atan()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_atan()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' atan(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_atan(1)
 #' @export
 nv_atan <- make_float_unary(prim_atan)
 
 #' @title Inverse Hyperbolic Tangent
 #' @description
 #' Element-wise inverse hyperbolic tangent. You can also use `atanh()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_atanh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' atanh(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_atanh(0.5)
 #' @export
 nv_atanh <- make_float_unary(prim_atanh)
 
 #' @title Hyperbolic Cosine
 #' @description
 #' Element-wise hyperbolic cosine. You can also use `cosh()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_cosh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' cosh(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_cosh(1)
 #' @export
 nv_cosh <- make_float_unary(prim_cosh)
 
 #' @title Hyperbolic Sine
 #' @description
 #' Element-wise hyperbolic sine. You can also use `sinh()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_sinh()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' sinh(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_sinh(1)
 #' @export
 nv_sinh <- make_float_unary(prim_sinh)
 
@@ -1356,12 +1690,16 @@ nv_sinh <- make_float_unary(prim_sinh)
 #' @description
 #' Element-wise digamma function (logarithmic derivative of the gamma
 #' function). You can also use `digamma()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_digamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' digamma(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_digamma(2)
 #' @export
 nv_digamma <- make_float_unary(prim_digamma)
 
@@ -1369,20 +1707,24 @@ nv_digamma <- make_float_unary(prim_digamma)
 #' @description
 #' Element-wise natural logarithm of the absolute value of the gamma
 #' function. You can also use `lgamma()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_lgamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' lgamma(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_lgamma(2)
 #' @export
 nv_lgamma <- make_float_unary(prim_lgamma)
 
 #' @title Gamma Function
 #' @description
 #' Element-wise gamma function. You can also use `gamma()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [nv_lgamma()], which is what the hardware computes.
 #' @examplesIf pjrt::plugins_downloaded()
 #' gamma(nv_array(c(0.5, 1, 5, -1.5)))
@@ -1405,22 +1747,26 @@ nv_gamma <- jit(function(x) {
 #' @title Polygamma
 #' @description
 #' Element-wise polygamma function: the `(n+1)`-th derivative of the
-#' log-gamma function. The order `n` is broadcast against `x` (so
-#' `nv_polygamma(1, x)` works for any `x`). For `n = 0` this is the
-#' digamma function; for `n = 1`, `trigamma()` dispatches here.
-#'
-#' Inputs are
-#' [promoted to a common floating data type][nv_promote_to_common()] and
-#' scalar arguments are
-#' [broadcast][nv_broadcast_scalars()] to the shape of the non-scalar
-#' arguments.
+#' log-gamma function. For `n = 0` this is the digamma function; for `n = 1`,
+#' `trigamma()` dispatches here.
 #' @param n,x ([`arrayish`])\cr
-#'   Floating-point arrayish values; an integer `x` is computed at the default
-#'   float data type. After promotion and broadcasting, `n` and `x` must have
-#'   the same shape; `n` typically holds non-negative integer values.
-#' @template return_binary
+#'   Order of the polygamma function and the value to evaluate it at. `n`
+#'   typically holds non-negative whole numbers. Can be any numeric data type:
+#'   the two are [promoted to a common data type][nv_promote_to_common()] and
+#'   that is then converted to the default float data type (see
+#'   [`default_dtypes()`]) where it is not a float already, since a float is
+#'   all [prim_polygamma()] takes. An R value assumes the other operand's data
+#'   type within its [data type category][dtypes], and settles on the default
+#'   float when neither has one.
+#'   Scalars are [broadcast][nv_broadcast_scalars()] to the shape of the other,
+#'   so `nv_polygamma(1, x)` works for any float `x`.
+#' @return ([`arrayish`])\cr
+#'   Has the inputs' broadcast shape, and their common data type -- or the
+#'   default float data type (see [`default_dtypes()`]) where that was an
+#'   integer one.
 #' @seealso [prim_polygamma()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the R `1` is built at `x`'s float data type and broadcast
 #' x <- nv_array(c(0.5, 1, 2, 5))
 #' nv_polygamma(1, x) # trigamma
 #' @export
@@ -1433,58 +1779,90 @@ nv_polygamma <- jit(function(n, x) {
 #' @title Error Function
 #' @description
 #' Element-wise error function `erf(x) = (2 / sqrt(pi)) * integral_0^x exp(-t^2) dt`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_erf()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erf(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_erf(1)
 #' @export
 nv_erf <- make_float_unary(prim_erf)
 
 #' @title Inverse Error Function
 #' @description
 #' Element-wise inverse error function (the inverse of `erf` on `(-1, 1)`).
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_erf_inv()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-0.5, 0, 0.5))
 #' nv_erf_inv(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_erf_inv(0.5)
 #' @export
 nv_erf_inv <- make_float_unary(prim_erf_inv)
 
 #' @title Complementary Error Function
 #' @description
 #' Element-wise complementary error function `erfc(x) = 1 - erf(x)`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [prim_erfc()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(-1, 0, 1))
 #' nv_erfc(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_erfc(1)
 #' @export
 nv_erfc <- make_float_unary(prim_erfc)
 
 #' @title Is Finite
 #' @description
 #' Element-wise check if values are finite (not `Inf`, `-Inf`, or `NaN`).
-#' @template param_x
+#' Only a float holds a non-finite value, so the answer for any other data
+#' type is all `TRUE` and is built as a constant rather than computed, the way
+#' base R's `is.finite()` answers `TRUE` for an integer.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @template return_unary_boolean
-#' @seealso [prim_is_finite()] for the underlying primitive.
+#' @seealso [prim_is_finite()] for the underlying primitive, which takes a
+#'   float only.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the result is boolean, whatever float data type the input has
 #' x <- nv_array(c(1, Inf, NaN, -Inf, 0))
 #' nv_is_finite(x)
+#'
+#' # all TRUE for an integer input, which has no non-finite value
+#' nv_is_finite(nv_array(1:3))
+#'
+#' # an R value materializes at its default data type before the test
+#' nv_is_finite(1)
 #' @export
-nv_is_finite <- prim_is_finite
+nv_is_finite <- jit(function(x) {
+  x <- as_anvl_array(x)
+  if (!is_dtype_float(dtype(x))) {
+    return(nv_fill_like(x, TRUE, dtype = "bool"))
+  }
+  prim_is_finite(x)
+})
 
 #' @title Population Count
 #' @description
 #' Element-wise population count (number of set bits).
-#' @template param_x
+#' @templateVar dtypes any integer data type
+#' @template param_unary_x
 #' @template return_unary
 #' @seealso [prim_popcnt()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the set bits are counted, at the input's own integer data type
 #' x <- nv_array(c(7L, 3L, 15L))
 #' nv_popcnt(x)
 #' @export
@@ -1492,18 +1870,26 @@ nv_popcnt <- prim_popcnt
 
 #' @title Clamp
 #' @description
-#' Element-wise clamp: `max(min_val, min(x, max_val))`.
-#' Converts `min_val` and `max_val` to the data type of `x`.
-#' @details
-#' The underlying StableHLO function already broadcasts scalars, so no need to broadcast manually.
+#' Element-wise clamp: `min(max(min_val, x), max_val)`.
 #' @param min_val,max_val ([`arrayish`])\cr
-#'   Minimum and maximum values (scalar or same shape as `x`).
-#' @template param_x
-#' @template return_unary
+#'   Lower and upper bound, each scalar or the same shape as `x`. They are
+#'   brought to `x`'s data type: an R value is built at it when its category can
+#'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
+#'   one), and a value that already has a data type is converted unless that
+#'   would narrow it -- an `f64` bound for an `f32` `x` is an error rather than
+#'   a silent narrowing.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s shape and data type.
 #' @seealso [prim_clamp()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the bounds are brought to `x`'s data type
 #' x <- nv_array(c(-1, 0.5, 2))
 #' nv_clamp(nv_scalar(0), x, nv_scalar(1))
+#'
+#' # an R integer serves a float `x` too, since a float can hold it
+#' nv_clamp(0L, x, 1L)
 #' @export
 nv_clamp <- jit(function(min_val, x, max_val) {
   args <- as_anvl_arrays(min_val = min_val, x = x, max_val = max_val, .promote = promotion_like("x"))
@@ -1514,14 +1900,16 @@ nv_clamp <- jit(function(min_val, x, max_val) {
 #' @description
 #' Reverses the order of elements along the given axes, every axis by default.
 #' You can also use `rev()`, which always reverses along every axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axes (`integer()` | `NULL`)\cr
 #'   Axes to reverse. Negative values count from the end, i.e. `-1` refers to
 #'   the last axis. If `NULL` (default), reverses along every axis.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [prim_reverse()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the order along axis 1 is flipped
 #' x <- nv_array(c(1, 2, 3, 4, 5))
 #' nv_reverse(x)
 #'
@@ -1554,17 +1942,23 @@ nv_reverse <- function(x, axes = NULL) {
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_iota_like()`).
-#' @template param_dtype
-#' @template param_shape
+#' @param dtype (`character(1)` | [`DataType`])\cr
+#'   Data type of the result, required here. Can be any numeric data type.
+#'   For `nv_iota_like()` it may be `NULL`, which uses `dtype(like)`.
+#' @param shape (`integer()`)\cr
+#'   Shape of the result.
 #' @param start (`integer(1)`)\cr
-#'   Starting value (default 1).
+#'   Starting value (default 1). Built at `dtype`, as the increments are.
 #' @template param_device
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the given `dtype` and `shape`.
 #' @seealso [nv_seq()] for a simpler 1-D sequence, [nv_linspace()] for evenly
 #'   spaced values, [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the sequence is built at the requested data type
 #' nv_iota(axis = 1L, dtype = "i32", shape = 5L)
+#'
+#' # `_like` takes shape, data type and device from an existing array
 #' x <- nv_fill(0L, shape = c(2, 3))
 #' nv_iota_like(x, axis = 1L)
 #' @export
@@ -1587,20 +1981,32 @@ nv_iota <- prim_iota
 #'   towards `end`. `NULL` (default) uses `-1` if `start > end` and `1`
 #'   otherwise.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type. `NULL` (default) uses the backend's default integer data type
-#'   (see [`default_dtypes()`]). For `nv_seq_like()`, `NULL` uses `dtype(like)`.
+#'   Data type of the result. Can be any numeric data type.
+#'   `NULL` (default) uses the default integer data
+#'   type (see [`default_dtypes()`]), since the values are whole. For
+#'   `nv_seq_like()`, `NULL` uses `dtype(like)`.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_seq_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
-#'   1-D array of length `(end - start) %/% by + 1`.
+#' @return ([`arrayish`])\cr
+#'   Has `dtype` and shape `(end - start) %/% by + 1`.
 #' @seealso [nv_linspace()] for a given number of evenly spaced values,
+#'   [nv_iota()] for values increasing along an axis of any shape,
 #'   [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_seq(3, 7)
+#'
+#' # a range that counts down needs no `by`
 #' nv_seq(7, 3)
-#' nv_seq(0, 10, by = 2)
+#'
+#' # `end` is only reached where a whole number of steps lands on it
+#' nv_seq(0, 9, by = 2)
+#'
+#' # a float data type gives the same values as floats
+#' nv_seq(3, 7, dtype = "f32")
+#'
+#' # nv_seq_like() takes the data type and device from an existing array
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_seq_like(x, 1, 5)
 #' @export
@@ -1637,10 +2043,8 @@ nv_seq <- jit(
 #' Creates a 1-D array with `steps` evenly spaced values from `start` to `end`
 #' (both inclusive), like R's `seq(start, end, length.out = steps)`.
 #'
-#' The spacing `(end - start) / (steps - 1)` is generally not a whole number, so
-#' the result is floating-point and `dtype` must name a float data type. Convert
-#' the result with [`nv_convert()`] to obtain integers, which leaves the
-#' rounding yours to choose.
+#' The spacing `(end - start) / (steps - 1)` is generally not a whole number,
+#' so the result is a float.
 #'
 #' `nv_linspace_like()` is a variant where `dtype` and `device`
 #' default to those of `like`.
@@ -1651,19 +2055,32 @@ nv_seq <- jit(
 #'   Number of values to generate. Must be at least 1; for `steps = 1` the
 #'   result is `start`.
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Floating-point data type. `NULL` (default) uses the backend's default
-#'   float data type (see [`default_dtypes()`]).
-#'   For `nv_linspace_like()`, `NULL` uses `dtype(like)`, which must then be a
-#'   floating-point data type.
+#'   Data type of the result. Must be a float data type; `NULL` (default) uses
+#'   the default float data type (see [`default_dtypes()`]), since
+#'   the spacing is fractional. For `nv_linspace_like()`, `NULL` uses
+#'   `dtype(like)`, which must then be a float too.
 #' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_linspace_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
-#'   1-D array of length `steps`.
-#' @seealso [nv_seq()] for consecutive integers.
+#' @return ([`arrayish`])\cr
+#'   Has `dtype` and shape `steps`.
+#' @seealso [nv_seq()] for consecutive integers, [nv_iota()] for values
+#'   increasing along an axis of any shape, [`dtypes`] for the data type
+#'   categories.
 #' @examplesIf pjrt::plugins_downloaded()
 #' nv_linspace(0, 1, steps = 5L)
+#'
+#' # end below start counts down
+#' nv_linspace(1, 0, steps = 3L)
+#'
+#' # steps = 1 gives start alone
+#' nv_linspace(2.5, 10, steps = 1L)
+#'
+#' # the data type must be a float; convert afterwards for integers
+#' nv_convert(nv_linspace(0, 10, steps = 5L), "i32")
+#'
+#' # nv_linspace_like() takes the data type and device from an existing array
 #' x <- nv_array(c(1, 2, 3), dtype = "f64")
 #' nv_linspace_like(x, 0, 1, steps = 3L)
 #' @export
@@ -1689,13 +2106,15 @@ nv_linspace <- jit(
 #' @title Pad
 #' @description
 #' Pads an array with a given value at the edges and optionally between elements.
-#' @template param_x
+#' @param x ([`arrayish`])\cr
+#'   The array to pad. Can be any data type; `padding_value` is brought to it.
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. It is brought to `x`'s data type: an R
-#'   value is built at it (`nv_pad(x_f64, 0)`, and `0L` does just as well),
-#'   and a value that already has one is converted, unless `x`'s data type
-#'   cannot hold it -- an `f64` padding value for an `f32` array is an error
-#'   rather than a silent narrowing.
+#'   Scalar value to use for padding. It is
+#'   brought to `x`'s data type: an R value is built at it when its category can
+#'   reach it (`0L` serves an integer and a float `x` alike, `0` only a float
+#'   one), and a value that already has a data type is converted unless that
+#'   would narrow it -- an `f64` padding value for an `f32` `x` is an error rather than
+#'   a silent narrowing.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr
@@ -1703,10 +2122,13 @@ nv_linspace <- jit(
 #' @param interior_padding (`integer()` | `NULL`)\cr
 #'   Amount of padding to add between elements in each axis.
 #'   If `NULL` (default), no interior padding is applied.
-#' @return [`arrayish`]\cr
-#'   Has the same data type as `x`.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type. Each axis grows by
+#'   `edge_padding_low + edge_padding_high`, plus `interior_padding` between
+#'   every pair of elements; negative edge padding trims.
 #' @seealso [prim_pad()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # two zeros in front, one behind
 #' x <- nv_array(c(1, 2, 3))
 #' nv_pad(x, nv_scalar(0), edge_padding_low = 2L, edge_padding_high = 1L)
 #' @export
@@ -1727,13 +2149,14 @@ nv_pad <- function(x, padding_value, edge_padding_low, edge_padding_high, interi
 #' @title Round
 #' @description
 #' Element-wise rounding to a whole number.
-#' @template param_x_round
+#' @template param_unary_x_round
 #' @param method (`character(1)`)\cr
 #'   Rounding method.
 #'   Either `"nearest_even"` (default) or `"afz"` (away from zero).
 #' @template return_unary
 #' @seealso [prim_round()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1.4, 2.5, 3.6))
 #' nv_round(x)
 #' nv_round(nv_array(1:3)) # an integer array is already whole
@@ -1753,15 +2176,19 @@ nv_round <- function(x, method = "nearest_even") {
 #' - `rhs`: `(b1, ..., bk, n, p)`
 #' - output: `(b1, ..., bk, m, p)`
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   Numeric arrays with at least 2 axes.
-#'   Operands are [promoted to a common data type][nv_promote_to_common()].
+#'   Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
+#'   [promoted to a common data type][nv_promote_to_common()]. An R value
+#'   assumes the data type of the other operand, and materializes at its
+#'   [default data type][default_dtypes] when that has none either.
 #' @param precision (`character(1)`)\cr
 #'   Controls the trade-off between speed and numerical accuracy of the
 #'   operation. One of `"highest"` (default), `"high"` or `"default"`.
 #'   See [prim_dot_general()] for details.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type and the shape given under Shapes.
 #' @seealso [prim_dot_general()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a 2x3 times a 3x2 gives a 2x2 at the operands' common data type
 #' x <- nv_matrix(1:6, nrow = 2)
 #' y <- nv_matrix(1:6, nrow = 3)
 #' nv_matmul(x, y)
@@ -1819,23 +2246,36 @@ nv_matmul <- jit(
 #' @description
 #' Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 #' Supports batched inputs: axes before the last two are batch axes.
-#' @param x ([`arrayish`])\cr
-#'   Symmetric positive-definite matrix with at least 2 axes.
-#'   The last two axes form the square matrix; any leading axes
-#'   are batch axes.
+#' @details
+#' Differentiation is only implemented for a single matrix: a [gradient()] of a
+#' batched decomposition errors.
+#' @templateVar shapes a symmetric positive-definite matrix with at least 2 axes, the last two forming the square matrix and any leading ones batch axes
+#' @template param_unary_x_tofloat
 #' @param lower (`logical(1)`)\cr
 #'   If `FALSE` (default, matching base R's [base::chol()]), compute the
 #'   upper triangular factor `U` such that `x = t(U) %*% U`. If
 #'   `TRUE`, compute the lower triangular factor `L` such that
 #'   `x = L %*% t(L)`.
-#' @return [`arrayish`]\cr
-#'   Triangular matrix with the same shape and data type as the input.
+#' @return ([`arrayish`])\cr
+#'   Triangular matrix with the input's shape, and its data type -- or the
+#'   default float data type (see [`default_dtypes()`]) where the input was an
+#'   integer one. The values in the triangle not selected by `lower` are
+#'   implementation-defined.
 #' @seealso [nv_solve()], [prim_chol()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the factor has the matrix's shape and data type
 #' a <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f32")
 #' nv_chol(a)
+#'
+#' # an integer matrix is factored at the default float data type
+#' nv_chol(nv_matrix(c(4L, 2L, 2L, 3L), nrow = 2))
 #' @export
-nv_chol <- prim_chol
+nv_chol <- jit(
+  function(x, lower = FALSE) {
+    prim_chol(as_anvl_array(int_to_float(x)), lower = lower)
+  },
+  static = "lower"
+)
 
 #' @title Solve Linear System
 #' @description
@@ -1854,24 +2294,33 @@ nv_chol <- prim_chol
 #' - output: same shape as `b`
 #'
 #' @param a ([`arrayish`])\cr
-#'   Square non-singular matrix.
+#'   Square non-singular matrix with exactly 2 axes. Can be any numeric data
+#'   type: `a` and `b` are
+#'   [promoted to a common data type][nv_promote_to_common()] and that is then
+#'   converted to the default float data type (see [`default_dtypes()`]) where
+#'   it is not a float already, since the decomposition is a float one. An R
+#'   value assumes the other operand's data type within its
+#'   [data type category][dtypes], and settles on the default float when
+#'   neither has one.
 #' @param b ([`arrayish`])\cr
-#'   Right-hand side, vector of length `n` or matrix with `n` rows. Must
-#'   have the same data type as `a`.
-#' @return [`arrayish`]\cr
-#'   The solution `x` such that `a %*% x = b`.
+#'   Right-hand side, vector of length `n` or matrix with `n` rows. Promoted
+#'   together with `a` -- see `a`.
+#' @return ([`arrayish`])\cr
+#'   The solution `x` such that `a %*% x = b`, with `b`'s shape and the
+#'   operands' common data type -- or the default float data type (see
+#'   [`default_dtypes()`]) where that was an integer one.
 #' @seealso [nv_chol()], [nv_triangular_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the solution has `b`'s shape and the operands' common data type
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' b <- nv_matrix(c(1, 2), nrow = 2, dtype = "f64")
 #' nv_solve(a, b)
+#'
+#' # an integer system is solved at the default float data type
+#' nv_solve(nv_matrix(c(3L, 1L, 1L, 2L), nrow = 2), nv_array(c(9L, 8L)))
 #' @export
 nv_solve <- jit(function(a, b) {
-  args <- promote_float_operands(
-    a = a,
-    b = b,
-    hint = "`a` and `b` are promoted together, so the common data type must be a float."
-  )
+  args <- promote_to_common_float(a = a, b = b)
   a <- args$a
   b <- args$b
   a_shape <- shape(a)
@@ -1913,9 +2362,19 @@ nv_solve <- jit(function(a, b) {
 #' `(B..., n, n)`). It is reshaped internally to a column (`left_side =
 #' TRUE`) or row (`left_side = FALSE`) and reshaped back on the way out.
 #' Because we don't broadcast, this is not ambiguous (as it would be for NumPy).
+#'
+#' Differentiation is only implemented for a single system: a [gradient()] of a
+#' batched solve errors.
 #' @param a ([`arrayish`])\cr
 #'   Triangular coefficient matrix with at least 2 axes. The last two
-#'   axes must be equal; any leading axes are batch axes.
+#'   axes must be equal; any leading axes are batch axes. Can be any numeric
+#'   data type: `a` and `b` are
+#'   [promoted to a common data type][nv_promote_to_common()] and that is then
+#'   converted to the default float data type (see [`default_dtypes()`]) where
+#'   it is not a float already, since the solve is a float one. An R value
+#'   assumes the other operand's data type within its
+#'   [data type category][dtypes], and settles on the default float when
+#'   neither has one.
 #' @param b ([`arrayish`])\cr
 #'   Right-hand side. For `a` of shape `(B..., n, n)`, `b` may be either:
 #'   * full rank — shape `(B..., n, k)` when `left_side = TRUE`, or
@@ -1925,7 +2384,8 @@ nv_solve <- jit(function(a, b) {
 #'     is reshaped internally and the reshape is undone on the result so
 #'     the output rank matches `b`.
 #'
-#'   `b`'s batch axes (`B...`) must match `a`'s exactly.
+#'   `b`'s batch axes (`B...`) must match `a`'s exactly. It is promoted
+#'   together with `a` -- see `a`.
 #' @param left_side (`logical(1)`)\cr
 #'   If `TRUE` (default), solve `op(a) %*% x = b`; if `FALSE`,
 #'   solve `x %*% op(a) = b`.
@@ -1936,8 +2396,10 @@ nv_solve <- jit(function(a, b) {
 #'   values on the diagonal are ignored). Defaults to `FALSE`.
 #' @param transpose_a (`logical(1)`)\cr
 #'   If `TRUE`, solve with `t(a)` in place of `a`. Defaults to `FALSE`.
-#' @return [`arrayish`]\cr
-#'   The solution `x`, with the same shape and dtype as `b`.
+#' @return ([`arrayish`])\cr
+#'   The solution `x`, with `b`'s shape and the operands' common data type --
+#'   or the default float data type (see [`default_dtypes()`]) where that was
+#'   an integer one.
 #' @seealso [nv_solve()], [nv_chol()], [prim_triangular_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' L <- nv_matrix(c(2, 1, 0, 3), nrow = 2, dtype = "f32")
@@ -1953,11 +2415,7 @@ nv_triangular_solve <- jit(
     unit_diagonal = FALSE,
     transpose_a = FALSE
   ) {
-    args <- promote_float_operands(
-      a = a,
-      b = b,
-      hint = "`a` and `b` are promoted together, so the common data type must be a float."
-    )
+    args <- promote_to_common_float(a = a, b = b)
     a <- args$a
     b <- args$b
 
@@ -2024,11 +2482,14 @@ lu_pivot_sign <- function(pivots, n, dt) {
 #' @title Determinant
 #' @description
 #' Computes the determinant of a square matrix via [`nv_determinant()`].
-#' @param x ([`arrayish`])\cr
-#'   Square matrix of floating-point data type.
-#' @return Scalar [`arrayish`] with the same dtype as `x`.
+#' @templateVar shapes a square matrix with exactly 2 axes
+#' @template param_unary_x_tofloat
+#' @return ([`arrayish`])\cr
+#'   A scalar with the input's data type -- or the default float data type
+#'   (see [`default_dtypes()`]) where the input was an integer one.
 #' @seealso [nv_determinant()], [nv_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a scalar with the matrix's data type
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_det(a)
 #' @export
@@ -2052,24 +2513,27 @@ nv_det <- jit(function(x) {
 #' Matching base R's `det_ge_real`, the magnitude is computed in log
 #' space when `logarithm = TRUE` (\eqn{\sum_i \log|U_{ii}|}) and as a
 #' direct product when `logarithm = FALSE` (\eqn{\prod_i |U_{ii}|}).
-#' @param x ([`arrayish`])\cr
-#'   Square matrix of floating-point data type.
+#' @templateVar shapes a square matrix with exactly 2 axes
+#' @template param_unary_x_tofloat
 #' @param logarithm (`logical(1)`)\cr
 #'   If `TRUE` (default, matching base R), `modulus` is
 #'   `log(abs(det(x)))`. If `FALSE`, `modulus` is `abs(det(x))`.
-#' @return Named `list` with elements `modulus` and `sign`, both scalar
-#'   [`arrayish`] with the same dtype as `x`. The full determinant
-#'   is `sign * exp(modulus)` (with `logarithm = TRUE`) or
-#'   `sign * modulus` (with `logarithm = FALSE`).
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `modulus` and `sign`, both scalar [`arrayish`] with `x`'s data
+#'   type -- or the default float data type (see [`default_dtypes()`]) where
+#'   `x` was an integer one. The full determinant is `sign * exp(modulus)`
+#'   (with `logarithm = TRUE`) or `sign * modulus` (with
+#'   `logarithm = FALSE`).
 #' @seealso [nv_det()], [nv_solve()], [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `modulus` and `sign` are scalars with the matrix's data type
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_determinant(a)
 #' nv_determinant(a, logarithm = FALSE)
 #' @export
 nv_determinant <- jit(
   function(x, logarithm = TRUE) {
-    x <- as_anvl_array(x)
+    x <- as_anvl_array(int_to_float(x))
     # Adopted from: https://github.com/wch/r-source/blob/ed837b19e0a90df72cedb007583dd4d7604aea2d/src/modules/lapack/Lapack.c#L1408-L1464
     shp <- shape(x)
     if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
@@ -2117,22 +2581,20 @@ nv_determinant <- jit(
 #' For most use cases prefer [nv_solve()] directly: forming the explicit
 #' inverse is both slower and less numerically stable than solving against
 #' a right-hand side.
-#' @param x ([`arrayish`])\cr
-#'   Square non-singular matrix.
-#' @return [`arrayish`]\cr
-#'   The inverse, same shape and dtype as `x`.
+#' @templateVar shapes a square non-singular matrix with exactly 2 axes
+#' @template param_unary_x_tofloat
+#' @return ([`arrayish`])\cr
+#'   The inverse, with the input's shape, and its data type -- or the default
+#'   float data type (see [`default_dtypes()`]) where the input was an integer
+#'   one.
 #' @seealso [nv_solve()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the inverse has the matrix's shape and data type
 #' a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_inv(a)
 #' @export
 nv_inv <- jit(function(x) {
-  x <- as_anvl_array(x)
-  assert_float_dtype(
-    dtype(x),
-    arg = "x",
-    hint = "The inverse is computed through an LU decomposition, which needs a float."
-  )
+  x <- as_anvl_array(int_to_float(x))
   shp <- shape(x)
   if (length(shp) != 2L || shp[[1L]] != shp[[2L]]) {
     cli_abort("{.arg x} must be a square 2-D matrix")
@@ -2148,13 +2610,26 @@ nv_inv <- jit(function(x) {
 })
 
 #' @title QR Decomposition
-#' @inherit prim_qr description params return details
+#' @inherit prim_qr description details
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x_tofloat
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `Q` (shape `(m, k)`) and `R` (shape `(k, n)`), where
+#'   `(m, n) = shape(x)` and `k = min(m, n)`. Both have the input's data type
+#'   -- or the default float data type (see [`default_dtypes()`]) where the
+#'   input was an integer one.
 #' @seealso [prim_qr()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `Q` is 3x2 and `R` 2x2, both at the input's data type
 #' x <- nv_matrix(c(1, 2, 3, 4, 5, 6), nrow = 3, dtype = "f32")
 #' nv_qr(x)
+#'
+#' # an integer matrix is decomposed at the default float data type
+#' nv_qr(nv_matrix(1:6, nrow = 3))
 #' @export
-nv_qr <- prim_qr
+nv_qr <- jit(function(x) {
+  prim_qr(as_anvl_array(int_to_float(x)))
+})
 
 #' @title LU Decomposition
 #' @description
@@ -2165,23 +2640,30 @@ nv_qr <- prim_qr
 #'
 #' This function returns `L` and `U` as separate matrices.
 #' Use [`prim_lu()`] to get them in packed `LU` form.
-#' @inheritParams prim_lu
-#' @return Named `list`:
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x_tofloat
+#' @return (named `list` of [`arrayish`])\cr
+#'   `L` and `U` have the input's data type -- or the default float data type
+#'   (see [`default_dtypes()`]) where the input was an integer one; `pivots`
+#'   and `permutation` are indices at the default integer data type (see
+#'   [`default_dtypes()`]).
+#'
 #'   * `L` -- unit lower-triangular factor of shape `(m, k)`, where
 #'     `(m, n) = shape(x)` and `k = min(m, n)`.
 #'   * `U` -- upper-triangular factor of shape `(k, n)`.
-#'   * `pivots` -- length `k`, of the default integer data type (see
-#'     [`default_dtypes()`]). LAPACK-style sequential 1-based row swaps as
-#'     returned by `getrf`.
-#'   * `permutation` -- length `m`, of the default integer data type. A
-#'     1-based permutation vector representing \eqn{P}.
+#'   * `pivots` -- length `k`, at the default integer data type (see
+#'     [`default_dtypes()`]). LAPACK-style sequential row swaps as returned by
+#'     `getrf`.
+#'   * `permutation` -- length `m`, at that same data type. A permutation
+#'     vector representing \eqn{P}.
 #' @seealso [prim_lu()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `L` and `U` keep the input's data type; the pivots are the default integer
 #' x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 #' nv_lu(x)
 #' @export
 nv_lu <- jit(function(x) {
-  x <- as_anvl_array(x)
+  x <- as_anvl_array(int_to_float(x))
   out <- prim_lu(x)
   LU <- out$LU
   shp <- shape(LU)
@@ -2215,31 +2697,55 @@ nv_lu <- jit(function(x) {
 })
 
 #' @title Singular Value Decomposition
-#' @inherit prim_svd description params return details
+#' @inherit prim_svd description details
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x_tofloat
+#' @return (named `list` of three [`arrayish`])\cr
+#'   Elements `d` (length `k`), `u` (shape `(m, k)`), and `vt` (shape
+#'   `(k, n)`). All have the input's data type -- or the default float data
+#'   type (see [`default_dtypes()`]) where the input was an integer one.
 #' @seealso [prim_svd()], [base::svd()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # all three outputs have the input's data type
 #' x <- nv_matrix(c(1, 0, 0, 1, 0, 1), nrow = 3, dtype = "f64")
 #' nv_svd(x)
 #' @export
-nv_svd <- prim_svd
+nv_svd <- jit(function(x) {
+  prim_svd(as_anvl_array(int_to_float(x)))
+})
 
 #' @title Symmetric Eigendecomposition
-#' @inherit prim_eigh description params return details
+#' @inherit prim_eigh description details
+#' @templateVar shapes a symmetric square matrix with exactly 2 axes
+#' @template param_unary_x_tofloat
+#' @return (named `list` of two [`arrayish`])\cr
+#'   Elements `values` (length `n`) and `vectors` (shape `(n, n)`). Both have
+#'   the input's data type -- or the default float data type (see
+#'   [`default_dtypes()`]) where the input was an integer one.
 #' @seealso [prim_eigh()], [base::eigen()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # values and vectors both have the input's data type
 #' x <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
 #' nv_eigh(x)
+#'
+#' # an integer matrix is decomposed at the default float data type
+#' nv_eigh(nv_matrix(c(2L, 1L, 1L, 2L), nrow = 2))
 #' @export
-nv_eigh <- prim_eigh
+nv_eigh <- jit(function(x) {
+  prim_eigh(as_anvl_array(int_to_float(x)))
+})
 
 #' @title Diagonal Matrix
 #' @description
 #' Creates a diagonal matrix from a 1-D array.
-#' @param x ([`arrayish`])\cr
-#'   A 1-D array of length `n` whose elements become the diagonal entries.
-#' @return [`arrayish`]\cr
-#'   An `n x n` matrix with `x` on the diagonal and zeros elsewhere.
+#' @templateVar dtypes any data type
+#' @templateVar shapes a 1-D array of length `n` whose elements become the diagonal entries
+#' @template param_unary_x
+#' @return ([`arrayish`])\cr
+#'   Has the input's data type and shape `(n, n)`, with the input on the
+#'   diagonal and zeros elsewhere.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the vector becomes the diagonal of a 3x3 matrix
 #' nv_diag(nv_array(c(1, 2, 3)))
 #' @export
 nv_diag <- jit(function(x) {
@@ -2276,18 +2782,23 @@ nv_diag <- jit(function(x) {
 #' `like`.
 #' @param n (`integer(1)`)\cr
 #'   Size of the identity matrix.
-#' @param like ([`arrayish`])\cr
+#' @param like ([`AnvlArray`])\cr
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_eye_like()`).
 #' @param dtype (`NULL` | `character(1)` | [`DataType`])\cr
-#'   Data type. `NULL` (default) uses the backend's default float data type
-#'   (see [`default_dtypes()`]).
+#'   Data type of the result. Can be any data type; `NULL` (default) uses the
+#'   default float data type (see [`default_dtypes()`]). For
+#'   `nv_eye_like()`, `NULL` uses `dtype(like)`.
 #' @template param_device
-#' @return [`arrayish`]\cr
-#'   An `n x n` identity matrix.
+#' @return ([`arrayish`])\cr
+#'   Has the given `dtype` and shape `(n, n)`: ones on the diagonal, zeros
+#'   elsewhere.
 #' @seealso [nv_diag()] for general diagonal matrices.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a 3x3 identity matrix
 #' nv_eye(3L)
+#'
+#' # `_like` takes the data type and device from an existing array
 #' x <- nv_fill(0, shape = c(3, 3), dtype = "f64")
 #' nv_eye_like(x, 3L)
 #' @export
@@ -2351,15 +2862,27 @@ nv_eye <- jit(
 #' @description
 #' Sums array elements along the specified axes.
 #' A boolean array is counted, like [base::sum()] does.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @template return_reduce_accumulate
+#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at the default integer data type (see [`default_dtypes()`])
+#' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_sum()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_sum(x)            # all axes -> scalar
+#' # no axes given: reduce over all of them
+#' nv_reduce_sum(x)
+#'
+#' # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_sum(x, axes = 1L)
+#' nv_reduce_sum(x, axes = 1L, drop = FALSE)
+#'
+#' # negative axes count from the end
+#' nv_reduce_sum(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)))
 #' nv_reduce_sum(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' nv_reduce_sum(nv_array(c(TRUE, FALSE, TRUE))) # counts: 2
@@ -2381,15 +2904,27 @@ nv_reduce_sum <- jit(
 #' @description
 #' Computes the arithmetic mean along the specified axes. You can also
 #' use `mean()`.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
+#' @templateVar dtype_out the input's data type where that is a float, and the default float data type (see [`default_dtypes()`]) otherwise
 #' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [nv_reduce_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_mean(x)            # all axes -> scalar
+#' # an integer input is averaged at the default float data type
+#' nv_mean(x)
+#'
+#' # a float input keeps its own, whatever the default float is
+#' nv_mean(nv_array(c(1, 2), dtype = "f64"))
+#'
+#' # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_mean(x, axes = 1L)
+#' nv_mean(x, axes = 1L, drop = FALSE)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_mean(nv_array(c(1, NaN, 3)))
 #' nv_mean(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2414,15 +2949,27 @@ nv_mean <- jit(
 #' @description
 #' Multiplies array elements along the specified axes.
 #' A boolean array is multiplied as zeroes and ones, like [base::prod()] does.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @template return_reduce_accumulate
+#' @templateVar dtype_out the input's data type, except a boolean input, which is accumulated at the default integer data type (see [`default_dtypes()`])
+#' @template return_reduce
 #' @template param_nan_rm
 #' @seealso [prim_reduce_prod()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_prod(x)            # all axes -> scalar
+#' # no axes given: reduce over all of them
+#' nv_reduce_prod(x)
+#'
+#' # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_prod(x, axes = 1L)
+#' nv_reduce_prod(x, axes = 1L, drop = FALSE)
+#'
+#' # negative axes count from the end
+#' nv_reduce_prod(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)))
 #' nv_reduce_prod(nv_array(c(2, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2442,15 +2989,27 @@ nv_reduce_prod <- jit(
 #' @title Max Reduction
 #' @description
 #' Finds the maximum of array elements along the specified axes.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @template param_nan_rm
+#' @templateVar dtype_out the input's data type
 #' @template return_reduce
 #' @seealso [prim_reduce_max()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_max(x)            # all axes -> scalar
+#' # no axes given: reduce over all of them
+#' nv_reduce_max(x)
+#'
+#' # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_max(x, axes = 1L)
+#' nv_reduce_max(x, axes = 1L, drop = FALSE)
+#'
+#' # negative axes count from the end
+#' nv_reduce_max(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_max(nv_array(c(1, NaN, 3)))
 #' nv_reduce_max(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2467,15 +3026,27 @@ nv_reduce_max <- jit(
 #' @title Min Reduction
 #' @description
 #' Finds the minimum of array elements along the specified axes.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @template param_nan_rm
+#' @templateVar dtype_out the input's data type
 #' @template return_reduce
 #' @seealso [prim_reduce_min()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' nv_reduce_min(x)            # all axes -> scalar
+#' # no axes given: reduce over all of them
+#' nv_reduce_min(x)
+#'
+#' # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_min(x, axes = 1L)
+#' nv_reduce_min(x, axes = 1L, drop = FALSE)
+#'
+#' # negative axes count from the end
+#' nv_reduce_min(x, axes = -1L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
 #' nv_reduce_min(nv_array(c(1, NaN, 3)))
 #' nv_reduce_min(nv_array(c(1, NaN, 3)), nan_rm = TRUE)
 #' @export
@@ -2512,13 +3083,14 @@ nv_reduce_min <- jit(
 #' @description
 #' The smallest and the largest element along the specified axes, stacked along
 #' a new first axis. You can also use the `range()` generic.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axes (`integer()` | `NULL`)\cr
 #'   Axes to reduce over. `NULL` (default) reduces over all of them, which
 #'   makes the result a length-2 array like [base::range()]. Negative values
 #'   count from the end.
 #' @template param_nan_rm
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Has the same data type as `x` and the shape of the reduced array with a
 #'   leading axis of size 2 added: element 1 is the minimum, element 2 the
 #'   maximum.
@@ -2548,14 +3120,21 @@ stack_min_max <- function(lo, hi) {
 #' @description
 #' Performs logical OR along the specified axes.
 #' Returns `TRUE` if any element is `TRUE`.
-#' @template param_x
+#' @templateVar dtypes a boolean or an R logical
+#' @template param_unary_x_must
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @template return_reduce_boolean
+#' @templateVar dtype_out the boolean data type
+#' @template return_reduce
 #' @seealso [prim_reduce_any()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' nv_reduce_any(x)            # all axes -> scalar
+#' # no axes given: reduce over all of them
+#' nv_reduce_any(x)
+#'
+#' # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_any(x, axes = 1L)
+#' nv_reduce_any(x, axes = 1L, drop = FALSE)
 #' @export
 nv_reduce_any <- jit(
   function(x, axes = NULL, drop = TRUE) {
@@ -2569,14 +3148,21 @@ nv_reduce_any <- jit(
 #' @description
 #' Performs logical AND along the specified axes.
 #' Returns `TRUE` only if all elements are `TRUE`.
-#' @template param_x
+#' @templateVar dtypes a boolean or an R logical
+#' @template param_unary_x_must
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
-#' @template return_reduce_boolean
+#' @templateVar dtype_out the boolean data type
+#' @template return_reduce
 #' @seealso [prim_reduce_all()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' nv_reduce_all(x)            # all axes -> scalar
+#' # no axes given: reduce over all of them
+#' nv_reduce_all(x)
+#'
+#' # reducing axis 1 removes it, drop = FALSE keeps it at size 1
 #' nv_reduce_all(x, axes = 1L)
+#' nv_reduce_all(x, axes = 1L, drop = FALSE)
 #' @export
 nv_reduce_all <- jit(
   function(x, axes = NULL, drop = TRUE) {
@@ -2590,7 +3176,8 @@ nv_reduce_all <- jit(
 #' @description
 #' Cumulative sum, optionally along a single axis.
 #' A boolean array is counted, like [base::cumsum()] does.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cumsum
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
@@ -2623,7 +3210,8 @@ nv_cumsum <- jit(
 #' @description
 #' Cumulative product, optionally along a single axis.
 #' A boolean array is multiplied as zeroes and ones, like [base::cumprod()] does.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cumprod
 #' @template param_nv_cum_axis
 #' @template param_nan_rm_cum
@@ -2655,7 +3243,8 @@ nv_cumprod <- jit(
 #' @title Cumulative Maximum
 #' @description
 #' Running maximum, optionally along a single axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cummax
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name maximum
@@ -2666,6 +3255,7 @@ nv_cumprod <- jit(
 #' @template param_nan_rm_cum
 #' @seealso [prim_cummax()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the running maximum keeps the data type; the indices are the default integer
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummax(x)
 #' nv_cummax(x, axis = 1L)
@@ -2685,7 +3275,8 @@ nv_cummax <- jit(
 #' @title Cumulative Minimum
 #' @description
 #' Running minimum, optionally along a single axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @templateVar cum_base_fn cummin
 #' @template param_nv_cum_axis
 #' @templateVar cum_extreme_name minimum
@@ -2696,6 +3287,7 @@ nv_cummax <- jit(
 #' @template param_nan_rm_cum
 #' @seealso [prim_cummin()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the running minimum keeps the data type; the indices are the default integer
 #' x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 #' nv_cummin(x)
 #' nv_cummin(x, axis = 1L)
@@ -2733,17 +3325,22 @@ nv_cummin <- jit(
 #' Conditional execution of two branches.
 #' Unlike [nv_ifelse()], which selects elements, this executes only one
 #' of the two branches depending on a scalar predicate.
-#' @param pred ([`arrayish`] of boolean type, scalar)\cr
-#'   Predicate.
+#' @param pred ([`arrayish`])\cr
+#'   Predicate. Must be a scalar of the boolean data type, or an R logical.
 #' @param true (`function()`)\cr
 #'   Zero-argument function for the true branch.
 #' @param false (`function()`)\cr
 #'   Zero-argument function for the false branch.
-#'   Must return outputs with the same shapes as the true branch.
-#' @return Result of the executed branch.
+#'   Must return the same structure, data types and shapes as the true
+#'   branch; nothing is promoted.
+#' @return ([`arrayish`] | `list`)\cr
+#'   Result of the executed branch: an array, or a tree of them in the sense
+#'   of pjrt's [`RTree`][pjrt::build_tree] -- a `list`, nested arbitrarily -- with
+#'   the structure, data types and shapes both branches share.
 #' @seealso [prim_if()] for the underlying primitive, [nv_ifelse()] for
 #'   element-wise selection.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # both branches must return the same structure, data types and shapes
 #' nv_if(nv_scalar(TRUE), \() nv_scalar(1), \() nv_scalar(2))
 #' @export
 nv_if <- prim_if
@@ -2756,11 +3353,17 @@ nv_if <- prim_if
 #'   Condition function returning a scalar boolean.
 #'   Receives the state values as arguments.
 #' @param body (`function`)\cr
-#'   Body function returning the updated state as a named list
-#'   with the same structure as `init`.
-#' @return Final state after the loop terminates (same structure as `init`).
+#'   Body function returning the updated state as a named list with the same
+#'   structure, data types and shapes as `init`. Nothing is promoted: a
+#'   loop-carried state is meant to be heterogeneous, so each member keeps its
+#'   own data type across iterations.
+#' @return (named `list`)\cr
+#'   A tree of the loop-carried arrays -- see [`RTree`][pjrt::build_tree] -- in its
+#'   final state after the loop terminates, with `init`'s structure, data
+#'   types and shapes.
 #' @seealso [prim_while()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the loop state is a named list, and each member keeps its data type
 #' nv_while(
 #'   init = list(i = nv_scalar(0L), total = nv_scalar(0L)),
 #'   cond = function(i, total) i < 5L,
@@ -2860,12 +3463,16 @@ nv_scan <- function(init, body, xs = NULL, length = NULL, reverse = FALSE) {
 #' @title Base-2 Logarithm
 #' @description
 #' Element-wise base-2 logarithm. You can also use `log2()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [nv_log()], [nv_log10()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 2, 4, 8))
 #' nv_log2(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_log2(8)
 #' @export
 nv_log2 <- jit(function(x) {
   x <- as_anvl_array(x)
@@ -2875,12 +3482,16 @@ nv_log2 <- jit(function(x) {
 #' @title Base-10 Logarithm
 #' @description
 #' Element-wise base-10 logarithm. You can also use `log10()`.
-#' @template param_x_float
-#' @template return_unary_float
+#' @template param_unary_x_tofloat
+#' @template return_unary_tofloat
 #' @seealso [nv_log()], [nv_log2()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the input's data type carries through
 #' x <- nv_array(c(1, 10, 100, 1000))
 #' nv_log10(x)
+#'
+#' # an R value materializes at its default data type
+#' nv_log10(100)
 #' @export
 nv_log10 <- jit(function(x) {
   x <- as_anvl_array(x)
@@ -2890,32 +3501,55 @@ nv_log10 <- jit(function(x) {
 #' @title Is NaN
 #' @description
 #' Element-wise check if values are NaN. You can also use `is.nan()`.
-#' @template param_x
+#' Only a float holds a NaN, so the answer for any other data type is all
+#' `FALSE` and is built as a constant rather than computed.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @template return_unary_boolean
 #' @seealso [nv_is_finite()], [nv_is_infinite()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a boolean result, whatever the input's data type
 #' x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 #' nv_is_nan(x)
+#'
+#' # all FALSE for an integer input, which has no NaN to find
+#' nv_is_nan(nv_array(1:3))
 #' @export
 nv_is_nan <- jit(function(x) {
   x <- as_anvl_array(x)
+  if (!is_dtype_float(dtype(x))) {
+    return(nv_fill_like(x, FALSE, dtype = "bool"))
+  }
   x != x
 })
 
 #' @title Is Infinite
 #' @description
 #' Element-wise check if values are infinite (`Inf` or `-Inf`).
-#' You can also use `is.infinite()`.
-#' @template param_x
+#' You can also use `is.infinite()`. Only a float holds an infinity, so the
+#' answer for any other data type is all `FALSE` and is built as a constant
+#' rather than computed.
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @template return_unary_boolean
 #' @seealso [nv_is_finite()], [nv_is_nan()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the result is boolean, whatever float data type the input has
 #' x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 #' nv_is_infinite(x)
+#'
+#' # all FALSE for an integer input, which has no infinity
+#' nv_is_infinite(nv_array(1:3))
+#'
+#' # an R value materializes at its default data type before the test
+#' nv_is_infinite(1)
 #' @export
 nv_is_infinite <- jit(function(x) {
   x <- as_anvl_array(x)
-  !nv_is_finite(x) & (x == x)
+  if (!is_dtype_float(dtype(x))) {
+    return(nv_fill_like(x, FALSE, dtype = "bool"))
+  }
+  !prim_is_finite(x) & (x == x)
 })
 
 ## Reduction operations --------------------------------------------------------
@@ -2926,18 +3560,27 @@ nv_is_infinite <- jit(function(x) {
 #' @details
 #' Uses Bessel's correction by default (`correction = 1`), matching R's [var()].
 #' Set `correction = 0` for population variance.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
+#' @templateVar dtype_out the input's data type where that is a float, and the default float data type (see [`default_dtypes()`]) otherwise
 #' @template return_reduce
 #' @seealso [nv_sd()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_var(x)             # all axes -> scalar
-#' nv_var(x, axes = 1L)
-#' nv_var(nv_array(c(1, NaN, 3, 5)), axes = 1L, nan_rm = TRUE)
+#' x <- nv_array(1:5)
+#' # the result is a float, even though the input is an integer
+#' nv_var(x)
+#'
+#' # Bessel's correction by default, correction = 0 for the population variance
+#' nv_var(x, correction = 0L)
+#'
+#' # NaN propagates unless nan_rm = TRUE
+#' nv_var(nv_array(c(1, NaN, 3, 5)))
+#' nv_var(nv_array(c(1, NaN, 3, 5)), nan_rm = TRUE)
 #' @export
 nv_var <- jit(
   function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
@@ -2976,17 +3619,23 @@ nv_var <- jit(
 #' @details
 #' Uses Bessel's correction by default (`correction = 1`), matching R's [sd()].
 #' Set `correction = 0` for population standard deviation.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @param correction (`integer(1)`)\cr
 #'   Degrees of freedom correction. Default is `1` (Bessel's correction).
 #' @template param_nan_rm
+#' @templateVar dtype_out the input's data type where that is a float, and the default float data type (see [`default_dtypes()`]) otherwise
 #' @template return_reduce
 #' @seealso [nv_var()], [nv_mean()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' x <- nv_array(c(1, 2, 3, 4, 5))
-#' nv_sd(x)              # all axes -> scalar
-#' nv_sd(x, axes = 1L)
+#' x <- nv_array(1:5)
+#' # the result is a float, even though the input is an integer
+#' nv_sd(x)
+#'
+#' # Bessel's correction by default, correction = 0 for the population value
+#' nv_sd(x, correction = 0L)
 #' @export
 nv_sd <- jit(
   function(x, axes = NULL, drop = TRUE, correction = 1L, nan_rm = FALSE) {
@@ -3001,15 +3650,17 @@ nv_sd <- jit(
 #' @title Squeeze
 #' @description
 #' Removes axes of size 1 from an array.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axes (`integer()` | `NULL`)\cr
 #'   Axes to squeeze. Negative values count from the end, i.e. `-1`
 #'   refers to the last axis.
 #'   If `NULL` (default), all axes of size 1 are removed.
-#' @return [`arrayish`]\cr
-#'   Has the same data type as `x` with the specified axes removed.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type, with the specified axes removed from its shape.
 #' @seealso [nv_unsqueeze()], [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the two size-1 axes are dropped
 #' x <- nv_array(1:6, shape = c(1, 6, 1))
 #' nv_squeeze(x)
 #' @export
@@ -3036,15 +3687,17 @@ nv_squeeze <- function(x, axes = NULL) {
 #' @title Unsqueeze
 #' @description
 #' Inserts an axis of size 1 at the specified position.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)`)\cr
 #'   Position at which to insert the new axis. Valid positions range from
 #'   1 to `naxes(x) + 1`. Negative values count from the end of the
 #'   *result*, i.e. `-1` appends the new axis at the end.
-#' @return [`arrayish`]\cr
-#'   Has the same data type as `x` with an extra axis of size 1.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type, with an extra axis of size 1 in its shape.
 #' @seealso [nv_squeeze()], [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a size-1 axis is inserted, at the front or at the back
 #' x <- nv_array(c(1, 2, 3))
 #' nv_unsqueeze(x, axis = 1L)
 #' nv_unsqueeze(x, axis = -1L)
@@ -3063,10 +3716,13 @@ nv_unsqueeze <- function(x, axis) {
 #' @description
 #' Computes the outer product of two 1-D arrays.
 #' @param lhs,rhs ([`arrayish`])\cr
-#'   1-D arrays.
-#' @return [`arrayish`]\cr
-#'   A 2-D array of shape `(length(lhs), length(rhs))`.
+#'   Two 1-D arrays. Can be of any data type; the two are
+#'   [promoted to a common data type][nv_promote_to_common()].
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type and shape
+#'   `(length(lhs), length(rhs))`.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a length-3 and a length-2 vector give a 3x2 at their common data type
 #' x <- nv_array(c(1, 2, 3))
 #' y <- nv_array(c(4, 5))
 #' nv_outer(x, y)
@@ -3090,11 +3746,15 @@ nv_outer <- jit(function(lhs, rhs) {
 #' @title Extract Diagonal
 #' @description
 #' Extracts the diagonal elements from a 2-D array.
-#' @template param_x
-#' @return [`arrayish`]\cr
-#'   A 1-D array of length `min(nrow, ncol)` containing the diagonal elements.
+#' @templateVar dtypes any data type
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x
+#' @return ([`arrayish`])\cr
+#'   Has the input's data type, and one axis of length `min(nrow, ncol)`
+#'   holding the diagonal elements.
 #' @seealso [nv_diag()] for creating a diagonal matrix, [nv_trace()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the diagonal of a 3x3 matrix, keeping its data type
 #' x <- nv_array(1:9, shape = c(3, 3))
 #' nv_extract_diag(x)
 #' @export
@@ -3123,11 +3783,15 @@ nv_extract_diag <- jit(function(x) {
 #' @title Matrix Trace
 #' @description
 #' Computes the trace (sum of diagonal elements) of a 2-D array.
-#' @template param_x
-#' @return [`arrayish`]\cr
-#'   A scalar with the same data type as `x`.
+#' @templateVar dtypes any data type
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x
+#' @return ([`arrayish`])\cr
+#'   A scalar with `x`'s data type, except a boolean input, which is counted
+#'   at the default integer data type (see [`default_dtypes()`]).
 #' @seealso [nv_extract_diag()], [nv_diag()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the diagonal is summed to a scalar
 #' x <- nv_array(c(1, 0, 0, 0, 2, 0, 0, 0, 3), shape = c(3, 3))
 #' nv_trace(x)
 #' @export
@@ -3160,7 +3824,8 @@ assert_tri_args <- function(shape, diagonal) {
 #' Returns a boolean matrix that is `TRUE` on and below the given diagonal,
 #' mirroring base R's `lower.tri()`. Use [nv_tril()] to zero out the other
 #' triangle of an existing array instead.
-#' @template param_shape
+#' @param shape (`integer()`)\cr
+#'   Shape of the result: exactly two axis sizes, since the result is a matrix.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_tril()]. The default
 #'   `-1` excludes the main diagonal, matching `lower.tri()`; use `0` to
@@ -3169,10 +3834,13 @@ assert_tri_args <- function(shape, diagonal) {
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_lower_tri_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
-#'   Has the given `shape` and dtype `bool`.
+#' @return ([`arrayish`])\cr
+#'   Has the given `shape` and boolean data type. It is a mask over positions,
+#'   so no array data enters it -- pass it to [nv_ifelse()] or multiply by it
+#'   to use it.
 #' @seealso [nv_upper_tri()], [nv_tril()], [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a boolean mask, whatever the array it is later used with
 #' nv_lower_tri(c(3, 3))
 #' nv_lower_tri(c(3, 3), diagonal = 0L)
 #' x <- nv_fill(0, shape = c(3, 3))
@@ -3191,7 +3859,8 @@ nv_lower_tri <- jit(
 #' Returns a boolean matrix that is `TRUE` on and above the given diagonal,
 #' mirroring base R's `upper.tri()`. Use [nv_triu()] to zero out the other
 #' triangle of an existing array instead.
-#' @template param_shape
+#' @param shape (`integer()`)\cr
+#'   Shape of the result: exactly two axis sizes, since the result is a matrix.
 #' @param diagonal (`integer(1)`)\cr
 #'   Diagonal offset, with the same meaning as in [nv_triu()]. The default
 #'   `1` excludes the main diagonal, matching `upper.tri()`; use `0` to
@@ -3200,10 +3869,11 @@ nv_lower_tri <- jit(
 #'   Existing array whose attributes are used as defaults
 #'   (only for `nv_upper_tri_like()`).
 #' @template param_device
-#' @return [`arrayish`]\cr
-#'   Has the given `shape` and dtype `bool`.
+#' @return ([`arrayish`])\cr
+#'   Has the given `shape` and boolean data type.
 #' @seealso [nv_lower_tri()], [nv_triu()], [prim_iota()] for the underlying primitive.
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a boolean mask, whatever the array it is later used with
 #' nv_upper_tri(c(3, 3))
 #' nv_upper_tri(c(3, 3), diagonal = 0L)
 #' x <- nv_fill(0, shape = c(3, 3))
@@ -3221,14 +3891,19 @@ nv_upper_tri <- jit(
 #' @description
 #' Returns the lower triangular part of a 2-D array, setting elements above
 #' the specified diagonal to zero.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x
 #' @param diagonal (`integer(1)`)\cr
-#'   Diagonal offset. `0` (default) is the main diagonal, positive values
-#'   include diagonals above, negative values exclude diagonals below.
-#' @return [`arrayish`]\cr
+#'   Diagonal offset: the kept region is `col - row <= diagonal`. `0` (default)
+#'   keeps the main diagonal and everything below it, a positive value keeps
+#'   that many diagonals above it as well, and a negative one drops the main
+#'   diagonal and `-diagonal - 1` below it.
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [nv_triu()], [nv_lower_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # elements above the main diagonal become zero
 #' x <- nv_fill(1, c(3, 3))
 #' nv_tril(x)
 #' @export
@@ -3247,14 +3922,19 @@ nv_tril <- jit(
 #' @description
 #' Returns the upper triangular part of a 2-D array, setting elements below
 #' the specified diagonal to zero.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @templateVar shapes with exactly 2 axes
+#' @template param_unary_x
 #' @param diagonal (`integer(1)`)\cr
-#'   Diagonal offset. `0` (default) is the main diagonal, positive values
-#'   exclude diagonals above, negative values include diagonals below.
-#' @return [`arrayish`]\cr
+#'   Diagonal offset: the kept region is `col - row >= diagonal`. `0` (default)
+#'   keeps the main diagonal and everything above it, a negative value keeps
+#'   that many diagonals below it as well, and a positive one drops the main
+#'   diagonal and `diagonal - 1` above it.
+#' @return ([`arrayish`])\cr
 #'   Has the same shape and data type as `x`.
 #' @seealso [nv_tril()], [nv_upper_tri()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # elements below the main diagonal become zero
 #' x <- nv_fill(1, c(3, 3))
 #' nv_triu(x)
 #' @export
@@ -3275,12 +3955,16 @@ nv_triu <- jit(
 #' Above rank 2 the last two axes are the matrix and the leading ones are batch
 #' axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param lhs ([`arrayish`])\cr
-#'   An array with at least 2 axes.
+#'   An array with at least 2 axes, as for [base::crossprod()]. Can be any numeric
+#'   data type; `lhs` and `rhs` are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type, and the shape of `t(lhs) %*% rhs`.
 #' @seealso [nv_tcrossprod()], [nv_matmul()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `t(x) %*% x`, so a 3x2 gives a 2x2
 #' x <- nv_matrix(1:6, nrow = 3, dtype = "f32")
 #' nv_crossprod(x)
 #' @export
@@ -3302,12 +3986,16 @@ nv_crossprod <- jit(function(lhs, rhs = NULL) {
 #' Above rank 2 the last two axes are the matrix and the leading ones are batch
 #' axes, as in [nv_matmul()]: only the matrix is transposed.
 #' @param lhs ([`arrayish`])\cr
-#'   An array with at least 2 axes.
+#'   An array with at least 2 axes, as for [base::tcrossprod()]. Can be any numeric
+#'   data type; `lhs` and `rhs` are
+#'   [promoted to a common data type][nv_promote_to_common()].
 #' @param rhs ([`arrayish`] | `NULL`)\cr
 #'   Optional second array. If `NULL`, uses `lhs`.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type, and the shape of `lhs %*% t(rhs)`.
 #' @seealso [nv_crossprod()], [nv_matmul()]
 #' @examplesIf pjrt::plugins_downloaded()
+#' # `x %*% t(x)`, so a 2x3 gives a 2x2
 #' x <- nv_matrix(1:6, nrow = 2, dtype = "f32")
 #' nv_tcrossprod(x)
 #' @export
@@ -3330,16 +4018,20 @@ nv_tcrossprod <- jit(function(lhs, rhs = NULL) {
 #' Picks one or more elements along axis `axis` of `x`.
 #' Use this instead of `[` or `nv_subset` when the index to select is provided
 #' programmatically.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)`)\cr
 #'   Axis to index into.
 #'   Negative values count from the end, i.e. `-1` refers to the last axis.
 #' @param index ([`arrayish`])\cr
-#'   Scalar or 1D arrayish input (integer).
-#' @return [`arrayish`]\cr
-#'   Same data type as `x`. `axis` is dropped if `index` was scalar.
+#'   Scalar or 1-D array of an integer data type, which it keeps -- the index
+#'   takes no part in `x`'s data type.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type. `axis` is dropped if `index` was scalar, and
+#'   otherwise resized to the number of selected elements.
 #' @seealso [nv_subset()] for general subsetting, [prim_static_slice()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a scalar index drops the axis, an index array keeps it
 #' m <- nv_matrix(1:6, nrow = 2)
 #' nv_select(m, axis = 2L, index = 2L)
 #' nv_select(m, axis = 1L, index = 1L)
@@ -3399,7 +4091,8 @@ nv_select <- function(x, axis, index) {
 #' Sorts an array along an axis.
 #'
 #' You can also use `sort()` directly.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to sort. Negative values count from the end,
 #'   i.e. `-1` refers to the last axis. If `NULL` (default), the input is
@@ -3412,8 +4105,8 @@ nv_select <- function(x, axis, index) {
 #'   observable for floats when `-0` / `+0` or `-NaN` / `+NaN` are mixed
 #'   (they compare equal under the total order used here); for distinct
 #'   values the result is identical either way.
-#' @return [`arrayish`]\cr
-#'   Same shape and data type as `x`.
+#' @return ([`arrayish`])\cr
+#'   Has the input's shape and data type.
 #' @section NaN handling:
 #' `NaN` values sort to the **end** (ascending) or **beginning**
 #' (descending), regardless of sign. `+0` and `-0` compare equal.
@@ -3428,6 +4121,7 @@ nv_select <- function(x, axis, index) {
 #'   [nv_argsort()], [nv_top_k()], [nv_median()],
 #'   [nv_argmax()], [nv_argmin()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # sorting moves elements, so the data type and shape stay
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' nv_sort(x)
 #' sort(x) # via the S3 generic
@@ -3457,7 +4151,8 @@ nv_sort <- jit(
 #' Returns the indices that would sort the array: over every element by
 #' default, or along one axis. It is the index twin of [nv_sort()] and takes
 #' the same `axis`, so the two always describe the same ordering.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param axis (`integer(1)` | `NULL`)\cr
 #'   Axis along which to compute the sort permutation. Negative values
 #'   count from the end, i.e. `-1` refers to the last axis. If `NULL`
@@ -3469,15 +4164,16 @@ nv_sort <- jit(
 #' @param stable (`logical(1)`)\cr
 #'   If `TRUE`, the sort is stable: indices for equal values keep their
 #'   original relative order. Default `FALSE`.
-#' @return [`arrayish`] of the default integer data type (see
-#'   [`default_dtypes()`])\cr
-#'   Same shape as `x`, or 1-D holding every element's index when `axis` is
-#'   `NULL`. For a size-0 axis, the output is an empty array of the same
-#'   shape (a valid empty permutation). Indexing the flattened input by the
-#'   result reproduces [nv_sort()]'s output.
+#' @return ([`arrayish`])\cr
+#'   Has the default integer data type (see [`default_dtypes()`]) regardless of
+#'   the input's, and the input's shape -- or 1-D holding every element's index
+#'   when `axis` is `NULL`. For a size-0 axis, the output is an empty array of
+#'   the same shape (a valid empty permutation). Indexing the flattened input
+#'   by the result reproduces [nv_sort()]'s output.
 #' @inheritSection nv_sort NaN handling
 #' @seealso [nv_sort()], [prim_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the indices come out at the default integer data type
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' nv_argsort(x)
 #'
@@ -3503,70 +4199,93 @@ nv_argsort <- jit(
 
 #' @title Top-K Elements
 #' @description
-#' Returns the `k` largest values along an axis, sorted in decreasing order.
-#' @template param_x
+#' Returns the `k` largest values over one or more axes, sorted in decreasing
+#' order.
+#' @templateVar dtypes any numeric data type
+#' @templateVar shapes with at least 1 axis
+#' @template param_unary_x
 #' @param k (`integer(1)`)\cr
-#'   Number of top elements to return. Must be a whole number satisfying
-#'   `1 <= k <= shape(x)[axis]`; a fractional or logical `k` is refused
-#'   rather than truncated.
-#' @param axis (`integer(1)` | `NULL`)\cr
-#'   Axis along which to take the top `k`. Negative values count from the
-#'   end, i.e. `-1` refers to the last axis. If `NULL` (default),
-#'   uses the last axis.
+#'   Number of top elements to return. Must be a whole number between 1 and
+#'   the number of elements `axes` holds together; a fractional or logical `k`
+#'   is refused rather than truncated.
+#' @param axes (`integer()` | `NULL`)\cr
+#'   Axes to take the top `k` over. Negative values count from the end, i.e.
+#'   `-1` refers to the last axis. If `NULL` (default), ranks over every axis.
 #' @param indices (`logical(1)`)\cr
 #'   If `FALSE` (default), returns just the top-`k` values. If `TRUE`,
-#'   returns `list(values = ..., indices = ...)` where `indices` is the
-#'   1-based position of each top-`k` value along `axis`, of the default
-#'   integer data type (see [`default_dtypes()`]).
-#' @return [`arrayish`] (when `indices = FALSE`) or named list of two
-#'   arrays (when `indices = TRUE`). Output shape matches `x` with
-#'   `axis` resized to `k`; values are sorted decreasing along `axis`.
+#'   returns `list(values = ..., indices = ...)` where `indices` holds the
+#'   position of each top-`k` value.
+#' @return ([`arrayish`] | named `list` of two [`arrayish`])\cr
+#'   One array when `indices = FALSE`, a named `list` of `values` and
+#'   `indices` when `indices = TRUE`. The values have the input's data type and
+#'   the indices the default integer data type (see [`default_dtypes()`]). Both
+#'   have the input's shape with `axes` replaced by a single axis of size `k`,
+#'   sitting where the first of them was; values are sorted decreasing along
+#'   that axis.
+#' @section Ranking several axes:
+#' Taking the top `k` over several axes ranks all of their elements together,
+#' so `nv_top_k(x, k)` equals `nv_top_k(nv_flatten(x), k)`. The indices then
+#' index the row-major flattening of those axes -- the order [nv_flatten()]
+#' produces -- rather than any single axis.
 #' @section NaN handling:
 #' `NaN` ranks larger than any finite value (so it appears first in the
 #' top-`k` output); `-NaN` ranks smaller. Unlike [nv_sort()], the sign
 #' bit is not canonicalized.
 #' @seealso [prim_top_k()] for the underlying primitive, [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the values keep the input's data type, the indices the default integer
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' nv_top_k(x, k = 3L)
 #' nv_top_k(x, k = 3L, indices = TRUE)
 #'
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
-#' nv_top_k(m, k = 2L, axis = 2L)
+#' nv_top_k(m, k = 2L, axes = 2L) # the top 2 of each row
+#' nv_top_k(m, k = 2L) # the top 2 of the whole matrix
 #' @export
 nv_top_k <- jit(
-  function(x, k, axis = NULL, indices = FALSE) {
+  function(x, k, axes = NULL, indices = FALSE) {
     assert_flag(indices)
     x <- as_anvl_array(x)
     rank <- naxes(x)
     if (rank == 0L) {
       cli_abort("{.arg x} must have at least one axis to take the top {.arg k} along, but it is a scalar.")
     }
-    axis <- resolve_axis(axis %||% rank, rank, arg = "axis")
+    axes <- sort(.resolve_reduce_axes(x, axes))
+    n <- as.integer(prod(shape(x)[axes]))
     # Check before coercing: `as.integer()` first would silently truncate a
     # fractional `k` and accept a logical one, where `prim_top_k()` refuses both.
-    if (!checkmate::test_int(k, lower = 1L, upper = shape(x)[axis])) {
+    if (!checkmate::test_int(k, lower = 1L, upper = n)) {
       cli_abort(c(
-        "{.arg k} must be a single whole number between 1 and the size of {.arg axis}.",
-        x = "Axis {axis} has size {shape(x)[axis]}, and {.arg k} is {.val {k}}."
+        "{.arg k} must be a single whole number between 1 and the number of elements {.arg axes} holds together.",
+        x = "The ranked ax{cli::qty(length(axes))}{?is/es} hold{?s/} {n} of them, and {.arg k} is {.val {k}}."
       ))
     }
     k <- as.integer(k)
 
-    # prim_top_k operates on the last axis; transpose axis to last and back.
-    if (axis != rank) {
-      perm <- seq_len(rank)
-      perm[c(axis, rank)] <- c(rank, axis)
-      out <- prim_top_k(prim_transpose(x, permutation = perm), k = k, indices = indices)
-      values <- prim_transpose(out$values, permutation = perm)
-      if (indices) {
-        list(values = values, indices = prim_transpose(out$indices, permutation = perm))
+    # `prim_top_k` reads the last axis only, so several axes are gathered into
+    # one first -- which is what makes the indices index their row-major
+    # flattening -- and the `k` axis is moved back to where the first of them
+    # was.
+    flat <- .flatten_reduce_axes(x, axes, drop = TRUE)
+    out <- prim_top_k(flat$x, k = k, indices = indices)
+    keep <- setdiff(seq_len(rank), axes)
+    out_rank <- length(keep) + 1L
+    permutation <- append(
+      seq_len(out_rank - 1L),
+      out_rank,
+      after = sum(keep < axes[[1L]])
+    )
+    restore <- function(v) {
+      if (identical(permutation, seq_len(out_rank))) {
+        v
       } else {
-        values
+        prim_transpose(v, permutation = permutation)
       }
+    }
+    if (indices) {
+      list(values = restore(out$values), indices = restore(out$indices))
     } else {
-      out <- prim_top_k(x, k = k, indices = indices)
-      if (indices) out else out$values
+      restore(out$values)
     }
   },
   static = 2:4
@@ -3590,9 +4309,10 @@ nv_top_k <- jit(
 #' A quantile generally falls between two elements, so a non-float `x` is
 #' computed (and returned) at the default float data type.
 #' @section Interpolation modes:
-#' Let `h = (n - 1) * q` be the 0-based fractional index over the `n` reduced
-#' elements for probability `q`, with `lo = floor(h)`, `hi = ceil(h)`,
-#' `frac = h - lo`. Then:
+#' For `n` reduced elements and a probability `q`, let
+#' `h = 1 + (n - 1) * q` be the position `q` falls at in the sorted values,
+#' with `lo = floor(h)`, `hi = ceiling(h)` and `frac = h - lo`. Then, writing
+#' `sorted` for the reduced values in sorted order:
 #'
 #' * `"linear"` (default): `(1 - frac) * sorted[lo] + frac * sorted[hi]`.
 #' * `"lower"`: `sorted[lo]` — the lower bracket of `linear`.
@@ -3603,24 +4323,27 @@ nv_top_k <- jit(
 #' Reducing several axes at once ranks all of their elements together, so
 #' `nv_quantile(x, q, axes = c(1, 2))` equals
 #' `nv_quantile(nv_flatten(x), q)` for a matrix `x`.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param probs (`numeric(1)` | 1-D `array`)\cr
 #'   One or more probabilities in `[0, 1]`. Either a length-1 numeric
 #'   (scalar) or a 1-D `array` (a leading axis of size `length(probs)` is
 #'   prepended). Plain length-K (K > 1) vectors are rejected — wrap with
 #'   `array()`.
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @param interpolation (`character(1)`)\cr
 #'   One of `"linear"` (default), `"lower"`, `"higher"`, `"nearest"`,
 #'   `"midpoint"`. See "Interpolation modes".
 #' @template param_nan_rm
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
 #'   For array `probs`, a **leading** axis of size `length(probs)` is
 #'   prepended. The data type is that of `x`, or the default float for a
 #'   non-float `x`.
 #' @seealso [nv_median()], [nv_sort()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # a float result even for an integer input, since it interpolates
 #' x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 #' nv_quantile(x, 0.5) # = nv_median(x)
 #' nv_quantile(x, array(c(0.25, 0.5, 0.75)))
@@ -3744,8 +4467,8 @@ nv_quantile <- jit(
     # together. Nothing short of `1/x` tells those two results apart.
     sorted <- switch(
       path,
-      "low" = -nv_top_k(-to_sort, k = k_lo, axis = axis),
-      "high" = nv_top_k(to_sort, k = k_hi, axis = axis),
+      "low" = -nv_top_k(-to_sort, k = k_lo, axes = axis),
+      "high" = nv_top_k(to_sort, k = k_hi, axes = axis),
       "sort" = prim_sort(list(to_sort), axis = axis)[[1L]]
     )
 
@@ -3822,14 +4545,16 @@ nv_quantile <- jit(
 #' `nv_median()` by default, so the two agree. Pass `axes` to reduce a subset
 #' instead. A non-float `x` is computed at the default float, like base R
 #' returns a double.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @param interpolation (`character(1)`)\cr
 #'   Forwarded to [nv_quantile()]. One of `"linear"` (default), `"lower"`,
 #'   `"higher"`, `"nearest"`, `"midpoint"`.
 #' @param nan_rm (`logical(1)`)\cr
 #'   Forwarded to [nv_quantile()]. See its documentation for details.
-#' @return [`arrayish`]\cr
+#' @return ([`arrayish`])\cr
 #'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
 #'   The data type is that of `x`, or the default float for a non-float `x`.
 #' @seealso [nv_quantile()], [nv_sort()], [prim_sort()].
@@ -3863,12 +4588,15 @@ nv_median <- jit(
 #' @description
 #' Returns the index of the maximum value over one or more axes. Ties are
 #' broken by returning the smallest index.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @template param_nan_rm
-#' @return [`arrayish`] of the default integer data type (see
-#'   [`default_dtypes()`])\cr
-#'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+#' @return ([`arrayish`])\cr
+#'   Has the default integer data type (see [`default_dtypes()`]) regardless of
+#'   the input's, and the input's shape with `axes` removed (`drop = TRUE`) or
+#'   set to 1 (`drop = FALSE`).
 #' @section Reducing several axes:
 #' `nv_argmax()` is the index to [nv_reduce_max()]'s value: called with the
 #' same `axes` and `drop`, it points at the element whose value
@@ -3882,6 +4610,7 @@ nv_median <- jit(
 #' entries are skipped.
 #' @seealso [nv_argmin()], [nv_reduce_max()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the index comes out at the default integer data type
 #' nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_argmax(m) # indexes the flattened matrix
@@ -3902,12 +4631,15 @@ nv_argmax <- jit(
 #' @description
 #' Returns the index of the minimum value over one or more axes. Ties are
 #' broken by returning the smallest index.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
+#' @templateVar axes_all If `NULL` (default), reduces over all axes.
 #' @template params_reduce
 #' @template param_nan_rm
-#' @return [`arrayish`] of the default integer data type (see
-#'   [`default_dtypes()`])\cr
-#'   Same shape as `x` with `axes` removed (or set to 1 if `drop = FALSE`).
+#' @return ([`arrayish`])\cr
+#'   Has the default integer data type (see [`default_dtypes()`]) regardless of
+#'   the input's, and the input's shape with `axes` removed (`drop = TRUE`) or
+#'   set to 1 (`drop = FALSE`).
 #' @section Reducing several axes:
 #' `nv_argmin()` is the index to [nv_reduce_min()]'s value: called with the
 #' same `axes` and `drop`, it points at the element whose value
@@ -3918,6 +4650,7 @@ nv_argmax <- jit(
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
 #' @examplesIf pjrt::plugins_downloaded()
+#' # the index comes out at the default integer data type
 #' nv_argmin(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 #' m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 #' nv_argmin(m) # indexes the flattened matrix
@@ -3994,15 +4727,29 @@ nv_argmin <- jit(
 #' `[batch, in_channels, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kW]`, output is
 #' `[batch, out_channels, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, W]`. `x` and `weight` are
-#'   [promoted to a common data type][nv_promote_to_common()].
+#' @param x ([`arrayish`])\cr `[N, C_in, W]`. Can be any data type; `x` and
+#'   `weight` are [promoted to a common data type][nv_promote_to_common()]. An
+#'   R value assumes the other operand's data type, and materializes at its
+#'   [default data type][default_dtypes] when that has none either.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kW]`.
-#'   Promoted together with `x`.
+#'   Promoted together with `x` -- see `x`.
 #' @param stride,padding,dilation (`integer()`)\cr Length 1.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
-#' @return [`arrayish`] `[N, C_out, out_W]`.
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type, and shape
+#'   `[N, C_out, out_W]`.
 #' @seealso [nv_conv2d()], [nv_conv3d()], [prim_convolution()].
+#' @examplesIf pjrt::plugins_downloaded()
+#' # one batch, one channel, width 5, convolved with a width-3 kernel
+#' x <- nv_array(1:5, shape = c(1, 1, 5), dtype = "f32")
+#' weight <- nv_array(c(1, 0, -1), shape = c(1, 1, 3), dtype = "f32")
+#' nv_conv1d(x, weight)
+#'
+#' # `padding = 1` keeps the input width, `stride = 2` visits every other
+#' # window position
+#' nv_conv1d(x, weight, padding = 1L)
+#' nv_conv1d(x, weight, stride = 2L)
 #' @export
 nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, weight, 1L, stride, padding, dilation, groups, precision)
@@ -4014,17 +4761,30 @@ nv_conv1d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' `[batch, in_channels, height, width]`, `weight` is
 #' `[out_channels, in_channels / groups, kh, kw]`, output is
 #' `[batch, out_channels, out_h, out_w]`. Symmetric zero padding.
-#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. `x` and `weight` are
-#'   [promoted to a common data type][nv_promote_to_common()].
+#' @param x ([`arrayish`])\cr `[N, C_in, H, W]`. Can be any data type; `x` and
+#'   `weight` are [promoted to a common data type][nv_promote_to_common()]. An
+#'   R value assumes the other operand's data type, and materializes at its
+#'   [default data type][default_dtypes] when that has none either.
 #' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kH, kW]`.
-#'   Promoted together with `x`.
+#'   Promoted together with `x` -- see `x`.
 #' @param stride (`integer()`)\cr Length 1 or 2.
 #' @param padding (`integer()`)\cr Symmetric padding, length 1 or 2.
 #' @param dilation (`integer()`)\cr Kernel dilation, length 1 or 2.
 #' @param groups (`integer(1)`)\cr Grouped/depthwise convolution.
 #' @param precision (`character(1)`)\cr `"highest"`, `"high"` or `"default"`.
-#' @return [`arrayish`] `[N, C_out, out_H, out_W]`.
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type, and shape
+#'   `[N, C_out, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv3d()], [prim_convolution()].
+#' @examplesIf pjrt::plugins_downloaded()
+#' # one batch, one channel, 4x4, convolved with a 3x3 kernel
+#' x <- nv_array(1:16, shape = c(1, 1, 4, 4), dtype = "f32")
+#' weight <- nv_fill(1, shape = c(1, 1, 3, 3), dtype = "f32")
+#' nv_conv2d(x, weight)
+#'
+#' # two output channels give a result with two channels
+#' weight2 <- nv_fill(1, shape = c(2, 1, 3, 3), dtype = "f32")
+#' shape(nv_conv2d(x, weight2))
 #' @export
 nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, weight, 2L, stride, padding, dilation, groups, precision)
@@ -4037,10 +4797,23 @@ nv_conv2d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, group
 #' `[out_channels, in_channels / groups, kD, kH, kW]`. Asymmetric
 #' padding (e.g. causal temporal padding) is available via
 #' [prim_convolution()].
+#' @param x ([`arrayish`])\cr `[N, C_in, D, H, W]`. Can be any data type; `x` and
+#'   `weight` are [promoted to a common data type][nv_promote_to_common()]. An
+#'   R value assumes the other operand's data type, and materializes at its
+#'   [default data type][default_dtypes] when that has none either.
+#' @param weight ([`arrayish`])\cr `[C_out, C_in / groups, kD, kH, kW]`.
+#'   Promoted together with `x` -- see `x`.
 #' @inheritParams nv_conv2d
 #' @param stride,padding,dilation (`integer()`)\cr Length 1 or 3.
-#' @return [`arrayish`] `[N, C_out, out_D, out_H, out_W]`.
+#' @return ([`arrayish`])\cr
+#'   Has the operands' common data type, and shape
+#'   `[N, C_out, out_D, out_H, out_W]`.
 #' @seealso [nv_conv1d()], [nv_conv2d()], [prim_convolution()].
+#' @examplesIf pjrt::plugins_downloaded()
+#' # one batch, one channel, 2x3x3, convolved with a 1x2x2 kernel
+#' x <- nv_array(1:18, shape = c(1, 1, 2, 3, 3), dtype = "f32")
+#' weight <- nv_fill(1, shape = c(1, 1, 1, 2, 2), dtype = "f32")
+#' shape(nv_conv3d(x, weight))
 #' @export
 nv_conv3d <- function(x, weight, stride = 1L, padding = 0L, dilation = 1L, groups = 1L, precision = "highest") {
   .nv_convnd(x, weight, 3L, stride, padding, dilation, groups, precision)

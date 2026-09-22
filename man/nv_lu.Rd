@@ -8,19 +8,26 @@ nv_lu(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Matrix of data type floating-point with exactly 2 axes.}
+One input, with exactly 2 axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
-Named \code{list}:
+(named \code{list} of \code{\link{arrayish}})\cr
+\code{L} and \code{U} have the input's data type -- or the default float data type
+(see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one; \code{pivots}
+and \code{permutation} are indices at the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}).
 \itemize{
 \item \code{L} -- unit lower-triangular factor of shape \verb{(m, k)}, where
 \verb{(m, n) = shape(x)} and \code{k = min(m, n)}.
 \item \code{U} -- upper-triangular factor of shape \verb{(k, n)}.
-\item \code{pivots} -- length \code{k}, of the default integer data type (see
-\code{\link[=default_dtypes]{default_dtypes()}}). LAPACK-style sequential 1-based row swaps as
-returned by \code{getrf}.
-\item \code{permutation} -- length \code{m}, of the default integer data type. A
-1-based permutation vector representing \eqn{P}.
+\item \code{pivots} -- length \code{k}, at the default integer data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). LAPACK-style sequential row swaps as returned by
+\code{getrf}.
+\item \code{permutation} -- length \code{m}, at that same data type. A permutation
+vector representing \eqn{P}.
 }
 }
 \description{
@@ -34,6 +41,7 @@ Use \code{\link[=prim_lu]{prim_lu()}} to get them in packed \code{LU} form.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `L` and `U` keep the input's data type; the pivots are the default integer
 x <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_lu(x)
 \dontshow{\}) # examplesIf}

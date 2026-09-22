@@ -8,24 +8,26 @@ nv_argmax(x, axes = NULL, drop = TRUE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
-Axes to reduce. Negative values count from the end, i.e. \code{-1}
-refers to the last axis. If \code{NULL} (default), reduces over all
-axes, returning a scalar.}
+Axes to reduce over. Negative values count from the end, i.e. \code{-1} refers
+to the last axis. If \code{NULL} (default), reduces over all axes.}
 
 \item{drop}{(\code{logical(1)})\cr
-Whether to drop reduced axes.}
+Whether to drop the reduced axes: removed from the output shape if \code{TRUE},
+set to 1 if \code{FALSE}.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates. If \code{TRUE}, \code{NaN} values are skipped.}
 }
 \value{
-\code{\link{arrayish}} of the default integer data type (see
-\code{\link[=default_dtypes]{default_dtypes()}})\cr
-Same shape as \code{x} with \code{axes} removed (or set to 1 if \code{drop = FALSE}).
+(\code{\link{arrayish}})\cr
+Has the default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}) regardless of
+the input's, and the input's shape with \code{axes} removed (\code{drop = TRUE}) or
+set to 1 (\code{drop = FALSE}).
 }
 \description{
 Returns the index of the maximum value over one or more axes. Ties are
@@ -50,6 +52,7 @@ entries are skipped.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the index comes out at the default integer data type
 nv_argmax(nv_array(c(3, 1, 4, 1, 5, 9, 2, 6)))
 m <- nv_matrix(c(3, 1, 5, 2, 4, 0), nrow = 2, byrow = TRUE)
 nv_argmax(m) # indexes the flattened matrix

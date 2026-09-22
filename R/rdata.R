@@ -33,7 +33,7 @@ NULL
 #' # below, the `RData` input is materialized in 32 and 64-bit precisions, so the input
 #' # dtype becomes f64.
 #' # by NOT converting RData to their default data type we prevent loss of precision
-#' # (double -> f32 -> f64 roundrips)
+#' # (avoiding a double -> default data type -> f64 round trip)
 #' graph <- trace_fn(function(x) {
 #'     print(x)
 #'     list(x + nv_scalar(1, "f64"), x + nv_scalar(1, "f32"))
@@ -185,10 +185,10 @@ rdata_category <- function(r_type) {
 #
 # The three ways an R value enters a program -- a literal in a traced body, the
 # input an open argument is supplied at, an array built eagerly -- differ only
-# in `build`, and this is what they share. The two that know the value pass it
-# as `value`, so that it is checked against the data type it is built at here;
-# an open argument's value is unknown while tracing and is checked when the call
-# uploads it.
+# in `build`, and this is what they share. Only the literal passes `value`: it
+# is the one route that never builds a buffer, so nothing downstream would look
+# at the data before StableHLO's parser refuses the program. The other two are
+# checked where they are uploaded, against the data the call is given.
 build_r_staged <- function(r_type, dtype, build, value = NULL) {
   if (rdata_in_category(r_type, dtype)) {
     if (!is.null(value)) {
@@ -283,7 +283,9 @@ r_const_at <- function(x, dtype, desc) {
 #'
 #' @param x ([`arrayish`] | [`AbstractArray`])\cr
 #'   The value to ask about.
-#' @return ([`tengen::DataType`])
+#' @return ([`tengen::DataType`])\cr
+#'   The data type `x` has, or the [default data type][default_dtypes] it would
+#'   materialize at if it is still a bare R value.
 #' @seealso [as_anvl_arrays()], [RData], [shape()][tengen::shape]
 #' @examplesIf pjrt::plugins_downloaded()
 #' peek_dtype(1.5)

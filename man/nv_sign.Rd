@@ -9,21 +9,32 @@ nv_sign(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any numeric data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
-Element-wise sign function. You can also use \code{sign()}.
+Element-wise sign function: \code{-1}, \code{0} or \code{1} at the input's data type. An
+unsigned input holds no negative value, so its sign is \code{0} or \code{1}, like
+base R's \code{sign()} on a non-negative number. You can also use \code{sign()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-3, 0, 5))
 sign(x)
+
+# an unsigned input is 0 where it is 0 and 1 everywhere else
+nv_sign(nv_array(c(0L, 3L), dtype = "ui32"))
+
+# an R value materializes at its default data type
+nv_sign(-3)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_sign]{prim_sign()}} for the underlying primitive.
+\code{\link[=prim_sign]{prim_sign()}} for the underlying primitive, which takes a signed
+input only.
 }

@@ -18,8 +18,10 @@ one for an unsigned integer, and a logical or \code{0} / \code{1} for \code{bool
 \item{shape}{(\code{integer()})\cr
 Shape of the output array.}
 
-\item{dtype}{(\code{character(1)} | \code{NULL})\cr
-Data type.}
+\item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
+Data type of the result.
+The default (\code{NULL}) uses the \link[=default_dtypes]{default data type} for \code{nv_fill} and
+\code{dtype(like)} for \code{nv_fill_like}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -40,7 +42,7 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_fill_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and \code{dtype}.
 }
 \description{
@@ -52,7 +54,10 @@ Creates an array filled with a scalar value. More memory-efficient than
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the R double settles the data type, the shape is given
 nv_fill(0, shape = c(2, 3))
+
+# `_like` takes shape, data type and device from an existing array
 x <- nv_matrix(1:6, nrow = 2)
 nv_fill_like(x, 0)
 \dontshow{\}) # examplesIf}

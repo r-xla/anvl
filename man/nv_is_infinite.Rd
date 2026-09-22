@@ -9,20 +9,30 @@ nv_is_infinite(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape as the input and boolean data type.
+(\code{\link{arrayish}})\cr
+Has the input's shape and boolean data type.
 }
 \description{
 Element-wise check if values are infinite (\code{Inf} or \code{-Inf}).
-You can also use \code{is.infinite()}.
+You can also use \code{is.infinite()}. Only a float holds an infinity, so the
+answer for any other data type is all \code{FALSE} and is built as a constant
+rather than computed.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the result is boolean, whatever float data type the input has
 x <- nv_array(c(1, NaN, Inf, -Inf, 0))
 nv_is_infinite(x)
+
+# all FALSE for an integer input, which has no infinity
+nv_is_infinite(nv_array(1:3))
+
+# an R value materializes at its default data type before the test
+nv_is_infinite(1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

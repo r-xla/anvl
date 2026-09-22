@@ -1013,8 +1013,6 @@ cbind.AnvlArray <- function(..., deparse.level = 1L) {
 cbind.AnvlBox <- cbind.AnvlArray
 
 #' @rdname nv_solve
-#' @param a ([`arrayish`])\cr Coefficient matrix.
-#' @param b ([`arrayish`])\cr Right-hand side. If missing, returns [nv_inv()] of `a`.
 #' @param ... No additional arguments.
 #' @method solve AnvlArray
 #' @export

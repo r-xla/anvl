@@ -20,10 +20,12 @@ prim_gather(
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
-\item{start_indices}{(\code{\link{arrayish}} of integer type)\cr
-Array of starting indices. Contains index vectors that map to
+\item{start_indices}{(\code{\link{arrayish}})\cr
+Array of starting indices, of the same integer data type.
+Contains index vectors that map to
 positions in \code{x} via \code{start_index_map}. The axis
 specified by \code{index_vector_axis} holds the index vectors.}
 
@@ -70,8 +72,8 @@ Setting to \code{TRUE} may improve performance but produces undefined
 behavior if the indices are not actually unique. Default \code{FALSE}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{x}. The output shape is composed
+(\code{\link{arrayish}})\cr
+Has the input's data type. The output shape is composed
 of the offset axes (from the slice) and the remaining
 axes from \code{start_indices}. See the underlying StableHLO function
 for more details.
@@ -106,7 +108,10 @@ the effective start position may differ from the requested one.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}.
+Lowers to \code{\link[stablehlo:hlo_gather]{hlo_gather()}}, specified under
+\href{https://openxla.org/stablehlo/spec#gather}{gather}.
+The axis and index arguments are intricate; anvl states them in its own
+terms and converts on the way down.
 }
 
 \examples{

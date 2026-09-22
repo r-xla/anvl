@@ -11,7 +11,9 @@ nv_crossprod(lhs, rhs = NULL)
 }
 \arguments{
 \item{lhs}{(\code{\link{arrayish}})\cr
-An array with at least 2 axes.}
+An array with at least 2 axes, as for \code{\link[base:crossprod]{base::crossprod()}}. Can be any numeric
+data type; \code{lhs} and \code{rhs} are
+\link[=nv_promote_to_common]{promoted to a common data type}.}
 
 \item{rhs}{(\code{\link{arrayish}} | \code{NULL})\cr
 Optional second array. If \code{NULL}, uses \code{lhs}.}
@@ -21,7 +23,8 @@ Optional second array. If \code{NULL}, uses \code{lhs}.}
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the operands' common data type, and the shape of \code{t(lhs) \%*\% rhs}.
 }
 \description{
 Computes \code{t(lhs) \%*\% rhs}. If \code{rhs} is missing, computes \code{t(lhs) \%*\% lhs}.
@@ -30,6 +33,7 @@ axes, as in \code{\link[=nv_matmul]{nv_matmul()}}: only the matrix is transposed
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `t(x) \%*\% x`, so a 3x2 gives a 2x2
 x <- nv_matrix(1:6, nrow = 3, dtype = "f32")
 nv_crossprod(x)
 \dontshow{\}) # examplesIf}

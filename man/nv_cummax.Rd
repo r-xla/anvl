@@ -9,7 +9,8 @@ nv_cummax(x, axis = NULL, indices = FALSE, nan_rm = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to accumulate. Negative values count from the end,
@@ -25,15 +26,18 @@ type (see \code{\link[=default_dtypes]{default_dtypes()}}).
 When \code{axis = NULL}, indices refer to the flattened input.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
-How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
+How to handle \code{NaN} values in float inputs. If \code{FALSE}
 (default), \code{NaN} propagates forward from its first occurrence. If
 \code{TRUE}, \code{NaN} is treated as the identity element of the cumulative
 op (\code{0} for sum, \code{1} for prod, \code{-Inf} / \code{+Inf} for max / min) and
 contributes nothing to the running value.}
 }
 \value{
-\code{\link{arrayish}} (when \code{indices = FALSE}) or named list of two
-arrays (when \code{indices = TRUE}).
+(\code{\link{arrayish}} | named \code{list} of two \code{\link{arrayish}})\cr
+One array when \code{indices = FALSE}, a named \code{list} of \code{values} and
+\code{indices} when \code{indices = TRUE}. The values have the input's data
+type and the indices the default integer data type; both have the input's shape when \code{axis} is
+given, and are 1-D of length \code{prod(shape(x))} when \code{axis} is \code{NULL}.
 }
 \description{
 Running maximum, optionally along a single axis.
@@ -48,6 +52,7 @@ two give different running values. They agree on 1-D inputs.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the running maximum keeps the data type; the indices are the default integer
 x <- nv_matrix(c(3, 1, 4, 1, 5, 9), nrow = 2)
 nv_cummax(x)
 nv_cummax(x, axis = 1L)

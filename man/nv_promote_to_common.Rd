@@ -8,19 +8,24 @@ nv_promote_to_common(...)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr
-Arrays to promote.}
+Values to promote.}
 }
 \value{
-(\code{list()} of \code{\link{arrayish}})
+(\code{list()} of \code{\link{arrayish}})\cr
+The inputs, each at their common data type and with its own shape.
 }
 \description{
-Promote arrays to a common data type, see \code{\link{common_dtype}} for more details.
+Promote arrays to a common data type, see \code{\link[=promotion_common]{promotion_common()}} for more details.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(1L)
-y <- nv_array(1.5)
-# integer is promoted to float
+# An integer is promoted to float
+x <- nv_scalar(1, dtype = "f32")
+y <- nv_scalar(1L, dtype = "i32")
 nv_promote_to_common(x, y)
+# an R value yields to the data type it meets within its category
+with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, x))
+# and settles on its default otherwise
+with_default_dtypes(c(float = "f64"), nv_promote_to_common(1, y))
 \dontshow{\}) # examplesIf}
 }

@@ -9,19 +9,24 @@ nv_abs(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any signed numeric data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
 Element-wise absolute value. You can also use \code{abs()}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the input's data type carries through
 x <- nv_array(c(-1, 2, -3))
 abs(x)
+
+# an R value materializes at its default data type
+nv_abs(-1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
