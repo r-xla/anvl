@@ -185,10 +185,10 @@ rdata_category <- function(r_type) {
 #
 # The three ways an R value enters a program -- a literal in a traced body, the
 # input an open argument is supplied at, an array built eagerly -- differ only
-# in `build`, and this is what they share. The two that know the value pass it
-# as `value`, so that it is checked against the data type it is built at here;
-# an open argument's value is unknown while tracing and is checked when the call
-# uploads it.
+# in `build`, and this is what they share. Only the literal passes `value`: it
+# is the one route that never builds a buffer, so nothing downstream would look
+# at the data before StableHLO's parser refuses the program. The other two are
+# checked where they are uploaded, against the data the call is given.
 build_r_staged <- function(r_type, dtype, build, value = NULL) {
   if (rdata_in_category(r_type, dtype)) {
     if (!is.null(value)) {

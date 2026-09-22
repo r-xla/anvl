@@ -350,19 +350,16 @@ materialize_at <- function(x, dtype, device = NULL) {
   if (!is_anvl_array(x) && !is_box(x) && is_valid_r(x)) {
     # Outside a trace the same rule applies as inside it: build the R value
     # where it is exact, and let a conversion out of its category be the
-    # program's, not R's (see `build_r_staged()`).
-    return(build_r_staged(
-      typeof(x),
-      dtype,
-      function(dt) {
-        if (is_valid_r_lit(x)) {
-          nv_scalar(x, dtype = dt, device = device)
-        } else {
-          nv_array(x, dtype = dt, device = device)
-        }
-      },
-      value = x
-    ))
+    # program's, not R's (see `build_r_staged()`). The value needs no check of
+    # its own here: it becomes a buffer, and the backend scans the data it is
+    # handed.
+    return(build_r_staged(typeof(x), dtype, function(dt) {
+      if (is_valid_r_lit(x)) {
+        nv_scalar(x, dtype = dt, device = device)
+      } else {
+        nv_array(x, dtype = dt, device = device)
+      }
+    }))
   }
   if (dtype(x) == dtype) {
     return(x)
