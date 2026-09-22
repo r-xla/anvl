@@ -149,6 +149,48 @@ assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
   dt
 }
 
+# The range an integer data type covers. Its bounds are powers of two, so a
+# double holds them exactly even for the 64-bit data types.
+dtype_int_range <- function(dtype) {
+  width <- dtype_width(dtype)
+  if (is_dtype_uint(dtype)) {
+    return(c(0, 2^width - 1))
+  }
+  c(-2^(width - 1L), 2^(width - 1L) - 1)
+}
+
+# An R value is *built at* the data type it materializes at rather than
+# converted into it, so a value that data type cannot hold is a mistake and not
+# a wraparound: `x_ui8 + (-2L)` would build `-2L` at `ui8`, where it does not
+# exist. Only integer data types are checked -- a double at a narrow float
+# overflows to `Inf`, as it does in R.
+assert_r_fits_dtype <- function(x, dtype) {
+  dt <- as_dtype(dtype)
+  if (!is_dtype_int(dt) && !is_dtype_uint(dt)) {
+    return(invisible(x))
+  }
+  range <- dtype_int_range(dt)
+  # An `NA` has its own story (the "Missing values" section of `?AnvlArray`),
+  # so it is not this check's business.
+  values <- x[!is.na(x)]
+  bad <- unique(values[values < range[[1L]] | values > range[[2L]]])
+  if (!length(bad)) {
+    return(invisible(x))
+  }
+  target <- as.character(dt)
+  n <- length(bad)
+  bounds <- vapply(range, format, character(1L), scientific = FALSE)
+  cli_abort(
+    c(
+      "{cli::qty(n)}Cannot build the R value{?s} {.val {bad[seq_len(min(3L, n))]}} at data type {.val {target}}.",
+      "x" = "{cli::qty(n)}{?It is/They are} outside the range of {.val {target}} ({bounds[[1L]]} to {bounds[[2L]]}).", # nolint
+      "i" = "An R value is built at the data type it meets rather than converted into it, so that data type has to hold it.", # nolint
+      "i" = "Convert an array with {.fn nv_convert} where the wraparound is what you want."
+    ),
+    call = NULL
+  )
+}
+
 assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   dt <- as_dtype(dtype)
   is_int64 <- inherits(value, "integer64")
@@ -198,7 +240,7 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
     is_number
   }
   if (ok) {
-    return(invisible(value))
+    return(assert_r_fits_dtype(value, dt))
   }
 
   wanted <- if (is_dtype_bool(dt)) {

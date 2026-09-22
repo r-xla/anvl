@@ -10,6 +10,11 @@
   Specifically, the ambiguity system was replaced with the `RData` system and a new system of rules for type promotions.
   With it, also the promotion behavior of various primitives and API
   functions was improved.
+* An R value is now built directly at every data type of its own category,
+  narrow and unsigned integers included, so one the data type cannot hold is an
+  error instead of wrapping around: `x_ui8 + (-2L)` and `x_i8 + 300L` are
+  refused. Write `nv_convert()` on an array where the wraparound is what you
+  want.
 * `as_array()` and the `as.double()` / `as.integer()` /
   `bit64::as.integer64()` / `as.logical()` methods take `check = "warn"`,
   `"err"` or `FALSE` instead of a flag, following {pjrt}, and warn by

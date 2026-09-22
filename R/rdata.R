@@ -145,6 +145,7 @@ rdata_natural_dtype <- function(r_type) {
   switch(r_type, double = as_dtype("f64"), integer = as_dtype("i32"), logical = as_dtype("bool"))
 }
 
+# TODO: bit64 support
 rdata_in_category <- function(r_type, dtype) {
   dtype_category(dtype) == rdata_category(r_type)
 }
@@ -155,16 +156,13 @@ rdata_category <- function(r_type) {
   switch(r_type, double = 3L, integer = 2L, logical = 1L)
 }
 
-# TODO: bit64 support
-rdata_builds_directly <- function(r_type, dtype) {
-  rdata_in_category(r_type, dtype) &&
-    (r_type != "integer" || (is_dtype_int(dtype) && dtype_width(dtype) >= 32L))
-}
-
 # Bring an R value of storage type `r_type` into the program at `dtype`. `build`
-# makes it at a data type it can be built at faithfully; a target it cannot is
-# reached by building at the natural one and letting the *program* convert the
-# rest of the way, so narrowing follows XLA's semantics rather than R's.
+# makes it at every data type of its own category, narrow and unsigned ones
+# included: an R value is built *at* a data type rather than converted into it,
+# so `x_ui8 + 1L` builds a `ui8` and a value the data type cannot hold is
+# refused (`assert_r_fits_dtype()`) instead of wrapping. A target of another
+# category is reached by building at the natural data type and letting the
+# *program* convert the rest of the way.
 #
 # This is one of the core parts of the RData mechanism, as it specifies how an
 # RData input is obtained at the data type that was requested. Where the requests
@@ -187,9 +185,15 @@ rdata_builds_directly <- function(r_type, dtype) {
 #
 # The three ways an R value enters a program -- a literal in a traced body, the
 # input an open argument is supplied at, an array built eagerly -- differ only
-# in `build`, and this is what they share.
-build_r_staged <- function(r_type, dtype, build) {
-  if (rdata_builds_directly(r_type, dtype)) {
+# in `build`, and this is what they share. The two that know the value pass it
+# as `value`, so that it is checked against the data type it is built at here;
+# an open argument's value is unknown while tracing and is checked when the call
+# uploads it.
+build_r_staged <- function(r_type, dtype, build, value = NULL) {
+  if (rdata_in_category(r_type, dtype)) {
+    if (!is.null(value)) {
+      assert_r_fits_dtype(value, dtype)
+    }
     return(build(dtype))
   }
   prim_convert(build(rdata_natural_dtype(r_type)), dtype = dtype)
@@ -254,7 +258,7 @@ build_r_at <- function(x, dtype, desc = .current_descriptor()) {
     # enters a graph.
     cli_abort("Expected arrayish value, but got {.cls {class(x)[1]}}")
   }
-  build_r_staged(typeof(x), as_dtype(dtype), function(dt) r_const_at(x, dt, desc))
+  build_r_staged(typeof(x), as_dtype(dtype), function(dt) r_const_at(x, dt, desc), value = x)
 }
 
 # The graph's constant for the R value `x` at `dtype`: an inlined literal for a
@@ -382,7 +386,7 @@ finalize_rdata_inputs <- function(desc) {
 # one of these.
 rdata_requested_dtypes <- function(aval, mat) {
   Filter(
-    function(dt) rdata_builds_directly(aval$r_type, as_dtype(dt)),
+    function(dt) rdata_in_category(aval$r_type, as_dtype(dt)),
     names(mat)
   )
 }
@@ -478,8 +482,8 @@ rdata_build_candidates <- function(r_type) {
   switch(
     r_type,
     double = c("f16", "bf16", "f32", "f64"),
-    # An R integer is signed and is not built below 32 bits
-    # (`rdata_builds_directly()`), so these are all of them.
+    # An R integer is signed, so a signed data type wide enough to hold every
+    # requested one always exists among these two.
     integer = c("i32", "i64"),
     logical = "bool",
     cli_abort("No build candidates for R type {.val {r_type}}")
@@ -491,6 +495,11 @@ rdata_build_candidates <- function(r_type) {
 # converts out of it inside the program instead), so one of them can serve every
 # use site: the upload has to *hold* them all, and each site then converts down
 # from it, rounding exactly once.
+#
+# An R value used at several data types is only ever checked against the one it
+# is uploaded at, so a use site the upload converts to but the value does not
+# fit -- an argument used at both `i8` and `ui8` -- still wraps there. Issue
+# #530, converting per use site on the host, is what would close that.
 #
 # Not simply the widest. `f16` and `bf16` are both 16 bits and neither holds the
 # other -- `f16` has three more mantissa bits, `bf16` a far wider exponent. When

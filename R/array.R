@@ -88,6 +88,9 @@
 #' When such conversions are performed, {anvl} performs a scan of the inputs to ensure that the
 #' requested data type can actually hold the input data.
 #' For example, trying to create an unsigned integer from a negative R `integer()` fails.
+#' The same holds where an R value takes its data type from the array it meets
+#' rather than from an argument: `nv_scalar(1L, "ui8") + (-2L)` is refused, where
+#' converting an array with [`nv_convert()`] wraps around.
 #'
 #' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
@@ -348,13 +351,18 @@ materialize_at <- function(x, dtype, device = NULL) {
     # Outside a trace the same rule applies as inside it: build the R value
     # where it is exact, and let a conversion out of its category be the
     # program's, not R's (see `build_r_staged()`).
-    return(build_r_staged(typeof(x), dtype, function(dt) {
-      if (is_valid_r_lit(x)) {
-        nv_scalar(x, dtype = dt, device = device)
-      } else {
-        nv_array(x, dtype = dt, device = device)
-      }
-    }))
+    return(build_r_staged(
+      typeof(x),
+      dtype,
+      function(dt) {
+        if (is_valid_r_lit(x)) {
+          nv_scalar(x, dtype = dt, device = device)
+        } else {
+          nv_array(x, dtype = dt, device = device)
+        }
+      },
+      value = x
+    ))
   }
   if (dtype(x) == dtype) {
     return(x)

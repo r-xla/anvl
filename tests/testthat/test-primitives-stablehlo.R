@@ -1573,6 +1573,9 @@ test_that("prim_fill() checks that `value` is something `dtype` can hold", {
   expect_error(prim_fill(-1L, 2L, dtype = "ui8"), "must be a non-negative whole number")
   expect_error(prim_fill(-1, 2L, dtype = "ui8"), "must be a non-negative whole number")
   expect_error(prim_fill(3L, 2L, dtype = "bool"), "must be a logical")
+  # ... and that it is in range, rather than leaving the overflow to StableHLO.
+  expect_error(prim_fill(300L, 2L, dtype = "i8"), "outside the range of .i8.")
+  expect_error(prim_fill(300L, 2L, dtype = "ui8"), "outside the range of .ui8.")
   expect_error(prim_fill(NA, 2L, dtype = "f32"), "must not be")
   expect_error(prim_fill(c(1, 2), 2L, dtype = "f32"), "must be a scalar")
   # A whole double is built as an R integer, so a larger one would arrive as
