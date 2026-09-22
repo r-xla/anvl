@@ -35,6 +35,14 @@ replacement, analogous to R's \code{sample.int()}.
 
 To sample from a population other than \code{1:n}, use \code{\link[=nv_sample]{nv_sample()}}.
 }
+\section{Sampling Precision}{
+
+The sample is derived from a uniform draw at the backend's default float data
+type (see \code{\link[=default_dtypes]{default_dtypes()}}) and inherits its resolution: an \code{f32} uniform
+takes one of \code{2^23} equally spaced values, an \code{f64} one of \code{2^52}. Where the
+finer grid matters, raise the default float with \code{\link[=with_default_dtypes]{with_default_dtypes()}}.
+}
+
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 # roll six dice; `state` is the updated RNG state

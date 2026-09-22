@@ -87,11 +87,6 @@ left tail when \code{log_p = TRUE} to maintain accuracy.
 Moshier (1989) (this is \code{ndtri} in the Cephes
 library as used by JAX) for \code{f64}, and uses a new lower degree Remez minimax
 rational approximation on the same intervals for \code{f32}.
-
-The thresholds and coefficients of \code{nv_pnorm()} and \code{nv_qnorm()} are written
-for \code{f32} and \code{f64}, one set per width, so those two are the only data types
-they accept: a narrower float (\code{f16}, \code{bf16}) is refused rather than served
-by the wrong set. \code{nv_dnorm()} has no coefficients and takes any float.
 }
 \section{Random generation}{
 

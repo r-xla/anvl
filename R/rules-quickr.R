@@ -107,7 +107,7 @@ quickr_emit_all_empty <- function(out_syms, out_avals) {
   stmts <- lapply(seq_along(out_avals), function(i) {
     quickr_emit_known_empty(out_syms[[i]], out_avals[[i]])
   })
-  if (!length(stmts) || any(vapply(stmts, is.null, logical(1)))) {
+  if (!length(stmts) || any(vapply(stmts, is.null, logical(1L)))) {
     return(NULL)
   }
   unlist(stmts, recursive = FALSE)

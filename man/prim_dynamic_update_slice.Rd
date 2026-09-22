@@ -16,11 +16,11 @@ of them has one.}
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
 number of axes as \code{x}, with \code{shape(update) <= shape(x)} per axis.
-Shares \code{x}'s data type -- see \code{x}.}
+Shares \code{x}'s data type.}
 
 \item{...}{(\code{\link{arrayish}})\cr
-Scalar start indices, one per axis of \code{x}. Each must be a scalar of an
-integer data type, and keeps it -- the indices take no part in \code{x}'s.}
+Scalar start indices, one per axis of \code{x}. Each must be a scalar of
+the same integer data type.}
 }
 \value{
 (\code{\link{arrayish}})\cr

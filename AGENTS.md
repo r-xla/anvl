@@ -33,7 +33,22 @@ config above. anvl-specific:
 
 When adding new functionality, decide which layer it belongs to. Most new operations need both: a `prim_*` primitive with rules, and an `nv_*` wrapper with R-idiomatic semantics.
 
-Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets, so write it in the *category* the operand is in -- `0` for a float array, `0L` for an integer one. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
+Inside `nv_*` API functions, pass plain R literals (e.g. `0`, `1`, `NaN`) directly to primitives instead of wrapping them in `nv_scalar()` / `nv_scalar_like()`. The literal takes the dtype of the operands it meets. Shape is a separate matter: primitives do not broadcast, so a literal only works in a slot that takes a scalar (a padding value, a clamp bound, a reduction's `init`). For an elementwise primitive, broadcast first with `nv_broadcast_scalars()`.
+
+The two spellings of a whole number are not symmetric here. An R integer widens into whatever
+category it meets, while a plain `1` is an R *double* and pulls an integer array into the float
+category -- `x_i32 - 1` is `f32`, where `x_i32 - 1L` is `i32`. So a whole number keeps its `L`
+even when it meets a float array: `nv_ifelse(mask, 0L, x)`, `prim_fill(1L, dtype = dtype(x),
+...)`, `hlo_scalar(0L, dtype = dtype(x), ...)`, `U - 1L`.
+
+Drop the `L` only where the value is genuinely a real number that happens to be whole -- a
+distribution parameter, a probability bound, a threshold, a coefficient: `sd = 1`,
+`lower = 0, upper = 1`, `nv_max(-d, 1)`, `2 / sqrt(pi)`, `base::log(2 * pi)`.
+
+That distinction bites hardest on a literal that meets *nothing*, where it decides a data type
+outright by settling on the default of its own category. `nv_rnorm(mean = 0, sd = 1)` has to stay
+plain: written `0L` / `1L`, a call that names no dtype returns the sample at the default
+*integer*.
 
 ## Terminology
 

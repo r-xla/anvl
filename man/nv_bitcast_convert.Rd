@@ -8,14 +8,12 @@ nv_bitcast_convert(x, dtype)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-One input. Can be any data type except \code{bool}, whose bits StableHLO does
-not reinterpret. An R value materializes at its
-\link[=default_dtypes]{default data type}.}
+One input. Can be any data type except \code{bool}.
+An R value materializes at its \link[=default_dtypes]{default data type}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Target data type, \code{bool} excepted for the same reason, reinterpreting the
-bits rather than the values. One of
-the same bit width as the input's leaves the shape unchanged; a narrower
+Any target data type except \code{bool}.
+One of the same bit width as the input's leaves the shape unchanged; a narrower
 one adds a trailing axis holding the pieces; a wider one consumes the last
 axis, whose size must equal the ratio of the two widths.}
 }

@@ -12,9 +12,9 @@ nv_rbind(...)
 
 nv_cbind(...)
 
-\method{rbind}{AnvlArray}(..., deparse.level = 1)
+\method{rbind}{AnvlArray}(..., deparse.level = 1L)
 
-\method{cbind}{AnvlArray}(..., deparse.level = 1)
+\method{cbind}{AnvlArray}(..., deparse.level = 1L)
 }
 \arguments{
 \item{...}{(\code{\link{arrayish}})\cr

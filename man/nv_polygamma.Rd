@@ -33,7 +33,7 @@ log-gamma function. For \code{n = 0} this is the digamma function; for \code{n =
 }
 \section{The \code{trigamma()} generic}{
 
-\code{trigamma(x)} is \code{nv_polygamma(1, x)}.
+\code{trigamma(x)} is \code{nv_polygamma(1L, x)}.
 }
 
 \examples{

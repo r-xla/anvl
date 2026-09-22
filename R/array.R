@@ -1130,7 +1130,7 @@ to_abstract <- function(x, pure = FALSE) {
 as_shape <- function(x) {
   if (is_shape(x)) {
     x
-  } else if (test_integerish(x, any.missing = FALSE, lower = 0)) {
+  } else if (test_integerish(x, any.missing = FALSE, lower = 0L)) {
     Shape(as.integer(x))
   } else if (is.null(x)) {
     Shape(integer())
@@ -1227,7 +1227,7 @@ arr <- function(..., shape = NULL) {
   assert_integerish(shape, null.ok = TRUE)
   assert_vector(vals, min.len = 1L)
   nvals <- length(vals)
-  if (!is.null(shape) && (nvals != 1) && (prod(shape) != nvals)) {
+  if (!is.null(shape) && (nvals != 1L) && (prod(shape) != nvals)) {
     cli_abort("Number of elements is {nvals}, but {.arg shape} is {shape_repr(shape)}.")
   }
   array(vals, dim = shape %||% length(vals))

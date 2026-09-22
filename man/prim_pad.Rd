@@ -20,7 +20,7 @@ them assumes the data type of the others when it is in its \link[=dtypes]{data t
 of them has one.}
 
 \item{padding_value}{(\code{\link{arrayish}})\cr
-Scalar value to use for padding. Shares \code{x}'s data type -- see \code{x}.}
+Scalar value to use for padding. Shares \code{x}'s data type.}
 
 \item{edge_padding_low}{(\code{integer()})\cr
 Amount of padding to add at the start of each axis.}

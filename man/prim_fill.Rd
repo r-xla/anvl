@@ -16,7 +16,7 @@ for an unsigned one, and a logical or \code{0} / \code{1} for \code{bool}.}
 Shape of the output array.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type of the result. Can be any data type.}
+Data type of the result.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:

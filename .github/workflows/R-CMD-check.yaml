@@ -33,24 +33,28 @@ jobs:
         run: |
           if [ "$FULL" = "true" ]; then
             config='[
-              {"os": "macos", "r": "release", "platform": "cpu"},
-              {"os": "macos-intel", "r": "release", "platform": "cpu"},
-              {"os": "ubuntu", "r": "release", "platform": "cpu"},
-              {"os": "ubuntu", "r": "release", "platform": "cpu", "torch": true},
-              {"os": "windows", "r": "release", "platform": "cpu"},
-              {"os": "ubuntu", "r": "oldrel-1", "platform": "cpu"},
-              {"os": "ubuntu", "r": "oldrel-2", "platform": "cpu"}
+              {"os": "macos", "runner": "macos-latest", "r": "release", "platform": "cpu"},
+              {"os": "macos-intel", "runner": "macos-15-intel", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "platform": "cpu", "torch": true},
+              {"os": "windows", "runner": "windows-latest", "r": "release", "platform": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "oldrel-1", "platform": "cpu"},
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "oldrel-2", "platform": "cpu"}
             ]'
           else
             config='[
-              {"os": "ubuntu", "r": "release", "platform": "cpu", "torch": true}
+              {"os": "ubuntu", "runner": "ubuntu-latest", "r": "release", "platform": "cpu", "torch": true}
             ]'
           fi
           echo "config=$(echo "$config" | tr -d '\n' | tr -s ' ')" >> "$GITHUB_OUTPUT"
 
   R-CMD-check:
     needs: setup
-    runs-on: ${{ matrix.runner }}
+    # Each configuration carries its own runner. An `include:` entry cannot
+    # serve that: one matching none of the generated combinations is added as a
+    # combination of its own, which on a trimmed matrix starts jobs whose
+    # config has no `r`.
+    runs-on: ${{ matrix.config.runner }}
 
     name: ${{ matrix.config.os }} - ${{ matrix.config.platform }} (${{ matrix.config.r }})${{ matrix.config.torch && ' – with torch' || '' }}
 
@@ -58,22 +62,6 @@ jobs:
       fail-fast: false
       matrix:
         config: ${{ fromJSON(needs.setup.outputs.config) }}
-
-        include:
-          - config: {os: "ubuntu", platform: "cpu"}
-            runner: 'ubuntu-latest'
-          - config: {os: "macos", platform: "cpu"}
-            runner: 'macos-latest'
-            setup: |
-              brew install protobuf@21
-              brew link protobuf@21 --force --overwrite
-          - config: {os: "macos-intel", platform: "cpu"}
-            runner: 'macos-15-intel'
-            setup: |
-              brew install protobuf@21
-              brew link protobuf@21 --force --overwrite
-          - config: {os: "windows", platform: "cpu"}
-            runner: 'windows-latest'
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -83,9 +71,11 @@ jobs:
       PJRT_INSTALL: "1"
 
     steps:
-      - name: Setup
-        if: ${{ matrix.setup }}
-        run: ${{ matrix.setup }}
+      - name: Install protobuf
+        if: ${{ startsWith(matrix.config.os, 'macos') }}
+        run: |
+          brew install protobuf@21
+          brew link protobuf@21 --force --overwrite
 
       - uses: actions/checkout@v7
 

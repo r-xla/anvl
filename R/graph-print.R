@@ -133,7 +133,7 @@ format_param <- function(
     elts <- if (is.character(p)) {
       sprintf('"%s"', p)
     } else {
-      vapply(p, format, character(1), trim = TRUE, digits = digits)
+      vapply(p, format, character(1L), trim = TRUE, digits = digits)
     }
     return(if (length(p) == 1L) elts else sprintf("c(%s)", paste(elts, collapse = ", ")))
   }
@@ -166,7 +166,7 @@ format_param_parts <- function(
         prefix_width = nchar(prefixes[[i]])
       )
     },
-    character(1)
+    character(1L)
   )
   paste0(prefixes, parts)
 }
@@ -193,7 +193,7 @@ format_array_param <- function(x, digits = getOption("digits")) {
 # reader never sees.
 format_graph_signature <- function(g) {
   avals <- function(nodes) {
-    paste(vapply(nodes, \(node) format_aval_short(node$aval), character(1)), collapse = ", ")
+    paste(vapply(nodes, \(node) format_aval_short(node$aval), character(1L)), collapse = ", ")
   }
   sprintf("(%s) -> %s", avals(g$inputs), avals(g$outputs))
 }
@@ -304,7 +304,7 @@ layout_width <- function(lines) {
 # param, a wide output type -- overflows `width`, since the only way to shorten
 # it is to split a value.
 layout_row <- function(chunks, indent, width) {
-  flag <- function(name) vapply(chunks, \(ch) is.list(ch) && ch[[name]], logical(1))
+  flag <- function(name) vapply(chunks, \(ch) is.list(ch) && ch[[name]], logical(1L))
   breakable <- flag("breakable")
   broken <- flag("multi")
   repeat {
@@ -313,7 +313,7 @@ layout_row <- function(chunks, indent, width) {
     if (layout_width(lines) <= width || !length(todo)) {
       break
     }
-    widest <- vapply(chunks[todo], \(ch) nchar(inline_chunk(ch)), integer(1))
+    widest <- vapply(chunks[todo], \(ch) nchar(inline_chunk(ch)), integer(1L))
     broken[[todo[[which.max(widest)]]]] <- TRUE
   }
   lines
@@ -327,9 +327,9 @@ format_call <- function(
   width = getOption("width", 80L),
   digits = getOption("digits")
 ) {
-  input_ids <- vapply(call$inputs, format_node_id, character(1), node_ids = node_ids, digits = digits)
-  output_ids <- vapply(call$outputs, format_node_id, character(1), node_ids = node_ids, digits = digits)
-  output_types <- vapply(call$outputs, \(x) format_aval_short(x$aval), character(1))
+  input_ids <- vapply(call$inputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
+  output_ids <- vapply(call$outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
+  output_types <- vapply(call$outputs, \(x) format_aval_short(x$aval), character(1L))
 
   chunks <- if (length(call$outputs) == 1L) {
     list(sprintf("%s: %s", output_ids, output_types))
@@ -377,7 +377,7 @@ format_graph_lines <- function(
         format_aval_short(node$aval, r_types[[i]])
       )
     },
-    character(1)
+    character(1L)
   )
   capture_strs <- vapply(
     constants,
@@ -385,7 +385,7 @@ format_graph_lines <- function(
       id <- format_node_id(node, node_ids, digits)
       if (typed_captures) sprintf("%s: %s", id, format_aval_short(node$aval)) else id
     },
-    character(1)
+    character(1L)
   )
 
   # Each piece of the signature is separated from the one before it by a space,
@@ -401,7 +401,7 @@ format_graph_lines <- function(
   }
   header <- c(add(header, "(", ")", input_strs), " {")
 
-  output_ids <- vapply(outputs, format_node_id, character(1), node_ids = node_ids, digits = digits)
+  output_ids <- vapply(outputs, format_node_id, character(1L), node_ids = node_ids, digits = digits)
   ret <- if (length(outputs) == 1L) {
     paste0(indent, "return ", output_ids)
   } else {
@@ -415,7 +415,7 @@ format_graph_lines <- function(
     vapply(
       calls,
       format_call,
-      character(1),
+      character(1L),
       node_ids = node_ids,
       indent = indent,
       width = width,
@@ -466,11 +466,11 @@ format.PrimitiveCall <- function(x, ..., digits = getOption("digits")) {
           format_aval_short(inp$aval)
         }
       },
-      character(1)
+      character(1L)
     ),
     collapse = ", "
   )
-  outputs <- paste(vapply(x$outputs, \(out) format_aval_short(out$aval), character(1)), collapse = ", ")
+  outputs <- paste(vapply(x$outputs, \(out) format_aval_short(out$aval), character(1L)), collapse = ", ")
   params_str <- if (length(x$params) > 0L) {
     sprintf(
       " [%s]",
