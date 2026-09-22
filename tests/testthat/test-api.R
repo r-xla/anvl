@@ -2458,6 +2458,18 @@ test_that("assert_shapevec() rejects what it cannot represent", {
   expect_error(nv_fill(1, shape = c(-1L, 2L)), "`shape`")
 })
 
+test_that("assert_fill_value() rejects a value the data type cannot hold", {
+  expect_error(nv_fill(300, shape = 2L, dtype = "i8"), "must fit the range")
+  expect_error(nv_fill(-300, shape = 2L, dtype = "i8"), "must fit the range")
+  expect_error(nv_fill(70000, shape = 2L, dtype = "ui16"), "must fit the range")
+  expect_equal(shape(nv_fill(100, shape = 2L, dtype = "i8")), 2L)
+  expect_equal(shape(nv_fill(-100, shape = 2L, dtype = "i8")), 2L)
+})
+
+test_that("assert_fill_value() names `dtype` for a data type it cannot resolve", {
+  expect_error(nv_fill(1, shape = 2L, dtype = "nope"), "`dtype` must name a data type")
+})
+
 test_that("a constructor that fills internally works at every data type", {
   # These fill at a data type they do not know statically, writing a plain `0`
   # or `1`, so they are what `assert_fill_value()` has to keep accepting.

@@ -675,22 +675,7 @@ trace_fn <- function(
   inputs_flat <- lapply(args_flat, maybe_box_input, desc = desc, mode = mode)
   # Track which flat args are static (non-array) values vs. graph inputs
   desc$is_static_flat <- vapply(inputs_flat, Negate(is_graph_box), logical(1L))
-  if (mode == "toplevel") {
-    globals[["INFER_PRIMITIVE"]] <- NULL
-    output <- tryCatch(
-      do.call(f_flat, inputs_flat),
-      error = function(e) {
-        prim <- globals[["INFER_PRIMITIVE"]]
-        globals[["INFER_PRIMITIVE"]] <- NULL
-        if (!is.null(prim)) {
-          e$call <- print_call_repr(prim)
-        }
-        rlang::cnd_signal(e)
-      }
-    )
-  } else {
-    output <- do.call(f_flat, inputs_flat)
-  }
+  output <- do.call(f_flat, inputs_flat)
 
   out_tree <- output[[1L]]
   # function() x; -> output can be an closed-over constant
@@ -878,9 +863,17 @@ graph_desc_add <- function(primitive, args, params = list(), infer_fn, desc = NU
     avals_in[[i]] <- gnode$aval
   }
   names(avals_in) <- names(args)
-  globals[["INFER_PRIMITIVE"]] <- primitive
-  ats_out <- do.call(infer_fn, c(avals_in, params))
-  globals[["INFER_PRIMITIVE"]] <- NULL
+  # A rule's formals are the primitive's own, so its message already names the
+  # right argument; what it cannot know is the function the caller wrote. The
+  # rewrite happens here, around the one call it applies to, so that an error a
+  # caller catches cannot leave the next one wearing this primitive's name.
+  ats_out <- tryCatch(
+    do.call(infer_fn, c(avals_in, params)),
+    error = function(e) {
+      e$call <- print_call_repr(primitive)
+      rlang::cnd_signal(e)
+    }
+  )
   gvals_out <- lapply(ats_out, GraphValue)
   call <- PrimitiveCall(primitive, gnodes_in, params, gvals_out)
   desc$calls$add(call)

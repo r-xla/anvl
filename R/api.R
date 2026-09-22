@@ -40,7 +40,7 @@ nv_fill <- function(value, shape, dtype = NULL, device = NULL) {
   dtype <- if (is.null(dtype)) {
     default_dtype(value)
   } else {
-    as_dtype(dtype)
+    assert_dtype_param(dtype, "dtype")
   }
   prim_fill(value, shape, dtype, device = device)
 }

@@ -239,12 +239,6 @@ prim_broadcast_in_axes <- new_primitive(
 prim_dot_general <- new_primitive(
   "dot_general",
   function(lhs, rhs, contracting_axes, batching_axes, precision = "highest") {
-    if (!checkmate::test_choice(precision, c("default", "high", "highest"))) {
-      cli_abort(c(
-        "{.arg precision} must be one of {.val {c('default', 'high', 'highest')}}.",
-        x = "Got {.val {precision}}."
-      ))
-    }
     operands <- apply_promotion(list(lhs = lhs, rhs = rhs), promotion_rdata_common())
     graph_desc_add(
       self,
@@ -2461,8 +2455,19 @@ prim_sort <- new_primitive(
   function(xs, axis = 1L, descending = FALSE, is_stable = FALSE) {
     assert_flag(descending)
     assert_flag(is_stable)
-    if (is_arrayish(xs) || !is.list(xs) || !length(xs)) {
-      cli_abort("{.arg xs} must be a non-empty list of arrayish values")
+    # An `AnvlArray` / `GraphBox` is itself a list, so `is.list()` alone would
+    # take one apart and read its internal fields as two operands.
+    if (!is.list(xs) || !length(xs) || is_arrayish(xs, convert_ok = FALSE)) {
+      cli_abort(c(
+        "{.arg xs} must be a non-empty list of arrayish values.",
+        x = if (is_arrayish(xs, convert_ok = FALSE)) {
+          "Got a single {.cls {class(xs)[1L]}}; wrap it in {.code list()}."
+        } else if (!is.list(xs)) {
+          "Got {.cls {class(xs)[1L]}}."
+        } else {
+          "Got an empty list."
+        }
+      ))
     }
     axis <- resolve_axis(axis, length(shape(xs[[1L]])))
 
@@ -2594,12 +2599,17 @@ prim_print <- new_primitive(
 #' @description
 #' Generates pseudo-random numbers using the specified algorithm and returns
 #' the updated RNG state together with the generated values.
-#' @template param_initial_state
+#' @param initial_state ([`arrayish`])\cr
+#'   RNG state, a `ui64` vector whose length `rng_algorithm` fixes: `2` for
+#'   `"THREE_FRY"`, `2` or `3` for `"PHILOX"`, and `3` for `"DEFAULT"`.
 #' @param rng_algorithm (`character(1)`)\cr
-#'   RNG algorithm name. Default is `"THREE_FRY"`.
+#'   RNG algorithm name, one of `"THREE_FRY"`, `"PHILOX"` or `"DEFAULT"`.
+#'   Default is `"THREE_FRY"`.
 #' @param dtype (`character(1)` | [`DataType`])\cr
 #'   Data type of the generated random values.
-#' @template param_shape
+#' @param shape (`integer()`)\cr
+#'   Shape of the generated values. Write `integer()` for a scalar: `c()` is
+#'   `NULL`, which this argument does not accept.
 #' @return (named `list` of two [`arrayish`])\cr
 #'   Element `state` is the updated RNG state with the same dtype and shape
 #'   as `initial_state`. Element `values` is an array of random values with

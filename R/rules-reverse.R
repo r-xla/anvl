@@ -699,11 +699,20 @@ prim_pad[["reverse"]] <- rule_reverse(function(inputs, outputs, grads, params, r
   grad <- grads[[1L]]
   list(
     if (required[[1L]]) {
+      # Negative edge padding dropped elements of the input rather than adding
+      # any, and what was dropped gets no gradient. Put those positions back as
+      # zeros first, so the selection below is the same one a non-negative
+      # padding would take.
+      low_neg <- pmax(-edge_padding_low, 0L)
+      high_neg <- pmax(-edge_padding_high, 0L)
+      if (any(low_neg > 0L) || any(high_neg > 0L)) {
+        grad <- prim_pad(grad, 0, low_neg, high_neg, rep(0L, length(low_neg)))
+      }
       # select the non-padded elements
-      out_shape <- shape(outputs[[1L]])
+      out_shape <- shape(grad)
       strides <- interior_padding + 1L
-      start_indices <- edge_padding_low + 1L
-      limit_indices <- out_shape - edge_padding_high
+      start_indices <- pmax(edge_padding_low, 0L) + 1L
+      limit_indices <- out_shape - pmax(edge_padding_high, 0L)
       prim_static_slice(grad, start_indices, limit_indices, strides)
     },
     if (required[[2L]]) {

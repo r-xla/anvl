@@ -13,16 +13,19 @@ prim_rng_bit_generator(
 }
 \arguments{
 \item{initial_state}{(\code{\link{arrayish}})\cr
-RNG state (\code{ui64[2]}).}
+RNG state, a \code{ui64} vector whose length \code{rng_algorithm} fixes: \code{2} for
+\code{"THREE_FRY"}, \code{2} or \code{3} for \code{"PHILOX"}, and \code{3} for \code{"DEFAULT"}.}
 
 \item{rng_algorithm}{(\code{character(1)})\cr
-RNG algorithm name. Default is \code{"THREE_FRY"}.}
+RNG algorithm name, one of \code{"THREE_FRY"}, \code{"PHILOX"} or \code{"DEFAULT"}.
+Default is \code{"THREE_FRY"}.}
 
 \item{dtype}{(\code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
 Data type of the generated random values.}
 
 \item{shape}{(\code{integer()})\cr
-Shape.}
+Shape of the generated values. Write \code{integer()} for a scalar: \code{c()} is
+\code{NULL}, which this argument does not accept.}
 }
 \value{
 (named \code{list} of two \code{\link{arrayish}})\cr

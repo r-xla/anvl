@@ -1039,3 +1039,41 @@ test_that("prim_reduce_prod: drop = FALSE matches drop = TRUE", {
 if (nzchar(system.file(package = "torch"))) {
   source(system.file("extra-tests", "test-primitives-reverse-torch.R", package = "anvl"), local = TRUE)
 }
+
+test_that("prim_pad reverse with negative edge padding", {
+  # Negative padding drops elements of the input rather than adding any, so
+  # those positions get no gradient. Checked against central differences.
+  fd <- function(f, v, eps = 1e-6) {
+    vapply(
+      seq_along(v),
+      function(i) {
+        up <- v
+        up[i] <- up[i] + eps
+        dn <- v
+        dn[i] <- dn[i] - eps
+        (as.numeric(pjrt::as_array(f(nv_array(up, dtype = "f64")))) -
+          as.numeric(pjrt::as_array(f(nv_array(dn, dtype = "f64"))))) /
+          (2 * eps)
+      },
+      numeric(1L)
+    )
+  }
+  v <- as.numeric(1:6)
+  cases <- list(
+    list(low = -2L, high = 0L, interior = 0L),
+    list(low = 0L, high = -1L, interior = 0L),
+    list(low = -2L, high = -2L, interior = 0L),
+    list(low = -1L, high = -1L, interior = 1L),
+    list(low = -3L, high = 2L, interior = 0L),
+    list(low = -5L, high = 5L, interior = 0L),
+    list(low = -3L, high = 0L, interior = 2L)
+  )
+  for (case in cases) {
+    f <- function(z) {
+      y <- prim_pad(z, nv_scalar(0, "f64"), case$low, case$high, case$interior)
+      nv_reduce_sum(y * y, axes = 1L, drop = TRUE)
+    }
+    got <- as.numeric(pjrt::as_array(jit(gradient(f))(nv_array(v, dtype = "f64"))[[1L]]))
+    expect_equal(got, fd(f, v), tolerance = 1e-5, info = paste(unlist(case), collapse = "/"))
+  }
+})

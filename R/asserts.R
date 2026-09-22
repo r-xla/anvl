@@ -10,9 +10,9 @@
 #' @keywords internal
 assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   ok <- test_integerish(x, lower = 0L, min.len = min_len, any.missing = FALSE, null.ok = FALSE)
-  fmt <- function(x) {
-    sprintf("(%s)", paste0(x, collapse = ", "))
-  }
+  # `vec_repr()`, so that every message that reports a vector of numbers spells
+  # it the one way: `c(1, 3)`.
+  fmt <- vec_repr
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
       cli_abort("{.arg {var_name}} must be an integer vector, not {.cls {class(x)}}")
@@ -63,18 +63,18 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
     if (max_axis < 1L) {
       cli_abort(c(
         "{.arg {arg}} cannot be used, there is no axis to select.",
-        x = "Got {.val {original[invalid]}}."
+        x = "Got {vec_repr(original[invalid])}."
       ))
     }
     cli_abort(c(
       "{.arg {arg}} must be between 1 and {max_axis}, or between {-max_axis} and -1 to count from the end.",
-      x = "Got {.val {original[invalid]}}."
+      x = "Got {vec_repr(original[invalid])}."
     ))
   }
   if (unique && anyDuplicated(resolved)) {
     cli_abort(c(
       "{.arg {arg}} must not contain duplicate axes.",
-      x = "Got {.val {original}}."
+      x = "Got {vec_repr(original)}."
     ))
   }
   resolved
@@ -100,7 +100,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
   if (any(invalid)) {
     cli_abort(c(
       "{.arg {arg}} must contain only non-negative values, or {.val {-1L}} to infer an axis size.",
-      x = "Got {.val {shape[invalid]}}."
+      x = "Got {vec_repr(shape[invalid])}."
     ))
   }
   inferred <- which(shape == -1L)
@@ -150,7 +150,7 @@ assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
 }
 
 assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
-  dt <- as_dtype(dtype)
+  dt <- assert_dtype_param(dtype, "dtype")
   is_int64 <- inherits(value, "integer64")
   is_number <- is.numeric(value) || is_int64
 
@@ -198,6 +198,27 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
     is_number
   }
   if (ok) {
+    # The category agrees; what is left is whether the value fits the data
+    # type's range. The conversion itself is the check, re-raised under this
+    # argument's name. It goes to `pjrt_buffer()` rather than `nv_array()`
+    # because the latter is trace-aware: under `jit()` it would build a literal
+    # into the graph and convert nothing. Only the integer types have a range
+    # to miss -- a float saturates instead.
+    if (is_number && (is_dtype_int(dt) || is_dtype_uint(dt))) {
+      fits <- tryCatch(
+        {
+          pjrt::pjrt_buffer(value, as.character(dt))
+          TRUE
+        },
+        error = function(e) FALSE
+      )
+      if (!fits) {
+        cli_abort(c(
+          "{.arg {arg}} must fit the range of data type {.val {as.character(dt)}}.",
+          "x" = "Got {.val {value}}."
+        ))
+      }
+    }
     return(invisible(value))
   }
 

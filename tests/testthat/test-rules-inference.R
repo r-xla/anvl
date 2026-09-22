@@ -548,3 +548,186 @@ describe("infer_convolution()", {
     expect_error(conv(matrix(0.5, 2L, 2L)), "`padding` must contain whole numbers", fixed = TRUE)
   })
 })
+
+describe("infer_convolution()", {
+  it("refuses a padding that takes away more than an axis holds", {
+    x <- nv_array(array(1.0, c(1L, 1L, 5L, 5L)))
+    k <- nv_array(array(1.0, c(1L, 1L, 3L, 3L)))
+    # XLA's own inference CHECK-fails on a negative extent and aborts the
+    # process, so this can never be left to the compiler.
+    expect_snapshot(error = TRUE, nv_conv2d(x, k, padding = -4L))
+    # Emptying an axis is still legal.
+    expect_identical(shape(nv_conv2d(x, k, padding = -1L)), c(1L, 1L, 1L, 1L))
+  })
+
+  it("names `precision` rather than leaving it to the lowering", {
+    x <- nv_array(array(1.0, c(1L, 1L, 5L, 5L)))
+    k <- nv_array(array(1.0, c(1L, 1L, 3L, 3L)))
+    expect_snapshot(error = TRUE, nv_conv2d(x, k, precision = "nope"))
+  })
+
+  it("blames the layout, not `padding`, when the rank disagrees", {
+    # `padding`'s shape test used to run first, so a layout that does not fit
+    # the rank was reported as a `padding` the caller could not have written.
+    expect_snapshot(error = TRUE, {
+      jit(prim_convolution, static = 3:18)(
+        nv_array(as.double(1:10), shape = c(1, 2, 5)),
+        nv_array(as.double(1:18), shape = c(3, 2, 3)),
+        1L,
+        2L,
+        c(3L, 4L),
+        2L,
+        1L,
+        c(3L, 4L),
+        1L,
+        2L,
+        c(3L, 4L),
+        c(1L, 1L),
+        matrix(0L, 2L, 2L),
+        c(1L, 1L),
+        c(1L, 1L),
+        1L,
+        1L,
+        "highest"
+      )
+    })
+  })
+})
+
+describe("infer_while()", {
+  it("checks what `cond` returns, not only the body", {
+    expect_snapshot(error = TRUE, {
+      prim_while(
+        init = list(i = nv_scalar(0L)),
+        cond = function(i) nv_convert(i, "f32"),
+        body = function(i) list(i = i + 1L)
+      )
+    })
+    expect_snapshot(error = TRUE, {
+      prim_while(
+        init = list(i = nv_array(c(1L, 2L))),
+        cond = function(i) i < 5L,
+        body = function(i) list(i = i + 1L)
+      )
+    })
+  })
+})
+
+describe("infer_cum()", {
+  it("refuses a scan over a size-0 axis", {
+    expect_snapshot(error = TRUE, prim_cumsum(nv_fill(1, shape = c(0, 3)), axis = 1L))
+  })
+})
+
+describe("infer_rng_bit_generator()", {
+  it("fixes the state length DEFAULT needs", {
+    expect_snapshot(
+      error = TRUE,
+      prim_rng_bit_generator(
+        nv_array(rep(0, 5), dtype = "ui64"),
+        rng_algorithm = "DEFAULT",
+        dtype = "f32",
+        shape = c(3, 2)
+      )
+    )
+  })
+})
+
+describe("infer_gather()", {
+  it("names each argument of an overlapping axis pair", {
+    expect_snapshot(error = TRUE, {
+      prim_gather(
+        nv_matrix(1:9, nrow = 3),
+        nv_array(rep(1L, 4), shape = c(2L, 2L)),
+        slice_sizes = c(1L, 1L),
+        offset_axes = integer(),
+        collapsed_slice_axes = c(1L, 2L),
+        x_batching_axes = integer(),
+        start_indices_batching_axes = integer(),
+        start_index_map = c(1L, 1L),
+        index_vector_axis = 2L
+      )
+    })
+  })
+
+  it("reports an axis of 0 against the argument that holds it", {
+    # `without()` is `x[-axes]`, and `x[-0]` is `x[0]`, so an unchecked 0 used
+    # to empty the slice sizes and make the offset range check report a rank
+    # nothing produced.
+    expect_snapshot(error = TRUE, {
+      prim_gather(
+        nv_matrix(1:9, nrow = 3),
+        nv_matrix(c(1L, 3L), ncol = 1),
+        slice_sizes = c(1L, 3L),
+        offset_axes = 2L,
+        collapsed_slice_axes = 0L,
+        x_batching_axes = integer(),
+        start_indices_batching_axes = integer(),
+        start_index_map = 1L,
+        index_vector_axis = 2L
+      )
+    })
+  })
+})
+
+describe("the reduce rules", {
+  it("refuse a reductor that does not return a scalar", {
+    x <- nv_array(array(as.numeric(1:6), c(2L, 3L)))
+    expect_snapshot(
+      error = TRUE,
+      prim_reduce(x, init = 0, axes = 1L, reductor = function(a, b) nv_fill(0, shape = c(2, 2)))
+    )
+  })
+})
+
+describe("the static parameters a rule is handed", {
+  it("refuses a whole number outside the integer range", {
+    x <- nv_array(array(as.numeric(1:6), c(2L, 3L)))
+    for (value in list(3e9, Inf, -Inf)) {
+      expect_error(
+        prim_pad(x, 0, c(value, 0), c(0, 0), c(0, 0)),
+        "must contain whole numbers in the integer range",
+        fixed = TRUE
+      )
+    }
+  })
+
+  it("refuses arithmetic on valid params that would overflow on the way out", {
+    x <- nv_array(array(as.numeric(1:6), c(2L, 3L)))
+    expect_error(
+      prim_pad(x, 0, c(2000000000L, 0L), c(2000000000L, 0L), c(0L, 0L)),
+      "must fit in the integer range",
+      fixed = TRUE
+    )
+  })
+})
+
+describe("the inference rules as the primitives reach them", {
+  it("does not stamp a later error with an earlier primitive's name", {
+    x <- nv_array(array(as.numeric(1:6), c(2L, 3L)))
+    err <- tryCatch(
+      jit(function(a) {
+        tryCatch(prim_reshape(a, c(4, 4)), error = function(e) NULL)
+        cli::cli_abort("my own message")
+      })(x),
+      error = identity
+    )
+    expect_match(conditionMessage(err), "my own message")
+    # The call is whatever raised it -- never the primitive whose rule failed
+    # earlier and whose error the trace already swallowed.
+    expect_false(identical(deparse(conditionCall(err)), "prim_reshape()"))
+  })
+})
+
+describe("the element-wise rules", {
+  it("return a fresh aval rather than the operand's own", {
+    y <- nv_array(c(1, 2, 3))
+    graph <- trace_fn(function() list(y, prim_negate(y)), list())
+    avals <- lapply(graph$outputs, function(out) out$aval)
+    # `y` is a closed-over constant, so its aval carries the buffer. The result
+    # of negating it does not hold those values and must not claim to.
+    expect_s3_class(avals[[1L]], "ConcreteArray")
+    expect_false(inherits(avals[[2L]], "ConcreteArray"))
+    expect_s3_class(avals[[2L]], "AbstractArray")
+  })
+})

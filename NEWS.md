@@ -60,6 +60,20 @@
   rather than leaving it to the compiler.
 * `nv_seq()` / `nv_seq_like()` gained a `by` argument and now count down
   when `start > end`, like `seq()`.
+* `prim_while()` now checks what `cond` returns (a single boolean scalar) and
+  that `init` carries at least one value, instead of leaving both to stablehlo.
+* `prim_reduce()`'s `reductor` and `prim_scatter()`'s `update_computation` must
+  return a scalar, checked in the rule rather than during lowering.
+* `prim_convolution()` rejects a `padding` that takes away more than a spatial
+  axis holds. Such a shape made XLA's own inference abort the R process.
+  Negative padding that only empties an axis stays legal.
+* `prim_convolution()` and `prim_dot_general()` check `precision` in one
+  wording, and a rank mismatch between `x` and the layout now names
+  `input_spatial_axes` rather than `padding`.
+* `prim_cumsum()` and friends reject a size-0 accumulate axis, and
+  `prim_rng_bit_generator()` requires the 3-element state `"DEFAULT"` needs.
+* `prim_fill()` rejects a value the data type cannot hold (e.g. `300` at
+  `"i8"`), which used to reach the user as a raw MLIR parse error.
 * New `jit_cache_size()` reports how many compiled programs a jitted function
   currently holds for a backend.
 * The random number generators (`nv_runif()`, `nv_rnorm()`, `nv_rbinom()`,
@@ -141,6 +155,22 @@
 * `nv_top_k()` checks `k` before coercing it, so a fractional or logical `k`
   is refused rather than silently truncated.
 * A range that counts down (`x[3:1]`) now selects in reverse instead of failing.
+* The gradient of `prim_pad()` is correct for negative edge padding, which
+  drops elements of the input: those positions now get a zero cotangent
+  instead of the backward pass failing inside `prim_static_slice()`.
+* An inference error that the caller catches no longer leaves the next,
+  unrelated error reported under that primitive's name.
+* A whole number outside the integer range (`3e9`, `Inf`) in a static
+  parameter is reported as the value passed, instead of becoming `NA` and
+  surfacing as `missing value where TRUE/FALSE needed`.
+* Elementwise rules return a fresh abstract array rather than the operand's
+  own, so the result of e.g. negating a closed-over constant no longer claims
+  to hold that constant's values.
+* `prim_sort()` refuses a bare array rather than reading its internal fields
+  as two operands.
+* Messages that report a vector of numbers spell it one way (`c(1, 3)`), and
+  an overlapping pair of axis arguments names each argument instead of
+  back-ticking a phrase that is not an argument.
 * Coercing a traced array to R inside `jit()` -- `as_array()`, `as.vector()`,
   `as.numeric()`, `as.character()` and friends -- now aborts with an
   explanation instead of falling through to the base R generic. Some of those
