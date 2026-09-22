@@ -8,7 +8,8 @@ nv_unsqueeze(x, axis)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axis}{(\code{integer(1)})\cr
 Position at which to insert the new axis. Valid positions range from
@@ -16,14 +17,15 @@ Position at which to insert the new axis. Valid positions range from
 \emph{result}, i.e. \code{-1} appends the new axis at the end.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same data type as \code{x} with an extra axis of size 1.
+(\code{\link{arrayish}})\cr
+Has \code{x}'s data type, with an extra axis of size 1 in its shape.
 }
 \description{
 Inserts an axis of size 1 at the specified position.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a size-1 axis is inserted, at the front or at the back
 x <- nv_array(c(1, 2, 3))
 nv_unsqueeze(x, axis = 1L)
 nv_unsqueeze(x, axis = -1L)

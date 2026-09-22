@@ -9,8 +9,10 @@ nv_matmul(lhs, rhs, precision = "highest")
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Numeric arrays with at least 2 axes.
-Operands are \link[=nv_promote_to_common]{promoted to a common data type}.}
+Numeric arrays with at least 2 axes. Can be any numeric data type; the two are
+\link[=nv_promote_to_common]{promoted to a common data type}. An R value
+assumes the data type of the other operand, and materializes at its
+\link[=default_dtypes]{default data type} when that has none either.}
 
 \item{precision}{(\code{character(1)})\cr
 Controls the trade-off between speed and numerical accuracy of the
@@ -18,7 +20,8 @@ operation. One of \code{"highest"} (default), \code{"high"} or \code{"default"}.
 See \code{\link[=prim_dot_general]{prim_dot_general()}} for details.}
 }
 \value{
-\code{\link{arrayish}}
+(\code{\link{arrayish}})\cr
+Has the operands' common data type and the shape given under Shapes.
 }
 \description{
 Matrix multiplication of two arrays. You can also use the \code{\%*\%} operator.
@@ -35,6 +38,7 @@ Supports batched matrix multiplication when inputs have more than 2 axes.
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# a 2x3 times a 3x2 gives a 2x2 at the operands' common data type
 x <- nv_matrix(1:6, nrow = 2)
 y <- nv_matrix(1:6, nrow = 3)
 nv_matmul(x, y)

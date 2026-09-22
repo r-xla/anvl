@@ -8,15 +8,18 @@ prim_xor(lhs, rhs)
 }
 \arguments{
 \item{lhs, rhs}{(\code{\link{arrayish}})\cr
-Arrayish values of data type boolean, integer, or unsigned integer.
-Must have the same shape.}
+Two inputs of the same data type and shape. Can be any integerish data type. R
+values assume the other operand's data type when it is in their
+\link[=dtypes]{data type category}, and their
+\link[=default_dtypes]{default data type} when neither operand has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
-Element-wise bitwise XOR, which for a boolean array is the logical XOR.
+Element-wise bitwise XOR -- a logical XOR on a boolean input, and a
+bit-by-bit one on an integer.
 }
 \section{Implemented Rules}{
 
@@ -29,14 +32,17 @@ Element-wise bitwise XOR, which for a boolean array is the logical XOR.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}.
+Lowers to \code{\link[stablehlo:hlo_xor]{hlo_xor()}}, specified under
+\href{https://openxla.org/stablehlo/spec#xor}{xor}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(c(TRUE, FALSE, TRUE))
-y <- nv_array(c(TRUE, TRUE, FALSE))
-prim_xor(x, y)
+# two R values: both take an R integer's default data type
+prim_xor(12L, 10L)
+
+# the R value is built at the array's data type instead
+prim_xor(12L, nv_scalar(10L, "i64"))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

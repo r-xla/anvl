@@ -7,7 +7,8 @@
 active_backend()
 }
 \value{
-\code{character(1)} — the backend name (e.g. \code{"pjrt"}, \code{"quickr"}).
+(\code{character(1)})\cr
+The backend name (e.g. \code{"pjrt"}, \code{"quickr"}).
 }
 \description{
 Retrieves the active backend (option \code{anvl.backend}), falling back to the default \code{"pjrt"}

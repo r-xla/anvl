@@ -8,7 +8,8 @@ prim_top_k(x, k, indices = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Array of integer, unsigned integer, or floating-point dtype with rank >= 1.}
+One input, with at least 1 axis. Can be any numeric data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{k}{(\code{integer(1)})\cr
 Number of top elements. Must satisfy
@@ -20,12 +21,12 @@ the order among tied values is unspecified, which lets the lowering
 pick the cheapest selection for the platform.}
 }
 \value{
-\code{list} of one or two \code{\link{arrayish}} values:\cr
-The top-\code{k} values (same dtype as \code{x}) and, if \code{indices} is \code{TRUE},
-their indices along the last axis, of the default integer data type
-(see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the same shape as \code{x} with the
-last axis replaced by \code{k}. With indices, ties are broken by lower
-index first.
+(named \code{list} of one or two \code{\link{arrayish}})\cr
+Element \code{values}, the top-\code{k} values at the input's data type, and, when
+\code{indices} is \code{TRUE}, \code{indices}, their indices along the last axis at the
+default integer data type (see \code{\link[=default_dtypes]{default_dtypes()}}). Both have the
+input's shape with the last axis replaced by \code{k}. With indices, ties are
+broken by lower index first.
 }
 \description{
 Returns the \code{k} largest values along the last axis, sorted in
@@ -53,6 +54,7 @@ backend has a dedicated top-k kernel, so it keeps \code{\link[stablehlo:hlo_top_
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `values` keeps the input's data type, `indices` is the default integer
 x <- nv_array(c(3, 1, 4, 1, 5, 9, 2, 6))
 prim_top_k(x, k = 3L)
 \dontshow{\}) # examplesIf}

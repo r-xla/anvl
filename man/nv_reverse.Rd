@@ -9,14 +9,15 @@ nv_reverse(x, axes = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{axes}{(\code{integer()} | \code{NULL})\cr
 Axes to reverse. Negative values count from the end, i.e. \code{-1} refers to
 the last axis. If \code{NULL} (default), reverses along every axis.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same shape and data type as \code{x}.
 }
 \description{
@@ -32,6 +33,7 @@ whereas \code{rev()} on an anvl array keeps the shape).
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the order along axis 1 is flipped
 x <- nv_array(c(1, 2, 3, 4, 5))
 nv_reverse(x)
 

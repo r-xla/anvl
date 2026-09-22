@@ -11,7 +11,10 @@ nv_determinant(x, logarithm = TRUE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Square matrix of floating-point data type.}
+One input, a square matrix with exactly 2 axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 
 \item{logarithm}{(\code{logical(1)})\cr If \code{TRUE} (default), return the log
 of the absolute determinant.}
@@ -19,10 +22,12 @@ of the absolute determinant.}
 \item{...}{No additional arguments.}
 }
 \value{
-Named \code{list} with elements \code{modulus} and \code{sign}, both scalar
-\code{\link{arrayish}} with the same dtype as \code{x}. The full determinant
-is \code{sign * exp(modulus)} (with \code{logarithm = TRUE}) or
-\code{sign * modulus} (with \code{logarithm = FALSE}).
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{modulus} and \code{sign}, both scalar \code{\link{arrayish}} with \code{x}'s data
+type -- or the default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where
+\code{x} was an integer one. The full determinant is \code{sign * exp(modulus)}
+(with \code{logarithm = TRUE}) or \code{sign * modulus} (with
+\code{logarithm = FALSE}).
 }
 \description{
 Computes the determinant of a square matrix in the modulus / sign
@@ -42,6 +47,7 @@ direct product when \code{logarithm = FALSE} (\eqn{\prod_i |U_{ii}|}).
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `modulus` and `sign` are scalars with the matrix's data type
 a <- nv_matrix(c(4, 3, 6, 3), nrow = 2, dtype = "f64")
 nv_determinant(a)
 nv_determinant(a, logarithm = FALSE)

@@ -30,7 +30,7 @@ NULL
 #' @param default_dtypes (`NULL` | `list(float, int)`)\cr
 #'   The default data types for this backend.
 #'   Can be overwritten, see [`default_dtypes()`].
-#' @return An `AnvlBackend` object.
+#' @return (`AnvlBackend`)
 #' @keywords internal
 #' @export
 AnvlBackend <- function(
@@ -217,7 +217,8 @@ register_backend(
 #' Retrieves the active backend (option `anvl.backend`), falling back to the default `"pjrt"`
 #' backend.
 #'
-#' @return `character(1)` — the backend name (e.g. `"pjrt"`, `"quickr"`).
+#' @return (`character(1)`)\cr
+#'   The backend name (e.g. `"pjrt"`, `"quickr"`).
 #' @seealso [local_backend()], [with_backend()], [default_dtypes()]
 #' @export
 active_backend <- function() {
@@ -237,7 +238,8 @@ assert_backend <- function(backend) {
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
 #' @param envir The environment to scope the change to.
-#' @return The previous value of the option (invisibly).
+#' @return (`character(1)`)\cr
+#'   The previous value of the option, invisibly.
 #' @export
 local_backend <- function(backend, envir = parent.frame()) {
   backend <- assert_backend(backend)
@@ -253,7 +255,8 @@ local_backend <- function(backend, envir = parent.frame()) {
 #' @param backend (`character(1)`)\cr
 #'   Backend to use (`"pjrt"` or `"quickr"`).
 #' @param code An expression to evaluate with the given backend.
-#' @return The result of evaluating `code`.
+#' @return (`any`)\cr
+#'   The result of evaluating `code`.
 #' @export
 with_backend <- function(backend, code) {
   backend <- assert_backend(backend)
@@ -284,7 +287,8 @@ with_backend <- function(backend, code) {
 #'   backend has nothing to install and is not accepted.
 #' @param ... Passed to the underlying installer: [pjrt::install_pjrt()] for
 #'   `"pjrt"`, [utils::install.packages()] for `"quickr"`.
-#' @return `NULL`, invisibly. Called for its side effect.
+#' @return (`NULL`)\cr
+#'   Invisibly. Called for its side effect.
 #' @export
 install_anvl <- function(backend = active_backend(), ...) {
   backend <- assert_choice(backend, c("pjrt", "quickr"))

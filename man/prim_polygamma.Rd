@@ -8,12 +8,14 @@ prim_polygamma(n, x)
 }
 \arguments{
 \item{n, x}{(\code{\link{arrayish}})\cr
-Arrayish values of data type floating-point.
-Must have the same shape.}
+Two inputs of the same shape. Can be any float data type.
+\code{n} and \code{x} must have the same data type. An R value among them assumes
+the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the inputs.
+(\code{\link{arrayish}})\cr
+Has the inputs' shape and data type.
 }
 \description{
 Element-wise polygamma function: the \code{(n+1)}-th derivative of the
@@ -30,11 +32,14 @@ typically holds non-negative integer values.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}.
+Lowers to \code{\link[stablehlo:hlo_polygamma]{hlo_polygamma()}}, an op of the CHLO dialect, a higher-level
+companion to StableHLO that is lowered to it during compilation. See
+\href{https://openxla.org/stablehlo/generated/chlo#chlopolygamma_chlopolygammaop}{chlo.polygamma}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# both operands are floats, as the primitive requires
 n <- nv_array(c(1, 1, 2))
 x <- nv_array(c(0.5, 1, 2))
 prim_polygamma(n, x)

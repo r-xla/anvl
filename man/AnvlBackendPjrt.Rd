@@ -7,7 +7,8 @@
 AnvlBackendPjrt()
 }
 \value{
-An \code{\link{AnvlBackend}} object with subclass \code{"AnvlBackendPjrt"}.
+(\code{\link{AnvlBackend}})\cr
+With subclass \code{"AnvlBackendPjrt"}.
 }
 \description{
 Constructs the PJRT backend, which stores array data in PJRT buffers (via

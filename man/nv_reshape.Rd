@@ -8,7 +8,8 @@ nv_reshape(x, shape)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
 Target shape. Must have the same number of elements as \code{x}.
@@ -16,7 +17,7 @@ At most one entry may be \code{-1}, in which case its extent is inferred from
 the remaining entries and the number of elements of \code{x}.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
@@ -29,10 +30,16 @@ does: \code{nv_reshape(x, shape)} holds the same elements as \code{array(x, shap
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-x <- nv_array(1:6)
-nv_reshape(x, c(2, 3))
-nv_reshape(x, c(2, -1)) # infer the second dimension
-nv_reshape(x, -1) # flatten
+# the elements keep their column-major order; the data type is untouched
+x <- array(1:6, dim = c(3, 2))
+nv_reshape(x, 6L)
+# the order base R reads them in, too
+c(x)
+
+# infer the size of the second axis
+nv_reshape(x, c(2, -1))
+# flatten
+nv_reshape(x, -1)
 \dontshow{\}) # examplesIf}
 }
 \seealso{

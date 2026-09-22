@@ -8,14 +8,15 @@ nv_broadcast_to(x, shape)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 
 \item{shape}{(\code{integer()})\cr
-Target shape. It must have at least as many axes as \code{x}, and each axis
-of \code{x} must either match the axis it meets or be 1.}
+Target shape. The input's axes are matched against its leading axes, and
+each must either match or be 1; trailing axes are added.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
@@ -24,6 +25,7 @@ leading axes of \code{shape}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the length-3 vector is repeated along a new leading axis
 x <- nv_array(c(1, 2, 3))
 nv_broadcast_to(x, shape = c(3, 2))
 \dontshow{\}) # examplesIf}

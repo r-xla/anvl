@@ -68,7 +68,8 @@
 #' `f_f64 <- with_dtypes(f, c(float = "f64"))` runs `f` at `f64`, unless `f` itself
 #' changes the default data types.
 #'
-#' @return A `JitFunction` (a `function` with the same formals as `f`).
+#' @return (`JitFunction`)\cr
+#'   A `function` with the same formals as `f`.
 #'   The returned wrapper expects [`AnvlArray`] inputs and returns
 #'   [`AnvlArray`] values.
 #' @seealso

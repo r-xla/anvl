@@ -8,19 +8,22 @@ prim_dynamic_update_slice(x, update, ...)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+The array to write into. Can be any data type.
+\code{x} and \code{update} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{update}{(\code{\link{arrayish}})\cr
 The values to write at the specified position. Must have the same
-data type and number of axes as \code{x}, with
-\code{shape(update) <= shape(x)} per axis.}
+number of axes as \code{x}, with \code{shape(update) <= shape(x)} per axis.
+Shares \code{x}'s data type.}
 
-\item{...}{(\code{\link{arrayish}} of integer type)\cr
-Scalar start indices, one per axis of \code{x}.
-Each must be a scalar array.}
+\item{...}{(\code{\link{arrayish}})\cr
+Scalar start indices, one per axis of \code{x}. Each must be a scalar of
+the same integer data type.}
 }
 \value{
-\code{\link{arrayish}}\cr
+(\code{\link{arrayish}})\cr
 Has the same data type and shape as \code{x}.
 }
 \description{
@@ -29,6 +32,14 @@ runtime-determined position. This is the write counterpart of
 \code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}: dynamic slice reads a block from an array,
 while dynamic update slice writes a block into an array.
 }
+\section{Out of Bounds Behavior}{
+
+Start indices are clamped before the update is written:
+\code{adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)}.
+This means that out-of-bounds indices will not cause an error, but the
+effective start position may differ from the requested one.
+}
+
 \section{Implemented Rules}{
 
 \itemize{
@@ -40,15 +51,8 @@ while dynamic update slice writes a block into an array.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}.
-}
-
-\section{Out of Bounds Behavior}{
-
-Start indices are clamped before the slice is extracted:
-\code{adjusted_start_indices = clamp(1, start_indices, shape(x) - slice_sizes + 1)}.
-This means that out-of-bounds indices will not cause an error, but
-the effective start position may differ from the requested one.
+Lowers to \code{\link[stablehlo:hlo_dynamic_update_slice]{hlo_dynamic_update_slice()}}, specified under
+\href{https://openxla.org/stablehlo/spec#dynamic_update_slice}{dynamic_update_slice}.
 }
 
 \examples{
@@ -68,5 +72,6 @@ prim_dynamic_update_slice(x, update, row_start, col_start)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
-\code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}}, \code{\link[=nv_subset_assign]{nv_subset_assign()}}, \verb{[<-}
+\code{\link[=prim_dynamic_slice]{prim_dynamic_slice()}}, \code{\link[=prim_scatter]{prim_scatter()}}, \code{\link[=prim_gather]{prim_gather()}},
+\code{\link[=nv_subset_assign]{nv_subset_assign()}}, \verb{[<-}
 }

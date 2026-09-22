@@ -27,7 +27,9 @@ vignette.}
 \item{...}{Additional arguments passed to methods (unused).}
 }
 \value{
-An R \code{\link[base:array]{array}} or \code{vector} of length 1.
+(\code{\link[base:array]{array}} | \code{vector(1)})\cr
+An R array with the input's shape, or -- for a scalar, which R cannot
+represent as an array -- a vector of length 1.
 }
 \description{
 Transfers array data to R and returns it as an R \code{\link[base:array]{array}}.

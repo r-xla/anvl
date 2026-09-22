@@ -6,7 +6,7 @@ user_invocable: true
 
 # Add a New Primitive to anvl
 
-Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with a complete walkthrough (primitive creation via `new_primitive()`, stablehlo rule, reverse rule, nv_* API, file organization). This skill covers additional details not in the vignette.
+Read `vignettes/extending_primitive.Rmd` first — it is the primary guide with a complete walkthrough (primitive creation via `new_primitive()`, stablehlo rule, reverse rule, nv\_\* API, file organization). This skill covers additional details not in the vignette.
 
 ## Before Starting: Check StableHLO Support
 
@@ -23,7 +23,7 @@ The primary array argument of a `prim_*` (and its `nv_*` wrapper) is always name
 - Multiple arrays in the same role: `xs` (a list, as in `prim_sort(xs, ...)`).
 - Two symmetric operands of a binary op: `lhs` / `rhs`.
 - Arguments naming a genuinely different role keep a descriptive name: `start_indices`, `update`, `weight`, `init`, `reductor`, `padding_value`, ...
-- Axis arguments derived from `x` follow it, and are spelled *axes*, never *dims*: `x_batching_axes`, `scatter_axes_to_x_axes`, `offset_axes`, `index_vector_axis`.
+- Axis arguments derived from `x` follow it, and are spelled _axes_, never _dims_: `x_batching_axes`, `scatter_axes_to_x_axes`, `offset_axes`, `index_vector_axis`.
 
 When a StableHLO builder or `*DimensionNumbers()` constructor takes the spec name, map anvl's name back at the call site rather than renaming the anvl argument, e.g.
 
@@ -50,13 +50,9 @@ coefficient built in R: `prim_fill(2 / sqrt(pi), dtype = dtype(x), ...)`.
 
 ## Roxygen Documentation
 
-Use templates from `man-roxygen/` where applicable:
+Use templates from `man-roxygen/` where applicable. You can check the folder for available ones.
 
-- **Unary ops:** `@template param_prim_x_any` (or `_float`, `_signed_numeric`)
-- **Binary ops:** `@template params_prim_lhs_rhs_any` (or `_numeric`, `_float`)
-- **Return:** `@template return_prim_unary`, `return_prim_binary`, `return_prim_compare`, `return_prim_reduce`
 - **Rules section:** `@templateVar primitive_id <name>` + `@template section_rules`
-- **StableHLO link:** `@section StableHLO:\n Lowers to [stablehlo::hlo_<name>()].`
 - Do NOT mention "1-based indexing" — it's the R default.
 - Add `@export` to the roxygen block.
 
@@ -103,6 +99,7 @@ Choose one approach, not both.
 ### Test structure: property-based with edge cases
 
 Use `describe()` / `it()` blocks. Cover:
+
 - Different shapes (scalar, vector, matrix, 3D)
 - Boundary values (depends on the specific operation)
 - dtype variations where relevant
@@ -161,15 +158,15 @@ For binary reverse tests, use `verify_grad_biv` / `verify_grad_biv_array` with `
 
 ### Key testing helpers
 
-| Helper | File | Purpose |
-|--------|------|---------|
-| `expect_jit_torch_unary` | `inst/extra-tests/torch-helpers.R` | Compare unary forward with torch |
-| `expect_jit_torch_binary` | `inst/extra-tests/torch-helpers.R` | Compare binary forward with torch |
-| `verify_grad_uni` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + array) |
-| `verify_grad_uni_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (array only) |
-| `verify_grad_biv` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + array) |
-| `verify_grad_biv_array` | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (array only) |
-| `generate_test_data` | `inst/extra-tests/torch-helpers.R` | Random input sampling by dtype |
+| Helper                    | File                                               | Purpose                                  |
+| ------------------------- | -------------------------------------------------- | ---------------------------------------- |
+| `expect_jit_torch_unary`  | `inst/extra-tests/torch-helpers.R`                 | Compare unary forward with torch         |
+| `expect_jit_torch_binary` | `inst/extra-tests/torch-helpers.R`                 | Compare binary forward with torch        |
+| `verify_grad_uni`         | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (scalar + array)  |
+| `verify_grad_uni_array`   | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare unary gradient (array only)      |
+| `verify_grad_biv`         | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (scalar + array) |
+| `verify_grad_biv_array`   | `inst/extra-tests/test-primitives-reverse-torch.R` | Compare binary gradient (array only)     |
+| `generate_test_data`      | `inst/extra-tests/torch-helpers.R`                 | Random input sampling by dtype           |
 
 Custom generators (`gen`, `gen_x`, `gen_y`, `gen_lhs`, `gen_rhs`) have signature `function(shp, dtype)` and return an R array (or scalar for `integer()` shape).
 

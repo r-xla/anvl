@@ -147,7 +147,8 @@ static_start_indices <- function(starts, like = NULL) {
 #'   gather axes' indices are broadcast across the cartesian product.
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return An array of start indices
+#' @return ([`arrayish`])\cr
+#'   An array of start indices
 #' @noRd
 subset_specs_start_indices <- function(subsets, like = NULL) {
   starts <- subset_start_positions(subsets)
@@ -176,7 +177,8 @@ subset_specs_start_indices <- function(subsets, like = NULL) {
 #' Convert subset specs to gather parameters
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return A list with all parameters needed for prim_gather:
+#' @return (`list`)\cr
+#'   All parameters needed for `prim_gather()`:
 #'   - start_indices: array of start indices (shape `(gather_shape..., rank)` or `(1, rank)`)
 #'   - slice_sizes: integer vector
 #'   - offset_axes: integer vector
@@ -250,7 +252,8 @@ subset_specs_to_gather <- function(subsets, like = NULL) {
 #' Convert subset specs to scatter parameters
 #'
 #' @param subsets List of SubsetSpec objects (from parse_subset_specs)
-#' @return A list with all parameters needed for prim_scatter:
+#' @return (`list`)\cr
+#'   All parameters needed for `prim_scatter()`:
 #'   - scatter_indices: array of scatter indices
 #'   - update_window_axes: integer vector
 #'   - inserted_window_axes: integer vector
@@ -342,7 +345,7 @@ abort_too_many_subsets <- function(n, x_shape, call = rlang::caller_env()) {
 #' Parse subset specifications and fill unspecified axes
 #' @param quos List of quosures (from enquos)
 #' @param x_shape Shape of the input array
-#' @return List of SubsetSpec objects
+#' @return (`list` of `SubsetSpec`)
 #' @noRd
 parse_subset_specs <- function(quos, x_shape) {
   rank <- length(x_shape)
@@ -369,7 +372,8 @@ parse_subset_specs <- function(quos, x_shape) {
 #' @param quo Quosure to parse
 #' @param axis_size Size of the axis being indexed
 #' @param axis Axis the subset applies to, used to name it in errors
-#' @return A SubsetSpec object (SubsetFull, SubsetRange, or SubsetIndices)
+#' @return (`SubsetSpec`)\cr
+#'   One of `SubsetFull`, `SubsetRange` or `SubsetIndices`.
 #' @noRd
 parse_subset_spec <- function(quo, axis_size, axis) {
   in_bounds <- "Axis {axis} has size {axis_size}, so indices must be between 1 and {axis_size}."
@@ -522,10 +526,13 @@ parse_subset_spec <- function(quo, axis_size, axis) {
 #' Supports R-style indexing including scalar indices (which drop axes),
 #' ranges (`a:b`), and `array(c(...))` for selecting multiple elements along a
 #' axis.
-#' @template param_x
+#' @templateVar dtypes any data type
+#' @template param_unary_x
 #' @param ... Subset specifications, one per axis. Omitted trailing
 #'   axes select all elements. See `vignette("subsetting")` for details.
-#' @return [`arrayish`]
+#' @return ([`arrayish`])\cr
+#'   Has the input's data type, and the shape the specifications select --
+#'   a scalar index drops its axis, a range or an index array keeps it.
 #' @seealso [nv_subset_assign()] for updating subsets, `vignette("subsetting")`
 #'   for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
@@ -636,14 +643,17 @@ subset_scatter_core <- jit(
 #' @description
 #' Updates elements of an array at specified positions, returning a new array.
 #' You can also use the `[<-` operator.
-#' @template param_x
+#' @param x ([`arrayish`])\cr
+#'   The array to update. Can be any data type.
+#'   An R object is materialized at its [default data type][default_dtypes].
 #' @param ... Subset specifications, one per axis. See
 #'   `vignette("subsetting")` for details.
 #' @param value ([`arrayish`])\cr
-#'   Replacement values. Scalars are broadcast to the subset shape.
-#'   Non-scalar values must match the subset shape.
-#' @return [`arrayish`]\cr
-#'   A new array with the same shape as `x` and the subset replaced.
+#'   Replacement values. Scalars are broadcast to the subset shape and non-scalar
+#'   values must match it.
+#'   The value is converted to the data type of `x`.
+#' @return ([`arrayish`])\cr
+#'   Has `x`'s data type and shape, with the subset replaced.
 #' @seealso [nv_subset()], `vignette("subsetting")` for a comprehensive guide.
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:12, nrow = 3)

@@ -8,11 +8,16 @@ nv_eigh(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Symmetric square matrix of floating-point data type.}
+One input, a symmetric square matrix with exactly 2 axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 }
 \value{
-Named \code{list} with elements \code{values} (length \code{n}) and \code{vectors}
-(shape \verb{(n, n)}). Both have the same dtype as the input.
+(named \code{list} of two \code{\link{arrayish}})\cr
+Elements \code{values} (length \code{n}) and \code{vectors} (shape \verb{(n, n)}). Both have
+the input's data type -- or the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}) where the input was an integer one.
 }
 \description{
 Computes the eigendecomposition of a symmetric matrix \code{x} of
@@ -26,8 +31,12 @@ order match \code{\link[base:eigen]{base::eigen()}}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# values and vectors both have the input's data type
 x <- nv_matrix(c(2, 1, 1, 2), nrow = 2, dtype = "f64")
 nv_eigh(x)
+
+# an integer matrix is decomposed at the default float data type
+nv_eigh(nv_matrix(c(2L, 1L, 1L, 2L), nrow = 2))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

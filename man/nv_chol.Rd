@@ -11,26 +11,38 @@ nv_chol(x, lower = FALSE)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Symmetric positive-definite matrix with at least 2 axes.
-The last two axes form the square matrix; any leading axes
-are batch axes.}
+One input, a symmetric positive-definite matrix with at least 2 axes, the last two forming the square matrix and any leading ones batch axes. Can be any numeric data type: a float keeps its
+own, and an integer one is converted to the default float data type (see
+\code{\link[=default_dtypes]{default_dtypes()}}). An R value materializes at its
+\link[=default_dtypes]{default data type} and is converted in the same way.}
 
 \item{lower}{(\code{logical(1)})\cr If \code{TRUE}, return the lower-triangular factor.}
 
 \item{...}{No additional arguments.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Triangular matrix with the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Triangular matrix with the input's shape, and its data type -- or the
+default float data type (see \code{\link[=default_dtypes]{default_dtypes()}}) where the input was an
+integer one. The values in the triangle not selected by \code{lower} are
+implementation-defined.
 }
 \description{
 Computes the Cholesky decomposition of a symmetric positive-definite matrix.
 Supports batched inputs: axes before the last two are batch axes.
 }
+\details{
+Differentiation is only implemented for a single matrix: a \code{\link[=gradient]{gradient()}} of a
+batched decomposition errors.
+}
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# the factor has the matrix's shape and data type
 a <- nv_matrix(c(4, 2, 2, 3), nrow = 2, dtype = "f32")
 nv_chol(a)
+
+# an integer matrix is factored at the default float data type
+nv_chol(nv_matrix(c(4L, 2L, 2L, 3L), nrow = 2))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

@@ -8,11 +8,14 @@ prim_reduce(x, init, axes, drop = TRUE, reductor)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Arrayish value of any data type.}
+The array to reduce. Can be any data type.
+\code{x} and \code{init} must have the same data type. An R value among them
+assumes the data type of the others when it is in its \link[=dtypes]{data type category}, and its \link[=default_dtypes]{default data type} when none
+of them has one.}
 
 \item{init}{(\code{\link{arrayish}})\cr
-Scalar (0 axes) initial value. Must have the same data type as
-\code{x} and be the neutral element w.r.t. \code{reductor}.}
+Scalar initial value, with no axes. Must be the neutral element
+w.r.t. \code{reductor}, and shares \code{x}'s data type -- see \code{x}.}
 
 \item{axes}{(\code{integer()})\cr
 Axes to reduce over.
@@ -22,18 +25,20 @@ Negative values count from the end, i.e. \code{-1} refers to the last axis.}
 If \code{TRUE} (default) the reduced axes are removed; if \code{FALSE}
 they are kept with size 1.}
 
-\item{reductor}{(\verb{function(lhs, rhs)})\cr
-Binary reducer producing a scalar of the same dtype as \code{x}.
+\item{reductor}{(\code{function})\cr
+Binary reducer producing a scalar of the same data type as \code{x}. Its two
+arguments are passed by position, so they may carry any names.
 Must be associative (see "Associativity Requirement").}
 }
 \value{
-\code{\link{arrayish}}\cr
-Same data type as \code{x}. Shape is \code{x} with \code{axes} removed
-(or set to 1 if \code{drop = FALSE}).
+(\code{\link{arrayish}})\cr
+Has the input's data type. The shape is the input's with the reduced axes
+removed (\code{drop = TRUE}) or set to 1 (\code{drop = FALSE}).
 }
 \description{
 Reduces an array along the specified axes using a user-supplied
-associative reducer.
+associative reducer. \code{reductor} and \code{init} must satisfy the constraints in
+the "Associativity Requirement" section below.
 }
 \section{Associativity Requirement}{
 
@@ -41,7 +46,7 @@ The order in which \code{reductor} is applied across the reduction window is
 implementation-defined. If the reductor is not associative, the result
 is ill-defined.
 Furthermore, \code{init} must be the neutral element for this reductor.
-Because floating point math is non-associative, the output of
+Because arithmetic in a float data type is non-associative, the output of
 the reduction can differ between backends (GPU, CPU), even if the underlying mathematical
 function (like \code{+}) is associative.
 }
@@ -55,11 +60,14 @@ function (like \code{+}) is associative.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}} with \code{reductor} as the body.
+Lowers to \code{\link[stablehlo:hlo_reduce]{hlo_reduce()}}, specified under
+\href{https://openxla.org/stablehlo/spec#reduce}{reduce}.
+The body is \code{reductor}.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
+# `init` shares `x`'s data type, and the reduced axis disappears
 x <- nv_array(c(1, 2, 3, 4))
 prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
 prim_reduce(x, init = nv_scalar(1), axes = 1L, reductor = prim_mul)

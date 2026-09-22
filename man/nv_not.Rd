@@ -9,15 +9,17 @@ nv_not(x)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
-Input array.}
+One input. Can be any integerish data type. An R value materializes at its
+\link[=default_dtypes]{default data type}.}
 }
 \value{
-\code{\link{arrayish}}\cr
-Has the same shape and data type as the input.
+(\code{\link{arrayish}})\cr
+Has the input's shape and data type.
 }
 \description{
-Element-wise bitwise NOT of an integer array, which for a boolean array is
-the logical NOT.
+Element-wise bitwise NOT -- a logical negation on a boolean input, and a
+bit-by-bit complement on an integer, so \code{nv_not(12L)} is \code{-13}. You can also
+use the \code{!} operator, which expects \code{bool} inputs.
 }
 \section{The \code{!} operator}{
 
@@ -27,9 +29,12 @@ Unlike base R it only accepts booleans and does not auto-convert non-booleans by
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
-nv_not(nv_array(c(TRUE, FALSE, TRUE)))
-nv_not(nv_array(12L)) # bitwise: -13
-!nv_array(c(TRUE, FALSE)) # logical
+# on a boolean this is a logical negation
+x <- nv_array(c(TRUE, FALSE, TRUE))
+!x
+
+# on an integer it complements every bit, so `12L` becomes `-13`
+nv_not(nv_array(12L))
 \dontshow{\}) # examplesIf}
 }
 \seealso{

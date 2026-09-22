@@ -20,8 +20,10 @@ towards \code{end}. \code{NULL} (default) uses \code{-1} if \code{start > end} a
 otherwise.}
 
 \item{dtype}{(\code{NULL} | \code{character(1)} | \code{\link[tengen:DataType]{DataType}})\cr
-Data type. \code{NULL} (default) uses the backend's default integer data type
-(see \code{\link[=default_dtypes]{default_dtypes()}}). For \code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
+Data type of the result. Can be any numeric data type.
+\code{NULL} (default) uses the default integer data
+type (see \code{\link[=default_dtypes]{default_dtypes()}}), since the values are whole. For
+\code{nv_seq_like()}, \code{NULL} uses \code{dtype(like)}.}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -42,8 +44,8 @@ Existing array whose attributes are used as defaults
 (only for \code{nv_seq_like()}).}
 }
 \value{
-\code{\link{arrayish}}\cr
-1-D array of length \code{(end - start) \%/\% by + 1}.
+(\code{\link{arrayish}})\cr
+Has \code{dtype} and shape \code{(end - start) \%/\% by + 1}.
 }
 \description{
 Creates a 1-D array with the values from \code{start} to \code{end} in steps of \code{by},
@@ -57,13 +59,23 @@ default to those of \code{like}.
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 nv_seq(3, 7)
+
+# a range that counts down needs no `by`
 nv_seq(7, 3)
-nv_seq(0, 10, by = 2)
+
+# `end` is only reached where a whole number of steps lands on it
+nv_seq(0, 9, by = 2)
+
+# a float data type gives the same values as floats
+nv_seq(3, 7, dtype = "f32")
+
+# nv_seq_like() takes the data type and device from an existing array
 x <- nv_array(c(1, 2, 3), dtype = "f64")
 nv_seq_like(x, 1, 5)
 \dontshow{\}) # examplesIf}
 }
 \seealso{
 \code{\link[=nv_linspace]{nv_linspace()}} for a given number of evenly spaced values,
+\code{\link[=nv_iota]{nv_iota()}} for values increasing along an axis of any shape,
 \code{\link[=prim_iota]{prim_iota()}} for the underlying primitive.
 }
