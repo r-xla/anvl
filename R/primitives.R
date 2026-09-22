@@ -82,7 +82,7 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Data type of the result. Can be any data type.
+#'   Data type of the result.
 #' @template param_device
 #' @return ([`arrayish`])\cr
 #'   Has the given `shape` and `dtype`.
@@ -586,7 +586,7 @@ prim_static_slice <- new_primitive(
 #' @template param_unary_x
 #' @param ... ([`arrayish`])\cr
 #'   Scalar start indices, one per axis of `x`. Each must be a scalar of an
-#'   integer data type, and keeps it -- the indices take no part in `x`'s.
+#'   the same integer data type.
 #' @param slice_sizes (`integer()`)\cr
 #'   Size of the slice in each axis. Must have length equal to
 #'   `naxes(x)` and satisfy `1 <= slice_sizes <= shape(x)`
@@ -656,10 +656,10 @@ prim_dynamic_slice <- new_primitive(
 #' @param update ([`arrayish`])\cr
 #'   The values to write at the specified position. Must have the same
 #'   number of axes as `x`, with `shape(update) <= shape(x)` per axis.
-#'   Shares `x`'s data type -- see `x`.
+#'   Shares `x`'s data type.
 #' @param ... ([`arrayish`])\cr
-#'   Scalar start indices, one per axis of `x`. Each must be a scalar of an
-#'   integer data type, and keeps it -- the indices take no part in `x`'s.
+#'   Scalar start indices, one per axis of `x`. Each must be a scalar of
+#'   the same integer data type.
 #' @section Out of Bounds Behavior:
 #' Start indices are clamped before the update is written:
 #' `adjusted_start_indices = clamp(1, start_indices, shape(x) - shape(update) + 1)`.
@@ -1724,13 +1724,11 @@ prim_atan2 <- new_primitive("atan2", make_binary_op(stablehlo::infer_types_atan2
 #' Reinterprets the bits of an array as a different data type without
 #' modifying the underlying data.
 #' @param x ([`arrayish`])\cr
-#'   One input. Can be any data type except `bool`, whose bits StableHLO does
-#'   not reinterpret. An R value materializes at its
-#'   [default data type][default_dtypes].
+#'   One input. Can be any data type except `bool`.
+#'   An R value materializes at its [default data type][default_dtypes].
 #' @param dtype (`character(1)` | [`DataType`])\cr
-#'   Target data type, `bool` excepted for the same reason, reinterpreting the
-#'   bits rather than the values. One of
-#'   the same bit width as the input's leaves the shape unchanged; a narrower
+#'   Any target data type except `bool`.
+#'   One of the same bit width as the input's leaves the shape unchanged; a narrower
 #'   one adds a trailing axis holding the pieces; a wider one consumes the last
 #'   axis, whose size must equal the ratio of the two widths.
 #' @return ([`arrayish`])\cr
@@ -2466,11 +2464,10 @@ prim_popcnt <- new_primitive(
 
 #' @title Primitive Clamp
 #' @description
-#' Clamps every element of `x` to the range `[min_val, max_val]`,
-#' i.e. `min(max(min_val, x), max_val)`.
+#' Clamps every element of `x` to the range `[min_val, max_val]`.
 #' @param min_val,max_val ([`arrayish`])\cr
 #'   Lower and upper bound. Each must be scalar or the same shape as `x`, and
-#'   shares its data type -- see `x`.
+#'   shares its data type.
 #' @param x ([`arrayish`])\cr
 #'   The array to clamp. Can be any data type.
 #'   `r roxy_agree("min_val", "x", "max_val")`
@@ -2611,7 +2608,7 @@ prim_iota <- new_primitive(
 #'   The array to pad. Can be any data type.
 #'   `r roxy_agree("x", "padding_value")`
 #' @param padding_value ([`arrayish`])\cr
-#'   Scalar value to use for padding. Shares `x`'s data type -- see `x`.
+#'   Scalar value to use for padding. Shares `x`'s data type.
 #' @param edge_padding_low (`integer()`)\cr
 #'   Amount of padding to add at the start of each axis.
 #' @param edge_padding_high (`integer()`)\cr

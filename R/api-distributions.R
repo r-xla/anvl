@@ -62,10 +62,6 @@ promote_distribution_args <- function(...) {
 #' library as used by JAX) for `f64`, and uses a new lower degree Remez minimax
 #' rational approximation on the same intervals for `f32`.
 #'
-#' The thresholds and coefficients of `nv_pnorm()` and `nv_qnorm()` are written
-#' for `f32` and `f64`, one set per width, so those two are the only data types
-#' they accept: a narrower float (`f16`, `bf16`) is refused rather than served
-#' by the wrong set. `nv_dnorm()` has no coefficients and takes any float.
 #' @references
 #' `r xlamisc::format_bib("abramowitz1964handbook", "moshier1989methods")`
 #' @seealso [nv_rnorm()] for sampling from a normal distribution.

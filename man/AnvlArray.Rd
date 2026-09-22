@@ -47,9 +47,8 @@ Can be a \code{\link[tengen:DataType]{tengen::DataType}} or one of bool, i8, i16
 
 \code{\link[tengen:DataType]{tengen::DataType}}. Can be any data type the backend supports; \code{data}
 is built at it, so a value that data type cannot hold exactly is
-converted. The default (\code{NULL}) is the data type the R value materializes at
-(see \code{\link[=default_dtypes]{default_dtypes()}}), which depends on the backend and on the
-\code{anvl.default_dtypes} option.}
+converted. The default (\code{NULL}) uses the default data type,
+see \code{\link[=default_dtypes]{default_dtypes()}}).}
 
 \item{device}{(\code{NULL} | \code{character(1)} | \link[=nv_device]{device})\cr
 The device the data lives on, given either as:
@@ -93,9 +92,7 @@ An existing array. Any of \code{dtype}, \code{device} and \code{shape} that are 
 (the default) are taken from \code{like}.}
 }
 \value{
-(\code{\link{AnvlArray}})\cr
-Has the given \code{dtype} (or the default for \code{data}'s R storage type) and the
-given \code{shape} (or the one inferred from \code{data}).
+(\code{\link{AnvlArray}})
 }
 \description{
 The main array object.

@@ -51,9 +51,8 @@
 #'
 #'   [`tengen::DataType`]. Can be any data type the backend supports; `data`
 #'   is built at it, so a value that data type cannot hold exactly is
-#'   converted. The default (`NULL`) is the data type the R value materializes at
-#'   (see [`default_dtypes()`]), which depends on the backend and on the
-#'   `anvl.default_dtypes` option.
+#'   converted. The default (`NULL`) uses the default data type,
+#'   see [`default_dtypes()`]).
 #' @template param_device
 #' @param shape (`NULL` | `integer()`)\cr
 #'   The output shape of the array.
@@ -90,9 +89,7 @@
 #' requested data type can actually hold the input data.
 #' For example, trying to create an unsigned integer from a negative R `integer()` fails.
 #'
-#' @return ([`AnvlArray`])\cr
-#'   Has the given `dtype` (or the default for `data`'s R storage type) and the
-#'   given `shape` (or the one inferred from `data`).
+#' @return ([`AnvlArray`])
 #' @examplesIf pjrt::plugins_downloaded()
 #' # a 1-d array (vector) with shape (4), at the default data type for integers
 #' nv_array(1:4)
@@ -379,9 +376,7 @@ is_anvl_array <- function(x) {
 
 #' Get the underlying PJRT buffer from an AnvlArray or pass through other values
 #' @param x An AnvlArray or any other value
-#' @return (`PJRTBuffer` | `any`)\cr
-#'   The underlying PJRT buffer if `x` is an `AnvlArray`, otherwise `x`
-#'   unchanged
+#' @return (`PJRTBuffer` | `any`)
 #' @keywords internal
 unwrap_if_array <- function(x) {
   if (is_anvl_array(x)) {
@@ -610,9 +605,7 @@ await.AnvlArray <- function(x, ...) {
 #' @param check (`character(1)` | `FALSE`)\cr
 #'   Forwarded to [`as_array()`]; see there for details.
 #' @param ... Unused.
-#' @return (`vector`)\cr
-#'   An R vector holding the array's values, of the type the method
-#'   names: `double`, `integer`, `logical`, or [`bit64::integer64`].
+#' @return (`vector`)
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.5, 2.5, 3.5, 4.5), shape = c(2L, 2L))
 #' as.numeric(x)
@@ -979,8 +972,7 @@ print.IotaArray <- function(x, ...) {
 #'   First array to compare. Must not be an [`RData`].
 #' @param e2 ([`AbstractArray`])\cr
 #'   Second array to compare. Must not be an [`RData`].
-#' @return (`logical(1)`)\cr
-#'   `TRUE` if the arrays are equal, `FALSE` otherwise.
+#' @return (`logical(1)`)
 #' @examples
 #' a <- nv_aval("f32", c(2L, 3L))
 #' b <- nv_aval("f32", c(2L, 3L))
@@ -1162,8 +1154,6 @@ is_shape <- function(x) {
 #' * R objects:
 #'   * `numeric(1)` and `logical(1)` which represent scalars.
 #'   * `numeric` and `logical` R arrays.
-#' * [`GraphBox`]: this is how dynamic [`AnvlArray`]s are represented
-#'   during [`jit()`].
 #'
 #' Use [`is_arrayish()`] to check whether a value is arrayish.
 #'
@@ -1171,6 +1161,9 @@ is_shape <- function(x) {
 #' [`dtypes`] gives the categories they are built from, and
 #' [`default_dtypes()`] the default an R value materializes at.
 #'
+#' @details
+#' During `jit()`, [`GraphBox`] is also arrayish, but it is simply the
+#' trace-time representation of an `AnvlArray`.
 #' @template section_dtype_words
 #' @param x (`any`)\cr
 #'   Object to check.

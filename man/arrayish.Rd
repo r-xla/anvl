@@ -30,8 +30,6 @@ Specifically, these values are \code{arrayish}:
 \item \code{numeric(1)} and \code{logical(1)} which represent scalars.
 \item \code{numeric} and \code{logical} R arrays.
 }
-\item \code{\link{GraphBox}}: this is how dynamic \code{\link{AnvlArray}}s are represented
-during \code{\link[=jit]{jit()}}.
 }
 
 Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayish.
@@ -39,6 +37,10 @@ Use \code{\link[=is_arrayish]{is_arrayish()}} to check whether a value is arrayi
 The group words the parameter descriptions use are listed below;
 \code{\link{dtypes}} gives the categories they are built from, and
 \code{\link[=default_dtypes]{default_dtypes()}} the default an R value materializes at.
+}
+\details{
+During \code{jit()}, \code{\link{GraphBox}} is also arrayish, but it is simply the
+trace-time representation of an \code{AnvlArray}.
 }
 \section{Data Type Vocabulary}{
 
@@ -51,8 +53,7 @@ and the floats.
 \item \emph{integer} -- signed and unsigned integer.
 \item \emph{integerish} -- boolean and integer, signed or unsigned.
 \item \emph{signed numeric} -- signed integer and float.
-\item \emph{float} -- the whole float category: \code{f32}, \code{f64} and any narrower float
-a backend supports.
+\item \emph{float} -- the whole float category: \code{f32} and \code{f64}.
 \item \emph{boolean} -- \code{bool}, the only member of its category.
 }
 }
