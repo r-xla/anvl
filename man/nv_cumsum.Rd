@@ -13,8 +13,8 @@ Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to accumulate. Negative values count from the end,
-i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
-is first flattened to a 1-D array, like \code{\link[base:cumsum]{base::cumsum()}}.}
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses the last
+axis.}
 
 \item{nan_rm}{(\code{logical(1)})\cr
 How to handle \code{NaN} values in floating-point inputs. If \code{FALSE}
@@ -30,23 +30,26 @@ boolean input, which is accumulated at the default integer data type (see
 \code{\link[=default_dtypes]{default_dtypes()}}).
 }
 \description{
-Cumulative sum, optionally along a single axis.
+Cumulative sum along a single axis, the last one by default.
 A boolean array is counted, like \code{\link[base:cumsum]{base::cumsum()}} does.
 }
 \section{Relation to base R}{
 
-Both \code{nv_cumsum()} (with \code{axis = NULL}) and \code{\link[base:cumsum]{base::cumsum()}}
-flatten inputs to a single axis before accumulating, but the
-flatten order differs: anvl arrays are row-major (C order), so the
+\code{\link[base:cumsum]{base::cumsum()}} flattens a multi-axis array before
+accumulating, while \code{nv_cumsum()} (and \code{cumsum()} on
+an anvl array) accumulates along a single axis, the last one by default.
+Flatten with \code{\link[=nv_flatten]{nv_flatten()}} first if you want a single running sequence.
+The two orders still differ: anvl arrays are row-major (C order), so the
 flattened sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. The two agree on 1-D inputs.
+column-major (Fortran) order. They agree on 1-D inputs.
 }
 
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_matrix(1:6, nrow = 2)
-nv_cumsum(x)              # row-major flatten, then accumulate
-nv_cumsum(x, axis = 1L)    # accumulate along rows
+nv_cumsum(x)               # along the last axis
+nv_cumsum(x, axis = 1L)    # accumulate along the first axis
+nv_cumsum(nv_flatten(x))   # across every element
 nv_cumsum(nv_array(c(1, NaN, 3)))                # NaN propagates
 nv_cumsum(nv_array(c(1, NaN, 3)), nan_rm = TRUE) # NaN treated as 0
 \dontshow{\}) # examplesIf}

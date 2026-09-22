@@ -13,8 +13,8 @@ Input array.}
 
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to accumulate. Negative values count from the end,
-i.e. \code{-1} refers to the last axis. If \code{NULL} (default), the input
-is first flattened to a 1-D array, like \code{\link[base:cummax]{base::cummax()}}.}
+i.e. \code{-1} refers to the last axis. If \code{NULL} (default), uses the last
+axis.}
 
 \item{indices}{(\code{logical(1)})\cr
 If \code{FALSE} (default), returns the running-maximum array.
@@ -36,15 +36,17 @@ contributes nothing to the running value.}
 arrays (when \code{indices = TRUE}).
 }
 \description{
-Running maximum, optionally along a single axis.
+Running maximum along a single axis, the last one by default.
 }
 \section{Relation to base R}{
 
-Both \code{nv_cummax()} (with \code{axis = NULL}) and \code{\link[base:cummax]{base::cummax()}}
-flatten inputs to a single axis before accumulating, but the
-flatten order differs: anvl arrays are row-major (C order), so the
+\code{\link[base:cummax]{base::cummax()}} flattens a multi-axis array before
+accumulating, while \code{nv_cummax()} (and \code{cummax()} on
+an anvl array) accumulates along a single axis, the last one by default.
+Flatten with \code{\link[=nv_flatten]{nv_flatten()}} first if you want a single running sequence.
+The two orders still differ: anvl arrays are row-major (C order), so the
 flattened sequence iterates the last axis fastest, whereas base R uses
-column-major (Fortran) order. The two agree on 1-D inputs.
+column-major (Fortran) order. They agree on 1-D inputs.
 }
 
 \examples{

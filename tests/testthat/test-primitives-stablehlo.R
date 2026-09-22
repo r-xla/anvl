@@ -251,8 +251,11 @@ describe("cumulative ops", {
 
     expect_equal(as_array(pick(prim_fn(xm, axis = 2L))), t(apply(M, 1, base_fn)))
 
-    # row vs column major ordering
-    expect_equal(as_array(nv_fn(xm)), array(base_fn(t(M))))
+    # the nv_* layer defaults to the last axis
+    expect_equal(as_array(nv_fn(xm)), t(apply(M, 1, base_fn)))
+
+    # flattening first accumulates across everything, in row-major order
+    expect_equal(as_array(nv_fn(nv_flatten(xm))), array(base_fn(t(M))))
   }
 
   it("prim_cumsum matches base R", verify_cum(prim_cumsum, nv_cumsum, base::cumsum))

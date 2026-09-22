@@ -2895,7 +2895,7 @@ prim_scan <- new_primitive(
 #' @export
 prim_sort <- new_primitive(
   "sort",
-  function(xs, axis = 1L, descending = FALSE, is_stable = FALSE) {
+  function(xs, axis, descending = FALSE, is_stable = FALSE) {
     assert_flag(descending)
     assert_flag(is_stable)
     if (is_arrayish(xs) || !is.list(xs) || !length(xs)) {

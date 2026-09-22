@@ -14,7 +14,9 @@ Arrays to concatenate. Must have the same shape except along \code{axis}.}
 \item{axis}{(\code{integer(1)} | \code{NULL})\cr
 Axis along which to concatenate.
 Negative values count from the end, i.e. \code{-1} refers to the last axis.
-If \code{NULL} (default), assumes all inputs are at most 1-D and concatenates along axis 1.}
+If \code{NULL} (default), concatenates along axis 1, which requires every
+input to have at most one axis; for anything else \code{axis} must be given,
+since there is no neutral axis to join two matrices along.}
 }
 \value{
 \code{\link{arrayish}}\cr
@@ -41,6 +43,9 @@ those along an explicit \code{axis} instead.
 x <- nv_array(c(1, 2, 3))
 y <- nv_array(c(4, 5, 6))
 nv_concatenate(x, y)
+
+m <- nv_matrix(1:4, nrow = 2)
+nv_concatenate(m, m, axis = 1L) # required: `m` has two axes
 \dontshow{\}) # examplesIf}
 }
 \seealso{

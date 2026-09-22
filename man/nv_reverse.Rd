@@ -5,23 +5,23 @@
 \alias{rev.AnvlArray}
 \title{Reverse}
 \usage{
-nv_reverse(x, axes)
+nv_reverse(x, axes = NULL)
 }
 \arguments{
 \item{x}{(\code{\link{arrayish}})\cr
 Input array.}
 
-\item{axes}{(\code{integer()})\cr
-Axes to reverse.
-Negative values count from the end, i.e. \code{-1} refers to the last axis.}
+\item{axes}{(\code{integer()} | \code{NULL})\cr
+Axes to reverse. Negative values count from the end, i.e. \code{-1} refers to
+the last axis. If \code{NULL} (default), reverses along every axis.}
 }
 \value{
 \code{\link{arrayish}}\cr
 Has the same shape and data type as \code{x}.
 }
 \description{
-Reverses the order of elements along specified axes.
-You can also use \code{rev()}, which reverses along every axis.
+Reverses the order of elements along the given axes, every axis by default.
+You can also use \code{rev()}, which always reverses along every axis.
 }
 \section{The \code{rev()} generic}{
 
@@ -33,7 +33,11 @@ whereas \code{rev()} on an anvl array keeps the shape).
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}
 x <- nv_array(c(1, 2, 3, 4, 5))
-nv_reverse(x, axes = 1L)
+nv_reverse(x)
+
+m <- nv_matrix(1:6, nrow = 2)
+nv_reverse(m) # every axis
+nv_reverse(m, axes = 2L) # columns only
 \dontshow{\}) # examplesIf}
 }
 \seealso{
