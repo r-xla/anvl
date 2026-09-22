@@ -198,12 +198,12 @@ to R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link
 <code class="sourceCode R"><span><span class="co"># roll six dice</span></span>
 <span><span class="fu"><a href="../reference/nv_sample_int.html">nv_sample_int</a></span><span class="op">(</span><span class="fl">6L</span>, <span class="va">state</span>, <span class="fl">6L</span><span class="op">)</span><span class="op">$</span><span class="va">values</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  4</span></span>
 <span><span class="co">#&gt;  6</span></span>
 <span><span class="co">#&gt;  2</span></span>
-<span><span class="co">#&gt;  5</span></span>
 <span><span class="co">#&gt;  1</span></span>
-<span><span class="co">#&gt;  2</span></span>
+<span><span class="co">#&gt;  6</span></span>
+<span><span class="co">#&gt;  4</span></span>
+<span><span class="co">#&gt;  1</span></span>
 <span><span class="co">#&gt; [ CPUi32{6} ]</span></span></code></pre></div>
 <p><code><a href="../reference/nv_sample.html">nv_sample()</a></code> draws from an arbitrary population instead.
 Unlike R’s <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>, its population argument is never
@@ -214,14 +214,14 @@ population <code>6</code> rather than from <code>1:6</code>:</p>
 <code class="sourceCode R"><span><span class="va">population</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/AnvlArray.html">nv_array</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">20</span>, <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/nv_sample.html">nv_sample</a></span><span class="op">(</span><span class="fl">8L</span>, <span class="va">state</span>, <span class="va">population</span><span class="op">)</span><span class="op">$</span><span class="va">values</span></span>
 <span><span class="co">#&gt; AnvlArray</span></span>
-<span><span class="co">#&gt;  20</span></span>
-<span><span class="co">#&gt;  30</span></span>
-<span><span class="co">#&gt;  10</span></span>
 <span><span class="co">#&gt;  30</span></span>
 <span><span class="co">#&gt;  10</span></span>
 <span><span class="co">#&gt;  10</span></span>
-<span><span class="co">#&gt;  10</span></span>
+<span><span class="co">#&gt;  30</span></span>
 <span><span class="co">#&gt;  20</span></span>
+<span><span class="co">#&gt;  10</span></span>
+<span><span class="co">#&gt;  10</span></span>
+<span><span class="co">#&gt;  30</span></span>
 <span><span class="co">#&gt; [ CPUf32{8} ]</span></span></code></pre></div>
 <p>One thing to avoid is to reuse the same state for multiple calls as
 done in the example below:</p>

@@ -39,6 +39,16 @@ nv_sample(shape, initial_state, x)
 Elements `state`, the updated RNG state, and `values`, the sampled
 values of shape `shape` and with the data type of `x`.
 
+## Sampling Precision
+
+The sample is derived from a uniform draw at the backend's default float
+data type (see
+[`default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/default_dtypes.md))
+and inherits its resolution: an `f32` uniform takes one of `2^23`
+equally spaced values, an `f64` one of `2^52`. Where the finer grid
+matters, raise the default float with
+[`with_default_dtypes()`](https://r-xla.github.io/anvl/dev/reference/local_default_dtypes.md).
+
 ## See also
 
 [`nv_sample_int()`](https://r-xla.github.io/anvl/dev/reference/nv_sample_int.md)
@@ -59,10 +69,10 @@ pop <- nv_array(c(10, 20, 30))
 result <- nv_sample(5, state, pop)
 result$values
 #> AnvlArray
+#>  30
+#>  10
+#>  10
+#>  30
 #>  20
-#>  30
-#>  10
-#>  30
-#>  10
 #> [ CPUf32{5} ] 
 ```
