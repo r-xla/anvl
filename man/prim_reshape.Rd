@@ -35,7 +35,10 @@ does.
 
 \section{StableHLO}{
 
-Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}}.
+Lowers to \code{\link[stablehlo:hlo_reshape]{hlo_reshape()}} between two \code{\link[stablehlo:hlo_transpose]{hlo_transpose()}} calls that reverse
+every axis, which is what turns stablehlo's row-major reshape into a
+column-major one. Each transpose is skipped where that side has at most
+one axis.
 }
 
 \examples{

@@ -346,7 +346,7 @@ prim_dot_general <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_transpose()].
-#' @seealso [nv_transpose()], [t()]
+#' @seealso [nv_aperm()], [t()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
 #' prim_transpose(x, permutation = c(2L, 1L))
@@ -390,7 +390,10 @@ prim_transpose <- new_primitive(
 #' @templateVar primitive_id reshape
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reshape()].
+#' Lowers to [hlo_reshape()] between two [hlo_transpose()] calls that reverse
+#' every axis, which is what turns stablehlo's row-major reshape into a
+#' column-major one. Each transpose is skipped where that side has at most
+#' one axis.
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:6)
@@ -687,7 +690,7 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' Sums array elements along the specified axes.
 #'
 #' A boolean input is reduced with a logical OR, so the result is a boolean
-#' rather than a count. [nv_reduce_sum()] counts instead.
+#' rather than a count. [nv_sum()] counts instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -701,19 +704,19 @@ make_reduce_op <- function(infer_fn = infer_reduce) {
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reduce()] with [hlo_add()] as the reducer.
-#' @seealso [nv_reduce_sum()]
+#' @seealso [nv_sum()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_sum(x, axes = 1L)
+#' prim_sum(x, axes = 1L)
 #' @export
-prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
+prim_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Product Reduction
 #' @description
 #' Multiplies array elements along the specified axes.
 #'
 #' A boolean input is reduced with a logical AND, so the result is a boolean.
-#' [nv_reduce_prod()] multiplies zeroes and ones instead.
+#' [nv_prod()] multiplies zeroes and ones instead.
 #' @template param_prim_x_any
 #' @param axes (`integer()`)\cr
 #'   Axes to reduce over.
@@ -727,12 +730,12 @@ prim_reduce_sum <- new_primitive("reduce_sum", make_reduce_op(), static = 2:3)
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reduce()] with [hlo_multiply()] as the reducer.
-#' @seealso [nv_reduce_prod()]
+#' @seealso [nv_prod()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_prod(x, axes = 1L)
+#' prim_prod(x, axes = 1L)
 #' @export
-prim_reduce_prod <- new_primitive("reduce_prod", make_reduce_op(), static = 2:3)
+prim_prod <- new_primitive("reduce_prod", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Max Reduction
 #' @description
@@ -750,12 +753,12 @@ prim_reduce_prod <- new_primitive("reduce_prod", make_reduce_op(), static = 2:3)
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reduce()] with [hlo_maximum()] as the reducer.
-#' @seealso [nv_reduce_max()]
+#' @seealso [nv_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_max(x, axes = 1L)
+#' prim_max(x, axes = 1L)
 #' @export
-prim_reduce_max <- new_primitive("reduce_max", make_reduce_op(), static = 2:3)
+prim_max <- new_primitive("reduce_max", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Min Reduction
 #' @description
@@ -773,12 +776,12 @@ prim_reduce_max <- new_primitive("reduce_max", make_reduce_op(), static = 2:3)
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reduce()] with [hlo_minimum()] as the reducer.
-#' @seealso [nv_reduce_min()]
+#' @seealso [nv_min()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(1:6, nrow = 2)
-#' prim_reduce_min(x, axes = 1L)
+#' prim_min(x, axes = 1L)
 #' @export
-prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
+prim_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 
 #' @title Primitive Any Reduction
 #' @description
@@ -796,12 +799,12 @@ prim_reduce_min <- new_primitive("reduce_min", make_reduce_op(), static = 2:3)
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reduce()] with [hlo_or()] as the reducer.
-#' @seealso [nv_reduce_any()]
+#' @seealso [nv_any()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' prim_reduce_any(x, axes = 1L)
+#' prim_any(x, axes = 1L)
 #' @export
-prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boolean), static = 2:3)
+prim_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boolean), static = 2:3)
 
 #' @title Primitive All Reduction
 #' @description
@@ -819,12 +822,12 @@ prim_reduce_any <- new_primitive("reduce_any", make_reduce_op(infer_reduce_boole
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reduce()] with [hlo_and()] as the reducer.
-#' @seealso [nv_reduce_all()]
+#' @seealso [nv_all()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_matrix(c(TRUE, FALSE, TRUE, TRUE), nrow = 2)
-#' prim_reduce_all(x, axes = 1L)
+#' prim_all(x, axes = 1L)
 #' @export
-prim_reduce_all <- new_primitive("reduce_all", make_reduce_op(infer_reduce_boolean), static = 2:3)
+prim_all <- new_primitive("reduce_all", make_reduce_op(infer_reduce_boolean), static = 2:3)
 
 # cumulative (scan) primitives -------------------------------------------------
 
@@ -993,7 +996,7 @@ prim_cummin <- new_primitive("cummin", cum_extreme_op, static = 2L)
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reduce()] with `reductor` as the body.
-#' @seealso [prim_reduce_sum()], [prim_reduce_max()]
+#' @seealso [prim_sum()], [prim_max()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4))
 #' prim_reduce(x, init = nv_scalar(0), axes = 1L, reductor = prim_add)
@@ -1110,7 +1113,7 @@ prim_reduce <- new_primitive(
   static = c("axes", "drop", "reductor")
 )
 
-# Shared shape inference for prim_argmax / prim_argmin: x -> the default
+# Shared shape inference for prim_which_max / prim_which_min: x -> the default
 # integer data type with `axis` dropped (or kept as size 1).
 infer_fn_arg_extreme <- function(x, axis, drop) {
   shp <- shape(x)
@@ -1163,11 +1166,11 @@ infer_fn_arg_extreme <- function(x, axis, drop) {
 #' @section StableHLO:
 #' Lowers to a variadic [hlo_reduce()] over `(values, indices)`
 #' with a (value > value | (value == value & idx < idx)) selector.
-#' @seealso [prim_argmin()], [nv_argmax()]
+#' @seealso [prim_which_min()], [nv_which_max()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' prim_argmax(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
+#' prim_which_max(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_argmax <- new_primitive(
+prim_which_max <- new_primitive(
   "argmax",
   function(x, axis, drop = TRUE) {
     axis <- resolve_axis(axis, naxes(x))
@@ -1187,7 +1190,7 @@ prim_argmax <- new_primitive(
 #' Returns the index of the minimum value along a single axis. Ties
 #' are broken by returning the smallest index.
 #' @template param_prim_x_any
-#' @inheritParams prim_argmax
+#' @inheritParams prim_which_max
 #' @return [`arrayish`] of the default integer data type (see
 #'   [`default_dtypes()`])\cr
 #'   Same shape as `x` with `axis` removed (or set to 1 if
@@ -1197,11 +1200,11 @@ prim_argmax <- new_primitive(
 #' @section StableHLO:
 #' Lowers to a variadic [hlo_reduce()] over `(values, indices)`
 #' with a (value < value | (value == value & idx < idx)) selector.
-#' @seealso [prim_argmax()], [nv_argmin()]
+#' @seealso [prim_which_max()], [nv_which_min()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' prim_argmin(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
+#' prim_which_min(nv_array(c(3, 1, 4, 1, 5)), axis = 1L)
 #' @export
-prim_argmin <- new_primitive(
+prim_which_min <- new_primitive(
   "argmin",
   function(x, axis, drop = TRUE) {
     axis <- resolve_axis(axis, naxes(x))
@@ -1345,39 +1348,39 @@ prim_le <- new_primitive("less_equal", make_compare_op("LE"))
 
 # additional simple binary primitives -----------------------------------------
 
-#' @title Primitive Maximum
+#' @title Primitive Parallel Maximum
 #' @description
-#' Element-wise maximum of two arrays.
+#' Element-wise maximum of two arrays, like [base::pmax()].
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_binary
 #' @templateVar primitive_id maximum
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_maximum()].
-#' @seealso [nv_max()]
+#' @seealso [nv_pmax()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 5, 3))
 #' y <- nv_array(c(4, 2, 6))
-#' prim_max(x, y)
+#' prim_pmax(x, y)
 #' @export
-prim_max <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
+prim_pmax <- new_primitive("maximum", make_binary_op(stablehlo::infer_types_maximum))
 
-#' @title Primitive Minimum
+#' @title Primitive Parallel Minimum
 #' @description
-#' Element-wise minimum of two arrays.
+#' Element-wise minimum of two arrays, like [base::pmin()].
 #' @template params_prim_lhs_rhs_any
 #' @template return_prim_binary
 #' @templateVar primitive_id minimum
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_minimum()].
-#' @seealso [nv_min()]
+#' @seealso [nv_pmin()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 5, 3))
 #' y <- nv_array(c(4, 2, 6))
-#' prim_min(x, y)
+#' prim_pmin(x, y)
 #' @export
-prim_min <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
+prim_pmin <- new_primitive("minimum", make_binary_op(stablehlo::infer_types_minimum))
 
 #' @title Primitive Remainder
 #' @description
@@ -1754,9 +1757,9 @@ prim_floor <- new_primitive("floor", make_unary_op(stablehlo::infer_types_floor)
 #' @seealso [nv_ceiling()], [ceiling()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1.2, 2.7, -1.5))
-#' prim_ceil(x)
+#' prim_ceiling(x)
 #' @export
-prim_ceil <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
+prim_ceiling <- new_primitive("ceil", make_unary_op(stablehlo::infer_types_ceil))
 
 #' @title Primitive Sign
 #' @description
@@ -1847,12 +1850,12 @@ prim_cbrt <- new_primitive("cbrt", make_unary_op(stablehlo::infer_types_cbrt))
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_logistic()].
-#' @seealso [nv_logistic()]
+#' @seealso [nv_plogis()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(-2, 0, 2))
-#' prim_logistic(x)
+#' prim_plogis(x)
 #' @export
-prim_logistic <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_logistic))
+prim_plogis <- new_primitive("logistic", make_unary_op(stablehlo::infer_types_logistic))
 
 #' @title Primitive Arc Cosine
 #' @description
@@ -2014,34 +2017,35 @@ prim_digamma <- new_primitive("digamma", make_unary_op(stablehlo::infer_types_di
 #' @export
 prim_lgamma <- new_primitive("lgamma", make_unary_op(stablehlo::infer_types_lgamma))
 
-#' @title Primitive Polygamma
+#' @title Primitive Psigamma
 #' @description
-#' Element-wise polygamma function: the `(n+1)`-th derivative of the
-#' log-gamma function. Both `n` and `x` must have the same shape; `n`
-#' typically holds non-negative integer values.
-#' @param n,x ([`arrayish`])\cr
+#' Element-wise psigamma function: the `deriv`-th derivative of the digamma
+#' function, i.e. the `(deriv + 1)`-th derivative of the log-gamma function.
+#' Both `x` and `deriv` must have the same shape; `deriv` typically holds
+#' non-negative integer values.
+#' @param x,deriv ([`arrayish`])\cr
 #'   Arrayish values of data type floating-point.
 #'   Must have the same shape.
 #' @template return_prim_binary
 #' @templateVar primitive_id polygamma
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_polygamma()].
-#' @seealso [nv_polygamma()]
+#' Lowers to [hlo_polygamma()], which takes the order first.
+#' @seealso [nv_psigamma()]
 #' @examplesIf pjrt::plugins_downloaded()
-#' n <- nv_array(c(1, 1, 2))
 #' x <- nv_array(c(0.5, 1, 2))
-#' prim_polygamma(n, x)
+#' deriv <- nv_array(c(1, 1, 2))
+#' prim_psigamma(x, deriv)
 #' @export
-prim_polygamma <- new_primitive(
+prim_psigamma <- new_primitive(
   "polygamma",
-  function(n, x) {
-    infer_fn <- function(n, x) {
-      out <- stablehlo::infer_types_polygamma(at2vt(n), at2vt(x))[[1L]]
+  function(x, deriv) {
+    infer_fn <- function(x, deriv) {
+      out <- stablehlo::infer_types_polygamma(at2vt(deriv), at2vt(x))[[1L]]
       out <- vt2at(out)
       list(out)
     }
-    operands <- apply_promotion(list(n = n, x = x), promotion_rdata_common())
+    operands <- apply_promotion(list(x = x, deriv = deriv), promotion_rdata_common())
     graph_desc_add(self, operands, infer_fn = infer_fn)[[1L]]
   }
 )
@@ -2200,12 +2204,12 @@ prim_clamp <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_reverse()].
-#' @seealso [nv_reverse()]
+#' @seealso [nv_rev()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(1, 2, 3, 4, 5))
-#' prim_reverse(x, axes = 1L)
+#' prim_rev(x, axes = 1L)
 #' @export
-prim_reverse <- new_primitive(
+prim_rev <- new_primitive(
   "reverse",
   function(x, axes) {
     axes <- resolve_axes(axes, naxes(x), unique = TRUE)
@@ -2882,7 +2886,7 @@ prim_scan <- new_primitive(
 #' `-NaN`/`+NaN` to their positive form before comparing, so all `NaN`
 #' values land at one end of the result regardless of sign. Integer keys
 #' use `SIGNED` / `UNSIGNED` as appropriate.
-#' @seealso [nv_sort()], [nv_argsort()], [nv_top_k()], [nv_median()]
+#' @seealso [nv_sort()], [nv_order()], [nv_top_k()], [nv_median()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(3, 1, 4, 1, 5))
 #' prim_sort(list(x), axis = 1L)[[1L]]
@@ -2929,7 +2933,7 @@ prim_sort <- new_primitive(
     )
   },
   # No promotion: a key and its payloads are meant to differ in data type
-  # (nv_argsort() sorts a float key alongside an integer index).
+  # (nv_order() sorts a float key alongside an integer index).
   static = c("axis", "descending", "is_stable")
 )
 
@@ -3794,12 +3798,12 @@ prim_svd <- new_primitive(
 #' @template section_rules
 #' @section StableHLO:
 #' Lowers to [hlo_custom_call()] with target `"eigh"`.
-#' @seealso [nv_eigh()]
+#' @seealso [nv_eigen()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(c(2, 1, 1, 2), shape = c(2, 2), dtype = "f64")
-#' prim_eigh(x)
+#' prim_eigen(x)
 #' @export
-prim_eigh <- new_primitive(
+prim_eigen <- new_primitive(
   "eigh",
   function(x) {
     infer_fn <- function(x) {
