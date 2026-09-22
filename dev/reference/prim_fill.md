@@ -18,9 +18,9 @@ prim_fill(value, shape, dtype, device = NULL)
 
   (`numeric(1)`)  
   Scalar value to fill the array with. It has to be something `dtype`
-  can hold: a whole number for an integer data type, a non-negative
-  whole number for an unsigned one, and a logical or `0` / `1` for
-  `bool`.
+  can hold: a whole number in its range for an integer data type, a
+  non-negative one for an unsigned integer, and a logical or `0` / `1`
+  for `bool`.
 
 - shape:
 

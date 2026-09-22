@@ -676,13 +676,12 @@ trace_fn(\(x) {
 ```
 
     ## <AnvlGraph> [%c1: i8[], %c2: i16[], %c3: i64[]] (%x1: i64[] <- integer) {
-    ##   %1: i32[] = convert [dtype = i32] (%x1)
-    ##   %2: i8[] = convert [dtype = i8] (%1)
-    ##   %3: i8[] = add(%2, %c1)
-    ##   %4: i16[] = convert [dtype = i16] (%1)
-    ##   %5: i16[] = add(%4, %c2)
-    ##   %6: i64[] = add(%x1, %c3)
-    ##   return %6
+    ##   %1: i8[] = convert [dtype = i8] (%x1)
+    ##   %2: i16[] = convert [dtype = i16] (%x1)
+    ##   %3: i8[] = add(%1, %c1)
+    ##   %4: i16[] = add(%2, %c2)
+    ##   %5: i64[] = add(%x1, %c3)
+    ##   return %5
     ## }
 
 This design tries to balance correctness with hardware compatibility.

@@ -250,7 +250,10 @@ Disallowing this would prevent round-trips between the data types.</p></li>
 type conversions.
 When such conversions are performed, anvl performs a scan of the inputs to ensure that the
 requested data type can actually hold the input data.
-For example, trying to create an unsigned integer from a negative R <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> fails.</p>
+For example, trying to create an unsigned integer from a negative R <code><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer()</a></code> fails.
+The same holds where an R value takes its data type from the array it meets
+rather than from an argument: <code>nv_scalar(1L, "ui8") + (-2L)</code> is refused, where
+converting an array with <code><a href="nv_convert.html">nv_convert()</a></code> wraps around.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -299,8 +302,8 @@ For example, trying to create an unsigned integer from a negative R <code><a hre
 <span class="r-in"><span><span class="co"># an uninitialized 2x3 array (contents are unspecified)</span></span></span>
 <span class="r-in"><span><span class="fu">nv_empty</span><span class="op">(</span><span class="st">"f32"</span>, shape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2L</span>, <span class="fl">3L</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> AnvlArray</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0402e-36 3.0938e-41 3.0342e-36</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0938e-41 3.0401e-36 3.0938e-41</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2.4676e+28 3.0653e-41 2.4657e+28</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.0653e-41 2.4675e+28 3.0653e-41</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [ CPUf32{2,3} ] </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- Extractors ---</span></span></span>

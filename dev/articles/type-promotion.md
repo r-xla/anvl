@@ -130,6 +130,33 @@ routes:
     present, `nv_add(1, 2)` falls back to the default, which is `f32`
     for `double`s on pjrt.
 
+Either way the value is *built at* that data type rather than converted
+into it, so one the data type cannot hold is an error:
+
+``` r
+
+jit(function(x) x + (-2L))(nv_scalar(1L, "ui8"))
+```
+
+    ## Error:
+    ## ! Cannot build the R value -2 at data type "ui8".
+    ## ✖ It is outside the range of "ui8" (0 to 255).
+    ## ℹ An R value is built at the data type it meets rather than converted into it,
+    ##   so that data type has to hold it.
+    ## ℹ Convert an array with `nv_convert()` where the wraparound is what you want.
+
+Converting an array is a different matter and keeps XLA’s wraparound
+semantics:
+
+``` r
+
+nv_convert(nv_scalar(-2L, "i32"), "ui8")
+```
+
+    ## AnvlArray
+    ##  254
+    ## [ CPUui8{} ]
+
 Note that these rules are not universal and exceptions exist. Some
 functions, such as `nv_clamp`, prioritize the data type of a specific
 argument, in this case `x`, the value that is being clamped. It fails if

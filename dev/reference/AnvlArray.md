@@ -202,7 +202,12 @@ from R often involves type conversions. When such conversions are
 performed, anvl performs a scan of the inputs to ensure that the
 requested data type can actually hold the input data. For example,
 trying to create an unsigned integer from a negative R
-[`integer()`](https://rdrr.io/r/base/integer.html) fails.
+[`integer()`](https://rdrr.io/r/base/integer.html) fails. The same holds
+where an R value takes its data type from the array it meets rather than
+from an argument: `nv_scalar(1L, "ui8") + (-2L)` is refused, where
+converting an array with
+[`nv_convert()`](https://r-xla.github.io/anvl/dev/reference/nv_convert.md)
+wraps around.
 
 ## See also
 
@@ -255,8 +260,8 @@ nv_scalar(3.14)
 # an uninitialized 2x3 array (contents are unspecified)
 nv_empty("f32", shape = c(2L, 3L))
 #> AnvlArray
-#>  3.0402e-36 3.0938e-41 3.0342e-36
-#>  3.0938e-41 3.0401e-36 3.0938e-41
+#>  2.4676e+28 3.0653e-41 2.4657e+28
+#>  3.0653e-41 2.4675e+28 3.0653e-41
 #> [ CPUf32{2,3} ] 
 
 # --- Extractors ---
