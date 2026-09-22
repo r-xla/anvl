@@ -29,7 +29,7 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
         x = "Got {fmt(x)}."
       ))
     }
-    if (any(x < 0)) {
+    if (any(x < 0L)) {
       cli_abort(c(
         "{.arg {var_name}} must not contain a negative axis size.",
         x = "Got {fmt(x)}."
@@ -114,7 +114,7 @@ resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) 
     ))
   }
   known <- prod(shape[-inferred])
-  if (known <= 0 || nelts %% known != 0) {
+  if (known <= 0L || nelts %% known != 0L) {
     cli_abort(c(
       "Cannot infer the size of axis {inferred} of {.arg {arg}}.",
       # The `-1` is the axis being asked for, so it is shown as `?` rather
@@ -147,6 +147,48 @@ assert_rng_float_dtype <- function(x, arg = rlang::caller_arg(x), hint = NULL) {
     ))
   }
   dt
+}
+
+# The range an integer data type covers. Its bounds are powers of two, so a
+# double holds them exactly even for the 64-bit data types.
+dtype_int_range <- function(dtype) {
+  width <- dtype_width(dtype)
+  if (is_dtype_uint(dtype)) {
+    return(c(0, 2^width - 1))
+  }
+  c(-2^(width - 1L), 2^(width - 1L) - 1)
+}
+
+# An R value is *built at* the data type it materializes at rather than
+# converted into it, so a value that data type cannot hold is a mistake and not
+# a wraparound: `x_ui8 + (-2L)` would build `-2L` at `ui8`, where it does not
+# exist. Only integer data types are checked -- a double at a narrow float
+# overflows to `Inf`, as it does in R.
+assert_r_fits_dtype <- function(x, dtype) {
+  dt <- as_dtype(dtype)
+  if (!is_dtype_int(dt) && !is_dtype_uint(dt)) {
+    return(invisible(x))
+  }
+  range <- dtype_int_range(dt)
+  # An `NA` has its own story (the "Missing values" section of `?AnvlArray`),
+  # so it is not this check's business.
+  values <- x[!is.na(x)]
+  bad <- unique(values[values < range[[1L]] | values > range[[2L]]])
+  if (!length(bad)) {
+    return(invisible(x))
+  }
+  target <- as.character(dt)
+  n <- length(bad)
+  bounds <- vapply(range, format, character(1L), scientific = FALSE)
+  cli_abort(
+    c(
+      "{cli::qty(n)}Cannot build the R value{?s} {.val {bad[seq_len(min(3L, n))]}} at data type {.val {target}}.",
+      "x" = "{cli::qty(n)}{?It is/They are} outside the range of {.val {target}} ({bounds[[1L]]} to {bounds[[2L]]}).", # nolint
+      "i" = "An R value is built at the data type it meets rather than converted into it, so that data type has to hold it.", # nolint
+      "i" = "Convert an array with {.fn nv_convert} where the wraparound is what you want."
+    ),
+    call = NULL
+  )
 }
 
 assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
@@ -189,16 +231,16 @@ assert_fill_value <- function(value, dtype, arg = rlang::caller_arg(value)) {
   }
 
   ok <- if (is_dtype_bool(dt)) {
-    is.logical(value) || (is_whole && (value == 0 || value == 1))
+    is.logical(value) || (is_whole && (value == 0L || value == 1L))
   } else if (is_dtype_uint(dt)) {
-    is_whole && value >= 0
+    is_whole && value >= 0L
   } else if (is_dtype_int(dt)) {
     is_whole
   } else {
     is_number
   }
   if (ok) {
-    return(invisible(value))
+    return(assert_r_fits_dtype(value, dt))
   }
 
   wanted <- if (is_dtype_bool(dt)) {

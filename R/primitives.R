@@ -77,8 +77,8 @@ infer_reduce_boolean <- function(x, axes, drop) {
 #' 100 * 100 * 4 bytes of memory.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with. It has to be something `dtype` can
-#'   hold: a whole number for an integer data type, a non-negative whole number
-#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
+#'   hold: a whole number in its range for an integer data type, a non-negative
+#'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @template param_dtype
@@ -455,7 +455,7 @@ prim_concatenate <- new_primitive(
       axis_const <- stablehlo::r_to_constant(
         as.integer(axis - 1L),
         dtype = "i64",
-        shape = integer(0)
+        shape = integer(0L)
       )
       out <- rlang::exec(stablehlo::infer_types_concatenate, !!!vts, dimension = axis_const)[[1L]]
       out <- vt2at(out)
@@ -833,7 +833,7 @@ infer_cum <- function(x, axis) {
   if (rank == 0L) {
     cli_abort("{.arg x} must have at least one axis to accumulate along, but it is a scalar.")
   }
-  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
+  if (!checkmate::test_integerish(axis, lower = 1L, upper = rank, len = 1L)) {
     cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
   }
   list(AbstractArray(
@@ -852,7 +852,7 @@ infer_cum_extreme <- function(x, axis) {
   if (rank == 0L) {
     cli_abort("{.arg x} must have at least one axis to accumulate along, but it is a scalar.")
   }
-  if (!checkmate::test_integerish(axis, lower = 1, upper = rank, len = 1L)) {
+  if (!checkmate::test_integerish(axis, lower = 1L, upper = rank, len = 1L)) {
     cli_abort("{.arg axis} must be a single integer in 1:{rank}, but is {.val {axis}}")
   }
   list(
@@ -2254,7 +2254,7 @@ prim_iota <- new_primitive(
       iota_axis_const <- stablehlo::r_to_constant(
         as.integer(axis - 1L),
         dtype = "i64",
-        shape = integer(0)
+        shape = integer(0L)
       )
       # Just for the checks
       stablehlo::infer_types_iota(iota_dimension = iota_axis_const, dtype = dtype, shape = shape)[[1L]]

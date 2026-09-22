@@ -43,7 +43,7 @@ nv_unif_rand <- function(
   U <- nv_bitcast_convert(U, dtype = dtype)
 
   # shift to [0, 1)
-  U <- U - 1
+  U <- U - 1L
 
   # return state and RVs
   list(state = rbits$state, values = U)
@@ -80,8 +80,8 @@ nv_runif <- jit(
     max = 1
   ) {
     dtype <- assert_rng_float_dtype(dtype %||% default_float(), arg = "dtype")
-    checkmate::assertNumeric(min, len = 1, any.missing = FALSE, upper = max)
-    checkmate::assertNumeric(max, len = 1, any.missing = FALSE, lower = min)
+    checkmate::assertNumeric(min, len = 1L, any.missing = FALSE, upper = max)
+    checkmate::assertNumeric(max, len = 1L, any.missing = FALSE, lower = min)
     shape <- assert_shapevec(shape)
 
     if (max == min) {
@@ -98,7 +98,7 @@ nv_runif <- jit(
     U <- Unif$values
 
     # check if some values are <= 0
-    le_zero <- nv_le(U, 0)
+    le_zero <- nv_le(U, 0L)
 
     # Define smallest step (like R's 0.5 * i2_32m1 philosophy)
     # for f32 and 23 mantissa bits 2^-24 lies between 0 and 2^-23,
@@ -180,15 +180,15 @@ nv_rnorm <- jit(
     U <- nv_unif_rand(
       initial_state = initial_state,
       dtype = dtype,
-      shape = as.integer(ceiling(n / 2))
+      shape = as.integer(ceiling(n / 2L))
     )
 
     # compute the radius R = sqrt(-2 * log(u1))
-    R <- nv_mul(nv_log(U$values), -2)
+    R <- nv_mul(nv_log(U$values), -2L)
     sqrt_R <- nv_sqrt(R)
 
     # generate second batch of ceil(n/2) random uniform variables
-    Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2)))
+    Theta <- nv_unif_rand(initial_state = U$state, dtype = dtype, shape = as.integer(ceiling(n / 2L)))
 
     # compute cos(2 * pi * u2) / sin(2 * pi * u2)
     Theta$values <- nv_mul(Theta$values, 2 * pi)
@@ -203,7 +203,7 @@ nv_rnorm <- jit(
     Z <- nv_concatenate(Z1, Z2, axis = 1L)
 
     # if n is uneven, only keep Z(1,...,n), i.e. discard last entry of Z
-    if (n %% 2 == 1) {
+    if (n %% 2L == 1L) {
       Z <- nv_static_slice(Z, start_indices = 1L, limit_indices = n, strides = 1L)
     }
 
@@ -256,7 +256,7 @@ nv_rbinom <- jit(
       arg = "dtype",
       hint = "A boolean cannot hold a count; use an integer data type and compare it."
     )
-    checkmate::assert_int(size, lower = 1)
+    checkmate::assert_int(size, lower = 1L)
     checkmate::assert_number(prob, lower = 0, upper = 1)
     shape <- assert_shapevec(shape)
 
@@ -318,7 +318,7 @@ nv_sample_int <- jit(
       arg = "dtype",
       hint = "A boolean cannot hold an index; use an integer data type."
     )
-    assert_int(n, lower = 1)
+    assert_int(n, lower = 1L)
     shape <- assert_shapevec(shape)
 
     out <- sample_indices(initial_state, as.integer(n), prod(shape))

@@ -13,8 +13,8 @@
 #' `device` default to those of `like`.
 #' @param value (`numeric(1)`)\cr
 #'   Scalar value to fill the array with. It has to be something `dtype` can
-#'   hold: a whole number for an integer data type, a non-negative whole number
-#'   for an unsigned one, and a logical or `0` / `1` for `bool`.
+#'   hold: a whole number in its range for an integer data type, a non-negative
+#'   one for an unsigned integer, and a logical or `0` / `1` for `bool`.
 #' @param shape (`integer()`)\cr
 #'   Shape of the output array.
 #' @param dtype (`character(1)` | `NULL`)\cr
@@ -289,7 +289,7 @@ nv_reshape <- function(x, shape) {
 #' nv_flatten(matrix(1:4, nrow = 2))
 nv_flatten <- function(x) {
   x <- as_anvl_array(x)
-  if (naxes(x) == 0) {
+  if (naxes(x) == 0L) {
     cli_abort("Cannot flatten a scalar array.")
   }
   nv_reshape(x, prod(shape(x)))
@@ -1101,7 +1101,7 @@ nv_sinpi <- jit(function(x) {
   n <- nv_round(x, method = "nearest_even")
   reduced <- nv_sin((x - n) * pi)
   # The sine of `pi * n` alternates in sign with the parity of `n`.
-  nv_ifelse(nv_mod(n, 2) == 0, reduced, -reduced)
+  nv_ifelse(nv_mod(n, 2L) == 0L, reduced, -reduced)
 })
 
 #' @title Cosine of a Multiple of Pi
@@ -1133,7 +1133,7 @@ nv_tanpi <- jit(function(x) {
   x <- as_anvl_array(int_to_float(x))
   denominator <- nv_cospi(x)
   # Otherwise we get (+-)inf depending on which side we land, which is bad
-  nv_ifelse(denominator == 0, NaN, nv_sinpi(x) / denominator)
+  nv_ifelse(denominator == 0L, NaN, nv_sinpi(x) / denominator)
 })
 
 #' @title Floor
@@ -1397,10 +1397,10 @@ nv_gamma <- jit(function(x) {
   # not selected it is evaluated at a regular point: at a positive whole
   # number sin(pi * x) * gamma(1 - x) is 0 * Inf, and the cotangent that
   # nv_ifelse() sends into the discarded branch would pick the NaN up.
-  x_reflect <- nv_ifelse(x < 0, x, -0.5)
-  reflected <- pi / (nv_sinpi(x_reflect) * nv_exp(nv_lgamma(1 - x_reflect)))
-  out <- nv_ifelse(x < 0, reflected, positive)
-  nv_ifelse((x <= 0) & (x == nv_floor(x)), NaN, out)
+  x_reflect <- nv_ifelse(x < 0L, x, -0.5)
+  reflected <- pi / (nv_sinpi(x_reflect) * nv_exp(nv_lgamma(1L - x_reflect)))
+  out <- nv_ifelse(x < 0L, reflected, positive)
+  nv_ifelse((x <= 0L) & (x == nv_floor(x)), NaN, out)
 })
 
 #' @title Polygamma
@@ -2082,8 +2082,8 @@ nv_determinant <- jit(
     # log|det| = 0 and sign(det) = +1. This matches `base::determinant()`
     # and short-circuits since prim_lu rejects zero-sized inputs.
     if (n == 0L) {
-      one <- nv_scalar_like(x, 1)
-      modulus <- if (logarithm) nv_scalar_like(x, 0) else one
+      one <- nv_scalar_like(x, 1L)
+      modulus <- if (logarithm) nv_scalar_like(x, 0L) else one
       return(list(modulus = modulus, sign = one))
     }
     factored <- prim_lu(x)
@@ -2252,17 +2252,17 @@ nv_diag <- jit(function(x) {
     ))
   }
   n <- shape(x)[1L]
-  zeros <- nv_fill_like(x, 0, shape = c(n, n))
+  zeros <- nv_fill_like(x, 0L, shape = c(n, n))
   idx <- prim_reshape(nv_iota_like(x, axis = 1L, shape = n, dtype = "i32"), shape = c(n, 1L))
   indices <- nv_concatenate(idx, idx, axis = 2L)
   prim_scatter(
     zeros,
     indices,
     x,
-    update_window_axes = integer(0),
+    update_window_axes = integer(0L),
     inserted_window_axes = c(1L, 2L),
-    x_batching_axes = integer(0),
-    scatter_indices_batching_axes = integer(0),
+    x_batching_axes = integer(0L),
+    scatter_indices_batching_axes = integer(0L),
     scatter_axes_to_x_axes = c(1L, 2L),
     index_vector_axis = 2L,
     unique_indices = TRUE
@@ -2296,7 +2296,7 @@ nv_eye <- jit(
   function(n, dtype = NULL, device = NULL) {
     assert_int(n, lower = 0L)
     dtype <- dtype %||% default_float()
-    nv_diag(nv_fill(1, as.integer(n), dtype = dtype, device = device))
+    nv_diag(nv_fill(1L, as.integer(n), dtype = dtype, device = device))
   },
   static = 1:3
 )
@@ -2315,7 +2315,7 @@ nv_eye <- jit(
   if (is_dtype_bool(peek_dtype(x))) nv_convert(x, default_int()) else x
 }
 
-# Gather `axes` into a single leading axis, so an operation that only ever
+# Gather `axes` into a single trailing axis, so an operation that only ever
 # handles one axis -- a sort, an arg-reduction -- can reduce several at once by
 # ranking their elements together. `axes` must already be resolved and sorted.
 # The reshape is column-major, so a position along the merged axis is the
@@ -2326,11 +2326,11 @@ nv_eye <- jit(
 .flatten_reduce_axes <- function(x, axes, drop) {
   x_shape <- shape(x)
   keep <- setdiff(seq_along(x_shape), axes)
-  permutation <- c(axes, keep)
+  permutation <- c(keep, axes)
   if (!identical(permutation, seq_along(x_shape))) {
     x <- prim_transpose(x, permutation = permutation)
   }
-  flat_shape <- c(as.integer(prod(x_shape[axes])), x_shape[keep])
+  flat_shape <- c(x_shape[keep], as.integer(prod(x_shape[axes])))
   if (!identical(shape(x), flat_shape)) {
     x <- prim_reshape(x, flat_shape)
   }
@@ -2375,7 +2375,7 @@ nv_reduce_sum <- jit(
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0, x)
+      x <- nv_ifelse(nv_is_nan(x), 0L, x)
     }
     prim_reduce_sum(x, axes = axes, drop = drop)
   },
@@ -2405,7 +2405,7 @@ nv_mean <- jit(
     axes <- .resolve_reduce_axes(x, axes)
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
       is_nan <- nv_is_nan(x)
-      total <- prim_reduce_sum(nv_ifelse(is_nan, 0, x), axes = axes, drop = drop)
+      total <- prim_reduce_sum(nv_ifelse(is_nan, 0L, x), axes = axes, drop = drop)
       count <- prim_reduce_sum(nv_convert(!is_nan, "i32"), axes = axes, drop = drop)
       return(total / count)
     }
@@ -2437,7 +2437,7 @@ nv_reduce_prod <- jit(
     x <- .count_bool(as_anvl_array(x))
     axes <- .resolve_reduce_axes(x, axes)
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1, x)
+      x <- nv_ifelse(nv_is_nan(x), 1L, x)
     }
     prim_reduce_prod(x, axes = axes, drop = drop)
   },
@@ -2617,7 +2617,7 @@ nv_cumsum <- jit(
     x <- cum$x
     axis <- cum$axis
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 0, x)
+      x <- nv_ifelse(nv_is_nan(x), 0L, x)
     }
     prim_cumsum(x, axis = axis)
   },
@@ -2650,7 +2650,7 @@ nv_cumprod <- jit(
     x <- cum$x
     axis <- cum$axis
     if (nan_rm && is_dtype_float(peek_dtype(x))) {
-      x <- nv_ifelse(nv_is_nan(x), 1, x)
+      x <- nv_ifelse(nv_is_nan(x), 1L, x)
     }
     prim_cumprod(x, axis = axis)
   },
@@ -2967,7 +2967,7 @@ nv_var <- jit(
       # When count <= correction the divisor clamps to 0 and ssum is 0
       # (single non-NaN point has zero deviation, all-NaN slice contributes
       # nothing), so 0/0 = NaN propagates naturally — no explicit mask needed.
-      return(ssum / nv_max(0, count - correction))
+      return(ssum / nv_max(0L, count - correction))
     }
     nelts <- prod(shape(x)[axes])
     ssum / max(0L, nelts - correction)
@@ -3033,7 +3033,7 @@ nv_squeeze <- function(x, axes = NULL) {
     new_shape <- shp[-axes]
   }
   if (length(new_shape) == 0L) {
-    new_shape <- integer(0)
+    new_shape <- integer(0L)
   }
   nv_reshape(x, new_shape)
 }
@@ -3115,10 +3115,10 @@ nv_extract_diag <- jit(function(x) {
   prim_gather(
     x,
     start_indices = indices,
-    offset_axes = integer(0),
+    offset_axes = integer(0L),
     collapsed_slice_axes = c(1L, 2L),
-    x_batching_axes = integer(0),
-    start_indices_batching_axes = integer(0),
+    x_batching_axes = integer(0L),
+    start_indices_batching_axes = integer(0L),
     start_index_map = c(1L, 2L),
     index_vector_axis = 2L,
     slice_sizes = c(1L, 1L)
@@ -3243,7 +3243,7 @@ nv_tril <- jit(
     if (naxes(x) != 2L) {
       cli_abort("{.arg x} must be a 2-D array")
     }
-    nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+    nv_ifelse(nv_lower_tri_like(x, diagonal), x, nv_fill_like(x, 0L))
   },
   static = 2L
 )
@@ -3269,7 +3269,7 @@ nv_triu <- jit(
     if (naxes(x) != 2L) {
       cli_abort("{.arg x} must be a 2-D array")
     }
-    nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0))
+    nv_ifelse(nv_upper_tri_like(x, diagonal), x, nv_fill_like(x, 0L))
   },
   static = 2L
 )
@@ -3389,10 +3389,10 @@ nv_select <- function(x, axis, index) {
     x,
     start_indices = start_indices,
     slice_sizes = rep(1L, rank),
-    offset_axes = integer(0),
+    offset_axes = integer(0L),
     collapsed_slice_axes = seq_len(rank),
-    x_batching_axes = integer(0),
-    start_indices_batching_axes = integer(0),
+    x_batching_axes = integer(0L),
+    start_indices_batching_axes = integer(0L),
     start_index_map = seq_len(rank),
     index_vector_axis = rank + 1L
   )
@@ -3673,7 +3673,7 @@ nv_quantile <- jit(
     x <- flat$x
 
     rank <- naxes(x)
-    axis <- 1L
+    axis <- rank
     shp <- shape(x)
     K <- length(probs)
     probs <- as.numeric(probs)
@@ -3714,9 +3714,9 @@ nv_quantile <- jit(
     idx_dtype <- "f64"
 
     n_axis <- shp[axis]
-    budget <- ceiling(n_axis / 2) + 1
-    k_lo <- as.integer(ceiling((n_axis - 1) * max(probs)) + 1)
-    k_hi <- as.integer(n_axis - floor((n_axis - 1) * min(probs)))
+    budget <- ceiling(n_axis / 2L) + 1L
+    k_lo <- as.integer(ceiling((n_axis - 1L) * max(probs)) + 1L)
+    k_hi <- as.integer(n_axis - floor((n_axis - 1L) * min(probs)))
     path <- if (n_axis > 0L && k_lo <= budget) {
       "low"
     } else if (n_axis > 0L && k_hi <= budget) {
@@ -3765,7 +3765,7 @@ nv_quantile <- jit(
       shp_K
     )
     n_valid_b <- nv_convert(nv_broadcast_to(n_valid_kd, shp_K), idx_dtype)
-    h <- (n_valid_b - 1) * probs_b
+    h <- (n_valid_b - 1L) * probs_b
     lo_f <- nv_floor(h)
     hi_f <- nv_ceiling(h)
     frac <- nv_convert(h - lo_f, out_dtype)
@@ -3777,8 +3777,8 @@ nv_quantile <- jit(
       lo_idx <- n_valid_b - lo_f
       hi_idx <- n_valid_b - hi_f
     } else {
-      lo_idx <- lo_f + 1
-      hi_idx <- hi_f + 1
+      lo_idx <- lo_f + 1L
+      hi_idx <- hi_f + 1L
     }
     lo_val <- .gather_along_axis(sorted, nv_convert(lo_idx, "i32"), axis, rank, shp)
     hi_val <- .gather_along_axis(sorted, nv_convert(hi_idx, "i32"), axis, rank, shp)
@@ -3788,8 +3788,8 @@ nv_quantile <- jit(
       "lower" = lo_val,
       "higher" = hi_val,
       "nearest" = nv_ifelse(frac < 0.5, lo_val, hi_val),
-      "linear" = lo_val * (1 - frac) + hi_val * frac,
-      "midpoint" = (lo_val + hi_val) / 2
+      "linear" = lo_val * (1L - frac) + hi_val * frac,
+      "midpoint" = (lo_val + hi_val) / 2L
     )
 
     # Propagate NaN: nan_rm = TRUE produces NaN only for all-NaN slices;
@@ -3798,10 +3798,11 @@ nv_quantile <- jit(
     bad <- if (nan_rm) n_valid_kd == 0L else prim_reduce_any(nan_mask, axes = axis, drop = FALSE)
     out <- nv_ifelse(nv_broadcast_to(bad, shp_K), NaN, out)
 
-    # Unpack the leading axis the reduced ones were gathered into: dropped, or
-    # restored at size 1 in their original positions. For array `probs`, it is
-    # already the leading K axis of the result.
+    # Unpack the trailing axis the reduced ones were gathered into: dropped, or
+    # restored at size 1 in their original positions. For array `probs`, the K
+    # axis moves from the back, where it is now, to the front.
     if (is_probs_array) {
+      out <- prim_transpose(out, permutation = c(axis, seq_len(rank - 1L)))
       prim_reshape(out, c(K, flat$keep_shape))
     } else {
       prim_reshape(out, flat$keep_shape)
@@ -3917,7 +3918,7 @@ nv_argmax <- jit(
 #' same `axes` and `drop`, it points at the element whose value
 #' `nv_reduce_min()` returns. Reducing several axes ranks their elements
 #' together, and the result indexes the column-major flattening of those axes
-#' -- the order [nv_flatten()] produces and [base::which.max()] reports -- which
+#' -- the order [nv_flatten()] produces and [base::which.min()] reports -- which
 #' is also the order ties are broken in.
 #' @inheritSection nv_argmax NaN handling
 #' @seealso [nv_argmax()], [nv_reduce_min()].
@@ -3939,7 +3940,7 @@ nv_argmin <- jit(
 )
 
 # Shared NaN-aware argmax/argmin. The primitives read a single axis, so several
-# axes are gathered into one leading axis first, exactly as `nv_quantile()`
+# axes are gathered into one trailing axis first, exactly as `nv_quantile()`
 # does -- which is what makes the result index the column-major flattening of
 # `axes`, the one `which.max()` reports.
 #
@@ -3951,7 +3952,7 @@ nv_argmin <- jit(
 .nv_arg_extreme <- function(x, axes, drop, nan_rm, prim_arg) {
   flat <- .flatten_reduce_axes(x, sort(.resolve_reduce_axes(x, axes)), drop)
   x <- flat$x
-  axis <- 1L
+  axis <- naxes(x)
   result <- prim_arg(x, axis = axis, drop = TRUE)
   if (!nan_rm && is_dtype_float(peek_dtype(x))) {
     # argmax on the bool mask returns the index of the first TRUE (tie-break:
@@ -3967,7 +3968,7 @@ nv_argmin <- jit(
 
 # Build the NCHW/NC(D)HW axis numbers (1-based) for nv_conv*.
 .nv_conv_axis_numbers <- function(n_spatial) {
-  spatial <- 3:(2 + n_spatial)
+  spatial <- 3:(2L + n_spatial)
   list(
     input_batch_axis = 1L,
     input_feature_axis = 2L,

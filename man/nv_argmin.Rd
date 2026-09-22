@@ -37,7 +37,7 @@ broken by returning the smallest index.
 same \code{axes} and \code{drop}, it points at the element whose value
 \code{nv_reduce_min()} returns. Reducing several axes ranks their elements
 together, and the result indexes the column-major flattening of those axes
--- the order \code{\link[=nv_flatten]{nv_flatten()}} produces and \code{\link[base:which.max]{base::which.max()}} reports -- which
+-- the order \code{\link[=nv_flatten]{nv_flatten()}} produces and \code{\link[base:which.min]{base::which.min()}} reports -- which
 is also the order ties are broken in.
 }
 

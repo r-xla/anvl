@@ -108,9 +108,9 @@ check_single_backend <- function(graph, arg_devices, expected) {
   const_backends <- vapply(
     graph$constants,
     function(const) if (is_concrete_array(const$aval)) backend(const$aval$data) else NA_character_,
-    character(1)
+    character(1L)
   )
-  arg_backends <- vapply(arg_devices, backend, character(1))
+  arg_backends <- vapply(arg_devices, backend, character(1L))
   found <- unique(c(const_backends, arg_backends))
   mismatches <- setdiff(found, c(expected, "plain", NA_character_))
   if (length(mismatches)) {
@@ -161,7 +161,7 @@ register_backend(
       }
       dtype_chr <- as.character(dtype)
       data <- switch(
-        substr(dtype_chr, 1, 1),
+        substr(dtype_chr, 1L, 1L),
         "f" = as.double(data),
         "i" = ,
         "u" = as.integer(data),

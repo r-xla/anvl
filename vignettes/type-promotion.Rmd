@@ -85,6 +85,18 @@ Generally, there are two routes:
 2. The R values data type is inferred from other arguments, as is the case of the `nv_add` call above.
    When no concrete data type is present, `nv_add(1, 2)` falls back to the default, which is `f32` for `double`s on pjrt.
 
+Either way the value is *built at* that data type rather than converted into it, so one the data type cannot hold is an error:
+
+```{r, error = TRUE}
+jit(function(x) x + (-2L))(nv_scalar(1L, "ui8"))
+```
+
+Converting an array is a different matter and keeps XLA's wraparound semantics:
+
+```{r}
+nv_convert(nv_scalar(-2L, "i32"), "ui8")
+```
+
 Note that these rules are not universal and exceptions exist.
 Some functions, such as `nv_clamp`, prioritize the data type of a specific argument, in this case `x`, the value that is being clamped.
 It fails if the the boundary values cannot be promoted to `x` without loss of precision:
