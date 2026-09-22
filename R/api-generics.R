@@ -448,10 +448,10 @@ digamma.AnvlBox <- digamma.AnvlArray
 #' @rdname nv_polygamma
 #' @usage NULL
 #' @section The `trigamma()` generic:
-#' `trigamma(x)` is `nv_polygamma(1, x)`.
+#' `trigamma(x)` is `nv_polygamma(1L, x)`.
 #' @export
 trigamma.AnvlArray <- function(x) {
-  nv_polygamma(1, x)
+  nv_polygamma(1L, x)
 }
 
 #' @export
@@ -997,7 +997,7 @@ length.AnvlBox <- length.AnvlArray
 #'   and [base::cbind()].
 #' @method rbind AnvlArray
 #' @export
-rbind.AnvlArray <- function(..., deparse.level = 1) {
+rbind.AnvlArray <- function(..., deparse.level = 1L) {
   nv_rbind(...)
 }
 
@@ -1008,7 +1008,7 @@ rbind.AnvlBox <- rbind.AnvlArray
 #' @rdname nv_bind
 #' @method cbind AnvlArray
 #' @export
-cbind.AnvlArray <- function(..., deparse.level = 1) {
+cbind.AnvlArray <- function(..., deparse.level = 1L) {
   nv_cbind(...)
 }
 

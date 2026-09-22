@@ -181,7 +181,7 @@ compile_pjrt <- function(
       # a caller with no dispatcher in front of it falls back to the default.
       device <- fallback_device %||% default_device("pjrt")
     } else if (length(unique_devices) > 1L) {
-      devices_str <- paste0(vapply(unique_devices, as.character, character(1)), collapse = ", ")
+      devices_str <- paste0(vapply(unique_devices, as.character, character(1L)), collapse = ", ")
       cli_abort(c(
         "device is `NULL` (autodetect) but found more than one device",
         i = "Found devices: {devices_str}"

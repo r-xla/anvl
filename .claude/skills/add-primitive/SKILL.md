@@ -40,9 +40,13 @@ Axis numbers, shape entries, indices and counts are integers, so write them as `
 including in the arithmetic that converts to StableHLO's 0-based indexing (`axes - 1L`,
 `rep(1L, rank)`, `seq_len(rank) - 1L`).
 
-A literal that meets an array is the exception: it takes the dtype of the operands it meets, so
-it is written in their *category* (`prim_fill(0, dtype = dtype(x), ...)`, `hlo_scalar(1, ...)`).
-An `L` there narrows the category and is a bug, not a style fix.
+A literal that meets an array keeps its `L` as well -- `prim_fill(1L, dtype = dtype(x), ...)`,
+`hlo_scalar(0L, dtype = dtype(x), ...)` -- whatever category that array is in. An R integer widens
+into any category, while a plain `1` is an R *double* that would pull an integer array into the
+float category.
+
+Drop the `L` only where the value is genuinely a real number that happens to be whole, such as a
+coefficient built in R: `prim_fill(2 / sqrt(pi), dtype = dtype(x), ...)`.
 
 ## Roxygen Documentation
 

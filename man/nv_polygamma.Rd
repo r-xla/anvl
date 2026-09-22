@@ -31,7 +31,7 @@ arguments.
 }
 \section{The \code{trigamma()} generic}{
 
-\code{trigamma(x)} is \code{nv_polygamma(1, x)}.
+\code{trigamma(x)} is \code{nv_polygamma(1L, x)}.
 }
 
 \examples{

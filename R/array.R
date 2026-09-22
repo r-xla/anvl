@@ -1122,7 +1122,7 @@ to_abstract <- function(x, pure = FALSE) {
 as_shape <- function(x) {
   if (is_shape(x)) {
     x
-  } else if (test_integerish(x, any.missing = FALSE, lower = 0)) {
+  } else if (test_integerish(x, any.missing = FALSE, lower = 0L)) {
     Shape(as.integer(x))
   } else if (is.null(x)) {
     Shape(integer())

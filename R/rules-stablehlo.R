@@ -139,14 +139,14 @@ prim_dynamic_update_slice[["stablehlo"]] <- function(x, update, ..., output_type
 
 prim_reduce_sum[["stablehlo"]] <- function(x, axes, drop) {
   init <- function(x) {
-    hlo_scalar(0, dtype = dtype(x), func = x$func)
+    hlo_scalar(0L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_reduce(hlo_add, x, init, axes, drop)
 }
 
 prim_reduce_prod[["stablehlo"]] <- function(x, axes, drop) {
   init <- function(x) {
-    hlo_scalar(1, dtype = dtype(x), func = x$func)
+    hlo_scalar(1L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_reduce(hlo_multiply, x, init, axes, drop)
 }
@@ -215,14 +215,14 @@ prim_reduce_all[["stablehlo"]] <- function(x, axes, drop) {
 
 prim_cumsum[["stablehlo"]] <- function(x, axis) {
   init <- function(x) {
-    hlo_scalar(0, dtype = dtype(x), func = x$func)
+    hlo_scalar(0L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_cum(hlo_add, x, init, axis)
 }
 
 prim_cumprod[["stablehlo"]] <- function(x, axis) {
   init <- function(x) {
-    hlo_scalar(1, dtype = dtype(x), func = x$func)
+    hlo_scalar(1L, dtype = dtype(x), func = x$func)
   }
   .stablehlo_apply_cum(hlo_multiply, x, init, axis)
 }
@@ -299,7 +299,7 @@ prim_cumprod[["stablehlo"]] <- function(x, axis) {
   values <- out[[1L]]
   indices_0 <- out[[2L]]
   one <- hlo_scalar(1L, dtype = i_dtype, func = indices_0$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices_0$value_type))
+  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(indices_0$value_type))
   list(values, hlo_add(indices_0, one_bc))
 }
 
@@ -372,7 +372,7 @@ prim_reduce[["stablehlo"]] <- function(x, init, axes, drop, reductor_graph, .env
   # convert to 1-based
   result <- out[[2L]]
   one <- hlo_scalar(1L, dtype = i_dtype, func = result$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(result$value_type))
+  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(result$value_type))
   result <- hlo_add(result, one_bc)
   if (drop) {
     return(list(result))
@@ -633,7 +633,7 @@ prim_iota[["stablehlo"]] <- function(axis, dtype, shape, start) {
   if (start != 0L) {
     offset <- hlo_broadcast_in_dim(
       hlo_scalar(start, dtype = dtype, func = out$func),
-      integer(0),
+      integer(0L),
       shape
     )
     out <- hlo_add(out, offset)
@@ -872,7 +872,7 @@ prim_sort[["stablehlo"]] <- function(..., axis, descending, is_stable) {
 # Collapse -0 → +0 and -NaN → +NaN on a scalar float. See the comment on
 # `.build_sort_comparator` above for why we do this.
 .canonicalize_float_for_sort <- function(x, dtype) {
-  zero <- hlo_scalar(0, dtype = dtype, func = x$func)
+  zero <- hlo_scalar(0L, dtype = dtype, func = x$func)
   canonical_nan <- hlo_scalar(NaN, dtype = dtype, func = x$func)
   is_zero <- hlo_compare(x, zero, comparison_direction = "EQ", compare_type = "FLOAT")
   is_nan <- hlo_compare(x, x, comparison_direction = "NE", compare_type = "FLOAT")
@@ -915,7 +915,7 @@ prim_top_k[["stablehlo"]] <- function(x, k, indices, output_types) {
   # `hlo_top_k`'s indices are `i32` by spec, so the shift to 1-based happens
   # there and only the result follows the default integer.
   one <- hlo_scalar(1L, dtype = "i32", func = indices$func)
-  one_bc <- hlo_broadcast_in_dim(one, integer(0), shape(indices$value_type))
+  one_bc <- hlo_broadcast_in_dim(one, integer(0L), shape(indices$value_type))
   indices <- hlo_add(indices, one_bc)
 
   index_dtype <- index_dtype_of(output_types, 2L)

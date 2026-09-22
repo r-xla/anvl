@@ -86,14 +86,19 @@ Any dispatch-on-input constants inside other API functions should go through `_l
 
 ### Integer literals
 
-Write a whole number with the `L` suffix wherever it *is* an integer -- an axis number, a shape
-entry, an index, a count -- and in the arithmetic and comparisons around it: `naxes(x) == 0L`,
-`axis + 1L`, `rep(1L, rank)`, `n %% 2L == 1L`.
+Write a whole number with the `L` suffix -- axis numbers, shape entries, indices, counts, and the
+arithmetic and comparisons around them (`naxes(x) == 0L`, `axis + 1L`, `rep(1L, rank)`).
 
-The exception is a literal that meets an array. There the value is not an R integer but a
-dtype-taking one, so it is written in the *category* of the operand: `nv_ifelse(mask, 0, x)` for
-a float `x`, `0L` only when `x` is an integer array. Adding an `L` there silently narrows the
-category.
+This holds for a literal that meets an array too. It takes that array's dtype, and an R integer
+widens into any category, while a plain `1` is an R *double* that pulls an integer array into the
+float category (`x_i32 - 1` is `f32`). So write `nv_ifelse(mask, 0L, x)` and `nv_fill_like(x, 0L)`
+even when `x` is a float.
+
+Keep the plain spelling only where the value is genuinely a real number that happens to be whole:
+a distribution parameter, a probability bound, a threshold, a coefficient -- `sd = 1`,
+`lower = 0, upper = 1`, `nv_max(-d, 1)`. This matters most for an argument default, which may meet
+nothing at all and then settles on the default of its own category: `nv_rnorm(mean = 0, sd = 1)`
+written with `0L` / `1L` returns the sample at the default *integer*.
 
 ### Binary element-wise ops
 
