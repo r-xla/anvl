@@ -342,6 +342,16 @@ describe("prim_reshape", {
     }
   })
 
+  it("handles a rank-0 side, where there is no axis order to keep", {
+    expect_shape(f(nv_scalar(7L, dtype = "i32"), shape = 1L), 1L)
+    expect_shape(f(nv_array(7L, shape = 1L, dtype = "i32"), shape = integer()), integer())
+    # rank_in > 1 with a rank-0 result is the one corner where the operand is
+    # transposed but the result type rides on the reshape rather than a transpose
+    out <- f(nv_array(7L, shape = c(1L, 1L), dtype = "i32"), shape = integer())
+    expect_shape(out, integer())
+    expect_equal(as.vector(as_array(out)), 7L)
+  })
+
   it("infers a -1 axis", {
     x <- nv_array(1:6)
     expect_equal(prim_reshape(x, c(2, -1)), prim_reshape(x, c(2, 3)))

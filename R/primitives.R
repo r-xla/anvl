@@ -390,7 +390,10 @@ prim_transpose <- new_primitive(
 #' @templateVar primitive_id reshape
 #' @template section_rules
 #' @section StableHLO:
-#' Lowers to [hlo_reshape()].
+#' Lowers to [hlo_reshape()] between two [hlo_transpose()] calls that reverse
+#' every axis, which is what turns stablehlo's row-major reshape into a
+#' column-major one. Each transpose is skipped where that side has at most
+#' one axis.
 #' @seealso [nv_reshape()]
 #' @examplesIf pjrt::plugins_downloaded()
 #' x <- nv_array(1:6)
