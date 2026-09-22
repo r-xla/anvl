@@ -807,3 +807,21 @@ describe("the element-wise rules", {
     expect_s3_class(avals[[2L]], "AbstractArray")
   })
 })
+
+describe("value_repr()", {
+  it("prints the value a message complains about", {
+    expect_equal(cli::ansi_strip(value_repr(3.5)), '<numeric> 3.5')
+    expect_error(
+      assert_int_param("a", "axis"),
+      '`axis` must be a whole number vector',
+      fixed = TRUE
+    )
+    expect_error(assert_int_param("a", "axis"), 'Got <character> "a"', fixed = TRUE)
+  })
+
+  it("falls back to class and length for a value `{.val}` cannot print", {
+    # `{.val {mean}}` errors inside the message it is meant to report.
+    expect_equal(cli::ansi_strip(value_repr(mean)), "<function> of length 1")
+    expect_error(assert_flag_param(mean, "drop"), "Got <function>", fixed = TRUE)
+  })
+})

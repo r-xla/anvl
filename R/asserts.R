@@ -15,7 +15,7 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
   fmt <- vec_repr
   if (!isTRUE(ok)) {
     if (is.null(x) || !is.numeric(x)) {
-      cli_abort("{.arg {var_name}} must be an integer vector, not {.cls {class(x)}}")
+      cli_abort("{.arg {var_name}} must be an integer vector, not {value_repr(x)}")
     }
     if (anyNA(x)) {
       cli_abort(c(
@@ -52,7 +52,7 @@ assert_shapevec <- function(x, min_len = 0L, var_name = rlang::caller_arg(x)) {
 # Returns the resolved (positive) axes as an integer vector.
 resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique = FALSE) {
   if (!test_integerish(axes, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(axes)}}")
+    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {value_repr(axes)}")
   }
   original <- as.integer(axes)
   resolved <- original
@@ -83,7 +83,7 @@ resolve_axes <- function(axes, max_axis, arg = rlang::caller_arg(axes), unique =
 # Like `resolve_axes()`, but for a single axis.
 resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
   if (length(axis) != 1L) {
-    cli_abort("{.arg {arg}} must have length 1, not {length(axis)}")
+    cli_abort("{.arg {arg}} must have length 1, not {length(axis)} ({vec_repr(axis)})")
   }
   resolve_axes(axis, max_axis, arg = arg)
 }
@@ -93,7 +93,7 @@ resolve_axis <- function(axis, max_axis, arg = rlang::caller_arg(axis)) {
 # Returns the resolved shape as an integer vector.
 resolve_reshape_shape <- function(shape, nelts, arg = rlang::caller_arg(shape)) {
   if (!test_integerish(shape, any.missing = FALSE, null.ok = FALSE)) {
-    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {.cls {class(shape)}}")
+    cli_abort("{.arg {arg}} must be an integer vector without missing values, not {value_repr(shape)}")
   }
   shape <- as.integer(shape)
   invalid <- shape < -1L

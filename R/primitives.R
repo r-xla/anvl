@@ -349,7 +349,7 @@ prim_concatenate <- new_primitive(
   function(..., axis) {
     dots <- list(...)
     if (!length(dots)) {
-      cli_abort("{.fn prim_concatenate} needs at least one array to concatenate.")
+      cli_abort("{.arg ...} must hold at least one array to concatenate.")
     }
     axis <- resolve_axis(axis, naxes(dots[[1L]]))
     graph_desc_add(
