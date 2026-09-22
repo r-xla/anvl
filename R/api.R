@@ -139,11 +139,15 @@ nv_promote_to_common <- jit(function(...) {
 #' @title Broadcast Arrays to a Common Shape
 #' @description
 #' Broadcasts arrays to a common shape, aligning their axes from the first
-#' one, the way base R's recycling does.
+#' one.
 #'
 #' @section Broadcasting Rules:
 #' 1. If the arrays have different numbers of axes, append size-1
-#'    axes to the shorter shape, so axis 1 meets axis 1.
+#'    axes to the shorter shape, so axis 1 meets axis 1. Anvl arrays are
+#'    column-major, so it is the first axis that varies fastest and an
+#'    appended axis leaves every existing one meaning what it did. (NumPy
+#'    prepends instead, which is the same choice made for a row-major
+#'    array.)
 #' 2. For each axis: if the sizes match, keep them; if one is 1, expand
 #'    it to the other's size; otherwise raise an error.
 #'
@@ -167,7 +171,7 @@ nv_broadcast_arrays <- jit(function(...) {
 #' @title Broadcast to Shape
 #' @description
 #' Broadcasts an array to a target shape, aligning the array's axes with the
-#' leading axes of `shape`, the way base R's recycling does.
+#' leading axes of `shape`.
 #' @template param_x
 #' @param shape (`integer()`)\cr
 #'   Target shape. It must have at least as many axes as `x`, and each axis
@@ -184,9 +188,9 @@ nv_broadcast_to <- function(x, shape) {
   x <- as_anvl_array(x)
   shape_op <- shape(x)
   if (!identical(shape_op, shape)) {
-    # Axes align from the first, as base R's recycling does: the array's
-    # existing axes map to the leading axes of `shape`, and the axes it lacks
-    # are appended. StableHLO wants a mapping for every input axis.
+    # Axes align from the first: the array's existing axes map to the leading
+    # axes of `shape`, and the axes it lacks are appended. StableHLO wants a
+    # mapping for every input axis.
     prim_broadcast_in_axes(x, shape, seq_along(shape_op))
   } else {
     x

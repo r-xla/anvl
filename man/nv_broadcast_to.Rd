@@ -20,7 +20,7 @@ Has the given \code{shape} and the same data type as \code{x}.
 }
 \description{
 Broadcasts an array to a target shape, aligning the array's axes with the
-leading axes of \code{shape}, the way base R's recycling does.
+leading axes of \code{shape}.
 }
 \examples{
 \dontshow{if (pjrt::plugins_downloaded()) withAutoprint(\{ # examplesIf}

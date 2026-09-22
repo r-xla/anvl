@@ -28,7 +28,7 @@ describe("nv_broadcast_to()", {
     x <- nv_array(c(1, 2))
     got <- nv_broadcast_to(x, shape = c(2L, 3L))
     expect_shape(got, c(2L, 3L))
-    # every column is `x`, the way `m + v` recycles `v` down the columns
+    # every column is `x`
     expect_equal(as_array(got), matrix(c(1, 2), nrow = 2L, ncol = 3L))
   })
 
@@ -52,7 +52,8 @@ describe("nv_broadcast_arrays()", {
     xs <- nv_broadcast_arrays(m, v)
     expect_shape(xs[[1L]], c(2L, 3L))
     expect_shape(xs[[2L]], c(2L, 3L))
-    # base R recycles the same way when the vector is as long as the columns
+    # base R's flat recycling happens to agree when the vector is as long
+    # as the first axis, which is the case here
     expect_equal(as_array(xs[[1L]] + xs[[2L]]), matrix(1:6, nrow = 2L) + c(10L, 20L))
   })
 

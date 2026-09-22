@@ -16,13 +16,17 @@ List of arrays, all with the same shape.
 }
 \description{
 Broadcasts arrays to a common shape, aligning their axes from the first
-one, the way base R's recycling does.
+one.
 }
 \section{Broadcasting Rules}{
 
 \enumerate{
 \item If the arrays have different numbers of axes, append size-1
-axes to the shorter shape, so axis 1 meets axis 1.
+axes to the shorter shape, so axis 1 meets axis 1. Anvl arrays are
+column-major, so it is the first axis that varies fastest and an
+appended axis leaves every existing one meaning what it did. (NumPy
+prepends instead, which is the same choice made for a row-major
+array.)
 \item For each axis: if the sizes match, keep them; if one is 1, expand
 it to the other's size; otherwise raise an error.
 }
